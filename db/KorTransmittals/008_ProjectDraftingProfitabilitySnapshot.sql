@@ -36,8 +36,17 @@ Run in KorTransmittals as sa (transmittals_app has datareader/datawriter only, n
 Re-runnable; a re-run for the same AsOfDate replaces that date.
   EXEC dbo.usp_SnapshotProjectDraftingProfitability;                                  -- today, 1.36, 250
   EXEC dbo.usp_SnapshotProjectDraftingProfitability @AsOfDate = '2026-10-14';
-  EXEC dbo.usp_SnapshotProjectDraftingProfitability @PartnerImputedCostRate = 0;      -- partners at payroll only
+  EXEC dbo.usp_SnapshotProjectDraftingProfitability @PartnerImputedCostRate = 0;      -- partner hours at no cost at all
+  -- partners at their posted payroll amount is a column, not a run: vw_ProjectDraftingProfitability.MarginPartnersAtPayroll
 Expect on 2026-10-14: 2,328 job rows (1,316 residential), billed posted through 202610.
+Re-running on a database that already has the tables adds any new columns in place (the ALTER blocks)
+and takes a fresh snapshot for the date.
+
+The view's IsFinished and IsInWindow are the report's margin population:
+  finished  = billed at least 90% of a non-zero fee, or Status not Active (the Historical screen's "Closed")
+  in window = no billings posted before 2019 and no OpenDate before 2019. Deltek's timesheets begin in 2019,
+              so a job billed before then carries lifetime billings against only part of its labour; its
+              margin is not real and the report excludes it. The year table keeps the same window.
 */
 
 USE KorTransmittals;
@@ -67,17 +76,21 @@ BEGIN
         PartnerImputedRate       DECIMAL(9,2)   NOT NULL,
         FeeCad                   DECIMAL(18,2)  NOT NULL,
         FeeBilledCad             DECIMAL(18,2)  NOT NULL,
+        BilledBefore2019Cad      DECIMAL(18,2)  NOT NULL CONSTRAINT DF_PDPS_BilledBefore2019Cad DEFAULT (0),
+        FirstBillingPeriod       INT            NULL,
         EngHrs                   DECIMAL(12,2)  NOT NULL,
         DraftHrs                 DECIMAL(12,2)  NOT NULL,
         BillableHrs              DECIMAL(12,2)  NOT NULL,
         PartnerHrs               DECIMAL(12,2)  NOT NULL,   -- billable hours by partners
         PartnerDraftHrs          DECIMAL(12,2)  NOT NULL,   -- of which drafting
+        PartnerEngHrs            DECIMAL(12,2)  NOT NULL CONSTRAINT DF_PDPS_PartnerEngHrs DEFAULT (0),   -- of which engineering
         -- posted basis: Deltek's payroll amounts at the rate of the time, CAD
         EngAmtPosted             DECIMAL(18,2)  NOT NULL,
         DraftAmtPosted           DECIMAL(18,2)  NOT NULL,
         LaborAmtPosted           DECIMAL(18,2)  NOT NULL,   -- billable hours, all staff, as posted
         PartnerAmtPosted         DECIMAL(18,2)  NOT NULL,   -- the partners' share of LaborAmtPosted
         PartnerDraftAmtPosted    DECIMAL(18,2)  NOT NULL,   -- the partners' share of DraftAmtPosted
+        PartnerEngAmtPosted      DECIMAL(18,2)  NOT NULL CONSTRAINT DF_PDPS_PartnerEngAmtPosted DEFAULT (0),   -- the partners' share of EngAmtPosted
         -- current-rate basis: hours x today's cost rate, partners at PartnerImputedRate, CAD
         EngCostCurrent           DECIMAL(18,2)  NOT NULL,
         DraftCostCurrent         DECIMAL(18,2)  NOT NULL,
@@ -88,6 +101,15 @@ BEGIN
     );
     CREATE INDEX IX_PDPS_AsOf_Sector_Type ON dbo.ProjectDraftingProfitabilitySnapshot (AsOfDate, Sector, DraftingType);
 END;
+GO
+
+/* columns added after the first run (2026-10-14, the Codex sober-second-thought pass) */
+IF COL_LENGTH(N'dbo.ProjectDraftingProfitabilitySnapshot', N'PartnerEngHrs') IS NULL
+    ALTER TABLE dbo.ProjectDraftingProfitabilitySnapshot ADD
+        PartnerEngHrs        DECIMAL(12,2) NOT NULL CONSTRAINT DF_PDPS_PartnerEngHrs DEFAULT (0),
+        PartnerEngAmtPosted  DECIMAL(18,2) NOT NULL CONSTRAINT DF_PDPS_PartnerEngAmtPosted DEFAULT (0),
+        BilledBefore2019Cad  DECIMAL(18,2) NOT NULL CONSTRAINT DF_PDPS_BilledBefore2019Cad DEFAULT (0),
+        FirstBillingPeriod   INT NULL;
 GO
 
 IF OBJECT_ID(N'dbo.DraftingTypeByYearSnapshot', N'U') IS NULL
@@ -117,18 +139,23 @@ BEGIN
 END;
 GO
 
-/* Derived figures, one place. Completed = billed at least 90% of a non-zero fee: the only
-   rows on which margin means anything. In-flight rows carry cost ahead of billing.
+/* Derived figures, one place. The report's margin population is IsFinished = 1 AND IsInWindow = 1.
+   In-flight rows carry cost ahead of billing; rows outside the window carry billings before their labour.
    LaborCost (no suffix) is the report basis: posted staff amounts + partner hours at the imputed rate. */
 CREATE OR ALTER VIEW dbo.vw_ProjectDraftingProfitability AS
 SELECT
     s.*,
     CASE WHEN s.DraftingType = N'' THEN N'untagged' ELSE s.DraftingType END                        AS DraftingTypeLabel,
-    CASE WHEN s.FeeCad > 0 AND s.FeeBilledCad >= 0.9 * s.FeeCad THEN 1 ELSE 0 END                  AS IsCompleted,
+    f.IsFullyBilled,
+    f.IsClosed,
+    CASE WHEN f.IsFullyBilled = 1 OR f.IsClosed = 1 THEN 1 ELSE 0 END                               AS IsFinished,
+    CASE WHEN s.BilledBefore2019Cad = 0 AND (s.OpenDate IS NULL OR s.OpenDate >= '2019-01-01') THEN 1 ELSE 0 END AS IsInWindow,
+    f.IsFullyBilled                                                                                AS IsCompleted,   -- kept for the first edition's readers
     s.EngHrs + s.DraftHrs                                                                          AS ProductionHrs,
     YEAR(s.FirstHoursDate)                                                                         AS FirstHoursYear,
     d.LaborCost,
     d.DraftCost,
+    d.EngCost,
     s.FeeBilledCad - d.LaborCost                                                                   AS Margin,
     CASE WHEN s.FeeBilledCad <> 0 THEN (s.FeeBilledCad - d.LaborCost) / s.FeeBilledCad END         AS MarginPct,
     s.FeeBilledCad - s.LaborAmtPosted                                                              AS MarginPartnersAtPayroll,
@@ -142,8 +169,12 @@ SELECT
     CASE WHEN s.EngHrs + s.DraftHrs > 0 THEN s.DraftHrs / (s.EngHrs + s.DraftHrs) END              AS DraftShareOfHrs
 FROM dbo.ProjectDraftingProfitabilitySnapshot s
 CROSS APPLY (SELECT
+    CASE WHEN s.FeeCad > 0 AND s.FeeBilledCad >= 0.9 * s.FeeCad THEN 1 ELSE 0 END AS IsFullyBilled,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(s.Status, N'')))) <> N'A' THEN 1 ELSE 0 END AS IsClosed) f
+CROSS APPLY (SELECT
     s.LaborAmtPosted - s.PartnerAmtPosted      + s.PartnerHrs      * s.PartnerImputedRate AS LaborCost,
-    s.DraftAmtPosted - s.PartnerDraftAmtPosted + s.PartnerDraftHrs * s.PartnerImputedRate AS DraftCost) d;
+    s.DraftAmtPosted - s.PartnerDraftAmtPosted + s.PartnerDraftHrs * s.PartnerImputedRate AS DraftCost,
+    s.EngAmtPosted   - s.PartnerEngAmtPosted   + s.PartnerEngHrs   * s.PartnerImputedRate AS EngCost) d;
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_SnapshotProjectDraftingProfitability
@@ -175,6 +206,8 @@ BEGIN
             LTRIM(RTRIM(COALESCE(pctf.CustConstructionType, '''')))     AS ConstructionType,
             CAST(COALESCE(pr.Fee, 0) AS DECIMAL(18,2))                  AS Fee,
             CAST(COALESCE(billed.FeeBilled, 0) AS DECIMAL(18,2))        AS FeeBilled,
+            CAST(COALESCE(billed.BilledBefore2019, 0) AS DECIMAL(18,2)) AS BilledBefore2019,
+            billed.FirstPeriod,
             CAST(L.EngHrs AS DECIMAL(12,2))                             AS EngHrs,
             CAST(L.DraftHrs AS DECIMAL(12,2))                           AS DraftHrs,
             CAST(L.BillableHrs AS DECIMAL(12,2))                        AS BillableHrs,
@@ -187,6 +220,7 @@ BEGIN
             CAST(L.LaborAmt AS DECIMAL(18,2))                           AS LaborAmt,
             CAST(L.PartnerAmt AS DECIMAL(18,2))                         AS PartnerAmt,
             CAST(L.PartnerDraftAmt AS DECIMAL(18,2))                    AS PartnerDraftAmt,
+            CAST(L.PartnerEngAmt AS DECIMAL(18,2))                      AS PartnerEngAmt,
             CAST(L.EngCostCur AS DECIMAL(18,2))                         AS EngCostCur,
             CAST(L.DraftCostCur AS DECIMAL(18,2))                       AS DraftCostCur,
             CAST(L.CostCurAll AS DECIMAL(18,2))                         AS CostCurAll,
@@ -197,7 +231,10 @@ BEGIN
         LEFT JOIN [C0000052267P_1_KOR00000000].dbo.ProjectCustomTabFields pctf
                ON pctf.WBS1 = pr.WBS1 AND pctf.WBS2 = pr.WBS2 AND pctf.WBS3 = pr.WBS3
         LEFT JOIN (
-            SELECT WBS1, SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END) AS FeeBilled
+            SELECT WBS1,
+                   SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END)                                    AS FeeBilled,
+                   SUM(CASE WHEN Period < 201901 THEN (CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END) ELSE 0 END) AS BilledBefore2019,
+                   MIN(Period)                                                                                      AS FirstPeriod
             FROM [C0000052267P_1_KOR00000000].dbo.PRSummaryMain
             GROUP BY WBS1
         ) billed ON billed.WBS1 = pr.WBS1
@@ -215,6 +252,7 @@ BEGIN
                 SUM(CASE WHEN b.IsBillable = 1      THEN h.Amt ELSE 0 END)                                   AS LaborAmt,
                 SUM(CASE WHEN b.IsBillable = 1 AND t.Employee LIKE ''P%'' THEN h.Amt ELSE 0 END)              AS PartnerAmt,
                 SUM(CASE WHEN t.LaborCode = 20 AND t.Employee LIKE ''P%'' THEN h.Amt ELSE 0 END)              AS PartnerDraftAmt,
+                SUM(CASE WHEN t.LaborCode IN (10,30) AND t.Employee LIKE ''P%'' THEN h.Amt ELSE 0 END)        AS PartnerEngAmt,
                 SUM(CASE WHEN t.LaborCode IN (10,30) THEN h.Hrs * r.Rate ELSE 0 END)                          AS EngCostCur,
                 SUM(CASE WHEN t.LaborCode = 20      THEN h.Hrs * r.Rate ELSE 0 END)                          AS DraftCostCur,
                 SUM(CASE WHEN b.IsBillable = 1      THEN h.Hrs * r.Rate ELSE 0 END)                          AS CostCurAll,
@@ -285,6 +323,7 @@ BEGIN
          AND LTRIM(RTRIM(COALESCE(pr.WBS2, ''''))) = '''' AND LTRIM(RTRIM(COALESCE(pr.WBS3, ''''))) = ''''
         LEFT JOIN [C0000052267P_1_KOR00000000].dbo.ProjectCustomTabFields pctf
           ON pctf.WBS1 = pr.WBS1 AND pctf.WBS2 = pr.WBS2 AND pctf.WBS3 = pr.WBS3
+        WHERE sm.Period >= 201901
         GROUP BY CAST(LEFT(CAST(sm.Period AS VARCHAR(8)), 4) AS INT), LTRIM(RTRIM(COALESCE(pr.ProjectType, ''''))),
                  LTRIM(RTRIM(COALESCE(pctf.CustDraftingType, ''''))), CASE WHEN LTRIM(RTRIM(COALESCE(pr.Org, ''''))) = ''USA'' THEN 1 ELSE 0 END
     ');
@@ -295,8 +334,9 @@ BEGIN
     INSERT INTO dbo.ProjectDraftingProfitabilitySnapshot
         (AsOfDate, Wbs1, ProjectName, Status, Org, Sector, DraftingType, Category, ConstructionType,
          OpenDate, FirstHoursDate, LastHoursDate, UsdToCadRate, PartnerImputedRate, FeeCad, FeeBilledCad,
-         EngHrs, DraftHrs, BillableHrs, PartnerHrs, PartnerDraftHrs,
-         EngAmtPosted, DraftAmtPosted, LaborAmtPosted, PartnerAmtPosted, PartnerDraftAmtPosted,
+         BilledBefore2019Cad, FirstBillingPeriod,
+         EngHrs, DraftHrs, BillableHrs, PartnerHrs, PartnerDraftHrs, PartnerEngHrs,
+         EngAmtPosted, DraftAmtPosted, LaborAmtPosted, PartnerAmtPosted, PartnerDraftAmtPosted, PartnerEngAmtPosted,
          EngCostCurrent, DraftCostCurrent, LaborCostCurrentAllStaff, LaborCostCurrentActive)
     SELECT
         @AsOfDate,
@@ -308,10 +348,11 @@ BEGIN
         x.Fx, @PartnerImputedCostRate,
         j.Fee       * x.Fx,
         j.FeeBilled * x.Fx,
+        COALESCE(j.BilledBefore2019, 0) * x.Fx, j.FirstPeriod,
         COALESCE(j.EngHrs, 0), COALESCE(j.DraftHrs, 0), COALESCE(j.BillableHrs, 0),
-        COALESCE(j.PartnerHrs, 0), COALESCE(j.PartnerDraftHrs, 0),
+        COALESCE(j.PartnerHrs, 0), COALESCE(j.PartnerDraftHrs, 0), COALESCE(j.PartnerEngHrs, 0),
         COALESCE(j.EngAmt, 0) * x.Fx, COALESCE(j.DraftAmt, 0) * x.Fx, COALESCE(j.LaborAmt, 0) * x.Fx,
-        COALESCE(j.PartnerAmt, 0) * x.Fx, COALESCE(j.PartnerDraftAmt, 0) * x.Fx,
+        COALESCE(j.PartnerAmt, 0) * x.Fx, COALESCE(j.PartnerDraftAmt, 0) * x.Fx, COALESCE(j.PartnerEngAmt, 0) * x.Fx,
         /* current-rate figures were summed with partners at 250; re-price partner hours at the rate asked for */
         COALESCE(j.EngCostCur, 0)    - COALESCE(j.PartnerEngHrs, 0)    * 250 + COALESCE(j.PartnerEngHrs, 0)    * @PartnerImputedCostRate,
         COALESCE(j.DraftCostCur, 0)  - COALESCE(j.PartnerDraftHrs, 0)  * 250 + COALESCE(j.PartnerDraftHrs, 0)  * @PartnerImputedCostRate,
