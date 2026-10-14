@@ -53,13 +53,39 @@ public sealed class OpportunityDetailViewModel : INotifyPropertyChanged, Kor.Ope
     public string BuyerName => Opportunity.BuyerName;
     public string Key => Opportunity.OpportunityKey;
 
-    public string StatusDisplay => Opportunity.DismissedAtUtc is null
-        ? Opportunity.Status.ToString()
-        : $"{Opportunity.Status} — dismissed";
+    /// <summary>"Removed" is the word the Opportunities grid uses for a dismissed record; one word, everywhere.</summary>
+    public string StatusDisplay => Opportunity.DismissedAtUtc is null ? Opportunity.Status.ToString() : "Removed";
+
+    public bool IsRemoved => Opportunity.DismissedAtUtc is not null;
+
+    /// <summary>
+    /// Who took the record out of the pipeline, when, and why: the first thing a reader
+    /// needs from a record that has nothing else to show. Ian, 2026-10-14, on a retired
+    /// duplicate that sat at the top of "Closing soon": "And whom dismissed it???" The
+    /// answer was in the row (BdOpportunityDedup, "Same RFP as BCBID-233225") and the
+    /// window did not say it.
+    /// </summary>
+    public string RemovedDisplay
+    {
+        get
+        {
+            if (Opportunity.DismissedAtUtc is not { } at)
+            {
+                return "";
+            }
+
+            var who = string.IsNullOrWhiteSpace(Opportunity.DismissedBy) ? "an unrecorded actor" : Opportunity.DismissedBy!.Trim();
+            var why = string.IsNullOrWhiteSpace(Opportunity.DismissedReason) ? "." : ": " + Opportunity.DismissedReason!.Trim();
+            return $"Removed from the pipeline {at.ToLocalTime().ToString("MMM d, yyyy", CultureInfo.InvariantCulture)} by {who}{why}";
+        }
+    }
 
     public string OwnerDisplay => string.IsNullOrWhiteSpace(Opportunity.OwnerStaffId) ? "unowned" : Opportunity.OwnerStaffId!;
 
     public string ClosesDisplay => OpportunityDeadlineDisplay.Format(Opportunity.SubmissionDeadlineUtc, DateTimeOffset.UtcNow);
+
+    /// <summary>Tooltip on the closing time: the value as stored, with its offset.</summary>
+    public string ClosesStored => "Stored as " + OpportunityDeadlineDisplay.Stored(Opportunity.SubmissionDeadlineUtc);
 
     public string PostedDisplay => Opportunity.RfpReleaseDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "not recorded";
 
@@ -83,6 +109,9 @@ public sealed class OpportunityDetailViewModel : INotifyPropertyChanged, Kor.Ope
     public string SectorDisplay => string.IsNullOrWhiteSpace(Opportunity.PrimeProjectSector) ? "not classified" : Opportunity.PrimeProjectSector!;
 
     public List<SourceRow> Sources { get; } = new();
+
+    /// <summary>False hides the postings grid; an empty grid with headers reads as a failed load.</summary>
+    public bool HasSources => Sources.Count > 0;
 
     public string Description
     {
@@ -116,6 +145,7 @@ public sealed class OpportunityDetailViewModel : INotifyPropertyChanged, Kor.Ope
             Sources.Clear();
             Sources.AddRange(built.Sources);
             OnPropertyChanged(nameof(Sources));
+            OnPropertyChanged(nameof(HasSources));
             Description = built.Description;
             PrimaryUrl = built.PrimaryUrl;
             StatusText = observations.Count == 0
@@ -176,6 +206,7 @@ public sealed class OpportunityDetailViewModel : INotifyPropertyChanged, Kor.Ope
     public string BuildContext()
         => $"RFP {Key}: {Name} — {BuyerName}; status {StatusDisplay}; owner {OwnerDisplay}; closes {ClosesDisplay}; "
          + $"value {ValueDisplay}; location {LocationDisplay}; fit {FitDisplay}; sector {SectorDisplay}. "
+         + (IsRemoved ? RemovedDisplay + " " : "")
          + $"Source posting: {PrimaryUrl ?? "none linked"}. {Description}";
     public string BuildLocalContext() => BuildContext();
 

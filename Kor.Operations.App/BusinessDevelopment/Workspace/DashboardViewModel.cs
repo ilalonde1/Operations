@@ -163,10 +163,14 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
     public sealed record FeedRow(long OpportunityId, string Name, string Buyer, string? Province, string Status, string? Deadline);
 
     internal static DeadlineRow CreateDeadlineRow(Opportunity o, DateTimeOffset now)
-        => new(o.Id, o.Name, o.ProjectProvince, OpportunityDeadlineDisplay.Date(o.SubmissionDeadlineUtc),
+        => new(o.Id, o.Name, o.BuyerName, o.ProjectProvince, OpportunityDeadlineDisplay.Date(o.SubmissionDeadlineUtc),
             o.SubmissionDeadlineUtc is { } d ? OpportunityDeadlineDisplay.Countdown(d, now) : "not specified");
 
-    public sealed record DeadlineRow(long OpportunityId, string Name, string? Province, string? Deadline, string Countdown);
+    public sealed record DeadlineRow(long OpportunityId, string Name, string Buyer, string? Province, string? Deadline, string Countdown)
+    {
+        /// <summary>The card's second line: buyer · province · local closing time, blanks skipped.</summary>
+        public string Detail => string.Join(" · ", new[] { Buyer, Province, Deadline }.Where(s => !string.IsNullOrWhiteSpace(s)));
+    }
 
     // Loaded into a per-load cache so dashboard click handlers can resolve a
     // FeedRow/DeadlineRow back to the full Opportunity model.
@@ -231,7 +235,13 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
                 _oppCache[o.Id] = o;
             }
 
-            Replace(LatestRfps, opps
+            // A removed record (DismissedAtUtc set: a human "not for us", or
+            // BdOpportunityDedup retiring a duplicate) stays in the cache for deep
+            // links but is neither news nor closing. 2026-10-14: the top row of
+            // "Closing soon" was a retired duplicate whose postings live on its twin.
+            var live = opps.Where(o => o.DismissedAtUtc is null).ToList();
+
+            Replace(LatestRfps, live
                 .OrderByDescending(o => o.CreatedAtUtc)
                 .Take(15)
                 .Select(o => new FeedRow(
@@ -242,13 +252,13 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
                     o.Status.ToString(),
                     OpportunityDeadlineDisplay.Date(o.SubmissionDeadlineUtc))));
 
-            Replace(Deadlines, opps
+            Replace(Deadlines, live
                 .Where(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= thirtyDays)
                 .OrderBy(o => o.SubmissionDeadlineUtc)
                 .Select(o => CreateDeadlineRow(o, now)));
             OnPropertyChanged(nameof(HasDeadlines));
 
-            StatusMessage = $"{opps.Count:N0} open prime RFPs; {Deadlines.Count:N0} close in the next 30 days.";
+            StatusMessage = $"{live.Count:N0} open prime RFPs; {Deadlines.Count:N0} close in the next 30 days.";
         }
         catch (OperationCanceledException)
         {

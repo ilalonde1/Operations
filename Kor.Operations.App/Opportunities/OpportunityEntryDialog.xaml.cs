@@ -85,7 +85,7 @@ public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
                 .OfType<ComboBoxItem>()
                 .FirstOrDefault(c => string.Equals((string?)c.Content, _existing.EstimatedValueCurrency, StringComparison.OrdinalIgnoreCase))
                 ?? CurrencyBox.Items[0];
-            StoredDeadlineText.Text = OpportunityDeadlineDisplay.Date(_existing.SubmissionDeadlineUtc);
+            StoredDeadlineText.Text = OpportunityDeadlineDisplay.Stored(_existing.SubmissionDeadlineUtc);
             // Edit the calendar date in the stored offset, preserving its clock
             // time/offset on save even when the workstation is in another zone.
             DeadlineBox.SelectedDate = _existing.SubmissionDeadlineUtc?.Date;

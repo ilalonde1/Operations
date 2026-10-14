@@ -47,6 +47,28 @@ public sealed class BdDashboardClarityRegressionTests
         Assert.Contains("GetPipelineFunnelAsync", vm);
     }
 
+    // 2026-10-14, Ian on the shipped dashboard: the top row of "Closing soon" was a
+    // duplicate BdOpportunityDedup had retired six days earlier; 6 of the 20 rows were.
+    // Removed records (DismissedAtUtc set) stay in the click cache and leave both lists.
+    // Source-level: a second list added later that reads `opps` instead of `live` escapes.
+    [Fact]
+    public void Dashboard_ListsOnlyLiveRecords()
+    {
+        var vm = Source("Kor.Operations.App/BusinessDevelopment/Workspace/DashboardViewModel.cs");
+        Assert.Contains("var live = opps.Where(o => o.DismissedAtUtc is null).ToList();", vm);
+        Assert.Contains("Replace(LatestRfps, live", vm);
+        Assert.Contains("Replace(Deadlines, live", vm);
+        Assert.DoesNotContain("Replace(LatestRfps, opps", vm);
+        Assert.DoesNotContain("Replace(Deadlines, opps", vm);
+
+        // The card's second line names the buyer and the local closing time; the
+        // "(stored offset)" dump is gone from every list.
+        var xaml = Source("Kor.Operations.App/BusinessDevelopment/Workspace/DashboardView.xaml");
+        Assert.Contains("Binding Detail", xaml);
+        Assert.DoesNotContain("stored offset", xaml);
+        Assert.DoesNotContain("(stored offset)", Source("Kor.Operations.App/Opportunities/OpportunityDeadlineDisplay.cs"));
+    }
+
     [Fact]
     public void MovedBlocks_EachHaveExactlyOneHome()
     {

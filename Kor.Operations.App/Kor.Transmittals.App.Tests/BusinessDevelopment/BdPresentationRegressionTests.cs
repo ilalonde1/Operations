@@ -137,6 +137,9 @@ public sealed class BdPresentationRegressionTests
 
     // Both brief formatters AND Dashboard row factory across spring/fall DST,
     // UTC-midnight discrepancy and non-hour offsets; instant-based countdown.
+    // 2026-10-14: the shared format became the reader's LOCAL wall clock in words
+    // ("Mon Oct 19, 2:00 PM"); the stored offset moved to Stored() for the editor and
+    // tooltips. Every consumer must still agree with the one formatter.
     // Excludes timestamp ingestion/storage and screenshots: clipped UI text escapes.
     [Theory]
     [InlineData("2026-03-08T01:30:00-08:00")]
@@ -145,14 +148,21 @@ public sealed class BdPresentationRegressionTests
     [InlineData("2026-11-01T01:30:00-08:00")]
     [InlineData("2031-01-01T00:30:00+00:00")]
     [InlineData("2026-03-08T00:30:00+05:30")]
-    public void DeadlinesUseStoredOffsetInBothConsumers(string input)
+    public void DeadlinesReadAsLocalTimeInEveryConsumer(string input)
     {
         var deadline = DateTimeOffset.Parse(input, CultureInfo.InvariantCulture);
         var now = deadline.AddHours(-36);
-        var expectedDate = deadline.ToString("yyyy-MM-dd HH:mm 'UTC'zzz", CultureInfo.InvariantCulture)
-            + " (stored offset)";
-        var row = DashboardViewModel.CreateDeadlineRow(new Opportunity { SubmissionDeadlineUtc = deadline }, now);
+        var local = deadline.ToLocalTime();
+        var expectedDate = local.ToString(
+            local.Year == DateTimeOffset.Now.Year ? "ddd MMM d, h:mm tt" : "ddd MMM d yyyy, h:mm tt",
+            CultureInfo.InvariantCulture);
+        Assert.DoesNotContain("stored offset", expectedDate);
+        Assert.DoesNotContain("UTC", expectedDate);
+        var row = DashboardViewModel.CreateDeadlineRow(new Opportunity { SubmissionDeadlineUtc = deadline, BuyerName = "Fraser Health" }, now);
         Assert.Equal(expectedDate, row.Deadline);
+        Assert.Equal("Fraser Health · " + expectedDate, row.Detail);   // null province is skipped, not rendered as a gap
+        Assert.Equal(deadline.ToString("yyyy-MM-dd HH:mm 'UTC'zzz", CultureInfo.InvariantCulture),
+            OpportunityDeadlineDisplay.Stored(deadline));                 // the editor still sees the stored value
         var opportunity = new Opportunity { SubmissionDeadlineUtc = deadline };
         Assert.Equal(expectedDate, new OpportunityRowView(opportunity).DeadlineDisplay);
         Assert.Equal(expectedDate, new OpportunityDeadlineConverter().Convert(deadline, typeof(string), null!, CultureInfo.InvariantCulture));
@@ -181,7 +191,7 @@ public sealed class BdPresentationRegressionTests
             Assert.Contains("SubmissionDeadlineUtc, Converter={StaticResource OpportunityDeadlineConverter}", actual);
             Assert.Contains("<local:OpportunityDeadlineConverter", actual);
         }
-        Assert.Contains("OpportunityDeadlineDisplay.Date(_existing.SubmissionDeadlineUtc)", Source("Opportunities/OpportunityEntryDialog.xaml.cs"));
+        Assert.Contains("OpportunityDeadlineDisplay.Stored(_existing.SubmissionDeadlineUtc)", Source("Opportunities/OpportunityEntryDialog.xaml.cs"));
         Assert.Contains("Edit date (preserves stored time and offset; new deadlines use local midnight)", Source("Opportunities/OpportunityEntryDialog.xaml"));
         Assert.Contains("Binding Countdown", Source("BusinessDevelopment/Workspace/DashboardView.xaml"));
     }

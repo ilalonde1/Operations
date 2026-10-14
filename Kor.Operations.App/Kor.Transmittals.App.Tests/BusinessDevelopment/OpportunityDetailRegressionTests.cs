@@ -2,6 +2,9 @@
 using System.IO;
 using Kor.Operations.App.Opportunities;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Observations;
+using Kor.Opportunities.Data.Sources;
+using Moq;
 using Xunit;
 
 namespace Kor.Operations.App.Tests.BusinessDevelopment;
@@ -62,6 +65,36 @@ public sealed class OpportunityDetailRegressionTests
         Assert.Contains("no description", actual.Description);
         Assert.Equal("2026-10-07 (ingested)", actual.Sources[0].Posted);
         Assert.Equal("https://bcbid/3", actual.PrimaryUrl);
+    }
+
+    // Ian, 2026-10-14, on a retired duplicate (BCBID-234361) opened from the dashboard:
+    // "no source and zero usable info" / "And whom dismissed it???" The row knew
+    // (BdOpportunityDedup, "Same RFP as BCBID-233225"); the window did not say it.
+    [Fact]
+    public void RemovedRecord_SaysWhoRemovedItWhenAndWhy()
+    {
+        var removed = new Opportunity
+        {
+            Name = "Development Consulting Services - Tumbler Ridge Secondary School Replacement",
+            BuyerName = "Ministry of Infrastructure", OpportunityKey = "BCBID-234361", Status = OpportunityStatus.New,
+            DismissedAtUtc = DateTimeOffset.Parse("2026-10-08T14:38:56-07:00"), DismissedBy = "BdOpportunityDedup",
+            DismissedReason = "Same RFP as BCBID-233225; held separately because OpportunityKey carries the posting number.",
+        };
+        var vm = new OpportunityDetailViewModel(removed, Mock.Of<IOpportunityObservationStore>(), Mock.Of<IOpportunitySourceStore>());
+        Assert.True(vm.IsRemoved);
+        Assert.Equal("Removed", vm.StatusDisplay);                     // the Opportunities grid's word, not "New — dismissed"
+        Assert.StartsWith("Removed from the pipeline Oct 8, 2026 by BdOpportunityDedup: Same RFP as BCBID-233225", vm.RemovedDisplay);
+        Assert.Contains("by BdOpportunityDedup", vm.BuildContext());
+
+        var live = new OpportunityDetailViewModel(new Opportunity { Name = "n", BuyerName = "b" },
+            Mock.Of<IOpportunityObservationStore>(), Mock.Of<IOpportunitySourceStore>());
+        Assert.False(live.IsRemoved);
+        Assert.Equal("", live.RemovedDisplay);
+        Assert.False(live.HasSources);
+
+        var xaml = Source("Opportunities/OpportunityDetailWindow.xaml");
+        Assert.Contains("Binding IsRemoved, Converter={StaticResource BoolToVis}", xaml);
+        Assert.Contains("Binding HasSources, Converter={StaticResource BoolToVis}", xaml);   // no empty grid with headers
     }
 
     [Fact]

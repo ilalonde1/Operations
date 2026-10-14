@@ -208,13 +208,10 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <StackPanel>
+                                <StackPanel Margin="0,0,12,0">
                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11">
-                                        <Run Text="{Binding Province, Mode=OneWay}"/>
-                                        <Run Text="  "/>
-                                        <Run Text="{Binding Deadline, Mode=OneWay}"/>
-                                    </TextBlock>
+                                    <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Text.Secondary}" FontSize="11"
+                                               TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
                                 <Border Grid.Column="1" Background="{StaticResource Brand.Accent.Brush}" CornerRadius="999" Padding="8,3" VerticalAlignment="Center">
                                     <TextBlock Foreground="White" FontSize="11" FontWeight="SemiBold">
@@ -272,7 +269,7 @@
                         <DataGridTextColumn Header="Buyer" Binding="{Binding Buyer}" Width="180"/>
                         <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="80"/>
                         <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
-                        <DataGridTextColumn Header="Deadline" Binding="{Binding Deadline}" Width="290"/>
+                        <DataGridTextColumn Header="Closes" Binding="{Binding Deadline}" Width="190"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>
