@@ -17,43 +17,31 @@ using Kor.Opportunities.Data.Opportunities;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
+/// <summary>
+/// The BD dashboard, after the 2026-10-13 clarity pass: the funnel's three numbers,
+/// what is closing, what is new, and the priority-action queue. Two reads instead of
+/// six. The pipeline charts and tiles live on the Pipeline window
+/// (<see cref="PipelineCharts"/>), open seats on Relationships, competitor watch on
+/// Competition.
+/// </summary>
 public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
     // T5.001 audit fix (2026-05-30): every BD VM exposes itself to the AI
     // context builder so the assistant can answer questions grounded in
     // what's actually on screen.
     public string ProviderName => "BD Dashboard";
-    public bool HasData => LatestRfps.Count > 0 || ForwardPipeline.Count > 0 || CompetitorWatch.Count > 0;
+    public bool HasData => LatestRfps.Count > 0 || Deadlines.Count > 0 || PriorityActions.Count > 0;
     public string BuildContext()
-        => $"BD Dashboard — funnel: {OpenSeatCountDisplay} open seats, {BidWindowCountDisplay} in bid window, {RadarCountDisplay} radar; pipeline: {TotalPipelineDisplay} total / {OpenRfpsDisplay} RFPs / {UpcomingProjectsDisplay} upcoming / {ClosingSoonDisplay} closing in 7d; pipeline value {PipelineValueDisplay}. {PipelineValueNote}";
+        => $"BD Dashboard — funnel: {OpenSeatCountDisplay} reachable now, {BidWindowCountDisplay} in bidding, {RadarCountDisplay} watching; "
+         + $"{Deadlines.Count} RFPs closing in the next 30 days; {LatestRfps.Count} newest RFPs listed; {PriorityActionsCount} open priority actions.";
     public string BuildLocalContext() => BuildContext();
 
     private static readonly CultureInfo CanadianCulture = CultureInfo.GetCultureInfo("en-CA");
 
-    // U4: large pipeline sums ($59B) overflowed the fixed-width stat tile and
-    // clipped to a broken "$59,014,997,". Show a compact, readable magnitude.
-    private static string FormatCompactCad(decimal v)
-    {
-        if (v >= 1_000_000_000m) return string.Format(CanadianCulture, "${0:0.0}B", v / 1_000_000_000m);
-        if (v >= 1_000_000m) return string.Format(CanadianCulture, "${0:0.0}M", v / 1_000_000m);
-        if (v >= 1_000m) return string.Format(CanadianCulture, "${0:0}K", v / 1_000m);
-        return string.Format(CanadianCulture, "{0:C0}", v);
-    }
-
-    private readonly IPrimePipelineStore _primePipeline;
     private readonly IOpportunityStore _opportunities;
     private readonly IBdDashboardStore _bdDashboard;
     private readonly IntelReadService _intelRead;
     private readonly IntelPersistenceService _intelPersistence;
-    private string _totalPipelineDisplay = "0";
-    private string _openRfpsDisplay = "0";
-    private string _upcomingProjectsDisplay = "0";
-    private string _closingSoonDisplay = "0";
-    private string _pipelineValueDisplay = "$0";
-    private string _pipelineValueNote = "CAD known-value subtotal; no currency conversion.";
-    private int _radarCount;
-    private int _bidWindowCount;
-    private int _openSeatCount;
     private string _radarCountDisplay = "0";
     private string _bidWindowCountDisplay = "0";
     private string _openSeatCountDisplay = "0";
@@ -62,14 +50,12 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
     private readonly Microsoft.Extensions.Logging.ILogger<DashboardViewModel>? _logger;
 
     public DashboardViewModel(
-        IPrimePipelineStore primePipeline,
         IOpportunityStore opportunities,
         IBdDashboardStore bdDashboard,
         IntelReadService intelRead,
         IntelPersistenceService intelPersistence,
         Microsoft.Extensions.Logging.ILogger<DashboardViewModel>? logger = null)
     {
-        _primePipeline = primePipeline ?? throw new ArgumentNullException(nameof(primePipeline));
         _opportunities = opportunities ?? throw new ArgumentNullException(nameof(opportunities));
         _bdDashboard = bdDashboard ?? throw new ArgumentNullException(nameof(bdDashboard));
         _intelRead = intelRead ?? throw new ArgumentNullException(nameof(intelRead));
@@ -173,12 +159,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public sealed record ChartBar(string Label, double Value, double Max);
-
-    // IDs (OpportunityId, OrgId) carried through so the dashboard rows can drill
-    // into the canonical record on double-click — Latest RFPs / Deadlines open the
-    // OpportunityEntryDialog, Open Structural Seats / Competitor Watch open the
-    // OrgDossierWindow, Forward Pipeline opens the PursuitBrief.
+    // Rows carry the Opportunity.Id so a double-click opens the RFP read view.
     public sealed record FeedRow(long OpportunityId, string Name, string Buyer, string? Province, string Status, string? Deadline);
 
     internal static DeadlineRow CreateDeadlineRow(Opportunity o, DateTimeOffset now)
@@ -187,15 +168,8 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
 
     public sealed record DeadlineRow(long OpportunityId, string Name, string? Province, string? Deadline, string Countdown);
 
-    public sealed record OpenStructuralSeatRow(long OrgId, string DisplayName, string? Market, string? Status, string? DisplacementRead);
-
-    public sealed record CompetitorWatchPanelRow(long OrgId, string DisplayName, string? CapacityRead);
-
-    public sealed record ForwardPipelinePanelRow(long Id, string ProjectName, string? ProponentName, string? Province, string CostDisplay);
-
     // Loaded into a per-load cache so dashboard click handlers can resolve a
-    // FeedRow/DeadlineRow back to the full Opportunity model (the entry dialog
-    // wants the model, not just the id).
+    // FeedRow/DeadlineRow back to the full Opportunity model.
     private readonly Dictionary<long, Opportunity> _oppCache = new();
 
     public Opportunity? GetOpportunity(long id) =>
@@ -203,77 +177,9 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
 
     public ObservableCollection<FeedRow> LatestRfps { get; } = new();
 
-    public ObservableCollection<ChartBar> SectorBars { get; } = new();
-
-    public ObservableCollection<ChartBar> MarketBars { get; } = new();
-
-    public ObservableCollection<ChartBar> StageBars { get; } = new();
-
-    public ObservableCollection<ChartBar> MarketValueBars { get; } = new();
-
-    public ObservableCollection<ChartBar> DeadlineMonthBars { get; } = new();
-
     public ObservableCollection<DeadlineRow> Deadlines { get; } = new();
 
-    public ObservableCollection<OpenStructuralSeatRow> OpenStructuralSeats { get; } = new();
-
-    public ObservableCollection<CompetitorWatchPanelRow> CompetitorWatch { get; } = new();
-
-    public ObservableCollection<ForwardPipelinePanelRow> ForwardPipeline { get; } = new();
-
-    public string TotalPipelineDisplay
-    {
-        get => _totalPipelineDisplay;
-        private set => SetField(ref _totalPipelineDisplay, value);
-    }
-
-    public string OpenRfpsDisplay
-    {
-        get => _openRfpsDisplay;
-        private set => SetField(ref _openRfpsDisplay, value);
-    }
-
-    public string UpcomingProjectsDisplay
-    {
-        get => _upcomingProjectsDisplay;
-        private set => SetField(ref _upcomingProjectsDisplay, value);
-    }
-
-    public string ClosingSoonDisplay
-    {
-        get => _closingSoonDisplay;
-        private set => SetField(ref _closingSoonDisplay, value);
-    }
-
-    public string PipelineValueDisplay
-    {
-        get => _pipelineValueDisplay;
-        private set => SetField(ref _pipelineValueDisplay, value);
-    }
-
-    public string PipelineValueNote
-    {
-        get => _pipelineValueNote;
-        private set => SetField(ref _pipelineValueNote, value);
-    }
-
-    public int RadarCount
-    {
-        get => _radarCount;
-        private set => SetField(ref _radarCount, value);
-    }
-
-    public int BidWindowCount
-    {
-        get => _bidWindowCount;
-        private set => SetField(ref _bidWindowCount, value);
-    }
-
-    public int OpenSeatCount
-    {
-        get => _openSeatCount;
-        private set => SetField(ref _openSeatCount, value);
-    }
+    public bool HasDeadlines => Deadlines.Count > 0;
 
     public string RadarCountDisplay
     {
@@ -305,51 +211,20 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
         {
             StatusMessage = "Loading BD dashboard...";
 
-            // T3.001 audit fix (2026-05-30): kick off all 6 independent reads
-            // in parallel via Task.WhenAll instead of awaiting one at a time.
-            // Each store opens its own SqlConnection per call so there's no
-            // shared-state contention. Latency drops from 6x to ~1x slowest
-            // call on the BD first screen.
-            var pipelineTask = _primePipeline.GetAllAsync(ct);
             var oppsTask = _opportunities.ListAsync(ct, includeClosed: false, includeNonPrime: false);
-            var openStructuralSeatsTask = _bdDashboard.GetOpenStructuralSeatsAsync(12, ct);
-            var competitorWatchTask = _bdDashboard.GetCompetitorWatchAsync(12, ct);
-            var forwardPipelineTask = _bdDashboard.GetForwardPipelineAsync(12, ct);
             var funnelTask = _bdDashboard.GetPipelineFunnelAsync(ct);
-            await Task.WhenAll(pipelineTask, oppsTask, openStructuralSeatsTask, competitorWatchTask, forwardPipelineTask, funnelTask).ConfigureAwait(true);
-            var pipeline = pipelineTask.Result;
+            await Task.WhenAll(oppsTask, funnelTask).ConfigureAwait(true);
             var opps = oppsTask.Result;
-            var openStructuralSeats = openStructuralSeatsTask.Result;
-            var competitorWatch = competitorWatchTask.Result;
-            var forwardPipeline = forwardPipelineTask.Result;
             var funnel = funnelTask.Result;
             ct.ThrowIfCancellationRequested();
 
             var now = DateTimeOffset.UtcNow;
-            var sevenDays = now.AddDays(7);
             var thirtyDays = now.AddDays(30);
-            var sixMonths = now.AddMonths(6);
 
-            TotalPipelineDisplay = pipeline.Count.ToString("N0", CanadianCulture);
-            OpenRfpsDisplay = pipeline.Count(r => string.Equals(r.PipelineType, "Open RFP", StringComparison.OrdinalIgnoreCase)).ToString("N0", CanadianCulture);
-            UpcomingProjectsDisplay = pipeline.Count(r => string.Equals(r.PipelineType, "Pipeline Project", StringComparison.OrdinalIgnoreCase)).ToString("N0", CanadianCulture);
-            ClosingSoonDisplay = opps.Count(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= sevenDays).ToString("N0", CanadianCulture);
-            var hasUnconvertedValue = pipeline.Any(r => r.HasUnconvertedValue);
-            PipelineValueDisplay = hasUnconvertedValue
-                ? "Unavailable"
-                : FormatCompactCad(pipeline.Sum(r => r.EstimatedValueCad ?? 0m));
-            PipelineValueNote = hasUnconvertedValue
-                ? "CAD totals unavailable: a valued row has non-CAD or unknown currency. No conversion applied."
-                : "CAD known-value subtotal; missing amounts excluded. No currency conversion.";
-            RadarCount = funnel.RadarCount;
-            BidWindowCount = funnel.BidWindowCount;
-            OpenSeatCount = funnel.OpenSeatCount;
             RadarCountDisplay = funnel.RadarCount.ToString("N0", CanadianCulture);
             BidWindowCountDisplay = funnel.BidWindowCount.ToString("N0", CanadianCulture);
             OpenSeatCountDisplay = funnel.OpenSeatCount.ToString("N0", CanadianCulture);
 
-            // Refresh the opp cache so click handlers can resolve OpportunityId
-            // back to a full Opportunity model.
             _oppCache.Clear();
             foreach (var o in opps)
             {
@@ -367,60 +242,13 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
                     o.Status.ToString(),
                     OpportunityDeadlineDisplay.Date(o.SubmissionDeadlineUtc))));
 
-            Replace(SectorBars, BuildBars(pipeline
-                // U4: canonicalize case so "Education" and "education" are one bar.
-                .GroupBy(r => string.IsNullOrWhiteSpace(r.Sector)
-                    ? "Other"
-                    : CanadianCulture.TextInfo.ToTitleCase(r.Sector!.Trim().ToLowerInvariant()))
-                .Select(g => (Label: g.Key, Count: g.Count()))));
-
-            Replace(MarketBars, BuildBars(pipeline
-                .GroupBy(r => string.IsNullOrWhiteSpace(r.Province) ? "" : r.Province!)
-                .Select(g => (Label: g.Key, Count: g.Count()))));
-
-            Replace(StageBars, BuildBars(pipeline
-                .GroupBy(r => string.IsNullOrWhiteSpace(r.Stage) ? "" : r.Stage!)
-                .Select(g => (Label: g.Key, Count: g.Count()))));
-
-            Replace(MarketValueBars, hasUnconvertedValue ? Array.Empty<ChartBar>() : BuildValueBars(pipeline
-                .GroupBy(r => string.IsNullOrWhiteSpace(r.Province) ? "" : r.Province!)
-                .Select(g => (Label: g.Key, Value: (double)(g.Sum(r => r.EstimatedValueCad ?? 0m) / 1_000_000m)))));
-
-            Replace(DeadlineMonthBars, BuildChronologicalBars(opps
-                .Where(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= sixMonths)
-                .GroupBy(o =>
-                {
-                    var deadline = o.SubmissionDeadlineUtc!.Value.DateTime; // stored-offset calendar month
-                    return new DateTime(deadline.Year, deadline.Month, 1);
-                })
-                .OrderBy(g => g.Key)
-                .Select(g => (Label: g.Key.ToString("MMM yy", CultureInfo.InvariantCulture), Count: g.Count()))));
-
             Replace(Deadlines, opps
                 .Where(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= thirtyDays)
                 .OrderBy(o => o.SubmissionDeadlineUtc)
                 .Select(o => CreateDeadlineRow(o, now)));
+            OnPropertyChanged(nameof(HasDeadlines));
 
-            Replace(OpenStructuralSeats, openStructuralSeats.Select(r => new OpenStructuralSeatRow(
-                r.OrgId,
-                r.DisplayName,
-                r.Market,
-                r.Status,
-                r.DisplacementRead)));
-
-            Replace(CompetitorWatch, competitorWatch.Select(r => new CompetitorWatchPanelRow(
-                r.OrgId,
-                r.DisplayName,
-                r.CapacityRead)));
-
-            Replace(ForwardPipeline, forwardPipeline.Select(r => new ForwardPipelinePanelRow(
-                r.Id,
-                r.ProjectName,
-                r.ProponentName,
-                r.Province,
-                FormatCurrency(r.EstimatedCostCad))));
-
-            StatusMessage = $"Loaded {pipeline.Count:N0} pipeline rows and {opps.Count:N0} opportunities.";
+            StatusMessage = $"{opps.Count:N0} open prime RFPs; {Deadlines.Count:N0} close in the next 30 days.";
         }
         catch (OperationCanceledException)
         {
@@ -435,38 +263,6 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
             StatusMessage = $"Dashboard load failed: {ex.GetType().Name}: {ex.Message}";
         }
     }
-
-    private static ChartBar[] BuildBars(IEnumerable<(string Label, int Count)> groups)
-    {
-        var list = groups
-            .OrderByDescending(g => g.Count)
-            .ThenBy(g => g.Label, StringComparer.OrdinalIgnoreCase)
-            .Take(8)
-            .ToArray();
-        var max = list.Length == 0 ? 0 : list.Max(g => g.Count);
-        return list.Select(g => new ChartBar(g.Label, g.Count, max)).ToArray();
-    }
-
-    private static ChartBar[] BuildValueBars(IEnumerable<(string Label, double Value)> groups)
-    {
-        var list = groups
-            .OrderByDescending(g => g.Value)
-            .ThenBy(g => g.Label, StringComparer.OrdinalIgnoreCase)
-            .Take(8)
-            .ToArray();
-        var max = list.Length == 0 ? 0 : list.Max(g => g.Value);
-        return list.Select(g => new ChartBar(g.Label, g.Value, max)).ToArray();
-    }
-
-    private static ChartBar[] BuildChronologicalBars(IEnumerable<(string Label, int Count)> groups)
-    {
-        var list = groups.ToArray();
-        var max = list.Length == 0 ? 0 : list.Max(g => g.Count);
-        return list.Select(g => new ChartBar(g.Label, g.Count, max)).ToArray();
-    }
-
-    private static string FormatCurrency(decimal? value)
-        => value.HasValue ? string.Format(CanadianCulture, "{0:C0}", value.Value) : "";
 
     private static void Replace<T>(ObservableCollection<T> collection, IEnumerable<T> rows)
     {

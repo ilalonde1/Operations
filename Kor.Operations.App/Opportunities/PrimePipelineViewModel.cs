@@ -34,6 +34,7 @@ public sealed class PrimePipelineViewModel : ObservableObject, IAiContextProvide
     private string _headerCountLabel = "0 of 0 prime jobs";
     private Brush _statusBrush = StatusNeutral;
     private bool _isLoading;
+    private PipelineCharts.Overview _overview = PipelineCharts.Overview.Empty;
     private IReadOnlyList<PrimePipelineRow> _contextSnapshot = Array.Empty<PrimePipelineRow>();
 
     public PrimePipelineViewModel(
@@ -128,6 +129,33 @@ public sealed class PrimePipelineViewModel : ObservableObject, IAiContextProvide
         private set => SetField(ref _isLoading, value);
     }
 
+    /// <summary>Counts and charts for the whole pipeline (not the filtered view).
+    /// Moved here from the BD dashboard on 2026-10-13.</summary>
+    public PipelineCharts.Overview Overview
+    {
+        get => _overview;
+        private set => SetField(ref _overview, value);
+    }
+
+    /// <summary>A click on a chart bar narrows the grid: a province label sets the
+    /// province filter, anything else becomes the search text.</summary>
+    public void ApplyBarFilter(string? label)
+    {
+        if (string.IsNullOrWhiteSpace(label))
+        {
+            return;
+        }
+
+        var province = ProvinceFilterOptions.FirstOrDefault(p => string.Equals(p, label, StringComparison.OrdinalIgnoreCase));
+        if (province is not null && !IsAll(province))
+        {
+            ProvinceFilter = province;
+            return;
+        }
+
+        SearchText = label.Trim();
+    }
+
     public async Task LoadAsync(CancellationToken ct)
     {
         IsLoading = true;
@@ -144,6 +172,7 @@ public sealed class PrimePipelineViewModel : ObservableObject, IAiContextProvide
 
             _contextSnapshot = Jobs.ToArray();
             ReplaceProvinces(rows);
+            Overview = PipelineCharts.Build(rows);
 
             Selected = Jobs.FirstOrDefault();
             RefreshFilters();

@@ -72,7 +72,7 @@ public sealed class BdWriteBoundaryRegressionTests
     {
         var source = AppSource("Workspace/DashboardView.xaml.cs");
         var edit = Between(source, "        var dlg = new OpportunityEntryDialog(opp)",
-            "    private void OpenOrgDossier(");
+            "    private string ResolveActor()");
         Assert.Contains("dlg.ShowDialog() != true || dlg.Result is null", edit);
         Assert.Contains("GetRequiredService<OpportunitiesViewModel>()", edit);
         var save = edit.IndexOf("await editor.UpdateAsync(dlg.Result, ResolveActor(), CancellationToken.None)", StringComparison.Ordinal);

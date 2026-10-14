@@ -168,11 +168,56 @@
              with only "Type to search…" in the left column to explain it (audit
              08-bd-app-surface §5i / item 19). The placeholder disappears the moment
              real content is injected into the host. -->
+        <!-- 2026-10-13: the dossier pane's default content is the most useful list
+             this page owns (moved from the dashboard), instead of a blank two-thirds.
+             Selecting an organisation on the left replaces it with that dossier. -->
         <ContentControl x:Name="DossierHost" Grid.Column="2">
-            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                       Margin="24" TextAlignment="Center" TextWrapping="Wrap" FontSize="13"
-                       Foreground="{StaticResource Text.Secondary}"
-                       Text="Search for an organization on the left.&#10;Its dossier — people, history and KOR's work with them — opens here."/>
+            <Border Style="{StaticResource Card}" Padding="14">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,4">
+                        <Run Text="Architects without a settled structural partner"/>
+                        <Run Text="  double-click opens the dossier" FontSize="11" FontWeight="Normal" Foreground="{StaticResource Text.Secondary}"/>
+                    </TextBlock>
+                    <TextBlock Grid.Row="1" Text="{Binding OpenSeatsNote}" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
+                    <DataGrid Grid.Row="2"
+                              x:Name="OpenSeatsGrid"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              ItemsSource="{Binding OpenSeats}"
+                              MouseDoubleClick="OpenSeatsGrid_MouseDoubleClick">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Architect" Binding="{Binding DisplayName}" Width="220"/>
+                            <DataGridTextColumn Header="Market" Binding="{Binding Market}" Width="110"/>
+                            <DataGridTextColumn Header="Pattern" Binding="{Binding Status}" Width="90"/>
+                            <DataGridTemplateColumn Header="What the research says" Width="*" MinWidth="160">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DisplacementRead}"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{StaticResource Text.Secondary}"
+                                                   FontSize="11"
+                                                   Padding="4,3"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Grid.Row="3" Margin="0,8,0,0" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{StaticResource Text.Secondary}"
+                               Text="Search for an organization on the left to open its dossier here instead."/>
+                </Grid>
+            </Border>
         </ContentControl>
     </Grid>
 </UserControl>

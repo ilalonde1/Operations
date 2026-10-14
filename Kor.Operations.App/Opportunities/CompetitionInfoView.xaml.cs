@@ -108,6 +108,23 @@ public partial class CompetitionInfoView : UserControl
         new BuyerProfileWindow(vm, name) { Owner = Window.GetWindow(this) }.Show();
     }
 
+    // Competitor watch tab (moved from the dashboard 2026-10-13): a row opens the firm's dossier.
+    private void CompetitorRow_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid grid) return;
+        if (grid.SelectedItem is not Kor.Opportunities.Data.MajorProjects.BdCompetitorWatchRow row) return;
+
+        try
+        {
+            var vm = AppServices.Get<OrgDossierViewModel>();
+            new OrgDossierWindow(vm, row.OrgId) { Owner = Window.GetWindow(this) }.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "Competition — Open Dossier Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void RfpRow_DoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (sender is not DataGrid grid) return;

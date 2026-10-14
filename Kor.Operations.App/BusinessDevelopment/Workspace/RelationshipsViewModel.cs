@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
+using Kor.Opportunities.Data.MajorProjects;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
@@ -23,15 +24,54 @@ public sealed class RelationshipsViewModel : INotifyPropertyChanged, Kor.Operati
             : $"{BuildContext()} Selected: {SelectedOrg.DisplayName} (kind={SelectedOrg.Kind}, id={SelectedOrg.Id}).";
 
     private readonly ICanonicalOrgStore _store;
+    private readonly IBdDashboardStore _dashboard;
     private string _searchText = string.Empty;
     private string? _kindFilter;
     private CanonicalOrgRow? _selectedOrg;
     private bool _showAll;
     private string _countDisplay = string.Empty;
+    private string _openSeatsNote = "Loading…";
 
-    public RelationshipsViewModel(ICanonicalOrgStore store)
+    public RelationshipsViewModel(ICanonicalOrgStore store, IBdDashboardStore dashboard)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _dashboard = dashboard ?? throw new ArgumentNullException(nameof(dashboard));
+    }
+
+    /// <summary>Architects whose structural partner is not settled, from research on the
+    /// architect (an organisation-level pattern, not a project appointment). Moved here
+    /// from the BD dashboard on 2026-10-13; this is the default content of the dossier pane.</summary>
+    public ObservableCollection<BdOpenStructuralSeatRow> OpenSeats { get; } = new();
+
+    public string OpenSeatsNote
+    {
+        get => _openSeatsNote;
+        private set => SetField(ref _openSeatsNote, value);
+    }
+
+    public async Task LoadOpenSeatsAsync(CancellationToken ct)
+    {
+        try
+        {
+            var rows = await _dashboard.GetOpenStructuralSeatsAsync(12, ct).ConfigureAwait(true);
+            OpenSeats.Clear();
+            foreach (var row in rows)
+            {
+                OpenSeats.Add(row);
+            }
+
+            OpenSeatsNote = rows.Count == 0
+                ? "No architect currently reads as having an unsettled structural partner."
+                : $"{rows.Count} architects, from research on each firm. Not a project appointment; see the project brief for that.";
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            OpenSeatsNote = "Could not retrieve the list: " + ex.Message;
+        }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

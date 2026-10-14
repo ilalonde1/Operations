@@ -56,6 +56,10 @@ public partial class PrimePipelineWindow : Window
         }
     }
 
+    // A click on an Overview chart bar narrows the list to that label.
+    private void Bar_Click(object sender, RoutedEventArgs e)
+        => _vm.ApplyBarFilter((sender as FrameworkElement)?.Tag as string);
+
     private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
     {
         try

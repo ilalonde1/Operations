@@ -6,6 +6,7 @@ using Kor.Operations.App.BusinessDevelopment.Briefs;
 using Kor.Operations.App.BusinessDevelopment.Reports;
 using Kor.Operations.App.BusinessDevelopment.Workspace;
 using Kor.Operations.App.Crm;
+using Kor.Operations.App.Opportunities;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.BdReports;
 using Kor.Opportunities.Data.BdReports.Generators;
@@ -50,39 +51,33 @@ public sealed class BdExportsAndMoneyRegressionTests
     }
 
     // Before: USD contributes dollar-for-dollar to CAD headline and bars. After: both withheld,
-    // explanatory text visible. Executes the actual VM with fake stores, no database operations.
+    // explanatory text visible. The aggregation moved from the dashboard to PipelineCharts on
+    // 2026-10-13 (clarity pass) and is pure, so this is the builder itself plus the wiring.
     // Incorrect currencies in the source and unrelated financial panels are not covered.
     [Theory]
     [InlineData("USD")]
     [InlineData(null)]
     [InlineData("")]
-    public async Task Dashboard_WithholdsTotalsForNonCadOrUnknownValuedRows(string? currency)
+    public void PipelineOverview_WithholdsTotalsForNonCadOrUnknownValuedRows(string? currency)
     {
         PrimePipelineRow Row(string? units) => new("Open RFP", "1", "Fixture", null, "Civic", null,
             1_000_000m, "BC", null, null, null)
             { EstimatedValue = 1_000_000m, EstimatedValueCurrency = units };
-        var pipeline = new Mock<IPrimePipelineStore>();
-        pipeline.Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { Row("CAD") });
-        var opportunities = new Mock<IOpportunityStore>();
-        opportunities.Setup(x => x.ListAsync(It.IsAny<CancellationToken>(), 5000, false, false))
-            .ReturnsAsync(Array.Empty<Opportunity>());
-        var dashboard = new Mock<IBdDashboardStore>();
-        dashboard.Setup(x => x.GetOpenStructuralSeatsAsync(12, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdOpenStructuralSeatRow>());
-        dashboard.Setup(x => x.GetCompetitorWatchAsync(12, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdCompetitorWatchRow>());
-        dashboard.Setup(x => x.GetForwardPipelineAsync(12, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdForwardPipelineRow>());
-        dashboard.Setup(x => x.GetPipelineFunnelAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new PipelineFunnel(0, 0, 0));
-        var vm = new DashboardViewModel(pipeline.Object, opportunities.Object, dashboard.Object,
-            new IntelReadService("unused"), new IntelPersistenceService("unused"));
-        await vm.LoadAsync(CancellationToken.None);
-        Assert.Contains("$1.0M", vm.PipelineValueDisplay);
-        Assert.Single(vm.MarketValueBars);
 
-        pipeline.Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { Row("CAD"), Row(currency) });
-        await vm.LoadAsync(CancellationToken.None);
-        Assert.Equal("Unavailable", vm.PipelineValueDisplay);
-        Assert.Empty(vm.MarketValueBars);
-        Assert.Contains("currency", vm.PipelineValueNote);
-        Assert.DoesNotContain("$2.0M", vm.BuildContext());
+        var cadOnly = PipelineCharts.Build(new[] { Row("CAD") });
+        Assert.Contains("$1.0M", cadOnly.PipelineValueDisplay);
+        Assert.Single(cadOnly.MarketValueBars);
+        Assert.False(cadOnly.HasUnconvertedValue);
+
+        var mixed = PipelineCharts.Build(new[] { Row("CAD"), Row(currency) });
+        Assert.Equal("Unavailable", mixed.PipelineValueDisplay);
+        Assert.Empty(mixed.MarketValueBars);
+        Assert.Contains("currency", mixed.PipelineValueNote);
+        Assert.True(mixed.HasUnconvertedValue);
+
+        Assert.Contains("Overview = PipelineCharts.Build(rows)", Source("Kor.Operations.App/Opportunities/PrimePipelineViewModel.cs"));
+        // The dashboard no longer reads the pipeline at all, so it cannot sum it wrongly.
+        Assert.DoesNotContain("IPrimePipelineStore", Source("Kor.Operations.App/BusinessDevelopment/Workspace/DashboardViewModel.cs"));
     }
 
     // Before: generated B enables PDF while A remains displayed. After: pending/failed/stale

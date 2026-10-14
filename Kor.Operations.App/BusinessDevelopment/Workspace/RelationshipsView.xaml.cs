@@ -39,6 +39,33 @@ public partial class RelationshipsView : UserControl
         _loaded = true;
         Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Register(_vm);
         await SearchAsync().ConfigureAwait(true);
+        try
+        {
+            await _vm.LoadOpenSeatsAsync(CancellationToken.None).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    // Default content of the dossier pane (moved from the dashboard 2026-10-13).
+    private void OpenSeatsGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid grid || grid.SelectedItem is not Kor.Opportunities.Data.MajorProjects.BdOpenStructuralSeatRow row)
+        {
+            return;
+        }
+
+        try
+        {
+            var dvm = _services.GetRequiredService<OrgDossierViewModel>();
+            var win = new OrgDossierWindow(dvm, row.OrgId) { Owner = OwnerWindow() };
+            win.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(OwnerWindow(), ex.Message, "Relationships — Open Dossier Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void RelationshipsView_Unloaded(object sender, System.Windows.RoutedEventArgs e)

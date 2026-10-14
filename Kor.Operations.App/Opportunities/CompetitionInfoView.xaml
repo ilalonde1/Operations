@@ -176,5 +176,40 @@
                 </DockPanel>
             </Grid>
         </TabItem>
+
+        <!-- 2026-10-13: competitor watch moved here from the BD dashboard. -->
+        <TabItem Header="Competitor watch">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                    <TextBlock FontSize="14" FontWeight="SemiBold">
+                        <Run Text="Structural competitors — capacity read from research"/>
+                        <Run Text="  double-click opens the dossier" FontSize="11" FontWeight="Normal" Foreground="#666"/>
+                    </TextBlock>
+                    <TextBlock Text="{Binding CompetitorWatchNote}" FontSize="11" Foreground="#666" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                </StackPanel>
+                <DataGrid Grid.Row="1"
+                          x:Name="CompetitorWatchGrid"
+                          ItemsSource="{Binding CompetitorWatch}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          MouseDoubleClick="CompetitorRow_DoubleClick">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Firm" Binding="{Binding DisplayName}" Width="260"/>
+                        <DataGridTemplateColumn Header="Capacity read" Width="*" MinWidth="200">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding CapacityRead}" TextWrapping="Wrap" FontSize="12" Padding="4,4"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </TabItem>
     </TabControl>
 </UserControl>
