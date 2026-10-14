@@ -164,7 +164,8 @@ public sealed class BdMissingEvidenceRegressionTests
     {
         var source = Source("Kor.Opportunities.Data/BdReports/OnDemandHoningSynthesizer.cs");
         Assert.DoesNotContain("TouchVerifiedAsync", source);
-        Assert.Equal(1, source.Split("e.LastRefreshAtUtc = sysdatetimeoffset()").Length - 1);
+        Assert.DoesNotContain("e.LastRefreshAtUtc = sysdatetimeoffset()", source);
+        Assert.Equal(1, source.Split("e.LastRefreshAtUtc = @evidenceCutoffUtc").Length - 1);
         var service = Source("Kor.Opportunities.Data/BdReports/SqlBdReportService.cs");
         Assert.Contains("RefreshNote", service);
         Assert.Contains("refresh unavailable", service);

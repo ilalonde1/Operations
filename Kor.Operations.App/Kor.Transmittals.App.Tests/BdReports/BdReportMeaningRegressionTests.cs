@@ -86,7 +86,8 @@ public sealed class BdReportMeaningRegressionTests
                 writes.Add((id, verdict));
                 return Task.FromResult(id == 1); // id 3 no longer has an update target
             }, CancellationToken.None);
-        Assert.Equal(1, actual);
+        Assert.Equal(1, actual.Updated);
+        Assert.Equal(1, actual.RejectedStale);
         Assert.Equal(new[] { (1L, "PURSUE_URGENT"), (3L, "MONITOR") }, writes);
     }
 

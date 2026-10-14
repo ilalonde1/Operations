@@ -798,47 +798,14 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         // way a pursuit is born from an opportunity (Bazaar "Grab", RFPs "Promote
         // to Pursuit", or logging the first activity/contact) produces an
         // identical, correctly-owned, logged pursuit.
-        CrmEngagement? saved = null;
         var grab = await _grabStore.GrabAsync(row.Model.Id, actor, ct).ConfigureAwait(true);
-        if (grab.Outcome == GrabOutcome.Grabbed)
+        if (grab.Outcome != GrabOutcome.Grabbed)
         {
-            saved = await _engagementStore.GetByIdAsync(grab.EngagementId, ct).ConfigureAwait(true);
+            throw new InvalidOperationException(
+                "Pursuit creation was refused. The opportunity must still be New, unowned and not dismissed. " +
+                "Refresh the opportunity before continuing.");
         }
-
-        // AlreadyTaken: a concurrent claim won, or the opportunity is no longer New
-        // / already owned. Re-fetch the engagement that now exists for it.
-        saved ??= await _engagementStore.GetByOpportunityAsync(row.Model.Id, ct).ConfigureAwait(true);
-
-        // Fallback: GrabAsync reported AlreadyTaken but no engagement exists yet —
-        // the opportunity isn't grabbable (already owned, or a non-New status such
-        // as a Lost opp being promoted). Claim it server-side (fix F9): the old
-        // client-side InsertAsync dropped the buyer canonical org (dead Buyer-intel
-        // button) and never wrote the assignment log, so same-shaped pursuits
-        // behaved differently depending on which door created them.
-        if (saved is null)
-        {
-            var claimedId = await _grabStore.ClaimOwnedAsync(row.Model.Id, actor, ct).ConfigureAwait(true);
-            saved = claimedId > 0
-                ? await _engagementStore.GetByIdAsync(claimedId, ct).ConfigureAwait(true)
-                // 0 = a concurrent caller created it first — re-fetch the winner's row.
-                : await _engagementStore.GetByOpportunityAsync(row.Model.Id, ct).ConfigureAwait(true);
-
-            // Preserve the old status semantics the explicit bump used to provide:
-            // a still-New opportunity that couldn't be grabbed (already owned) still
-            // advances to Pursuing once it has a pursuit. Non-New statuses are left
-            // alone (don't resurrect a Lost opp).
-            if (saved is not null && row.Model.Status is OpportunityStatus.New)
-            {
-                try
-                {
-                    await ChangeStatusAsync(row, OpportunityStatus.Pursuing, actor, ct).ConfigureAwait(true);
-                }
-                catch (OpportunityConcurrencyException)
-                {
-                    // engagement exists; the status bump is a courtesy
-                }
-            }
-        }
+        var saved = await _engagementStore.GetByIdAsync(grab.EngagementId, ct).ConfigureAwait(true);
 
         if (saved is null)
         {

@@ -136,6 +136,13 @@ WHERE m.RetiredAtUtc IS NULL
         return summaries;
     }
 
+    internal static string SynthesisRefreshNote(OnDemandHoningSynthesizer.EnsureResult result)
+        => $"On-demand review: {result.Synthesized} synthesized from stored inputs; " +
+           $"{result.Quiet} quiet in directly linked project actions (cached, not rechecked); " +
+           $"{result.Due - result.Synthesized} due but not refreshed, including {result.Deferred} deferred " +
+           $"and {result.RejectedStale} rejected as stale. " +
+           "Unlinked tender observations are not used. No external verification was performed.";
+
     public async Task<IReadOnlyList<PursuitBriefRow>> GetSectorPursuitsAsync(string sectorKey, CancellationToken ct)
     {
         var def = SectorReportDefinitionCatalog.All
@@ -168,14 +175,11 @@ WHERE m.RetiredAtUtc IS NULL
                 var result = await _synthesizer
                     .EnsureFreshAsync(rows.Select(x => x.MpiId).ToList(), ct)
                     .ConfigureAwait(false);
-                if (result.Synthesized > 0)
+                if (result.Synthesized > 0 || result.RejectedStale > 0)
                 {
                     rows = await ReadPursuitRowsAsync(sql, ct).ConfigureAwait(false);
                 }
-                refreshNote = $"On-demand review: {result.Synthesized} synthesized from stored inputs; " +
-                    $"{result.Quiet} quiet in the two watched streams (cached, not rechecked); " +
-                    $"{result.Due - result.Synthesized} due but not refreshed, including {result.Deferred} deferred. " +
-                    "No external verification was performed.";
+                refreshNote = SynthesisRefreshNote(result);
             }
             catch (OperationCanceledException) { throw; }
             catch

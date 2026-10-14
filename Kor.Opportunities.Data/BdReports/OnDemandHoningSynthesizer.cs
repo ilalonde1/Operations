@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,7 +28,7 @@ namespace Kor.Opportunities.Data.BdReports;
 ///   3. DUE    - stale AND new signal exists (or never honed) -> the ONLY case
 ///               that spends tokens. All DUE rows in one view are batched into a
 ///               single cheap Haiku call that re-derives verdict + status from
-///               data ALREADY in the database (signals/actions/tenders) - not
+///               project-linked actions ALREADY in the database - not
 ///               fresh web research. Web research stays on the nightly path.
 ///
 /// Net effect: opening a sector where nothing changed is free; only genuinely
@@ -89,12 +90,14 @@ public sealed class OnDemandHoningSynthesizer
     public sealed record ProjectFreshness(
         long MpiId, string ProjectName, string? Verdict, DateTimeOffset? HonedAtUtc,
         int AgeDays, int TtlDays, int NewSignalCount, Freshness Class,
-        string? ExistingHoningJson, string? DeltaText);
+        string? ExistingHoningJson, string? DeltaText,
+        long? EnrichmentId, DateTimeOffset? EvidenceCutoffUtc, string EvidenceJson);
 
     /// <summary><paramref name="Deferred"/> counts due rows the view budget ran
     /// out before reaching; they keep their cached verdict for now.</summary>
     public sealed record EnsureResult(
-        int Total, int Fresh, int Quiet, int Due, int Synthesized, int TokensSpentApprox, int Deferred = 0);
+        int Total, int Fresh, int Quiet, int Due, int Synthesized, int TokensSpentApprox,
+        int Deferred = 0, int RejectedStale = 0);
 
     /// <summary>
     /// Classify each project (zero tokens), synthesize only the DUE ones (one
@@ -119,7 +122,7 @@ public sealed class OnDemandHoningSynthesizer
         var quiet = classified.Where(c => c.Class == Freshness.Quiet).ToList();
         var due = classified.Where(c => c.Class == Freshness.Due).ToList();
 
-        // QUIET means only that the two watched streams have no new records.
+        // QUIET means only that directly linked project actions have no new records.
         // Preserve the research timestamp and cached verdict; neither is verified.
 
         // Spend the budget where it changes decisions: an URGENT or PURSUE
@@ -133,6 +136,7 @@ public sealed class OnDemandHoningSynthesizer
         var synthesized = 0;
         var tokens = 0;
         var deferred = 0;
+        var rejectedStale = 0;
         foreach (var chunk in Chunk(due, MaxDuePerCall))
         {
             // Check BEFORE the call, never mid-flight: a half-finished batch
@@ -143,53 +147,58 @@ public sealed class OnDemandHoningSynthesizer
                 continue;
             }
 
-            var (updated, approxTokens) = await SynthesizeAndPersistAsync(chunk, ct).ConfigureAwait(false);
-            synthesized += updated;
+            var (applied, approxTokens) = await SynthesizeAndPersistAsync(chunk, ct).ConfigureAwait(false);
+            synthesized += applied.Updated;
+            rejectedStale += applied.RejectedStale;
             tokens += approxTokens;
         }
 
         _logger?.LogInformation(
-            "OnDemand synthesis: {Total} projects - {Fresh} fresh, {Quiet} quiet(0-tok), {Due} due, {Synth} synthesized, {Deferred} deferred past the {Budget}s budget (~{Tok} tokens, {Elapsed}s).",
-            classified.Count, fresh, quiet.Count, due.Count, synthesized, deferred,
+            "OnDemand synthesis: {Total} projects - {Fresh} fresh, {Quiet} quiet(0-tok), {Due} due, {Synth} synthesized, {Rejected} rejected as stale, {Deferred} deferred past the {Budget}s budget (~{Tok} tokens, {Elapsed}s).",
+            classified.Count, fresh, quiet.Count, due.Count, synthesized, rejectedStale, deferred,
             (int)budget.TotalSeconds, tokens, (int)clock.Elapsed.TotalSeconds);
 
-        return new EnsureResult(classified.Count, fresh, quiet.Count, due.Count, synthesized, tokens, deferred);
+        return new EnsureResult(classified.Count, fresh, quiet.Count, due.Count, synthesized, tokens, deferred, rejectedStale);
     }
 
-    /// <summary>Pure SQL cost gate - no tokens. Returns each project's freshness
-    /// class and, for stale rows, the new-signal delta text used for synthesis.</summary>
-    public async Task<IReadOnlyList<ProjectFreshness>> ClassifyAsync(IReadOnlyList<long> mpiIds, CancellationToken ct)
-    {
-        var idCsv = string.Join(",", mpiIds.Select(i => i.ToString(System.Globalization.CultureInfo.InvariantCulture)));
-        var sql = $@"
+    // No defensible direct observation-to-MPI link is used here. Title similarity
+    // is not identity: only actions carrying the resolved project FK are evidence.
+    // Fetch one lookahead row so a timestamp tie at the batch boundary cannot be
+    // accidentally acknowledged as a fully processed timestamp group.
+    private const string ClassifySql = @"
+DECLARE @readAtUtc datetimeoffset(7) = sysdatetimeoffset();
 ;WITH h AS (
   SELECT m.Id, m.ProjectName,
-         eh.LastRefreshAtUtc AS HonedAt, eh.ResultJson AS HoningJson,
+         eh.Id AS EnrichmentId, eh.LastRefreshAtUtc AS HonedAt, eh.ResultJson AS HoningJson,
          COALESCE(NULLIF(JSON_VALUE(eh.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(eh.ResultJson,'$.verdict'),'')) AS Verdict
   FROM opportunities.MajorProjectsInventory m
   OUTER APPLY (
-     SELECT TOP 1 x.LastRefreshAtUtc, x.ResultJson
+     SELECT TOP 1 x.Id, x.LastRefreshAtUtc, x.ResultJson
      FROM opportunities.MajorProjectEnrichment x
-     WHERE x.MajorProjectsInventoryId = m.Id AND x.ProviderName = N'ProjectBriefHoning' AND x.ResultJson IS NOT NULL
+     WHERE x.MajorProjectsInventoryId = m.Id AND x.ProviderName = N'ProjectBriefHoning'
      ORDER BY x.Id DESC) eh
-  WHERE m.Id IN ({idCsv}) AND m.RetiredAtUtc IS NULL
+  WHERE m.Id IN (/*PROJECT_IDS*/) AND m.RetiredAtUtc IS NULL
 )
 SELECT h.Id, h.ProjectName, h.Verdict, h.HonedAt, h.HoningJson,
   Ttl = CASE h.Verdict WHEN N'PURSUE_URGENT' THEN 7 WHEN N'PURSUE' THEN 30 ELSE 90 END,
-  NewActions = (SELECT COUNT(*) FROM opportunities.IntelProjectAction a WHERE a.MajorProjectsInventoryId = h.Id AND (h.HonedAt IS NULL OR a.UpdatedAtUtc > h.HonedAt)),
-  NewObs = (SELECT COUNT(*) FROM opportunities.OpportunityObservations o WHERE (h.HonedAt IS NULL OR o.IngestedAtUtc > h.HonedAt) AND o.Title LIKE '%' + LEFT(h.ProjectName, 14) + '%'),
-  DeltaText = (
-     SELECT STRING_AGG(CONVERT(nvarchar(max), d.Line), CHAR(10)) FROM (
-        SELECT TOP 12 CONCAT('[', CONVERT(varchar(10), o.IngestedAtUtc, 23), '] tender: ', LEFT(o.Title,140)) AS Line
-        FROM opportunities.OpportunityObservations o
-        WHERE (h.HonedAt IS NULL OR o.IngestedAtUtc > h.HonedAt) AND o.Title LIKE '%' + LEFT(h.ProjectName, 14) + '%'
-        UNION ALL
-        SELECT TOP 12 CONCAT('[', CONVERT(varchar(10), a.UpdatedAtUtc, 23), '] action: ', LEFT(a.Recommendation,140))
-        FROM opportunities.IntelProjectAction a
-        WHERE a.MajorProjectsInventoryId = h.Id AND (h.HonedAt IS NULL OR a.UpdatedAtUtc > h.HonedAt)
-     ) d)
+  NewActions = (SELECT COUNT(*) FROM opportunities.IntelProjectAction a WHERE a.MajorProjectsInventoryId = h.Id AND (h.HonedAt IS NULL OR a.UpdatedAtUtc > h.HonedAt) AND a.UpdatedAtUtc <= @readAtUtc),
+  EvidenceJson = (
+     SELECT TOP (13) a.Id, a.UpdatedAtUtc, a.Recommendation
+     FROM opportunities.IntelProjectAction a
+     WHERE a.MajorProjectsInventoryId = h.Id AND (h.HonedAt IS NULL OR a.UpdatedAtUtc > h.HonedAt)
+       AND a.UpdatedAtUtc <= @readAtUtc
+     ORDER BY a.UpdatedAtUtc, a.Id
+     FOR JSON PATH),
+  h.EnrichmentId
 FROM h ORDER BY h.Id;";
 
+    /// <summary>Pure SQL cost gate - no tokens. Captures the exact assessment
+    /// version and a bounded set of directly linked evidence for persistence.</summary>
+    public async Task<IReadOnlyList<ProjectFreshness>> ClassifyAsync(IReadOnlyList<long> mpiIds, CancellationToken ct)
+    {
+        if (mpiIds.Count == 0) return Array.Empty<ProjectFreshness>();
+        var idCsv = string.Join(",", mpiIds.Select(i => i.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        var sql = ClassifySql.Replace("/*PROJECT_IDS*/", idCsv, StringComparison.Ordinal);
         var results = new List<ProjectFreshness>();
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -203,8 +212,13 @@ FROM h ORDER BY h.Id;";
             DateTimeOffset? honedAt = r.IsDBNull(3) ? null : r.GetDateTimeOffset(3);
             var honingJson = r.IsDBNull(4) ? null : r.GetString(4);
             var ttl = r.GetInt32(5);
-            var newSignals = r.GetInt32(6) + r.GetInt32(7);
-            var delta = r.IsDBNull(8) ? null : r.GetString(8);
+            // FOR JSON PATH over zero rows yields NULL, which is every fresh or quiet
+            // project; GetString would throw and take the whole classify pass down.
+            var evidenceJson = r.IsDBNull(7) ? "[]" : r.GetString(7);
+            var signals = JsonSerializer.Deserialize<List<HoningSignal>>(evidenceJson) ?? new List<HoningSignal>();
+            var newSignals = Math.Max(r.GetInt32(6), signals.Count);
+            var evidence = SelectEvidence(honedAt, signals);
+            long? enrichmentId = r.IsDBNull(8) ? null : r.GetInt64(8);
 
             // No prior honing row -> Unhoned (skipped; nightly first-pass owns it).
             Freshness cls;
@@ -222,19 +236,39 @@ FROM h ORDER BY h.Id;";
             }
 
             results.Add(new ProjectFreshness(id, name, verdict, honedAt,
-                age, ttl, newSignals, cls, honingJson, delta));
+                age, ttl, newSignals, cls, honingJson, evidence.DeltaText, enrichmentId, evidence.CutoffUtc, evidenceJson));
         }
         return results;
     }
 
-    private async Task<(int updated, int approxTokens)> SynthesizeAndPersistAsync(
+    internal sealed record HoningSignal(long Id, DateTimeOffset UpdatedAtUtc, string? Recommendation);
+    internal sealed record EvidenceSelection(string DeltaText, DateTimeOffset? CutoffUtc);
+
+    // A timestamp is consumed only when every fetched action at that timestamp
+    // fits in the batch. If a tie exceeds the cap, retain the prior cutoff (or
+    // the last complete earlier group). Nightly research can resolve large ties;
+    // on-demand must never pretend the unseen tail was considered.
+    internal static EvidenceSelection SelectEvidence(DateTimeOffset? priorCutoff, IReadOnlyList<HoningSignal> signals)
+    {
+        var ordered = signals.OrderBy(x => x.UpdatedAtUtc).ThenBy(x => x.Id).ToArray();
+        var included = ordered.Take(12).ToArray();
+        var firstOmitted = ordered.Skip(12).FirstOrDefault();
+        var cutoff = included
+            .Where(x => firstOmitted is null || x.UpdatedAtUtc < firstOmitted.UpdatedAtUtc)
+            .Select(x => (DateTimeOffset?)x.UpdatedAtUtc).LastOrDefault() ?? priorCutoff;
+        var text = string.Join("\n", included.Select(x =>
+            $"[{x.UpdatedAtUtc:O}] action {x.Id}: {x.Recommendation}"));
+        return new EvidenceSelection(text, cutoff);
+    }
+
+    private async Task<(SynthesisApplyResult applied, int approxTokens)> SynthesizeAndPersistAsync(
         IReadOnlyList<ProjectFreshness> due, CancellationToken ct)
     {
-        if (due.Count == 0) return (0, 0);
+        if (due.Count == 0) return (new(0, 0), 0);
         if (string.IsNullOrWhiteSpace(_apiKey))
         {
             _logger?.LogWarning("OnDemand synthesis skipped: no Anthropic API key configured.");
-            return (0, 0);
+            return (new(0, 0), 0);
         }
 
         var sb = new StringBuilder();
@@ -269,7 +303,7 @@ FROM h ORDER BY h.Id;";
         if (!resp.IsSuccessStatusCode)
         {
             _logger?.LogWarning("OnDemand synthesis API {Code}: {Body}", (int)resp.StatusCode, respBody);
-            return (0, 0);
+            return (new(0, 0), 0);
         }
 
         var root = JsonNode.Parse(respBody);
@@ -281,22 +315,26 @@ FROM h ORDER BY h.Id;";
             if (node?["type"]?.GetValue<string>() == "text") text.Append(node?["text"]?.GetValue<string>() ?? "");
         }
         var json = ExtractJsonObject(text.ToString());
-        if (json is null) return (0, approxTokens);
+        if (json is null) return (new(0, 0), approxTokens);
 
         var arr = JsonNode.Parse(json)?["results"]?.AsArray();
-        var updated = await ApplySynthesisResultsAsync(arr, due.Select(x => x.MpiId).ToArray(),
-            PersistSynthesisAsync, ct).ConfigureAwait(false);
-        return (updated, approxTokens);
+        var expected = due.ToDictionary(x => x.MpiId);
+        var applied = await ApplySynthesisResultsAsync(arr, expected.Keys,
+            (id, verdict, status, token) => PersistSynthesisAsync(expected[id], verdict, status, token), ct).ConfigureAwait(false);
+        return (applied, approxTokens);
     }
 
     // Keep model output inside the requested batch and count confirmed writes,
     // not accepted-looking responses. The delegate also permits a no-DB gate.
-    internal static async Task<int> ApplySynthesisResultsAsync(JsonArray? arr,
+    internal sealed record SynthesisApplyResult(int Updated, int RejectedStale);
+
+    internal static async Task<SynthesisApplyResult> ApplySynthesisResultsAsync(JsonArray? arr,
         IReadOnlyCollection<long> requestedIds,
         Func<long, string, string?, CancellationToken, Task<bool>> persist,
         CancellationToken ct)
     {
         var updated = 0;
+        var rejected = 0;
         var remaining = new HashSet<long>(requestedIds);
         if (arr is not null)
         {
@@ -308,28 +346,19 @@ FROM h ORDER BY h.Id;";
                 if (id > 0 && verdict is not null && remaining.Remove(id))
                 {
                     if (await persist(id, verdict, status, ct).ConfigureAwait(false)) updated++;
+                    else rejected++;
                 }
             }
         }
-        return updated;
+        return new(updated, rejected);
     }
 
-    private async Task<bool> PersistSynthesisAsync(long mpiId, string verdict, string? status, CancellationToken ct)
-    {
-        var normalizedVerdict = BdVerdicts.Normalize(verdict);
-        if (normalizedVerdict is null)
-        {
-            return false;
-        }
-
-        // Audit-v2 #8: lax JSON_MODIFY cannot create the missing intermediate
-        // '$.honingPass' object on legacy rows (which stored '$.verdict' at the
-        // root) — it silently returned the JSON UNCHANGED while LastRefreshAtUtc
-        // was stamped fresh, so a dead pursuit showed as freshly-verified for
-        // another 30 days. Normalize the shape first: create '$.honingPass' when
-        // absent, then the verdict/status writes always land.
-        const string sql = @"
-UPDATE e
+    // BD-A02: a single conditional write checks both the captured row and its
+    // content, and refuses if another provider row became latest. Locks exist
+    // only for this statement, never across the model call. Legacy JSON still
+    // gets its missing honingPass object before nested JSON_MODIFY calls.
+    private const string PersistSynthesisSql = @"
+UPDATE e WITH (UPDLOCK, HOLDLOCK)
 SET e.ResultJson =
         JSON_MODIFY(JSON_MODIFY(
             CASE WHEN JSON_QUERY(e.ResultJson, '$.honingPass') IS NULL
@@ -339,16 +368,48 @@ SET e.ResultJson =
             '$.honingPass.status', COALESCE(@status,
                                             JSON_VALUE(e.ResultJson,'$.honingPass.status'),
                                             JSON_VALUE(e.ResultJson,'$.status'))),
-    e.LastRefreshAtUtc = sysdatetimeoffset(),
+    e.LastRefreshAtUtc = @evidenceCutoffUtc,
     e.Notes = CONCAT(N'on-demand synthesis ', CONVERT(varchar(19), sysdatetimeoffset(), 126))
 FROM opportunities.MajorProjectEnrichment e
-JOIN (SELECT MajorProjectsInventoryId, MAX(Id) MaxId FROM opportunities.MajorProjectEnrichment
-      WHERE ProviderName = N'ProjectBriefHoning' GROUP BY MajorProjectsInventoryId) l ON l.MaxId = e.Id
-WHERE e.MajorProjectsInventoryId = @id;";
+WHERE e.MajorProjectsInventoryId = @id
+  AND e.ProviderName = N'ProjectBriefHoning'
+  AND e.Id = @expectedEnrichmentId
+  AND e.LastRefreshAtUtc = @expectedRefreshAtUtc
+  AND CONVERT(varbinary(max), e.ResultJson) = CONVERT(varbinary(max), @expectedJson)
+  AND @evidenceCutoffUtc >= e.LastRefreshAtUtc
+  AND NOT EXISTS (
+      SELECT 1 FROM opportunities.MajorProjectEnrichment newer WITH (UPDLOCK, HOLDLOCK)
+      WHERE newer.MajorProjectsInventoryId = e.MajorProjectsInventoryId
+        AND newer.ProviderName = N'ProjectBriefHoning' AND newer.Id > e.Id)
+  -- A late-committing action can carry a timestamp from before the read. Refuse
+  -- to consume the interval if it now contains anything absent from the inputs.
+  AND NOT EXISTS (
+      SELECT 1 FROM opportunities.IntelProjectAction a WITH (UPDLOCK, HOLDLOCK)
+      WHERE a.MajorProjectsInventoryId = @id
+        AND a.UpdatedAtUtc > @expectedRefreshAtUtc AND a.UpdatedAtUtc <= @evidenceCutoffUtc
+        AND NOT EXISTS (
+            SELECT 1 FROM OPENJSON(@evidenceJson) WITH (
+                Id bigint, UpdatedAtUtc datetimeoffset(7), Recommendation nvarchar(max)) seen
+            WHERE seen.Id = a.Id AND seen.UpdatedAtUtc = a.UpdatedAtUtc
+              AND (CONVERT(varbinary(max), seen.Recommendation) = CONVERT(varbinary(max), a.Recommendation)
+                   OR (seen.Recommendation IS NULL AND a.Recommendation IS NULL))));";
+
+    private async Task<bool> PersistSynthesisAsync(ProjectFreshness expected, string verdict, string? status, CancellationToken ct)
+    {
+        var normalizedVerdict = BdVerdicts.Normalize(verdict);
+        if (normalizedVerdict is null || expected.EnrichmentId is null || expected.HonedAtUtc is null
+            || expected.EvidenceCutoffUtc is null || string.IsNullOrWhiteSpace(expected.ExistingHoningJson))
+            return false;
+
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
-        await using var cmd = new SqlCommand(sql, con);
-        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = mpiId;
+        await using var cmd = new SqlCommand(PersistSynthesisSql, con);
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = expected.MpiId;
+        cmd.Parameters.Add("@expectedEnrichmentId", SqlDbType.BigInt).Value = expected.EnrichmentId.Value;
+        cmd.Parameters.Add("@expectedRefreshAtUtc", SqlDbType.DateTimeOffset).Value = expected.HonedAtUtc.Value;
+        cmd.Parameters.Add("@expectedJson", SqlDbType.NVarChar, -1).Value = expected.ExistingHoningJson;
+        cmd.Parameters.Add("@evidenceCutoffUtc", SqlDbType.DateTimeOffset).Value = expected.EvidenceCutoffUtc.Value;
+        cmd.Parameters.Add("@evidenceJson", SqlDbType.NVarChar, -1).Value = expected.EvidenceJson;
         cmd.Parameters.Add("@verdict", SqlDbType.NVarChar, 40).Value = normalizedVerdict;
         cmd.Parameters.Add("@status", SqlDbType.NVarChar, 400).Value = (object?)status ?? DBNull.Value;
         return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;

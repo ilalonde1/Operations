@@ -11,8 +11,9 @@ using Xunit;
 namespace Kor.Operations.App.Tests.BusinessDevelopment;
 
 /// <summary>
-/// BD fixes brief 1: source gates for the grab predicate, Dashboard save wiring,
-/// and project/person picker invalidation; deferred-store behavioral gates for Admin.
+/// BD fixes briefs 1 and 5: source gates for both creation entry points, caller
+/// refusal, Dashboard save wiring and project/person picker invalidation;
+/// deferred-store behavioral gates for Admin.
 /// EXPECTED: only eligible/current input is submitted; UI confirmation matches the
 /// acknowledged write. ACTUAL is included in assertions. These gates are authored,
 /// not executed, in the Codex change (the brief prohibits builds/tests/DB access).
@@ -24,6 +25,37 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// </summary>
 public sealed class BdWriteBoundaryRegressionTests
 {
+    // Brief 5 / BD-A01: covers both actual SQL constants and the caller's refusal
+    // branch. Does not execute SQL or WPF; a trigger undoing ownership would escape.
+    [Fact]
+    public void ClaimAndGrab_UseTheSameEligibilityTransaction()
+    {
+        string Sql(string name) => (string)typeof(SqlPursuitGrabStore)
+            .GetField(name, BindingFlags.NonPublic | BindingFlags.Static)!.GetRawConstantValue()!;
+        var grab = Sql("GrabSql");
+        var claim = Sql("ClaimOwnedSql");
+        Assert.True(claim == grab,
+            "EXPECTED claim to execute the same guarded transaction as grab; ACTUAL SQL differs");
+        var guard = Between(claim, " WHERE Id = @id", "IF @@ROWCOUNT");
+        foreach (var predicate in new[] { "AND Status = 1", "AND OwnerStaffId IS NULL", "AND DismissedAtUtc IS NULL" })
+            Assert.True(guard.Contains(predicate, StringComparison.Ordinal),
+                $"EXPECTED {predicate} before engagement creation; ACTUAL:\n{guard}");
+        Assert.Contains("ROLLBACK TRANSACTION", Between(claim, "IF @@ROWCOUNT = 0", "ELSE"));
+    }
+
+    [Fact]
+    public void Promotion_RefusedGrabCannotFallThroughToAnotherCreator()
+    {
+        var source = File.ReadAllText(Path.Combine(XamlStaticResourceOrderTests.GetRepoRoot(),
+            "Kor.Operations.App", "Opportunities", "OpportunitiesViewModel.cs"));
+        Assert.True(!source.Contains("await _grabStore.ClaimOwnedAsync", StringComparison.Ordinal),
+            "EXPECTED no creation fallback after a refused grab; ACTUAL fallback still present");
+        var refusal = Between(source, "if (grab.Outcome != GrabOutcome.Grabbed)",
+            "saved = await _engagementStore.GetByIdAsync");
+        Assert.Contains("throw new InvalidOperationException", refusal);
+        Assert.Contains("Refresh", refusal);
+    }
+
     [Fact]
     public void GrabSql_UpdateGuardRejectsDismissedRowsBeforeCreatingAnEngagement()
     {

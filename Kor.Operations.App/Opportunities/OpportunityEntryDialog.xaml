@@ -87,7 +87,7 @@
             <TextBlock Grid.Row="7" Grid.Column="0" Text="Submission deadline" Margin="0,6,8,6"/>
             <StackPanel Grid.Row="7" Grid.Column="1" Margin="0,4,0,4">
                 <TextBlock x:Name="StoredDeadlineText" TextWrapping="Wrap"/>
-                <TextBlock Text="Edit date (workstation local time)" FontSize="11"/>
+                <TextBlock Text="Edit date (preserves stored time and offset; new deadlines use local midnight)" FontSize="11" TextWrapping="Wrap"/>
                 <DatePicker x:Name="DeadlineBox"/>
             </StackPanel>
 

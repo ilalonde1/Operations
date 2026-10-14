@@ -182,7 +182,7 @@ public sealed class BdPresentationRegressionTests
             Assert.Contains("<local:OpportunityDeadlineConverter", actual);
         }
         Assert.Contains("OpportunityDeadlineDisplay.Date(_existing.SubmissionDeadlineUtc)", Source("Opportunities/OpportunityEntryDialog.xaml.cs"));
-        Assert.Contains("Edit date (workstation local time)", Source("Opportunities/OpportunityEntryDialog.xaml"));
+        Assert.Contains("Edit date (preserves stored time and offset; new deadlines use local midnight)", Source("Opportunities/OpportunityEntryDialog.xaml"));
         Assert.Contains("Binding Countdown", Source("BusinessDevelopment/Workspace/DashboardView.xaml"));
     }
 

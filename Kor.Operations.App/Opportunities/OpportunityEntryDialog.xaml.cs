@@ -86,12 +86,25 @@ public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
                 .FirstOrDefault(c => string.Equals((string?)c.Content, _existing.EstimatedValueCurrency, StringComparison.OrdinalIgnoreCase))
                 ?? CurrencyBox.Items[0];
             StoredDeadlineText.Text = OpportunityDeadlineDisplay.Date(_existing.SubmissionDeadlineUtc);
-            // The existing date editor writes workstation-local dates. Keep that
-            // storage contract explicit and separate from the canonical display.
-            DeadlineBox.SelectedDate = _existing.SubmissionDeadlineUtc?.LocalDateTime;
+            // Edit the calendar date in the stored offset, preserving its clock
+            // time/offset on save even when the workstation is in another zone.
+            DeadlineBox.SelectedDate = _existing.SubmissionDeadlineUtc?.Date;
             OwnerBox.Text = _existing.OwnerStaffId ?? string.Empty;
             OutcomeReasonBox.Text = _existing.OutcomeReason ?? string.Empty;
         }
+    }
+
+    // BD-A10: the picker edits only a date, not the source's closing time/offset.
+    // For a new deadline there is no clock time to preserve: retain the editor's
+    // documented local-midnight default. Clearing the picker clears the deadline.
+    internal static DateTimeOffset? ApplyDeadlineDate(DateTimeOffset? original,
+        DateTime? selectedDate, TimeZoneInfo newDeadlineTimeZone)
+    {
+        if (selectedDate is null) return null;
+        var date = DateTime.SpecifyKind(selectedDate.Value.Date, DateTimeKind.Unspecified);
+        return original is { } stored
+            ? new DateTimeOffset(date.Add(stored.TimeOfDay), stored.Offset)
+            : new DateTimeOffset(date, newDeadlineTimeZone.GetUtcOffset(date));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -327,9 +340,7 @@ public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
 
         var currency = ((CurrencyBox.SelectedItem as ComboBoxItem)?.Content as string) ?? "CAD";
 
-        DateTimeOffset? deadline = DeadlineBox.SelectedDate.HasValue
-            ? new DateTimeOffset(DeadlineBox.SelectedDate.Value, TimeZoneInfo.Local.GetUtcOffset(DeadlineBox.SelectedDate.Value))
-            : null;
+        var deadline = ApplyDeadlineDate(_existing?.SubmissionDeadlineUtc, DeadlineBox.SelectedDate, TimeZoneInfo.Local);
 
         var draft = new Opportunity
         {

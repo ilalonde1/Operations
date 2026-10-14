@@ -39,14 +39,10 @@ public interface IPursuitGrabStore
     Task<GrabResult> GrabAsync(long opportunityId, string staffUpn, CancellationToken ct);
 
     /// <summary>
-    /// Fallback claim for a NON-grabbable opportunity (already owned, or in a
-    /// non-New status such as a Lost opp being promoted): creates the owned
-    /// Drafting engagement server-side so it carries the same birth payload a
-    /// grab does — buyer canonical org, ExternalSource/Key provenance, stage
-    /// history, and an assignment-log row (fix F9: the old client-side create
-    /// dropped the buyer org and never logged the claim). Returns the new
-    /// engagement id, or 0 when an engagement already exists for the
-    /// opportunity (caller re-fetches).
+    /// Compatibility entry point with exactly the same eligibility and atomic
+    /// ownership/status transition as GrabAsync: New, unowned, not dismissed.
+    /// Returns the new engagement id, or 0 on refusal. A refused claim must be
+    /// surfaced to the caller, never retried through an unguarded creator.
     /// </summary>
     Task<long> ClaimOwnedAsync(long opportunityId, string staffUpn, CancellationToken ct);
 }
@@ -58,13 +54,7 @@ public sealed class SqlPursuitGrabStore : IPursuitGrabStore
     // OpportunityStatus.New = 1, Pursuing = 4; CrmEngagementStage.Drafting = 1.
     // Mirrored as literals here so the Data layer stays free of the Core enum
     // dependency in raw SQL; values are stable on disk (OpportunityEnums.cs).
-    // ⚠ ONE COPY ON PURPOSE. This block was duplicated verbatim in GrabSql and
-    //   ClaimOwnedSql, whose own comment read "Same birth payload as GrabSql minus
-    //   the opportunity-status flip" — two copies that had to be changed together,
-    //   and the fields in it are exactly the ones that were ALREADY lost once each
-    //   (buyer canonical org = fix F9, provenance = fix F1, stage history = audit
-    //   M2). A pursuit born by Grab and one born by Claim must be indistinguishable
-    //   afterwards; sharing the text is what makes that true by construction.
+    // Both public creation methods execute the same guarded transaction below.
     private const string EngagementBirthSql = @"
     DECLARE @eng TABLE (Id bigint);
 
@@ -136,44 +126,9 @@ BEGIN
     SELECT @newEng AS EngagementId;
 END";
 
-    // Same birth payload as GrabSql minus the opportunity-status flip (the
-    // opportunity is not in the grabbable pool — its status is owned elsewhere).
-    // The EXISTS guard + the filtered unique index on CrmEngagements.OpportunityId
-    // make the claim race-safe: a concurrent creator wins and we return 0.
-    private const string ClaimOwnedSql = @"
-SET XACT_ABORT ON;
-SET NOCOUNT ON;
-
-BEGIN TRANSACTION;
-
-IF EXISTS (SELECT 1 FROM opportunities.CrmEngagements WHERE OpportunityId = @id)
-BEGIN
-    ROLLBACK TRANSACTION;
-    SELECT CAST(0 AS bigint) AS EngagementId;
-END
-ELSE
-BEGIN
-" + EngagementBirthSql + @"
-
-    IF @newEng IS NULL
-    BEGIN
-        -- Opportunity row vanished (retired/merged mid-claim): nothing created.
-        ROLLBACK TRANSACTION;
-        SELECT CAST(0 AS bigint) AS EngagementId;
-    END
-    ELSE
-    BEGIN
-        INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId)
-        VALUES (@newEng, 1, @me);
-
-        INSERT INTO opportunities.OpportunityAssignmentLog
-            (OpportunityId, EngagementId, Action, ToStaffId, ByStaffId, Reason)
-        VALUES (@id, @newEng, N'Claim', @me, @me, N'Claimed a non-grabbable opportunity (already owned / non-New status)');
-
-        COMMIT TRANSACTION;
-        SELECT @newEng AS EngagementId;
-    END
-END";
+    // BD-A01: a rejected grab is not permission to bypass eligibility. Keep the
+    // legacy API for callers, but share the entire transaction, not just INSERT.
+    private const string ClaimOwnedSql = GrabSql;
 
     /// <summary>
     /// Every branch of both statements SELECTs something, so today the scalar is
@@ -242,9 +197,8 @@ END";
         }
         catch (SqlException ex) when (ex.Number is 2601 or 2627)
         {
-            // A concurrent creator won the race between the EXISTS check and the
-            // INSERT (unique index on OpportunityId or ExternalSource/Key).
-            // XACT_ABORT rolled back; the caller re-fetches the winner's row.
+            // A concurrent creator won (unique OpportunityId or provenance key).
+            // XACT_ABORT rolled back; surface the refusal without another write.
             return 0;
         }
     }
