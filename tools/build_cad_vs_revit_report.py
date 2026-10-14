@@ -603,6 +603,84 @@ def build(args):
 </body></html>"""
     Path(args.html).write_text(page, encoding="utf-8")
 
+    # ---------- the one-page plain-English guide, from the same values ----------
+    if args.guide_html:
+        mid_recent = {t: summ([j for j in res_fin if j["dtype"] == t and j["first_year"] >= 2020 and 100_000 <= j["fee"] < 300_000]) for t in ("CAD", "RV")}
+        cents = lambda s: f"{abs(s['margin_pct'] * 100):.0f} cents" if s["margin_pct"] is not None else "–"
+        verb = lambda s: "lost" if (s["margin_pct"] or 0) < 0 else "made"
+        guide_css = """
+<style>
+  .page { max-width: 8.3in; }
+  .top { padding: 11px 20px; }
+  .top h1 { font-size:17pt; }
+  .top p { font-size:9pt; max-width:40rem; }
+  .body { padding: 10px 20px 0; }
+  h2 { margin-bottom:.35rem; }
+  .flow { grid-template-columns: repeat(3, 1fr); margin-bottom: 9px; gap:.45rem; }
+  .step { padding:.45rem .6rem; }
+  .step .big { font-size:16pt; font-weight:700; color:var(--slate-deep); line-height:1.05; margin:.1rem 0 .1rem; white-space:nowrap; }
+  .step .big small { font-size:8.2pt; font-weight:600; color:var(--ink-soft); }
+  .step p { font-size:8.4pt; }
+  table { font-size:8.6pt; margin-bottom:9px; }
+  tr td:first-child { width:12.5rem; }
+  td { line-height:1.3; padding:.26rem .45rem; }
+  .strip { grid-template-columns: 1fr 1fr 1fr; gap:.5rem; }
+  .card { padding:.5rem .65rem; }
+  .card p { font-size:8.2pt; line-height:1.32; }
+  .card .lead { font-size:8.8pt; }
+  .foot { padding:8px 20px 0; font-size:7.5pt; }
+  @page { size: Letter; margin: 8mm 10mm; }
+</style>"""
+        guide = f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAD vs Revit — Plain English</title>
+{style_block}
+{guide_css}
+</head><body>
+<div class="page">
+  <div class="top">
+    <div>
+      <div class="ey">KOR Structural · Financials · companion to the CAD vs Revit report · as of {esc(asof_label)}</div>
+      <h1>The Complete Idiot's Guide to What This All Means</h1>
+      <p>CAD versus Revit in plain English, on one page. Every number here is the report's number, from Deltek, not from counting folders.</p>
+    </div>
+  </div>
+  <div class="body">
+    <h2>The three things to know</h2>
+    <div class="flow">
+      <div class="step"><span class="n">1 · HOW MUCH CAD</span><div class="big">{pct(share_pair.get(cur_year))} <small>of drafting hours, this year</small></div>
+        <p>CAD and Revit jobs only. It was {pct(share_pair.get(HISTORY_STARTS))} in {HISTORY_STARTS}. The switch to Revit happened in 2020–2021 and stuck. About one drafting hour in four is still CAD.</p></div>
+      <div class="step"><span class="n">2 · WHO MAKES MONEY</span><div class="big">{pct(head['CAD']['margin_pct'])} <small>CAD</small> · {pct(head['RV']['margin_pct'])} <small>Revit</small></div>
+        <p>On finished residential jobs we can measure properly, CAD jobs {verb(head['CAD'])} about {cents(head['CAD'])} of every dollar billed; Revit jobs {verb(head['RV'])} about {cents(head['RV'])}. Typical job: {pct(head['CAD']['med_margin_pct'])} CAD, {pct(head['RV']['med_margin_pct'])} Revit.</p></div>
+      <div class="step"><span class="n">3 · JOBS, NOT WORK</span><div class="big">{pct(cad_share_jobs)} <small>of jobs · {pct(cad_share_billed)} of billings</small></div>
+        <p>CAD is most of our residential job count but well under half of the money. Counting folders with a .dwg in them counts jobs. The books weigh them.</p></div>
+    </div>
+
+    <h2>If someone says… the books say…</h2>
+    <table>
+      <tr><td>"More than half our residential jobs are CAD."</td><td>True by count ({pct(cad_share_jobs)} of tagged jobs with hours). By billings it is {pct(cad_share_billed)}, and by drafting hours this year {pct(share_res.get(cur_year))}. The median CAD job is {money(by_type['CAD']['med_fee'])} of fee; the median Revit job {money(by_type['RV']['med_fee'])}.</td></tr>
+      <tr><td>"CAD jobs are fine, they've always made money."</td><td>The old ones look like they did, because Deltek's timesheets only start in {HISTORY_STARTS}: a job billed before then has all its billings but only part of its hours, so its margin reads high ({pct(out_summ['CAD']['margin_pct'])} on {num(out_summ['CAD']['jobs'])} CAD jobs, {pct(out_summ['RV']['margin_pct'])} on {num(out_summ['RV']['jobs'])} Revit). Not real numbers for either tool, so they are left out. Jobs started since: CAD {pct(head['CAD']['margin_pct'])}, Revit {pct(head['RV']['margin_pct'])}.</td></tr>
+      <tr><td>"It's just that CAD jobs are small."</td><td>Partly. Small jobs lose money on both tools: started 2020 on and under $100K, CAD {pct(small_recent['CAD']['margin_pct'])} on {num(small_recent['CAD']['jobs'])} jobs, Revit {pct(small_recent['RV']['margin_pct'])} on {num(small_recent['RV']['jobs'])}. Most recent CAD work is small jobs ({num(small_recent['CAD']['jobs'])} of {num(recent['CAD']['jobs'])}). In the $100K–$300K band, started 2020 on: CAD {pct(mid_recent['CAD']['margin_pct'])} on {num(mid_recent['CAD']['jobs'])}, Revit {pct(mid_recent['RV']['margin_pct'])} on {num(mid_recent['RV']['jobs'])}.</td></tr>
+      <tr><td>"One bad year."</td><td>Calendar 2020–{last_full}, residential CAD jobs billed {money(cal_since['CAD']['billed'])} against {money(cal_since['CAD']['cost'])} of labour, below zero in {num(cal_since['CAD']['neg'])} of {num(cal_since['CAD']['years'])} years. Revit: {money(cal_since['RV']['billed'])} against {money(cal_since['RV']['cost'])}, below zero in {num(cal_since['RV']['neg'])}.</td></tr>
+      <tr><td>"Partners' time is free, so the margins are wrong."</td><td>Partners are counted at $250 an hour, the firm's standing policy, which is {pct(partner_share)} of all the labour cost here. At payroll instead, both margins jump ({pct(head['CAD']['margin_book_pct'])} CAD, {pct(head['RV']['margin_book_pct'])} Revit), CAD more, because partners put more hours on CAD jobs. Either way, Revit is ahead.</td></tr>
+      <tr><td>"So Revit makes us money and CAD loses it."</td><td>That is what the association shows. It does not prove the software caused it: job size, era, client and who ran the job travel with the tool. Treat it as a strong signal, not a verdict.</td></tr>
+    </table>
+
+    <div class="strip">
+      <div class="card"><h2 style="margin-bottom:.2rem">What "margin" means here</h2>
+        <p>What we billed, minus what the people on the job cost at the time, staff at actual payroll and partners at $250 an hour. Before overhead and subconsultants. It is a way to compare CAD and Revit, not the firm's profit and loss.</p></div>
+      <div class="card"><h2 style="margin-bottom:.2rem">What it cannot tell you</h2>
+        <p>Anything before {HISTORY_STARTS}. Anything about the {num(all_jobs - tagged)} of {num(all_jobs)} jobs with no drafting-type tag in Deltek. Whether a job that moved from CAD to Revit mid-way is counted right (it counts where Deltek put it). Why: it shows the pattern, not the cause.</p></div>
+      <div class="card accent"><h2 style="margin-bottom:.2rem; color:var(--good)">How to read the big report</h2>
+        <p class="lead">Page 1 is the whole story. The rest is the evidence.</p>
+        <p>Every table says which jobs it counts and why. Every assumption is listed on the last page so it can be argued with. The workbook has every job.</p></div>
+    </div>
+  </div>
+  <div class="foot">KOR Operations · Financials · companion to KOR-Financials-CAD-vs-Revit-{asof}-web.pdf</div>
+</div>
+</body></html>"""
+        Path(args.guide_html).write_text(guide, encoding="utf-8")
+
     # ---------- XLSX ----------
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment
@@ -779,6 +857,7 @@ if __name__ == "__main__":
     ap.add_argument("--coverage", required=True)
     ap.add_argument("--html", required=True)
     ap.add_argument("--xlsx", required=True)
+    ap.add_argument("--guide-html", help="also write the one-page plain-English companion from the same values")
     ap.add_argument("--asof", required=True, help="YYYY-MM-DD the pull was taken")
     ap.add_argument("--posted-through", required=True, help='e.g. "October 2026" (PRSummaryMain max period)')
     ap.add_argument("--usd-rate", default="1.36")
