@@ -90,6 +90,14 @@ SQL_CALL = re.compile(r"(?i)\b(?:sqlcmd|oq\.py|oqwide\.py)\b")
 SQL_WINDOW_SECONDS = 600
 SQL_MAX_CALLS = 3
 
+# 7. GOING SILENT. "Say the duration before any step over a minute" was promised on
+#    2026-10-13 and broken the same afternoon: a 3.5-minute suite ran with no word, then a
+#    40-minute stretch. The one line Ian always sees is the command's description. A command
+#    that asks for more than two minutes must open that line with its expected duration
+#    ("~3 min: ..."), or it does not run.
+LONG_TIMEOUT_MS = 120_000
+DURATION_FIRST = re.compile(r"(?i)^\s*~?\s*\d+\s*(?:s|sec|secs|seconds|m|min|mins|minutes|h|hr|hours)\b")
+
 
 def sql_calls_allowed(session_id, n_new, now=None):
     """Sliding-window count of SQL calls for this session, kept in a temp file. Returns
@@ -141,9 +149,17 @@ def main():
         payload = json.load(sys.stdin)
     except Exception:
         return
-    cmd = (payload.get("tool_input") or {}).get("command") or ""
+    tool_input = payload.get("tool_input") or {}
+    cmd = tool_input.get("command") or ""
     if not cmd:
         return
+
+    timeout = tool_input.get("timeout") or 0
+    if isinstance(timeout, (int, float)) and timeout > LONG_TIMEOUT_MS \
+            and not DURATION_FIRST.search(tool_input.get("description") or ""):
+        deny(f"A command with a {int(timeout) // 60000}-minute timeout and no duration in its description. "
+             "The description is the one line Ian sees; it must open with the expected duration, "
+             "e.g. \"~3 min: run the App suite\". Promised 2026-10-13 and broken the same day, so it is a hook.")
 
     for pattern, reason in RULES:
         if pattern.search(cmd):

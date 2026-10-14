@@ -11,9 +11,14 @@ import sys
 GUARD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "claude_bash_guard.py")
 
 
-def verdict(command, session_id=None):
+def verdict(command, session_id=None, timeout=None, description=None):
+    tool_input = {"command": command}
+    if timeout is not None:
+        tool_input["timeout"] = timeout
+    if description is not None:
+        tool_input["description"] = description
     payload = json.dumps({"tool_name": "Bash", "session_id": session_id or f"guard-test-{os.getpid()}",
-                          "tool_input": {"command": command}})
+                          "tool_input": tool_input})
     out = subprocess.run([sys.executable, GUARD], input=payload, capture_output=True, text=True, timeout=30).stdout
     if not out.strip():
         return "allow"
@@ -37,6 +42,19 @@ def sql_rate_cases():
             os.remove(state)
     expected = ["allow", "allow", "allow", "deny", "deny", "allow"]
     return [(f"sql call {i + 1}", e, g) for i, (e, g) in enumerate(zip(expected, got))]
+
+
+def duration_cases():
+    """Rule 7: a long timeout must come with a duration-first description; short commands are untouched."""
+    probes = [
+        ("long, no description",         600000, None,                              "deny"),
+        ("long, duration not first",     600000, "Run the App suite (~3 min)",     "deny"),
+        ("long, duration first",         600000, "~3 min: run the App suite",      "allow"),
+        ("long, seconds first",          180000, "90 s: build and test",           "allow"),
+        ("short, no description",        60000,  None,                              "allow"),
+        ("default timeout",              None,   "Run the Data suite",             "allow"),
+    ]
+    return [(label, e, verdict("dotnet build -c Release", timeout=t, description=d)) for label, t, d, e in probes]
 
 
 CASES = [
@@ -96,7 +114,7 @@ def main():
         if got != expected:
             failed += 1
         print(f"{mark} {expected:5} {got:5} | {command[:90]}")
-    rate = sql_rate_cases()
+    rate = sql_rate_cases() + duration_cases()
     for label, expected, got in rate:
         mark = "ok  " if got == expected else "FAIL"
         if got != expected:
