@@ -11,15 +11,41 @@ import sys
 GUARD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "claude_bash_guard.py")
 
 
-def verdict(command):
-    payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
+def verdict(command, session_id=None):
+    payload = json.dumps({"tool_name": "Bash", "session_id": session_id or f"guard-test-{os.getpid()}",
+                          "tool_input": {"command": command}})
     out = subprocess.run([sys.executable, GUARD], input=payload, capture_output=True, text=True, timeout=30).stdout
     if not out.strip():
         return "allow"
     return json.loads(out)["hookSpecificOutput"]["permissionDecision"]
 
 
+def sql_rate_cases():
+    """Rule 6: the fourth SQL call in ten minutes is denied, the first three are not, and a denied call
+    does not count. A fresh session id per run so the test never shares state with a live session."""
+    import tempfile
+    sid = f"guard-test-sql-{os.getpid()}"
+    state = os.path.join(tempfile.gettempdir(), f"claude_bash_guard_sql_{sid}.json")
+    if os.path.exists(state):
+        os.remove(state)
+    try:
+        got = [verdict('python -I oq.py -q "SELECT 1"', sid) for _ in range(4)]
+        got.append(verdict("sqlcmd -S KOR-APP01 -i x.sql", sid))   # still denied: the 4th was not recorded
+        got.append(verdict("dotnet build -c Release", sid))        # not a SQL call
+    finally:
+        if os.path.exists(state):
+            os.remove(state)
+    expected = ["allow", "allow", "allow", "deny", "deny", "allow"]
+    return [(f"sql call {i + 1}", e, g) for i, (e, g) in enumerate(zip(expected, got))]
+
+
 CASES = [
+    # rule 5: the full App suite without a filter
+    ("dotnet test Kor.Operations.App/Kor.Transmittals.App.Tests/Kor.Operations.App.Tests.csproj -c Debug --no-build -nologo", "deny"),
+    ("dotnet test Kor.Operations.App/Kor.Transmittals.App.Tests/Kor.Operations.App.Tests.csproj -c Debug --no-build --filter \"FullyQualifiedName~BdReports\"", "allow"),
+    ("FULL_SUITE=1 dotnet test Kor.Operations.App/Kor.Transmittals.App.Tests/Kor.Operations.App.Tests.csproj -c Debug --no-build", "allow"),
+    ("dotnet test Kor.Opportunities.Data.Tests/Kor.Opportunities.Data.Tests.csproj -c Debug --no-build", "allow"),
+    ("dotnet build Kor.Operations.App/Kor.Transmittals.App.Tests/Kor.Operations.App.Tests.csproj -c Debug", "allow"),
     # rule 4: a kill by process name
     ("Get-Process testhost -ErrorAction SilentlyContinue | Stop-Process -Force", "deny"),
     ("Get-Process JoeBrain.Web, testhost* -ErrorAction SilentlyContinue | Stop-Process -Force; dotnet build", "deny"),
@@ -70,7 +96,13 @@ def main():
         if got != expected:
             failed += 1
         print(f"{mark} {expected:5} {got:5} | {command[:90]}")
-    print(f"{len(CASES) - failed} of {len(CASES)} as expected")
+    rate = sql_rate_cases()
+    for label, expected, got in rate:
+        mark = "ok  " if got == expected else "FAIL"
+        if got != expected:
+            failed += 1
+        print(f"{mark} {expected:5} {got:5} | {label}")
+    print(f"{len(CASES) + len(rate) - failed} of {len(CASES) + len(rate)} as expected")
     sys.exit(1 if failed else 0)
 
 

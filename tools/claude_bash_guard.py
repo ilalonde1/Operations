@@ -12,9 +12,12 @@ stdin  : the PreToolUse payload
 stdout : nothing (allow), or a permissionDecision of "deny"
 """
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
+import time
 
 # Repo rule 7 in force here too: every pattern is a raw string.
 RULES = [
@@ -70,6 +73,44 @@ BUILD = re.compile(r"dotnet\s+(?:test|build)")
 # a command whose path names a checkout other than Operations under "VIsual Studio Projects" (JoeBrain, KOR.Drafter, ...)
 OTHER_REPO = re.compile(r"(?i)VIsual Studio Projects[\\/](?!Operations(?:[\\/\"' ]|$))[A-Za-z0-9_.-]+")
 
+# 5. THE FULL APP SUITE FOR A ONE-AREA CHANGE. 3.5 minutes and the build lock per run. On
+#    2026-10-13 it ran twice, 7 minutes, for a change confined to BdReports whose own classes
+#    run in 30 s -- with feedback_run_the_targeted_tests_not_the_suite sitting in memory.
+#    A `dotnet test` that names the App test project must carry --filter, unless the run is
+#    declared deliberate with FULL_SUITE=1 (the pre-publish run).
+APP_SUITE = re.compile(r"dotnet\s+test\b[^\n|;&]*(?:Kor\.Operations\.App\.Tests|Kor\.Transmittals\.App\.Tests)")
+FILTERED = re.compile(r"--filter\b")
+DELIBERATE_FULL = re.compile(r"\bFULL_SUITE=1\b")
+
+# 6. CHATTY SQL OVER THE VPN. Every sqlcmd is a VPN round trip to KOR-APP01; on 2026-10-13
+#    there were about fifteen, one at a time, and three hung for minutes -- with
+#    feedback_run_on_the_target_never_chatty_over_vpn in memory. Three calls in ten minutes is
+#    a dry-run, an apply and a check. The fourth is a batch that was not written.
+SQL_CALL = re.compile(r"(?i)\b(?:sqlcmd|oq\.py|oqwide\.py)\b")
+SQL_WINDOW_SECONDS = 600
+SQL_MAX_CALLS = 3
+
+
+def sql_calls_allowed(session_id, n_new, now=None):
+    """Sliding-window count of SQL calls for this session, kept in a temp file. Returns
+    (calls already in the window, allowed). A denied call is not recorded."""
+    now = now if now is not None else time.time()
+    path = os.path.join(tempfile.gettempdir(), f"claude_bash_guard_sql_{session_id or 'default'}.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            stamps = [t for t in json.load(f) if now - t < SQL_WINDOW_SECONDS]
+    except Exception:
+        stamps = []
+    if len(stamps) + n_new > SQL_MAX_CALLS:
+        return len(stamps), False
+    stamps.extend([now] * n_new)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(stamps, f)
+    except Exception:
+        pass
+    return len(stamps), True
+
 
 def testhost_running():
     """A test run OF THIS REPO holds the build output lock; a second one fails with MSB3027.
@@ -116,6 +157,21 @@ def main():
     if BUILD.search(cmd) and not OTHER_REPO.search(cmd) and testhost_running():
         deny("A testhost is already running and holds the build output lock -- this will "
              "fail with MSB3027. Wait for it to finish first.")
+
+    if APP_SUITE.search(cmd) and not FILTERED.search(cmd) and not DELIBERATE_FULL.search(cmd):
+        deny("The full App suite without --filter: 3.5 minutes and the build lock, for a change that "
+             "touches one area (it ran twice on 2026-10-13, 7 minutes, for BdReports alone). Run the "
+             "classes you changed: --filter \"FullyQualifiedName~<Namespace or class>\". The one "
+             "deliberate full run, before a publish, is prefixed FULL_SUITE=1.")
+
+    n_sql = len(SQL_CALL.findall(cmd))
+    if n_sql:
+        seen, ok = sql_calls_allowed(payload.get("session_id"), n_sql)
+        if not ok:
+            deny(f"SQL call {seen + n_sql} in ten minutes (limit {SQL_MAX_CALLS}). Every sqlcmd is a VPN "
+                 "round trip to KOR-APP01 and three hung on 2026-10-13. Write the remaining queries into "
+                 "ONE .sql file and run it once, or run the script on the server (Invoke-CimMethod). "
+                 "A dry-run, an apply and a check fit the limit; a fourth call is a batch not written.")
 
 
 if __name__ == "__main__":
