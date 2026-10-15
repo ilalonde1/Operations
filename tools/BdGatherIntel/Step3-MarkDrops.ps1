@@ -17,7 +17,7 @@
 #>
 
 param(
-    [string]$InputCsv = "C:\VIsual Studio Projects\KOR-Data-Honing\outputs\discovered-websites.csv",
+    [string]$InputCsv = "C:\VIsual Studio Projects\_research\KOR-Data-Honing\outputs\discovered-websites.csv",
     [string]$Today = (Get-Date -Format 'yyyy-MM-dd')
 )
 

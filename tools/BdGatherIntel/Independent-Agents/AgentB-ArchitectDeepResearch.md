@@ -5,7 +5,7 @@
 **Run how (fresh Sonnet session under any Claude account):**
 
 ```
-cd "C:\VIsual Studio Projects\KOR-Data-Honing"
+cd "C:\VIsual Studio Projects\_research\KOR-Data-Honing"
 claude --model sonnet --dangerously-skip-permissions
 ```
 
@@ -21,7 +21,7 @@ This is high-leverage: 226 architects with award/permit history but ZERO active 
 
 ## Input
 
-`C:\VIsual Studio Projects\KOR-Data-Honing\outputs\discovered-websites.csv`
+`C:\VIsual Studio Projects\_research\KOR-Data-Honing\outputs\discovered-websites.csv`
 
 Filter to rows where:
 - `Kind == "Architect"`
@@ -153,7 +153,7 @@ Run to completion. No confirmations. Resume by skipping batches whose JSON file 
 
 Opus orchestrator (on the main Claude account) will:
 1. Concatenate `architects-deep-batch-*.json` into a single import payload.
-2. Generate an `import-fixed.sql` matching the Architect-Pipelines pattern (mirrors the existing `C:\VIsual Studio Projects\KOR-Architect-Pipelines\import-fixed.sql` from May 24 — same structure: per-architect transaction, upsert CanonicalOrg by NormalizedName, insert OrgAlias, upsert CanonicalOrgEnrichment with ProviderName='ArchitectPipelineResearch').
+2. Generate an `import-fixed.sql` matching the Architect-Pipelines pattern (mirrors the existing `C:\VIsual Studio Projects\_research\KOR-Architect-Pipelines\import-fixed.sql` from May 24 — same structure: per-architect transaction, upsert CanonicalOrg by NormalizedName, insert OrgAlias, upsert CanonicalOrgEnrichment with ProviderName='ArchitectPipelineResearch').
 3. Run that SQL via PowerShell against KorOpportunitiesDb.
 4. Run `BdCanonicalDedup` post-audit.
 5. Apply any `briefDeltas` flagged HIGH severity as targeted MPI corrections.

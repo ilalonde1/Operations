@@ -31,7 +31,7 @@ Agents **C / D / E are trip-prep**: focused on Alberta as a whole with Calgary +
 In the second Claude account's terminal:
 
 ```powershell
-cd "C:\VIsual Studio Projects\KOR-Data-Honing"
+cd "C:\VIsual Studio Projects\_research\KOR-Data-Honing"
 claude --model sonnet --dangerously-skip-permissions
 ```
 

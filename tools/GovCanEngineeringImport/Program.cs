@@ -14,7 +14,7 @@ namespace Kor.GovCanEngineeringImport;
 
 internal static partial class Program
 {
-    private const string DefaultFile = @"C:\VIsual Studio Projects\KOR-GovCan-Import\engineering-awards.jsonl";
+    private const string DefaultFile = @"C:\VIsual Studio Projects\_research\KOR-GovCan-Import\engineering-awards.jsonl";
     private const string SourceName = "GovCanada_EngineeringServices";
     private const string SourceUrl = "https://search.open.canada.ca/contracts/";
 

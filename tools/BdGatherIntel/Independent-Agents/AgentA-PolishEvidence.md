@@ -5,7 +5,7 @@
 **Run how (in a fresh Sonnet session, can be a different Claude account):**
 
 ```
-cd "C:\VIsual Studio Projects\KOR-Data-Honing"
+cd "C:\VIsual Studio Projects\_research\KOR-Data-Honing"
 claude --model sonnet --dangerously-skip-permissions
 ```
 
@@ -71,7 +71,7 @@ KOR is a Vancouver-based structural engineering firm operating in BC, AB, LA, Sa
 
 ## Batching strategy
 
-1. List all `evidence-*.json` files in `C:\VIsual Studio Projects\KOR-Data-Honing\outputs\gathered-evidence-2026-06-03\evidence\`.
+1. List all `evidence-*.json` files in `C:\VIsual Studio Projects\_research\KOR-Data-Honing\outputs\gathered-evidence-2026-06-03\evidence\`.
 2. Process in batches of 30 firms.
 3. For each batch:
    - Read all 30 evidence files (Read tool)

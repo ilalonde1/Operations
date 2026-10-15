@@ -27,8 +27,8 @@
 #>
 
 param(
-    [string]$InputCsv = "C:\VIsual Studio Projects\KOR-Data-Honing\outputs\discovered-websites.csv",
-    [string]$OutDir = ("C:\VIsual Studio Projects\KOR-Data-Honing\outputs\gathered-evidence-" + (Get-Date -Format 'yyyy-MM-dd')),
+    [string]$InputCsv = "C:\VIsual Studio Projects\_research\KOR-Data-Honing\outputs\discovered-websites.csv",
+    [string]$OutDir = ("C:\VIsual Studio Projects\_research\KOR-Data-Honing\outputs\gathered-evidence-" + (Get-Date -Format 'yyyy-MM-dd')),
     [string]$OnlyConfidence = '',
     [long]$ResumeFromId = 0,
     [int]$MaxRows = 0

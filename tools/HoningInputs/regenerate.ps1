@@ -15,7 +15,7 @@
 #>
 $ErrorActionPreference = 'Stop'
 
-$dst = 'C:\VIsual Studio Projects\KOR-Data-Honing\inputs'
+$dst = 'C:\VIsual Studio Projects\_research\KOR-Data-Honing\inputs'
 $cs  = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
 if (-not $cs) { throw 'KOR_OPPORTUNITIES_OPPORTUNITIESDB env var not set.' }
 if (-not (Test-Path $dst)) { New-Item -ItemType Directory -Path $dst | Out-Null }

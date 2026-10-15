@@ -19,7 +19,7 @@ namespace Kor.BcMpiImporter;
 internal static class Program
 {
     private const string Province = "BC";
-    private const string DefaultDirectory = @"C:\VIsual Studio Projects\KOR-BC-MPI-Archive\downloads";
+    private const string DefaultDirectory = @"C:\VIsual Studio Projects\_research\KOR-BC-MPI-Archive\downloads";
     private const string SourceLandingPage = "https://www2.gov.bc.ca/gov/content/employment-business/economic-development/industry/bc-major-projects-inventory";
     private static readonly Regex YearRegex = new(@"\b(19|20)\d{2}\b", RegexOptions.Compiled);
     private static readonly Regex FilenameYearQuarter1 = new(@"(?<year>20\d{2}|19\d{2}).*?[Qq](?<quarter>[1-4])", RegexOptions.Compiled);
