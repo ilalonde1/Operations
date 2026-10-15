@@ -1,7 +1,9 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using Kor.Opportunities.Knowledge.Claims;
 using Kor.Opportunities.Knowledge.Embedding;
 using Kor.Opportunities.Knowledge.Readers;
 using Kor.Opportunities.Knowledge.Search;
@@ -14,7 +16,8 @@ namespace Kor.Opportunities.Knowledge.Tests;
 /// Covers synthetic EPUB spine ordering/refs, bounded chunks, the 18 verbatim stems
 /// supplied by Ian, reader routing, real local embedding bytes/ranking, SQL source
 /// write boundaries and original-file hashing with a fake converter/store.
-/// Also checks dry/skip/claim guards and index caching/source caps.
+/// Also checks dry/skip/claim guards, index caching/source caps, claim JSON/validation,
+/// import provenance, stamp/force decisions and permitted claim/concept SQL writes.
 /// Does not read the Books folder, connect to SQL, invoke Calibre, prove PDF fidelity,
 /// SQL validity/rollback/concurrency, model content propagation or real-book coverage.
 /// Same-class miss: dropping an untested EPUB spine/markup variant can pass this fixture;
@@ -166,14 +169,19 @@ public sealed class KnowledgeIngestRegressionTests
     }
 
     [Fact]
-    public void Store_WritesOnlyKnowledgeSourceAndPassage_AndDeletesOnlyOnForce()
+    public void Store_StillWritesOnlyKnowledgeTables_AndNeverDeletes()
     {
         var source = Regex.Replace(Source("Kor.Opportunities.Knowledge/Store/SqlKnowledgeStore.cs"),
             @"//[^\r\n]*|/\*.*?\*/", "", RegexOptions.Singleline);
         var writes = Regex.Matches(source, @"\b(?:INSERT\s+INTO|UPDATE)\s+([#\w.]+)", RegexOptions.IgnoreCase);
-        Check(writes.Count == 3, "source insert, source update, passage repair update", writes.Count.ToString());
+        Check(writes.Count == 9, "three original writes plus six claim import writes", writes.Count.ToString());
         foreach (Match match in writes)
-            Check(match.Groups[1].Value is "knowledge.Source" or "knowledge.Passage", "only knowledge source/passage writes", match.Value);
+            Check(match.Groups[1].Value is "knowledge.Source" or "knowledge.Passage" or "knowledge.Concept"
+                or "knowledge.Claim" or "knowledge.ClaimConcept" or "knowledge.ClaimImport", "only knowledge table writes", match.Value);
+        var inserts = Regex.Matches(source, @"\bINSERT\s+INTO\s+(\w+\.\w+)", RegexOptions.IgnoreCase)
+            .Select(m => m.Groups[1].Value).ToArray();
+        Check(inserts.Order().SequenceEqual(new[] { "knowledge.Source", "knowledge.Concept", "knowledge.Claim", "knowledge.ClaimConcept", "knowledge.ClaimImport" }.Order()),
+            "existing Source insert plus exactly the four import tables", string.Join(",", inserts));
         var destinations = Regex.Matches(source, "DestinationTableName\\s*=\\s*\"([^\"]+)\"")
             .Select(m => m.Groups[1].Value).ToArray();
         // Piece 3 requires temp staging; the brief's blanket bulk-destination rule
@@ -189,9 +197,10 @@ public sealed class KnowledgeIngestRegressionTests
         var remove = source.IndexOf(deletion, StringComparison.Ordinal);
         Check(force >= 0 && guard > force && remove > guard && source.Contains("has claims; --force is refused.", StringComparison.Ordinal),
             "force branch and locked claim guard precede deletion", $"{force}/{guard}/{remove}");
-        Check(!Regex.IsMatch(source, @"\b(?:DROP|TRUNCATE)\b", RegexOptions.IgnoreCase)
-            && !Regex.IsMatch(source, @"(?:INSERT\s+INTO|UPDATE)\s+knowledge\.Claim", RegexOptions.IgnoreCase),
-            "no destructive DDL or claim writes", "forbidden statement found");
+        Check(!Regex.IsMatch(source, @"\b(?:DROP|TRUNCATE)\b", RegexOptions.IgnoreCase),
+            "no destructive DDL (the sole deletion remains 9c's guarded passage replacement)", "forbidden statement found");
+        Check(source.Contains("WHERE SourceId = @sourceId AND ReviewedAtUtc IS NULL AND RetiredAtUtc IS NULL", StringComparison.Ordinal),
+            "force retirement excludes reviewed and already retired claims", "missing guard");
         Check(source.Contains("SqlDbType", StringComparison.Ordinal) && !source.Contains("AddWithValue", StringComparison.Ordinal),
             "typed SQL parameters", "parameter pattern differs");
         Check(source.Contains("IsolationLevel.Serializable", StringComparison.Ordinal)
@@ -270,6 +279,143 @@ public sealed class KnowledgeIngestRegressionTests
         }
     }
 
+    [Fact]
+    public void ClaimFile_RoundTrips_AndTextIsOptionalOnImport()
+    {
+        var original = ExampleClaimFile();
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(original, ClaimFile.JsonOptions);
+        var restored = ClaimFile.Parse(bytes, "synthetic.claims.json");
+        var json = Encoding.UTF8.GetString(bytes);
+        Check(restored.SourceId == 18 && restored.WrittenBy == "synthetic writer"
+            && restored.Passages[0].Claims[0].Statement == original.Passages[0].Claims[0].Statement,
+            "claim document round trip", json);
+        Check(restored.Passages[0].Text is null && !json.Contains("\"text\"", StringComparison.Ordinal),
+            "omitted text accepted", json);
+        Check(restored.FileSha256 == Convert.ToHexString(SHA256.HashData(bytes)) && restored.FileName == "synthetic.claims.json",
+            "SHA of original file bytes and filename", restored.FileSha256 ?? "missing");
+        var bomBytes = new byte[] { 0xEF, 0xBB, 0xBF }.Concat(bytes).ToArray();
+        var fromEditor = ClaimFile.Parse(bomBytes, "editor.claims.json");
+        Check(fromEditor.SourceId == 18 && fromEditor.FileSha256 == Convert.ToHexString(SHA256.HashData(bomBytes)),
+            "UTF-8 BOM accepted and included in provenance hash", fromEditor.FileSha256 ?? "missing");
+        Check(!json.Contains("fileSha256", StringComparison.Ordinal) && !json.Contains("rejections", StringComparison.Ordinal),
+            "provenance and diagnostics excluded from JSON", json);
+        var withText = original with { Passages = new[] { original.Passages[0] with { Text = "Synthetic fixture passage." }, original.Passages[1] } };
+        Check(ClaimFile.Parse(JsonSerializer.SerializeToUtf8Bytes(withText, ClaimFile.JsonOptions), "export.json").Passages[0].Text == "Synthetic fixture passage.",
+            "export text survives", "text changed");
+        Assert.Throws<JsonException>(() => ClaimFile.Parse(Encoding.UTF8.GetBytes("""{"passages":[{"ordinal":1,"claims":[]}]}"""), "bad.json"));
+        Assert.Throws<JsonException>(() => ClaimFile.Parse(Encoding.UTF8.GetBytes("""{"passages":[{"id":1,"claims":[]}]}"""), "bad.json"));
+        Assert.Throws<JsonException>(() => ClaimFile.Parse(Encoding.UTF8.GetBytes("""{"passages":[{"id":1,"ordinal":1}]}"""), "bad.json"));
+    }
+
+    [Fact]
+    public void ClaimValidation_RejectsEachBadShape_WithAReason()
+    {
+        var valid = ExampleClaim();
+        var bad = new[]
+        {
+            valid with { Kind = "Advice" }, valid with { Statement = new string('a', 1200) },
+            valid with { Statement = "One line.\nAnother line." }, valid with { Confidence = 1.4m },
+            valid with { Concepts = Array.Empty<ClaimFileConcept>() },
+            valid with { Concepts = Enumerable.Range(1, 4).Select(i => new ClaimFileConcept("concept-" + i, "Concept " + i)).ToArray() },
+            valid with { Concepts = new[] { new ClaimFileConcept("!!!", "Bad slug") } },
+        };
+        var file = ExampleClaimFile() with { Passages = new[]
+        {
+            new ClaimFilePassage { Id = 1, Ordinal = 1, Claims = bad.Append(valid).ToArray() },
+            new ClaimFilePassage { Id = 99, Ordinal = 1, Claims = new[] { valid } },
+        } };
+        var result = ClaimValidation.Validate(file, new[] { new StoredClaimPassage(1, 18, 1, null), new StoredClaimPassage(99, 17, 1, null) });
+        Check(result.Accepted.Count == 1 && result.Rejected.Count == 8, "one accepted and eight rejected", $"{result.Accepted.Count}/{result.Rejected.Count}");
+        var expected = new[] { "kind", "1–1,000", "line break", "confidence", "1–3", "1–3", "slug", "does not belong" };
+        for (var i = 0; i < expected.Length; i++)
+            Check(result.Rejected[i].Reason.Contains(expected[i], StringComparison.Ordinal), expected[i], result.Rejected[i].Reason);
+        Check(result.FileErrors.Count == 1, "wrong-source passage also refuses the file before stamping", string.Join("; ", result.FileErrors));
+    }
+
+    [Fact]
+    public void Slug_IsNormalised()
+    {
+        Check(ClaimValidation.NormalizeSlug("Qualify Before Investing!") == "qualify-before-investing", "normalized slug", "normalization differs");
+        var file = ExampleClaimFile();
+        var stored = new[] { new StoredClaimPassage(1, 18, 1, null), new StoredClaimPassage(2, 18, 2, null) };
+        var accepted = ClaimValidation.Validate(file, stored).Accepted.Single();
+        Check(accepted.Claim.Concepts.Single().Slug == "qualify-before-investing", "normalized accepted concept", accepted.Claim.Concepts.Single().Slug);
+        var shortSlug = file with { Passages = new[] { file.Passages[0] with { Claims = new[]
+            { ExampleClaim() with { Concepts = new[] { new ClaimFileConcept("A!", "Too short") } } } } } };
+        Check(ClaimValidation.Validate(shortSlug, stored).Rejected.Single().Reason.Contains("3–80", StringComparison.Ordinal),
+            "too-short slug rejected", "wrong reason");
+    }
+
+    [Fact]
+    public void ClaimValidation_RefusesInvalidCoverage_AndRequiresWriter()
+    {
+        var file = ExampleClaimFile();
+        var stored = new[] { new StoredClaimPassage(1, 18, 1, null), new StoredClaimPassage(2, 18, 2, null) };
+        foreach (var invalid in new[]
+        {
+            file with { WrittenBy = null }, file with { Passages = Array.Empty<ClaimFilePassage>() },
+            file with { Passages = new[] { file.Passages[0], file.Passages[0] } },
+            file with { Passages = new[] { file.Passages[0] with { Ordinal = 2 } } },
+            file with { Passages = new[] { file.Passages[0] with { Claims = null! } } },
+        }) Assert.Throws<InvalidDataException>(() => ClaimValidation.PrepareImport(invalid, stored, force: true));
+    }
+
+    [Fact]
+    public async Task Import_RefusesStampedPassages_UnlessForce_AndForceRetiresOnlyUnreviewedModelClaims()
+    {
+        var source = Source("Kor.Opportunities.Knowledge/Store/SqlKnowledgeStore.cs");
+        var import = source[source.IndexOf("public async Task<(int PassagesCovered", StringComparison.Ordinal)..];
+        foreach (var clause in new[] { "IsolationLevel.Serializable", "UPDLOCK, HOLDLOCK", "ClaimValidation.PrepareImport(file, stored, force)",
+                     "if (plan.SupersedeUnreviewedModelClaims)", "ReviewedAtUtc IS NULL AND RetiredAtUtc IS NULL",
+                     "link.LinkedBy = N'Model'", "AND NOT EXISTS", "link.LinkedBy = N'Human'",
+                     "SELECT @id = Id FROM knowledge.Concept WITH (UPDLOCK, HOLDLOCK) WHERE Slug = @slug;", "IF @id IS NULL",
+                     "file.WrittenBy", "file.FileSha256", "ClaimsExtractedBy = @writer", "file.Passages.Chunk(500)", "await tx.CommitAsync(ct)" })
+            Check(import.Contains(clause, StringComparison.Ordinal), clause, "missing from import source");
+        Check(!Regex.IsMatch(import, @"\bDELETE\b", RegexOptions.IgnoreCase), "no deletion in claims import", "found deletion");
+        Check(import.IndexOf("ClaimValidation.PrepareImport", StringComparison.Ordinal) < import.IndexOf("UPDATE knowledge.Claim", StringComparison.Ordinal),
+            "validation before retirement", "wrong order");
+        var store = new MemoryStore();
+        var stamp = DateTimeOffset.UnixEpoch;
+        store.ClaimPassages.AddRange(new[] { new StoredClaimPassage(1, 18, 1, stamp), new StoredClaimPassage(2, 18, 2, null), new StoredClaimPassage(3, 18, 3, null) });
+        store.ClaimRows.AddRange(new[]
+        {
+            new MemoryClaim(18, 1, false, false, new[] { "Model" }),
+            new MemoryClaim(18, 1, true, false, new[] { "Model" }),
+            new MemoryClaim(18, 1, true, true, new[] { "Model" }, "Ian's reason"),
+            new MemoryClaim(18, 1, false, false, new[] { "Human" }),
+            new MemoryClaim(18, 1, false, false, Array.Empty<string>()),
+            new MemoryClaim(17, 99, false, false, new[] { "Model" }),
+            new MemoryClaim(18, 1, false, false, new[] { "Model", "Human" }),
+        });
+        var original = store.ClaimRows.ToArray();
+        var file = ExampleClaimFile();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => store.ImportClaimsAsync(file, false, "importer"));
+        Check(store.ClaimImports == 0 && store.ClaimRows.SequenceEqual(original), "refusal before any fake writes", "fake state changed");
+        var result = await store.ImportClaimsAsync(file, true, "importer");
+        Check(result == (2, 1, 0) && store.ClaimImports == 1, "two covered including empty / one claim / no rejects", result.ToString());
+        Check(store.ClaimRows[0].Retired && store.ClaimRows[0].Reason == "Superseded by re-import", "active unreviewed model claim retired", store.ClaimRows[0].ToString());
+        Check(store.ClaimRows.Skip(1).Take(6).SequenceEqual(original.Skip(1)), "reviewed, retired, human, unlinked, mixed and other-source claims preserved", "rows changed");
+        Check(store.ClaimPassages[1].ClaimsExtractedAtUtc is not null && store.ClaimPassages[2].ClaimsExtractedAtUtc is null,
+            "empty passage stamped; omitted passage untouched", "wrong coverage");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => store.ImportClaimsAsync(file, false, "importer"));
+        var fresh = new MemoryStore();
+        fresh.ClaimPassages.AddRange(store.ClaimPassages.Select(p => p with { ClaimsExtractedAtUtc = null }));
+        Check(await fresh.ImportClaimsAsync(file, false, "importer") == (2, 1, 0), "unstamped file imports without force", "wrong counts");
+        var rejectedOnly = new MemoryStore();
+        rejectedOnly.ClaimPassages.Add(new StoredClaimPassage(1, 18, 1, null));
+        var badFile = file with { Passages = new[] { file.Passages[0] with { Claims = new[] { ExampleClaim() with { Kind = "Advice" } } } } };
+        Check(await rejectedOnly.ImportClaimsAsync(badFile, false, "importer") == (1, 0, 1)
+            && rejectedOnly.ClaimPassages[0].ClaimsExtractedAtUtc is not null,
+            "rejected-only passage covered with rejection reason", string.Join("; ", badFile.Rejections.Select(r => r.Reason)));
+    }
+
+    private static ClaimFileClaim ExampleClaim() => new() { Kind = "Rule", Statement = "Confirm a need before preparing a proposal.",
+        Confidence = 0.9m, Concepts = new[] { new ClaimFileConcept("Qualify Before Investing!", "Qualify before investing") } };
+    private static ClaimFile ExampleClaimFile() => new() { SourceId = 18, Title = "Synthetic book", WrittenBy = "synthetic writer",
+        KnownConcepts = new[] { new ClaimFileConcept("qualify-before-investing", "Qualify before investing") },
+        Passages = new[] { new ClaimFilePassage { Id = 1, Ordinal = 1, Claims = new[] { ExampleClaim() } }, new ClaimFilePassage { Id = 2, Ordinal = 2 } } };
+    private sealed record MemoryClaim(long SourceId, long PassageId, bool Reviewed, bool Retired, IReadOnlyList<string> LinkedBy, string? Reason = null);
+
     private static KnowledgeSource ExampleSource(long id) => new(id, KnowledgeKinds.Book, "Source " + id,
         null, null, "synthetic.txt", new string('A', 64), KnowledgeLicences.OwnedCopyPrivateStudy,
         KnowledgeEmbedder.ModelName, 0, 0, DateTimeOffset.UnixEpoch, "gate", 0);
@@ -305,6 +451,33 @@ public sealed class KnowledgeIngestRegressionTests
 
     private sealed class MemoryStore : IKnowledgeStore
     {
+        internal List<StoredClaimPassage> ClaimPassages { get; } = new();
+        internal List<MemoryClaim> ClaimRows { get; } = new();
+        internal int ClaimImports { get; private set; }
+        public Task<ClaimFile> ExportAsync(long sourceId, CancellationToken ct = default)
+        {
+            var source = Sources.Single(s => s.Id == sourceId);
+            return Task.FromResult(new ClaimFile { SourceId = sourceId, Title = source.Title, Author = source.Author,
+                Passages = _rows.Where(r => r.Passage.SourceId == sourceId).OrderBy(r => r.Passage.Ordinal)
+                    .Select(r => new ClaimFilePassage { Id = r.Passage.Id, Ordinal = r.Passage.Ordinal, Ref = r.Passage.Ref, Text = r.Passage.Text }).ToArray() });
+        }
+        public Task<(int PassagesCovered, int ClaimsWritten, int ClaimsRejected)> ImportClaimsAsync(ClaimFile file, bool force, string by, CancellationToken ct = default)
+        {
+            // The shared production decision runs before any fake mutation. SQL predicates are gated separately.
+            var plan = ClaimValidation.PrepareImport(file, ClaimPassages, force);
+            if (plan.SupersedeUnreviewedModelClaims)
+                for (var i = 0; i < ClaimRows.Count; i++)
+                {
+                    var row = ClaimRows[i];
+                    if (row.SourceId == file.SourceId && !row.Reviewed && !row.Retired && row.LinkedBy.Contains("Model") && !row.LinkedBy.Contains("Human"))
+                        ClaimRows[i] = row with { Retired = true, Reason = "Superseded by re-import" };
+                }
+            foreach (var claim in plan.Validation.Accepted) ClaimRows.Add(new(file.SourceId, claim.PassageId, false, false, new[] { "Model" }));
+            for (var i = 0; i < ClaimPassages.Count; i++)
+                if (file.Passages.Any(p => p.Id == ClaimPassages[i].Id)) ClaimPassages[i] = ClaimPassages[i] with { ClaimsExtractedAtUtc = DateTimeOffset.UtcNow };
+            ClaimImports++;
+            return Task.FromResult((file.Passages.Count, plan.Validation.Accepted.Count, plan.Validation.Rejected.Count));
+        }
         internal List<KnowledgeSource> Sources { get; } = new();
         private readonly List<(KnowledgePassage Passage, byte[]? Embedding)> _rows = new();
         internal KnowledgeSource? LastSource { get; private set; }

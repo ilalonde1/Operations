@@ -5,6 +5,8 @@ using System.Globalization;
 using System.Linq;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Crm;
+using Kor.Opportunities.Data.Knowledge;
+using Kor.Operations.Core;
 
 namespace Kor.Operations.App.BusinessDevelopment.Director;
 
@@ -87,4 +89,28 @@ public sealed record BdDirectorDecisionRow(BdDecision Record)
 {
     public string Kind => Record.Kind == "NoGo" ? "No go" : Record.Kind;
     public bool IsPending => Record.Outcome == "Pending";
+}
+
+public sealed class BdKnowledgeSourceRow(KnowledgeSourceSummary source) : ObservableObject
+{
+    public KnowledgeSourceSummary Source { get; private set; } = source;
+    public string Extracted => $"{Source.PassagesExtracted}/{Source.Passages}";
+    public void Update(KnowledgeSourceSummary value)
+    {
+        Source = value;
+        OnPropertyChanged(nameof(Source));
+        OnPropertyChanged(nameof(Extracted));
+    }
+}
+
+public sealed record BdKnowledgeClaimRow(KnowledgeClaimRow Claim)
+{
+    public string Concepts => string.Join(" · ", Claim.Concepts);
+    public string Status => Claim.RetiredAtUtc is not null ? "Retired" : Claim.ReviewedAtUtc is not null ? "Kept" : "Unreviewed";
+    public bool CanReview => Claim.RetiredAtUtc is null;
+}
+
+public sealed record BdKnowledgeConceptRow(KnowledgeConceptRow Concept)
+{
+    public string Display => $"{Concept.Name} ({Concept.Claims} claims across {Concept.Sources} sources)";
 }

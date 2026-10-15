@@ -18,6 +18,7 @@ using Kor.Operations.Graph;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
 using Kor.Opportunities.Data.Crm;
+using Kor.Opportunities.Data.Knowledge;
 using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Data.Observations;
@@ -92,7 +93,7 @@ public sealed class BdScreensRenderTests
 
         Assert.True(thread.Join(TimeSpan.FromMinutes(2)), "Rendering the BD screens did not finish within two minutes.");
         Assert.True(failure is null, $"A BD screen failed to build or render: {failure}");
-        Assert.True(written >= 10, $"EXPECTED at least 10 renders; ACTUAL {written}");
+        Assert.True(written >= 11, $"EXPECTED at least 11 renders; ACTUAL {written}");
     }
 
     // ---- the dashboard: funnel, Closing soon, New RFPs, Priority Actions (collapsed) ----
@@ -327,7 +328,29 @@ public sealed class BdScreensRenderTests
             LatestProjectName = "Client portfolio review", LatestProjectStart = new DateTime(2026, 8, 1),
             SummaryPostedThrough = new DateTime(2026, 9, 1), Ar = new DeltekArSummary(125000m, 18000m, 7),
         });
-        using var vm = new BdDirectorViewModel(director.Object, pursuits.Object, recordStore.Object, attribution.Object, ledger.Object, deltek.Object);
+        var claims = new Mock<IKnowledgeClaimStore>();
+        // Passage counts are measured in brief 9d. All extraction/review counts,
+        // claims and passage text below are ILLUSTRATIVE, not extracted book content.
+        claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new KnowledgeSourceSummary(4, "Managing the professional service firm", "David Maister", 663, 16, 3, 1, 0),
+            new KnowledgeSourceSummary(11, "SPIN Selling", "Neil Rackham", 316, 8, 2, 0, 0),
+            new KnowledgeSourceSummary(18, "The win without pitching manifesto", "Blair Enns", 114, 8, 2, 1, 1),
+        });
+        var concept = new KnowledgeConceptRow(1, "qualify-before-investing", "Qualify before investing", 7, 3);
+        claims.Setup(s => s.ListConceptsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[] { concept });
+        var illustrativeClaims = new[]
+        {
+            new KnowledgeClaimRow(1, 4, "Managing the professional service firm", 101, "Illustrative passage A", "Rule",
+                "Illustrative: agree on a buyer's need before preparing a proposal.", 0.95m, new[] { concept.Name }, null, null, null),
+            new KnowledgeClaimRow(2, 4, "Managing the professional service firm", 102, "Illustrative passage B", "Heuristic",
+                "Illustrative: review the cost of a pursuit before assigning more staff time.", 0.80m, new[] { concept.Name }, null, null, null),
+        };
+        claims.Setup(s => s.ListClaimsAsync(4, "Unreviewed", It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(illustrativeClaims);
+        claims.Setup(s => s.GetPassageAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync((long id, CancellationToken ct) =>
+            new KnowledgePassageText(id, "Managing the professional service firm", id == 101 ? "Illustrative passage A" : "Illustrative passage B",
+                "ILLUSTRATIVE RENDER FIXTURE — not a quotation or extracted passage.\n\nThis sample text shows how the reader can compare a claim with its source passage. The production view displays the full stored passage and its original reference."));
+        using var vm = new BdDirectorViewModel(director.Object, pursuits.Object, recordStore.Object, attribution.Object, ledger.Object, deltek.Object, claims.Object);
         vm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
         Assert.True(vm.Live == 101 && vm.PeopleCount == 8 && vm.Outcomes == "No live pursuit has been decided yet.",
             $"EXPECTED 101 live / 8 people / no decided live pursuits; ACTUAL {vm.Live} / {vm.PeopleCount} / {vm.Outcomes}");
@@ -340,7 +363,7 @@ public sealed class BdScreensRenderTests
         window.Content = null;
         content.DataContext = vm;
         content.Resources.MergedDictionaries.Add(window.Resources);
-        var files = new[] { "director-number.png", "director-people.png", "director-funnel.png", "director-accounts.png", "director-asks.png" };
+        var files = new[] { "director-number.png", "director-people.png", "director-funnel.png", "director-accounts.png", "director-asks.png", "director-knowledge.png" };
         var written = 0;
         for (var i = 0; i < files.Length; i++)
         {
@@ -349,6 +372,13 @@ public sealed class BdScreensRenderTests
             {
                 vm.SelectedAccount = vm.Accounts[0];
                 vm.AccountLoadTask.GetAwaiter().GetResult();
+            }
+            if (i == 5)
+            {
+                vm.ClaimsLoadTask.GetAwaiter().GetResult();
+                vm.PassageLoadTask.GetAwaiter().GetResult();
+                Assert.Equal(new[] { 663, 316, 114 }, vm.KnowledgeBooks.Select(b => b.Source.Passages).ToArray());
+                Assert.NotNull(vm.SelectedPassage);
             }
             content.UpdateLayout();
             written += RenderView(content, new Size(1680, 980), Path.Combine(dir, files[i]));

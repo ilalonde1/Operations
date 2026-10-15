@@ -1,5 +1,6 @@
 using System.Data;
 using System.Globalization;
+using Kor.Opportunities.Knowledge.Claims;
 using Kor.Opportunities.Knowledge.Embedding;
 using Kor.Opportunities.Knowledge.Readers;
 using Microsoft.Data.SqlClient;
@@ -7,9 +8,8 @@ using Microsoft.Data.SqlClient;
 namespace Kor.Opportunities.Knowledge.Store;
 
 /// <summary>
-/// Permanent writes are confined to Source and Passage. A book is replaced atomically;
-/// claim rows are read only. Repair uses one session-local staging table and one joined
-/// passage update per batch, with no per-passage SQL calls.
+/// Permanent writes are confined to knowledge tables. Book replacement, embedding repair
+/// and claims import each commit atomically. Reviewed claims are never superseded by import.
 /// </summary>
 public sealed class SqlKnowledgeStore : IKnowledgeStore
 {
@@ -211,6 +211,160 @@ public sealed class SqlKnowledgeStore : IKnowledgeStore
             rows.AddRange(await ReadPassagesAsync(cmd, ct));
         }
         return rows;
+    }
+
+    public async Task<ClaimFile> ExportAsync(long sourceId, CancellationToken ct = default)
+    {
+        await using var con = await OpenAsync(ct);
+        await using var cmd = new SqlCommand("""
+            SELECT Title, Author FROM knowledge.Source WHERE Id = @sourceId;
+            SELECT Slug, Name FROM knowledge.Concept ORDER BY Slug;
+            SELECT Id, Ordinal, Ref, [Text] FROM knowledge.Passage WHERE SourceId = @sourceId ORDER BY Ordinal;
+            """, con) { CommandTimeout = 120 };
+        cmd.Parameters.Add("@sourceId", SqlDbType.BigInt).Value = sourceId;
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) throw new ArgumentException($"Source {sourceId} was not found.");
+        var title = reader.GetString(0);
+        var author = reader.IsDBNull(1) ? null : reader.GetString(1);
+        await reader.NextResultAsync(ct);
+        var concepts = new List<ClaimFileConcept>();
+        while (await reader.ReadAsync(ct)) concepts.Add(new(reader.GetString(0), reader.GetString(1)));
+        await reader.NextResultAsync(ct);
+        var passages = new List<ClaimFilePassage>();
+        while (await reader.ReadAsync(ct)) passages.Add(new()
+        {
+            Id = reader.GetInt64(0), Ordinal = reader.GetInt32(1),
+            Ref = reader.IsDBNull(2) ? null : reader.GetString(2), Text = reader.GetString(3),
+        });
+        return new ClaimFile { SourceId = sourceId, Title = title, Author = author,
+            ExportedAtUtc = DateTimeOffset.UtcNow, KnownConcepts = concepts, Passages = passages };
+    }
+
+    public async Task<(int PassagesCovered, int ClaimsWritten, int ClaimsRejected)> ImportClaimsAsync(
+        ClaimFile file, bool force, string by, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(by) || by.Length > 100) throw new ArgumentException("Importer must be 1–100 characters.", nameof(by));
+        if (string.IsNullOrWhiteSpace(file.FileName) || file.FileName.Length > 260 || file.FileSha256 is not { Length: 64 })
+            throw new ArgumentException("Read the original claims file with ClaimFile.Parse before importing.", nameof(file));
+        await using var con = await OpenAsync(ct);
+        await using var tx = (SqlTransaction)await con.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        // Serialize imports for a source, and protect passage identity/stamps until commit.
+        await using (var source = new SqlCommand(
+            "SELECT Id FROM knowledge.Source WITH (UPDLOCK, HOLDLOCK) WHERE Id = @sourceId;", con, tx) { CommandTimeout = 120 })
+        {
+            source.Parameters.Add("@sourceId", SqlDbType.BigInt).Value = file.SourceId;
+            if (await source.ExecuteScalarAsync(ct) is null) throw new ArgumentException($"Source {file.SourceId} was not found.");
+        }
+        var stored = new List<StoredClaimPassage>();
+        await using (var passages = new SqlCommand("""
+            SELECT Id, SourceId, Ordinal, ClaimsExtractedAtUtc
+            FROM knowledge.Passage WITH (UPDLOCK, HOLDLOCK) WHERE SourceId = @sourceId;
+            """, con, tx) { CommandTimeout = 120 })
+        {
+            passages.Parameters.Add("@sourceId", SqlDbType.BigInt).Value = file.SourceId;
+            await using var reader = await passages.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct)) stored.Add(new(reader.GetInt64(0), reader.GetInt64(1), reader.GetInt32(2),
+                reader.IsDBNull(3) ? null : reader.GetDateTimeOffset(3)));
+        }
+        var plan = ClaimValidation.PrepareImport(file, stored, force);
+        if (plan.SupersedeUnreviewedModelClaims)
+        {
+            // LinkedBy is the schema's model/human provenance; ExtractedBy is a free-form writer name.
+            // Preserve unlinked claims and any human-linked claim as well as all reviewed/retired claims.
+            await using var retire = new SqlCommand("""
+                UPDATE knowledge.Claim SET RetiredAtUtc = sysdatetimeoffset(), RetiredReason = N'Superseded by re-import'
+                WHERE SourceId = @sourceId AND ReviewedAtUtc IS NULL AND RetiredAtUtc IS NULL
+                    AND EXISTS (SELECT 1 FROM knowledge.ClaimConcept link WHERE link.ClaimId = knowledge.Claim.Id AND link.LinkedBy = N'Model')
+                    AND NOT EXISTS (SELECT 1 FROM knowledge.ClaimConcept link WHERE link.ClaimId = knowledge.Claim.Id AND link.LinkedBy = N'Human');
+                """, con, tx) { CommandTimeout = 120 };
+            retire.Parameters.Add("@sourceId", SqlDbType.BigInt).Value = file.SourceId;
+            await retire.ExecuteNonQueryAsync(ct);
+        }
+
+        // Consistent slug order avoids taking shared concept locks in opposite orders across books.
+        // GroupBy preserves the first accepted name seen for each normalized slug.
+        var conceptIds = new Dictionary<string, long>(StringComparer.Ordinal);
+        foreach (var concept in plan.Validation.Accepted.SelectMany(c => c.Claim.Concepts)
+                     .GroupBy(c => c.Slug, StringComparer.Ordinal).Select(g => g.First()).OrderBy(c => c.Slug, StringComparer.Ordinal))
+        {
+            await using var upsert = new SqlCommand("""
+                DECLARE @id BIGINT;
+                SELECT @id = Id FROM knowledge.Concept WITH (UPDLOCK, HOLDLOCK) WHERE Slug = @slug;
+                IF @id IS NULL
+                BEGIN
+                    INSERT INTO knowledge.Concept (Slug, Name, CreatedBy) VALUES (@slug, @name, @by);
+                    SET @id = CONVERT(BIGINT, SCOPE_IDENTITY());
+                END;
+                SELECT @id;
+                """, con, tx) { CommandTimeout = 120 };
+            Text(upsert, "@slug", 80, concept.Slug); Text(upsert, "@name", 150, concept.Name); Text(upsert, "@by", 100, by);
+            conceptIds.Add(concept.Slug, Convert.ToInt64(await upsert.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture));
+        }
+        foreach (var accepted in plan.Validation.Accepted)
+        {
+            var claim = accepted.Claim;
+            await using var insert = new SqlCommand("""
+                INSERT INTO knowledge.Claim (SourceId, PassageId, Kind, Statement, Confidence, ExtractedBy)
+                OUTPUT INSERTED.Id VALUES (@sourceId, @passageId, @kind, @statement, @confidence, @writer);
+                """, con, tx) { CommandTimeout = 120 };
+            insert.Parameters.Add("@sourceId", SqlDbType.BigInt).Value = file.SourceId;
+            insert.Parameters.Add("@passageId", SqlDbType.BigInt).Value = accepted.PassageId;
+            Text(insert, "@kind", 20, claim.Kind); Text(insert, "@statement", 1000, claim.Statement);
+            DecimalConfidence(insert, claim.Confidence!.Value); Text(insert, "@writer", 100, file.WrittenBy);
+            var claimId = Convert.ToInt64(await insert.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture);
+            foreach (var concept in claim.Concepts)
+            {
+                await using var link = new SqlCommand("""
+                    INSERT INTO knowledge.ClaimConcept (ClaimId, ConceptId, Confidence, LinkedBy)
+                    VALUES (@claimId, @conceptId, @confidence, N'Model');
+                    """, con, tx) { CommandTimeout = 120 };
+                link.Parameters.Add("@claimId", SqlDbType.BigInt).Value = claimId;
+                link.Parameters.Add("@conceptId", SqlDbType.BigInt).Value = conceptIds[concept.Slug];
+                DecimalConfidence(link, claim.Confidence!.Value);
+                await link.ExecuteNonQueryAsync(ct);
+            }
+        }
+        // Stamp every listed passage, including empty/rejected claim lists, in bounded parameter batches.
+        foreach (var batch in file.Passages.Chunk(500))
+        {
+            await using var stamp = new SqlCommand { Connection = con, Transaction = tx, CommandTimeout = 120 };
+            var ids = batch.Select((passage, i) =>
+            {
+                var name = "@p" + i.ToString(CultureInfo.InvariantCulture);
+                stamp.Parameters.Add(name, SqlDbType.BigInt).Value = passage.Id;
+                return name;
+            });
+            stamp.CommandText = """
+                UPDATE knowledge.Passage SET ClaimsExtractedAtUtc = sysdatetimeoffset(), ClaimsExtractedBy = @writer
+                WHERE SourceId = @sourceId AND Id IN (
+                """ + string.Join(",", ids) + ");";
+            Text(stamp, "@writer", 100, file.WrittenBy);
+            stamp.Parameters.Add("@sourceId", SqlDbType.BigInt).Value = file.SourceId;
+            await stamp.ExecuteNonQueryAsync(ct);
+        }
+        await using (var audit = new SqlCommand("""
+            INSERT INTO knowledge.ClaimImport
+                (SourceId, FileName, FileSha256, ImportedBy, PassagesCovered, ClaimsWritten, ClaimsRejected, Forced)
+            VALUES (@sourceId, @fileName, @sha, @by, @covered, @written, @rejected, @forced);
+            """, con, tx) { CommandTimeout = 120 })
+        {
+            audit.Parameters.Add("@sourceId", SqlDbType.BigInt).Value = file.SourceId;
+            Text(audit, "@fileName", 260, file.FileName); Text(audit, "@by", 100, by);
+            audit.Parameters.Add("@sha", SqlDbType.Char, 64).Value = file.FileSha256;
+            audit.Parameters.Add("@covered", SqlDbType.Int).Value = file.Passages.Count;
+            audit.Parameters.Add("@written", SqlDbType.Int).Value = plan.Validation.Accepted.Count;
+            audit.Parameters.Add("@rejected", SqlDbType.Int).Value = plan.Validation.Rejected.Count;
+            audit.Parameters.Add("@forced", SqlDbType.Bit).Value = force;
+            await audit.ExecuteNonQueryAsync(ct);
+        }
+        await tx.CommitAsync(ct);
+        return (file.Passages.Count, plan.Validation.Accepted.Count, plan.Validation.Rejected.Count);
+    }
+
+    private static void DecimalConfidence(SqlCommand cmd, decimal confidence)
+    {
+        var parameter = cmd.Parameters.Add("@confidence", SqlDbType.Decimal);
+        parameter.Precision = 4; parameter.Scale = 3; parameter.Value = confidence;
     }
 
     private async Task<SqlConnection> OpenAsync(CancellationToken ct)

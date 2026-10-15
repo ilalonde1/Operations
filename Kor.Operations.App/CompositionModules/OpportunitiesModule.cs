@@ -267,6 +267,8 @@ internal static class OpportunitiesModule
         services.AddSingleton<IBdUiOpenStore>(_ => new SqlBdUiOpenStore(options.OpportunitiesDb));
         services.AddSingleton<IBdDirectorStore>(_ => new SqlBdDirectorStore(options.OpportunitiesDb));
         services.AddSingleton<IBdDirectorLedgerStore>(_ => new SqlBdDirectorLedgerStore(options.OpportunitiesDb));
+        services.AddSingleton<Kor.Opportunities.Data.Knowledge.IKnowledgeClaimStore>(_ =>
+            new Kor.Opportunities.Data.Knowledge.SqlKnowledgeClaimStore(options.OpportunitiesDb));
 
         // Pursuit attachments (Ian, 2026-07-08): DB index + LAN-share bytes.
         services.AddSingleton<IPursuitFileStore>(_ => new SqlPursuitFileStore(options.OpportunitiesDb));

@@ -6,12 +6,16 @@
 // embed [--source <id>]       repair NULL embeddings, in batches of 500
 // search "<question>" [--take 10] [--per-source 2]
 // list
+// export <sourceId|all> --to <folder>       one JSON document per source
+// claims import <file.json|folder> [--force] [--by <name>]
 // --db <connection string>   default: env KOR_OPPORTUNITIES_OPPORTUNITIESDB
 // --dry reads/chunks only, without a database connection or embedding call.
 
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Json;
 using Kor.Opportunities.Knowledge;
+using Kor.Opportunities.Knowledge.Claims;
 using Kor.Opportunities.Knowledge.Embedding;
 using Kor.Opportunities.Knowledge.Readers;
 using Kor.Opportunities.Knowledge.Search;
@@ -32,7 +36,7 @@ internal static class KnowledgeCli
             var options = Arguments.Parse(args);
             if (options.Flag("--help")) { Usage(); return 0; }
             var verb = options.Positionals.FirstOrDefault()?.ToLowerInvariant();
-            if (verb is not ("ingest" or "embed" or "search" or "list")) { Usage(); return 2; }
+            if (verb is not ("ingest" or "embed" or "search" or "list" or "export" or "claims")) { Usage(); return 2; }
             options.ValidateFor(verb);
             var ct = cancellation.Token;
             var dry = verb == "ingest" && options.Flag("--dry");
@@ -47,6 +51,9 @@ internal static class KnowledgeCli
                 catch (ArgumentException) { throw new ArgumentException("Invalid database connection string."); }
                 store = new SqlKnowledgeStore(connection);
             }
+            // These verbs neither construct an embedder nor invoke a model.
+            if (verb == "export") return await ExportAsync(options, store!, ct);
+            if (verb == "claims") return await ImportClaimsAsync(options, store!, ct);
             using var embedder = new KnowledgeEmbedder(); // ONNX loads lazily; dry/list never load it.
             switch (verb)
             {
@@ -183,6 +190,75 @@ internal static class KnowledgeCli
         return 0;
     }
 
+    private static async Task<int> ExportAsync(Arguments args, IKnowledgeStore store, CancellationToken ct)
+    {
+        var folder = Path.GetFullPath(args.Value("--to")!);
+        var selector = args.Positionals[1];
+        var ids = selector.Equals("all", StringComparison.OrdinalIgnoreCase)
+            ? (await store.ListSourcesAsync(ct)).Select(s => s.Id).Order().ToArray()
+            : new[] { long.Parse(selector, CultureInfo.InvariantCulture) };
+        Directory.CreateDirectory(folder);
+        var ok = 0;
+        foreach (var id in ids)
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                var file = await store.ExportAsync(id, ct);
+                var slug = ClaimValidation.NormalizeSlug(file.Title);
+                if (slug.Length == 0) slug = "book";
+                if (slug.Length > 100) slug = slug[..100].TrimEnd('-');
+                var name = $"{id.ToString(CultureInfo.InvariantCulture)}-{slug}.json";
+                await File.WriteAllBytesAsync(Path.Combine(folder, name), JsonSerializer.SerializeToUtf8Bytes(file, ClaimFile.JsonOptions), ct);
+                ok++;
+                Console.WriteLine($"OK {file.Passages.Count} passages exported  {name}");
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { Console.WriteLine($"FAIL source {id}  {Reason(ex)}"); }
+        }
+        Console.WriteLine($"{ok} of {ids.Length} sources exported");
+        return ok == ids.Length ? 0 : 1;
+    }
+
+    private static async Task<int> ImportClaimsAsync(Arguments args, IKnowledgeStore store, CancellationToken ct)
+    {
+        var path = Path.GetFullPath(args.Positionals[2]);
+        var isFolder = Directory.Exists(path);
+        if (!isFolder && !File.Exists(path)) throw new FileNotFoundException("Claims file or folder was not found.");
+        var files = isFolder
+            ? Directory.EnumerateFiles(path, "*.claims.json", new EnumerationOptions
+                { RecurseSubdirectories = false, MatchCasing = MatchCasing.CaseInsensitive, IgnoreInaccessible = false })
+                .OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase).ThenBy(f => f, StringComparer.Ordinal).ToArray()
+            : new[] { path };
+        var by = args.Value("--by") ?? Environment.UserName;
+        var ok = 0;
+        var claims = 0;
+        var rejected = 0;
+        foreach (var input in files)
+        {
+            ct.ThrowIfCancellationRequested();
+            ClaimFile? file = null;
+            try
+            {
+                file = ClaimFile.Parse(await File.ReadAllBytesAsync(input, ct), Path.GetFileName(input));
+                var result = await store.ImportClaimsAsync(file, args.Flag("--force"), by, ct);
+                ok++;
+                claims += result.ClaimsWritten;
+                Console.WriteLine($"OK {result.ClaimsWritten} accepted / {result.ClaimsRejected} rejected / {result.PassagesCovered} passages covered  {OneLine(Path.GetFileName(input))}");
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { Console.WriteLine($"FAIL {OneLine(Path.GetFileName(input))}  {Reason(ex)}"); }
+            if (file is not null)
+            {
+                rejected += file.Rejections.Count;
+                foreach (var reject in file.Rejections)
+                    Console.WriteLine($"  REJECT passage {reject.PassageId}, claim {reject.ClaimNumber}: {OneLine(reject.Reason)}");
+            }
+        }
+        Console.WriteLine($"{ok} of {files.Length} files imported, {claims} claims, {rejected} rejected");
+        return ok == files.Length ? 0 : 1;
+    }
+
     private static string OneLine(string value) => value.Replace('\r', ' ').Replace('\n', ' ').Replace('\t', ' ');
     private static string Reason(Exception ex) => ex is SqlException sql
         ? $"Database operation failed (SQL {sql.Number})."
@@ -193,6 +269,8 @@ internal static class KnowledgeCli
         BdKnowledgeIngest embed [--source <id>]
         BdKnowledgeIngest search "<question>" [--take 10] [--per-source 2]
         BdKnowledgeIngest list
+        BdKnowledgeIngest export <sourceId|all> --to <folder>
+        BdKnowledgeIngest claims import <file.json|folder> [--force] [--by <name>]
         --db <connection string> defaults to env KOR_OPPORTUNITIES_OPPORTUNITIESDB
         """);
 
@@ -200,7 +278,7 @@ internal static class KnowledgeCli
     {
         private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help" };
         private static readonly HashSet<string> Values = new(StringComparer.Ordinal)
-            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source" };
+            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to" };
         private readonly Dictionary<string, string?> _options = new(StringComparer.Ordinal);
         internal List<string> Positionals { get; } = new();
         internal string? Value(string name) => _options.GetValueOrDefault(name);
@@ -239,13 +317,24 @@ internal static class KnowledgeCli
         }
         internal void ValidateFor(string verb)
         {
-            var expected = verb is "ingest" or "search" ? 2 : 1;
+            var expected = verb == "claims" ? 3 : verb is "ingest" or "search" or "export" ? 2 : 1;
             if (Positionals.Count != expected) throw new ArgumentException($"Wrong number of arguments for {verb}; use --help.");
+            if (verb == "claims" && !Positionals[1].Equals("import", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Use claims import <file.json|folder>.");
+            if (verb == "export")
+            {
+                if (string.IsNullOrWhiteSpace(Value("--to"))) throw new ArgumentException("export requires --to <folder>.");
+                if (!Positionals[1].Equals("all", StringComparison.OrdinalIgnoreCase)
+                    && (!long.TryParse(Positionals[1], NumberStyles.None, CultureInfo.InvariantCulture, out var id) || id <= 0))
+                    throw new ArgumentException("export requires a positive source ID or all.");
+            }
             var allowed = verb switch
             {
                 "ingest" => new[] { "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--force", "--dry" },
                 "embed" => new[] { "--source" },
                 "search" => new[] { "--take", "--per-source" },
+                "export" => new[] { "--to" },
+                "claims" => new[] { "--force", "--by" },
                 _ => Array.Empty<string>(),
             };
             foreach (var key in _options.Keys)

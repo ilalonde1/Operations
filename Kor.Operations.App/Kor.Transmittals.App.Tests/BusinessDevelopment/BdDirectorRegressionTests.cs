@@ -14,6 +14,7 @@ using Kor.Operations.App.Services;
 using Kor.Operations.App.Crm;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Crm;
+using Kor.Opportunities.Data.Knowledge;
 using Moq;
 using Xunit;
 using Match = System.Text.RegularExpressions.Match;
@@ -243,12 +244,15 @@ public sealed class BdDirectorRegressionTests
         internal readonly Mock<IBdAttributionStore> Attribution = new();
         internal readonly Mock<IBdDirectorLedgerStore> Ledger = new();
         internal readonly Mock<IDeltekClientContextService> Deltek = new();
+        internal readonly Mock<IKnowledgeClaimStore> Claims = new();
         internal readonly List<BdDirectorPerson> People = new();
         internal readonly List<PursuitOverwatchRow> Rows = new();
         internal readonly List<CrmEngagement> Records = new();
 
         internal Fixture()
         {
+            Claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeSourceSummary>());
+            Claims.Setup(s => s.ListConceptsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeConceptRow>());
             Ledger.Setup(s => s.ListTargetsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdTarget>());
             Ledger.Setup(s => s.ListAsksAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdAsk>());
             Ledger.Setup(s => s.ListDecisionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDecision>());
@@ -264,7 +268,7 @@ public sealed class BdDirectorRegressionTests
                 .ReturnsAsync(new BdAttributionSummary(0, 0m, 0, 0, 0, Array.Empty<AttributionSourceRow>(), Array.Empty<AttributionOwnerRow>()));
         }
 
-        internal BdDirectorViewModel Create() => new(DirectorStore.Object, Pursuits.Object, RecordStore.Object, Attribution.Object, Ledger.Object, Deltek.Object);
+        internal BdDirectorViewModel Create() => new(DirectorStore.Object, Pursuits.Object, RecordStore.Object, Attribution.Object, Ledger.Object, Deltek.Object, Claims.Object);
     }
 
     private static void Contains(string source, string expected) => Assert.True(source.Contains(expected, StringComparison.Ordinal),

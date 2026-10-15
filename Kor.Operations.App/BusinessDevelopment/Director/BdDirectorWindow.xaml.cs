@@ -187,6 +187,28 @@ public partial class BdDirectorWindow : Window
         finally { _ledgerBusy = false; }
     }
 
+    private async void SampleClaims_Click(object sender, RoutedEventArgs e)
+        => await _vm.SampleKnowledgeAsync().ConfigureAwait(true);
+
+    private void ClaimsByBook_Click(object sender, RoutedEventArgs e) => _vm.SelectedConcept = null;
+
+    private async void KeepClaim_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedClaim is not { CanReview: true } row) return;
+        await LedgerActionAsync(ct => _vm.KeepClaimAsync(row, _actor, ct)).ConfigureAwait(true);
+    }
+
+    private async void RetireClaim_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedClaim is not { CanReview: true } row) return;
+        await LedgerActionAsync(async ct =>
+        {
+            var dialog = new NoteDialog("Retire claim", "Why does this claim not hold for KOR? A reason is required (1–200 characters).", 200, required: true) { Owner = this };
+            if (dialog.ShowDialog() == true)
+                await _vm.RetireClaimAsync(row, _actor, dialog.Note!, ct).ConfigureAwait(true);
+        }).ConfigureAwait(true);
+    }
+
     private void OpenDossier_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.SelectedAccount is not { } row) return;

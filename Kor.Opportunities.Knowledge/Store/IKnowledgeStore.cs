@@ -1,3 +1,5 @@
+using Kor.Opportunities.Knowledge.Claims;
+
 namespace Kor.Opportunities.Knowledge.Store;
 
 public sealed record KnowledgeSource(long Id, string Kind, string Title, string? Author, short? Year,
@@ -8,6 +10,9 @@ public sealed record KnowledgeHit(KnowledgePassage Passage, string SourceTitle, 
 
 public interface IKnowledgeStore
 {
+    Task<ClaimFile> ExportAsync(long sourceId, CancellationToken ct = default);
+    Task<(int PassagesCovered, int ClaimsWritten, int ClaimsRejected)> ImportClaimsAsync(
+        ClaimFile file, bool force, string by, CancellationToken ct = default);
     Task<KnowledgeSource?> FindBySha256Async(string sha256, CancellationToken ct = default);
     Task<IReadOnlyList<KnowledgeSource>> ListSourcesAsync(CancellationToken ct = default);
     Task<long> IngestAsync(KnowledgeSource source,

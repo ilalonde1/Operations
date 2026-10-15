@@ -10,6 +10,7 @@ using Kor.Operations.App.Crm;
 using Kor.Operations.Core;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Crm;
+using Kor.Opportunities.Data.Knowledge;
 using Serilog;
 
 namespace Kor.Operations.App.BusinessDevelopment.Director;
@@ -22,6 +23,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public const string AccountsCaption = "The firm's Deltek clients, most KOR projects first. Counts are Deltek records, proposals included, unless the row says wins. Select an account to read its Deltek summary.";
     public const string AsksCaption = "One bounded thing, for one person, by a date. Done and declined asks stay on the record.";
     public const string DecisionsCaption = "What was decided, why, and what was expected. A decision is never edited; it is scored Right, Wrong or Unclear when its review date comes.";
+    public const string KnowledgeCaption = "What the books assert, one sentence each, cited to the passage it rests on. Keep what holds for KOR; retire what does not. Nothing is deleted.";
 
     private readonly IBdDirectorStore _director;
     private readonly IPursuitOverwatchStore _pursuits;
@@ -29,6 +31,15 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     private readonly IBdAttributionStore _attribution;
     private readonly IBdDirectorLedgerStore _ledger;
     private readonly IDeltekClientContextService _deltek;
+    private readonly IKnowledgeClaimStore _claims;
+    private readonly CancellationTokenSource _knowledgeLifetime = new();
+    private CancellationTokenSource? _claimsCts;
+    private CancellationTokenSource? _passageCts;
+    private BdKnowledgeSourceRow? _selectedBook;
+    private BdKnowledgeConceptRow? _selectedConcept;
+    private BdKnowledgeClaimRow? _selectedClaim;
+    private string _claimFilter = "Unreviewed";
+    private bool _sampleClaims;
     private CancellationTokenSource? _accountCts;
     private CancellationTokenSource? _asksCts;
     private BdDirectorAccountRow? _selectedAccount;
@@ -44,7 +55,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
 
     public BdDirectorViewModel(IBdDirectorStore director, IPursuitOverwatchStore pursuits,
         ICrmEngagementStore records, IBdAttributionStore attribution, IBdDirectorLedgerStore ledger,
-        IDeltekClientContextService deltek)
+        IDeltekClientContextService deltek, IKnowledgeClaimStore claims)
     {
         _director = director ?? throw new ArgumentNullException(nameof(director));
         _pursuits = pursuits ?? throw new ArgumentNullException(nameof(pursuits));
@@ -52,6 +63,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
         _attribution = attribution ?? throw new ArgumentNullException(nameof(attribution));
         _ledger = ledger ?? throw new ArgumentNullException(nameof(ledger));
         _deltek = deltek ?? throw new ArgumentNullException(nameof(deltek));
+        _claims = claims ?? throw new ArgumentNullException(nameof(claims));
     }
 
     public ObservableCollection<BdDirectorPersonRow> People { get; } = new();
@@ -63,6 +75,64 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public ObservableCollection<BdDirectorAccountRow> Accounts { get; } = new();
     public ObservableCollection<BdDirectorAskRow> Asks { get; } = new();
     public ObservableCollection<BdDirectorDecisionRow> Decisions { get; } = new();
+    public ObservableCollection<BdKnowledgeSourceRow> KnowledgeBooks { get; } = new();
+    public ObservableCollection<BdKnowledgeClaimRow> KnowledgeClaims { get; } = new();
+    public ObservableCollection<BdKnowledgeConceptRow> KnowledgeConcepts { get; } = new();
+    public IReadOnlyList<string> ClaimFilters { get; } = new[] { "Unreviewed", "Kept", "Retired", "All" };
+    public Task ClaimsLoadTask { get; private set; } = Task.CompletedTask;
+    public Task PassageLoadTask { get; private set; } = Task.CompletedTask;
+    public KnowledgePassageText? SelectedPassage { get; private set; }
+    public string PassageMessage { get; private set; } = "Select a claim to read its passage.";
+    public string ClaimsCaption => SelectedConcept is { } concept
+        ? $"Concept · {concept.Concept.Name} · {concept.Concept.Claims} claims from {concept.Concept.Sources} books"
+        : SelectedBook is { } book ? $"Book · {book.Source.Title} · {(_sampleClaims ? "Sample of unreviewed claims" : ClaimFilter)}"
+        : "Select a book or concept to read its claims.";
+    public string KnowledgeMessage { get; private set; } = "";
+    public BdKnowledgeSourceRow? SelectedBook
+    {
+        get => _selectedBook;
+        set
+        {
+            if (!SetField(ref _selectedBook, value)) return;
+            _selectedConcept = null;
+            OnPropertyChanged(nameof(SelectedConcept));
+            _sampleClaims = false;
+            ClaimsLoadTask = LoadKnowledgeClaimsAsync();
+        }
+    }
+    public BdKnowledgeConceptRow? SelectedConcept
+    {
+        get => _selectedConcept;
+        set
+        {
+            if (!SetField(ref _selectedConcept, value)) return;
+            _sampleClaims = false;
+            ClaimsLoadTask = LoadKnowledgeClaimsAsync();
+        }
+    }
+    public string ClaimFilter
+    {
+        get => _claimFilter;
+        set
+        {
+            if (!ClaimFilters.Contains(value) || !SetField(ref _claimFilter, value)) return;
+            _selectedConcept = null;
+            OnPropertyChanged(nameof(SelectedConcept));
+            _sampleClaims = false;
+            ClaimsLoadTask = LoadKnowledgeClaimsAsync();
+        }
+    }
+    public BdKnowledgeClaimRow? SelectedClaim
+    {
+        get => _selectedClaim;
+        set
+        {
+            if (!SetField(ref _selectedClaim, value)) return;
+            _passageCts?.Cancel(); _passageCts?.Dispose();
+            _passageCts = CancellationTokenSource.CreateLinkedTokenSource(_knowledgeLifetime.Token);
+            PassageLoadTask = LoadPassageAsync(value, _passageCts.Token);
+        }
+    }
     public IReadOnlyList<string> AskStatuses { get; } = new[] { "Open", "Done", "Declined", "Withdrawn", "All" };
     public string FeeCoverage { get; private set; } = "";
     public BdDirectorTargetRow? SelectedTarget { get => _selectedTarget; set => SetField(ref _selectedTarget, value); }
@@ -193,6 +263,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
             await LoadAccountsAsync(ct).ConfigureAwait(true);
             await LoadAsksAsync(ct).ConfigureAwait(true);
             await LoadDecisionsAsync(ct).ConfigureAwait(true);
+            await LoadKnowledgeAsync(ct).ConfigureAwait(true);
             AsOf = DateTimeOffset.UtcNow;
             OnPropertyChanged(nameof(AsOf));
             StatusMessage = "Up to date.";
@@ -395,8 +466,135 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
         }
     }
 
+    public async Task LoadKnowledgeAsync(CancellationToken ct)
+    {
+        var booksTask = _claims.ListSourcesAsync(ct);
+        var conceptsTask = _claims.ListConceptsAsync(ct);
+        await Task.WhenAll(booksTask, conceptsTask).ConfigureAwait(true);
+        ct.ThrowIfCancellationRequested();
+        var bookId = SelectedBook?.Source.Id;
+        var conceptId = SelectedConcept?.Concept.Id;
+        // Set backing fields during a whole-tab refresh; start one list read afterwards.
+        KnowledgeBooks.Clear();
+        foreach (var book in await booksTask.ConfigureAwait(true)) KnowledgeBooks.Add(new BdKnowledgeSourceRow(book));
+        KnowledgeConcepts.Clear();
+        foreach (var concept in await conceptsTask.ConfigureAwait(true)) KnowledgeConcepts.Add(new BdKnowledgeConceptRow(concept));
+        _selectedBook = KnowledgeBooks.FirstOrDefault(b => b.Source.Id == bookId) ?? KnowledgeBooks.FirstOrDefault();
+        _selectedConcept = KnowledgeConcepts.FirstOrDefault(c => c.Concept.Id == conceptId);
+        OnPropertyChanged(nameof(SelectedBook));
+        OnPropertyChanged(nameof(SelectedConcept));
+        ClaimsLoadTask = LoadKnowledgeClaimsAsync();
+        await ClaimsLoadTask.ConfigureAwait(true);
+    }
+
+    public Task SampleKnowledgeAsync()
+    {
+        _selectedConcept = null;
+        OnPropertyChanged(nameof(SelectedConcept));
+        _claimFilter = "Unreviewed";
+        OnPropertyChanged(nameof(ClaimFilter));
+        _sampleClaims = true;
+        return ClaimsLoadTask = LoadKnowledgeClaimsAsync();
+    }
+
+    private async Task LoadKnowledgeClaimsAsync()
+    {
+        _claimsCts?.Cancel(); _claimsCts?.Dispose();
+        _claimsCts = CancellationTokenSource.CreateLinkedTokenSource(_knowledgeLifetime.Token);
+        var ct = _claimsCts.Token;
+        var book = SelectedBook;
+        var concept = SelectedConcept;
+        var sample = _sampleClaims;
+        SelectedClaim = null;
+        KnowledgeClaims.Clear();
+        KnowledgeMessage = "";
+        OnPropertyChanged(nameof(ClaimsCaption));
+        OnPropertyChanged(nameof(KnowledgeMessage));
+        if (book is null && concept is null) return;
+        try
+        {
+            var rows = concept is not null
+                ? await _claims.ListClaimsByConceptAsync(concept.Concept.Id, 1000, ct).ConfigureAwait(true)
+                : sample ? await _claims.SampleUnreviewedAsync(book!.Source.Id, 20, ct).ConfigureAwait(true)
+                : await _claims.ListClaimsAsync(book!.Source.Id, ClaimFilter, 1000, ct).ConfigureAwait(true);
+            ct.ThrowIfCancellationRequested();
+            foreach (var row in rows) KnowledgeClaims.Add(new BdKnowledgeClaimRow(row));
+            KnowledgeMessage = rows.Count == 1000 ? "Showing the first 1,000 claims. Choose a filter or sample to narrow the list."
+                : rows.Count == 0 ? "No claims in this view." : $"{rows.Count} claims shown.";
+            OnPropertyChanged(nameof(KnowledgeMessage));
+            SelectedClaim = KnowledgeClaims.FirstOrDefault();
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { /* New selection or window closure. */ }
+        catch (Exception ex)
+        {
+            if (ct.IsCancellationRequested) return;
+            Log.Warning(ex, "BD Director claims could not be read.");
+            KnowledgeMessage = "Could not read claims. Try Refresh again.";
+            OnPropertyChanged(nameof(KnowledgeMessage));
+        }
+    }
+
+    private async Task LoadPassageAsync(BdKnowledgeClaimRow? row, CancellationToken ct)
+    {
+        SelectedPassage = null;
+        PassageMessage = row is null ? "Select a claim to read its passage." : "Reading passage…";
+        NotifyPassage();
+        if (row is null) return;
+        try
+        {
+            var passage = await _claims.GetPassageAsync(row.Claim.PassageId, ct).ConfigureAwait(true);
+            if (ct.IsCancellationRequested || !ReferenceEquals(row, SelectedClaim)) return;
+            SelectedPassage = passage;
+            PassageMessage = passage is null ? "The passage could not be read. Try Refresh again." : "";
+            NotifyPassage();
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { /* New selection or window closure. */ }
+        catch (Exception ex)
+        {
+            if (ct.IsCancellationRequested || !ReferenceEquals(row, SelectedClaim)) return;
+            Log.Warning(ex, "BD Director passage could not be read.");
+            PassageMessage = "The passage could not be read. Try Refresh again.";
+            NotifyPassage();
+        }
+    }
+
+    private void NotifyPassage()
+    {
+        OnPropertyChanged(nameof(SelectedPassage));
+        OnPropertyChanged(nameof(PassageMessage));
+    }
+
+    public async Task KeepClaimAsync(BdKnowledgeClaimRow row, string actor, CancellationToken ct)
+    {
+        if (!row.CanReview) return;
+        await _claims.KeepAsync(row.Claim.Id, actor, ct).ConfigureAwait(true);
+        await RefreshAfterWriteAsync(() => ReloadKnowledgeReviewAsync(row.Claim.SourceId, ct), "Claim kept.").ConfigureAwait(true);
+    }
+
+    public async Task RetireClaimAsync(BdKnowledgeClaimRow row, string actor, string reason, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length > 200) throw new ArgumentException("Give a reason of 1–200 characters.", nameof(reason));
+        if (!row.CanReview) return;
+        await _claims.RetireAsync(row.Claim.Id, actor, reason.Trim(), ct).ConfigureAwait(true);
+        await RefreshAfterWriteAsync(() => ReloadKnowledgeReviewAsync(row.Claim.SourceId, ct), "Claim retired.").ConfigureAwait(true);
+    }
+
+    private async Task ReloadKnowledgeReviewAsync(long sourceId, CancellationToken ct)
+    {
+        var books = await _claims.ListSourcesAsync(ct).ConfigureAwait(true);
+        ct.ThrowIfCancellationRequested();
+        var updated = books.FirstOrDefault(b => b.Id == sourceId);
+        if (updated is not null) KnowledgeBooks.FirstOrDefault(b => b.Source.Id == sourceId)?.Update(updated);
+        ClaimsLoadTask = LoadKnowledgeClaimsAsync();
+        await ClaimsLoadTask.ConfigureAwait(true);
+    }
+
     public void Dispose()
     {
+        _knowledgeLifetime.Cancel();
+        _claimsCts?.Cancel(); _claimsCts?.Dispose(); _claimsCts = null;
+        _passageCts?.Cancel(); _passageCts?.Dispose(); _passageCts = null;
+        _knowledgeLifetime.Dispose();
         _accountCts?.Cancel(); _accountCts?.Dispose(); _accountCts = null;
         _asksCts?.Cancel(); _asksCts?.Dispose(); _asksCts = null;
     }

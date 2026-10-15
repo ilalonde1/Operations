@@ -12,6 +12,7 @@ using Kor.Operations.App.BusinessDevelopment.Workspace;
 using Kor.Operations.App.Crm;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Crm;
+using Kor.Opportunities.Data.Knowledge;
 using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Data.Opportunities;
@@ -255,13 +256,13 @@ public sealed class BdDirectorLedgerRegressionTests
     }
 
     [Fact]
-    public void Window_HasTheFiveTabs_InOrder_AndPlainWords()
+    public void Window_HasTheSixTabs_InOrder_AndPlainWords()
     {
         var xaml = Source(DirectorFolder + "BdDirectorWindow.xaml");
         var headers = XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "TabItem").Select(e => (string?)e.Attribute("Header")).ToArray();
-        Check(headers.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions" }),
-            "five tabs in the specified order", string.Join(", ", headers));
-        foreach (var caption in new[] { "Number", "People", "Funnel", "Accounts", "Asks", "Decisions" })
+        Check(headers.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge" }),
+            "six tabs in the specified order", string.Join(", ", headers));
+        foreach (var caption in new[] { "Number", "People", "Funnel", "Accounts", "Asks", "Decisions", "Knowledge" })
             Contains(xaml, "{x:Static director:BdDirectorViewModel." + caption + "Caption}");
         foreach (var file in Directory.EnumerateFiles(Path.Combine(RepoRoot(), DirectorFolder)))
         {
@@ -314,10 +315,13 @@ public sealed class BdDirectorLedgerRegressionTests
         internal readonly Mock<IBdDirectorLedgerStore> Ledger = new();
         internal readonly Mock<ICrmEngagementStore> Records = new();
         internal readonly Mock<IDeltekClientContextService> Deltek = new();
+        internal readonly Mock<IKnowledgeClaimStore> Claims = new();
         internal readonly Mock<IPursuitOverwatchStore> Pursuits = new();
         internal readonly Mock<IBdAttributionStore> Attribution = new();
         internal Fixture()
         {
+            Claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeSourceSummary>());
+            Claims.Setup(s => s.ListConceptsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeConceptRow>());
             Reads.Setup(s => s.GetPeopleAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDirectorPerson>());
             Reads.Setup(s => s.GetFunnelAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new BdDirectorFunnel(new Dictionary<int, double>(), Array.Empty<BdDirectorUndecidedPursuit>(), 0, 0, 0, 0));
             Reads.Setup(s => s.GetTargetActualsAsync(It.IsAny<IReadOnlyList<BdTargetKey>>(), It.IsAny<CancellationToken>())).ReturnsAsync(new BdTargetActuals(new Dictionary<BdTargetKey, decimal>(), 0, 0));
@@ -333,7 +337,7 @@ public sealed class BdDirectorLedgerRegressionTests
             Pursuits.Setup(s => s.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<PursuitOverwatchRow>());
             Attribution.Setup(s => s.GetSummaryAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new BdAttributionSummary(0, 0, 0, 0, 0, Array.Empty<AttributionSourceRow>(), Array.Empty<AttributionOwnerRow>()));
         }
-        internal BdDirectorViewModel Create() => new(Reads.Object, Pursuits.Object, Records.Object, Attribution.Object, Ledger.Object, Deltek.Object);
+        internal BdDirectorViewModel Create() => new(Reads.Object, Pursuits.Object, Records.Object, Attribution.Object, Ledger.Object, Deltek.Object, Claims.Object);
     }
 
     private static void CheckValues(string sql, string column, IEnumerable<string> expected)
