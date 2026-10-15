@@ -31,6 +31,12 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_prior_art_guard.py\"",
             "timeout": 20,
             "statusMessage": "Recording the search"
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_api_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Checking the command does not spend the Anthropic API"
           }
         ]
       },
@@ -42,6 +48,23 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_prior_art_guard.py\"",
             "timeout": 20,
             "statusMessage": "Checking the prior art was looked for"
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_api_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Checking no Anthropic API call enters the BD work"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_api_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Checking no Anthropic API call enters the BD work"
           }
         ]
       },
@@ -104,6 +127,12 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_prior_art_guard.py\"",
             "timeout": 20,
             "statusMessage": "Recording the search"
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_api_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Checking the command does not spend the Anthropic API"
           }
         ]
       }

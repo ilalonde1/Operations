@@ -239,6 +239,29 @@ the command sets `pipefail`. Prefix with `set -o pipefail &&`, read `${PIPESTATU
 not pipe. And after any build, prove the binary carries the change before trusting what runs on
 it: .NET string literals are UTF-16 in the assembly, so grep for the UTF-16 bytes, not ASCII.
 
+## 14. A decision Ian has made is not re-decided inside a brief.
+
+No Anthropic API in the BD Director / knowledge work. Extraction, relations, the weekly brief,
+anything that "asks Claude": the platform exports the inputs to a file, Claude writes the output in
+its own session, a CLI verb imports it. Nothing on APP01 calls api.anthropic.com for this work, and
+Claude never tells Ian to buy credits.
+
+What this cost: on 2026-10-14 the first 9d draft put claim extraction on the MCP server through the
+API. Ian: "Why would we EVER use the API for this?" It was rewritten. The next day the 9e brief put
+the Director's weekly brief on the server through `AskService` at runtime — on the reasoning that
+`/ask` and the COO card already did — as a decision line inside the brief, where it would not be
+challenged. It shipped, was fired five times, and Ian was told to buy credits. "WHY THE FUCK ARE YOU
+USING THE API? WE TALKED ABOUT THIS." "You KEEP going back to it." "This is nearly constant fighting
+against you to get things done."
+
+The general fault: a decision the user has already made, re-decided by drawing a finer line than he
+drew, and written into a document instead of asked in chat. The line is his, not Claude's. Any
+design that would call the API stops, says so in one sentence in chat, and proposes the in-session
+equivalent. So it is a hook now: `tools/claude_api_guard.py` denies a Write or Edit that carries an
+API marker into `docs/codex/` or the Director, Knowledge or CLI code paths, and denies any command
+that fires `/ask`, a `run-now`, or api.anthropic.com. Only a user message containing
+`IAN-APPROVED-API-USE` lifts it. The existing `/ask` and COO card are Ian's call, not precedent.
+
 ## Environment facts worth not rediscovering
 
 - Rules live in `KorStandards` on `KOR-APP01\SQLEXPRESS`, schema `analysis`. A missing rule stops a
