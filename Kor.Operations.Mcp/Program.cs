@@ -123,6 +123,32 @@ public static class Program
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BdPursuitListTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BdCallSheetTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BdActionStatusTool>();
+        builder.Services.AddSingleton<Kor.Opportunities.Knowledge.Embedding.KnowledgeEmbedder>();
+        builder.Services.AddSingleton<Kor.Opportunities.Knowledge.Store.IKnowledgeStore>(sp =>
+        {
+            var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<McpOptions>>().Value;
+            var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(options.SqlConnectionString) { InitialCatalog = "KorOpportunitiesDb" };
+            return new Kor.Opportunities.Knowledge.Store.SqlKnowledgeStore(csb.ConnectionString);
+        });
+        // A fresh search instance per brief request/job snapshots newly embedded claims.
+        builder.Services.AddTransient<Kor.Opportunities.Knowledge.Search.KnowledgeSearch>(sp => new(
+            sp.GetRequiredService<Kor.Opportunities.Knowledge.Store.IKnowledgeStore>(),
+            sp.GetRequiredService<Kor.Opportunities.Knowledge.Embedding.KnowledgeEmbedder>()));
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Director.DirectorFacts>(sp =>
+        {
+            var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<McpOptions>>().Value;
+            var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(options.SqlConnectionString) { InitialCatalog = "KorOpportunitiesDb" };
+            return new(new Kor.Opportunities.Data.Crm.SqlBdDirectorStore(csb.ConnectionString),
+                new Kor.Opportunities.Data.Crm.SqlBdDirectorLedgerStore(csb.ConnectionString),
+                new Kor.Opportunities.Data.MajorProjects.SqlBdDashboardStore(csb.ConnectionString));
+        });
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Director.DirectorBriefRepository>();
+        builder.Services.AddTransient<Kor.Operations.Mcp.Director.DirectorBriefGenerator>(sp => new(
+            sp.GetRequiredService<Kor.Operations.Mcp.Director.DirectorFacts>(),
+            sp.GetRequiredService<Kor.Opportunities.Knowledge.Search.KnowledgeSearch>(),
+            sp.GetRequiredService<AskService>(),
+            sp.GetRequiredService<Kor.Operations.Mcp.Director.DirectorBriefRepository>(),
+            sp.GetRequiredService<ILogger<Kor.Operations.Mcp.Director.DirectorBriefGenerator>>()));
 
         // QueryKorDataTool is registered explicitly because it has constructor
         // dependencies and is also called directly from AskService — DI gets
@@ -307,6 +333,25 @@ public static class Program
             var daysSinceMonday = ((int)today.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
             var weekOf = today.AddDays(-daysSinceMonday);
             await gen.GenerateForWeekAsync(weekOf, ct).ConfigureAwait(false);
+            return Results.NoContent();
+        });
+
+        app.MapGet("/director-brief/latest", async (Kor.Operations.Mcp.Director.DirectorBriefRepository repo, CancellationToken ct) =>
+            Results.Ok(await repo.GetLatestWeekAsync(ct).ConfigureAwait(false)));
+        app.MapGet("/director-brief/history", async (int? weeks, Kor.Operations.Mcp.Director.DirectorBriefRepository repo, CancellationToken ct) =>
+            Results.Ok(await repo.GetHistoryAsync(weeks ?? 4, ct).ConfigureAwait(false)));
+        app.MapPost("/director-brief/{id:long}/acknowledge", async (long id, HttpContext http, Kor.Operations.Mcp.Director.DirectorBriefRepository repo, CancellationToken ct) =>
+        {
+            var actor = http.Items.TryGetValue("UserUpn", out var u) ? u as string : null;
+            await repo.AcknowledgeAsync(id, actor ?? "unknown", ct).ConfigureAwait(false);
+            return Results.NoContent();
+        });
+        app.MapPost("/director-brief/run-now", async (Kor.Operations.Mcp.Director.DirectorBriefGenerator generator, CancellationToken ct) =>
+        {
+            var pacific = TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time");
+            var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, pacific).Date;
+            var weekOf = today.AddDays(-(((int)today.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7));
+            await generator.GenerateForWeekAsync(weekOf, ct).ConfigureAwait(false);
             return Results.NoContent();
         });
 

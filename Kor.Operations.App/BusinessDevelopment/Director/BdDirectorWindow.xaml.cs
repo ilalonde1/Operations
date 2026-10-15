@@ -209,6 +209,21 @@ public partial class BdDirectorWindow : Window
         }).ConfigureAwait(true);
     }
 
+    private async void RunBrief_Click(object sender, RoutedEventArgs e)
+    {
+        try { await _vm.RunBriefAsync(_lifetime.Token).ConfigureAwait(true); }
+        catch (OperationCanceledException) { /* Window closed. */ }
+    }
+    private async void AcknowledgeBrief_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: BdDirectorBriefRow row })
+            await LedgerActionAsync(ct => _vm.AcknowledgeBriefAsync(row, ct)).ConfigureAwait(true);
+    }
+    private void OpenCitation_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: BdDirectorCitationRow row }) _vm.SelectedBriefCitation = row;
+    }
+
     private void OpenDossier_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.SelectedAccount is not { } row) return;

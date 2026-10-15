@@ -82,13 +82,13 @@ public sealed class BdDirectorKnowledgeRegressionTests
     }
 
     [Fact]
-    public void Window_HasSixTabs_KnowledgeLast_AndPlainWords()
+    public void Window_HasEightTabs_KnowledgeSixth_AndPlainWords()
     {
         var xaml = Source(Director + "BdDirectorWindow.xaml");
         var document = XDocument.Parse(xaml);
         var tabs = document.Descendants().Where(e => e.Name.LocalName == "TabItem").Select(e => (string?)e.Attribute("Header")).ToArray();
-        Check(tabs.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge" }),
-            "six ordered tabs with Knowledge last", string.Join(",", tabs));
+        Check(tabs.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week" }),
+            "eight ordered tabs with Knowledge sixth", string.Join(",", tabs));
         const string caption = "What the books assert, one sentence each, cited to the passage it rests on. Keep what holds for KOR; retire what does not. Nothing is deleted.";
         Check(BdDirectorViewModel.KnowledgeCaption == caption, "exact Knowledge caption", BdDirectorViewModel.KnowledgeCaption);
         Contains(xaml, "{x:Static director:BdDirectorViewModel.KnowledgeCaption}");
@@ -254,7 +254,8 @@ public sealed class BdDirectorKnowledgeRegressionTests
         internal BdDirectorViewModel Create() => new(new Mock<IBdDirectorStore>(MockBehavior.Strict).Object,
             new Mock<IPursuitOverwatchStore>(MockBehavior.Strict).Object, new Mock<ICrmEngagementStore>(MockBehavior.Strict).Object,
             new Mock<IBdAttributionStore>(MockBehavior.Strict).Object, new Mock<IBdDirectorLedgerStore>(MockBehavior.Strict).Object,
-            new Mock<IDeltekClientContextService>(MockBehavior.Strict).Object, Claims.Object);
+            new Mock<IDeltekClientContextService>(MockBehavior.Strict).Object, Claims.Object,
+            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief());
     }
 
     private static string WithoutComments(string source) => Regex.Replace(source, @"//[^\r\n]*|/\*.*?\*/", "", RegexOptions.Singleline);

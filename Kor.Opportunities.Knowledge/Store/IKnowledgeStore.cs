@@ -7,9 +7,16 @@ public sealed record KnowledgeSource(long Id, string Kind, string Title, string?
     DateTimeOffset IngestedAtUtc, string IngestedBy, int Claims);
 public sealed record KnowledgePassage(long Id, long SourceId, int Ordinal, string? Ref, string Text, int Tokens);
 public sealed record KnowledgeHit(KnowledgePassage Passage, string SourceTitle, float Score);
+public sealed record KnowledgeClaim(long Id, long SourceId, string SourceTitle, long PassageId, string Kind, string Statement, decimal Confidence);
+public sealed record KnowledgeClaimHit(long ClaimId, long SourceId, string SourceTitle, long PassageId, string Kind, string Statement, float Score);
 
 public interface IKnowledgeStore
 {
+    Task<IReadOnlyList<(long Id, string Statement)>> ListUnembeddedClaimsAsync(int take, CancellationToken ct = default);
+    Task SetClaimEmbeddingsAsync(IReadOnlyList<(long ClaimId, byte[] Embedding)> embeddings, string model, CancellationToken ct = default);
+    Task<IReadOnlyList<(long ClaimId, long SourceId, float[] Vector)>> LoadClaimVectorsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<KnowledgeClaim>> GetClaimsAsync(IReadOnlyList<long> ids, CancellationToken ct = default);
+    Task<(int Written, int Rejected)> ImportRelationsAsync(RelationFile file, string by, CancellationToken ct = default);
     Task<ClaimFile> ExportAsync(long sourceId, CancellationToken ct = default);
     Task<(int PassagesCovered, int ClaimsWritten, int ClaimsRejected)> ImportClaimsAsync(
         ClaimFile file, bool force, string by, CancellationToken ct = default);

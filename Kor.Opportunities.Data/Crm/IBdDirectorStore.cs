@@ -9,11 +9,14 @@ namespace Kor.Opportunities.Data.Crm;
 /// <summary>Read-only facts not already exposed by the pursuit and attribution stores.</summary>
 public interface IBdDirectorStore
 {
+    Task<IReadOnlyList<BdDirectorSignal>> GetRecentSignalsAsync(int days, int take, CancellationToken ct);
     Task<IReadOnlyList<BdDirectorPerson>> GetPeopleAsync(CancellationToken ct);
     Task<BdDirectorFunnel> GetFunnelAsync(CancellationToken ct);
     Task<BdTargetActuals> GetTargetActualsAsync(IReadOnlyList<BdTargetKey> keys, CancellationToken ct);
     Task<IReadOnlyList<BdDirectorAccount>> GetAccountsAsync(int take, CancellationToken ct);
 }
+
+public sealed record BdDirectorSignal(long OrgId, string Org, string Signal, string Subject, DateTimeOffset LastSeenAtUtc, int Corroborations);
 
 public sealed record BdDirectorPerson(
     string PersonKey,

@@ -29,6 +29,9 @@ WPF clients on the KOR LAN.
    ```
    Then run `Kor.Operations.Mcp\Sql\CreateAuditLog.sql` (idempotent — creates
    `Mcp` schema + `Mcp.AuditLog` table + indexes).
+   Also run `Kor.Operations.Mcp\Sql\CreateDirectorBriefTable.sql` in KorMcp for
+   the Director's weekly brief. Apply Opportunities migration 351 separately;
+   it grants the MCP login SELECT only on `knowledge`.
 
 2. **SQL login + linked-server mapping.** The MCP service connects with the
    login encoded in `Mcp:SqlConnectionString` in `appsettings.Production.json`.
@@ -81,6 +84,9 @@ dotnet publish "C:\VIsual Studio Projects\Operations\Kor.Operations.Mcp\Kor.Oper
     -c Release -r win-x64 --self-contained false -o $src
 
 # 2. Stop the service on KOR-APP01.
+# Before stopping, verify these publish assets exist: LocalEmbeddingsModel\bge-small-en-v1.5\model.onnx,
+# its vocab.txt, and the win-x64 ONNX runtime native (onnxruntime.dll).
+# If any is missing, fix publishing before copying the build to the server.
 sc.exe \\KOR-APP01 stop Kor.Operations.Mcp
 
 # 3. Snapshot the current install for rollback (dated _prev_<yyyymmdd_hhmmss>),

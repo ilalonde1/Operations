@@ -93,7 +93,7 @@ public sealed class BdScreensRenderTests
 
         Assert.True(thread.Join(TimeSpan.FromMinutes(2)), "Rendering the BD screens did not finish within two minutes.");
         Assert.True(failure is null, $"A BD screen failed to build or render: {failure}");
-        Assert.True(written >= 11, $"EXPECTED at least 11 renders; ACTUAL {written}");
+        Assert.True(written >= 13, $"EXPECTED at least 13 renders; ACTUAL {written}");
     }
 
     // ---- the dashboard: funnel, Closing soon, New RFPs, Priority Actions (collapsed) ----
@@ -350,7 +350,16 @@ public sealed class BdScreensRenderTests
         claims.Setup(s => s.GetPassageAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync((long id, CancellationToken ct) =>
             new KnowledgePassageText(id, "Managing the professional service firm", id == 101 ? "Illustrative passage A" : "Illustrative passage B",
                 "ILLUSTRATIVE RENDER FIXTURE — not a quotation or extracted passage.\n\nThis sample text shows how the reader can compare a claim with its source passage. The production view displays the full stored passage and its original reference."));
-        using var vm = new BdDirectorViewModel(director.Object, pursuits.Object, recordStore.Object, attribution.Object, ledger.Object, deltek.Object, claims.Object);
+        using var market = new DirectorMarketFixture();
+        market.SetupSignals(director);
+        claims.Setup(s => s.GetClaimAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync((long id, CancellationToken ct) =>
+            illustrativeClaims.Single(c => c.Id == id) with
+            {
+                RetiredAtUtc = id == 2 ? DateTimeOffset.UnixEpoch : null,
+                RetiredReason = id == 2 ? "Illustrative retirement reason." : null,
+            });
+        using var vm = new BdDirectorViewModel(director.Object, pursuits.Object, recordStore.Object, attribution.Object, ledger.Object, deltek.Object, claims.Object,
+            market.Dashboard.Object, market.Opportunities.Object, market.Brief);
         vm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
         Assert.True(vm.Live == 101 && vm.PeopleCount == 8 && vm.Outcomes == "No live pursuit has been decided yet.",
             $"EXPECTED 101 live / 8 people / no decided live pursuits; ACTUAL {vm.Live} / {vm.PeopleCount} / {vm.Outcomes}");
@@ -363,7 +372,7 @@ public sealed class BdScreensRenderTests
         window.Content = null;
         content.DataContext = vm;
         content.Resources.MergedDictionaries.Add(window.Resources);
-        var files = new[] { "director-number.png", "director-people.png", "director-funnel.png", "director-accounts.png", "director-asks.png", "director-knowledge.png" };
+        var files = new[] { "director-number.png", "director-people.png", "director-funnel.png", "director-accounts.png", "director-asks.png", "director-knowledge.png", "director-market.png", "director-week.png" };
         var written = 0;
         for (var i = 0; i < files.Length; i++)
         {
@@ -378,6 +387,18 @@ public sealed class BdScreensRenderTests
                 vm.ClaimsLoadTask.GetAwaiter().GetResult();
                 vm.PassageLoadTask.GetAwaiter().GetResult();
                 Assert.Equal(new[] { 663, 316, 114 }, vm.KnowledgeBooks.Select(b => b.Source.Passages).ToArray());
+                Assert.NotNull(vm.SelectedPassage);
+            }
+            if (i == 6)
+                Assert.True(vm.MarketSignals.Count == 3 && vm.MarketDeadlines.Count == 3 && vm.ForwardPipeline.Count == 3 && vm.OpenSeats.Count == 2,
+                    "EXPECTED illustrative Market rows: 3 signals, 3 RFPs, 3 projects, 2 seats.");
+            if (i == 7)
+            {
+                Assert.True(vm.BriefSections.Count == 5 && vm.BriefSections.All(s => s.Citations.Count == 2),
+                    "EXPECTED five illustrative sections with two citations each.");
+                vm.SelectedBriefCitation = vm.BriefSections[0].Citations[1];
+                vm.PassageLoadTask.GetAwaiter().GetResult();
+                Assert.Contains("Retired", vm.CitationStatus, StringComparison.Ordinal);
                 Assert.NotNull(vm.SelectedPassage);
             }
             content.UpdateLayout();

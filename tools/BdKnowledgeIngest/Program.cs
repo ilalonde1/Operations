@@ -8,6 +8,9 @@
 // list
 // export <sourceId|all> --to <folder>       one JSON document per source
 // claims import <file.json|folder> [--force] [--by <name>]
+// claims embed                 fill missing claim vectors in batches of 500
+// claims relate <file.json> [--by <name>]
+// claims search "<question>" [--take 12]
 // --db <connection string>   default: env KOR_OPPORTUNITIES_OPPORTUNITIESDB
 // --dry reads/chunks only, without a database connection or embedding call.
 
@@ -51,9 +54,10 @@ internal static class KnowledgeCli
                 catch (ArgumentException) { throw new ArgumentException("Invalid database connection string."); }
                 store = new SqlKnowledgeStore(connection);
             }
-            // These verbs neither construct an embedder nor invoke a model.
+            // Export, claim import and relation import do not construct an embedder.
+            // Claims embed/search construct the local embedder inside ClaimsAsync.
             if (verb == "export") return await ExportAsync(options, store!, ct);
-            if (verb == "claims") return await ImportClaimsAsync(options, store!, ct);
+            if (verb == "claims") return await ClaimsAsync(options, store!, ct);
             using var embedder = new KnowledgeEmbedder(); // ONNX loads lazily; dry/list never load it.
             switch (verb)
             {
@@ -220,6 +224,45 @@ internal static class KnowledgeCli
         return ok == ids.Length ? 0 : 1;
     }
 
+    private static async Task<int> ClaimsAsync(Arguments args, IKnowledgeStore store, CancellationToken ct)
+    {
+        var action = args.Positionals[1].ToLowerInvariant();
+        if (action == "import") return await ImportClaimsAsync(args, store, ct);
+        if (action == "relate")
+        {
+            var file = JsonSerializer.Deserialize<RelationFile>(await File.ReadAllTextAsync(args.Positionals[2], ct), ClaimFile.JsonOptions)
+                ?? throw new InvalidDataException("A relations document is required.");
+            var result = await store.ImportRelationsAsync(file, args.Value("--by") ?? file.WrittenBy, ct);
+            foreach (var reject in file.Rejections) Console.WriteLine($"REJECT relation {reject.Number}: {OneLine(reject.Reason)}");
+            Console.WriteLine($"{result.Written} written / {result.Rejected} rejected");
+            return 0;
+        }
+        using var embedder = new KnowledgeEmbedder();
+        if (action == "search")
+        {
+            using var search = new KnowledgeSearch(store, embedder);
+            foreach (var hit in await search.SearchClaimsAsync(args.Positionals[2], args.PositiveInt("--take", 12), ct: ct))
+                Console.WriteLine($"{hit.Score.ToString("0.000", CultureInfo.InvariantCulture)}  {OneLine(hit.SourceTitle)}  {hit.Kind}  {OneLine(hit.Statement)}");
+            return 0;
+        }
+        var embedded = 0;
+        while (true)
+        {
+            var batch = await store.ListUnembeddedClaimsAsync(500, ct);
+            if (batch.Count == 0) break;
+            var vectors = new List<(long ClaimId, byte[] Embedding)>();
+            foreach (var claim in batch)
+            {
+                ct.ThrowIfCancellationRequested();
+                vectors.Add((claim.Id, KnowledgeEmbedder.ToBytes(embedder.Embed(claim.Statement))));
+            }
+            await store.SetClaimEmbeddingsAsync(vectors, KnowledgeEmbedder.ModelName, ct);
+            embedded += vectors.Count;
+        }
+        Console.WriteLine($"embedded {embedded} claims");
+        return 0;
+    }
+
     private static async Task<int> ImportClaimsAsync(Arguments args, IKnowledgeStore store, CancellationToken ct)
     {
         var path = Path.GetFullPath(args.Positionals[2]);
@@ -271,6 +314,9 @@ internal static class KnowledgeCli
         BdKnowledgeIngest list
         BdKnowledgeIngest export <sourceId|all> --to <folder>
         BdKnowledgeIngest claims import <file.json|folder> [--force] [--by <name>]
+        BdKnowledgeIngest claims embed
+        BdKnowledgeIngest claims relate <file.json> [--by <name>]
+        BdKnowledgeIngest claims search "<question>" [--take 12]
         --db <connection string> defaults to env KOR_OPPORTUNITIES_OPPORTUNITIESDB
         """);
 
@@ -317,10 +363,11 @@ internal static class KnowledgeCli
         }
         internal void ValidateFor(string verb)
         {
-            var expected = verb == "claims" ? 3 : verb is "ingest" or "search" or "export" ? 2 : 1;
+            var claimAction = verb == "claims" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
+            var expected = verb == "claims" ? claimAction == "embed" ? 2 : 3 : verb is "ingest" or "search" or "export" ? 2 : 1;
             if (Positionals.Count != expected) throw new ArgumentException($"Wrong number of arguments for {verb}; use --help.");
-            if (verb == "claims" && !Positionals[1].Equals("import", StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException("Use claims import <file.json|folder>.");
+            if (verb == "claims" && claimAction is not ("import" or "embed" or "relate" or "search"))
+                throw new ArgumentException("Use claims import, embed, relate or search.");
             if (verb == "export")
             {
                 if (string.IsNullOrWhiteSpace(Value("--to"))) throw new ArgumentException("export requires --to <folder>.");
@@ -334,7 +381,7 @@ internal static class KnowledgeCli
                 "embed" => new[] { "--source" },
                 "search" => new[] { "--take", "--per-source" },
                 "export" => new[] { "--to" },
-                "claims" => new[] { "--force", "--by" },
+                "claims" => claimAction switch { "import" => new[] { "--force", "--by" }, "relate" => new[] { "--by" }, "search" => new[] { "--take" }, _ => Array.Empty<string>() },
                 _ => Array.Empty<string>(),
             };
             foreach (var key in _options.Keys)

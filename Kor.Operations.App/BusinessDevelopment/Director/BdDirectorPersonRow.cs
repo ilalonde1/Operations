@@ -7,6 +7,7 @@ using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Knowledge;
 using Kor.Operations.Core;
+using Kor.Operations.Services;
 
 namespace Kor.Operations.App.BusinessDevelopment.Director;
 
@@ -113,4 +114,19 @@ public sealed record BdKnowledgeClaimRow(KnowledgeClaimRow Claim)
 public sealed record BdKnowledgeConceptRow(KnowledgeConceptRow Concept)
 {
     public string Display => $"{Concept.Name} ({Concept.Claims} claims across {Concept.Sources} sources)";
+}
+
+public sealed record BdDirectorCitationRow(DirectorCitationDto Citation, KnowledgeClaimRow? Current)
+{
+    public long PassageId => Current?.PassageId ?? Citation.PassageId;
+    public string Display => $"({Current?.SourceTitle ?? Citation.Source}) {Current?.Statement ?? Citation.Statement}";
+    public string Status => Current is null ? "Claim unavailable; showing the saved citation."
+        : Current.RetiredAtUtc is not null ? "Retired · " + (Current.RetiredReason ?? "No reason recorded.") : "";
+}
+public sealed record BdDirectorBriefRow(DirectorBriefDto Brief, IReadOnlyList<BdDirectorCitationRow> Citations)
+{
+    public DateTimeOffset Generated => new(DateTime.SpecifyKind(Brief.GeneratedAt, DateTimeKind.Utc));
+    public string Section => Brief.Section == "ThisWeek" ? "This week" : Brief.Section;
+    public bool CanAcknowledge => Brief.AcknowledgedAt is null;
+    public string Acknowledgement => Brief.AcknowledgedAt is null ? "" : "Acknowledged by " + Brief.AcknowledgedBy;
 }

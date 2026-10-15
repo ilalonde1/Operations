@@ -125,6 +125,7 @@ internal static class AppModule
         services.AddTransient<MondayBriefingViewModel>();
         services.AddTransient<MondayBriefingWindow>();
         services.AddSingleton(sp => new CooCardClient(mcpServerOptions));
+        services.AddSingleton(sp => new DirectorBriefClient(mcpServerOptions));
         services.AddTransient<CooCardViewModel>();
         services.AddTransient<CooCardWindow>();
         services.AddSingleton(sp => new CollectionsClient(mcpServerOptions));

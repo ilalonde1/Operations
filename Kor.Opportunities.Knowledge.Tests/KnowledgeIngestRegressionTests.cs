@@ -18,6 +18,8 @@ namespace Kor.Opportunities.Knowledge.Tests;
 /// write boundaries and original-file hashing with a fake converter/store.
 /// Also checks dry/skip/claim guards, index caching/source caps, claim JSON/validation,
 /// import provenance, stamp/force decisions and permitted claim/concept SQL writes.
+/// Claim-vector repair, retired-hit backfill, relation validation/duplicate handling and
+/// migration 351's SELECT-only grant are checked with synthetic data and SQL source.
 /// Does not read the Books folder, connect to SQL, invoke Calibre, prove PDF fidelity,
 /// SQL validity/rollback/concurrency, model content propagation or real-book coverage.
 /// Same-class miss: dropping an untested EPUB spine/markup variant can pass this fixture;
@@ -174,20 +176,20 @@ public sealed class KnowledgeIngestRegressionTests
         var source = Regex.Replace(Source("Kor.Opportunities.Knowledge/Store/SqlKnowledgeStore.cs"),
             @"//[^\r\n]*|/\*.*?\*/", "", RegexOptions.Singleline);
         var writes = Regex.Matches(source, @"\b(?:INSERT\s+INTO|UPDATE)\s+([#\w.]+)", RegexOptions.IgnoreCase);
-        Check(writes.Count == 9, "three original writes plus six claim import writes", writes.Count.ToString());
+        Check(writes.Count == 11, "original ingest/import writes plus claim repair and relation insert", writes.Count.ToString());
         foreach (Match match in writes)
             Check(match.Groups[1].Value is "knowledge.Source" or "knowledge.Passage" or "knowledge.Concept"
-                or "knowledge.Claim" or "knowledge.ClaimConcept" or "knowledge.ClaimImport", "only knowledge table writes", match.Value);
+                or "knowledge.Claim" or "knowledge.ClaimConcept" or "knowledge.ClaimImport" or "knowledge.ClaimRelation", "only knowledge table writes", match.Value);
         var inserts = Regex.Matches(source, @"\bINSERT\s+INTO\s+(\w+\.\w+)", RegexOptions.IgnoreCase)
             .Select(m => m.Groups[1].Value).ToArray();
-        Check(inserts.Order().SequenceEqual(new[] { "knowledge.Source", "knowledge.Concept", "knowledge.Claim", "knowledge.ClaimConcept", "knowledge.ClaimImport" }.Order()),
-            "existing Source insert plus exactly the four import tables", string.Join(",", inserts));
+        Check(inserts.Order().SequenceEqual(new[] { "knowledge.Source", "knowledge.Concept", "knowledge.Claim", "knowledge.ClaimConcept", "knowledge.ClaimImport", "knowledge.ClaimRelation" }.Order()),
+            "existing Source insert plus the five import tables", string.Join(",", inserts));
         var destinations = Regex.Matches(source, "DestinationTableName\\s*=\\s*\"([^\"]+)\"")
             .Select(m => m.Groups[1].Value).ToArray();
         // Piece 3 requires temp staging; the brief's blanket bulk-destination rule
         // cannot forbid that staging table and also require the repair implementation.
-        Check(destinations.SequenceEqual(new[] { "knowledge.Passage", "#KnowledgeEmbeddings" }),
-            "one permanent passage destination and one local repair staging destination", string.Join(",", destinations));
+        Check(destinations.SequenceEqual(new[] { "knowledge.Passage", "#KnowledgeEmbeddings", "#KnowledgeClaimEmbeddings" }),
+            "one permanent passage destination and two local repair staging destinations", string.Join(",", destinations));
         Check(Regex.Matches(source, @"\bDELETE\b", RegexOptions.IgnoreCase).Count == 1,
             "exactly one deletion statement", "unexpected deletion count");
         const string deletion = "DELETE FROM knowledge.Passage WHERE SourceId = @sourceId;";
@@ -409,6 +411,83 @@ public sealed class KnowledgeIngestRegressionTests
             "rejected-only passage covered with rejection reason", string.Join("; ", badFile.Rejections.Select(r => r.Reason)));
     }
 
+    [Fact]
+    public void ClaimEmbedding_UsesOneNullOnlyUpdate_AndBatchesOf500()
+    {
+        var source = Source("Kor.Opportunities.Knowledge/Store/SqlKnowledgeStore.cs");
+        var method = source[source.IndexOf("public async Task SetClaimEmbeddingsAsync", StringComparison.Ordinal)..source.IndexOf("public async Task<IReadOnlyList<(long ClaimId", StringComparison.Ordinal)];
+        Check(Regex.Matches(method, @"\bUPDATE\s+knowledge\.Claim").Count == 1, "one joined claim update", method);
+        foreach (var clause in new[] { "#KnowledgeClaimEmbeddings", "SqlBulkCopy", "embeddings.Count > 500", "knowledge.Claim.Embedding IS NULL", "knowledge.Claim.RetiredAtUtc IS NULL", "EmbeddingModel = @model", "await tx.CommitAsync(ct)" })
+            Check(method.Contains(clause, StringComparison.Ordinal), clause, "missing");
+        var cli = Source("tools/BdKnowledgeIngest/Program.cs");
+        Check(cli.Contains("ListUnembeddedClaimsAsync(500, ct)", StringComparison.Ordinal)
+            && cli.Contains("SetClaimEmbeddingsAsync(vectors, KnowledgeEmbedder.ModelName, ct)", StringComparison.Ordinal)
+            && cli.Contains("embedded {embedded} claims", StringComparison.Ordinal), "bounded CLI repair/report", "missing");
+    }
+
+    [Fact]
+    public async Task SearchClaims_CapsSources_AndExcludesRetiredEvenAfterIndexLoad()
+    {
+        var store = new MemoryStore();
+        var embedder = new CountingEmbedder();
+        var vector = embedder.Embed("synthetic");
+        for (var id = 1; id <= 6; id++)
+        {
+            var source = id <= 4 ? 1 : 2;
+            store.SearchClaims.Add(new KnowledgeClaim(id, source, "Synthetic " + source, id + 100, "Rule", "Synthetic claim.", 1));
+            store.ClaimVectors.Add((id, source, vector));
+        }
+        store.RetiredClaimIds.Add(1);
+        using var search = new KnowledgeSearch(store, embedder);
+        var first = await search.SearchClaimsAsync("synthetic", 5, perSource: 2);
+        Check(first.Select(c => c.ClaimId).SequenceEqual(new long[] { 2, 3, 5, 6 }), "two per source; retired excluded", string.Join(",", first.Select(c => c.ClaimId)));
+        store.RetiredClaimIds.Add(2);
+        var second = await search.SearchClaimsAsync("synthetic", 5, perSource: 2);
+        Check(second.Select(c => c.ClaimId).SequenceEqual(new long[] { 3, 4, 5, 6 }) && store.ClaimVectorReads == 1,
+            "cached vectors, fresh retirement check, backfilled hits", string.Join(",", second.Select(c => c.ClaimId)));
+        var sql = Source("Kor.Opportunities.Knowledge/Store/SqlKnowledgeStore.cs");
+        Check(sql.Contains("WHERE RetiredAtUtc IS NULL AND Embedding IS NOT NULL", StringComparison.Ordinal)
+            && sql.Contains("WHERE c.RetiredAtUtc IS NULL AND c.Id IN", StringComparison.Ordinal), "both SQL retirement checks", "missing");
+    }
+
+    [Fact]
+    public void RelationValidation_RejectsBadShapes_AndSkipsDuplicates()
+    {
+        var valid = new ClaimRelation(1, 2, "Supports", 0.8m);
+        var file = new RelationFile { WrittenBy = "synthetic writer", Relations = new[]
+        {
+            valid with { Kind = "Similar" }, valid with { To = 1 }, valid with { To = 99 },
+            valid with { To = 3 }, // Synthetic retired claim; absent from the active-id set.
+            valid with { Confidence = 1.4m }, valid with { Confidence = -0.1m }, valid with { Confidence = null },
+            valid with { Note = new string('n', 501) }, null!, valid, valid,
+            valid with { Kind = "Refines" },
+        } };
+        var result = RelationValidation.Validate(file, new HashSet<long> { 1, 2 }, new[] { (1L, 2L, "Refines") });
+        Check(result.Accepted.Count == 1 && result.Rejected.Count == 9 && result.Skipped == 2, "one accepted, nine rejected, two skipped", result.ToString());
+        var words = new[] { "kind", "different", "not be retired", "not be retired", "confidence", "confidence", "confidence", "500", "null" };
+        for (var i = 0; i < words.Length; i++) Check(result.Rejected[i].Reason.Contains(words[i], StringComparison.Ordinal), words[i], result.Rejected[i].Reason);
+        Assert.Throws<ArgumentException>(() => RelationValidation.Validate(file with { WrittenBy = "" }, new HashSet<long> { 1, 2 }));
+        var json = JsonSerializer.Serialize(new RelationFile { WrittenBy = "synthetic writer", Relations = new[] { valid } }, ClaimFile.JsonOptions);
+        var roundTrip = JsonSerializer.Deserialize<RelationFile>(json, ClaimFile.JsonOptions)!;
+        Check(json.Contains("\"writtenBy\"", StringComparison.Ordinal) && json.Contains("\"from\"", StringComparison.Ordinal)
+            && roundTrip.Relations.Single() == valid, "camel-case relation document round trip", json);
+        var sql = Source("Kor.Opportunities.Knowledge/Store/SqlKnowledgeStore.cs");
+        Check(sql.Contains("IF NOT EXISTS (SELECT 1 FROM knowledge.ClaimRelation WITH (UPDLOCK, HOLDLOCK)", StringComparison.Ordinal), "locked duplicate skip", "missing");
+    }
+
+    [Fact]
+    public void Migration351_IsAdditiveGuarded_AndGrantsSelectOnly()
+    {
+        var sql = Regex.Replace(Source("Kor.Opportunities.Data/Schema/351_KnowledgeClaimVectorsAndRelations.sql"), @"--[^\r\n]*|/\*.*?\*/", "", RegexOptions.Singleline);
+        foreach (var clause in new[] { "COL_LENGTH(N'knowledge.Claim', N'Embedding') IS NULL", "COL_LENGTH(N'knowledge.Claim', N'EmbeddingModel') IS NULL",
+                     "OBJECT_ID(N'knowledge.ClaimRelation', N'U') IS NULL", "VARBINARY(1536)", "CHECK (FromClaimId <> ToClaimId)",
+                     "PRIMARY KEY (FromClaimId, ToClaimId, Kind)", "N'Supports', N'Contradicts', N'Refines'", "IF NOT EXISTS (SELECT 1 FROM sys.indexes",
+                     "sys.database_principals WHERE name = N'mcp_app'", "GRANT SELECT ON SCHEMA::knowledge TO mcp_app;" })
+            Check(sql.Contains(clause, StringComparison.Ordinal), clause, "missing");
+        Check(Regex.Matches(sql, @"\bGRANT\b").Count == 1 && !Regex.IsMatch(sql, @"\b(USE|DROP|TRUNCATE|DELETE|INSERT|UPDATE)\b", RegexOptions.IgnoreCase),
+            "one read-only grant and no destructive/data statements", sql);
+    }
+
     private static ClaimFileClaim ExampleClaim() => new() { Kind = "Rule", Statement = "Confirm a need before preparing a proposal.",
         Confidence = 0.9m, Concepts = new[] { new ClaimFileConcept("Qualify Before Investing!", "Qualify before investing") } };
     private static ClaimFile ExampleClaimFile() => new() { SourceId = 18, Title = "Synthetic book", WrittenBy = "synthetic writer",
@@ -451,6 +530,20 @@ public sealed class KnowledgeIngestRegressionTests
 
     private sealed class MemoryStore : IKnowledgeStore
     {
+        internal List<KnowledgeClaim> SearchClaims { get; } = new();
+        internal List<(long ClaimId, long SourceId, float[] Vector)> ClaimVectors { get; } = new();
+        internal HashSet<long> RetiredClaimIds { get; } = new();
+        internal int ClaimVectorReads { get; private set; }
+        public Task<IReadOnlyList<(long Id, string Statement)>> ListUnembeddedClaimsAsync(int take, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<(long, string)>>(SearchClaims.Where(c => !RetiredClaimIds.Contains(c.Id) && ClaimVectors.All(v => v.ClaimId != c.Id)).Take(take).Select(c => (c.Id, c.Statement)).ToArray());
+        public Task SetClaimEmbeddingsAsync(IReadOnlyList<(long ClaimId, byte[] Embedding)> embeddings, string model, CancellationToken ct = default)
+            => throw new NotSupportedException("Claim repair is gated as SQL source.");
+        public Task<IReadOnlyList<(long ClaimId, long SourceId, float[] Vector)>> LoadClaimVectorsAsync(CancellationToken ct = default)
+        { ClaimVectorReads++; return Task.FromResult<IReadOnlyList<(long, long, float[])>>(ClaimVectors.Where(v => !RetiredClaimIds.Contains(v.ClaimId)).ToArray()); }
+        public Task<IReadOnlyList<KnowledgeClaim>> GetClaimsAsync(IReadOnlyList<long> ids, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<KnowledgeClaim>>(SearchClaims.Where(c => ids.Contains(c.Id) && !RetiredClaimIds.Contains(c.Id)).ToArray());
+        public Task<(int Written, int Rejected)> ImportRelationsAsync(RelationFile file, string by, CancellationToken ct = default)
+            => throw new NotSupportedException("Relations use the validation and SQL source gates.");
         internal List<StoredClaimPassage> ClaimPassages { get; } = new();
         internal List<MemoryClaim> ClaimRows { get; } = new();
         internal int ClaimImports { get; private set; }

@@ -135,6 +135,34 @@ ORDER BY ISNULL(co.KorProjectsCount, 0) DESC, co.DisplayName;";
         _connectionString = connectionString;
     }
 
+    public async Task<IReadOnlyList<BdDirectorSignal>> GetRecentSignalsAsync(int days, int take, CancellationToken ct)
+    {
+        if (days is < 1 or > 365) throw new ArgumentOutOfRangeException(nameof(days));
+        if (take is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(take));
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand("""
+            SELECT TOP (@take) s.CanonicalOrgId, o.DisplayName, s.SignalType, s.Subject, s.LastSeenAtUtc, s.Corroborations
+            FROM opportunities.IntelSignal s JOIN opportunities.CanonicalOrg o ON o.Id = s.CanonicalOrgId
+            WHERE s.RetiredAtUtc IS NULL AND o.RetiredAtUtc IS NULL
+                AND s.LastSeenAtUtc >= DATEADD(day, -@days, SYSDATETIMEOFFSET())
+            ORDER BY s.LastSeenAtUtc DESC, s.CanonicalOrgId, s.SignalType;
+            """, con) { CommandTimeout = 30 };
+        cmd.Parameters.Add("@days", SqlDbType.Int).Value = days;
+        cmd.Parameters.Add("@take", SqlDbType.Int).Value = take;
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        var rows = new List<BdDirectorSignal>();
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            // Accept either SQL timestamp type, treating datetime2 as UTC.
+            var seen = reader.GetValue(4) is DateTimeOffset offset ? offset
+                : new DateTimeOffset(DateTime.SpecifyKind(reader.GetDateTime(4), DateTimeKind.Utc));
+            rows.Add(new(reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), seen,
+                reader.IsDBNull(5) ? 0 : reader.GetInt32(5)));
+        }
+        return rows;
+    }
+
     public async Task<IReadOnlyList<BdDirectorPerson>> GetPeopleAsync(CancellationToken ct)
     {
         await using var con = new SqlConnection(_connectionString);

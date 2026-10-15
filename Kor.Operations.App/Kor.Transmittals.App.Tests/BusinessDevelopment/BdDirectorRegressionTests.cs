@@ -259,6 +259,7 @@ public sealed class BdDirectorRegressionTests
             DirectorStore.Setup(s => s.GetTargetActualsAsync(It.IsAny<IReadOnlyList<BdTargetKey>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new BdTargetActuals(new Dictionary<BdTargetKey, decimal>(), 0, 0));
             DirectorStore.Setup(s => s.GetAccountsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDirectorAccount>());
+            DirectorStore.Setup(s => s.GetRecentSignalsAsync(30, 25, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDirectorSignal>());
             DirectorStore.Setup(s => s.GetPeopleAsync(It.IsAny<CancellationToken>())).ReturnsAsync(People);
             DirectorStore.Setup(s => s.GetFunnelAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new BdDirectorFunnel(new Dictionary<int, double>(), Array.Empty<BdDirectorUndecidedPursuit>(), 0, 0, 0, 0));
@@ -268,7 +269,8 @@ public sealed class BdDirectorRegressionTests
                 .ReturnsAsync(new BdAttributionSummary(0, 0m, 0, 0, 0, Array.Empty<AttributionSourceRow>(), Array.Empty<AttributionOwnerRow>()));
         }
 
-        internal BdDirectorViewModel Create() => new(DirectorStore.Object, Pursuits.Object, RecordStore.Object, Attribution.Object, Ledger.Object, Deltek.Object, Claims.Object);
+        internal BdDirectorViewModel Create() => new(DirectorStore.Object, Pursuits.Object, RecordStore.Object, Attribution.Object, Ledger.Object, Deltek.Object, Claims.Object,
+            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief());
     }
 
     private static void Contains(string source, string expected) => Assert.True(source.Contains(expected, StringComparison.Ordinal),

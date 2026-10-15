@@ -9,6 +9,24 @@
     <Window.Resources>
         <converters:BdDayConverter x:Key="BdDay"/>
         <BooleanToVisibilityConverter x:Key="BoolVisibility"/>
+        <DataTemplate x:Key="PassagePane">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="Passage" FontSize="18" FontWeight="SemiBold"/>
+                <TextBlock Grid.Row="1" Text="{Binding SelectedPassage.SourceTitle}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,4"/>
+                <TextBlock Grid.Row="2" Text="{Binding SelectedPassage.Ref}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <TextBlock Grid.Row="3" Text="{Binding PassageMessage}" TextWrapping="Wrap"/>
+                <TextBox Grid.Row="4" Text="{Binding SelectedPassage.Text, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="10"/>
+                <StackPanel Grid.Row="5" Margin="0,8,0,0">
+                    <TextBlock Text="{Binding SelectedClaim.Claim.RetiredReason}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding CitationStatus}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
         <Style TargetType="TabItem"><Setter Property="Padding" Value="20,9"/></Style>
         <Style TargetType="DataGrid">
             <Setter Property="AutoGenerateColumns" Value="False"/>
@@ -347,19 +365,108 @@
                         </DataGrid>
                         <TextBlock Grid.Row="5" Text="{Binding KnowledgeMessage}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                     </Grid>
-                    <Grid Grid.Column="4">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Text="Passage" Style="{StaticResource SectionTitle}"/>
-                        <TextBlock Grid.Row="1" Text="{Binding SelectedPassage.SourceTitle}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,4,0,4"/>
-                        <TextBlock Grid.Row="2" Text="{Binding SelectedPassage.Ref}" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                        <TextBlock Grid.Row="3" Text="{Binding PassageMessage}" TextWrapping="Wrap"/>
-                        <TextBox Grid.Row="4" Text="{Binding SelectedPassage.Text, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="10"/>
-                        <TextBlock Grid.Row="5" Text="{Binding SelectedClaim.Claim.RetiredReason}" TextWrapping="Wrap" Margin="0,8,0,0"/>
-                    </Grid>
+                    <ContentControl Grid.Column="4" Content="{Binding}" ContentTemplate="{StaticResource PassagePane}"/>
+                </Grid>
+            </Grid>
+        </TabItem>
+        <TabItem Header="Market">
+            <Grid Margin="12">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <TextBlock Text="{x:Static director:BdDirectorViewModel.MarketCaption}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                <TextBlock Grid.Row="1" Text="{Binding MarketFunnel}" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                <Grid Grid.Row="2">
+                    <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="18"/><RowDefinition/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="18"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="Signals, 30 days" Style="{StaticResource SectionTitle}"/>
+                        <DataGrid ItemsSource="{Binding MarketSignals}" RowHeight="NaN">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Org" Binding="{Binding Org}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Signal" Binding="{Binding Signal}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Subject" Binding="{Binding Subject}" Width="3*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Last seen" Binding="{Binding LastSeenAtUtc, Converter={StaticResource BdDay}}" Width="120"/>
+                                <DataGridTextColumn Header="Corroborations" Binding="{Binding Corroborations}" Width="100"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                    <DockPanel Grid.Column="2">
+                        <TextBlock DockPanel.Dock="Top" Text="RFPs closing in 30 days" Style="{StaticResource SectionTitle}"/>
+                        <DataGrid ItemsSource="{Binding MarketDeadlines}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="RFP" Binding="{Binding Name}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Buyer" Binding="{Binding Buyer}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="70"/>
+                                <DataGridTextColumn Header="Closing" Binding="{Binding Deadline}" Width="165"/>
+                                <DataGridTextColumn Header="Time left" Binding="{Binding Countdown}" Width="100"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                    <DockPanel Grid.Row="2">
+                        <TextBlock DockPanel.Dock="Top" Text="Forward pipeline" Style="{StaticResource SectionTitle}"/>
+                        <DataGrid ItemsSource="{Binding ForwardPipeline}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Proponent" Binding="{Binding ProponentName}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="60"/>
+                                <DataGridTextColumn Header="Sector" Binding="{Binding Sector}" Width="90"/>
+                                <DataGridTextColumn Header="Est. cost" Binding="{Binding EstimatedCostCad, StringFormat={}{0:C0}}" Width="115"/>
+                                <DataGridTextColumn Header="Stage" Binding="{Binding Stage}" Width="90"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                    <DockPanel Grid.Row="2" Grid.Column="2">
+                        <TextBlock DockPanel.Dock="Top" Text="Open structural seats" Style="{StaticResource SectionTitle}"/>
+                        <DataGrid ItemsSource="{Binding OpenSeats}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Firm" Binding="{Binding DisplayName}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Market" Binding="{Binding Market}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Priority" Binding="{Binding Priority}" Width="80"/>
+                                <DataGridTextColumn Header="Opening" Binding="{Binding DisplacementRead}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </Grid>
+            </Grid>
+        </TabItem>
+        <TabItem Header="This week">
+            <Grid Margin="12">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <TextBlock Text="{x:Static director:BdDirectorViewModel.BriefCaption}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                <DockPanel Grid.Row="1" Margin="0,0,0,12">
+                    <Button DockPanel.Dock="Left" Content="Run now" Click="RunBrief_Click" IsEnabled="{Binding CanRunBrief}" Padding="14,6" Margin="0,0,14,0"/>
+                    <TextBlock Text="{Binding BriefMessage}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                </DockPanel>
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding BriefSections}">
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,0,0,1" Padding="0,0,12,14" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Content="Acknowledge" Click="AcknowledgeBrief_Click" IsEnabled="{Binding CanAcknowledge}" Padding="10,4"/>
+                                            <TextBlock Text="{Binding Section}" FontSize="18" FontWeight="SemiBold"/>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding Brief.Headline}" FontWeight="Bold" TextWrapping="Wrap" Margin="0,6"/>
+                                        <TextBlock Text="{Binding Brief.Body}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding Brief.Recommendation}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,8"/>
+                                        <TextBlock Text="{Binding Generated, Converter={StaticResource BdDay}}" Foreground="{StaticResource Text.Secondary}"/>
+                                        <TextBlock Text="{Binding Acknowledgement}" Foreground="{StaticResource Text.Secondary}"/>
+                                        <ItemsControl ItemsSource="{Binding Citations}" Margin="0,8,0,0">
+                                            <ItemsControl.ItemTemplate><DataTemplate>
+                                                <Button Click="OpenCitation_Click" HorizontalContentAlignment="Stretch" Margin="0,3" Padding="8,6">
+                                                    <StackPanel><TextBlock Text="{Binding Display}" TextWrapping="Wrap"/>
+                                                        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" FontStyle="Italic"/></StackPanel>
+                                                </Button>
+                                            </DataTemplate></ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <ContentControl Grid.Column="2" Content="{Binding}" ContentTemplate="{StaticResource PassagePane}"/>
                 </Grid>
             </Grid>
         </TabItem>

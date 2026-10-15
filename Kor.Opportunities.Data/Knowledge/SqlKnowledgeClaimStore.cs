@@ -18,6 +18,13 @@ public sealed class SqlKnowledgeClaimStore(string connectionString) : IKnowledge
         JOIN knowledge.Passage p ON p.Id = c.PassageId
         """;
 
+    public async Task<KnowledgeClaimRow?> GetClaimAsync(long claimId, CancellationToken ct)
+    {
+        // Historical brief citations must remain reachable after retirement.
+        var rows = await ReadAsync(ClaimSelect + " WHERE c.Id = @id;", cmd => Page(cmd, claimId, 1), ReadClaim, ct).ConfigureAwait(false);
+        return rows.SingleOrDefault();
+    }
+
     public Task<IReadOnlyList<KnowledgeSourceSummary>> ListSourcesAsync(CancellationToken ct) => ReadAsync("""
         SELECT s.Id, s.Title, s.Author,
             (SELECT COUNT(*) FROM knowledge.Passage p WHERE p.SourceId = s.Id),

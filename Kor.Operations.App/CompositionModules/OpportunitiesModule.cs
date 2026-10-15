@@ -144,6 +144,7 @@ internal static class OpportunitiesModule
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OpportunitiesHubView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OverwatchViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OverwatchView>();
+        // Director shares the dashboard/opportunity stores above; AppModule supplies its brief client.
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorWindow>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.AttributionViewModel>();

@@ -213,6 +213,123 @@ public sealed class SqlKnowledgeStore : IKnowledgeStore
         return rows;
     }
 
+    public async Task<IReadOnlyList<(long Id, string Statement)>> ListUnembeddedClaimsAsync(int take, CancellationToken ct = default)
+    {
+        if (take is < 1 or > 500) throw new ArgumentOutOfRangeException(nameof(take));
+        await using var con = await OpenAsync(ct);
+        await using var cmd = new SqlCommand("SELECT TOP (@take) Id, Statement FROM knowledge.Claim WHERE RetiredAtUtc IS NULL AND Embedding IS NULL ORDER BY Id;", con) { CommandTimeout = 120 };
+        cmd.Parameters.Add("@take", SqlDbType.Int).Value = take;
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var rows = new List<(long, string)>();
+        while (await reader.ReadAsync(ct)) rows.Add((reader.GetInt64(0), reader.GetString(1)));
+        return rows;
+    }
+
+    public async Task SetClaimEmbeddingsAsync(IReadOnlyList<(long ClaimId, byte[] Embedding)> embeddings, string model, CancellationToken ct = default)
+    {
+        if (embeddings.Count == 0) return;
+        if (embeddings.Count > 500 || embeddings.Select(e => e.ClaimId).Distinct().Count() != embeddings.Count)
+            throw new ArgumentException("Use at most 500 distinct claims per batch.", nameof(embeddings));
+        if (model != KnowledgeEmbedder.ModelName) throw new ArgumentException("Use the configured claim embedding model.", nameof(model));
+        using var table = new DataTable();
+        table.Columns.Add("ClaimId", typeof(long)); table.Columns.Add("Embedding", typeof(byte[]));
+        foreach (var (id, embedding) in embeddings) { CheckEmbedding(embedding); table.Rows.Add(id, embedding); }
+        await using var con = await OpenAsync(ct);
+        await using var tx = (SqlTransaction)await con.BeginTransactionAsync(ct);
+        await using (var create = new SqlCommand("CREATE TABLE #KnowledgeClaimEmbeddings (ClaimId BIGINT NOT NULL PRIMARY KEY, Embedding VARBINARY(1536) NOT NULL);", con, tx) { CommandTimeout = 120 })
+            await create.ExecuteNonQueryAsync(ct);
+        using (var bulk = new SqlBulkCopy(con, SqlBulkCopyOptions.CheckConstraints, tx)
+        { DestinationTableName = "#KnowledgeClaimEmbeddings", BulkCopyTimeout = 120 })
+        {
+            bulk.ColumnMappings.Add("ClaimId", "ClaimId"); bulk.ColumnMappings.Add("Embedding", "Embedding");
+            await bulk.WriteToServerAsync(table, ct);
+        }
+        await using (var update = new SqlCommand("""
+            UPDATE knowledge.Claim SET Embedding = repair.Embedding, EmbeddingModel = @model
+            FROM knowledge.Claim INNER JOIN #KnowledgeClaimEmbeddings repair ON repair.ClaimId = knowledge.Claim.Id
+            WHERE knowledge.Claim.Embedding IS NULL AND knowledge.Claim.RetiredAtUtc IS NULL;
+            """, con, tx) { CommandTimeout = 120 })
+        {
+            Text(update, "@model", 40, model);
+            await update.ExecuteNonQueryAsync(ct);
+        }
+        await tx.CommitAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<(long ClaimId, long SourceId, float[] Vector)>> LoadClaimVectorsAsync(CancellationToken ct = default)
+    {
+        await using var con = await OpenAsync(ct);
+        await using var cmd = new SqlCommand("SELECT Id, SourceId, Embedding FROM knowledge.Claim WHERE RetiredAtUtc IS NULL AND Embedding IS NOT NULL AND EmbeddingModel = @model ORDER BY Id;", con) { CommandTimeout = 120 };
+        Text(cmd, "@model", 40, KnowledgeEmbedder.ModelName);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var rows = new List<(long, long, float[])>();
+        while (await reader.ReadAsync(ct)) rows.Add((reader.GetInt64(0), reader.GetInt64(1), KnowledgeEmbedder.FromBytes(reader.GetFieldValue<byte[]>(2))));
+        return rows;
+    }
+
+    public async Task<IReadOnlyList<KnowledgeClaim>> GetClaimsAsync(IReadOnlyList<long> ids, CancellationToken ct = default)
+    {
+        var rows = new List<KnowledgeClaim>();
+        if (ids.Count == 0) return rows;
+        await using var con = await OpenAsync(ct);
+        foreach (var batch in ids.Distinct().Chunk(500))
+        {
+            await using var cmd = new SqlCommand { Connection = con, CommandTimeout = 120 };
+            var names = batch.Select((id, i) =>
+            {
+                var name = "@id" + i.ToString(CultureInfo.InvariantCulture);
+                cmd.Parameters.Add(name, SqlDbType.BigInt).Value = id; return name;
+            });
+            // Recheck retirement when resolving a cached vector index.
+            cmd.CommandText = "SELECT c.Id, c.SourceId, s.Title, c.PassageId, c.Kind, c.Statement, c.Confidence FROM knowledge.Claim c JOIN knowledge.Source s ON s.Id = c.SourceId WHERE c.RetiredAtUtc IS NULL AND c.Id IN (" + string.Join(",", names) + ");";
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct)) rows.Add(new(reader.GetInt64(0), reader.GetInt64(1), reader.GetString(2), reader.GetInt64(3), reader.GetString(4), reader.GetString(5), reader.GetDecimal(6)));
+        }
+        return rows;
+    }
+
+    public async Task<(int Written, int Rejected)> ImportRelationsAsync(RelationFile file, string by, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(by) || by.Length > 100) throw new ArgumentException("Created-by name must contain 1–100 characters.", nameof(by));
+        if (file.Relations is null) throw new ArgumentException("relations must be an array.");
+        await using var con = await OpenAsync(ct);
+        await using var tx = (SqlTransaction)await con.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var active = new HashSet<long>();
+        var ids = file.Relations.Where(r => r is not null).SelectMany(r => new[] { r.From, r.To }).Distinct().Order().ToArray();
+        foreach (var batch in ids.Chunk(500))
+        {
+            await using var read = new SqlCommand { Connection = con, Transaction = tx, CommandTimeout = 120 };
+            var names = batch.Select((id, i) =>
+            {
+                var name = "@id" + i.ToString(CultureInfo.InvariantCulture); read.Parameters.Add(name, SqlDbType.BigInt).Value = id; return name;
+            });
+            read.CommandText = "SELECT Id FROM knowledge.Claim WITH (UPDLOCK, HOLDLOCK) WHERE RetiredAtUtc IS NULL AND Id IN (" + string.Join(",", names) + ");";
+            await using var reader = await read.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct)) active.Add(reader.GetInt64(0));
+        }
+        var validation = RelationValidation.Validate(file, active);
+        var written = 0;
+        foreach (var row in validation.Accepted.OrderBy(r => r.From).ThenBy(r => r.To).ThenBy(r => r.Kind, StringComparer.Ordinal))
+        {
+            await using var cmd = new SqlCommand("""
+                IF NOT EXISTS (SELECT 1 FROM knowledge.ClaimRelation WITH (UPDLOCK, HOLDLOCK)
+                    WHERE FromClaimId = @from AND ToClaimId = @to AND Kind = @kind)
+                BEGIN
+                    INSERT INTO knowledge.ClaimRelation (FromClaimId, ToClaimId, Kind, Confidence, LinkedBy, Note, CreatedBy)
+                    VALUES (@from, @to, @kind, @confidence, N'Model', @note, @by);
+                    SELECT 1;
+                END
+                ELSE SELECT 0;
+                """, con, tx) { CommandTimeout = 120 };
+            cmd.Parameters.Add("@from", SqlDbType.BigInt).Value = row.From; cmd.Parameters.Add("@to", SqlDbType.BigInt).Value = row.To;
+            Text(cmd, "@kind", 12, row.Kind); Text(cmd, "@note", 500, row.Note); Text(cmd, "@by", 100, by);
+            DecimalConfidence(cmd, row.Confidence!.Value);
+            written += Convert.ToInt32(await cmd.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture);
+        }
+        await tx.CommitAsync(ct);
+        return (written, validation.Rejected.Count);
+    }
+
     public async Task<ClaimFile> ExportAsync(long sourceId, CancellationToken ct = default)
     {
         await using var con = await OpenAsync(ct);

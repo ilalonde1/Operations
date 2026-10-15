@@ -7,10 +7,14 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Crm;
+using Kor.Operations.App.BusinessDevelopment.Workspace;
+using Kor.Operations.Services;
 using Kor.Operations.Core;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Knowledge;
+using Kor.Opportunities.Data.MajorProjects;
+using Kor.Opportunities.Data.Opportunities;
 using Serilog;
 
 namespace Kor.Operations.App.BusinessDevelopment.Director;
@@ -24,6 +28,8 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public const string AsksCaption = "One bounded thing, for one person, by a date. Done and declined asks stay on the record.";
     public const string DecisionsCaption = "What was decided, why, and what was expected. A decision is never edited; it is scored Right, Wrong or Unclear when its review date comes.";
     public const string KnowledgeCaption = "What the books assert, one sentence each, cited to the passage it rests on. Keep what holds for KOR; retire what does not. Nothing is deleted.";
+    public const string MarketCaption = "What is coming: signals on the firms we watch, planned projects not yet procured, RFPs closing, and seats no structural engineer holds yet. All of it is what the BD Dashboard already reads.";
+    public const string BriefCaption = "The Director's brief: five questions a week over these tabs and the rule bank, answered with the claims each answer rests on. Open a citation to read the passage.";
 
     private readonly IBdDirectorStore _director;
     private readonly IPursuitOverwatchStore _pursuits;
@@ -32,6 +38,12 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     private readonly IBdDirectorLedgerStore _ledger;
     private readonly IDeltekClientContextService _deltek;
     private readonly IKnowledgeClaimStore _claims;
+    private readonly IBdDashboardStore _dashboard;
+    private readonly IOpportunityStore _opportunities;
+    private readonly DirectorBriefClient _brief;
+    private CancellationTokenSource? _briefCts;
+    private BdDirectorCitationRow? _selectedBriefCitation;
+    private bool _briefRunning;
     private readonly CancellationTokenSource _knowledgeLifetime = new();
     private CancellationTokenSource? _claimsCts;
     private CancellationTokenSource? _passageCts;
@@ -55,7 +67,8 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
 
     public BdDirectorViewModel(IBdDirectorStore director, IPursuitOverwatchStore pursuits,
         ICrmEngagementStore records, IBdAttributionStore attribution, IBdDirectorLedgerStore ledger,
-        IDeltekClientContextService deltek, IKnowledgeClaimStore claims)
+        IDeltekClientContextService deltek, IKnowledgeClaimStore claims, IBdDashboardStore dashboard,
+        IOpportunityStore opportunities, DirectorBriefClient brief)
     {
         _director = director ?? throw new ArgumentNullException(nameof(director));
         _pursuits = pursuits ?? throw new ArgumentNullException(nameof(pursuits));
@@ -64,6 +77,9 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
         _ledger = ledger ?? throw new ArgumentNullException(nameof(ledger));
         _deltek = deltek ?? throw new ArgumentNullException(nameof(deltek));
         _claims = claims ?? throw new ArgumentNullException(nameof(claims));
+        _dashboard = dashboard ?? throw new ArgumentNullException(nameof(dashboard));
+        _opportunities = opportunities ?? throw new ArgumentNullException(nameof(opportunities));
+        _brief = brief ?? throw new ArgumentNullException(nameof(brief));
     }
 
     public ObservableCollection<BdDirectorPersonRow> People { get; } = new();
@@ -78,6 +94,28 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public ObservableCollection<BdKnowledgeSourceRow> KnowledgeBooks { get; } = new();
     public ObservableCollection<BdKnowledgeClaimRow> KnowledgeClaims { get; } = new();
     public ObservableCollection<BdKnowledgeConceptRow> KnowledgeConcepts { get; } = new();
+    public ObservableCollection<BdDirectorSignal> MarketSignals { get; } = new();
+    public ObservableCollection<DashboardViewModel.DeadlineRow> MarketDeadlines { get; } = new();
+    public ObservableCollection<BdForwardPipelineRow> ForwardPipeline { get; } = new();
+    public ObservableCollection<BdOpenStructuralSeatRow> OpenSeats { get; } = new();
+    public ObservableCollection<BdDirectorBriefRow> BriefSections { get; } = new();
+    public string MarketFunnel { get; private set; } = "";
+    public string BriefMessage { get; private set; } = "";
+    public string CitationStatus { get; private set; } = "";
+    public bool BriefRunning { get => _briefRunning; private set { if (SetField(ref _briefRunning, value)) OnPropertyChanged(nameof(CanRunBrief)); } }
+    public bool CanRunBrief => !BriefRunning && _brief.IsConfigured;
+    public BdDirectorCitationRow? SelectedBriefCitation
+    {
+        get => _selectedBriefCitation;
+        set
+        {
+            if (!SetField(ref _selectedBriefCitation, value)) return;
+            _selectedClaim = null; OnPropertyChanged(nameof(SelectedClaim));
+            _passageCts?.Cancel(); _passageCts?.Dispose();
+            _passageCts = CancellationTokenSource.CreateLinkedTokenSource(_knowledgeLifetime.Token);
+            PassageLoadTask = LoadBriefPassageAsync(value, _passageCts.Token);
+        }
+    }
     public IReadOnlyList<string> ClaimFilters { get; } = new[] { "Unreviewed", "Kept", "Retired", "All" };
     public Task ClaimsLoadTask { get; private set; } = Task.CompletedTask;
     public Task PassageLoadTask { get; private set; } = Task.CompletedTask;
@@ -128,6 +166,8 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
         set
         {
             if (!SetField(ref _selectedClaim, value)) return;
+            _selectedBriefCitation = null; OnPropertyChanged(nameof(SelectedBriefCitation));
+            CitationStatus = ""; OnPropertyChanged(nameof(CitationStatus));
             _passageCts?.Cancel(); _passageCts?.Dispose();
             _passageCts = CancellationTokenSource.CreateLinkedTokenSource(_knowledgeLifetime.Token);
             PassageLoadTask = LoadPassageAsync(value, _passageCts.Token);
@@ -264,6 +304,8 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
             await LoadAsksAsync(ct).ConfigureAwait(true);
             await LoadDecisionsAsync(ct).ConfigureAwait(true);
             await LoadKnowledgeAsync(ct).ConfigureAwait(true);
+            await LoadMarketAsync(ct).ConfigureAwait(true);
+            await LoadBriefAsync(ct).ConfigureAwait(true);
             AsOf = DateTimeOffset.UtcNow;
             OnPropertyChanged(nameof(AsOf));
             StatusMessage = "Up to date.";
@@ -589,9 +631,121 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
         await ClaimsLoadTask.ConfigureAwait(true);
     }
 
+    public async Task LoadMarketAsync(CancellationToken ct)
+    {
+        var signalsTask = _director.GetRecentSignalsAsync(30, 25, ct);
+        var forwardTask = _dashboard.GetForwardPipelineAsync(12, ct);
+        var seatsTask = _dashboard.GetOpenStructuralSeatsAsync(10, ct);
+        var funnelTask = _dashboard.GetPipelineFunnelAsync(ct);
+        var opportunitiesTask = _opportunities.ListAsync(ct, includeClosed: false, includeNonPrime: false);
+        await Task.WhenAll(signalsTask, forwardTask, seatsTask, funnelTask, opportunitiesTask).ConfigureAwait(true);
+        ct.ThrowIfCancellationRequested();
+        ReplaceRows(MarketSignals, await signalsTask.ConfigureAwait(true));
+        ReplaceRows(ForwardPipeline, await forwardTask.ConfigureAwait(true));
+        ReplaceRows(OpenSeats, await seatsTask.ConfigureAwait(true));
+        var funnel = await funnelTask.ConfigureAwait(true);
+        MarketFunnel = $"{funnel.RadarCount} on the radar · {funnel.BidWindowCount} in a bid window · {funnel.OpenSeatCount} open seats";
+        OnPropertyChanged(nameof(MarketFunnel));
+        var now = DateTimeOffset.UtcNow;
+        var thirtyDays = now.AddDays(30);
+        ReplaceRows(MarketDeadlines, (await opportunitiesTask.ConfigureAwait(true))
+            .Where(o => o.DismissedAtUtc is null && o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= thirtyDays)
+            .OrderBy(o => o.SubmissionDeadlineUtc).Select(o => DashboardViewModel.CreateDeadlineRow(o, now)));
+    }
+
+    public async Task LoadBriefAsync(CancellationToken ct)
+    {
+        _briefCts?.Cancel(); _briefCts?.Dispose();
+        _briefCts = CancellationTokenSource.CreateLinkedTokenSource(ct, _knowledgeLifetime.Token);
+        var token = _briefCts.Token;
+        try
+        {
+            var rows = await _brief.GetLatestAsync(token).ConfigureAwait(true);
+            var resolved = new Dictionary<long, KnowledgeClaimRow?>();
+            var sections = new List<BdDirectorBriefRow>();
+            foreach (var row in rows)
+            {
+                var citations = new List<BdDirectorCitationRow>();
+                foreach (var citation in row.ReadCitations())
+                {
+                    if (!resolved.TryGetValue(citation.ClaimId, out var claim))
+                    {
+                        claim = await _claims.GetClaimAsync(citation.ClaimId, token).ConfigureAwait(true);
+                        resolved[citation.ClaimId] = claim;
+                    }
+                    citations.Add(new(citation, claim));
+                }
+                sections.Add(new(row, citations));
+            }
+            token.ThrowIfCancellationRequested();
+            SelectedBriefCitation = null;
+            ReplaceRows(BriefSections, sections);
+            BriefMessage = !_brief.IsConfigured ? "The brief service is not configured."
+                : rows.Count == 0 ? "No brief has been generated yet." : "Latest available sections. Generation dates show when each was written.";
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested && !ct.IsCancellationRequested) { return; }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            if (token.IsCancellationRequested) return;
+            Log.Warning(ex, "Director brief could not be read.");
+            BriefMessage = "Could not refresh the brief. Previously loaded sections may be out of date.";
+        }
+        OnPropertyChanged(nameof(BriefMessage));
+    }
+
+    public async Task RunBriefAsync(CancellationToken ct)
+    {
+        if (!CanRunBrief) return;
+        BriefRunning = true;
+        BriefMessage = "Writing the five sections…"; OnPropertyChanged(nameof(BriefMessage));
+        try { await _brief.RunNowAsync(ct).ConfigureAwait(true); await LoadBriefAsync(ct).ConfigureAwait(true); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Director brief generation did not complete for this window.");
+            BriefMessage = "The brief run did not complete for this window. Refresh to check for saved sections.";
+            OnPropertyChanged(nameof(BriefMessage));
+        }
+        finally { BriefRunning = false; }
+    }
+
+    public async Task AcknowledgeBriefAsync(BdDirectorBriefRow row, CancellationToken ct)
+    {
+        await _brief.AcknowledgeAsync(row.Brief.Id, ct).ConfigureAwait(true);
+        await LoadBriefAsync(ct).ConfigureAwait(true);
+    }
+
+    private async Task LoadBriefPassageAsync(BdDirectorCitationRow? row, CancellationToken ct)
+    {
+        SelectedPassage = null;
+        CitationStatus = row?.Status ?? "";
+        PassageMessage = row is null ? "Select a citation to read its passage." : "Reading passage…";
+        OnPropertyChanged(nameof(CitationStatus)); NotifyPassage();
+        if (row is null) return;
+        try
+        {
+            var passage = await _claims.GetPassageAsync(row.PassageId, ct).ConfigureAwait(true);
+            if (ct.IsCancellationRequested || !ReferenceEquals(row, SelectedBriefCitation)) return;
+            SelectedPassage = passage;
+            PassageMessage = passage is null ? "The passage could not be read. Try Refresh again." : "";
+            NotifyPassage();
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { /* Another selection or window closure. */ }
+        catch (Exception ex)
+        {
+            if (ct.IsCancellationRequested) return;
+            Log.Warning(ex, "Director citation passage could not be read.");
+            PassageMessage = "The passage could not be read. Try Refresh again."; NotifyPassage();
+        }
+    }
+    private static void ReplaceRows<T>(ObservableCollection<T> collection, IEnumerable<T> rows)
+    { collection.Clear(); foreach (var row in rows) collection.Add(row); }
+
     public void Dispose()
     {
         _knowledgeLifetime.Cancel();
+        _briefCts?.Cancel(); _briefCts?.Dispose(); _briefCts = null;
         _claimsCts?.Cancel(); _claimsCts?.Dispose(); _claimsCts = null;
         _passageCts?.Cancel(); _passageCts?.Dispose(); _passageCts = null;
         _knowledgeLifetime.Dispose();

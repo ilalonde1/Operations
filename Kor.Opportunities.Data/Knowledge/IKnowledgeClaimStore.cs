@@ -11,6 +11,7 @@ public sealed record KnowledgePassageText(long Id, string SourceTitle, string? R
 
 public interface IKnowledgeClaimStore
 {
+    Task<KnowledgeClaimRow?> GetClaimAsync(long claimId, CancellationToken ct);
     Task<IReadOnlyList<KnowledgeSourceSummary>> ListSourcesAsync(CancellationToken ct);
     Task<IReadOnlyList<KnowledgeClaimRow>> ListClaimsAsync(long sourceId, string filter, int take, CancellationToken ct);
     Task<IReadOnlyList<KnowledgeClaimRow>> SampleUnreviewedAsync(long sourceId, int take, CancellationToken ct);
