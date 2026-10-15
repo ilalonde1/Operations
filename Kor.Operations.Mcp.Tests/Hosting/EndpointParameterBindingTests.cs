@@ -11,7 +11,7 @@ namespace Kor.Operations.Mcp.Tests.Hosting;
 /// That took the MCP down on 2026-10-15: the generator's answer parser was a public static method
 /// named TryParse with four parameters, and the run-now endpoint takes the generator.
 ///
-/// Covers: every public type (including nested public types) in the MCP, Knowledge and Data
+/// Covers: every public type (including nested public types) in the MCP and Data
 /// assemblies that could be an endpoint parameter, so static classes are skipped (a static class
 /// cannot be a parameter type; KorReportLinks.TryParse in Data is one and is left alone); any
 /// public static method named TryParse or BindAsync on the rest must match the binder's accepted
@@ -23,15 +23,36 @@ namespace Kor.Operations.Mcp.Tests.Hosting;
 /// catch: a type with a correctly shaped TryParse that the author expected DI to supply; the binder
 /// would then parse it from the route or query string and the endpoint would behave wrongly
 /// without throwing.
+/// Also checks the removal of Director types/routes and the Knowledge project reference;
+/// it does not verify the contents of a published directory.
 /// </summary>
 public sealed class EndpointParameterBindingTests
 {
     private static readonly Assembly[] Assemblies =
     {
         typeof(Kor.Operations.Mcp.Program).Assembly,
-        typeof(Kor.Opportunities.Knowledge.Store.KnowledgeClaimHit).Assembly,
         typeof(Kor.Opportunities.Data.Crm.IBdDirectorStore).Assembly,
     };
+
+    [Fact]
+    public void DirectorHasLeftTheServer_AndKnowledgeIsNotAReference()
+    {
+        Assert.DoesNotContain(typeof(Kor.Operations.Mcp.Program).Assembly.GetTypes(),
+            t => t.Namespace?.StartsWith("Kor.Operations.Mcp.Director", StringComparison.Ordinal) == true);
+        Assert.DoesNotContain("/director-brief", Source("Kor.Operations.Mcp/Program.cs"), StringComparison.Ordinal);
+        var project = Source("Kor.Operations.Mcp/Kor.Operations.Mcp.csproj");
+        Assert.DoesNotContain("Kor.Opportunities.Knowledge", project, StringComparison.Ordinal);
+        Assert.Contains("<Version>0.5.1</Version>", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("Director", Source("Kor.Operations.Mcp/Alerts/AlertJob.cs"), StringComparison.Ordinal);
+        Assert.True(Assemblies.Length == 2, "EXPECTED only MCP and Data in the binder scan.");
+    }
+
+    private static string Source(string relative)
+    {
+        DirectoryInfo? dir = new(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "CLAUDE.md"))) dir = dir.Parent;
+        return File.ReadAllText(Path.Combine(dir?.FullName ?? throw new DirectoryNotFoundException(), relative));
+    }
 
     [Fact]
     public void NoPublicTypeCarriesABinderRejectedTryParseOrBindAsync()

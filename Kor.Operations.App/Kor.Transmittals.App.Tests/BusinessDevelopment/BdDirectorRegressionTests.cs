@@ -25,6 +25,7 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// Covers the role/config/fallback wiring, visible literal wording and captions,
 /// SQL population/join/grouping contracts, date-ratchet inclusion, alias-aware drill
 /// filtering, analytics segmentation, source attribution and guarded reassignment.
+/// Also checks migration 352 and the brief store's two inserts and acknowledgement update.
 /// Person grouping is asserted in SQL (the store already returns one row/person),
 /// not by feeding duplicate person aggregates into the view model.
 /// Does not execute SQL, authenticate a user, render WPF, open dialogs or prove
@@ -102,6 +103,54 @@ public sealed class BdDirectorRegressionTests
         }) Contains(sql, clause);
         Assert.False(Regex.IsMatch(sql, @"\b(INSERT|UPDATE|DELETE|MERGE)\b", RegexOptions.IgnoreCase),
             "EXPECTED SELECT-only Director store; ACTUAL write keyword present");
+    }
+
+    [Fact]
+    public void BriefStore_AddsExactlyTwoInsertsAndOneAcknowledgementUpdate()
+    {
+        var source = Source("Kor.Opportunities.Data/Crm/SqlDirectorBriefStore.cs");
+        var writes = Regex.Matches(source, @"\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM|MERGE)\s+(\w+\.\w+)", RegexOptions.IgnoreCase)
+            .Cast<Match>().Select(m => Regex.Replace(m.Value, @"\s+", " ")).OrderBy(s => s).ToArray();
+        Assert.Equal(new[] { "INSERT INTO opportunities.DirectorBrief", "INSERT INTO opportunities.DirectorBriefImport", "UPDATE opportunities.DirectorBrief" }, writes);
+        Contains(source, "WHERE Id = @id AND AcknowledgedAtUtc IS NULL");
+        Contains(source, "IsolationLevel.Serializable");
+        Contains(source, "DirectorBriefImport WITH (UPDLOCK, HOLDLOCK) WHERE FileSha256 = @hash");
+        Contains(source, "if (!force && existing is not null)");
+        Contains(source, "knowledge.Claim c WITH (UPDLOCK, HOLDLOCK)");
+        Contains(source, "c.RetiredAtUtc");
+        Contains(source, "file.ValidateCurrentCitations(retiredAt)");
+        Assert.True(source.IndexOf("if (!force && existing is not null)", StringComparison.Ordinal)
+            < source.IndexOf("file.ValidateCurrentCitations(retiredAt)", StringComparison.Ordinal),
+            "EXPECTED duplicate skip before retirement validation, with forced imports still validated.");
+        Contains(source, "JsonSerializer.Serialize(section.Citations.Distinct().Select(id => citations[id])");
+        Contains(source, "await tx.RollbackAsync(ct)");
+        Contains(source, "await tx.CommitAsync(ct)");
+        Contains(source, "PARTITION BY Section ORDER BY ImportedAtUtc DESC, Id DESC");
+        Contains(source, "WeekOf = (SELECT MAX(WeekOf) FROM opportunities.DirectorBrief)");
+        Contains(source, "SELECT DISTINCT TOP (@weeks) WeekOf");
+        Contains(Source("Kor.Operations.App/CompositionModules/OpportunitiesModule.cs"),
+            "services.AddSingleton<IDirectorBriefStore>(_ => new SqlDirectorBriefStore(options.OpportunitiesDb))");
+    }
+
+    [Fact]
+    public void Migration352_IsGuardedAdditiveDdl_TwoTablesAndOneIndex()
+    {
+        var sql = Source("Kor.Opportunities.Data/Schema/352_DirectorBrief.sql");
+        var statements = Regex.Replace(sql, @"/\*.*?\*/|--[^\r\n]*", "", RegexOptions.Singleline);
+        Assert.False(Regex.IsMatch(statements, @"\b(USE|DROP|ALTER|INSERT|UPDATE|DELETE|MERGE|GRANT)\b", RegexOptions.IgnoreCase));
+        Assert.True(Regex.Matches(statements, @"CREATE TABLE\b").Count == 2, "EXPECTED two guarded tables.");
+        Assert.True(Regex.Matches(statements, @"CREATE INDEX\b").Count == 1, "EXPECTED one guarded index.");
+        foreach (var table in new[] { "DirectorBrief", "DirectorBriefImport" })
+            Contains(sql, $"IF OBJECT_ID(N'opportunities.{table}', N'U') IS NULL");
+        Contains(sql, "IF NOT EXISTS (SELECT 1 FROM sys.indexes");
+        Contains(sql, "IX_Opportunities_DirectorBrief_WeekSection ON opportunities.DirectorBrief (WeekOf DESC, Section)");
+        Contains(sql, "CHECK (Section IN (N'ThisWeek', N'Pursuits', N'Accounts', N'Market', N'Asks'))");
+        foreach (var column in new[] { "WeekOf DATE NOT NULL", "Headline NVARCHAR(512) NOT NULL", "Body NVARCHAR(MAX) NOT NULL",
+                     "Recommendation NVARCHAR(MAX) NULL", "Citations NVARCHAR(MAX) NOT NULL", "DEFAULT N'[]'", "WrittenBy NVARCHAR(100) NOT NULL",
+                     "ImportedAtUtc DATETIMEOFFSET NOT NULL", "ImportedBy NVARCHAR(100) NOT NULL", "AcknowledgedAtUtc DATETIMEOFFSET NULL",
+                     "AcknowledgedBy NVARCHAR(100) NULL", "FileName NVARCHAR(260) NOT NULL", "FileSha256 CHAR(64) NOT NULL",
+                     "ExportSha256 CHAR(64) NOT NULL", "SectionsWritten INT NOT NULL", "Forced BIT NOT NULL" }) Contains(sql, column);
+        Assert.True(Regex.Matches(sql, @"^GO\s*$", RegexOptions.Multiline).Count == 4, "EXPECTED four guarded/setup batches.");
     }
 
     [Fact]

@@ -6,6 +6,7 @@
     <RootNamespace>Kor.Opportunities.Knowledge</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
     <PackageReference Include="PdfPig" Version="0.1.10" />
     <PackageReference Include="SmartComponents.LocalEmbeddings" Version="0.1.0-preview10148" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />

@@ -350,7 +350,7 @@ public sealed class BdScreensRenderTests
         claims.Setup(s => s.GetPassageAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync((long id, CancellationToken ct) =>
             new KnowledgePassageText(id, "Managing the professional service firm", id == 101 ? "Illustrative passage A" : "Illustrative passage B",
                 "ILLUSTRATIVE RENDER FIXTURE — not a quotation or extracted passage.\n\nThis sample text shows how the reader can compare a claim with its source passage. The production view displays the full stored passage and its original reference."));
-        using var market = new DirectorMarketFixture();
+        var market = new DirectorMarketFixture();
         market.SetupSignals(director);
         claims.Setup(s => s.GetClaimAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync((long id, CancellationToken ct) =>
             illustrativeClaims.Single(c => c.Id == id) with
@@ -404,6 +404,7 @@ public sealed class BdScreensRenderTests
             content.UpdateLayout();
             written += RenderView(content, new Size(1680, 980), Path.Combine(dir, files[i]));
         }
+        market.BriefStore.Verify(s => s.GetLatestAsync(It.IsAny<CancellationToken>()), Times.Once);
         return written;
     }
 

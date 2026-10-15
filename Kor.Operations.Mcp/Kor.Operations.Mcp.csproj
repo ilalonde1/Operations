@@ -12,7 +12,7 @@
     <!-- Bump on every meaningful service-side change so the /health
          endpoint and audit log let operators confirm a redeploy
          actually picked up the new binary. -->
-    <Version>0.5.0</Version>
+    <Version>0.5.1</Version>
     <!-- Skip copying Playwright's node driver (66 MB node.exe) — official
          switch in Microsoft.Playwright.targets. The MCP never scrapes; see
          the PackageReference exclusions below for the matching constraint. -->
@@ -38,12 +38,9 @@
     <!-- Arc 7 / BD-UI-Plan Phase C: BD tools surface the SAME IBdReportService
          queries the WPF BD Reports dashboard uses (no drift by construction). -->
     <ProjectReference Include="..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
-    <!-- Brings the local embedder and PdfPig. LocalEmbeddingsModel and ONNX runtime
-         native assets must reach publish output; verify them before deploying. -->
-    <ProjectReference Include="..\Kor.Opportunities.Knowledge\Kor.Opportunities.Knowledge.csproj" />
     <!-- Kor.Opportunities.Data transitively drags Playwright (77 MB incl.
          node.exe) + Microsoft.Graph (41 MB) into the publish output. The MCP
-         calls BD report/Director/dashboard stores (SqlClient + System.Text.Json) —
+         calls BD report stores (SqlClient + System.Text.Json) —
          scraper/Graph code paths never execute here, so their runtime assets
          are excluded. CONSTRAINT: if the MCP ever starts calling a
          Kor.Opportunities.Data service that scrapes (Playwright/AngleSharp)

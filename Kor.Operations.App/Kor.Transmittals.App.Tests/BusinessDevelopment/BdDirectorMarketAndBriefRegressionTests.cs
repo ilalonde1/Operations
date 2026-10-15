@@ -3,17 +3,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Kor.Operations.App.BusinessDevelopment.Director;
 using Kor.Operations.App.Crm;
-using Kor.Operations.App.Options;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Crm;
@@ -26,9 +21,9 @@ using Xunit;
 namespace Kor.Operations.App.Tests.BusinessDevelopment;
 
 /// <summary>
-/// Covers eight-tab/caption/literal/date contracts, fake-handler Basic auth/routes,
+/// Covers eight-tab/caption/literal/date contracts, database-store load/acknowledgement,
 /// market read sizes/frequency, Dashboard deadline semantics, retained retired citations,
-/// shared passage resolution and run-now disabling/reload. No real HTTP, SQL, model,
+/// shared passage resolution and the absence of runtime generation. No real HTTP, SQL, model,
 /// knowledge text or WPF rendering is used. Same-class miss: a binding can name an
 /// existing property yet truncate it at a narrow window size; render review is separate.
 /// All market/brief content below is explicitly illustrative, not production evidence.
@@ -44,7 +39,7 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
         Assert.Contains("{x:Static director:BdDirectorViewModel.MarketCaption}", xaml, StringComparison.Ordinal);
         Assert.Contains("{x:Static director:BdDirectorViewModel.BriefCaption}", xaml, StringComparison.Ordinal);
         Assert.Equal("What is coming: signals on the firms we watch, planned projects not yet procured, RFPs closing, and seats no structural engineer holds yet. All of it is what the BD Dashboard already reads.", BdDirectorViewModel.MarketCaption);
-        Assert.Equal("The Director's brief: five questions a week over these tabs and the rule bank, answered with the claims each answer rests on. Open a citation to read the passage.", BdDirectorViewModel.BriefCaption);
+        Assert.Equal("The Director's brief: five questions a week over these tabs and the rule bank, written from the week's export and imported here. Open a citation to read the passage.", BdDirectorViewModel.BriefCaption);
         Assert.True(Regex.Matches(xaml, "ContentTemplate=\"\\{StaticResource PassagePane\\}\"").Count == 2, "EXPECTED the same passage template in Knowledge and This week.");
         foreach (var file in DirectorFiles())
         {
@@ -58,22 +53,46 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
     }
 
     [Fact]
-    public async Task Client_UsesMcpOptions_BasicAuth_AndDirectorRoutes()
+    public async Task Brief_LoadsOnceOnLoad_RefreshReadsAgain_AndTabsHaveNoReadHandler()
     {
-        using var fixture = new DirectorMarketFixture();
-        var latest = await fixture.Brief.GetLatestAsync(CancellationToken.None);
-        await fixture.Brief.RunNowAsync(CancellationToken.None);
-        await fixture.Brief.AcknowledgeAsync(1, CancellationToken.None);
-        Assert.True(latest.Count == 5, "EXPECTED five synthetic sections.");
-        Assert.Equal(new[] { "/director-brief/latest", "/director-brief/run-now", "/director-brief/1/acknowledge" }, fixture.Handler.Requests.Select(r => r.Path));
-        Assert.All(fixture.Handler.Requests, r => Assert.Equal("Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes("fixture:fixture")), r.Auth));
-        Assert.Equal(new[] { HttpMethod.Get, HttpMethod.Post, HttpMethod.Post }, fixture.Handler.Requests.Select(r => r.Method));
+        var fixture = new DirectorMarketFixture();
+        var director = new Mock<IBdDirectorStore>();
+        fixture.SetupSignals(director);
+        director.Setup(s => s.GetPeopleAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDirectorPerson>());
+        director.Setup(s => s.GetFunnelAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new BdDirectorFunnel(new Dictionary<int, double>(), Array.Empty<BdDirectorUndecidedPursuit>(), 0, 0, 0, 0));
+        director.Setup(s => s.GetAccountsAsync(1000, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDirectorAccount>());
+        director.Setup(s => s.GetTargetActualsAsync(It.IsAny<IReadOnlyList<BdTargetKey>>(), It.IsAny<CancellationToken>())).ReturnsAsync(new BdTargetActuals(new Dictionary<BdTargetKey, decimal>(), 0, 0));
+        var claims = new Mock<IKnowledgeClaimStore>();
+        fixture.SetupClaims(claims);
+        claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeSourceSummary>());
+        claims.Setup(s => s.ListConceptsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeConceptRow>());
+        using var vm = Create(fixture, director.Object, claims.Object);
+        await vm.LoadAsync(CancellationToken.None);
+        Assert.Equal("Up to date.", vm.StatusMessage);
+        Assert.True(vm.BriefSections.Count == 5, "EXPECTED five imported sections on load.");
+        fixture.BriefStore.Verify(s => s.GetLatestAsync(It.IsAny<CancellationToken>()), Times.Once);
+        var xaml = XDocument.Parse(Source("Kor.Operations.App/BusinessDevelopment/Director/BdDirectorWindow.xaml"));
+        Assert.All(xaml.Descendants().Where(e => e.Name.LocalName is "TabControl" or "TabItem"), e => Assert.Null(e.Attribute("SelectionChanged")));
+        await vm.LoadAsync(CancellationToken.None);
+        fixture.BriefStore.Verify(s => s.GetLatestAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public void Director_HasNoHttpClientOrRunAction()
+    {
+        Assert.DoesNotContain(typeof(BdDirectorViewModel).Assembly.GetTypes(), t => t.Name == "DirectorBriefClient");
+        foreach (var file in DirectorFiles())
+        {
+            var source = File.ReadAllText(file);
+            Assert.DoesNotContain("run-now", source, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Run now", source, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     [Fact]
     public async Task Citations_ResolveClaimAndPassage_AndRetiredClaimsStayVisible()
     {
-        using var fixture = new DirectorMarketFixture();
+        var fixture = new DirectorMarketFixture();
         var claims = new Mock<IKnowledgeClaimStore>(MockBehavior.Strict);
         fixture.SetupClaims(claims);
         using var vm = Create(fixture, new Mock<IBdDirectorStore>().Object, claims.Object);
@@ -92,7 +111,7 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
     [Fact]
     public async Task Market_LoadReadsOnce_UsesDashboardDeadlineRule_AndTabsHaveNoReadHandler()
     {
-        using var fixture = new DirectorMarketFixture();
+        var fixture = new DirectorMarketFixture();
         var director = new Mock<IBdDirectorStore>(MockBehavior.Strict);
         fixture.SetupSignals(director);
         using var vm = Create(fixture, director.Object, Mock.Of<IKnowledgeClaimStore>());
@@ -110,19 +129,18 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
     }
 
     [Fact]
-    public async Task RunNow_DisablesWhilePending_ThenReloads()
+    public async Task Acknowledge_PassesActorAndReloads_ImportedDateIsDisplayed()
     {
-        using var fixture = new DirectorMarketFixture();
-        fixture.Handler.PendingRun = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fixture = new DirectorMarketFixture();
         var claims = new Mock<IKnowledgeClaimStore>(); fixture.SetupClaims(claims);
         using var vm = Create(fixture, Mock.Of<IBdDirectorStore>(), claims.Object);
-        var run = vm.RunBriefAsync(CancellationToken.None);
-        Assert.True(vm.BriefRunning && !vm.CanRunBrief);
-        await vm.RunBriefAsync(CancellationToken.None);
-        fixture.Handler.PendingRun.SetResult(true);
-        await run;
-        Assert.True(!vm.BriefRunning && vm.CanRunBrief && vm.BriefSections.Count == 5);
-        Assert.True(fixture.Handler.Requests.Count(r => r.Path.EndsWith("run-now", StringComparison.Ordinal)) == 1);
+        await vm.LoadBriefAsync(CancellationToken.None);
+        var row = vm.BriefSections[0];
+        Assert.Equal(row.Brief.ImportedAtUtc, row.Generated);
+        await vm.AcknowledgeBriefAsync(row, "Fixture actor", CancellationToken.None);
+        fixture.BriefStore.Verify(s => s.AcknowledgeAsync(row.Brief.Id, "Fixture actor", It.IsAny<CancellationToken>()), Times.Once);
+        fixture.BriefStore.Verify(s => s.GetLatestAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        Assert.False(vm.BriefSections[0].CanAcknowledge);
     }
 
     [Fact]
@@ -131,9 +149,22 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
         foreach (var file in DirectorFiles()) Assert.False(Regex.IsMatch(File.ReadAllText(file), "yyyy-MM-dd|MMM d, yyyy"), file);
     }
 
-    private static BdDirectorViewModel Create(DirectorMarketFixture fixture, IBdDirectorStore reads, IKnowledgeClaimStore claims) => new(reads,
-        Mock.Of<IPursuitOverwatchStore>(), Mock.Of<ICrmEngagementStore>(), Mock.Of<IBdAttributionStore>(), Mock.Of<IBdDirectorLedgerStore>(),
-        Mock.Of<IDeltekClientContextService>(), claims, fixture.Dashboard.Object, fixture.Opportunities.Object, fixture.Brief);
+    private static BdDirectorViewModel Create(DirectorMarketFixture fixture, IBdDirectorStore reads, IKnowledgeClaimStore claims)
+    {
+        var pursuits = new Mock<IPursuitOverwatchStore>();
+        pursuits.Setup(s => s.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<PursuitOverwatchRow>());
+        var records = new Mock<ICrmEngagementStore>();
+        records.Setup(s => s.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<CrmEngagement>());
+        var attribution = new Mock<IBdAttributionStore>();
+        attribution.Setup(s => s.GetSummaryAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+            new BdAttributionSummary(0, 0m, 0, 0, 0, Array.Empty<AttributionSourceRow>(), Array.Empty<AttributionOwnerRow>()));
+        var ledger = new Mock<IBdDirectorLedgerStore>();
+        ledger.Setup(s => s.ListTargetsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdTarget>());
+        ledger.Setup(s => s.ListAsksAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdAsk>());
+        ledger.Setup(s => s.ListDecisionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDecision>());
+        return new(reads, pursuits.Object, records.Object, attribution.Object, ledger.Object,
+            Mock.Of<IDeltekClientContextService>(), claims, fixture.Dashboard.Object, fixture.Opportunities.Object, fixture.Brief);
+    }
     private static IEnumerable<string> DirectorFiles() => Directory.EnumerateFiles(Path.Combine(Root(), "Kor.Operations.App/BusinessDevelopment/Director"))
         .Where(f => Path.GetExtension(f) is ".cs" or ".xaml");
     private static string Source(string path) => File.ReadAllText(Path.Combine(Root(), path));
@@ -161,20 +192,23 @@ internal static class DirectorMarketDefaults
         mock.Setup(s => s.ListAsync(It.IsAny<CancellationToken>(), 5000, false, false)).ReturnsAsync(Array.Empty<Opportunity>());
         return mock.Object;
     }
-    internal static DirectorBriefClient Brief() => new(new McpServerOptions());
+    internal static IDirectorBriefStore Brief()
+    {
+        var mock = new Mock<IDirectorBriefStore>();
+        mock.Setup(s => s.GetLatestAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DirectorBriefRow>());
+        return mock.Object;
+    }
 }
 
-internal sealed class DirectorMarketFixture : IDisposable
+internal sealed class DirectorMarketFixture
 {
     internal Mock<IBdDashboardStore> Dashboard { get; } = new(MockBehavior.Strict);
     internal Mock<IOpportunityStore> Opportunities { get; } = new(MockBehavior.Strict);
-    internal BriefHandler Handler { get; } = new();
-    private readonly HttpClient _http;
-    internal DirectorBriefClient Brief { get; }
+    internal Mock<IDirectorBriefStore> BriefStore { get; } = new(MockBehavior.Strict);
+    internal IDirectorBriefStore Brief => BriefStore.Object;
+    internal IReadOnlyList<DirectorBriefRow> Rows { get; private set; } = Array.Empty<DirectorBriefRow>();
     internal DirectorMarketFixture()
     {
-        _http = new HttpClient(Handler) { Timeout = Timeout.InfiniteTimeSpan };
-        Brief = new DirectorBriefClient(new McpServerOptions { ServiceUrl = "https://fixture.invalid", Username = "fixture", Password = "fixture" }, _http);
         var now = DateTimeOffset.UtcNow;
         Dashboard.Setup(s => s.GetForwardPipelineAsync(12, It.IsAny<CancellationToken>())).ReturnsAsync(Enumerable.Range(1, 3)
             .Select(i => new BdForwardPipelineRow(i, "Illustrative planned project " + i, "Illustrative proponent", "BC", "Education", i * 10000000m, "Planning")).ToArray());
@@ -186,11 +220,16 @@ internal sealed class DirectorMarketFixture : IDisposable
         opportunities.Add(new Opportunity { Id = 5, Name = "Excluded: past", SubmissionDeadlineUtc = now.AddDays(-1) });
         opportunities.Add(new Opportunity { Id = 6, Name = "Excluded: beyond 30 days", SubmissionDeadlineUtc = now.AddDays(31) });
         Opportunities.Setup(s => s.ListAsync(It.IsAny<CancellationToken>(), 5000, false, false)).ReturnsAsync(opportunities);
-        var citations = JsonSerializer.Serialize(new[] { new DirectorCitationDto(1, 101, "Illustrative: confirm the buyer's need.", "Illustrative book A"),
-            new DirectorCitationDto(2, 102, "Illustrative: agree on the next step.", "Illustrative book B") });
-        Handler.Rows = new[] { "ThisWeek", "Pursuits", "Accounts", "Market", "Asks" }.Select((section, i) => new DirectorBriefDto(i + 1, now.UtcDateTime, now.Date,
-            section, "Illustrative brief · " + section, "Illustrative synthesis for layout review, not generated from firm records.",
-            "Illustrative recommendation: arrange a short conversation.", 0, 0, 0, null, null, citations)).ToArray();
+        var citations = new[] { new DirectorCitation(1, 101, "Illustrative: confirm the buyer's need.", "Illustrative book A"),
+            new DirectorCitation(2, 102, "Illustrative: agree on the next step.", "Illustrative book B") };
+        Rows = new[] { "ThisWeek", "Pursuits", "Accounts", "Market", "Asks" }.Select((section, i) => new DirectorBriefRow(i + 1, DateOnly.FromDateTime(now.Date),
+            section, "Illustrative brief · " + section, "Illustrative synthesis for layout review, written in session.",
+            "Illustrative recommendation: arrange a short conversation.", citations, "Fixture writer", now, null, null)).ToArray();
+        BriefStore.Setup(s => s.GetLatestAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => Rows);
+        BriefStore.Setup(s => s.AcknowledgeAsync(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback((long id, string by, CancellationToken ct) => Rows = Rows.Select(r => r.Id == id && r.AcknowledgedAtUtc is null
+                ? r with { AcknowledgedAtUtc = DateTimeOffset.UtcNow, AcknowledgedBy = by } : r).ToArray())
+            .Returns(Task.CompletedTask);
     }
     internal void SetupSignals(Mock<IBdDirectorStore> store) => store.Setup(s => s.GetRecentSignalsAsync(30, 25, It.IsAny<CancellationToken>())).ReturnsAsync(
         Enumerable.Range(1, 3).Select(i => new BdDirectorSignal(i, "Illustrative firm " + i, "RecentWin", "Illustrative early signal " + i, DateTimeOffset.UtcNow.AddDays(-i), i)).ToArray());
@@ -201,20 +240,5 @@ internal sealed class DirectorMarketFixture : IDisposable
                 0.9m, Array.Empty<string>(), null, id == 2 ? DateTimeOffset.UnixEpoch : null, id == 2 ? "Illustrative retirement reason." : null));
         store.Setup(s => s.GetPassageAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync((long id, CancellationToken ct) =>
             new KnowledgePassageText(id, "Illustrative book", "Illustrative reference", "ILLUSTRATIVE passage for layout review. No book text was read to create this fixture."));
-    }
-    public void Dispose() => _http.Dispose();
-    internal sealed class BriefHandler : HttpMessageHandler
-    {
-        internal IReadOnlyList<DirectorBriefDto> Rows { get; set; } = Array.Empty<DirectorBriefDto>();
-        internal List<(string Path, HttpMethod Method, string? Auth)> Requests { get; } = new();
-        internal TaskCompletionSource<bool>? PendingRun { get; set; }
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            var path = request.RequestUri!.AbsolutePath;
-            Requests.Add((path, request.Method, request.Headers.Authorization?.ToString()));
-            if (path.EndsWith("run-now", StringComparison.Ordinal) && PendingRun is not null) await PendingRun.Task.WaitAsync(ct);
-            return request.Method == HttpMethod.Get ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(Rows), Encoding.UTF8, "application/json") }
-                : new HttpResponseMessage(HttpStatusCode.NoContent);
-        }
     }
 }

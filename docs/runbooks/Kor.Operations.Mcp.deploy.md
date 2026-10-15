@@ -29,9 +29,7 @@ WPF clients on the KOR LAN.
    ```
    Then run `Kor.Operations.Mcp\Sql\CreateAuditLog.sql` (idempotent — creates
    `Mcp` schema + `Mcp.AuditLog` table + indexes).
-   Also run `Kor.Operations.Mcp\Sql\CreateDirectorBriefTable.sql` in KorMcp for
-   the Director's weekly brief. Apply Opportunities migration 351 separately;
-   it grants the MCP login SELECT only on `knowledge`.
+   `Mcp.DirectorBrief` in KorMcp is unused since 9f and may be dropped by Ian.
 
 2. **SQL login + linked-server mapping.** The MCP service connects with the
    login encoded in `Mcp:SqlConnectionString` in `appsettings.Production.json`.
@@ -84,20 +82,18 @@ dotnet publish "C:\VIsual Studio Projects\Operations\Kor.Operations.Mcp\Kor.Oper
     -c Release -r win-x64 --self-contained false -o $src
 
 # 2. Stop the service on KOR-APP01.
-# Before stopping, verify these publish assets exist: LocalEmbeddingsModel\bge-small-en-v1.5\model.onnx,
-# its vocab.txt, and the win-x64 ONNX runtime native (onnxruntime.dll).
-# If any is missing, fix publishing before copying the build to the server.
 sc.exe \\KOR-APP01 stop Kor.Operations.Mcp
 
 # 3. Snapshot the current install for rollback (dated _prev_<yyyymmdd_hhmmss>),
 #    matching the FileSync_prev_* convention already on the host.
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
 robocopy "\\KOR-APP01\C$\Program Files\KorOperations\Mcp" `
-         "\\KOR-APP01\C$\Program Files\KorOperations\Mcp_prev_$stamp" /MIR /XF appsettings.Production.json | Out-Null
+         "\\KOR-APP01\C$\Program Files\KorOperations\Mcp_prev_$stamp" /MIR /XF appsettings.Production.json /XD Logs | Out-Null
 
 # 4. Mirror the new bits over. /XF protects the production secrets file —
 #    without this, the empty in-repo template would overwrite real secrets.
-robocopy $src "\\KOR-APP01\C$\Program Files\KorOperations\Mcp" /MIR /XF appsettings.Production.json
+#    /XD Logs preserves server logs during snapshot, copy and rollback.
+robocopy $src "\\KOR-APP01\C$\Program Files\KorOperations\Mcp" /MIR /XF appsettings.Production.json /XD Logs
 
 # 5. Start the service.
 sc.exe \\KOR-APP01 start Kor.Operations.Mcp
@@ -148,10 +144,10 @@ before assuming the service is silent.
 # 1. Stop the service.
 sc.exe \\KOR-APP01 stop Kor.Operations.Mcp
 
-# 2. Restore the most recent _prev_ snapshot. /XF preserves the live secrets file.
+# 2. Restore the most recent _prev_ snapshot. /XF preserves secrets; /XD Logs preserves live logs.
 $prev = Get-ChildItem '\\KOR-APP01\C$\Program Files\KorOperations\' -Directory `
     | Where-Object Name -Like 'Mcp_prev_*' | Sort-Object Name -Descending | Select-Object -First 1
-robocopy $prev.FullName "\\KOR-APP01\C$\Program Files\KorOperations\Mcp" /MIR /XF appsettings.Production.json
+robocopy $prev.FullName "\\KOR-APP01\C$\Program Files\KorOperations\Mcp" /MIR /XF appsettings.Production.json /XD Logs
 
 # 3. Start.
 sc.exe \\KOR-APP01 start Kor.Operations.Mcp

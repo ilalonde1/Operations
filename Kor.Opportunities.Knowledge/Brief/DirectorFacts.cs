@@ -3,7 +3,7 @@ using System.Text;
 using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.MajorProjects;
 
-namespace Kor.Operations.Mcp.Director;
+namespace Kor.Opportunities.Knowledge.Brief;
 
 /// <summary>One facts load per section. Each needed store method is read once in that load.
 /// The compact blocks are bounded; missing data is identified instead of inferred.</summary>

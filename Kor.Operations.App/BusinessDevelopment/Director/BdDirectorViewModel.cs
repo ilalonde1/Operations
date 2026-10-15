@@ -29,7 +29,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public const string DecisionsCaption = "What was decided, why, and what was expected. A decision is never edited; it is scored Right, Wrong or Unclear when its review date comes.";
     public const string KnowledgeCaption = "What the books assert, one sentence each, cited to the passage it rests on. Keep what holds for KOR; retire what does not. Nothing is deleted.";
     public const string MarketCaption = "What is coming: signals on the firms we watch, planned projects not yet procured, RFPs closing, and seats no structural engineer holds yet. All of it is what the BD Dashboard already reads.";
-    public const string BriefCaption = "The Director's brief: five questions a week over these tabs and the rule bank, answered with the claims each answer rests on. Open a citation to read the passage.";
+    public const string BriefCaption = "The Director's brief: five questions a week over these tabs and the rule bank, written from the week's export and imported here. Open a citation to read the passage.";
 
     private readonly IBdDirectorStore _director;
     private readonly IPursuitOverwatchStore _pursuits;
@@ -40,10 +40,9 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     private readonly IKnowledgeClaimStore _claims;
     private readonly IBdDashboardStore _dashboard;
     private readonly IOpportunityStore _opportunities;
-    private readonly DirectorBriefClient _brief;
+    private readonly IDirectorBriefStore _brief;
     private CancellationTokenSource? _briefCts;
     private BdDirectorCitationRow? _selectedBriefCitation;
-    private bool _briefRunning;
     private readonly CancellationTokenSource _knowledgeLifetime = new();
     private CancellationTokenSource? _claimsCts;
     private CancellationTokenSource? _passageCts;
@@ -68,7 +67,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public BdDirectorViewModel(IBdDirectorStore director, IPursuitOverwatchStore pursuits,
         ICrmEngagementStore records, IBdAttributionStore attribution, IBdDirectorLedgerStore ledger,
         IDeltekClientContextService deltek, IKnowledgeClaimStore claims, IBdDashboardStore dashboard,
-        IOpportunityStore opportunities, DirectorBriefClient brief)
+        IOpportunityStore opportunities, IDirectorBriefStore brief)
     {
         _director = director ?? throw new ArgumentNullException(nameof(director));
         _pursuits = pursuits ?? throw new ArgumentNullException(nameof(pursuits));
@@ -102,8 +101,6 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public string MarketFunnel { get; private set; } = "";
     public string BriefMessage { get; private set; } = "";
     public string CitationStatus { get; private set; } = "";
-    public bool BriefRunning { get => _briefRunning; private set { if (SetField(ref _briefRunning, value)) OnPropertyChanged(nameof(CanRunBrief)); } }
-    public bool CanRunBrief => !BriefRunning && _brief.IsConfigured;
     public BdDirectorCitationRow? SelectedBriefCitation
     {
         get => _selectedBriefCitation;
@@ -666,7 +663,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
             foreach (var row in rows)
             {
                 var citations = new List<BdDirectorCitationRow>();
-                foreach (var citation in row.ReadCitations())
+                foreach (var citation in row.Citations)
                 {
                     if (!resolved.TryGetValue(citation.ClaimId, out var claim))
                     {
@@ -680,8 +677,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
             token.ThrowIfCancellationRequested();
             SelectedBriefCitation = null;
             ReplaceRows(BriefSections, sections);
-            BriefMessage = !_brief.IsConfigured ? "The brief service is not configured."
-                : rows.Count == 0 ? "No brief has been generated yet." : "Latest available sections. Generation dates show when each was written.";
+            BriefMessage = rows.Count == 0 ? "No brief has been imported yet." : "Latest imported sections. Dates show when each was imported.";
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested && !ct.IsCancellationRequested) { return; }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
@@ -694,25 +690,9 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(BriefMessage));
     }
 
-    public async Task RunBriefAsync(CancellationToken ct)
+    public async Task AcknowledgeBriefAsync(BdDirectorBriefRow row, string actor, CancellationToken ct)
     {
-        if (!CanRunBrief) return;
-        BriefRunning = true;
-        BriefMessage = "Writing the five sections…"; OnPropertyChanged(nameof(BriefMessage));
-        try { await _brief.RunNowAsync(ct).ConfigureAwait(true); await LoadBriefAsync(ct).ConfigureAwait(true); }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Director brief generation did not complete for this window.");
-            BriefMessage = "The brief run did not complete for this window. Refresh to check for saved sections.";
-            OnPropertyChanged(nameof(BriefMessage));
-        }
-        finally { BriefRunning = false; }
-    }
-
-    public async Task AcknowledgeBriefAsync(BdDirectorBriefRow row, CancellationToken ct)
-    {
-        await _brief.AcknowledgeAsync(row.Brief.Id, ct).ConfigureAwait(true);
+        await _brief.AcknowledgeAsync(row.Brief.Id, actor, ct).ConfigureAwait(true);
         await LoadBriefAsync(ct).ConfigureAwait(true);
     }
 

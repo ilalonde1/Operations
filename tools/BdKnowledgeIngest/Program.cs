@@ -11,6 +11,8 @@
 // claims embed                 fill missing claim vectors in batches of 500
 // claims relate <file.json> [--by <name>]
 // claims search "<question>" [--take 12]
+// brief export [--week <yyyy-MM-dd>] --to <folder>
+// brief import <export.json> <sections.json> --by <name> [--force]
 // --db <connection string>   default: env KOR_OPPORTUNITIES_OPPORTUNITIESDB
 // --dry reads/chunks only, without a database connection or embedding call.
 
@@ -18,6 +20,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using Kor.Opportunities.Knowledge;
+using Kor.Opportunities.Data.Crm;
+using Kor.Opportunities.Data.MajorProjects;
+using Kor.Opportunities.Knowledge.Brief;
 using Kor.Opportunities.Knowledge.Claims;
 using Kor.Opportunities.Knowledge.Embedding;
 using Kor.Opportunities.Knowledge.Readers;
@@ -39,14 +44,15 @@ internal static class KnowledgeCli
             var options = Arguments.Parse(args);
             if (options.Flag("--help")) { Usage(); return 0; }
             var verb = options.Positionals.FirstOrDefault()?.ToLowerInvariant();
-            if (verb is not ("ingest" or "embed" or "search" or "list" or "export" or "claims")) { Usage(); return 2; }
+            if (verb is not ("ingest" or "embed" or "search" or "list" or "export" or "claims" or "brief")) { Usage(); return 2; }
             options.ValidateFor(verb);
             var ct = cancellation.Token;
             var dry = verb == "ingest" && options.Flag("--dry");
             IKnowledgeStore? store = null;
+            string? connection = null;
             if (!dry)
             {
-                var connection = options.Value("--db") ?? Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB");
+                connection = options.Value("--db") ?? Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB");
                 if (string.IsNullOrWhiteSpace(connection))
                     throw new ArgumentException("Missing connection string. Pass --db or set KOR_OPPORTUNITIES_OPPORTUNITIESDB.");
                 // Validate before per-file processing, without echoing credentials on failure.
@@ -54,10 +60,11 @@ internal static class KnowledgeCli
                 catch (ArgumentException) { throw new ArgumentException("Invalid database connection string."); }
                 store = new SqlKnowledgeStore(connection);
             }
-            // Export, claim import and relation import do not construct an embedder.
-            // Claims embed/search construct the local embedder inside ClaimsAsync.
+            // Claim export/import, relation import and brief import do not construct an embedder.
+            // Claims embed/search and brief export construct the local embedder in their branches.
             if (verb == "export") return await ExportAsync(options, store!, ct);
             if (verb == "claims") return await ClaimsAsync(options, store!, ct);
+            if (verb == "brief") return await BriefAsync(options, store!, connection!, ct);
             using var embedder = new KnowledgeEmbedder(); // ONNX loads lazily; dry/list never load it.
             switch (verb)
             {
@@ -224,6 +231,35 @@ internal static class KnowledgeCli
         return ok == ids.Length ? 0 : 1;
     }
 
+    private static async Task<int> BriefAsync(Arguments args, IKnowledgeStore store, string connection, CancellationToken ct)
+    {
+        if (args.Positionals[1].Equals("import", StringComparison.OrdinalIgnoreCase))
+        {
+            var result = await DirectorBriefFiles.ImportAsync(await File.ReadAllBytesAsync(args.Positionals[2], ct),
+                await File.ReadAllBytesAsync(args.Positionals[3], ct), args.Positionals[3], args.Value("--by")!, args.Flag("--force"),
+                new SqlDirectorBriefStore(connection), ct);
+            foreach (var reason in result.Rejected) Console.WriteLine("REJECT " + OneLine(reason));
+            if (result.Rejected.Count != 0) return 1;
+            var name = OneLine(Path.GetFileName(args.Positionals[3]));
+            Console.WriteLine(result.SectionsWritten == 0 ? $"SKIP already imported  {name}" : $"OK {result.SectionsWritten} sections written  {name}");
+            return 0;
+        }
+        var week = args.Value("--week") is { } raw
+            ? DateOnly.ParseExact(raw, "yyyy-MM-dd", CultureInfo.InvariantCulture)
+            : DirectorBriefExport.NextSunday(DateTimeOffset.UtcNow);
+        using var embedder = new KnowledgeEmbedder();
+        using var search = new KnowledgeSearch(store, embedder);
+        var facts = new DirectorFacts(new SqlBdDirectorStore(connection), new SqlBdDirectorLedgerStore(connection), new SqlBdDashboardStore(connection));
+        var export = await new DirectorBriefExport(facts, search).ExportAsync(week, ct);
+        var folder = Path.GetFullPath(args.Value("--to")!);
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, week.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + "-director-brief.export.json");
+        await File.WriteAllBytesAsync(path, JsonSerializer.SerializeToUtf8Bytes(export, DirectorBriefFiles.JsonOptions), ct);
+        foreach (var section in export.Sections) Console.WriteLine($"{section.Section}  {section.Facts.Length} facts characters  {section.Claims.Count} claims");
+        Console.WriteLine(path);
+        return 0;
+    }
+
     private static async Task<int> ClaimsAsync(Arguments args, IKnowledgeStore store, CancellationToken ct)
     {
         var action = args.Positionals[1].ToLowerInvariant();
@@ -317,6 +353,8 @@ internal static class KnowledgeCli
         BdKnowledgeIngest claims embed
         BdKnowledgeIngest claims relate <file.json> [--by <name>]
         BdKnowledgeIngest claims search "<question>" [--take 12]
+        BdKnowledgeIngest brief export [--week <yyyy-MM-dd>] --to <folder>
+        BdKnowledgeIngest brief import <export.json> <sections.json> --by <name> [--force]
         --db <connection string> defaults to env KOR_OPPORTUNITIES_OPPORTUNITIESDB
         """);
 
@@ -324,7 +362,7 @@ internal static class KnowledgeCli
     {
         private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help" };
         private static readonly HashSet<string> Values = new(StringComparer.Ordinal)
-            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to" };
+            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--week" };
         private readonly Dictionary<string, string?> _options = new(StringComparer.Ordinal);
         internal List<string> Positionals { get; } = new();
         internal string? Value(string name) => _options.GetValueOrDefault(name);
@@ -364,10 +402,21 @@ internal static class KnowledgeCli
         internal void ValidateFor(string verb)
         {
             var claimAction = verb == "claims" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
-            var expected = verb == "claims" ? claimAction == "embed" ? 2 : 3 : verb is "ingest" or "search" or "export" ? 2 : 1;
+            var briefAction = verb == "brief" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
+            var expected = verb == "brief" ? briefAction == "import" ? 4 : 2
+                : verb == "claims" ? claimAction == "embed" ? 2 : 3 : verb is "ingest" or "search" or "export" ? 2 : 1;
             if (Positionals.Count != expected) throw new ArgumentException($"Wrong number of arguments for {verb}; use --help.");
             if (verb == "claims" && claimAction is not ("import" or "embed" or "relate" or "search"))
                 throw new ArgumentException("Use claims import, embed, relate or search.");
+            if (verb == "brief")
+            {
+                if (briefAction is not ("export" or "import")) throw new ArgumentException("Use brief export or import.");
+                if (briefAction == "export" && string.IsNullOrWhiteSpace(Value("--to"))) throw new ArgumentException("brief export requires --to <folder>.");
+                if (briefAction == "import" && (string.IsNullOrWhiteSpace(Value("--by")) || Value("--by")!.Length > 100))
+                    throw new ArgumentException("brief import requires --by <name> (1–100 characters).");
+                if (Value("--week") is { } week && !DateOnly.TryParseExact(week, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+                    throw new ArgumentException("--week must be yyyy-MM-dd.");
+            }
             if (verb == "export")
             {
                 if (string.IsNullOrWhiteSpace(Value("--to"))) throw new ArgumentException("export requires --to <folder>.");
@@ -382,6 +431,7 @@ internal static class KnowledgeCli
                 "search" => new[] { "--take", "--per-source" },
                 "export" => new[] { "--to" },
                 "claims" => claimAction switch { "import" => new[] { "--force", "--by" }, "relate" => new[] { "--by" }, "search" => new[] { "--take" }, _ => Array.Empty<string>() },
+                "brief" => briefAction == "import" ? new[] { "--force", "--by" } : new[] { "--week", "--to" },
                 _ => Array.Empty<string>(),
             };
             foreach (var key in _options.Keys)

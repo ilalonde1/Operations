@@ -1,6 +1,5 @@
 using Kor.Operations.Mcp.Brief;
 using Kor.Operations.Mcp.CooCard;
-using Kor.Operations.Mcp.Director;
 using Quartz;
 
 namespace Kor.Operations.Mcp.Alerts;
@@ -11,20 +10,17 @@ public sealed class AlertJob : IJob
     private readonly AlertRunner _runner;
     private readonly CooBriefGenerator _briefGen;
     private readonly CooCardGenerator _cardGen;
-    private readonly DirectorBriefGenerator _directorGen;
     private readonly ILogger<AlertJob> _logger;
 
     public AlertJob(
         AlertRunner runner,
         CooBriefGenerator briefGen,
         CooCardGenerator cardGen,
-        DirectorBriefGenerator directorGen,
         ILogger<AlertJob> logger)
     {
         _runner = runner;
         _briefGen = briefGen;
         _cardGen = cardGen;
-        _directorGen = directorGen;
         _logger = logger;
     }
 
@@ -59,12 +55,5 @@ public sealed class AlertJob : IJob
         {
             _logger.LogError(ex, "CooCardGenerator failed.");
         }
-        try
-        {
-            ct.ThrowIfCancellationRequested();
-            await _directorGen.GenerateForWeekAsync(weekOf, ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (Exception ex) { _logger.LogError(ex, "DirectorBriefGenerator failed."); }
     }
 }

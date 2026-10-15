@@ -144,7 +144,7 @@ internal static class OpportunitiesModule
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OpportunitiesHubView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OverwatchViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OverwatchView>();
-        // Director shares the dashboard/opportunity stores above; AppModule supplies its brief client.
+        // Director shares the dashboard/opportunity stores and reads briefs from the same database.
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorWindow>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.AttributionViewModel>();
@@ -267,6 +267,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<IPursuitContextStore>(_ => new SqlPursuitContextStore(options.OpportunitiesDb));
         services.AddSingleton<IBdUiOpenStore>(_ => new SqlBdUiOpenStore(options.OpportunitiesDb));
         services.AddSingleton<IBdDirectorStore>(_ => new SqlBdDirectorStore(options.OpportunitiesDb));
+        services.AddSingleton<IDirectorBriefStore>(_ => new SqlDirectorBriefStore(options.OpportunitiesDb));
         services.AddSingleton<IBdDirectorLedgerStore>(_ => new SqlBdDirectorLedgerStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Knowledge.IKnowledgeClaimStore>(_ =>
             new Kor.Opportunities.Data.Knowledge.SqlKnowledgeClaimStore(options.OpportunitiesDb));
