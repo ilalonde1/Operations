@@ -1,0 +1,30 @@
+{
+  "title": "KOR Structural - Project Organization and Supervision",
+  "subtitle": "City of Leduc - West Campus Recreation Project, Phase 1 - RFP 2026-RFP-IP-061 - Structural Consultant (IPD Partner)",
+  "context": {
+    "name": "City of Leduc - IPD Project Team",
+    "lines": [ "Senior Management Team (SMT)  -  Project Management Team (PMT)", "City of Leduc - Architect - General Contractor - KOR Structural" ]
+  },
+  "chain": [
+    { "name": "John Markulin", "cred": "P.Eng., Struct.Eng., PE, SE", "title": "Managing Principal - Engineer of Record", "role": "SMT REPRESENTATIVE" },
+    { "name": "Jim DesRoches", "cred": "P.Eng., PE", "title": "Principal - Project Manager", "role": "PMT REPRESENTATIVE  -  TEAM LEADER" }
+  ],
+  "groups": [
+    { "name": "Structural Design", "people": [
+      { "name": "Islam Shabana", "cred": "Ph.D., P.Eng.", "title": "Senior Structural Engineer", "role": "DESIGN LEAD  -  alternate PMT" },
+      { "name": "Omar Alcazar Pastrana", "cred": "M.Sc., P.Eng.", "title": "Associate Principal - Senior Structural Engineer", "role": "" }
+    ] },
+    { "name": "Construction Contract Administration", "people": [
+      { "name": "Andrea Neuviale", "cred": "M.Eng., P.Eng.", "title": "Structural Engineer - field reviews, RFIs, design clarifications", "role": "CONSTRUCTION CONTRACT ADMINISTRATION" }
+    ] },
+    { "name": "BIM and Drafting", "people": [
+      { "name": "Serban Acosti", "cred": "", "title": "Senior BIM Technician - Project Drafting Manager", "role": "BIM LEAD" },
+      { "name": "Lindsay Finnigan", "cred": "", "title": "BIM Technician - modelling, coordination, documents", "role": "" }
+    ] },
+    { "name": "Project Administration", "people": [
+      { "name": "Daler Singh", "cred": "", "title": "Accountant - financial reporting, IPD process support", "role": "" },
+      { "name": "Ian Lalonde", "cred": "", "title": "Internal Systems Manager - BIM and data systems", "role": "" }
+    ] }
+  ],
+  "note": "Leadership continuity: if John Markulin is unavailable, a designated alternate senior representative assumes the SMT role. If Jim DesRoches is unavailable, Islam Shabana assumes the PMT role. Engineering staff in Vancouver and Edmonton provide additional technical support throughout the project."
+}
