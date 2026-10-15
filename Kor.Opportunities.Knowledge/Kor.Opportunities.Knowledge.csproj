@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Kor.Opportunities.Knowledge</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="PdfPig" Version="0.1.10" />
+    <PackageReference Include="SmartComponents.LocalEmbeddings" Version="0.1.0-preview10148" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+  </ItemGroup>
+  <!-- Ported from JoeBrain.Core.csproj. The first build downloads 33 MB once.
+       BAAI's MIT-licensed bge-small-en-v1.5, Xenova's quantized ONNX export.
+       Content propagates to referencing executables/tests and publish output. -->
+  <PropertyGroup>
+    <KorKnowledgeModelName>bge-small-en-v1.5</KorKnowledgeModelName>
+    <KorKnowledgeModelUrl>https://huggingface.co/Xenova/bge-small-en-v1.5/resolve/main/onnx/model_quantized.onnx</KorKnowledgeModelUrl>
+    <KorKnowledgeModelVocabUrl>https://huggingface.co/Xenova/bge-small-en-v1.5/resolve/main/vocab.txt</KorKnowledgeModelVocabUrl>
+    <KorKnowledgeModelCacheDir>$(NuGetPackageRoot)smartcomponents.localembeddings\0.1.0-preview10148\.cache\</KorKnowledgeModelCacheDir>
+    <KorKnowledgeModelPath>$(KorKnowledgeModelCacheDir)$([System.Text.RegularExpressions.Regex]::Replace($(KorKnowledgeModelUrl), "[^a-zA-Z0-9\.]", "_"))</KorKnowledgeModelPath>
+    <KorKnowledgeModelVocabPath>$(KorKnowledgeModelCacheDir)$([System.Text.RegularExpressions.Regex]::Replace($(KorKnowledgeModelVocabUrl), "[^a-zA-Z0-9\.]", "_"))</KorKnowledgeModelVocabPath>
+  </PropertyGroup>
+  <Target Name="AcquireKorKnowledgeModel" BeforeTargets="AssignTargetPaths">
+    <MakeDir Directories="$(KorKnowledgeModelCacheDir)" />
+    <DownloadFile Condition="!Exists('$(KorKnowledgeModelPath)')" SourceUrl="$(KorKnowledgeModelUrl)" DestinationFolder="$(KorKnowledgeModelCacheDir)" DestinationFileName="$([System.IO.Path]::GetFileName($(KorKnowledgeModelPath)))" />
+    <DownloadFile Condition="!Exists('$(KorKnowledgeModelVocabPath)')" SourceUrl="$(KorKnowledgeModelVocabUrl)" DestinationFolder="$(KorKnowledgeModelCacheDir)" DestinationFileName="$([System.IO.Path]::GetFileName($(KorKnowledgeModelVocabPath)))" />
+    <ItemGroup>
+      <Content CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Include="$(KorKnowledgeModelPath)" TargetPath="LocalEmbeddingsModel\$(KorKnowledgeModelName)\model.onnx" />
+      <Content CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Include="$(KorKnowledgeModelVocabPath)" TargetPath="LocalEmbeddingsModel\$(KorKnowledgeModelName)\vocab.txt" />
+    </ItemGroup>
+  </Target>
+</Project>
