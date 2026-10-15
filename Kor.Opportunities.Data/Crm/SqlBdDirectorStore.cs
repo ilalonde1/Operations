@@ -1,6 +1,9 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Globalization;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -10,7 +13,7 @@ namespace Kor.Opportunities.Data.Crm;
 /// <summary>
 /// One aggregate per resolved person. Activities and stage moves are reduced per
 /// pursuit before summing; opens are counted once per person, never per pursuit.
-/// Both commands are SELECT-only and use a single UTC reference within each read.
+/// Commands are SELECT-only; dated aggregates use one UTC reference per read.
 /// </summary>
 public sealed class SqlBdDirectorStore : IBdDirectorStore
 {
@@ -112,6 +115,19 @@ WHERE Stage = 7 AND COALESCE(ExternalSource, N'') <> N'Deltek.CustomProposal';";
 
     private readonly string _connectionString;
 
+    private const string AccountsSql = @"
+SELECT TOP (@take) co.Id, co.DisplayName, co.Kind, co.ClendorClientId,
+       ISNULL(co.KorProjectsCount, 0), ISNULL(co.KorProjectsCountIsRecordsNotWins, 0), co.LastKorProjectAtUtc,
+       (SELECT COUNT(*) FROM opportunities.CrmEngagements e
+        WHERE e.BuyerCanonicalOrgId = co.Id AND e.Stage IN (1, 3)) AS LivePursuits,
+       w.LastTouchUtc,
+       (SELECT COUNT(*) FROM opportunities.BdAsk a
+        WHERE a.CanonicalOrgId = co.Id AND a.Status = N'Open') AS OpenAsks
+FROM opportunities.CanonicalOrg co
+LEFT JOIN opportunities.CrmBuyerEmailWarmth w ON w.CanonicalOrgId = co.Id
+WHERE co.ClendorClientId IS NOT NULL AND co.RetiredAtUtc IS NULL
+ORDER BY ISNULL(co.KorProjectsCount, 0) DESC, co.DisplayName;";
+
     public SqlBdDirectorStore(string connectionString)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -144,6 +160,76 @@ WHERE Stage = 7 AND COALESCE(ExternalSource, N'') <> N'Deltek.CustomProposal';";
                 keys.Add(reader.GetString(1));
         }
         return people;
+    }
+
+    public async Task<BdTargetActuals> GetTargetActualsAsync(IReadOnlyList<BdTargetKey> keys, CancellationToken ct)
+    {
+        // SQL Server permits 2100 parameters per command: five per target key.
+        if (keys.Count > 420) throw new ArgumentException("Too many target periods for one read.", nameof(keys));
+        await using var con = new SqlConnection(_connectionString);
+        await using var cmd = new SqlCommand { Connection = con, CommandTimeout = 30 };
+        var sql = new StringBuilder(@"
+SELECT COUNT(*) AS Live, COALESCE(SUM(CASE WHEN ProposedFee > 0 THEN 1 ELSE 0 END), 0) AS LiveWithFee
+FROM opportunities.CrmEngagements WHERE Stage IN (1, 3);");
+        for (var index = 0; index < keys.Count; index++)
+        {
+            var n = index.ToString(CultureInfo.InvariantCulture);
+            var key = keys[index];
+            // Only the generated ordinal enters SQL text. Every target value is a parameter.
+            sql.Append($@"
+SELECT CAST(COALESCE(CASE @m{n}
+    WHEN N'LivePursuits' THEN COUNT(*)
+    WHEN N'PipelineFee' THEN SUM(COALESCE(e.ProposedFee, 0))
+    WHEN N'AccountsWithLivePursuit' THEN COUNT(DISTINCT e.BuyerCanonicalOrgId)
+    WHEN N'PursuitsOpened' THEN COUNT(*)
+    WHEN N'BuyersTouched' THEN COUNT(DISTINCT e.BuyerCanonicalOrgId)
+    ELSE 0 END, 0) AS decimal(18,2))
+FROM opportunities.CrmEngagements e
+LEFT JOIN opportunities.BdStaff s ON s.StaffKey = e.OwnerStaffId
+LEFT JOIN opportunities.CrmBuyerEmailWarmth w ON w.CanonicalOrgId = e.BuyerCanonicalOrgId
+WHERE ((@s{n} = N'Firm')
+    OR (@s{n} = N'Region' AND e.Region COLLATE SQL_Latin1_General_CP1_CI_AS = @k{n})
+    OR (@s{n} = N'Person' AND COALESCE(s.Mailbox, e.OwnerStaffId) COLLATE SQL_Latin1_General_CP1_CI_AS = @k{n}))
+  AND ((@m{n} = N'PursuitsOpened' AND e.OpenedAtUtc >= @ps{n} AND e.OpenedAtUtc < @pe{n}
+        AND COALESCE(e.ExternalSource, N'') NOT LIKE N'Deltek.%')
+    OR (@m{n} <> N'PursuitsOpened' AND e.Stage IN (1, 3)
+        AND (@m{n} <> N'BuyersTouched' OR (w.LastTouchUtc >= @ps{n} AND w.LastTouchUtc < @pe{n}))));");
+            cmd.Parameters.Add("@m" + n, SqlDbType.NVarChar, 40).Value = key.Metric;
+            cmd.Parameters.Add("@s" + n, SqlDbType.NVarChar, 20).Value = key.Scope;
+            cmd.Parameters.Add("@k" + n, SqlDbType.NVarChar, 150).Value = (object?)key.ScopeKey ?? DBNull.Value;
+            cmd.Parameters.Add("@ps" + n, SqlDbType.DateTimeOffset).Value = key.PeriodStartUtc;
+            cmd.Parameters.Add("@pe" + n, SqlDbType.DateTimeOffset).Value = key.PeriodEndUtc;
+        }
+        cmd.CommandText = sql.ToString();
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        await reader.ReadAsync(ct).ConfigureAwait(false);
+        var live = reader.GetInt32(0);
+        var withFee = reader.GetInt32(1);
+        var actuals = new Dictionary<BdTargetKey, decimal>();
+        foreach (var key in keys)
+        {
+            await reader.NextResultAsync(ct).ConfigureAwait(false);
+            await reader.ReadAsync(ct).ConfigureAwait(false);
+            actuals[key] = reader.GetDecimal(0);
+        }
+        return new BdTargetActuals(actuals, live, withFee);
+    }
+
+    public async Task<IReadOnlyList<BdDirectorAccount>> GetAccountsAsync(int take, CancellationToken ct)
+    {
+        if (take <= 0) throw new ArgumentOutOfRangeException(nameof(take));
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(AccountsSql, con) { CommandTimeout = 30 };
+        cmd.Parameters.Add("@take", SqlDbType.Int).Value = take;
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        var accounts = new List<BdDirectorAccount>();
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            accounts.Add(new BdDirectorAccount(reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
+                reader.GetInt32(4), reader.GetBoolean(5), reader.IsDBNull(6) ? null : reader.GetDateTime(6),
+                reader.GetInt32(7), reader.IsDBNull(8) ? null : reader.GetDateTimeOffset(8), reader.GetInt32(9)));
+        return accounts;
     }
 
     public async Task<BdDirectorFunnel> GetFunnelAsync(CancellationToken ct)

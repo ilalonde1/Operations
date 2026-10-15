@@ -4,6 +4,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.App.Opportunities;
+using Kor.Operations.App.BusinessDevelopment.Director;
 using Kor.Operations.Services;
 using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Opportunities;
@@ -16,6 +17,7 @@ public partial class DashboardView : UserControl
 {
     private readonly IServiceProvider? _services;
     private CancellationTokenSource? _cts;
+    private readonly System.Collections.Generic.HashSet<long> _closingAsks = new();
 
     // No parameterless ctor: MS.DI picks the greediest resolvable constructor,
     // but if selection ever regressed the bare ctor produced a view with no
@@ -52,6 +54,7 @@ public partial class DashboardView : UserControl
             try
             {
                 await vm.LoadAsync(cts.Token).ConfigureAwait(true);
+                await vm.LoadAsksAsync(ResolveActor(), cts.Token).ConfigureAwait(true);
                 await vm.LoadPriorityActionsAsync(cts.Token).ConfigureAwait(true);
             }
             catch (OperationCanceledException)
@@ -257,6 +260,32 @@ public partial class DashboardView : UserControl
         // LoadAsync reports refresh failures in dashboard status. The write has
         // already succeeded; do not relabel a failed refresh as a failed save.
         await vm.LoadAsync(CancellationToken.None).ConfigureAwait(true);
+        await vm.LoadAsksAsync(ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private async void AskDone_Click(object sender, RoutedEventArgs e)
+        => await CloseDashboardAskAsync(sender, "Done").ConfigureAwait(true);
+
+    private async void AskCant_Click(object sender, RoutedEventArgs e)
+        => await CloseDashboardAskAsync(sender, "Declined").ConfigureAwait(true);
+
+    private async Task CloseDashboardAskAsync(object sender, string status)
+    {
+        if (DataContext is not DashboardViewModel vm || sender is not FrameworkElement { DataContext: DashboardViewModel.BdAskRow row }
+            || !_closingAsks.Add(row.Id)) return;
+        try
+        {
+            var dialog = new NoteDialog(status == "Done" ? "Done" : "Can't",
+                status == "Done" ? "What was done? (optional)" : "What prevents this? (optional)", 500) { Owner = OwnerWindow() };
+            if (dialog.ShowDialog() == true)
+                await vm.CloseAskAsync(row.Id, status, dialog.Note, ResolveActor()).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Dashboard could not close ask.");
+            MessageBox.Show(OwnerWindow(), "Could not save your response. Please try again.", "Asked of you", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally { _closingAsks.Remove(row.Id); }
     }
 
     private string ResolveActor()

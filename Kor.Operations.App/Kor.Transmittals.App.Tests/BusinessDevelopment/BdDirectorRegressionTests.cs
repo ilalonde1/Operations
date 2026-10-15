@@ -11,6 +11,7 @@ using System.Windows;
 using System.Xml.Linq;
 using Kor.Operations.App.BusinessDevelopment.Director;
 using Kor.Operations.App.Services;
+using Kor.Operations.App.Crm;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Crm;
 using Moq;
@@ -240,12 +241,20 @@ public sealed class BdDirectorRegressionTests
         internal readonly Mock<IPursuitOverwatchStore> Pursuits = new();
         internal readonly Mock<ICrmEngagementStore> RecordStore = new();
         internal readonly Mock<IBdAttributionStore> Attribution = new();
+        internal readonly Mock<IBdDirectorLedgerStore> Ledger = new();
+        internal readonly Mock<IDeltekClientContextService> Deltek = new();
         internal readonly List<BdDirectorPerson> People = new();
         internal readonly List<PursuitOverwatchRow> Rows = new();
         internal readonly List<CrmEngagement> Records = new();
 
         internal Fixture()
         {
+            Ledger.Setup(s => s.ListTargetsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdTarget>());
+            Ledger.Setup(s => s.ListAsksAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdAsk>());
+            Ledger.Setup(s => s.ListDecisionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDecision>());
+            DirectorStore.Setup(s => s.GetTargetActualsAsync(It.IsAny<IReadOnlyList<BdTargetKey>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new BdTargetActuals(new Dictionary<BdTargetKey, decimal>(), 0, 0));
+            DirectorStore.Setup(s => s.GetAccountsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDirectorAccount>());
             DirectorStore.Setup(s => s.GetPeopleAsync(It.IsAny<CancellationToken>())).ReturnsAsync(People);
             DirectorStore.Setup(s => s.GetFunnelAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new BdDirectorFunnel(new Dictionary<int, double>(), Array.Empty<BdDirectorUndecidedPursuit>(), 0, 0, 0, 0));
@@ -255,7 +264,7 @@ public sealed class BdDirectorRegressionTests
                 .ReturnsAsync(new BdAttributionSummary(0, 0m, 0, 0, 0, Array.Empty<AttributionSourceRow>(), Array.Empty<AttributionOwnerRow>()));
         }
 
-        internal BdDirectorViewModel Create() => new(DirectorStore.Object, Pursuits.Object, RecordStore.Object, Attribution.Object);
+        internal BdDirectorViewModel Create() => new(DirectorStore.Object, Pursuits.Object, RecordStore.Object, Attribution.Object, Ledger.Object, Deltek.Object);
     }
 
     private static void Contains(string source, string expected) => Assert.True(source.Contains(expected, StringComparison.Ordinal),

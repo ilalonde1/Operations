@@ -92,7 +92,7 @@ public sealed class BdScreensRenderTests
 
         Assert.True(thread.Join(TimeSpan.FromMinutes(2)), "Rendering the BD screens did not finish within two minutes.");
         Assert.True(failure is null, $"A BD screen failed to build or render: {failure}");
-        Assert.True(written >= 6, $"EXPECTED at least 6 renders; ACTUAL {written}");
+        Assert.True(written >= 10, $"EXPECTED at least 10 renders; ACTUAL {written}");
     }
 
     // ---- the dashboard: funnel, Closing soon, New RFPs, Priority Actions (collapsed) ----
@@ -287,19 +287,101 @@ public sealed class BdScreensRenderTests
             0, 0m, 101, records.Count(r => r.Stage == CrmEngagementStage.Submitted), 0,
             new[] { new AttributionSourceRow("Deltek.CustomProposal", 2, 125000m), new AttributionSourceRow("Grab.BC Bid", 0, 0m) },
             Array.Empty<AttributionOwnerRow>()));
-        var vm = new BdDirectorViewModel(director.Object, pursuits.Object, recordStore.Object, attribution.Object);
+        var accounts = DirectorAccounts();
+        var measuredAt = new DateTimeOffset(2026, 10, 14, 0, 0, 0, TimeSpan.Zero);
+        Assert.True(accounts.Count == 15 && accounts.Count(a => a.LivePursuits > 0) == 4
+            && accounts.Count(a => a.LastTouchUtc >= measuredAt.AddDays(-90) && a.LastTouchUtc <= measuredAt) == 3,
+            "EXPECTED 15 accounts / 4 with live pursuits / 3 touched within 90 days of the measurement date; ACTUAL fixture differs");
+        director.Setup(s => s.GetAccountsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(accounts);
+        var start = new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero);
+        var targets = new[]
+        {
+            new BdTarget(1, BdTargetMetrics.LivePursuits, "Firm", null, start, start.AddMonths(3), 120, null, "Ian", measuredAt),
+            new BdTarget(2, BdTargetMetrics.AccountsWithLivePursuit, "Firm", null, start, start.AddMonths(3), 100, null, "Ian", measuredAt),
+        };
+        var ledger = new Mock<IBdDirectorLedgerStore>();
+        ledger.Setup(s => s.ListTargetsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(targets);
+        director.Setup(s => s.GetTargetActualsAsync(It.IsAny<IReadOnlyList<BdTargetKey>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new BdTargetActuals(new Dictionary<BdTargetKey, decimal>
+            {
+                [new BdTargetKey(targets[0].Metric, "Firm", null, start, start.AddMonths(3))] = 101,
+                [new BdTargetKey(targets[1].Metric, "Firm", null, start, start.AddMonths(3))] = 77,
+            }, 101, 0));
+        // Asks, decisions, account dates/open asks/client identifiers and the
+        // selected Deltek summary below are illustrative layout data, not measurements.
+        ledger.Setup(s => s.ListAsksAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new BdAsk(1, "Omar", 1, null, "Confirm the buyer's next meeting date.", "The next step has been waiting.", 30, measuredAt.AddDays(7), "Ian", measuredAt, "Open", null, null, null),
+            new BdAsk(2, "Conor", null, 141, "Arrange a short account review.", "Agree on who follows up.", 60, measuredAt.AddDays(9), "Ian", measuredAt, "Open", null, null, null),
+            new BdAsk(3, "Islam", null, null, "Bring two prospects for discussion.", null, 45, measuredAt.AddDays(14), "Ian", measuredAt, "Open", null, null, null),
+        });
+        ledger.Setup(s => s.ListDecisionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new BdDecision(1, "Go", 1, null, "Continue the school pursuit.", "A clear next step and an available team.", "Buyer confirms scope.", measuredAt.AddDays(30), "Ian", measuredAt, "Pending", null, null, null),
+            new BdDecision(2, "Target", null, 141, "Prioritize an account review.", "Start with our established clients.", "One meeting with the buyer.", measuredAt.AddDays(-1), "Ian", measuredAt.AddDays(-90), "Right", "Meeting agreed.", measuredAt, "Ian"),
+        });
+        var deltek = new Mock<IDeltekClientContextService>();
+        deltek.Setup(s => s.LoadAsync(accounts[0].ClendorClientId, It.IsAny<CancellationToken>())).ReturnsAsync(new DeltekClientIntelligence
+        {
+            ClientId = accounts[0].ClendorClientId, ClientName = accounts[0].DisplayName, LifetimeFee = 12500000m, ProjectCount = 378,
+            LatestProjectName = "Client portfolio review", LatestProjectStart = new DateTime(2026, 8, 1),
+            SummaryPostedThrough = new DateTime(2026, 9, 1), Ar = new DeltekArSummary(125000m, 18000m, 7),
+        });
+        using var vm = new BdDirectorViewModel(director.Object, pursuits.Object, recordStore.Object, attribution.Object, ledger.Object, deltek.Object);
         vm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
         Assert.True(vm.Live == 101 && vm.PeopleCount == 8 && vm.Outcomes == "No live pursuit has been decided yet.",
             $"EXPECTED 101 live / 8 people / no decided live pursuits; ACTUAL {vm.Live} / {vm.PeopleCount} / {vm.Outcomes}");
 
         var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>());
         var content = (FrameworkElement)window.Content;
+        var tabs = Assert.IsType<System.Windows.Controls.TabControl>(window.FindName("Tabs"));
         // Render just the content; Loaded never fires and no telemetry/DI/DB runs.
         // Preserve the window's resources and inherited DataContext on detaching.
         window.Content = null;
         content.DataContext = vm;
         content.Resources.MergedDictionaries.Add(window.Resources);
-        return RenderView(content, new Size(1680, 980), Path.Combine(dir, "director.png"));
+        var files = new[] { "director-number.png", "director-people.png", "director-funnel.png", "director-accounts.png", "director-asks.png" };
+        var written = 0;
+        for (var i = 0; i < files.Length; i++)
+        {
+            tabs.SelectedIndex = i;
+            if (i == 3)
+            {
+                vm.SelectedAccount = vm.Accounts[0];
+                vm.AccountLoadTask.GetAwaiter().GetResult();
+            }
+            content.UpdateLayout();
+            written += RenderView(content, new Size(1680, 980), Path.Combine(dir, files[i]));
+        }
+        return written;
+    }
+
+    private static IReadOnlyList<BdDirectorAccount> DirectorAccounts()
+    {
+        var recent = new DateTimeOffset(2026, 10, 9, 0, 0, 0, TimeSpan.Zero);
+        var september = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
+        var old = new DateTimeOffset(2024, 11, 8, 0, 0, 0, TimeSpan.Zero);
+        // Client identifiers, last-project dates and open-ask counts are illustrative.
+        BdDirectorAccount Row(long id, string name, string kind, int count, int live = 0, DateTimeOffset? touch = null)
+            => new(id, name, kind, "fixture-" + id, count, true, new DateTime(2026, 8, 1), live, touch, id == 141 ? 1 : 0);
+        return new[]
+        {
+            Row(141, "Northland Properties Ltd.", "KorClient", 378),
+            Row(200, "Larco Investments Ltd.", "KorClient", 185),
+            Row(49, "Cressey Development Group", "KorClient", 117),
+            Row(28, "Polygon Development Ltd.", "KorClient", 114),
+            Row(157, "Reliance Properties Ltd.", "KorClient", 82),
+            Row(69677, "Bosa Development", "Developer", 80, 1, recent),
+            Row(12, "Wesgroup Properties Ltd.", "KorClient", 80),
+            Row(207, "Anthem Properties Group Ltd.", "KorClient", 72, 1, recent),
+            Row(218, "Bucci Developments Ltd.", "KorClient", 66),
+            Row(69802, "Appia Development", "Developer", 63),
+            Row(20962, "Mondiale Development", "Developer", 57),
+            Row(69730, "Solterra Development Corp.", "Developer", 56, 1, september),
+            Row(29, "Intracorp Projects Ltd.", "KorClient", 46),
+            Row(38943, "Bosa Properties", "Developer", 44, 1, old),
+            Row(125, "Ledingham McAllister Properties Ltd.", "KorClient", 40),
+        };
     }
 
     // ---- fixtures: shaped like the 2026-10-14 production rows, including the retired duplicate ----
@@ -431,7 +513,11 @@ public sealed class BdScreensRenderTests
     /// <summary>A UserControl as the workspace hosts it: under an AdornerLayer (a Window has one, a bare
     /// control does not), with the placeholders drawn, which otherwise wait for a Loaded that never fires.</summary>
     private static int RenderView(FrameworkElement view, Size size, string path)
-        => Render(new AdornerDecorator { Child = view }, size, path, afterFirstLayout: () => Placeholder.RefreshAll(view));
+    {
+        var host = new AdornerDecorator { Child = view };
+        try { return Render(host, size, path, afterFirstLayout: () => Placeholder.RefreshAll(view)); }
+        finally { host.Child = null; } // A tabbed window's content is rendered again for its next tab.
+    }
 
     private static int Render(FrameworkElement root, Size size, string path, Action? afterFirstLayout = null)
     {

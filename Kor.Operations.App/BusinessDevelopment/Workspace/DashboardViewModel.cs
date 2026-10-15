@@ -14,6 +14,7 @@ using Kor.Operations.App.Opportunities;
 using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Data.Opportunities;
+using Kor.Opportunities.Data.Crm;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
@@ -48,19 +49,65 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
     private string _statusMessage = "Ready.";
 
     private readonly Microsoft.Extensions.Logging.ILogger<DashboardViewModel>? _logger;
+    private readonly IBdDirectorLedgerStore? _ledger;
+    private int _askLoadVersion;
+    private string? _askActor;
 
     public DashboardViewModel(
         IOpportunityStore opportunities,
         IBdDashboardStore bdDashboard,
         IntelReadService intelRead,
         IntelPersistenceService intelPersistence,
-        Microsoft.Extensions.Logging.ILogger<DashboardViewModel>? logger = null)
+        Microsoft.Extensions.Logging.ILogger<DashboardViewModel>? logger = null,
+        IBdDirectorLedgerStore? ledger = null)
     {
         _opportunities = opportunities ?? throw new ArgumentNullException(nameof(opportunities));
         _bdDashboard = bdDashboard ?? throw new ArgumentNullException(nameof(bdDashboard));
         _intelRead = intelRead ?? throw new ArgumentNullException(nameof(intelRead));
         _intelPersistence = intelPersistence ?? throw new ArgumentNullException(nameof(intelPersistence));
         _logger = logger;
+        _ledger = ledger;
+    }
+
+    public sealed record BdAskRow(long Id, string Ask, string? WhyNow, int Minutes, DateTimeOffset DueUtc, string AskedBy);
+    public ObservableCollection<BdAskRow> AskedOfMe { get; } = new();
+    public bool HasAsks => AskedOfMe.Count > 0;
+
+    public async Task LoadAsksAsync(string actor, CancellationToken ct)
+    {
+        var version = ++_askLoadVersion;
+        if (!string.Equals(_askActor, actor, StringComparison.OrdinalIgnoreCase) || _ledger is null)
+        {
+            AskedOfMe.Clear();
+            OnPropertyChanged(nameof(HasAsks));
+        }
+        _askActor = actor;
+        if (_ledger is null) return;
+        try
+        {
+            var rows = await _ledger.ListOpenAsksForAsync(actor, ct).ConfigureAwait(true);
+            ct.ThrowIfCancellationRequested();
+            if (version != _askLoadVersion) return;
+            Replace(AskedOfMe, rows.Select(a => new BdAskRow(a.Id, a.Ask, a.WhyNow, a.Minutes, a.DueUtc, a.AskedBy)));
+            OnPropertyChanged(nameof(HasAsks));
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            if (version != _askLoadVersion) return;
+            _logger?.LogWarning(ex, "Dashboard asks could not be read.");
+            StatusMessage = "Could not read asks. Reopen the dashboard to try again.";
+        }
+    }
+
+    public async Task CloseAskAsync(long id, string status, string? note, string actor)
+    {
+        if (_ledger is null) return;
+        await _ledger.CloseAskAsync(id, status, note, actor, CancellationToken.None).ConfigureAwait(true);
+        ++_askLoadVersion;
+        var row = AskedOfMe.FirstOrDefault(a => a.Id == id);
+        if (row is not null) AskedOfMe.Remove(row);
+        OnPropertyChanged(nameof(HasAsks));
     }
 
     // R82: BD Dashboard Priority Actions queue. Top-25 open IntelAction rows

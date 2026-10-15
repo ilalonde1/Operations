@@ -82,6 +82,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Row 0: the funnel, three numbers. Click one to open the Pipeline window on that stage. -->
@@ -291,8 +292,40 @@
             </Grid>
         </Border>
 
-        <!-- Row 3: what should I do. Collapsed by default; the header carries the count. -->
-        <Border Grid.Row="3" Style="{StaticResource Card}" Padding="14" Margin="0,0,0,12">
+        <Border Grid.Row="3" Padding="14" Margin="0,0,0,12">
+            <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers><DataTrigger Binding="{Binding HasAsks}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                </Style>
+            </Border.Style>
+            <StackPanel>
+                <TextBlock Text="Asked of you" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <ItemsControl ItemsSource="{Binding AskedOfMe}">
+                    <ItemsControl.ItemTemplate><DataTemplate>
+                        <Grid Margin="0,6">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,16,0">
+                                <TextBlock Text="{Binding Ask}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding WhyNow}" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                <TextBlock Foreground="{StaticResource Text.Secondary}">
+                                    <Run Text="{Binding Minutes, Mode=OneWay}"/><Run Text=" minutes · due "/>
+                                    <Run Text="{Binding DueUtc, Mode=OneWay, Converter={StaticResource BdDay}}"/>
+                                    <Run Text=" · asked by "/><Run Text="{Binding AskedBy, Mode=OneWay}"/>
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="Done" Click="AskDone_Click" Padding="12,6" Margin="0,0,8,0"/>
+                                <Button Content="Can't" Click="AskCant_Click" Padding="12,6"/>
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate></ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- Row 4: what should I do. Collapsed by default; the header carries the count. -->
+        <Border Grid.Row="4" Style="{StaticResource Card}" Padding="14" Margin="0,0,0,12">
             <Expander x:Name="PriorityActionsExpander"
                       IsExpanded="False"
                       Expanded="PriorityActionsExpander_Toggled"
@@ -424,7 +457,7 @@
             </Expander>
         </Border>
 
-        <TextBlock Grid.Row="4"
+        <TextBlock Grid.Row="5"
                    Text="{Binding StatusMessage}"
                    Margin="0,0,0,0"
                    Foreground="{StaticResource Text.Secondary}"

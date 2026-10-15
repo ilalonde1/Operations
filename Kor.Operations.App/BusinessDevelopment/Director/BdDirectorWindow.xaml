@@ -3,10 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:Kor.Operations.Converters"
         xmlns:director="clr-namespace:Kor.Operations.App.BusinessDevelopment.Director"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
         Title="BD Director" Width="1680" Height="980" MinWidth="1100" MinHeight="720"
         WindowStartupLocation="CenterOwner" Background="{StaticResource App.Background}">
     <Window.Resources>
         <converters:BdDayConverter x:Key="BdDay"/>
+        <BooleanToVisibilityConverter x:Key="BoolVisibility"/>
+        <Style TargetType="TabItem"><Setter Property="Padding" Value="20,9"/></Style>
         <Style TargetType="DataGrid">
             <Setter Property="AutoGenerateColumns" Value="False"/>
             <Setter Property="IsReadOnly" Value="True"/>
@@ -60,7 +63,39 @@
                 </TextBlock>
             </StackPanel>
         </DockPanel>
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <TabControl x:Name="Tabs" Grid.Row="1">
+        <TabItem Header="The number">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="12">
+                    <TextBlock Text="{x:Static director:BdDirectorViewModel.NumberCaption}" TextWrapping="Wrap" Margin="0,0,0,14"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button Content="Set a target…" Click="SetTarget_Click" Padding="12,6" Margin="0,0,8,0"/>
+                        <Button Content="Retire" Click="RetireTarget_Click" Padding="12,6"/>
+                    </StackPanel>
+                    <DataGrid ItemsSource="{Binding Targets}" SelectedItem="{Binding SelectedTarget}" Height="500">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="What" Binding="{Binding MetricDisplay}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Scope" Binding="{Binding ScopeDisplay}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTemplateColumn Header="Period" Width="245">
+                                <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                    <TextBlock ToolTip="{Binding PeriodNote}">
+                                        <Run Text="{Binding Target.PeriodStartUtc, Mode=OneWay, Converter={StaticResource BdDay}}"/>
+                                        <Run Text=" – "/><Run Text="{Binding Target.PeriodEndUtc, Mode=OneWay, Converter={StaticResource BdDay}}"/>
+                                    </TextBlock>
+                                </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Target" Binding="{Binding TargetDisplay}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Actual" Binding="{Binding ActualDisplay}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Progress" Binding="{Binding Progress}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Set by" Binding="{Binding Target.SetBy}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Text="{Binding FeeCoverage}" Margin="0,12,0,0"/>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+        <TabItem Header="People">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="12">
             <StackPanel>
                 <TextBlock Text="People" Style="{StaticResource SectionTitle}"/>
                 <TextBlock Text="{x:Static director:BdDirectorViewModel.PeopleCaption}" TextWrapping="Wrap"
@@ -87,12 +122,13 @@
                         <DataGridTextColumn Header="Stage" Binding="{Binding Stage}" Width="110" ElementStyle="{StaticResource CellText}"/>
                         <DataGridTextColumn Header="Last activity" Binding="{Binding LastActivity}" Width="125" ElementStyle="{StaticResource CellText}"/>
                         <DataGridTextColumn Header="Opened" Binding="{Binding Opened}" Width="125" ElementStyle="{StaticResource CellText}"/>
-                        <DataGridTemplateColumn Width="165">
+                        <DataGridTemplateColumn Width="230">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal">
                                         <Button Content="Reassign…" Click="Reassign_Click" Padding="8,2" Margin="2,0"/>
                                         <Button Content="Open" Click="OpenPursuit_Click" Tag="{Binding PursuitId}" Padding="8,2" Margin="2,0"/>
+                                        <Button Content="Ask…" Click="AskPursuit_Click" Padding="8,2" Margin="2,0"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -100,6 +136,12 @@
                     </DataGrid.Columns>
                 </DataGrid>
 
+            </StackPanel>
+        </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Funnel">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="12">
+            <StackPanel>
                 <TextBlock Text="Funnel" Style="{StaticResource SectionTitle}" Margin="0,16,0,4"/>
                 <TextBlock Text="{x:Static director:BdDirectorViewModel.FunnelCaption}" TextWrapping="Wrap"
                            Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
@@ -150,6 +192,96 @@
                 </Grid>
             </StackPanel>
         </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Accounts">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="12">
+                    <TextBlock Text="{x:Static director:BdDirectorViewModel.AccountsCaption}" TextWrapping="Wrap" Margin="0,0,0,14"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="20"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <DataGrid ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount, Mode=TwoWay}" IsSynchronizedWithCurrentItem="False" Height="620">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Account" Binding="{Binding DisplayName}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="100" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="KOR projects" Binding="{Binding Projects}" Width="110" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Last KOR project" Binding="{Binding LastProject}" Width="125" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Live pursuits" Binding="{Binding LivePursuits}" Width="85" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Last touch" Binding="{Binding LastTouch}" Width="125" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Open asks" Binding="{Binding OpenAsks}" Width="80" ElementStyle="{StaticResource CellText}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="{Binding SelectedAccount.DisplayName}" FontWeight="SemiBold" FontSize="18" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                            <TextBlock Text="{Binding AccountMessage}" TextWrapping="Wrap"/>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" Visibility="{Binding HasAccountDeltek, Converter={StaticResource BoolVisibility}}">
+                                <Run Text="Lifetime fee "/><Run Text="{Binding SelectedAccountDeltek.LifetimeFee, Mode=OneWay, StringFormat={}{0:C0}}"/>
+                                <Run Text=" · "/><Run Text="{Binding SelectedAccountDeltek.ProjectCount, Mode=OneWay}"/><Run Text=" projects · latest "/>
+                                <Run Text="{Binding SelectedAccountDeltek.LatestProjectName, Mode=OneWay}"/><Run Text=", "/>
+                                <Run Text="{Binding SelectedAccountDeltek.LatestProjectStart, Mode=OneWay, Converter={StaticResource BdDay}}"/>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" Visibility="{Binding HasAccountAr, Converter={StaticResource BoolVisibility}}">
+                                <Run Text="AR outstanding "/><Run Text="{Binding SelectedAccountDeltek.Ar.TotalOutstanding, Mode=OneWay, StringFormat={}{0:C0}}"/>
+                                <Run Text=", "/><Run Text="{Binding SelectedAccountDeltek.Ar.Outstanding90Plus, Mode=OneWay, StringFormat={}{0:C0}}"/>
+                                <Run Text=" over 90 days, "/><Run Text="{Binding SelectedAccountDeltek.Ar.OpenInvoiceCount, Mode=OneWay}"/><Run Text=" open invoices"/>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" Visibility="{Binding HasAccountPostedThrough, Converter={StaticResource BoolVisibility}}">
+                                <Run Text="Billed figures posted through "/><Run Text="{Binding SelectedAccountDeltek.SummaryPostedThrough, Mode=OneWay, Converter={StaticResource BdDay}}"/>
+                            </TextBlock>
+                            <TextBlock Text="{Binding AccountDegradedMessage}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <WrapPanel>
+                                <Button Content="Open dossier" Click="OpenDossier_Click" Padding="10,6" Margin="0,0,6,6"/>
+                                <Button Content="Ask…" Click="AskAccount_Click" Padding="10,6" Margin="0,0,6,6"/>
+                                <Button Content="Decide…" Click="DecideAccount_Click" Padding="10,6" Margin="0,0,6,6"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Asks &amp; decisions">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="12">
+                    <TextBlock Text="{x:Static director:BdDirectorViewModel.AsksCaption}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <ComboBox ItemsSource="{Binding AskStatuses}" SelectedItem="{Binding AskStatusFilter, Mode=TwoWay}"
+                                  controls:Placeholder.Text="Ask status" IsEnabled="{Binding CanRefresh}" Width="150" Margin="0,0,12,0"/>
+                        <Button Content="Ask…" Click="Ask_Click" Padding="12,6" Margin="0,0,8,0"/>
+                        <Button Content="Withdraw" Click="WithdrawAsk_Click" Padding="12,6" IsEnabled="{Binding SelectedAsk.IsOpen, FallbackValue=False}"/>
+                    </StackPanel>
+                    <DataGrid ItemsSource="{Binding Asks}" SelectedItem="{Binding SelectedAsk}" Height="280" RowHeight="58">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="To" Binding="{Binding ToDisplay}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Ask" Binding="{Binding Record.Ask}" Width="3*" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="About" Binding="{Binding About}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Minutes" Binding="{Binding Record.Minutes}" Width="75" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Due" Binding="{Binding Record.DueUtc, Converter={StaticResource BdDay}}" Width="125" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding Record.Status}" Width="95" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Closed note" Binding="{Binding Record.ClosedNote}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Text="{x:Static director:BdDirectorViewModel.DecisionsCaption}" TextWrapping="Wrap" Margin="0,20,0,12"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Content="Decide…" Click="Decide_Click" Padding="12,6" Margin="0,0,8,0"/>
+                        <Button Content="Right" Tag="Right" Click="ScoreDecision_Click" Padding="12,6" Margin="0,0,8,0" IsEnabled="{Binding SelectedDecision.IsPending, FallbackValue=False}"/>
+                        <Button Content="Wrong" Tag="Wrong" Click="ScoreDecision_Click" Padding="12,6" Margin="0,0,8,0" IsEnabled="{Binding SelectedDecision.IsPending, FallbackValue=False}"/>
+                        <Button Content="Unclear" Tag="Unclear" Click="ScoreDecision_Click" Padding="12,6" IsEnabled="{Binding SelectedDecision.IsPending, FallbackValue=False}"/>
+                    </StackPanel>
+                    <DataGrid ItemsSource="{Binding Decisions}" SelectedItem="{Binding SelectedDecision}" Height="280" RowHeight="58">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Decided" Binding="{Binding Record.DecidedAtUtc, Converter={StaticResource BdDay}}" Width="125" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="80" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Decision" Binding="{Binding Record.Decision}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Rationale" Binding="{Binding Record.Rationale}" Width="3*" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Expected" Binding="{Binding Record.ExpectedOutcome}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Review" Binding="{Binding Record.ReviewAtUtc, Converter={StaticResource BdDay}}" Width="125" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Outcome" Binding="{Binding Record.Outcome}" Width="90" ElementStyle="{StaticResource CellText}"/>
+                            <DataGridTextColumn Header="Scored" Binding="{Binding Record.OutcomeNote}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+        </TabControl>
         <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="{StaticResource Text.Secondary}"/>
     </Grid>
 </Window>

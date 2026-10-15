@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Crm;
 
@@ -43,3 +44,47 @@ public sealed record BdDirectorStageRow(string Stage, int Pursuits, double? Medi
 }
 
 public sealed record BdDirectorDeadlineRow(long PursuitId, string ProjectName, string Buyer, string Owner, DateTimeOffset Deadline);
+
+public sealed record BdDirectorTargetRow(BdTarget Target, decimal Actual)
+{
+    public string? PersonDisplayName { get; init; }
+    public string MetricDisplay => MetricName(Target.Metric);
+    public string ScopeDisplay => Target.Scope == "Firm" ? "Firm" : $"{Target.Scope} · {PersonDisplayName ?? Target.ScopeKey}";
+    public string TargetDisplay => FormatValue(Target.TargetValue);
+    public string ActualDisplay => FormatValue(Actual);
+    public string Progress => Target.TargetValue == 0 ? "—" : (Actual / Target.TargetValue).ToString("P0", CultureInfo.CurrentCulture);
+    public bool IsPointInTime => BdTargetMetrics.PointInTime.Contains(Target.Metric);
+    public string PeriodNote => IsPointInTime ? "Current snapshot; period does not filter the actual." : "Start included; end excluded.";
+    private string FormatValue(decimal value) => value.ToString(Target.Metric == BdTargetMetrics.PipelineFee ? "C0" : "#,0.##", CultureInfo.CurrentCulture);
+    public static string MetricName(string metric) => metric switch
+    {
+        BdTargetMetrics.LivePursuits => "Live pursuits",
+        BdTargetMetrics.PipelineFee => "Pipeline fee",
+        BdTargetMetrics.AccountsWithLivePursuit => "Accounts with a live pursuit",
+        BdTargetMetrics.PursuitsOpened => "Pursuits opened",
+        BdTargetMetrics.BuyersTouched => "Buyers touched",
+        _ => "Unknown metric",
+    };
+}
+
+public sealed record BdDirectorAccountRow(BdDirectorAccount Account)
+{
+    public string DisplayName => Account.DisplayName;
+    public string Kind => Account.Kind;
+    public string Projects => $"{Account.KorProjectsCount:N0}" + (Account.CountIsRecordsNotWins ? " records" : " wins");
+    public string LastProject => Account.LastKorProjectAtUtc is { } date ? BdDateDisplay.Day(date) : "—";
+    public string LastTouch => Account.LastTouchUtc is { } date ? BdDateDisplay.Day(date) : "never";
+    public int LivePursuits => Account.LivePursuits;
+    public int OpenAsks => Account.OpenAsks;
+}
+
+public sealed record BdDirectorAskRow(BdAsk Record, string ToDisplay, string About)
+{
+    public bool IsOpen => Record.Status == "Open";
+}
+
+public sealed record BdDirectorDecisionRow(BdDecision Record)
+{
+    public string Kind => Record.Kind == "NoGo" ? "No go" : Record.Kind;
+    public bool IsPending => Record.Outcome == "Pending";
+}

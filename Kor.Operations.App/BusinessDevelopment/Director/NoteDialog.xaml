@@ -1,0 +1,15 @@
+<Window x:Class="Kor.Operations.App.BusinessDevelopment.Director.NoteDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        Title="Note" Width="500" SizeToContent="Height" WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False" Background="{StaticResource App.Background}">
+    <StackPanel Margin="20">
+        <TextBlock x:Name="PromptText" TextWrapping="Wrap" Margin="0,0,0,8"/>
+        <TextBox x:Name="NoteBox" AcceptsReturn="True" TextWrapping="Wrap" Height="130" MaxLength="1000"
+                 controls:Placeholder.Text="Note (optional)" Margin="0,0,0,16"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" IsCancel="True" Padding="16,6" Margin="0,0,8,0"/>
+            <Button Content="OK" IsDefault="True" Click="Save_Click" Padding="16,6"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -11,6 +11,8 @@ public interface IBdDirectorStore
 {
     Task<IReadOnlyList<BdDirectorPerson>> GetPeopleAsync(CancellationToken ct);
     Task<BdDirectorFunnel> GetFunnelAsync(CancellationToken ct);
+    Task<BdTargetActuals> GetTargetActualsAsync(IReadOnlyList<BdTargetKey> keys, CancellationToken ct);
+    Task<IReadOnlyList<BdDirectorAccount>> GetAccountsAsync(int take, CancellationToken ct);
 }
 
 public sealed record BdDirectorPerson(
@@ -41,3 +43,9 @@ public sealed record BdDirectorFunnel(
     int LostWithCompetitor,
     int LostWithReason,
     int LostTotal);
+
+public sealed record BdTargetKey(string Metric, string Scope, string? ScopeKey, DateTimeOffset PeriodStartUtc, DateTimeOffset PeriodEndUtc);
+public sealed record BdTargetActuals(IReadOnlyDictionary<BdTargetKey, decimal> Actuals, int Live, int LiveWithFee);
+public sealed record BdDirectorAccount(long CanonicalOrgId, string DisplayName, string Kind, string ClendorClientId,
+    int KorProjectsCount, bool CountIsRecordsNotWins, DateTime? LastKorProjectAtUtc,
+    int LivePursuits, DateTimeOffset? LastTouchUtc, int OpenAsks);
