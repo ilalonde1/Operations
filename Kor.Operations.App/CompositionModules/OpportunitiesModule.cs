@@ -144,6 +144,8 @@ internal static class OpportunitiesModule
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OpportunitiesHubView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OverwatchViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OverwatchView>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorViewModel>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorWindow>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.AttributionViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.AttributionView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.RelationshipsViewModel>();
@@ -263,6 +265,7 @@ internal static class OpportunitiesModule
         // warmth / assignment history / stage-age) + the adoption counter.
         services.AddSingleton<IPursuitContextStore>(_ => new SqlPursuitContextStore(options.OpportunitiesDb));
         services.AddSingleton<IBdUiOpenStore>(_ => new SqlBdUiOpenStore(options.OpportunitiesDb));
+        services.AddSingleton<IBdDirectorStore>(_ => new SqlBdDirectorStore(options.OpportunitiesDb));
 
         // Pursuit attachments (Ian, 2026-07-08): DB index + LAN-share bytes.
         services.AddSingleton<IPursuitFileStore>(_ => new SqlPursuitFileStore(options.OpportunitiesDb));

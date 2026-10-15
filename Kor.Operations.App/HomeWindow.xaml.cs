@@ -224,6 +224,13 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenBdDirector_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<App.BusinessDevelopment.Director.BdDirectorWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void ApplyCardSecurity()
         {
             try
@@ -278,6 +285,8 @@ namespace Kor.Operations
 
                 var canSeeOpportunities = SecurityGroupAccess.IsUserInGroup(KnownRoles.Opportunities, userIdentity);
                 var canSeeBd = SecurityGroupAccess.IsUserInGroup(KnownRoles.BusinessDevelopment, userIdentity);
+                var canSeeBdDirector = SecurityGroupAccess.IsUserInGroup(KnownRoles.BdDirector, userIdentity);
+                BdDirectorCard.Visibility = canSeeBdDirector ? Visibility.Visible : Visibility.Collapsed;
                 BusinessDevelopmentTileHost.Visibility = canSeeBd ? Visibility.Visible : Visibility.Collapsed;
                 // BD Reports shares the BD gate — pursuit intel is partner/BD-lead
                 // material, not firm-wide.
@@ -323,6 +332,7 @@ namespace Kor.Operations
             NetworkOpsTileHost.Visibility = state.NetworkOps;
             MondayBriefingCard.Visibility = state.MondayBriefing;
             CooCardCard.Visibility = state.CooCard;
+            BdDirectorCard.Visibility = state.BdDirector;
             OpportunitiesTileHost.Visibility = state.Opportunities;
             BusinessDevelopmentTileHost.Visibility = state.BusinessDevelopment;
             BdReportsTileHost.Visibility = state.BdReports;
@@ -340,6 +350,7 @@ namespace Kor.Operations
                 SearchTransmittalsCard,
                 CreateTransmittalCard,
                 CooCardCard,
+                BdDirectorCard,
                 MondayBriefingCard,
                 FinancialsTileHost,
                 CompensationTileHost,

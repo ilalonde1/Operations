@@ -1,0 +1,155 @@
+<Window x:Class="Kor.Operations.App.BusinessDevelopment.Director.BdDirectorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:Kor.Operations.Converters"
+        xmlns:director="clr-namespace:Kor.Operations.App.BusinessDevelopment.Director"
+        Title="BD Director" Width="1680" Height="980" MinWidth="1100" MinHeight="720"
+        WindowStartupLocation="CenterOwner" Background="{StaticResource App.Background}">
+    <Window.Resources>
+        <converters:BdDayConverter x:Key="BdDay"/>
+        <Style TargetType="DataGrid">
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="CanUserReorderColumns" Value="False"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource Panel.Border}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Panel.Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="RowHeight" Value="27"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+            <Setter Property="SelectionUnit" Value="FullRow"/>
+        </Style>
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap"/></DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="CellText" TargetType="TextBlock">
+            <Setter Property="Margin" Value="6,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        </Style>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="22,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <DockPanel Margin="0,0,0,12">
+            <Button DockPanel.Dock="Right" Content="Refresh" Click="Refresh_Click" Padding="18,6"
+                    IsEnabled="{Binding CanRefresh}" VerticalAlignment="Center"/>
+            <StackPanel>
+                <TextBlock Text="BD Director" FontSize="26" FontWeight="SemiBold"/>
+                <TextBlock Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,0">
+                    <Run Text="{Binding Live, Mode=OneWay}"/><Run Text=" live pursuits · "/>
+                    <Run Text="{Binding PeopleCount, Mode=OneWay}"/><Run Text=" people · as of "/>
+                    <Run Text="{Binding AsOf, Mode=OneWay, Converter={StaticResource BdDay}}"/>
+                </TextBlock>
+            </StackPanel>
+        </DockPanel>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <TextBlock Text="People" Style="{StaticResource SectionTitle}"/>
+                <TextBlock Text="{x:Static director:BdDirectorViewModel.PeopleCaption}" TextWrapping="Wrap"
+                           Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
+                <DataGrid ItemsSource="{Binding People}" SelectedItem="{Binding SelectedPerson, Mode=TwoWay}"
+                          Height="270" CanUserSortColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Person" Binding="{Binding DisplayName}" Width="2*" MinWidth="180" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Live pursuits" Binding="{Binding Live}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Overdue next action" Binding="{Binding OverdueNextAction}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="No next action" Binding="{Binding NoNextAction}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Untouched 14 days" Binding="{Binding Untouched14d}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Activity, 30 days" Binding="{Binding Activities30}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Activity, 90 days" Binding="{Binding Activities90}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Buyers emailed, 90 days" Binding="{Binding BuyersMailed90}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Opened the tools, 30 days" Binding="{Binding Opens30}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+                <TextBlock Text="{Binding SelectedPersonCaption}" FontWeight="SemiBold" Margin="0,10,0,6"/>
+                <DataGrid ItemsSource="{Binding SelectedPursuits}" Height="132">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Pursuit" Binding="{Binding ProjectName}" Width="3*" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Buyer" Binding="{Binding Buyer}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Stage" Binding="{Binding Stage}" Width="110" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Last activity" Binding="{Binding LastActivity}" Width="125" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Opened" Binding="{Binding Opened}" Width="125" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTemplateColumn Width="165">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Reassign…" Click="Reassign_Click" Padding="8,2" Margin="2,0"/>
+                                        <Button Content="Open" Click="OpenPursuit_Click" Tag="{Binding PursuitId}" Padding="8,2" Margin="2,0"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <TextBlock Text="Funnel" Style="{StaticResource SectionTitle}" Margin="0,16,0,4"/>
+                <TextBlock Text="{x:Static director:BdDirectorViewModel.FunnelCaption}" TextWrapping="Wrap"
+                           Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="4*"/><ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="3*"/><ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="8*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <DataGrid ItemsSource="{Binding Stages}" Height="102">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Stage" Binding="{Binding Stage}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Pursuits" Binding="{Binding Pursuits}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Days in stage, median" Binding="{Binding MedianDisplay}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Text="{Binding Outcomes}" TextWrapping="Wrap" Margin="0,6,0,4"/>
+                        <TextBlock Text="{Binding LostDetails}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Where wins came from" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <DataGrid ItemsSource="{Binding Sources}" Height="102">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Wins" Binding="{Binding Wins}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Won fee" Binding="{Binding WonFee, StringFormat={}{0:C0}}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="Undecided, past deadline" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding DeadlineCaption}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6"/>
+                        <DataGrid ItemsSource="{Binding Undecided}" Height="122">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Pursuit" Binding="{Binding ProjectName}" Width="3*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Buyer" Binding="{Binding Buyer}" Width="2*" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Owner" Binding="{Binding Owner}" Width="*" MinWidth="120" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTextColumn Header="Deadline" Binding="{Binding Deadline, Converter={StaticResource BdDay}}" Width="125" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTemplateColumn Width="65">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate><Button Content="Open" Click="OpenPursuit_Click" Tag="{Binding PursuitId}" Padding="8,2"/></DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+        <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="{StaticResource Text.Secondary}"/>
+    </Grid>
+</Window>

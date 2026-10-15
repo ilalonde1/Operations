@@ -10,6 +10,14 @@ namespace Kor.Operations.App.Tests;
 public sealed class HomeTileVisibilityStateTests
 {
     [Fact]
+    public void Security_lookup_failure_collapses_bd_director()
+    {
+        var state = HomeTileVisibilityState.ForSecurityLookupFailure();
+        Assert.True(state.BdDirector == Visibility.Collapsed,
+            $"EXPECTED BD Director collapsed after a failed security lookup; ACTUAL {state.BdDirector}");
+    }
+
+    [Fact]
     public void Security_lookup_failure_collapses_financials_and_compensation()
     {
         var state = HomeTileVisibilityState.ForSecurityLookupFailure();

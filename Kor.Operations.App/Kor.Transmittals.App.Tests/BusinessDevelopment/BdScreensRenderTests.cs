@@ -2,12 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Kor.Operations.App.BusinessDevelopment.Workspace;
+using Kor.Operations.App.BusinessDevelopment.Director;
 using Kor.Operations.App.Crm;
 using Kor.Operations.App.Opportunities;
 using Kor.Operations.Controls;
@@ -29,7 +31,7 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// <summary>
 /// Renders the BD screens a BD user sees most to PNGs a person opens and LOOKS at
 /// (%TEMP%\kor-bd-screens): the dashboard, the RFP window in both its states, Pursuits,
-/// and the pursuit-health board. The pattern is NetworkOpsWindowsRenderTests'.
+/// the pursuit-health board, and BD Director. The pattern is NetworkOpsWindowsRenderTests'.
 ///
 /// Why it exists: on 2026-10-13/14 three BD screens shipped on string gates alone, and
 /// Ian's eyes were the first render, three times ("I don't see ANY difference"; "still
@@ -78,6 +80,7 @@ public sealed class BdScreensRenderTests
                 written += RenderRfpWindows(dir);
                 written += RenderPursuits(dir);
                 written += RenderPursuitHealth(dir);
+                written += RenderDirector(dir);
             }
             catch (Exception ex)
             {
@@ -89,7 +92,7 @@ public sealed class BdScreensRenderTests
 
         Assert.True(thread.Join(TimeSpan.FromMinutes(2)), "Rendering the BD screens did not finish within two minutes.");
         Assert.True(failure is null, $"A BD screen failed to build or render: {failure}");
-        Assert.True(written >= 5, $"EXPECTED at least 5 renders; ACTUAL {written}");
+        Assert.True(written >= 6, $"EXPECTED at least 6 renders; ACTUAL {written}");
     }
 
     // ---- the dashboard: funnel, Closing soon, New RFPs, Priority Actions (collapsed) ----
@@ -211,6 +214,92 @@ public sealed class BdScreensRenderTests
 
         var view = new OverwatchView(vm, Mock.Of<IGraphFacade>(), Mock.Of<IProposalStaffStore>());
         return RenderView(view, new Size(1680, 760), Path.Combine(dir, "pursuit-health.png"));
+    }
+
+    private static int RenderDirector(string dir)
+    {
+        // Brief 9a provides all live counts, aggregate overdue/no-action totals,
+        // Omar's 5/19 and Ian's 0/1, but omits the other per-owner 2-column table.
+        // Those six splits below are ILLUSTRATIVE and preserve 24 overdue / 74
+        // missing / 3 future. They are not additional production measurements.
+        // Display names beyond Omar use the names supplied by the brief.
+        var people = new[]
+        {
+            new BdDirectorPerson("omara@korstructural.com", "Omar Alcazar Pastrana", new[] { "Omar", "omara@korstructural.com" }, 25, 5, 19, 25, 0, 0, 0, 3, 0),
+            new BdDirectorPerson("Conor", "Conor", new[] { "Conor" }, 22, 5, 16, 22, 0, 0, 0, 3, 0),
+            new BdDirectorPerson("Islam", "Islam", new[] { "Islam" }, 20, 5, 15, 20, 0, 0, 0, 3, 0),
+            new BdDirectorPerson("Jim", "Jim", new[] { "Jim" }, 18, 5, 12, 18, 0, 0, 0, 8, 0),
+            new BdDirectorPerson("John", "John", new[] { "John" }, 9, 3, 6, 9, 0, 0, 0, 7, 0),
+            new BdDirectorPerson("Rory", "Rory", new[] { "Rory" }, 4, 1, 3, 4, 0, 0, 0, 0, 0),
+            new BdDirectorPerson("jbryson@korstructural.com", "John Bryson", new[] { "jbryson@korstructural.com" }, 2, 0, 2, 2, 0, 0, 0, 1, 2),
+            new BdDirectorPerson("ilalonde@korstructural.com", "Ian", new[] { "ilalonde@korstructural.com" }, 1, 0, 1, 1, 0, 0, 0, 0, 6),
+        };
+        Assert.True(people.Sum(p => p.Live) == 101 && people.Sum(p => p.OverdueNextAction) == 24
+                    && people.Sum(p => p.NoNextAction) == 74 && people.Sum(p => p.BuyersMailed90) == 25,
+            "EXPECTED Director fixture totals 101 live / 24 overdue / 74 missing / 25 buyers emailed; ACTUAL fixture totals differ");
+
+        // Detail titles, dates, stage split/medians, deadline coverage and source
+        // fees are layout examples; the brief does not measure those dimensions.
+        var records = new List<CrmEngagement>();
+        var drill = new List<PursuitOverwatchRow>();
+        var names = new[] { "North Langford Secondary School", "Prime Consultant Services: RCH Mammography Replacement",
+            "Whitecourt Project – Prime Consultant Services" };
+        var buyers = new[] { "School District 62 (Sooke)", "Fraser Health Authority", "Government of Alberta" };
+        foreach (var person in people)
+        for (var index = 0; index < person.Live; index++)
+        {
+            var id = records.Count + 1L;
+            var stage = id % 3 == 0 ? CrmEngagementStage.Submitted : CrmEngagementStage.Drafting;
+            var nameIndex = id == 26 ? 1 : id == 48 ? 2 : index % names.Length;
+            long? opportunityId = id is 1 or 26 or 48 ? 9000 + id : null;
+            records.Add(new CrmEngagement
+            {
+                Id = id, OpportunityId = opportunityId, Stage = stage, OwnerStaffId = person.OwnerKeys[0],
+                OpenedAtUtc = Now.AddDays(-150), UpdatedAtUtc = Now.AddDays(-41),
+            });
+            drill.Add(new PursuitOverwatchRow(id, opportunityId, person.OwnerKeys[0], (int)stage, names[nameIndex],
+                buyers[nameIndex], null, index % 2 == 0 ? Now.AddDays(-120) : null,
+                Now.AddDays(-150), index % 2 == 0 ? 1 : 0, null, Now.AddDays(-110)));
+        }
+        // Historical source rows remain separate from the 101 live pursuits.
+        foreach (var id in new long[] { 1001, 1002 })
+            records.Add(new CrmEngagement { Id = id, Stage = CrmEngagementStage.Won, ExternalSource = "Deltek.CustomProposal", ProposedFee = 62500m });
+
+        var director = new Mock<IBdDirectorStore>();
+        director.Setup(s => s.GetPeopleAsync(It.IsAny<CancellationToken>())).ReturnsAsync(people);
+        director.Setup(s => s.GetFunnelAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new BdDirectorFunnel(
+            new Dictionary<int, double> { [1] = 110, [3] = 95 },
+            new[]
+            {
+                new BdDirectorUndecidedPursuit(1, names[0], buyers[0], "Omar", Now.AddDays(-65)),
+                new BdDirectorUndecidedPursuit(26, names[1], buyers[1], "Conor", Now.AddDays(-54)),
+                new BdDirectorUndecidedPursuit(48, names[2], buyers[2], "Islam", Now.AddDays(-43)),
+            }, 98, 0, 0, 0));
+        var pursuits = new Mock<IPursuitOverwatchStore>();
+        pursuits.Setup(s => s.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(drill);
+        var recordStore = new Mock<ICrmEngagementStore>();
+        recordStore.Setup(s => s.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(records);
+        var attribution = new Mock<IBdAttributionStore>();
+        // The requested second source row is a rendering placeholder with zero
+        // wins. The real source query returns only sources with at least one win;
+        // adding a second real winning source would contradict Won=0 here.
+        attribution.Setup(s => s.GetSummaryAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new BdAttributionSummary(
+            0, 0m, 101, records.Count(r => r.Stage == CrmEngagementStage.Submitted), 0,
+            new[] { new AttributionSourceRow("Deltek.CustomProposal", 2, 125000m), new AttributionSourceRow("Grab.BC Bid", 0, 0m) },
+            Array.Empty<AttributionOwnerRow>()));
+        var vm = new BdDirectorViewModel(director.Object, pursuits.Object, recordStore.Object, attribution.Object);
+        vm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
+        Assert.True(vm.Live == 101 && vm.PeopleCount == 8 && vm.Outcomes == "No live pursuit has been decided yet.",
+            $"EXPECTED 101 live / 8 people / no decided live pursuits; ACTUAL {vm.Live} / {vm.PeopleCount} / {vm.Outcomes}");
+
+        var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>());
+        var content = (FrameworkElement)window.Content;
+        // Render just the content; Loaded never fires and no telemetry/DI/DB runs.
+        // Preserve the window's resources and inherited DataContext on detaching.
+        window.Content = null;
+        content.DataContext = vm;
+        content.Resources.MergedDictionaries.Add(window.Resources);
+        return RenderView(content, new Size(1680, 980), Path.Combine(dir, "director.png"));
     }
 
     // ---- fixtures: shaped like the 2026-10-14 production rows, including the retired duplicate ----

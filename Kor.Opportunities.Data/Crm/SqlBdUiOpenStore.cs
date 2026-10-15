@@ -11,6 +11,7 @@ namespace Kor.Opportunities.Data.Crm;
 /// Minimal adoption instrumentation (plan 2.2c): one row per BD-surface open,
 /// consumed by the kill-list review query — never by any UI. Fire-and-forget:
 /// losing a row is fine; instrumenting must never slow or break a view.
+/// Read by the BD Director window since brief 9a, as counts per person only.
 /// </summary>
 public interface IBdUiOpenStore
 {

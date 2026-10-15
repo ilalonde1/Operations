@@ -15,6 +15,7 @@ internal sealed record HomeTileVisibilityState(
     Visibility NetworkOps,
     Visibility MondayBriefing,
     Visibility CooCard,
+    Visibility BdDirector,
     Visibility Opportunities,
     Visibility BusinessDevelopment,
     Visibility BdReports)
@@ -31,6 +32,7 @@ internal sealed record HomeTileVisibilityState(
         NetworkOps: Visibility.Collapsed,
         MondayBriefing: Visibility.Collapsed,
         CooCard: Visibility.Collapsed,
+        BdDirector: Visibility.Collapsed,
         Opportunities: Visibility.Collapsed,
         BusinessDevelopment: Visibility.Collapsed,
         BdReports: Visibility.Collapsed);

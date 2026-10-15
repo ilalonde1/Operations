@@ -249,7 +249,7 @@ public sealed class BdPresentationRegressionTests
     {
         var app = Path.Combine(RepoRoot(), "Kor.Operations.App");
         var counts = new List<(string File, int Count)>();
-        foreach (var folder in new[] { "Crm", "BusinessDevelopment/Workspace", "Opportunities" })
+        foreach (var folder in new[] { "Crm", "BusinessDevelopment/Workspace", "BusinessDevelopment/Director", "Opportunities" })
         foreach (var pattern in new[] { "*.cs", "*.xaml" })
         foreach (var file in Directory.EnumerateFiles(Path.Combine(app, folder), pattern, SearchOption.AllDirectories))
         {

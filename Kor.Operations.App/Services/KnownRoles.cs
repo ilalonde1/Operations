@@ -18,4 +18,5 @@ internal static class KnownRoles
     internal const string NetworkOps = "NetworkOps";
     internal const string Opportunities = "Opportunities";
     internal const string BusinessDevelopment = "BusinessDevelopment";
+    internal const string BdDirector = "BdDirector";
 }

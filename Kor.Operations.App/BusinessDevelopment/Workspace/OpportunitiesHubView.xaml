@@ -47,7 +47,7 @@
             <ComboBox x:Name="KindFilter" Width="220" SelectionChanged="KindFilter_Changed"/>
             <CheckBox x:Name="ToGrabFilter" Content="To grab" Margin="16,0,0,0" VerticalAlignment="Center"
                       Checked="ToGrab_Changed" Unchecked="ToGrab_Changed"
-                      ToolTip="Available, unclaimed opportunities using the existing Bazaar eligibility rules."/>
+                      ToolTip="Available, unclaimed opportunities you can take on."/>
             <TextBlock x:Name="CountHint" Margin="16,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}"/>
         </StackPanel>
         <WrapPanel Grid.Row="2" x:Name="SmallWorkPanel" Margin="12,0,12,10">

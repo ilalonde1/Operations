@@ -168,6 +168,23 @@
                     </StackPanel>
                 </Button>
 
+                <Button x:Name="BdDirectorCard" Style="{StaticResource HomeCardButton}"
+                        Click="OpenBdDirector_Click" Visibility="Collapsed">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#E0E7FF"/>
+                            <TextBlock Text="BD" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="BD Director" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                        <TextBlock Text="Who carries what, what has moved, and what has not."
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Accent.Brush}" CornerRadius="999"
+                                Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
+
                 <!-- My Preferences -->
                 <Button x:Name="PreferencesCard" Style="{StaticResource HomeCardButton}" Click="OpenPreferences_Click">
                     <StackPanel>
