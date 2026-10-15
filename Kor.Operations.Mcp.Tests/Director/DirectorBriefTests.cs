@@ -40,12 +40,12 @@ public sealed class DirectorBriefTests
             {"headline":"Example","body":"Synthetic {evidence}.","recommendation":"Take a step.","citations":[7,999,7,"7"]}
             ```
             """, 10, 20, 2);
-        Assert.True(DirectorBriefGenerator.TryParse(answer, DirectorSection.Accounts, Offered, out var row));
+        Assert.True(DirectorBriefGenerator.TryParseAnswer(answer, DirectorSection.Accounts, Offered, out var row));
         Assert.Equal(new DirectorCitation(7, 70, "Illustrative advice.", "Synthetic book"), Assert.Single(row.Citations));
         Assert.Equal(10, row.InputTokens);
-        Assert.True(DirectorBriefGenerator.TryParse(answer with { Answer = """{"headline":"Example","body":"Synthetic.","recommendation":"Uncited."}""" }, DirectorSection.Market, Offered, out var uncited));
+        Assert.True(DirectorBriefGenerator.TryParseAnswer(answer with { Answer = """{"headline":"Example","body":"Synthetic.","recommendation":"Uncited."}""" }, DirectorSection.Market, Offered, out var uncited));
         Assert.Empty(uncited.Citations);
-        Assert.False(DirectorBriefGenerator.TryParse(answer with { Answer = "No JSON here." }, DirectorSection.Market, Offered, out _));
+        Assert.False(DirectorBriefGenerator.TryParseAnswer(answer with { Answer = "No JSON here." }, DirectorSection.Market, Offered, out _));
     }
 
     [Fact]

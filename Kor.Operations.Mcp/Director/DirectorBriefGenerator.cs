@@ -45,7 +45,7 @@ public sealed class DirectorBriefGenerator
                     catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
                     catch (Exception ex) { _logger.LogWarning(ex, "Director claims unavailable for {Section}; using facts alone.", section); claims = Array.Empty<KnowledgeClaimHit>(); }
                     var answer = await _ask(DirectorBriefPrompts.Build(section, facts, claims), ct);
-                    if (!TryParse(answer, section, claims, out var rich))
+                    if (!TryParseAnswer(answer, section, claims, out var rich))
                     { _logger.LogWarning("Director section {Section} returned non-JSON or invalid answer; skipped.", section); continue; }
                     if (claims.Count == 0) rich = rich with { Body = rich.Body + " No applicable claims were available; this section uses facts alone." };
                     await _insert(weekOf, rich, ct);
@@ -57,7 +57,7 @@ public sealed class DirectorBriefGenerator
         finally { RunLock.Release(); }
     }
 
-    public static bool TryParse(DirectorAnswer answer, DirectorSection section, IReadOnlyList<KnowledgeClaimHit> offered, out RichDirectorSection rich)
+    public static bool TryParseAnswer(DirectorAnswer answer, DirectorSection section, IReadOnlyList<KnowledgeClaimHit> offered, out RichDirectorSection rich)
     {
         rich = new(section, "", "", null, Array.Empty<DirectorCitation>(), answer.InputTokens, answer.OutputTokens, answer.ToolCalls);
         foreach (var candidate in JsonObjects(answer.Answer ?? "").Reverse())
