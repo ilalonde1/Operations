@@ -91,18 +91,18 @@ APP_SUITE = re.compile(r"dotnet\s+test\b[^\n|;&]*(?:Kor\.Operations\.App\.Tests|
 FILTERED = re.compile(r"--filter\b")
 DELIBERATE_FULL = re.compile(r"\bFULL_SUITE=1\b")
 
-# 6. CHATTY SQL OVER THE VPN. Every sqlcmd is a VPN round trip to KOR-APP01; on 2026-10-13
-#    there were about fifteen, one at a time, and three hung for minutes -- with
-#    feedback_run_on_the_target_never_chatty_over_vpn in memory. Three calls in ten minutes is
-#    a dry-run, an apply and a check. The fourth is a batch that was not written.
-#    A call is the tool in COMMAND position: the start of a command, after ; & | ( or a newline,
-#    or as the script `python [-flags]` runs. On 2026-10-14 `cp oq.py oqwide.py ...` and
-#    `cat oq.py` were counted as three calls and the session's first real query was denied as
-#    the fourth -- the prior-art guard's own documented miss (a name mentioned in any command
-#    satisfies the check), in this file.
-SQL_CALL = re.compile(r'(?im)(?:^|[;&|(]|(?<![\w.])(?:python3?|py)(?:\.exe)?"?(?:\s+-\S+)*)\s*"?(?:[^\s"]*[/\\])?(?:sqlcmd|oq\.py|oqwide\.py)\b')
-SQL_WINDOW_SECONDS = 600
-SQL_MAX_CALLS = 3
+# 6. A SQL CALL THAT CAN HANG. On 2026-10-13 three sqlcmd calls over the VPN hung for minutes.
+#    sqlcmd's query timeout defaults to 0, which waits forever. A raw sqlcmd must carry -t <seconds>,
+#    so a dropped VPN packet becomes an error in seconds instead of a stall.
+#    REPLACED 2026-10-15 (Ian: "It causes more harm than good"): this rule used to cap calls at three
+#    per ten minutes. The count was never the harm; the hang was. On 2026-10-15 the cap blocked a
+#    correct apply-and-verify three times and prevented no hang.
+#    CHECKS: sqlcmd in command position (start of a command, after ; & | ( or a newline, or run by
+#    `python [-flags]`) without -t. ALLOWS: oq.py / oqwide.py, which pass -l 15 -t 120 themselves.
+#    DOES NOT CATCH: a copy of oq.py edited to drop its timeouts; a SqlClient tool with
+#    CommandTimeout = 0; a query that is merely slow, not hung, inside its 120 seconds.
+RAW_SQLCMD_CALL = re.compile(r'(?im)(?:^|[;&|(])\s*(?:&\s*)?(?:"[^"\n]*[/\\]|[^\s"]*[/\\])?sqlcmd(?:\.exe)?"?(?=\s|$)')
+SQLCMD_QUERY_TIMEOUT = re.compile(r'(?<!\S)-t\s*\d+')
 
 # 7. GOING SILENT. "Say the duration before any step over a minute" was promised on
 #    2026-10-13 and broken the same afternoon: a 3.5-minute suite ran with no word, then a
@@ -112,26 +112,6 @@ SQL_MAX_CALLS = 3
 LONG_TIMEOUT_MS = 120_000
 DURATION_FIRST = re.compile(r"(?i)^\s*~?\s*\d+\s*(?:s|sec|secs|seconds|m|min|mins|minutes|h|hr|hours)\b")
 
-
-def sql_calls_allowed(session_id, n_new, now=None):
-    """Sliding-window count of SQL calls for this session, kept in a temp file. Returns
-    (calls already in the window, allowed). A denied call is not recorded."""
-    now = now if now is not None else time.time()
-    path = os.path.join(tempfile.gettempdir(), f"claude_bash_guard_sql_{session_id or 'default'}.json")
-    try:
-        with open(path, encoding="utf-8") as f:
-            stamps = [t for t in json.load(f) if now - t < SQL_WINDOW_SECONDS]
-    except Exception:
-        stamps = []
-    if len(stamps) + n_new > SQL_MAX_CALLS:
-        return len(stamps), False
-    stamps.extend([now] * n_new)
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(stamps, f)
-    except Exception:
-        pass
-    return len(stamps), True
 
 
 def testhost_running():
@@ -194,14 +174,10 @@ def main():
              "classes you changed: --filter \"FullyQualifiedName~<Namespace or class>\". The one "
              "deliberate full run, before a publish, is prefixed FULL_SUITE=1.")
 
-    n_sql = len(SQL_CALL.findall(cmd))
-    if n_sql:
-        seen, ok = sql_calls_allowed(payload.get("session_id"), n_sql)
-        if not ok:
-            deny(f"SQL call {seen + n_sql} in ten minutes (limit {SQL_MAX_CALLS}). Every sqlcmd is a VPN "
-                 "round trip to KOR-APP01 and three hung on 2026-10-13. Write the remaining queries into "
-                 "ONE .sql file and run it once, or run the script on the server (Invoke-CimMethod). "
-                 "A dry-run, an apply and a check fit the limit; a fourth call is a batch not written.")
+    if RAW_SQLCMD_CALL.search(cmd) and not SQLCMD_QUERY_TIMEOUT.search(cmd):
+        deny("sqlcmd without a query timeout: its default is 0, which waits forever, and three calls hung "
+             "for minutes over the VPN on 2026-10-13. Add -t <seconds> (and -l 15 for the login), or use "
+             "oq.py, which sets both.")
 
 
 if __name__ == "__main__":

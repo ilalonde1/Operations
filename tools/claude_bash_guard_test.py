@@ -26,27 +26,21 @@ def verdict(command, session_id=None, timeout=None, description=None):
 
 
 def sql_rate_cases():
-    """Rule 6: the fourth SQL call in ten minutes is denied, the first three are not, and a denied call
-    does not count. A fresh session id per run so the test never shares state with a live session."""
-    import tempfile
-    sid = f"guard-test-sql-{os.getpid()}"
-    state = os.path.join(tempfile.gettempdir(), f"claude_bash_guard_sql_{sid}.json")
-    if os.path.exists(state):
-        os.remove(state)
-    try:
-        # A MENTION is not a call (2026-10-14: these two were counted and the first real query was
-        # denied as "call 4"). Neither may be counted, or the fourth real call below would be the fifth.
-        got = [verdict("cp oq.py oqwide.py /tmp/x", sid), verdict("cat oq.py | head -3", sid)]
-        got += [verdict('python -I oq.py -q "SELECT 1"', sid) for _ in range(2)]
-        got.append(verdict('python -I "C:/x/oq.py" -i a.sql', sid))             # a quoted path is still a call: the 3rd
-        got.append(verdict('cd "$S" && python -I oqwide.py -i b.sql', sid))    # the 4th: denied
-        got.append(verdict("sqlcmd -S KOR-APP01 -i x.sql", sid))   # still denied: the 4th was not recorded
-        got.append(verdict("dotnet build -c Release", sid))        # not a SQL call
-    finally:
-        if os.path.exists(state):
-            os.remove(state)
-    expected = ["allow", "allow", "allow", "allow", "allow", "deny", "deny", "allow"]
-    return [(f"sql call {i + 1}", e, g) for i, (e, g) in enumerate(zip(expected, got))]
+    """Rule 6 (replaced 2026-10-15): a raw sqlcmd without -t is denied; with -t it runs; the helpers
+    run any number of times, since they carry their own timeouts. There is no call count any more."""
+    cases = [
+        ("sqlcmd -S KOR-APP01 -i x.sql", "deny"),                          # no query timeout
+        ("sqlcmd -S KOR-APP01 -l 15 -i x.sql", "deny"),                    # login timeout alone is not enough
+        ("sqlcmd -S KOR-APP01 -t 120 -i x.sql", "allow"),
+        ("sqlcmd.exe -S KOR-APP01 -l 15 -t 60 -Q \"SELECT 1\"", "allow"),
+        ('cd "C:/x" && sqlcmd -S KOR-APP01 -i x.sql', "deny"),             # in command position after &&
+        ('"C:/Program Files/sqlcmd" -S h -i x.sql', "deny"),               # a quoted path is still a call
+        ("cat notes-about-sqlcmd.txt", "allow"),                           # a mention is not a call
+    ]
+    got = [verdict(c) for c, _ in cases]
+    got += [verdict('python -I oq.py -q "SELECT 1"') for _ in range(5)]   # the helpers: never counted
+    expected = [e for _, e in cases] + ["allow"] * 5
+    return [(f"sql timeout {i + 1}", e, g) for i, (e, g) in enumerate(zip(expected, got))]
 
 
 def duration_cases():
