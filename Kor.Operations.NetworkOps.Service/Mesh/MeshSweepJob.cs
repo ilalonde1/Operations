@@ -35,8 +35,9 @@ internal sealed class MeshSweepJob(NetworkOpsStore store, MeshState state, Agent
         var rack = o.Rack.Where(r => rackIds.ContainsKey(r.Name)).Select(r => new RackIdentity(rackIds[r.Name], r.Name, r.Address, r.MeshName)).ToList();
         var (linked, unmatched) = MeshMap.Map(nodes, pcs, rack, o.MeshPcGroup, o.MeshServerGroup);
         state.Update(linked, nodes);
-        var stored = await store.SaveMeshNodesAsync(state.Links, DateTime.UtcNow, ct).ConfigureAwait(false);
+        // The live re-judge first: it reads only the live state, so a failing save can never hold it back.
         var cleared = await ClearWhatLiveStateProvesGoneAsync(ct).ConfigureAwait(false);
+        var stored = await store.SaveMeshNodesAsync(state.Links, DateTime.UtcNow, ct).ConfigureAwait(false);
 
         var summary = $"{nodes.Count} Mesh devices: {linked.Count} linked ({linked.Count(l => l.Node.AgentConnected)} connected)" +
                       (unmatched.Count > 0 ? $"; not a NetworkOps device: {string.Join(", ", unmatched.Select(n => n.Name))}" : "") +

@@ -31,6 +31,15 @@ internal sealed partial class NetworkOpsStore
             await using var tx = (SqlTransaction)await c.BeginTransactionAsync(ct).ConfigureAwait(false);
             foreach (var l in links)
             {
+                // A node that moved to another device (a renamed PC, BK01's stale node after its NIC swap) is still held by
+                // its old device's row until the DELETE below; the MERGE then broke UX_NetworkOps_MeshNodes_Node and this
+                // whole save failed every 5 minutes for 9 days, unseen until /api/jobs existed (2026-10-16). Release it first.
+                await using (var release = Cmd(c, "DELETE FROM NetworkOps.MeshNodes WHERE NodeId = @n AND DeviceId <> @d;", tx))
+                {
+                    release.Parameters.Add("@d", SqlDbType.Int).Value = l.DeviceId;
+                    release.Parameters.Add("@n", SqlDbType.VarChar, 100).Value = l.Node.Id;
+                    await release.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
                 await using var up = Cmd(c, """
                     MERGE NetworkOps.MeshNodes WITH (HOLDLOCK) AS t USING (SELECT @d AS DeviceId) AS s ON t.DeviceId = s.DeviceId
                     WHEN MATCHED THEN UPDATE SET NodeId = @n, MeshName = @m, MeshGroup = @g, Connected = @c, LastReadUtc = @now,
