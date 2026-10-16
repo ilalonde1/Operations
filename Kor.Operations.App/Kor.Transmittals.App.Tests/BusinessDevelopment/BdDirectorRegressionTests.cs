@@ -533,7 +533,54 @@ public sealed class BdDirectorRegressionTests
         }
 
         internal BdDirectorViewModel Create() => new(DirectorStore.Object, Pursuits.Object, RecordStore.Object, Attribution.Object, Ledger.Object, Deltek.Object, Claims.Object,
-            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief(), Mock.Of<IPursuitFileStore>());
+            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief(), Mock.Of<IPursuitFileStore>(), Mock.Of<ICrmActivityStore>(), DirectorMarketDefaults.Staff());
+    }
+
+    [Fact]
+    public void MyDayRead_IsSelectOnly_Parameterized_Capped_AndReusesAccountsRanking()
+    {
+        var source = Source("Kor.Opportunities.Data/Crm/SqlBdDirectorStore.cs");
+        Assert.DoesNotMatch(@"(?i)\b(INSERT|UPDATE|DELETE|MERGE|CREATE\s+TABLE)\b", source);
+        foreach (var fragment in new[] { "SELECT TOP (@take) seed.Kind", "cmd.Parameters.Add(\"@take\", SqlDbType.Int).Value = 12",
+            "cmd.Parameters.Add(\"@actor\", SqlDbType.NVarChar, 256)", "GetAccountsAsync(int.MaxValue, ct)",
+            ".Where(a => a.LivePursuits == 0).Take(5)", "STRING_SPLIT(e.AssignedStaffIds, ',')",
+            "s.StaffKey = a.ToStaffKey OR s.Mailbox = a.ToStaffKey", "s.RetiredAtUtc IS NULL",
+            "person.Id = e.ContactIntelPersonId", "warmth.TopCorrespondent", "MAX(act.OccurredAtUtc)",
+            "ORDER BY seed.Priority, seed.DueUtc, seed.AccountRank" }) Contains(source, fragment);
+        var sql = source[source.IndexOf("private const string CallSheetSql", StringComparison.Ordinal)..source.IndexOf("public async Task<IReadOnlyList<CallSheetItem>>", StringComparison.Ordinal)];
+        Assert.DoesNotContain("KorProjectsCount", sql); // no second account ranking
+        Assert.DoesNotContain("$\"", sql);
+    }
+
+    [Fact]
+    public void KnownBy_CountsJobsBeforeStaffJoin_AndProbesOptionalEmail()
+    {
+        var source = Source("Kor.Operations.App/Crm/DeltekClientContextService.cs");
+        var start = source.IndexOf("private static IReadOnlyList<DeltekKnownBy> LoadKnownBy", StringComparison.Ordinal);
+        var query = source[start..source.IndexOf("private static IReadOnlyList<DeltekContactSummary> LoadContacts", start, StringComparison.Ordinal)];
+        foreach (var fragment in new[] { "SELECT DISTINCT LEFT(ar.WBS1,5)", "PARTITION BY LEFT(pr.WBS1,5)",
+            "WHERE rn = 1 GROUP BY Job, ProjMgr", "COUNT(*) AS Jobs", "em.Employee = pr.ProjMgr",
+            "ORDER BY pr.Jobs DESC, pr.LatestOpenDate DESC", "DeltekSchemaValidator.HasColumn(cn, catalog, \"EMMain\", \"EMail\", ct)",
+            "CAST(NULL AS nvarchar(256))", "Value = clientId" }) Contains(query, fragment);
+        Assert.True(query.IndexOf("ProjectJobs AS", StringComparison.Ordinal) < query.IndexOf("COUNT(*) AS Jobs", StringComparison.Ordinal));
+        Assert.True(query.IndexOf("COUNT(*) AS Jobs", StringComparison.Ordinal) < query.IndexOf("JOIN [{catalog}].dbo.EMMain", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void MyDay_UsesExistingStorage_NoModelApi_AndDuplicateCreationIsExplicit()
+    {
+        var store = Source("Kor.Opportunities.Data/Crm/SqlCrmEngagementStore.cs");
+        Contains(store, "engagement.ExternalSource == \"BdDirector.MyDay\"");
+        Contains(store, "if (!fromMyDay && hasBdTrackingNaturalKey");
+        Contains(store, "WITH (UPDLOCK, HOLDLOCK)");
+        Contains(store, "WHERE BuyerCanonicalOrgId = @buyer AND Stage IN (1, 3)");
+        Contains(store, "when (fromMyDay && ex.Number is 2601 or 2627)");
+        Assert.True(store.IndexOf("await con.BeginTransactionAsync", StringComparison.Ordinal) < store.IndexOf("await guard.ExecuteScalarAsync", StringComparison.Ordinal));
+        foreach (var path in new[] { "Kor.Opportunities.Data/Crm/SqlBdDirectorStore.cs", "Kor.Operations.App/Crm/DeltekClientContextService.cs",
+            Director + "BdDirectorViewModel.cs", Director + "BdDirectorPersonRow.cs" })
+            Assert.DoesNotMatch(@"(?i)CREATE\s+TABLE|api\.openai\.com|ChatClient|ResponsesClient|ChatCompletion|IChatCompletionService", Source(path));
+        Assert.DoesNotContain(Directory.EnumerateFiles(Path.Combine(RepoRoot(), "Kor.Opportunities.Data/Schema"), "*.sql"),
+            path => Regex.IsMatch(Path.GetFileName(path), "(?i)MyDay|TwoSeats|9J"));
     }
 
     private static void Contains(string source, string expected) => Assert.True(source.Contains(expected, StringComparison.Ordinal),

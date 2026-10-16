@@ -307,6 +307,8 @@ public sealed class DirectorBriefTests
     }
     private sealed class FactsStore : IBdDirectorStore, IBdDirectorLedgerStore, IBdDashboardStore
     {
+        public Task<IReadOnlyList<CallSheetItem>> GetCallSheetAsync(string actorUpn, DateTimeOffset nowUtc, CancellationToken ct)
+            => throw new NotSupportedException();
         public Task<IReadOnlyList<PendingBidRow>> ListPendingBidsAsync(CancellationToken ct) => throw new NotSupportedException();
         public Task<int> CountRelationshipPursuitsAsync(CancellationToken ct) => throw new NotSupportedException();
         private static readonly DateTimeOffset Now = DateTimeOffset.UnixEpoch;

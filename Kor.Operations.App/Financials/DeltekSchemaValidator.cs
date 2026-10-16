@@ -21,6 +21,27 @@ namespace Kor.Operations.Financials;
 /// </summary>
 internal static class DeltekSchemaValidator
 {
+    /// <summary>Optional columns are probed separately; absence is not required-schema drift.</summary>
+    internal static bool HasColumn(OdbcConnection cn, string catalog, string table, string column, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var resolved = DeltekCatalogValidator.ResolveCatalog(catalog);
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = SqlTimeouts.Batch;
+        cmd.CommandText = $@"SELECT COUNT(*) FROM [{resolved}].INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = ? AND COLUMN_NAME = ?;";
+        cmd.Parameters.Add(new OdbcParameter("@table", OdbcType.NVarChar, 128) { Value = table });
+        cmd.Parameters.Add(new OdbcParameter("@column", OdbcType.NVarChar, 128) { Value = column });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* cancellation may race disposal */ } });
+        try { return Convert.ToInt32(cmd.ExecuteScalar()) > 0; }
+        catch (OdbcException ex)
+        {
+            ct.ThrowIfCancellationRequested();
+            Log.Warning(ex, "Optional Deltek column could not be checked: {Table}.{Column}.", table, column);
+            return false;
+        }
+    }
+
     /// <summary>
     /// (Table, Column) pairs the financial loaders rely on. Update this list
     /// whenever a loader adds a new dependency. The cost of a false-positive

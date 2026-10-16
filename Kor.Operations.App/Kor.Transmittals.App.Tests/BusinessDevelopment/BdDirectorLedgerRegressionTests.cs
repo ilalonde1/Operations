@@ -280,12 +280,12 @@ public sealed class BdDirectorLedgerRegressionTests
     }
 
     [Fact]
-    public void Window_HasTheNineTabs_InOrder_AndPlainWords()
+    public void Window_HasTheTenTabs_InOrder_AndPlainWords()
     {
         var xaml = Source(DirectorFolder + "BdDirectorWindow.xaml");
         var headers = XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "TabItem").Select(e => (string?)e.Attribute("Header")).ToArray();
-        Check(headers.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids" }),
-            "nine tabs in the specified order", string.Join(", ", headers));
+        Check(headers.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" }),
+            "ten tabs in the specified order", string.Join(", ", headers));
         foreach (var caption in new[] { "Number", "People", "Funnel", "Accounts", "Asks", "Decisions", "Knowledge", "Market", "Brief" })
             Contains(xaml, "{x:Static director:BdDirectorViewModel." + caption + "Caption}");
         foreach (var file in Directory.EnumerateFiles(Path.Combine(RepoRoot(), DirectorFolder)))
@@ -365,7 +365,7 @@ public sealed class BdDirectorLedgerRegressionTests
             Attribution.Setup(s => s.GetSummaryAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new BdAttributionSummary(0, 0, 0, 0, 0, Array.Empty<AttributionSourceRow>(), Array.Empty<AttributionOwnerRow>()));
         }
         internal BdDirectorViewModel Create() => new(Reads.Object, Pursuits.Object, Records.Object, Attribution.Object, Ledger.Object, Deltek.Object, Claims.Object,
-            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief(), Mock.Of<IPursuitFileStore>());
+            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief(), Mock.Of<IPursuitFileStore>(), Mock.Of<ICrmActivityStore>(), DirectorMarketDefaults.Staff());
     }
 
     private static void CheckValues(string sql, string column, IEnumerable<string> expected)

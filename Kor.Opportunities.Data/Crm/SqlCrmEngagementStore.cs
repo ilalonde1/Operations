@@ -100,12 +100,16 @@ WHERE OpportunityId = @oppId;";
 
     public async Task<CrmEngagement> InsertAsync(CrmEngagement engagement, string actorDisplay, CancellationToken ct)
     {
+        var fromMyDay = engagement.ExternalSource == "BdDirector.MyDay";
         var hasBdTrackingNaturalKey = engagement.OpportunityId is null
             && engagement.BuyerCanonicalOrgId is not null
             && !string.IsNullOrWhiteSpace(engagement.OwnerStaffId)
             && !string.IsNullOrWhiteSpace(engagement.Region);
 
-        if (hasBdTrackingNaturalKey
+        if (fromMyDay && (!hasBdTrackingNaturalKey || engagement.Stage != CrmEngagementStage.Drafting))
+            throw new ArgumentException("Starting tracking requires a buyer, owner and region.", nameof(engagement));
+
+        if (!fromMyDay && hasBdTrackingNaturalKey
             && engagement.BuyerCanonicalOrgId is { } naturalKeyOrgId
             && engagement.OwnerStaffId is { } naturalKeyOwner
             && engagement.Region is { } naturalKeyRegion)
@@ -156,6 +160,17 @@ VALUES
         // failure must not leave a committed engagement behind a thrown "save
         // failed" (Codex P1 on the audit-fix review).
         await using var tx = (SqlTransaction)await con.BeginTransactionAsync(ct).ConfigureAwait(false);
+        if (fromMyDay)
+        {
+            // Hold the buyer range until commit, including an empty range. Two My day
+            // creates cannot race into separate owners/regions of the same buyer.
+            await using var guard = new SqlCommand(@"
+SELECT TOP (1) Id FROM opportunities.CrmEngagements WITH (UPDLOCK, HOLDLOCK)
+WHERE BuyerCanonicalOrgId = @buyer AND Stage IN (1, 3);", con, tx) { CommandTimeout = CommandTimeoutSeconds };
+            guard.Parameters.Add("@buyer", SqlDbType.BigInt).Value = engagement.BuyerCanonicalOrgId!.Value;
+            if (await guard.ExecuteScalarAsync(ct).ConfigureAwait(false) is not null)
+                throw new InvalidOperationException("This buyer is already tracked. Refresh My day and join the existing pursuit.");
+        }
         await using var cmd = new SqlCommand(sql, con, tx) { CommandTimeout = CommandTimeoutSeconds };
         BindEngagementParams(cmd, engagement);
         cmd.Parameters.Add("@actor", SqlDbType.NVarChar, 150).Value = actorDisplay;
@@ -165,7 +180,12 @@ VALUES
         {
             reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         }
-        catch (SqlException ex) when (hasBdTrackingNaturalKey && ex.Number is 2601 or 2627)
+        catch (SqlException ex) when (fromMyDay && ex.Number is 2601 or 2627)
+        {
+            await tx.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
+            throw new InvalidOperationException("Tracking was refused: a pursuit already has this buyer, owner and region. Choose the existing pursuit or another region.", ex);
+        }
+        catch (SqlException ex) when (!fromMyDay && hasBdTrackingNaturalKey && ex.Number is 2601 or 2627)
         {
             await tx.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
             var existing = await GetByBdTrackingNaturalKeyAsync(

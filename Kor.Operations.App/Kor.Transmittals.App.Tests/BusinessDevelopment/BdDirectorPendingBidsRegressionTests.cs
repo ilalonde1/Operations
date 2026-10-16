@@ -41,11 +41,11 @@ public sealed class BdDirectorPendingBidsRegressionTests
     private const string Director = "Kor.Operations.App/BusinessDevelopment/Director/";
 
     [Fact]
-    public void Window_HasNineTabs_ExactStaticCaption_AndRequiredColumns()
+    public void Window_HasTenTabs_ExactStaticCaption_AndRequiredColumns()
     {
         var xaml = Source(Director + "BdDirectorWindow.xaml");
         var tabs = XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "TabItem").ToArray();
-        Assert.Equal(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids" },
+        Assert.Equal(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" },
             tabs.Select(t => (string?)t.Attribute("Header")));
         Assert.Equal("Bids in flight: each pursuit that came from an RFP, who holds it, when it is due, and whether it went in. Pursuits without an RFP behind them are relationship work and stay on People and Accounts.", BdDirectorViewModel.PendingBidsCaption);
         Assert.Contains("{x:Static director:BdDirectorViewModel.PendingBidsCaption}", xaml, StringComparison.Ordinal);
@@ -567,6 +567,6 @@ internal sealed class DirectorPendingBidsFixture
         claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeSourceSummary>());
         claims.Setup(s => s.ListConceptsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeConceptRow>());
         return new(Director.Object, Pursuits.Object, Engagements.Object, attribution.Object, ledger.Object, Mock.Of<IDeltekClientContextService>(), claims.Object,
-            DirectorMarketDefaults.Dashboard(), Opportunities.Object, DirectorMarketDefaults.Brief(), Files);
+            DirectorMarketDefaults.Dashboard(), Opportunities.Object, DirectorMarketDefaults.Brief(), Files, Mock.Of<ICrmActivityStore>(), DirectorMarketDefaults.Staff());
     }
 }

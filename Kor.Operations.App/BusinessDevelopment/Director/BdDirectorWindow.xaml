@@ -123,6 +123,7 @@
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Person" Binding="{Binding DisplayName}" Width="2*" MinWidth="180" ElementStyle="{StaticResource CellText}"/>
                         <DataGridTextColumn Header="Live pursuits" Binding="{Binding Live}" Width="*" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Second seat" Binding="{Binding SecondSeat}" Width="*" ElementStyle="{StaticResource CellText}"/>
                         <DataGridTextColumn Header="Overdue next action" Binding="{Binding OverdueNextAction}" Width="*" ElementStyle="{StaticResource CellText}"/>
                         <DataGridTextColumn Header="No next action" Binding="{Binding NoNextAction}" Width="*" ElementStyle="{StaticResource CellText}"/>
                         <DataGridTextColumn Header="Untouched 14 days" Binding="{Binding Untouched14d}" Width="*" ElementStyle="{StaticResource CellText}"/>
@@ -545,6 +546,70 @@
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>
+        </TabItem>
+        <TabItem Header="My day">
+            <DockPanel Margin="12">
+                <TextBlock DockPanel.Dock="Top" Text="{Binding MyDayMessage}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding MyDay}">
+                        <ItemsControl.ItemTemplate><DataTemplate>
+                            <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" Padding="14" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,20,0">
+                                        <TextBlock Text="{Binding Item.Buyer}" Style="{StaticResource SectionTitle}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding Contact}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding Item.Seat}" Foreground="{StaticResource Text.Secondary}"/>
+                                        <TextBlock Text="{Binding SecondSeats}" TextWrapping="Wrap"/>
+                                        <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,0">
+                                            <Run Text="{Binding WhyPrefix, Mode=OneWay}"/><Run Text="{Binding WhyDate, Mode=OneWay, Converter={StaticResource BdDay}, TargetNullValue=''}"/><Run Text="{Binding WhySuffix, Mode=OneWay}"/>
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" Visibility="{Binding HasSignal, Converter={StaticResource BoolVisibility}}">
+                                            <Run Text="Last signal "/><Run Text="{Binding Item.SignalLastSeenAtUtc, Mode=OneWay, Converter={StaticResource BdDay}}"/><Run Text=": "/><Run Text="{Binding Item.SignalSubject, Mode=OneWay}"/>
+                                        </TextBlock>
+                                        <TextBlock Visibility="{Binding HasLastActivity, Converter={StaticResource BoolVisibility}}" Foreground="{StaticResource Text.Secondary}">
+                                            <Run Text="Last logged touch "/><Run Text="{Binding Item.LastActivityUtc, Mode=OneWay, Converter={StaticResource BdDay}}"/>
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding HistoryText}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                        <TextBlock Text="{Binding KnownBy}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding HistoryWarning}" TextWrapping="Wrap"/>
+                                        <WrapPanel Margin="0,8,0,0">
+                                            <Button Content="Log call" Tag="Call" Click="LogMyDay_Click" IsEnabled="{Binding CanLog}" Padding="10,5" Margin="0,0,6,6"/>
+                                            <Button Content="Log email" Tag="EmailOut" Click="LogMyDay_Click" IsEnabled="{Binding CanLog}" Padding="10,5" Margin="0,0,6,6"/>
+                                            <Button Content="Log meeting" Tag="Meeting" Click="LogMyDay_Click" IsEnabled="{Binding CanLog}" Padding="10,5" Margin="0,0,6,6"/>
+                                        </WrapPanel>
+                                        <WrapPanel Visibility="{Binding CanStartTracking, Converter={StaticResource BoolVisibility}}">
+                                            <TextBlock Text="Region" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <ComboBox ItemsSource="{Binding DataContext.MyDayRegions, RelativeSource={RelativeSource AncestorType=TabControl}}"
+                                                      SelectedItem="{Binding SelectedRegion}" Width="190" ToolTip="Choose a region" Margin="0,0,8,0"/>
+                                            <Button Content="Start tracking" Click="StartTracking_Click" Padding="10,5"/>
+                                        </WrapPanel>
+                                        <TextBlock Text="{Binding TrackedBy}" TextWrapping="Wrap"/>
+                                        <Button Content="Join as second seat" Click="JoinSecondSeat_Click" Padding="10,5" HorizontalAlignment="Left"
+                                                Visibility="{Binding CanJoin, Converter={StaticResource BoolVisibility}}"/>
+                                        <TextBlock Text="Pull in an engineer as second seat" FontWeight="SemiBold" Margin="0,8,0,0"
+                                                   Visibility="{Binding HasCandidates, Converter={StaticResource BoolVisibility}}"/>
+                                        <ItemsControl ItemsSource="{Binding Candidates}">
+                                            <ItemsControl.ItemTemplate><DataTemplate>
+                                                <Button Click="ChooseEngineer_Click" HorizontalContentAlignment="Left" Padding="8,5" Margin="0,4,0,0">
+                                                    <TextBlock Text="{Binding Display}" TextWrapping="Wrap"/>
+                                                </Button>
+                                            </DataTemplate></ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <DockPanel Margin="0,0,0,8">
+                                            <Button DockPanel.Dock="Right" Content="Copy" Click="CopyMyDay_Click" Padding="12,5"/>
+                                            <TextBlock Text="Drafted note" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </DockPanel>
+                                        <TextBox Text="{Binding DraftedNote, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Padding="10"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
         </TabItem>
         </TabControl>
         <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="{StaticResource Text.Secondary}"/>

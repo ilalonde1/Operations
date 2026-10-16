@@ -14,6 +14,7 @@ using Kor.Operations.App.Opportunities;
 using Kor.Operations.Core.Services;
 using Kor.Operations.Services;
 using Kor.Opportunities.Data.Crm;
+using Kor.Opportunities.Core.Models;
 using Serilog;
 
 namespace Kor.Operations.App.BusinessDevelopment.Director;
@@ -251,6 +252,44 @@ public partial class BdDirectorWindow : Window
             if (dialog.ShowDialog() == true)
                 await _vm.ScoreDecisionAsync(row.Record.Id, outcome, dialog.Note, _actor, ct).ConfigureAwait(true);
         }).ConfigureAwait(true);
+    }
+
+    private async void LogMyDay_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: BdDirectorMyDayRow row, Tag: string kind }
+            && Enum.TryParse<CrmActivityType>(kind, out var type))
+            await LedgerActionAsync(ct => _vm.LogMyDayAsync(row, type, ct), showFailureDetail: true).ConfigureAwait(true);
+    }
+
+    private async void ChooseEngineer_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: BdEngineerCandidate candidate }) return;
+        var row = _vm.MyDay.FirstOrDefault(r => r.Item.Kind == CallSheetKind.Pursuit && r.Item.EngagementId == candidate.EngagementId);
+        if (row is not null)
+            await LedgerActionAsync(ct => _vm.ChooseEngineerAsync(row, candidate, ct), showFailureDetail: true).ConfigureAwait(true);
+    }
+
+    private async void StartTracking_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: BdDirectorMyDayRow row })
+            await LedgerActionAsync(ct => _vm.StartTrackingAsync(row, ct), showFailureDetail: true).ConfigureAwait(true);
+    }
+
+    private async void JoinSecondSeat_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: BdDirectorMyDayRow row })
+            await LedgerActionAsync(ct => _vm.JoinSecondSeatAsync(row, ct), showFailureDetail: true).ConfigureAwait(true);
+    }
+
+    private void CopyMyDay_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: BdDirectorMyDayRow row }) return;
+        try { Clipboard.SetText(row.DraftedNote); }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "My day note could not be copied.");
+            MessageBox.Show(this, "Could not copy the note. Try Copy again.", "BD Director", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private async Task LedgerActionAsync(Func<CancellationToken, Task> action, bool showFailureDetail = false)

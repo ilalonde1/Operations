@@ -267,6 +267,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<IPursuitContextStore>(_ => new SqlPursuitContextStore(options.OpportunitiesDb));
         services.AddSingleton<IBdUiOpenStore>(_ => new SqlBdUiOpenStore(options.OpportunitiesDb));
         services.AddSingleton<IBdDirectorStore>(_ => new SqlBdDirectorStore(options.OpportunitiesDb));
+        services.AddSingleton<IBdStaffDirectory>(_ => new SqlBdStaffDirectory(options.OpportunitiesDb));
         services.AddSingleton<IDirectorBriefStore>(_ => new SqlDirectorBriefStore(options.OpportunitiesDb));
         services.AddSingleton<IBdDirectorLedgerStore>(_ => new SqlBdDirectorLedgerStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Knowledge.IKnowledgeClaimStore>(_ =>

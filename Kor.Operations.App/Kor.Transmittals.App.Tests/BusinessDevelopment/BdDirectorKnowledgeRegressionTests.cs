@@ -83,13 +83,13 @@ public sealed class BdDirectorKnowledgeRegressionTests
     }
 
     [Fact]
-    public void Window_HasNineTabs_KnowledgeSixth_AndPlainWords()
+    public void Window_HasTenTabs_KnowledgeSixth_AndPlainWords()
     {
         var xaml = Source(Director + "BdDirectorWindow.xaml");
         var document = XDocument.Parse(xaml);
         var tabs = document.Descendants().Where(e => e.Name.LocalName == "TabItem").Select(e => (string?)e.Attribute("Header")).ToArray();
-        Check(tabs.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids" }),
-            "nine ordered tabs with Knowledge sixth", string.Join(",", tabs));
+        Check(tabs.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" }),
+            "ten ordered tabs with Knowledge sixth", string.Join(",", tabs));
         const string caption = "What the books assert, one sentence each, cited to the passage it rests on. Keep what holds for KOR; retire what does not. Nothing is deleted.";
         Check(BdDirectorViewModel.KnowledgeCaption == caption, "exact Knowledge caption", BdDirectorViewModel.KnowledgeCaption);
         Contains(xaml, "{x:Static director:BdDirectorViewModel.KnowledgeCaption}");
@@ -288,7 +288,7 @@ public sealed class BdDirectorKnowledgeRegressionTests
             new Mock<IPursuitOverwatchStore>(MockBehavior.Strict).Object, new Mock<ICrmEngagementStore>(MockBehavior.Strict).Object,
             new Mock<IBdAttributionStore>(MockBehavior.Strict).Object, new Mock<IBdDirectorLedgerStore>(MockBehavior.Strict).Object,
             new Mock<IDeltekClientContextService>(MockBehavior.Strict).Object, Claims.Object,
-            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief(), Mock.Of<IPursuitFileStore>());
+            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief(), Mock.Of<IPursuitFileStore>(), Mock.Of<ICrmActivityStore>(), DirectorMarketDefaults.Staff());
     }
 
     private static string WithoutComments(string source) => Regex.Replace(source, @"//[^\r\n]*|/\*.*?\*/", "", RegexOptions.Singleline);

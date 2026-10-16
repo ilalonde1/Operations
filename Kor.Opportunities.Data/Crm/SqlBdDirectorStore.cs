@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -110,7 +111,13 @@ SELECT p.PersonKey, p.DisplayName, p.Live, p.OverdueNextAction, p.NoNextAction,
        (SELECT COUNT(*) FROM opportunities.BdUiOpens u
         WHERE u.OpenedAtUtc >= DATEADD(day, -30, @now) AND u.OpenedAtUtc <= @now
           AND EXISTS (SELECT 1 FROM IdentityKeys k
-                      WHERE k.PersonKey = p.PersonKey AND k.OwnerKey = u.ByStaffId)) AS Opens30
+                      WHERE k.PersonKey = p.PersonKey AND k.OwnerKey = u.ByStaffId)) AS Opens30,
+       (SELECT COUNT(*) FROM opportunities.CrmEngagements seat
+        WHERE seat.Stage IN (1, 3) AND EXISTS (
+            SELECT 1 FROM STRING_SPLIT(seat.AssignedStaffIds, ',') token
+            JOIN opportunities.BdStaff staff
+              ON staff.StaffKey = LTRIM(RTRIM(token.value)) OR staff.Mailbox = LTRIM(RTRIM(token.value))
+            WHERE staff.Mailbox = p.PersonKey AND staff.Mailbox IS NOT NULL)) AS SecondSeat
 FROM People p
 ORDER BY p.Live DESC, p.DisplayName;
 
@@ -225,7 +232,7 @@ ORDER BY ISNULL(co.KorProjectsCount, 0) DESC, co.DisplayName;";
             ownerKeys.Add(personKey, keys);
             people.Add(new BdDirectorPerson(personKey, reader.GetString(1), keys,
                 reader.GetInt32(2), reader.GetInt32(3), reader.GetInt32(4), reader.GetInt32(5),
-                reader.GetInt32(6), reader.GetInt32(7), reader.GetInt32(8), reader.GetInt32(9), reader.GetInt32(10)));
+                reader.GetInt32(6), reader.GetInt32(7), reader.GetInt32(8), reader.GetInt32(9), reader.GetInt32(10), reader.GetInt32(11)));
         }
 
         await reader.NextResultAsync(ct).ConfigureAwait(false);
@@ -305,6 +312,96 @@ WHERE ((@s{n} = N'Firm')
                 reader.GetInt32(4), reader.GetBoolean(5), reader.IsDBNull(6) ? null : reader.GetDateTime(6),
                 reader.GetInt32(7), reader.IsDBNull(8) ? null : reader.GetDateTimeOffset(8), reader.GetInt32(9)));
         return accounts;
+    }
+
+    private const string CallSheetSql = """
+        WITH ActorKeys AS (
+            SELECT StaffKey, Mailbox FROM opportunities.BdStaff
+            WHERE Mailbox COLLATE SQL_Latin1_General_CP1_CI_AS = @actor
+        ), Seeds AS (
+            SELECT 0 AS Kind, e.Id AS EngagementId, CAST(NULL AS bigint) AS AskId,
+                   e.BuyerCanonicalOrgId AS BuyerId,
+                   CASE WHEN e.NextActionDueUtc < @today THEN 0
+                        WHEN e.NextActionDueUtc < @tomorrow THEN 1
+                        WHEN e.NextActionDueUtc IS NOT NULL THEN 2 ELSE 4 END AS Priority,
+                   e.NextActionDueUtc AS DueUtc, 0 AS AccountRank,
+                   CASE WHEN EXISTS (SELECT 1 FROM ActorKeys s WHERE s.StaffKey = e.OwnerStaffId OR s.Mailbox = e.OwnerStaffId)
+                        THEN N'BD lead' ELSE N'Second seat' END AS Seat
+            FROM opportunities.CrmEngagements e
+            WHERE e.Stage IN (1, 3) AND (e.NextActionDueUtc IS NULL OR e.NextActionDueUtc < @horizon)
+              AND (EXISTS (SELECT 1 FROM ActorKeys s WHERE s.StaffKey = e.OwnerStaffId OR s.Mailbox = e.OwnerStaffId)
+                OR EXISTS (SELECT 1 FROM STRING_SPLIT(e.AssignedStaffIds, ',') token
+                           JOIN ActorKeys s ON s.StaffKey = LTRIM(RTRIM(token.value)) OR s.Mailbox = LTRIM(RTRIM(token.value))))
+            UNION ALL
+            SELECT 1, a.EngagementId, a.Id, COALESCE(e.BuyerCanonicalOrgId, a.CanonicalOrgId), 3, a.DueUtc, 0, NULL
+            FROM opportunities.BdAsk a
+            LEFT JOIN opportunities.CrmEngagements e ON e.Id = a.EngagementId
+            WHERE a.Status = N'Open' AND EXISTS (SELECT 1 FROM ActorKeys s WHERE s.StaffKey = a.ToStaffKey OR s.Mailbox = a.ToStaffKey)
+            UNION ALL
+            SELECT 2, NULL, NULL, account.Id, 5, NULL, account.Rank, NULL
+            FROM (VALUES (@account0, 0), (@account1, 1), (@account2, 2), (@account3, 3), (@account4, 4)) account(Id, Rank)
+            WHERE account.Id IS NOT NULL AND NOT EXISTS (
+                SELECT 1 FROM opportunities.CrmEngagements live WHERE live.BuyerCanonicalOrgId = account.Id AND live.Stage IN (1, 3))
+        )
+        SELECT TOP (@take) seed.Kind, seed.EngagementId, seed.AskId, seed.BuyerId,
+               COALESCE(co.DisplayName, N''), co.ClendorClientId, person.DisplayName,
+               CASE WHEN person.Id IS NOT NULL THEN person.Email ELSE warmth.TopCorrespondent END,
+               warmth.LastTouchUtc, COALESCE(warmth.Emails90d, 0), signal.Subject, signal.LastSeenAtUtc,
+               activity.LastActivityUtc, e.NextActionNote, e.NextActionDueUtc, a.Ask, a.DueUtc,
+               e.Region, seed.Seat, COALESCE(o.Name, e.PotentialProjects, co.DisplayName)
+        FROM Seeds seed
+        LEFT JOIN opportunities.CrmEngagements e ON e.Id = seed.EngagementId
+        LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+        LEFT JOIN opportunities.BdAsk a ON a.Id = seed.AskId
+        LEFT JOIN opportunities.CanonicalOrg co ON co.Id = seed.BuyerId
+        LEFT JOIN opportunities.IntelPerson person ON person.Id = e.ContactIntelPersonId
+        LEFT JOIN opportunities.CrmBuyerEmailWarmth warmth ON warmth.CanonicalOrgId = seed.BuyerId
+        OUTER APPLY (
+            SELECT TOP (1) s.Subject, s.LastSeenAtUtc FROM opportunities.IntelSignal s
+            WHERE s.CanonicalOrgId = seed.BuyerId AND s.RetiredAtUtc IS NULL
+            ORDER BY s.LastSeenAtUtc DESC, s.Id DESC
+        ) signal
+        OUTER APPLY (
+            SELECT MAX(act.OccurredAtUtc) AS LastActivityUtc FROM opportunities.CrmActivities act
+            WHERE act.EngagementId = seed.EngagementId
+        ) activity
+        ORDER BY seed.Priority, seed.DueUtc, seed.AccountRank, seed.EngagementId, seed.AskId;
+        """;
+
+    public async Task<IReadOnlyList<CallSheetItem>> GetCallSheetAsync(string actorUpn, DateTimeOffset nowUtc, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(actorUpn)) return Array.Empty<CallSheetItem>();
+        // Keep the Accounts pane's complete ranking, including when its first several
+        // clients are already tracked. Only five untracked clients enter this read.
+        var accounts = (await GetAccountsAsync(int.MaxValue, ct).ConfigureAwait(false))
+            .Where(a => a.LivePursuits == 0).Take(5).ToArray();
+        var today = nowUtc.LocalDateTime.Date;
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(CallSheetSql, con) { CommandTimeout = 30 };
+        cmd.Parameters.Add("@actor", SqlDbType.NVarChar, 256).Value = actorUpn.Trim();
+        cmd.Parameters.Add("@take", SqlDbType.Int).Value = 12;
+        cmd.Parameters.Add("@today", SqlDbType.DateTimeOffset).Value = new DateTimeOffset(today).ToUniversalTime();
+        cmd.Parameters.Add("@tomorrow", SqlDbType.DateTimeOffset).Value = new DateTimeOffset(today.AddDays(1)).ToUniversalTime();
+        cmd.Parameters.Add("@horizon", SqlDbType.DateTimeOffset).Value = new DateTimeOffset(today.AddDays(8)).ToUniversalTime();
+        for (var i = 0; i < 5; i++)
+            cmd.Parameters.Add("@account" + i, SqlDbType.BigInt).Value = i < accounts.Length ? accounts[i].CanonicalOrgId : (object)DBNull.Value;
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        var rows = new List<CallSheetItem>();
+        string? Text(int i) => reader.IsDBNull(i) ? null : reader.GetString(i);
+        DateTimeOffset? Date(int i) => reader.IsDBNull(i) ? null : reader.GetValue(i) is DateTimeOffset offset ? offset
+            : new DateTimeOffset(DateTime.SpecifyKind(reader.GetDateTime(i), DateTimeKind.Utc));
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            rows.Add(new CallSheetItem
+            {
+                Kind = (CallSheetKind)reader.GetInt32(0), EngagementId = reader.IsDBNull(1) ? null : reader.GetInt64(1),
+                AskId = reader.IsDBNull(2) ? null : reader.GetInt64(2), BuyerOrgId = reader.IsDBNull(3) ? null : reader.GetInt64(3),
+                Buyer = reader.GetString(4), DeltekClientId = Text(5), ContactName = Text(6), ContactEmail = Text(7),
+                LastTouchUtc = Date(8), Emails90d = reader.GetInt32(9), SignalSubject = Text(10), SignalLastSeenAtUtc = Date(11),
+                LastActivityUtc = Date(12), NextActionNote = Text(13), NextActionDueUtc = Date(14), AskText = Text(15),
+                AskDueUtc = Date(16), Region = Text(17), Seat = Text(18), Pursuit = Text(19),
+            });
+        return CallSheetOrdering.Order(rows, nowUtc);
     }
 
     public async Task<BdDirectorFunnel> GetFunnelAsync(CancellationToken ct)

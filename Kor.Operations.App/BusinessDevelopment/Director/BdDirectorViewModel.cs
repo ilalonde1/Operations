@@ -44,6 +44,8 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     private readonly IOpportunityStore _opportunities;
     private readonly IDirectorBriefStore _brief;
     private readonly IPursuitFileStore _files;
+    private readonly ICrmActivityStore _activities;
+    private readonly IBdStaffDirectory _staff;
     private CancellationTokenSource? _briefCts;
     private BdDirectorCitationRow? _selectedBriefCitation;
     private readonly CancellationTokenSource _knowledgeLifetime = new();
@@ -76,7 +78,8 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public BdDirectorViewModel(IBdDirectorStore director, IPursuitOverwatchStore pursuits,
         ICrmEngagementStore records, IBdAttributionStore attribution, IBdDirectorLedgerStore ledger,
         IDeltekClientContextService deltek, IKnowledgeClaimStore claims, IBdDashboardStore dashboard,
-        IOpportunityStore opportunities, IDirectorBriefStore brief, IPursuitFileStore files)
+        IOpportunityStore opportunities, IDirectorBriefStore brief, IPursuitFileStore files,
+        ICrmActivityStore activities, IBdStaffDirectory staff)
     {
         _director = director ?? throw new ArgumentNullException(nameof(director));
         _pursuits = pursuits ?? throw new ArgumentNullException(nameof(pursuits));
@@ -89,9 +92,14 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
         _opportunities = opportunities ?? throw new ArgumentNullException(nameof(opportunities));
         _brief = brief ?? throw new ArgumentNullException(nameof(brief));
         _files = files ?? throw new ArgumentNullException(nameof(files));
+        _activities = activities ?? throw new ArgumentNullException(nameof(activities));
+        _staff = staff ?? throw new ArgumentNullException(nameof(staff));
     }
 
     public ObservableCollection<BdDirectorPersonRow> People { get; } = new();
+    public ObservableCollection<BdDirectorMyDayRow> MyDay { get; } = new();
+    public ObservableCollection<string> MyDayRegions { get; } = new();
+    public string MyDayMessage { get; private set; } = "Your next conversations, asks and untracked clients.";
     public ObservableCollection<BdDirectorPursuitRow> SelectedPursuits { get; } = new();
     public ObservableCollection<BdDirectorStageRow> Stages { get; } = new();
     public ObservableCollection<BdDirectorDeadlineRow> Undecided { get; } = new();
@@ -341,6 +349,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
             await LoadKnowledgeAsync(ct).ConfigureAwait(true);
             await LoadMarketAsync(ct).ConfigureAwait(true);
             await LoadBriefAsync(ct).ConfigureAwait(true);
+            await LoadMyDayAsync(records, DateTimeOffset.UtcNow, ct).ConfigureAwait(true);
             AsOf = DateTimeOffset.UtcNow;
             OnPropertyChanged(nameof(AsOf));
             StatusMessage = "Up to date.";
@@ -352,6 +361,203 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
             StatusMessage = "Could not refresh all figures. Try Refresh again.";
         }
         finally { IsLoading = false; }
+    }
+
+    public async Task LoadMyDayAsync(CancellationToken ct, DateTimeOffset? nowUtc = null)
+    {
+        var records = await _records.ListAsync(ct).ConfigureAwait(true);
+        await LoadMyDayAsync(records, nowUtc ?? DateTimeOffset.UtcNow, ct).ConfigureAwait(true);
+    }
+
+    private async Task LoadMyDayAsync(IReadOnlyList<CrmEngagement> records, DateTimeOffset now, CancellationToken ct)
+    {
+        var actor = CurrentActorUpn;
+        MyDay.Clear();
+        ReplaceRows(MyDayRegions, records.Where(BdMyDayRules.IsLive).Select(e => BdMyDayRules.RegionKey(e.Region))
+            .Where(r => r.Length > 0).Distinct().OrderBy(r => r));
+        if (string.IsNullOrWhiteSpace(actor))
+        {
+            MyDayMessage = "Sign in to see your day.";
+            OnPropertyChanged(nameof(MyDayMessage));
+            return;
+        }
+        var staff = await _staff.GetAllAsync(ct).ConfigureAwait(true);
+        if (!staff.Any(s => string.Equals(s.Mailbox, actor, StringComparison.OrdinalIgnoreCase)))
+        {
+            MyDayMessage = "Your signed-in mailbox is not in the staff directory.";
+            OnPropertyChanged(nameof(MyDayMessage));
+            return;
+        }
+        var items = await _director.GetCallSheetAsync(actor, now, ct).ConfigureAwait(true);
+        var historyByClient = new Dictionary<string, DeltekClientIntelligence?>(StringComparer.OrdinalIgnoreCase);
+        var rows = new List<BdDirectorMyDayRow>();
+        foreach (var item in CallSheetOrdering.Order(items, now))
+        {
+            DeltekClientIntelligence? history = null;
+            if (!string.IsNullOrWhiteSpace(item.DeltekClientId) && !historyByClient.TryGetValue(item.DeltekClientId, out history))
+            {
+                try { history = await _deltek.LoadAsync(item.DeltekClientId, ct).ConfigureAwait(true); }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { Log.Warning(ex, "My day client history could not be read."); }
+                historyByClient[item.DeltekClientId] = history;
+            }
+            var pursuit = records.FirstOrDefault(e => e.Id == item.EngagementId);
+            var candidates = item.Kind == CallSheetKind.Pursuit && pursuit is not null
+                ? BdMyDayRules.Candidates(pursuit, actor, staff, records, history, item.Buyer) : Array.Empty<BdEngineerCandidate>();
+            rows.Add(new BdDirectorMyDayRow(item, now, history, candidates, BdMyDayRules.SeatDisplay(pursuit?.AssignedStaffIds, staff)));
+        }
+        ct.ThrowIfCancellationRequested();
+        if (!string.Equals(actor, CurrentActorUpn, StringComparison.OrdinalIgnoreCase)) return;
+        ReplaceRows(MyDay, rows);
+        MyDayMessage = rows.Count == 0 ? "No conversations or asks to show today." : "Your next conversations, asks and untracked clients.";
+        OnPropertyChanged(nameof(MyDayMessage));
+    }
+
+    private async Task RefreshMyDayAfterWriteAsync(string result, CancellationToken ct)
+    {
+        try
+        {
+            await LoadMyDayAsync(ct).ConfigureAwait(true);
+            var people = await _director.GetPeopleAsync(ct).ConfigureAwait(true);
+            var selectedKey = SelectedPerson?.PersonKey;
+            ReplaceRows(People, people.Select(p => new BdDirectorPersonRow(p)));
+            SelectedPerson = People.FirstOrDefault(p => p.PersonKey == selectedKey) ?? People.FirstOrDefault();
+            OnPropertyChanged(nameof(PeopleCount));
+            StatusMessage = result;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "My day write completed but refresh failed.");
+            StatusMessage = result + " Refresh could not finish; try Refresh.";
+        }
+    }
+
+    private async Task<(string Actor, BdStaffRow Staff, IReadOnlyList<BdStaffRow> Directory)> MyDayActorAsync(CancellationToken ct)
+    {
+        var actor = CurrentActorUpn;
+        var directory = await _staff.GetAllAsync(ct).ConfigureAwait(true);
+        var staff = directory.Where(s => s.IsActive && !string.IsNullOrWhiteSpace(actor)
+                && string.Equals(s.Mailbox, actor, StringComparison.OrdinalIgnoreCase)).OrderBy(s => s.Id).FirstOrDefault()
+            ?? throw new InvalidOperationException("Your signed-in mailbox must resolve to an active staff member.");
+        return (actor, staff, directory);
+    }
+
+    public async Task LogMyDayAsync(BdDirectorMyDayRow row, CrmActivityType type, CancellationToken ct)
+    {
+        if (!row.CanLog) throw new InvalidOperationException("Start tracking this account before logging a touch.");
+        var kind = type switch { CrmActivityType.Call => "Call", CrmActivityType.EmailOut => "Email", CrmActivityType.Meeting => "Meeting",
+            _ => throw new ArgumentOutOfRangeException(nameof(type)) };
+        var (actor, _, _) = await MyDayActorAsync(ct).ConfigureAwait(true);
+        await _activities.AppendAsync(new CrmActivity
+        {
+            EngagementId = row.Item.EngagementId!.Value, ActivityType = type, Subject = "My day: " + kind,
+            CreatedBy = actor, OccurredAtUtc = DateTimeOffset.UtcNow,
+        }, actor, ct).ConfigureAwait(true);
+        await RefreshMyDayAfterWriteAsync(kind + " logged.", ct).ConfigureAwait(true);
+    }
+
+    public async Task ChooseEngineerAsync(BdDirectorMyDayRow row, BdEngineerCandidate candidate, CancellationToken ct)
+    {
+        var (actor, _, directory) = await MyDayActorAsync(ct).ConfigureAwait(true);
+        if (row.Item.Kind != CallSheetKind.Pursuit || row.Item.EngagementId != candidate.EngagementId)
+            throw new InvalidOperationException("Choose an engineer on the pursuit they belong to.");
+        var current = await _records.GetByIdAsync(candidate.EngagementId, ct).ConfigureAwait(true)
+            ?? throw new InvalidOperationException("This pursuit is no longer available.");
+        var all = await _records.ListAsync(ct).ConfigureAwait(true);
+        var eligible = current.BuyerCanonicalOrgId == row.Item.BuyerOrgId
+            ? BdMyDayRules.Candidates(current, actor, directory, all, row.History, row.Item.Buyer)
+                .FirstOrDefault(c => string.Equals(c.Staff.Mailbox, candidate.Staff.Mailbox, StringComparison.OrdinalIgnoreCase)) : null;
+        if (eligible is null)
+        {
+            await RefreshMyDayAfterWriteAsync("This pursuit or candidate changed. My day has been reloaded; choose again.", ct).ConfigureAwait(true);
+            return;
+        }
+        try
+        {
+            await _records.UpdateAsync(current with { AssignedStaffIds = BdMyDayRules.AppendSeat(current.AssignedStaffIds, eligible.Staff.StaffKey) }, actor, ct).ConfigureAwait(true);
+        }
+        catch (CrmConcurrencyException)
+        {
+            await RefreshMyDayAfterWriteAsync("Someone changed this pursuit. My day has been reloaded; no seat or ask was saved.", ct).ConfigureAwait(true);
+            return;
+        }
+        var now = DateTimeOffset.UtcNow;
+        var title = string.IsNullOrWhiteSpace(row.Item.Pursuit) ? row.Item.Buyer : row.Item.Pursuit;
+        var ask = $"Technical lead on {title}: {(string.IsNullOrWhiteSpace(current.NextActionNote) ? "first conversation" : current.NextActionNote)}";
+        try
+        {
+            await _ledger.CreateAskAsync(new BdAsk(0, eligible.Staff.StaffKey, current.Id, current.BuyerCanonicalOrgId,
+                ask.Length <= 500 ? ask : ask[..500], null, 60, now.AddDays(7), actor, now, "Open", null, null, null), ct).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "My day second seat saved, but technical-lead ask failed.");
+            await RefreshMyDayAfterWriteAsync("Second seat saved, but the technical-lead ask could not be created. Create the ask from Asks.", ct).ConfigureAwait(true);
+            return;
+        }
+        await RefreshMyDayAfterWriteAsync("Second seat saved and technical-lead ask created.", ct).ConfigureAwait(true);
+    }
+
+    public async Task StartTrackingAsync(BdDirectorMyDayRow row, CancellationToken ct)
+    {
+        if (!row.IsAccount || row.Item.BuyerOrgId is not { } buyer) throw new InvalidOperationException("Choose a client account.");
+        var (actor, staff, directory) = await MyDayActorAsync(ct).ConfigureAwait(true);
+        var records = await _records.ListAsync(ct).ConfigureAwait(true);
+        var tracked = records.Where(e => e.BuyerCanonicalOrgId == buyer && BdMyDayRules.IsLive(e)).OrderBy(e => e.Id).FirstOrDefault();
+        if (tracked is not null)
+        {
+            var owner = BdMyDayRules.Resolve(tracked.OwnerStaffId, directory);
+            row.ShowTracked(tracked, owner?.DisplayName ?? owner?.Mailbox ?? tracked.OwnerStaffId ?? "Unassigned");
+            StatusMessage = row.TrackedBy + ". Join as second seat to work on this pursuit.";
+            return;
+        }
+        var region = BdMyDayRules.RegionKey(row.SelectedRegion);
+        var regions = records.Where(BdMyDayRules.IsLive).Select(e => BdMyDayRules.RegionKey(e.Region)).Where(r => r.Length > 0).Distinct().ToArray();
+        if (!regions.Contains(region)) throw new InvalidOperationException("Choose a region currently used by the team.");
+        try
+        {
+            await _records.InsertAsync(new CrmEngagement
+            {
+                OwnerStaffId = staff.StaffKey, Stage = CrmEngagementStage.Drafting, BuyerCanonicalOrgId = buyer,
+                Region = region, PotentialProjects = row.Item.Buyer, ExternalSource = "BdDirector.MyDay",
+            }, actor, ct).ConfigureAwait(true);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // This includes the store's duplicate refusal. Retain the account card so
+            // another click can find and offer the pursuit that won a creation race.
+            StatusMessage = "Could not start tracking: " + ex.Message;
+            return;
+        }
+        await RefreshMyDayAfterWriteAsync("Tracking started.", ct).ConfigureAwait(true);
+    }
+
+    public async Task JoinSecondSeatAsync(BdDirectorMyDayRow row, CancellationToken ct)
+    {
+        if (!row.IsAccount || row.TrackedPursuit is not { } tracked) throw new InvalidOperationException("Find the tracked pursuit first.");
+        var (actor, staff, directory) = await MyDayActorAsync(ct).ConfigureAwait(true);
+        var current = await _records.GetByIdAsync(tracked.Id, ct).ConfigureAwait(true);
+        if (current is null || !BdMyDayRules.IsLive(current) || current.BuyerCanonicalOrgId != row.Item.BuyerOrgId)
+        {
+            await RefreshMyDayAfterWriteAsync("The tracked pursuit changed. My day has been reloaded.", ct).ConfigureAwait(true);
+            return;
+        }
+        if (BdMyDayRules.IsActor(current.OwnerStaffId, actor, directory)
+            || BdMyDayRules.Assigned(current.AssignedStaffIds).Any(key => BdMyDayRules.IsActor(key, actor, directory)))
+        {
+            await RefreshMyDayAfterWriteAsync("You already have a seat on this pursuit.", ct).ConfigureAwait(true);
+            return;
+        }
+        try
+        {
+            await _records.UpdateAsync(current with { AssignedStaffIds = BdMyDayRules.AppendSeat(current.AssignedStaffIds, staff.StaffKey) }, actor, ct).ConfigureAwait(true);
+        }
+        catch (CrmConcurrencyException)
+        {
+            await RefreshMyDayAfterWriteAsync("Someone changed this pursuit. My day has been reloaded; your seat was not saved.", ct).ConfigureAwait(true);
+            return;
+        }
+        await RefreshMyDayAfterWriteAsync("Joined as second seat.", ct).ConfigureAwait(true);
     }
 
     private void FilterPendingBids()

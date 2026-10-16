@@ -32,11 +32,11 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 public sealed class BdDirectorMarketAndBriefRegressionTests
 {
     [Fact]
-    public void Window_HasNineTabs_StaticCaptions_AndPlainWords()
+    public void Window_HasTenTabs_StaticCaptions_AndPlainWords()
     {
         var xaml = Source("Kor.Operations.App/BusinessDevelopment/Director/BdDirectorWindow.xaml");
         var tabs = XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "TabItem").Select(e => (string?)e.Attribute("Header"));
-        Assert.Equal(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids" }, tabs);
+        Assert.Equal(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" }, tabs);
         Assert.Contains("{x:Static director:BdDirectorViewModel.MarketCaption}", xaml, StringComparison.Ordinal);
         Assert.Contains("{x:Static director:BdDirectorViewModel.BriefCaption}", xaml, StringComparison.Ordinal);
         Assert.Equal("What is coming: signals on the firms we watch, planned projects not yet procured, RFPs closing, and seats no structural engineer holds yet. All of it is what the BD Dashboard already reads.", BdDirectorViewModel.MarketCaption);
@@ -194,7 +194,7 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
         ledger.Setup(s => s.ListTargetsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdTarget>());
         ledger.Setup(s => s.ListAsksAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdAsk>());
         return new(reads, pursuits.Object, records.Object, attribution.Object, ledger.Object,
-            Mock.Of<IDeltekClientContextService>(), claims, fixture.Dashboard.Object, fixture.Opportunities.Object, fixture.Brief, Mock.Of<IPursuitFileStore>());
+            Mock.Of<IDeltekClientContextService>(), claims, fixture.Dashboard.Object, fixture.Opportunities.Object, fixture.Brief, Mock.Of<IPursuitFileStore>(), Mock.Of<ICrmActivityStore>(), DirectorMarketDefaults.Staff());
     }
     private static IEnumerable<string> DirectorFiles() => Directory.EnumerateFiles(Path.Combine(Root(), "Kor.Operations.App/BusinessDevelopment/Director"))
         .Where(f => Path.GetExtension(f) is ".cs" or ".xaml");
@@ -209,6 +209,13 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
 
 internal static class DirectorMarketDefaults
 {
+    internal static IBdStaffDirectory Staff()
+    {
+        var mock = new Mock<IBdStaffDirectory>();
+        mock.Setup(s => s.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdStaffRow>());
+        return mock.Object;
+    }
+
     internal static void SetupEmptyScoring(Mock<IBdDirectorLedgerStore> ledger, Mock<IKnowledgeClaimStore> claims)
     {
         ledger.Setup(s => s.GetBriefTrackRecordAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
@@ -218,6 +225,8 @@ internal static class DirectorMarketDefaults
 
     internal static void SetupPendingBids(Mock<IBdDirectorStore> store)
     {
+        store.Setup(s => s.GetCallSheetAsync(It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<CallSheetItem>());
         store.Setup(s => s.ListPendingBidsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<PendingBidRow>());
         store.Setup(s => s.CountRelationshipPursuitsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(0);
     }

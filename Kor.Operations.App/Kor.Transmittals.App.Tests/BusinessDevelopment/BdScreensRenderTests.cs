@@ -83,6 +83,7 @@ public sealed class BdScreensRenderTests
                 written += RenderPursuits(dir);
                 written += RenderPursuitHealth(dir);
                 written += RenderDirector(dir);
+                written += RenderMyDay(dir);
                 BdDirectorPendingBidsRegressionTests.VerifySubmissionDialogs();
             }
             catch (Exception ex)
@@ -95,7 +96,7 @@ public sealed class BdScreensRenderTests
 
         Assert.True(thread.Join(TimeSpan.FromMinutes(2)), "Rendering the BD screens did not finish within two minutes.");
         Assert.True(failure is null, $"A BD screen failed to build or render: {failure}");
-        Assert.True(written >= 14, $"EXPECTED at least 14 renders; ACTUAL {written}");
+        Assert.True(written >= 15, $"EXPECTED at least 15 renders; ACTUAL {written}");
     }
 
     // ---- the dashboard: funnel, Closing soon, New RFPs, Priority Actions (collapsed) ----
@@ -228,14 +229,14 @@ public sealed class BdScreensRenderTests
         // Display names beyond Omar use the names supplied by the brief.
         var people = new[]
         {
-            new BdDirectorPerson("omara@korstructural.com", "Omar Alcazar Pastrana", new[] { "Omar", "omara@korstructural.com" }, 25, 5, 19, 25, 0, 0, 0, 3, 0),
+            new BdDirectorPerson("omara@korstructural.com", "Omar Alcazar Pastrana", new[] { "Omar", "omara@korstructural.com" }, 25, 5, 19, 25, 0, 0, 0, 3, 0, SecondSeat: 2), // illustrative assigned count
             new BdDirectorPerson("Conor", "Conor", new[] { "Conor" }, 22, 5, 16, 22, 0, 0, 0, 3, 0),
             new BdDirectorPerson("Islam", "Islam", new[] { "Islam" }, 20, 5, 15, 20, 0, 0, 0, 3, 0),
             new BdDirectorPerson("Jim", "Jim", new[] { "Jim" }, 18, 5, 12, 18, 0, 0, 0, 8, 0),
             new BdDirectorPerson("John", "John", new[] { "John" }, 9, 3, 6, 9, 0, 0, 0, 7, 0),
             new BdDirectorPerson("Rory", "Rory", new[] { "Rory" }, 4, 1, 3, 4, 0, 0, 0, 0, 0),
             new BdDirectorPerson("jbryson@korstructural.com", "John Bryson", new[] { "jbryson@korstructural.com" }, 2, 0, 2, 2, 0, 0, 0, 1, 2),
-            new BdDirectorPerson("ilalonde@korstructural.com", "Ian", new[] { "ilalonde@korstructural.com" }, 1, 0, 1, 1, 0, 0, 0, 0, 6),
+            new BdDirectorPerson("ilalonde@korstructural.com", "Ian", new[] { "ilalonde@korstructural.com" }, 1, 0, 1, 1, 0, 0, 0, 0, 6, SecondSeat: 1),
         };
         Assert.True(people.Sum(p => p.Live) == 101 && people.Sum(p => p.OverdueNextAction) == 24
                     && people.Sum(p => p.NoNextAction) == 74 && people.Sum(p => p.BuyersMailed90) == 25,
@@ -361,7 +362,7 @@ public sealed class BdScreensRenderTests
                 RetiredReason = id == 2 ? "Illustrative retirement reason." : null,
             });
         using var vm = new BdDirectorViewModel(director.Object, pursuits.Object, recordStore.Object, attribution.Object, ledger.Object, deltek.Object, claims.Object,
-            market.Dashboard.Object, market.Opportunities.Object, market.Brief, Mock.Of<IPursuitFileStore>());
+            market.Dashboard.Object, market.Opportunities.Object, market.Brief, Mock.Of<IPursuitFileStore>(), Mock.Of<ICrmActivityStore>(), DirectorMarketDefaults.Staff());
         vm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
         Assert.True(vm.Live == 101 && vm.PeopleCount == 8 && vm.Outcomes == "No live pursuit has been decided yet.",
             $"EXPECTED 101 live / 8 people / no decided live pursuits; ACTUAL {vm.Live} / {vm.PeopleCount} / {vm.Outcomes}");
@@ -405,6 +406,12 @@ public sealed class BdScreensRenderTests
             }
             content.UpdateLayout();
             written += RenderView(content, new Size(1680, 980), Path.Combine(dir, files[i]));
+            if (i == 1)
+            {
+                Assert.Contains(VisualChildren<System.Windows.Controls.DataGrid>(content), grid =>
+                    grid.Columns.Any(column => Equals(column.Header, "Second seat")));
+                Assert.Equal(1, vm.People.Single(p => p.PersonKey == "ilalonde@korstructural.com").SecondSeat);
+            }
             if (i == 4)
             {
                 Assert.Equal("Brief calls: 6 scored · 3 right · 2 wrong · 1 unclear · 2 past review unscored", vm.BriefTrackRecordSummary);
@@ -454,6 +461,32 @@ public sealed class BdScreensRenderTests
             if (child is T match) yield return match;
             foreach (var nested in VisualChildren<T>(child)) yield return nested;
         }
+    }
+
+    private static int RenderMyDay(string dir)
+    {
+        var fixture = new DirectorMyDayFixture();
+        fixture.Items.RemoveAll(i => i.EngagementId is 2 or 4);
+        using var vm = fixture.Create();
+        vm.LoadMyDayAsync(CancellationToken.None, fixture.Now).GetAwaiter().GetResult();
+        var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>());
+        var tabs = Assert.IsType<System.Windows.Controls.TabControl>(window.FindName("Tabs"));
+        var content = (FrameworkElement)window.Content;
+        window.Content = null;
+        content.DataContext = vm;
+        content.Resources.MergedDictionaries.Add(window.Resources);
+        tabs.SelectedIndex = 9;
+        var written = RenderView(content, new Size(1680, 1280), Path.Combine(dir, "director-myday.png"));
+        Assert.Equal(new[] { CallSheetKind.Pursuit, CallSheetKind.Ask, CallSheetKind.Account }, vm.MyDay.Select(r => r.Item.Kind));
+        Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Known by Priya Engineer (3 jobs)");
+        Assert.Contains(VisualChildren<System.Windows.Controls.Button>(content), b => Equals(b.Content, "Start tracking") && b.Visibility == Visibility.Visible);
+        static string Shown(System.Windows.Controls.TextBlock b) => b.Inlines.Count == 0 ? b.Text
+            : string.Concat(b.Inlines.OfType<System.Windows.Documents.Run>().Select(r => r.Text));
+        var signalDay = BdDateDisplay.Day(fixture.Now.AddDays(-45));
+        Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => Shown(b) == "Last signal " + signalDay + ": Illustrative old signal");
+        Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => Shown(b).StartsWith("Next action overdue since ", StringComparison.Ordinal));
+        Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => Shown(b).StartsWith("Ask due ", StringComparison.Ordinal));
+        return written;
     }
 
     private static int RenderPendingBids(string dir)

@@ -34,6 +34,7 @@ public sealed record DeltekClientIntelligence
 
     // New: all KOR projects for this client, OpenDate DESC.
     public IReadOnlyList<DeltekProjectSummary> Projects { get; init; } = Array.Empty<DeltekProjectSummary>();
+    public IReadOnlyList<DeltekKnownBy> KnownBy { get; init; } = Array.Empty<DeltekKnownBy>();
 
     // Top 200 direct + via-project contacts at this client.
     public IReadOnlyList<DeltekContactSummary> Contacts { get; init; } = Array.Empty<DeltekContactSummary>();
@@ -79,7 +80,10 @@ public sealed record DeltekProjectSummary(
     DateTime? OpenDate,
     string? Status,
     decimal Fee,
-    decimal FeeBilled);
+    decimal FeeBilled,
+    string? ManagerName = null);
+
+public sealed record DeltekKnownBy(string Name, string? Email, int Jobs, DateTime? LatestOpenDate);
 
 public sealed record DeltekContactSummary(
     string ContactId,
@@ -204,6 +208,7 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
 
         var degraded = false;
         var contactsUnavailable = false;
+        IReadOnlyList<DeltekKnownBy> knownBy = Array.Empty<DeltekKnownBy>();
         var projects = Array.Empty<DeltekProjectSummary>() as IReadOnlyList<DeltekProjectSummary>;
         var contacts = Array.Empty<DeltekContactSummary>() as IReadOnlyList<DeltekContactSummary>;
         DeltekArSummary? ar = null;
@@ -217,6 +222,16 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
         {
             degraded = true;
             Log.Warning(ex, "Deltek client intelligence section unavailable for {Section}.", "projects");
+        }
+
+        try
+        {
+            knownBy = LoadKnownBy(cn, catalog, clientId, ct);
+        }
+        catch (OdbcException ex)
+        {
+            degraded = true;
+            Log.Warning(ex, "Deltek client intelligence section unavailable for {Section}.", "known by");
         }
 
         try
@@ -273,6 +288,7 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
             LatestProjectName = projects.FirstOrDefault(p => latestStart.HasValue && p.OpenDate.HasValue && p.OpenDate.Value == latestStart.Value)?.Name,
             Company = company,
             Projects = projects,
+            KnownBy = knownBy,
             Contacts = contacts,
             ContactsUnavailable = contactsUnavailable,
             Ar = ar,
@@ -427,10 +443,11 @@ ProjectBilling AS (
 -- to Σ(visible rows). Previous TOP 50 cap silently truncated high-repeat clients.
 SELECT pr.WBS1, pr.Name, pr.OpenDate, pr.Status, pr.Fee,
        COALESCE(pb.FeeBilled, 0) AS FeeBilled,
-       pr.Org
+       pr.Org, NULLIF(LTRIM(RTRIM(CONCAT(em.FirstName, ' ', em.LastName))), '') AS ManagerName
 FROM ClientWbs cw
 INNER JOIN [{catalog}].dbo.PR pr ON pr.WBS1 = cw.WBS1
 LEFT JOIN ProjectBilling pb ON pb.WBS1 = pr.WBS1
+LEFT JOIN [{catalog}].dbo.EMMain em ON em.Employee = pr.ProjMgr
 WHERE pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = ''
 ORDER BY pr.OpenDate DESC;";
         cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
@@ -449,9 +466,49 @@ ORDER BY pr.OpenDate DESC;";
                 OpenDate: GetDate(r, 2),
                 Status: GetString(r, 3),
                 Fee: (GetDecimal(r, 4) ?? 0m) * fx,
-                FeeBilled: (GetDecimal(r, 5) ?? 0m) * fx));
+                FeeBilled: (GetDecimal(r, 5) ?? 0m) * fx,
+                ManagerName: GetString(r, 7)));
         }
 
+        return rows;
+    }
+
+    private static IReadOnlyList<DeltekKnownBy> LoadKnownBy(OdbcConnection cn, string catalog, string clientId, CancellationToken ct)
+    {
+        var email = DeltekSchemaValidator.HasColumn(cn, catalog, "EMMain", "EMail", ct)
+            ? "em.EMail" : "CAST(NULL AS nvarchar(256))";
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = 30;
+        // AR only identifies jobs. Choose one master manager per five-character job
+        // (latest dated master, then WBS1/manager); aggregate before joining staff.
+        cmd.CommandText = $@"
+WITH ClientJobs AS (
+    SELECT DISTINCT LEFT(ar.WBS1,5) AS Job
+    FROM [{catalog}].dbo.AR ar WHERE ar.ClientID = ? AND NULLIF(LTRIM(RTRIM(ar.WBS1)), '') IS NOT NULL
+), ProjectRows AS (
+    SELECT LEFT(pr.WBS1,5) AS Job, pr.ProjMgr, pr.OpenDate,
+           ROW_NUMBER() OVER (PARTITION BY LEFT(pr.WBS1,5) ORDER BY pr.OpenDate DESC, pr.WBS1, pr.ProjMgr) AS rn
+    FROM [{catalog}].dbo.PR pr JOIN ClientJobs jobs ON jobs.Job = LEFT(pr.WBS1,5)
+    WHERE NULLIF(LTRIM(RTRIM(pr.WBS2)), '') IS NULL
+), ProjectJobs AS (
+    SELECT Job, ProjMgr, MAX(OpenDate) AS OpenDate FROM ProjectRows WHERE rn = 1 GROUP BY Job, ProjMgr
+), Managers AS (
+    SELECT pr.ProjMgr, COUNT(*) AS Jobs, MAX(pr.OpenDate) AS LatestOpenDate
+    FROM ProjectJobs pr WHERE NULLIF(LTRIM(RTRIM(pr.ProjMgr)), '') IS NOT NULL GROUP BY pr.ProjMgr
+)
+SELECT LTRIM(RTRIM(CONCAT(em.FirstName, ' ', em.LastName))) AS ManagerName,
+       {email} AS Email, pr.Jobs, pr.LatestOpenDate
+FROM Managers pr JOIN [{catalog}].dbo.EMMain em ON em.Employee = pr.ProjMgr
+ORDER BY pr.Jobs DESC, pr.LatestOpenDate DESC, pr.ProjMgr;";
+        cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* cancellation may race disposal */ } });
+        using var r = cmd.ExecuteReader();
+        var rows = new List<DeltekKnownBy>();
+        while (r.Read())
+        {
+            ct.ThrowIfCancellationRequested();
+            rows.Add(new DeltekKnownBy(GetString(r, 0) ?? "", GetString(r, 1), Convert.ToInt32(r.GetValue(2)), GetDate(r, 3)));
+        }
         return rows;
     }
 

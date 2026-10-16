@@ -9,6 +9,7 @@ using Kor.Opportunities.Data.Knowledge;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
 using Kor.Operations.App.Opportunities;
+using Kor.Operations.App.Crm;
 
 namespace Kor.Operations.App.BusinessDevelopment.Director;
 
@@ -20,6 +21,7 @@ public sealed class BdDirectorPersonRow
     public string DisplayName => Person.DisplayName;
     public IReadOnlyList<string> OwnerKeys => Person.OwnerKeys;
     public int Live => Person.Live;
+    public int SecondSeat => Person.SecondSeat;
     public int OverdueNextAction => Person.OverdueNextAction;
     public int NoNextAction => Person.NoNextAction;
     public int Untouched14d => Person.Untouched14d;
@@ -56,6 +58,138 @@ public sealed record BdDirectorPendingBidRow(PendingBidRow Bid, DateTimeOffset A
     public bool IsMine(string actor) => !string.IsNullOrWhiteSpace(actor)
         && (string.Equals(Bid.OwnerMailbox, actor, StringComparison.OrdinalIgnoreCase)
             || string.Equals(Bid.OwnerStaffId, actor, StringComparison.OrdinalIgnoreCase));
+}
+
+public sealed record BdEngineerCandidate(long EngagementId, BdStaffRow Staff, int Jobs, int SameRegionPursuits,
+    int LivePursuits, string Reason)
+{
+    public string Display => $"{Staff.DisplayName ?? Staff.Mailbox} · {Reason}";
+}
+
+public static class BdMyDayRules
+{
+    public static bool IsLive(CrmEngagement e) => e.Stage is CrmEngagementStage.Drafting or CrmEngagementStage.Submitted;
+    public static string RegionKey(string? region) => (region ?? "").ToLowerInvariant().Replace(" ", "").Split('-')[0];
+    public static IReadOnlyList<string> Assigned(string? value) => (value ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
+        .Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
+    public static BdStaffRow? Resolve(string? key, IReadOnlyList<BdStaffRow> staff) => string.IsNullOrWhiteSpace(key) ? null
+        : staff.Where(s => !string.IsNullOrWhiteSpace(s.Mailbox)
+            && (string.Equals(s.StaffKey, key.Trim(), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(s.Mailbox, key.Trim(), StringComparison.OrdinalIgnoreCase)))
+            .OrderByDescending(s => string.Equals(s.StaffKey, key.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ThenBy(s => s.Id).FirstOrDefault();
+    public static bool IsActor(string? key, string actor, IReadOnlyList<BdStaffRow> staff) => !string.IsNullOrWhiteSpace(actor)
+        && string.Equals(Resolve(key, staff)?.Mailbox, actor.Trim(), StringComparison.OrdinalIgnoreCase);
+    public static bool HasCompanySeat(CrmEngagement e, IReadOnlyList<BdStaffRow> staff) => Assigned(e.AssignedStaffIds)
+        .Any(key => IsCompanyMailbox(Resolve(key, staff)?.Mailbox));
+    private static bool IsCompanyMailbox(string? mailbox) => mailbox?.EndsWith("@korstructural.com", StringComparison.OrdinalIgnoreCase) == true;
+    public static string AppendSeat(string? assigned, string key)
+    {
+        var result = string.IsNullOrWhiteSpace(assigned) ? key : assigned.TrimEnd() + "," + key;
+        if (result.Length > 500) throw new InvalidOperationException("There is no room for another assigned person on this pursuit.");
+        return result;
+    }
+    public static string SeatDisplay(string? assigned, IReadOnlyList<BdStaffRow> staff) => string.Join(", ", Assigned(assigned)
+        .Select(key => Resolve(key, staff)?.DisplayName ?? Resolve(key, staff)?.Mailbox ?? key));
+
+    public static IReadOnlyList<BdEngineerCandidate> Candidates(CrmEngagement pursuit, string actor,
+        IReadOnlyList<BdStaffRow> staff, IReadOnlyList<CrmEngagement> pursuits, DeltekClientIntelligence? history, string client)
+    {
+        if (!IsLive(pursuit) || !IsActor(pursuit.OwnerStaffId, actor, staff) || HasCompanySeat(pursuit, staff))
+            return Array.Empty<BdEngineerCandidate>();
+        var region = RegionKey(pursuit.Region);
+        return staff.Where(s => s.IsActive && IsCompanyMailbox(s.Mailbox))
+            .GroupBy(s => s.Mailbox!, StringComparer.OrdinalIgnoreCase).Select(g => g.OrderBy(s => s.Id).First())
+            .Where(s => !string.Equals(s.Mailbox, actor, StringComparison.OrdinalIgnoreCase)
+                && !Assigned(pursuit.AssignedStaffIds).Any(key => IsActor(key, s.Mailbox!, staff)))
+            .Select(s =>
+            {
+                var jobs = history?.KnownBy.Where(k => string.Equals(k.Email, s.Mailbox, StringComparison.OrdinalIgnoreCase))
+                    .Sum(k => k.Jobs) ?? 0;
+                var held = pursuits.Where(e => IsLive(e) && IsActor(e.OwnerStaffId, s.Mailbox!, staff)).ToArray();
+                var sameRegion = region.Length == 0 ? 0 : held.Count(e => RegionKey(e.Region) == region);
+                return new BdEngineerCandidate(pursuit.Id, s, jobs, sameRegion, held.Length,
+                    jobs > 0 ? $"Led {jobs} jobs for {client}" : $"Holds {sameRegion} live pursuits in {pursuit.Region}");
+            })
+            .Where(c => c.Jobs > 0 || c.SameRegionPursuits > 0)
+            .OrderByDescending(c => c.Jobs).ThenByDescending(c => c.SameRegionPursuits > 0)
+            .ThenBy(c => c.LivePursuits).ThenBy(c => c.Staff.Mailbox, StringComparer.OrdinalIgnoreCase).Take(3).ToArray();
+    }
+
+    public static string Draft(CallSheetItem item, DeltekClientIntelligence? history)
+    {
+        static string Fact(string? value) => (value ?? "").Replace("{", "").Replace("}", "").Trim();
+        var sentences = new List<string>();
+        var firstName = Fact(item.ContactName).Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(firstName)) sentences.Add($"Hi {firstName},");
+        var reason = Fact(!string.IsNullOrWhiteSpace(item.NextActionNote) ? item.NextActionNote : item.AskText);
+        if (reason.Length > 0) sentences.Add(reason);
+        if (history is { ProjectCount: > 0, LatestProjectStart: { } start }
+            && Fact(history.ClientName).Length > 0 && Fact(history.LatestProjectName).Length > 0)
+            sentences.Add($"KOR has worked with {Fact(history.ClientName)} on {history.ProjectCount} projects, most recently {Fact(history.LatestProjectName)} ({start.Year}).");
+        var knownBy = Fact(history?.KnownBy.FirstOrDefault()?.Name);
+        if (knownBy.Length > 0) sentences.Add($"{knownBy} led that work.");
+        sentences.Add("Would you have twenty minutes in the next two weeks?");
+        return string.Join(Environment.NewLine + Environment.NewLine, sentences);
+    }
+}
+
+public sealed class BdDirectorMyDayRow : ObservableObject
+{
+    private CrmEngagement? _trackedPursuit;
+    private string _trackedBy = "";
+    public BdDirectorMyDayRow(CallSheetItem item, DateTimeOffset now, DeltekClientIntelligence? history,
+        IReadOnlyList<BdEngineerCandidate>? candidates = null, string secondSeats = "")
+    {
+        Item = item;
+        History = history;
+        Candidates = candidates ?? Array.Empty<BdEngineerCandidate>();
+        SecondSeats = secondSeats.Length == 0 ? "" : "Second seat: " + secondSeats;
+        if (item.NextActionDueUtc is { } due)
+        {
+            WhyPrefix = due.LocalDateTime.Date < now.LocalDateTime.Date ? "Next action overdue since " : "Next action due ";
+            WhyDate = due;
+        }
+        else if (item.Kind == CallSheetKind.Ask && item.AskDueUtc is { } askDue)
+        {
+            WhyPrefix = "Ask due "; WhyDate = askDue; WhySuffix = ": " + item.AskText;
+        }
+        else if (item.Kind == CallSheetKind.Pursuit) WhyPrefix = "No next action set";
+        else if (item.LastTouchUtc is { } touch) { WhyPrefix = "No touch recorded since "; WhyDate = touch; }
+        else WhyPrefix = "No touch recorded";
+    }
+    public CallSheetItem Item { get; }
+    public DeltekClientIntelligence? History { get; }
+    public IReadOnlyList<BdEngineerCandidate> Candidates { get; }
+    public bool HasCandidates => Candidates.Count > 0;
+    public string SecondSeats { get; }
+    public string Contact => string.Join(" · ", new[] { Item.ContactName, Item.ContactEmail }.Where(s => !string.IsNullOrWhiteSpace(s)));
+    public string WhyPrefix { get; }
+    public DateTimeOffset? WhyDate { get; }
+    public string WhySuffix { get; } = "";
+    public bool HasWhyDate => WhyDate.HasValue;
+    public bool HasSignal => Item.SignalLastSeenAtUtc.HasValue;
+    public bool HasLastActivity => Item.LastActivityUtc.HasValue;
+    public string HistoryText => string.IsNullOrWhiteSpace(Item.DeltekClientId) ? "Not linked to a Deltek client"
+        : History is not { } h ? "Deltek history could not be read"
+        : $"{h.ProjectCount} projects · {h.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture)}"
+            + (string.IsNullOrWhiteSpace(h.LatestProjectName) ? "" : $" · latest {h.LatestProjectName}" + (h.LatestProjectStart is { } date ? $" ({date.Year})" : ""));
+    public string KnownBy => History?.KnownBy.FirstOrDefault() is { } k ? $"Known by {k.Name} ({k.Jobs} jobs)" : "";
+    public string HistoryWarning => History?.HasDegradedSections == true ? "Some Deltek history could not be read." : "";
+    public string DraftedNote => BdMyDayRules.Draft(Item, History);
+    public bool CanLog => Item.Kind != CallSheetKind.Account && Item.EngagementId.HasValue;
+    public bool IsAccount => Item.Kind == CallSheetKind.Account;
+    public bool CanStartTracking => IsAccount && _trackedPursuit is null;
+    public bool CanJoin => IsAccount && _trackedPursuit is not null;
+    public CrmEngagement? TrackedPursuit => _trackedPursuit;
+    public string TrackedBy => _trackedBy;
+    public string? SelectedRegion { get; set; }
+    public void ShowTracked(CrmEngagement pursuit, string owner)
+    {
+        _trackedPursuit = pursuit;
+        _trackedBy = "Tracked by " + owner;
+        foreach (var name in new[] { nameof(TrackedBy), nameof(CanJoin), nameof(CanStartTracking) }) OnPropertyChanged(name);
+    }
 }
 
 public sealed record BdDirectorStageRow(string Stage, int Pursuits, double? MedianDays)
