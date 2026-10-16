@@ -85,7 +85,10 @@ internal static class SelfUpdate
             {
                 CreateNoWindow = true,
                 UseShellExecute = false,
-                WorkingDirectory = Path.GetTempPath(),
+                // A SYSTEM process must not take its working directory from a user-writable place (the TEMP
+                // folder): cmd.exe and the script could resolve a planted binary/DLL from there. The script
+                // uses only absolute paths, so an admin-only CWD changes nothing but the attack surface.
+                WorkingDirectory = Environment.SystemDirectory,
             });
             log.Info($"self-update: {shipped} staged at {staging}; the updater is running and will restart the service");
             return true;
