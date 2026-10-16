@@ -386,8 +386,7 @@
                     </Grid>
                 </Border>
 
-                <!-- Files (2026-07-08): drag onto the panel or Browse. Bytes go to
-                     the LAN share; the list indexes them. Hidden if no share set. -->
+                <!-- Drag onto the panel or Browse. Attachments are stored in the database. -->
                 <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,8,0,0"
                         AllowDrop="True" Drop="FilesPanel_Drop" DragOver="FilesPanel_DragOver"
                         Visibility="{Binding FilesEnabled, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
@@ -405,7 +404,7 @@
                                     Click="BrowseFilesButton_Click"/>
                             <Button DockPanel.Dock="Right" Content="Remove" Width="70" Margin="4,0,0,0"
                                     Click="RemoveFileButton_Click"
-                                    ToolTip="Remove the selected file and delete it from the share."/>
+                                    ToolTip="Remove the selected attachment."/>
                             <Button DockPanel.Dock="Right" Content="Open" Width="60"
                                     Click="OpenFileButton_Click"
                                     ToolTip="Open the selected file."/>

@@ -29,6 +29,36 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 public sealed class BdCrmClarityRegressionTests
 {
     [Fact]
+    public void Attachments_UseDatabaseStorageAndOneLauncher_WithoutShareSetupWording()
+    {
+        foreach (var area in new[] { "Crm", "BusinessDevelopment/Director" })
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(RepoRoot(), "Kor.Operations.App", area))
+                     .Where(f => Path.GetExtension(f) is ".cs" or ".xaml"))
+        {
+            var text = File.ReadAllText(file);
+            Assert.DoesNotContain("aren't set up", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("PursuitFilesRoot", text, StringComparison.Ordinal);
+        }
+        var registration = Source("Kor.Operations.App/CompositionModules/OpportunitiesModule.cs");
+        Assert.Contains("IPursuitFileStorage, App.Crm.DbPursuitFileStorage", registration, StringComparison.Ordinal);
+        var crm = Source("Kor.Operations.App/Crm/CrmView.xaml.cs");
+        Assert.Contains("GetRequiredService<FeeProposalLauncher>().Launch(row.OpportunityId, row.Id", crm, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredService<IPursuitFileOpener>().OpenAsync(row.Model)", crm, StringComparison.Ordinal);
+        Assert.DoesNotContain("LinkProposalToPursuitAsync", crm, StringComparison.Ordinal);
+        var vm = Source("Kor.Operations.App/Crm/CrmViewModel.cs");
+        Assert.Contains("var saved = stored.File", vm, StringComparison.Ordinal);
+        Assert.DoesNotContain("_fileStore.AddAsync", vm, StringComparison.Ordinal);
+        var builder = Source("Kor.Operations.App/FeeProposal/FeeProposalBuilderWindow.xaml.cs");
+        Assert.Equal(2, Regex.Matches(builder, "await _vm.NotifyProposalRenderedAsync").Count);
+        Assert.Contains("proposal.Id, dlg.FileName, \"application/pdf\"", builder, StringComparison.Ordinal);
+        Assert.Contains("application/vnd.openxmlformats-officedocument.wordprocessingml.document", builder, StringComparison.Ordinal);
+        var launcher = Source("Kor.Operations.App/FeeProposal/FeeProposalLauncher.cs");
+        Assert.Contains("_builder.ProposalSaved -= OnSaved", launcher, StringComparison.Ordinal);
+        Assert.Contains("_builder.ProposalRendered -= OnRenderedAsync", launcher, StringComparison.Ordinal);
+        Assert.DoesNotContain("RemoveAsync", launcher, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Pursuits_EveryInlineInputHasAPlaceholder()
     {
         var xaml = Source("Kor.Operations.App/Crm/CrmView.xaml");
@@ -176,11 +206,13 @@ public sealed class BdCrmClarityRegressionTests
         Assert.Contains("every owned live pursuit", Source("Kor.Operations.App/BusinessDevelopment/Workspace/BdWorkspaceWindow.xaml"));
     }
 
-    private static string Source(string path)
+    private static string Source(string path) => File.ReadAllText(Path.Combine(RepoRoot(), path));
+
+    private static string RepoRoot()
     {
         DirectoryInfo? dir = new(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "CLAUDE.md"))) dir = dir.Parent;
         Assert.NotNull(dir);
-        return File.ReadAllText(Path.Combine(dir!.FullName, path));
+        return dir!.FullName;
     }
 }

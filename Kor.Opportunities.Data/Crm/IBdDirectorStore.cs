@@ -22,7 +22,7 @@ public interface IBdDirectorStore
 public sealed record PendingBidRow(long EngagementId, long OpportunityId, string RfpNumber,
     string Project, string Client, string? OwnerStaffId, string? OwnerDisplayName, string? OwnerMailbox,
     DateTimeOffset? DueUtc, CrmEngagementStage Stage, DateTimeOffset? SubmittedAtUtc,
-    string? SubmittedFileName, string? FolderLink, DateTimeOffset? NextActionDueUtc);
+    string? SubmittedFileName, string? FolderLink, DateTimeOffset? NextActionDueUtc, long? SubmittedFileId = null);
 
 public sealed record BdDirectorSignal(long OrgId, string Org, string Signal, string Subject, DateTimeOffset LastSeenAtUtc, int Corroborations);
 

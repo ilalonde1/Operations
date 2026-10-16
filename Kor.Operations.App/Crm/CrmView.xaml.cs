@@ -265,118 +265,9 @@ public partial class CrmView : UserControl
 
     private void BuildFeeProposalButton_Click(object sender, RoutedEventArgs e)
     {
-        var row = _vm.Selected;
-        if (row is null)
-        {
-            return;
-        }
-
-        var win = _services.GetRequiredService<FeeProposalBuilderWindow>();
-        win.Owner = Window.GetWindow(this);
-
-        var key = row.OpportunityKey;
-        var name = string.IsNullOrWhiteSpace(row.ProjectName) ? key : $"{key} — {row.ProjectName}";
-        // Only opportunity-backed (grabbed) pursuits can be linked — the link table
-        // FKs to Opportunities. BD-tracking pursuits have no OpportunityId, so the
-        // proposal still builds, it just isn't linked.
-        var opportunityId = row.OpportunityId;
-        var engagementId = row.Id;
-
-        // One-shot: Loaded can fire more than once; wire prefill + linkage exactly once.
-        RoutedEventHandler? loaded = null;
-        loaded = (_, _) =>
-        {
-            win.Loaded -= loaded;
-            try
-            {
-                if (win.DataContext is FeeProposalBuilderViewModel proposalVm)
-                {
-                    proposalVm.StartFromOpportunity(name);
-
-                    if (opportunityId.HasValue)
-                    {
-                        // One-shot on the FIRST save (fix F11): a builder left open
-                        // and repurposed for a different project would otherwise
-                        // link (and re-advance) the ORIGINAL pursuit on every
-                        // subsequent save. The Closed unsubscribe stays as a
-                        // belt-and-braces cleanup for the never-saved case.
-                        EventHandler<string>? onSaved = null;
-                        onSaved = async (_, proposalId) =>
-                        {
-                            proposalVm.ProposalSaved -= onSaved;
-                            await LinkProposalToPursuitAsync(opportunityId.Value, engagementId, proposalId).ConfigureAwait(true);
-                        };
-                        proposalVm.ProposalSaved += onSaved;
-                        win.Closed += (_, _) => proposalVm.ProposalSaved -= onSaved;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Fee-proposal prefill from CRM engagement failed; user will see an empty builder.");
-                _vm.SetStatusMessage("Fee proposal opened, but automatic prefill failed.");
-            }
-        };
-        win.Loaded += loaded;
-
-        win.Show();
-    }
-
-    /// <summary>
-    /// Wire a saved fee proposal back to the originating pursuit: write the
-    /// opportunity↔proposal link (soft, cross-DB) and advance a still-Drafting
-    /// pursuit to Submitted. Best-effort — a failure never blocks the proposal.
-    /// </summary>
-    private async Task LinkProposalToPursuitAsync(long opportunityId, long engagementId, string proposalId)
-    {
-        try
-        {
-            if (!Guid.TryParse(proposalId, out var feeProposalId))
-            {
-                return;
-            }
-
-            var actor = ResolveActor();
-            var linkStore = _services.GetRequiredService<Kor.Opportunities.Data.Opportunities.IOpportunityFeeProposalLinkStore>();
-            await linkStore.LinkAsync(opportunityId, feeProposalId, actor, CancellationToken.None).ConfigureAwait(true);
-
-            // Plan 1.6: the proposal event logs ITSELF — nobody types "sent the
-            // fee proposal". Makes the Overwatch staleness clock truthful for
-            // the most important pursuit event. F11's one-shot bounds this to
-            // one activity per builder launch; residual duplicates from
-            // re-opening the builder are honest noise (documented decision).
-            try
-            {
-                await _vm.AppendActivityAsync(
-                    engagementId,
-                    CrmActivityType.Deliverable,
-                    "Fee proposal saved",
-                    $"Fee proposal {feeProposalId:N} saved from this pursuit and linked to its opportunity.",
-                    actor,
-                    CancellationToken.None).ConfigureAwait(true);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Auto-logging the fee-proposal activity failed; the link itself committed.");
-            }
-
-            // Re-read fresh state before advancing so a builder that stayed open can't
-            // overwrite a pursuit that has since moved on — advance only if still Drafting,
-            // and update the CURRENT engagement, not the one captured at launch.
-            await ReloadAsync().ConfigureAwait(true);
-            var fresh = _vm.Engagements.FirstOrDefault(r => r.Id == engagementId);
-            if (fresh is not null && fresh.Engagement.Stage == CrmEngagementStage.Drafting)
-            {
-                await _vm.ChangeStageAsync(fresh, CrmEngagementStage.Submitted, actor, CancellationToken.None).ConfigureAwait(true);
-                await ReloadAsync().ConfigureAwait(true);
-            }
-
-            _vm.SetStatusMessage("Fee proposal linked to this pursuit.");
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Linking fee proposal to pursuit failed.");
-        }
+        if (_vm.Selected is not { } row) return;
+        _services.GetRequiredService<FeeProposalLauncher>().Launch(row.OpportunityId, row.Id,
+            row.OpportunityKey, row.ProjectName, ResolveActor(), Window.GetWindow(this), ReloadAsync, _vm.SetStatusMessage);
     }
 
     private void BuildBrochureButton_Click(object sender, RoutedEventArgs e)
@@ -737,7 +628,7 @@ public partial class CrmView : UserControl
         _filesBusy = true;
         try
         {
-            _vm.SetStatusMessage($"Copying {paths.Count} file{(paths.Count == 1 ? "" : "s")} to the share…");
+            _vm.SetStatusMessage($"Attaching {paths.Count} file{(paths.Count == 1 ? "" : "s")}…");
             var label = string.IsNullOrWhiteSpace(row.OpportunityKey) ? row.ProjectName : row.OpportunityKey;
             await _vm.AddFilesAsync(row.Id, row.OpportunityId, label, paths, ResolveActor(), CancellationToken.None)
                 .ConfigureAwait(true);
@@ -752,12 +643,12 @@ public partial class CrmView : UserControl
         }
     }
 
-    private void FilesGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        => OpenSelectedFile();
+    private async void FilesGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        => await OpenSelectedFileAsync();
 
-    private void OpenFileButton_Click(object sender, RoutedEventArgs e) => OpenSelectedFile();
+    private async void OpenFileButton_Click(object sender, RoutedEventArgs e) => await OpenSelectedFileAsync();
 
-    private void OpenSelectedFile()
+    private async Task OpenSelectedFileAsync()
     {
         if (FilesGrid.SelectedItem is not PursuitFileRowView row)
         {
@@ -766,15 +657,12 @@ public partial class CrmView : UserControl
 
         try
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(row.StoredPath)
-            {
-                UseShellExecute = true,
-            });
+            await _services.GetRequiredService<IPursuitFileOpener>().OpenAsync(row.Model).ConfigureAwait(true);
         }
         catch (Exception ex)
         {
             MessageBox.Show(Window.GetWindow(this),
-                $"Couldn't open {row.FileName}. It may have been moved or the share is unreachable.\n\n{ex.Message}",
+                $"Couldn't open {row.FileName}.\n\n{ex.Message}",
                 "CRM — Open File", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -787,7 +675,7 @@ public partial class CrmView : UserControl
         }
 
         var owner = Window.GetWindow(this);
-        if (MessageBox.Show(owner, $"Remove “{row.FileName}” and delete it from the share?",
+        if (MessageBox.Show(owner, $"Remove the attachment “{row.FileName}”?",
                 "CRM — Remove File", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
         {
             return;

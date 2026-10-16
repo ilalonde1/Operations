@@ -210,7 +210,9 @@ namespace Kor.Operations.App.FeeProposal
             {
                 var renderer = Kor.Operations.Services.AppServices.Get<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-                await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, cts.Token);
+                var proposal = _vm.CurrentProposal;
+                await renderer.RenderAsync(proposal, staff, dlg.FileName, cts.Token);
+                await _vm.NotifyProposalRenderedAsync(proposal.Id, dlg.FileName, "application/pdf");
                 Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
             }
             catch (Exception ex)
@@ -239,7 +241,9 @@ namespace Kor.Operations.App.FeeProposal
             {
                 var renderer = Kor.Operations.Services.AppServices.Get<Kor.Operations.Rendering.Proposal.IFeeProposalDocxRenderer>();
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-                await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, cts.Token);
+                var proposal = _vm.CurrentProposal;
+                await renderer.RenderAsync(proposal, staff, dlg.FileName, cts.Token);
+                await _vm.NotifyProposalRenderedAsync(proposal.Id, dlg.FileName, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
                 Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
             }
             catch (Exception ex)

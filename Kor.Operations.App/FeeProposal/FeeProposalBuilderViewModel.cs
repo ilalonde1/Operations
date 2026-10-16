@@ -19,7 +19,7 @@ using FeeProposalModel = Kor.Operations.Core.Models.Proposal.FeeProposal;
 
 namespace Kor.Operations.App.FeeProposal
 {
-    public sealed class FeeProposalBuilderViewModel : ObservableObject, Kor.Operations.Services.IAiContextProvider
+    public sealed class FeeProposalBuilderViewModel : ObservableObject, Kor.Operations.Services.IAiContextProvider, IFeeProposalEvents
     {
         public const string Provider = "Fee Proposal Builder (BD)";
 
@@ -363,6 +363,17 @@ namespace Kor.Operations.App.FeeProposal
         /// builder was launched from a pursuit, the CRM uses this to link the proposal
         /// to the pursuit's opportunity and advance the pursuit's stage.</summary>
         public event EventHandler<string>? ProposalSaved;
+
+        public event Func<ProposalRenderedEvent, Task>? ProposalRendered;
+
+        public async Task NotifyProposalRenderedAsync(string proposalId, string renderedPath, string contentType)
+        {
+            var handlers = ProposalRendered;
+            if (handlers is null) return;
+            var rendered = new ProposalRenderedEvent(proposalId, renderedPath, contentType);
+            foreach (Func<ProposalRenderedEvent, Task> handler in handlers.GetInvocationList())
+                await handler(rendered).ConfigureAwait(true);
+        }
 
         public async Task SaveProposalAsync(CancellationToken ct = default)
         {

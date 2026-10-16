@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Documents;
 using Kor.Operations.App.BusinessDevelopment.Workspace;
+using Kor.Operations.App.Crm;
+using Kor.Operations.App.FeeProposal;
 using Kor.Operations.App.Options;
 using Kor.Operations.App.Opportunities;
 using Kor.Operations.Core.Services;
@@ -103,18 +105,36 @@ public partial class BdDirectorWindow : Window
 
     private async void MarkSubmitted_Click(object sender, RoutedEventArgs e)
     {
-        if (_vm.SelectedPendingBid is not { IsPending: true } row) return;
-        await LedgerActionAsync(ct => SubmitBidAsync(row, dialog => dialog.ShowDialog(), _actor, ct)).ConfigureAwait(true);
+        if (_vm.SelectedPendingBid is not { CanSubmit: true } row) return;
+        await LedgerActionAsync(ct => SubmitBidAsync(row, dialog => dialog.ShowDialog(), _actor, ct), showFailureDetail: true).ConfigureAwait(true);
     }
 
     // The same dialog-to-store path is exercised by the modal interaction gate.
     internal async Task SubmitBidAsync(BdDirectorPendingBidRow row, Func<SubmittedDialog, bool?> show,
         string actor, CancellationToken ct)
     {
-        var dialog = new SubmittedDialog(row.Bid.SubmittedFileName, row.Bid.FolderLink);
+        var dialog = new SubmittedDialog(row.Bid.SubmittedFileName, row.Bid.FolderLink, row.Bid.SubmittedFileId);
         if (IsVisible) dialog.Owner = this;
         if (show(dialog) == true)
             await _vm.MarkSubmittedAsync(row, dialog.Result, actor, ct).ConfigureAwait(true);
+    }
+
+    private void BuildFeeProposal_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedPendingBid is not { } row) return;
+        AppServices.Get<FeeProposalLauncher>().Launch(row.Bid.OpportunityId, row.Bid.EngagementId,
+            row.Bid.RfpNumber, row.Bid.Project, _actor, this, ReloadAsync,
+            message => MessageBox.Show(this, message, "Fee proposal", MessageBoxButton.OK, MessageBoxImage.Information));
+    }
+
+    private async void SubmittedFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Hyperlink { DataContext: BdDirectorPendingBidRow row } || !row.HasSubmittedFile) return;
+        await LedgerActionAsync(async ct =>
+        {
+            var file = await _vm.GetSubmittedFileAsync(row, ct).ConfigureAwait(true);
+            await AppServices.Get<IPursuitFileOpener>().OpenAsync(file, ct).ConfigureAwait(true);
+        }, showFailureDetail: true).ConfigureAwait(true);
     }
 
     private async void EditOpportunity_Click(object sender, RoutedEventArgs e)
@@ -233,7 +253,7 @@ public partial class BdDirectorWindow : Window
         }).ConfigureAwait(true);
     }
 
-    private async Task LedgerActionAsync(Func<CancellationToken, Task> action)
+    private async Task LedgerActionAsync(Func<CancellationToken, Task> action, bool showFailureDetail = false)
     {
         if (_ledgerBusy || _reassignBusy || _vm.IsLoading) return;
         _ledgerBusy = true;
@@ -242,7 +262,7 @@ public partial class BdDirectorWindow : Window
         catch (Exception ex)
         {
             Log.Warning(ex, "BD Director could not save a change.");
-            MessageBox.Show(this, "Could not save the change. Refresh and try again.", "BD Director", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, showFailureDetail ? ex.Message : "Could not save the change. Refresh and try again.", "BD Director", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally { _ledgerBusy = false; }
     }

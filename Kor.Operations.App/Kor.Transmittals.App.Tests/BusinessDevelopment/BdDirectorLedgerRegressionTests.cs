@@ -340,7 +340,7 @@ public sealed class BdDirectorLedgerRegressionTests
             Attribution.Setup(s => s.GetSummaryAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new BdAttributionSummary(0, 0, 0, 0, 0, Array.Empty<AttributionSourceRow>(), Array.Empty<AttributionOwnerRow>()));
         }
         internal BdDirectorViewModel Create() => new(Reads.Object, Pursuits.Object, Records.Object, Attribution.Object, Ledger.Object, Deltek.Object, Claims.Object,
-            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief());
+            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief(), Mock.Of<IPursuitFileStore>());
     }
 
     private static void CheckValues(string sql, string column, IEnumerable<string> expected)

@@ -3,6 +3,12 @@
         Title="Mark submitted" Width="560" SizeToContent="Height" WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         ShowInTaskbar="False" Background="{StaticResource App.Background}">
     <StackPanel Margin="20">
+        <TextBlock x:Name="ExistingFileText" TextWrapping="Wrap" Margin="0,0,0,8"/>
+        <TextBlock Text="Proposal PDF (required for a new submission)" Margin="0,0,0,6"/>
+        <DockPanel Margin="0,0,0,14">
+            <Button Content="Browse…" DockPanel.Dock="Right" Click="Browse_Click" Margin="8,0,0,0" Padding="12,4"/>
+            <TextBox x:Name="SourcePathBox" IsReadOnly="True"/>
+        </DockPanel>
         <TextBlock Text="Submitted file name (required)" Margin="0,0,0,6"/>
         <TextBox x:Name="FileNameBox" MaxLength="260" Margin="0,0,0,14"/>
         <TextBlock Text="Folder link (optional path or URL)" Margin="0,0,0,6"/>

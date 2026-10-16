@@ -362,7 +362,7 @@ public sealed class BdScreensRenderTests
                 RetiredReason = id == 2 ? "Illustrative retirement reason." : null,
             });
         using var vm = new BdDirectorViewModel(director.Object, pursuits.Object, recordStore.Object, attribution.Object, ledger.Object, deltek.Object, claims.Object,
-            market.Dashboard.Object, market.Opportunities.Object, market.Brief);
+            market.Dashboard.Object, market.Opportunities.Object, market.Brief, Mock.Of<IPursuitFileStore>());
         vm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
         Assert.True(vm.Live == 101 && vm.PeopleCount == 8 && vm.Outcomes == "No live pursuit has been decided yet.",
             $"EXPECTED 101 live / 8 people / no decided live pursuits; ACTUAL {vm.Live} / {vm.PeopleCount} / {vm.Outcomes}");

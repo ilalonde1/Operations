@@ -21,7 +21,7 @@ public sealed class SqlCrmEngagementStore : ICrmEngagementStore
     // Fix F2 (CRM plan 2026-07-06): the eight migration-267 outcome/provenance
     // columns finally get a read path (ordinals 22-29, appended after
     // RowVersion so nothing existing shifts). Migration 353 appends submission
-    // fields at 30-31; UpdateAsync's deleted.Stage is at ordinal 32.
+    // fields at 30-31; migration 354 adds SubmittedFileId at 32, deleted.Stage at 33.
     private const string AllColumns = @"
 Id, OpportunityId, Stage, OwnerStaffId, AssignedStaffIds,
 TargetMargin, ProposedFee, ProposedHours, Notes,
@@ -30,7 +30,7 @@ BuyerCanonicalOrgId, Region, ProposalsSubmittedCad, ProposalsAcceptedCad, Potent
 CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy, RowVersion,
 WonLostOutcome, OutcomeReason, LostToCanonicalOrgId, WonProjectWbs1,
 NextActionDueUtc, NextActionNote, ExternalSource, ExternalSourceKey,
-SubmittedFileName, FolderLink";
+SubmittedFileName, FolderLink, SubmittedFileId";
 
     // SELECT-only projection: write OUTPUT images retain their original ordinals.
     private const string ListColumns = AllColumns + ", (SELECT co.DisplayName FROM opportunities.CanonicalOrg co WHERE co.Id = BuyerCanonicalOrgId) AS BuyerOrgName";
@@ -129,7 +129,7 @@ INSERT INTO opportunities.CrmEngagements
      BuyerCanonicalOrgId, Region, ProposalsSubmittedCad, ProposalsAcceptedCad, PotentialProjects,
      WonLostOutcome, OutcomeReason, LostToCanonicalOrgId, WonProjectWbs1,
      NextActionDueUtc, NextActionNote, ExternalSource, ExternalSourceKey,
-     SubmittedFileName, FolderLink,
+     SubmittedFileName, FolderLink, SubmittedFileId,
      CreatedBy, UpdatedBy)
 OUTPUT
     inserted.Id, inserted.OpportunityId, inserted.Stage, inserted.OwnerStaffId, inserted.AssignedStaffIds,
@@ -139,7 +139,7 @@ OUTPUT
     inserted.CreatedAtUtc, inserted.CreatedBy, inserted.UpdatedAtUtc, inserted.UpdatedBy, inserted.RowVersion,
     inserted.WonLostOutcome, inserted.OutcomeReason, inserted.LostToCanonicalOrgId, inserted.WonProjectWbs1,
     inserted.NextActionDueUtc, inserted.NextActionNote, inserted.ExternalSource, inserted.ExternalSourceKey,
-    inserted.SubmittedFileName, inserted.FolderLink
+    inserted.SubmittedFileName, inserted.FolderLink, inserted.SubmittedFileId
 VALUES
     (@oppId, @stage, @owner, @assigned,
      @margin, @fee, @hours, @notes,
@@ -147,7 +147,7 @@ VALUES
      @buyerCanonicalOrgId, @region, @proposalsSubmittedCad, @proposalsAcceptedCad, @potentialProjects,
      @wonLostOutcome, @outcomeReason, @lostToCanonicalOrgId, @wonProjectWbs1,
      @nextActionDueUtc, @nextActionNote, @externalSource, @externalSourceKey,
-     @submittedFileName, @folderLink,
+     @submittedFileName, @folderLink, @submittedFileId,
      @actor, @actor);";
 
         await using var con = new SqlConnection(_connectionString);
@@ -287,6 +287,7 @@ SET Stage                 = @stage,
     NextActionNote        = @nextActionNote,
     SubmittedFileName     = @submittedFileName,
     FolderLink            = @folderLink,
+    SubmittedFileId       = @submittedFileId,
     UpdatedAtUtc          = sysdatetimeoffset(),
     UpdatedBy             = @actor
 OUTPUT
@@ -297,7 +298,7 @@ OUTPUT
     inserted.CreatedAtUtc, inserted.CreatedBy, inserted.UpdatedAtUtc, inserted.UpdatedBy, inserted.RowVersion,
     inserted.WonLostOutcome, inserted.OutcomeReason, inserted.LostToCanonicalOrgId, inserted.WonProjectWbs1,
     inserted.NextActionDueUtc, inserted.NextActionNote, inserted.ExternalSource, inserted.ExternalSourceKey,
-    inserted.SubmittedFileName, inserted.FolderLink,
+    inserted.SubmittedFileName, inserted.FolderLink, inserted.SubmittedFileId,
     deleted.Stage
 WHERE Id = @id AND RowVersion = @rv;";
 
@@ -318,7 +319,7 @@ WHERE Id = @id AND RowVersion = @rv;";
             if (await reader.ReadAsync(ct).ConfigureAwait(false))
             {
                 updated = MapReader(reader);
-                previousStage = reader.GetInt32(32); // deleted.Stage, after outcome and submission columns
+                previousStage = reader.GetInt32(33); // deleted.Stage, after outcome and submission columns
             }
         }
 
@@ -401,6 +402,7 @@ WHERE Id = @id AND RowVersion = @rv;";
         cmd.Parameters.Add("@externalSourceKey", SqlDbType.NVarChar, 200).Value = (object?)e.ExternalSourceKey ?? DBNull.Value;
         cmd.Parameters.Add("@submittedFileName", SqlDbType.NVarChar, 260).Value = (object?)e.SubmittedFileName ?? DBNull.Value;
         cmd.Parameters.Add("@folderLink", SqlDbType.NVarChar, 1000).Value = (object?)e.FolderLink ?? DBNull.Value;
+        cmd.Parameters.Add("@submittedFileId", SqlDbType.BigInt).Value = (object?)e.SubmittedFileId ?? DBNull.Value;
     }
 
     private static void AddDecimal(SqlCommand cmd, string name, byte precision, byte scale, decimal? value)
@@ -450,13 +452,14 @@ WHERE Id = @id AND RowVersion = @rv;";
         ExternalSourceKey = r.IsDBNull(29) ? null : r.GetString(29),
         SubmittedFileName = r.IsDBNull(30) ? null : r.GetString(30),
         FolderLink = r.IsDBNull(31) ? null : r.GetString(31),
+        SubmittedFileId = r.IsDBNull(32) ? null : r.GetInt64(32),
         BuyerOrgName = ReadBuyerOrgName(r),
     };
 
     private static string? ReadBuyerOrgName(SqlDataReader r)
     {
         // INSERT/UPDATE OUTPUT does not carry this projection (and UPDATE's column
-        // 32 is deleted.Stage). Inspect names without throwing on write readers.
+        // 33 is deleted.Stage). Inspect names without throwing on write readers.
         for (var i = 0; i < r.FieldCount; i++)
         {
             if (string.Equals(r.GetName(i), "BuyerOrgName", StringComparison.OrdinalIgnoreCase))

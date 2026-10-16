@@ -255,7 +255,7 @@ public sealed class BdDirectorKnowledgeRegressionTests
             new Mock<IPursuitOverwatchStore>(MockBehavior.Strict).Object, new Mock<ICrmEngagementStore>(MockBehavior.Strict).Object,
             new Mock<IBdAttributionStore>(MockBehavior.Strict).Object, new Mock<IBdDirectorLedgerStore>(MockBehavior.Strict).Object,
             new Mock<IDeltekClientContextService>(MockBehavior.Strict).Object, Claims.Object,
-            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief());
+            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief(), Mock.Of<IPursuitFileStore>());
     }
 
     private static string WithoutComments(string source) => Regex.Replace(source, @"//[^\r\n]*|/\*.*?\*/", "", RegexOptions.Singleline);

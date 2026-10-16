@@ -16,6 +16,7 @@ namespace Kor.Opportunities.Data.Opportunities;
 public interface IOpportunityFeeProposalLinkStore
 {
     Task LinkAsync(long opportunityId, Guid feeProposalId, string linkedBy, CancellationToken ct);
+    Task<bool> IsLinkedAsync(long opportunityId, Guid feeProposalId, CancellationToken ct);
 }
 
 public sealed class SqlOpportunityFeeProposalLinkStore : IOpportunityFeeProposalLinkStore
@@ -59,5 +60,18 @@ IF NOT EXISTS (SELECT 1 FROM opportunities.OpportunityFeeProposalLinks
             // A concurrent caller won the race between IF NOT EXISTS and INSERT;
             // the link already exists, which is the desired end state — idempotent success.
         }
+    }
+
+    public async Task<bool> IsLinkedAsync(long opportunityId, Guid feeProposalId, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(@"
+SELECT CAST(CASE WHEN EXISTS (SELECT 1 FROM opportunities.OpportunityFeeProposalLinks
+    WHERE OpportunityId = @opp AND FeeProposalId = @fp) THEN 1 ELSE 0 END AS bit);", con)
+            { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@opp", SqlDbType.BigInt).Value = opportunityId;
+        cmd.Parameters.Add("@fp", SqlDbType.UniqueIdentifier).Value = feeProposalId;
+        return (bool)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
     }
 }

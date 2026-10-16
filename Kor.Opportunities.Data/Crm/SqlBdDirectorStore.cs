@@ -21,7 +21,7 @@ public sealed class SqlBdDirectorStore : IBdDirectorStore
     private const string PendingBidsSql = @"
 SELECT e.Id, e.OpportunityId, o.OpportunityKey, o.Name, o.BuyerName,
        e.OwnerStaffId, s.DisplayName, s.Mailbox, o.SubmissionDeadlineUtc AS DueUtc,
-       e.Stage, h.SubmittedAtUtc, e.SubmittedFileName, e.FolderLink, e.NextActionDueUtc
+       e.Stage, h.SubmittedAtUtc, e.SubmittedFileName, e.FolderLink, e.NextActionDueUtc, e.SubmittedFileId
 FROM opportunities.CrmEngagements e
 JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
 LEFT JOIN opportunities.BdStaff s ON s.StaffKey = e.OwnerStaffId
@@ -51,7 +51,8 @@ WHERE OpportunityId IS NULL AND Stage IN (1, 3);";
                 reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : reader.GetString(7),
                 reader.IsDBNull(8) ? null : reader.GetDateTimeOffset(8), (CrmEngagementStage)reader.GetInt32(9),
                 reader.IsDBNull(10) ? null : reader.GetDateTimeOffset(10), reader.IsDBNull(11) ? null : reader.GetString(11),
-                reader.IsDBNull(12) ? null : reader.GetString(12), reader.IsDBNull(13) ? null : reader.GetDateTimeOffset(13)));
+                reader.IsDBNull(12) ? null : reader.GetString(12), reader.IsDBNull(13) ? null : reader.GetDateTimeOffset(13),
+                reader.IsDBNull(14) ? null : reader.GetInt64(14)));
         return rows;
     }
 

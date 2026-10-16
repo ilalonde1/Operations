@@ -13,6 +13,7 @@ using System.Xml.Linq;
 using Kor.Operations.App.BusinessDevelopment;
 using Kor.Operations.App.BusinessDevelopment.Director;
 using Kor.Operations.App.Crm;
+using Kor.Operations.App.FeeProposal;
 using Kor.Operations.App.Opportunities;
 using Kor.Operations.Converters;
 using Kor.Operations.Core.Services;
@@ -183,11 +184,15 @@ public sealed class BdDirectorPendingBidsRegressionTests
         using var vm = fixture.Create();
         await vm.LoadAsync(CancellationToken.None);
         var row = vm.PendingBids.Single(b => b.Bid.EngagementId == 1);
+        using var source = new AttachmentFixtureFile();
+        fixture.Files.ReturnedFileName = "stored-proposal.pdf";
         fixture.Records[0] = fixture.Records[0] with { Notes = "Newer note", OwnerStaffId = "new owner", RowVersion = new byte[] { 8 } };
-        await vm.MarkSubmittedAsync(row, new SubmittedDetails("  proposal.pdf  ", "  pasted link  "), "actor", CancellationToken.None);
+        await vm.MarkSubmittedAsync(row, new SubmittedDetails("  proposal.pdf  ", "  pasted link  ", source.Path), "actor", CancellationToken.None);
         fixture.Engagements.Verify(s => s.UpdateAsync(It.Is<CrmEngagement>(e => e.Id == 1 && e.Stage == CrmEngagementStage.Submitted
-            && e.SubmittedFileName == "proposal.pdf" && e.FolderLink == "pasted link" && e.Notes == "Newer note"
+            && e.SubmittedFileName == "stored-proposal.pdf" && e.SubmittedFileId == 100 && e.FolderLink == "pasted link" && e.Notes == "Newer note"
             && e.OwnerStaffId == "new owner" && e.RowVersion[0] == 8), "actor", It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal(new[] { "add", "update" }, fixture.Files.Operations);
+        Assert.Single(fixture.Files.Rows);
         fixture.VerifyReads(Times.Exactly(2));
         Assert.Equal("Bid marked submitted.", vm.StatusMessage);
     }
@@ -211,25 +216,191 @@ public sealed class BdDirectorPendingBidsRegressionTests
         var fixture = new DirectorPendingBidsFixture();
         fixture.Records[0] = fixture.Records[0] with { Stage = stage };
         using var vm = fixture.Create();
+        using var source = new AttachmentFixtureFile();
         await Assert.ThrowsAsync<InvalidOperationException>(() => vm.MarkSubmittedAsync(new(fixture.Bids[0], fixture.Now),
-            new SubmittedDetails("proposal.pdf", null), "actor", CancellationToken.None));
+            new SubmittedDetails("proposal.pdf", null, source.Path), "actor", CancellationToken.None));
+        Assert.Empty(fixture.Files.Rows);
         fixture.Engagements.Verify(s => s.UpdateAsync(It.IsAny<CrmEngagement>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public void Submission_ValidationRequiresFile_AndEnforcesBothLimits()
     {
-        Assert.NotNull(SubmittedDetails.Validate(" ", null));
-        Assert.NotNull(SubmittedDetails.Validate(new string('a', 261), null));
-        Assert.NotNull(SubmittedDetails.Validate("file.pdf", new string('a', 1001)));
-        Assert.Null(SubmittedDetails.Validate(new string('a', 260), new string('a', 1000)));
-        Assert.Null(SubmittedDetails.Validate("file.pdf", null));
-        Assert.Null(SubmittedDetails.Validate("file.pdf", "any pasted path or URL"));
+        Assert.NotNull(SubmittedDetails.Validate("file.pdf", null)); // a typed name is not an attachment
+        Assert.NotNull(SubmittedDetails.Validate(" ", null, "source.pdf"));
+        Assert.NotNull(SubmittedDetails.Validate(new string('a', 257) + ".pdf", null, "source.pdf"));
+        Assert.NotNull(SubmittedDetails.Validate("file.pdf", new string('a', 1001), "source.pdf"));
+        Assert.Null(SubmittedDetails.Validate(new string('a', 256) + ".pdf", new string('a', 1000), "source.pdf"));
+        Assert.Null(SubmittedDetails.Validate("file.pdf", null, "source.pdf"));
+        Assert.Null(SubmittedDetails.Validate("file.pdf", "any pasted path or URL", "source.pdf"));
+        Assert.Null(SubmittedDetails.Validate("existing.docx", null, existingFileId: 5));
+        Assert.NotNull(SubmittedDetails.Validate("file.docx", null, "source.docx"));
+        Assert.NotNull(SubmittedDetails.Validate("../file.pdf", null, "source.pdf"));
         var xaml = Source(Director + "SubmittedDialog.xaml");
         Assert.Contains("MaxLength=\"260\"", xaml, StringComparison.Ordinal);
         Assert.Contains("MaxLength=\"1000\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsCancel=\"True\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Store", Source(Director + "SubmittedDialog.xaml.cs"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Submission_UpdateFailureKeepsAttachment_AndSurfacesThatFact()
+    {
+        var fixture = new DirectorPendingBidsFixture();
+        using var source = new AttachmentFixtureFile();
+        using var vm = fixture.Create();
+        fixture.Engagements.Setup(s => s.UpdateAsync(It.IsAny<CrmEngagement>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("concurrent update"));
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => vm.MarkSubmittedAsync(new(fixture.Bids[0], fixture.Now),
+            new SubmittedDetails("proposal.pdf", null, source.Path), "actor", CancellationToken.None));
+        Assert.Single(fixture.Files.Rows);
+        Assert.DoesNotContain("remove", fixture.Files.Operations);
+        Assert.Contains("attachment remains", error.Message, StringComparison.Ordinal);
+        Assert.Equal(error.Message, vm.StatusMessage);
+        Assert.Equal(CrmEngagementStage.Drafting, fixture.Records[0].Stage);
+        fixture.VerifyReads(Times.Never());
+    }
+
+    [Fact]
+    public async Task Submission_ExistingAttachmentCanBeKeptOrReplaced_WithoutDeletingHistory()
+    {
+        var fixture = new DirectorPendingBidsFixture();
+        using var source = new AttachmentFixtureFile();
+        using var content = File.OpenRead(source.Path);
+        var old = await fixture.Files.AddAsync(1, 101, "old.pdf", content, content.Length, "application/pdf", "actor", CancellationToken.None);
+        fixture.Records[0] = fixture.Records[0] with { Stage = CrmEngagementStage.Submitted, SubmittedFileId = old.Id, SubmittedFileName = old.FileName };
+        var row = new BdDirectorPendingBidRow(fixture.Bids[0] with { Stage = CrmEngagementStage.Submitted, SubmittedFileId = old.Id }, fixture.Now);
+        using var vm = fixture.Create();
+        await vm.MarkSubmittedAsync(row, new SubmittedDetails("old.pdf", null), "actor", CancellationToken.None);
+        Assert.Single(fixture.Files.Rows);
+        Assert.Equal(old.Id, fixture.Records[0].SubmittedFileId);
+        await vm.MarkSubmittedAsync(row, new SubmittedDetails("replacement.pdf", null, source.Path), "actor", CancellationToken.None);
+        Assert.Equal(2, fixture.Files.Rows.Count);
+        Assert.Equal(101L, fixture.Records[0].SubmittedFileId);
+        Assert.DoesNotContain("remove", fixture.Files.Operations);
+    }
+
+    [Fact]
+    public void BothScreens_UseTheSharedLauncher_AndSubmittedFilesHaveAnOpenLink()
+    {
+        var director = Source(Director + "BdDirectorWindow.xaml.cs");
+        var crm = Source("Kor.Operations.App/Crm/CrmView.xaml.cs");
+        Assert.Contains("Get<FeeProposalLauncher>().Launch(row.Bid.OpportunityId, row.Bid.EngagementId", director, StringComparison.Ordinal);
+        Assert.Contains("row.Bid.RfpNumber, row.Bid.Project, _actor", director, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredService<FeeProposalLauncher>().Launch(row.OpportunityId, row.Id", crm, StringComparison.Ordinal);
+        Assert.Contains("row.OpportunityKey, row.ProjectName, ResolveActor()", crm, StringComparison.Ordinal);
+        var xaml = Source(Director + "BdDirectorWindow.xaml");
+        Assert.Contains("Content=\"Build fee proposal…\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"SubmittedFile_Click\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Binding=\"{Binding HasSubmittedFile}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Get<IPursuitFileOpener>().OpenAsync(file, ct)", director, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Rendered_LinkedProposalAttachesEachRender_AndLatestBecomesSubmittedFile()
+    {
+        var fixture = new DirectorPendingBidsFixture();
+        var links = new Mock<IOpportunityFeeProposalLinkStore>();
+        links.Setup(s => s.IsLinkedAsync(101, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var builder = new FakeProposalEvents();
+        var messages = new List<string>();
+        var launcher = new FeeProposalLauncher(Mock.Of<IServiceProvider>(), links.Object, fixture.Engagements.Object,
+            Mock.Of<ICrmActivityStore>(), fixture.Files);
+        using var session = launcher.Connect(builder, 101, 1, "actor", () => Task.CompletedTask, messages.Add);
+        using var source = new AttachmentFixtureFile();
+        var proposalId = Guid.NewGuid().ToString();
+        await builder.RenderAsync(proposalId, source.Path);
+        Assert.Equal(new[] { "add", "update" }, fixture.Files.Operations);
+        var first = Assert.Single(fixture.Files.Rows);
+        Assert.Equal(first.Id, fixture.Records[0].SubmittedFileId);
+        Assert.Equal(Path.GetFileName(source.Path), fixture.Records[0].SubmittedFileName);
+        Assert.Equal(File.ReadAllBytes(source.Path), fixture.Files.Bytes[first.Id]);
+        Assert.Equal("application/pdf", first.ContentType);
+        await builder.RenderAsync(proposalId, source.Path);
+        Assert.Equal(new[] { "add", "update", "add", "update" }, fixture.Files.Operations);
+        Assert.Equal(2, fixture.Files.Rows.Count);
+        Assert.Equal(fixture.Files.Rows[1].Id, fixture.Records[0].SubmittedFileId);
+        Assert.Contains(first, fixture.Files.Rows);
+        Assert.Empty(messages);
+        session.Dispose();
+        await builder.RenderAsync(proposalId, source.Path);
+        Assert.Equal(2, fixture.Files.Rows.Count);
+    }
+
+    [Theory]
+    [InlineData(101L)]
+    [InlineData(null)]
+    public async Task Rendered_UnlinkedOrRelationshipPursuit_WritesNothing(long? opportunityId)
+    {
+        var fixture = new DirectorPendingBidsFixture();
+        var links = new Mock<IOpportunityFeeProposalLinkStore>();
+        var builder = new FakeProposalEvents();
+        var launcher = new FeeProposalLauncher(Mock.Of<IServiceProvider>(), links.Object, fixture.Engagements.Object,
+            Mock.Of<ICrmActivityStore>(), fixture.Files);
+        using var session = launcher.Connect(builder, opportunityId, 1, "actor", () => Task.CompletedTask, _ => { });
+        await builder.RenderAsync(Guid.NewGuid().ToString(), "not-opened.pdf");
+        Assert.Empty(fixture.Files.Operations);
+        fixture.Engagements.VerifyNoOtherCalls();
+        if (opportunityId is null) links.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Rendered_WaitsForFirstSaveLink_LogsOnce_AndDoesNotLinkARepurposedBuilder()
+    {
+        var fixture = new DirectorPendingBidsFixture();
+        var links = new Mock<IOpportunityFeeProposalLinkStore>();
+        var linked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        links.Setup(s => s.LinkAsync(101, It.IsAny<Guid>(), "actor", It.IsAny<CancellationToken>())).Returns(linked.Task);
+        var activities = new Mock<ICrmActivityStore>();
+        var builder = new FakeProposalEvents();
+        var launcher = new FeeProposalLauncher(Mock.Of<IServiceProvider>(), links.Object, fixture.Engagements.Object, activities.Object, fixture.Files);
+        using var session = launcher.Connect(builder, 101, 1, "actor", () => Task.CompletedTask, _ => { });
+        using var source = new AttachmentFixtureFile();
+        var id = Guid.NewGuid().ToString();
+        builder.Save(id);
+        var render = builder.RenderAsync(id, source.Path);
+        Assert.False(render.IsCompleted);
+        Assert.Empty(fixture.Files.Operations);
+        linked.SetResult();
+        await render;
+        Assert.Equal(new[] { "update", "add", "update" }, fixture.Files.Operations);
+        Assert.Equal(CrmEngagementStage.Submitted, fixture.Records[0].Stage);
+        var otherId = Guid.NewGuid().ToString();
+        builder.Save(otherId);
+        await builder.RenderAsync(otherId, source.Path);
+        links.Verify(s => s.LinkAsync(101, It.IsAny<Guid>(), "actor", It.IsAny<CancellationToken>()), Times.Once);
+        activities.Verify(s => s.AppendAsync(It.Is<CrmActivity>(a => a.EngagementId == 1 && a.ActivityType == CrmActivityType.Deliverable),
+            "actor", It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Single(fixture.Files.Rows);
+    }
+
+    [Fact]
+    public async Task Rendered_UpdateFailureLeavesAttachment_AndReportsIt()
+    {
+        var fixture = new DirectorPendingBidsFixture();
+        fixture.Engagements.Setup(s => s.UpdateAsync(It.IsAny<CrmEngagement>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("update failed"));
+        var links = new Mock<IOpportunityFeeProposalLinkStore>();
+        links.Setup(s => s.IsLinkedAsync(101, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var builder = new FakeProposalEvents();
+        var messages = new List<string>();
+        var launcher = new FeeProposalLauncher(Mock.Of<IServiceProvider>(), links.Object, fixture.Engagements.Object,
+            Mock.Of<ICrmActivityStore>(), fixture.Files);
+        using var session = launcher.Connect(builder, 101, 1, "actor", () => Task.CompletedTask, messages.Add);
+        using var source = new AttachmentFixtureFile();
+        await builder.RenderAsync(Guid.NewGuid().ToString(), source.Path);
+        Assert.Single(fixture.Files.Rows);
+        Assert.Contains("attachment remains", Assert.Single(messages), StringComparison.Ordinal);
+        Assert.DoesNotContain("remove", fixture.Files.Operations);
+    }
+
+    private sealed class FakeProposalEvents : IFeeProposalEvents
+    {
+        public event EventHandler<string>? ProposalSaved;
+        public event Func<ProposalRenderedEvent, Task>? ProposalRendered;
+        public void Save(string id) => ProposalSaved?.Invoke(this, id);
+        public Task RenderAsync(string id, string path)
+            => ProposalRendered?.Invoke(new ProposalRenderedEvent(id, path, "application/pdf")) ?? Task.CompletedTask;
     }
 
     [Fact]
@@ -277,12 +448,20 @@ public sealed class BdDirectorPendingBidsRegressionTests
                 using var vm = fixture.Create();
                 var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>());
                 var row = new BdDirectorPendingBidRow(fixture.Bids[0], fixture.Now);
+                using var source = new AttachmentFixtureFile();
                 window.SubmitBidAsync(row, dialog =>
                 {
                     dialog.Loaded += (_, _) =>
                     {
                         ((TextBox)dialog.FindName("FileNameBox")).Text = "proposal.pdf";
                         ((TextBox)dialog.FindName("FolderLinkBox")).Text = "pasted folder";
+                        if (accept)
+                        {
+                            ((Button)dialog.FindName("OkButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            Assert.Null(dialog.Result); // OK without Browse must leave the dialog open
+                            dialog.SelectFile(source.Path);
+                            ((TextBox)dialog.FindName("FileNameBox")).Text = "proposal.pdf";
+                        }
                         var button = (Button)dialog.FindName(accept ? "OkButton" : "CancelButton");
                         // Invoke OnClick so IsCancel's built-in dialog command runs too.
                         typeof(Button).GetMethod("OnClick", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
@@ -315,6 +494,7 @@ internal sealed class DirectorPendingBidsFixture
     internal Mock<ICrmEngagementStore> Engagements { get; } = new();
     internal Mock<IPursuitOverwatchStore> Pursuits { get; } = new();
     internal Mock<IOpportunityStore> Opportunities { get; } = new();
+    internal MemoryPursuitFileStore Files { get; } = new();
     internal List<CrmEngagement> Records { get; } = new();
     internal List<PendingBidRow> Bids { get; } = new();
 
@@ -345,9 +525,10 @@ internal sealed class DirectorPendingBidsFixture
         Engagements.Setup(s => s.UpdateAsync(It.IsAny<CrmEngagement>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((CrmEngagement record, string actor, CancellationToken ct) =>
             {
+                Files.Operations.Add("update");
                 Records[Records.FindIndex(e => e.Id == record.Id)] = record;
                 var index = Bids.FindIndex(b => b.EngagementId == record.Id);
-                Bids[index] = Bids[index] with { Stage = record.Stage, SubmittedAtUtc = Now, SubmittedFileName = record.SubmittedFileName, FolderLink = record.FolderLink };
+                Bids[index] = Bids[index] with { Stage = record.Stage, SubmittedAtUtc = Now, SubmittedFileName = record.SubmittedFileName, FolderLink = record.FolderLink, SubmittedFileId = record.SubmittedFileId };
                 return record;
             });
         Pursuits.Setup(s => s.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => Records.Select(e => new PursuitOverwatchRow(e.Id, e.OpportunityId,
@@ -385,6 +566,6 @@ internal sealed class DirectorPendingBidsFixture
         claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeSourceSummary>());
         claims.Setup(s => s.ListConceptsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeConceptRow>());
         return new(Director.Object, Pursuits.Object, Engagements.Object, attribution.Object, ledger.Object, Mock.Of<IDeltekClientContextService>(), claims.Object,
-            DirectorMarketDefaults.Dashboard(), Opportunities.Object, DirectorMarketDefaults.Brief());
+            DirectorMarketDefaults.Dashboard(), Opportunities.Object, DirectorMarketDefaults.Brief(), Files);
     }
 }

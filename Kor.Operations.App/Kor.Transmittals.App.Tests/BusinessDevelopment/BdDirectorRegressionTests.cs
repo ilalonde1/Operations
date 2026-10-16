@@ -194,7 +194,7 @@ public sealed class BdDirectorRegressionTests
     }
 
     [Fact]
-    public void EngagementWriteBoundary_AddsExactlyTheTwoSubmissionColumns_PreservesHistoryAndConcurrency()
+    public void EngagementWriteBoundary_AddsOnlySubmittedFileIdBeyond9g_PreservesHistoryAndConcurrency()
     {
         var source = Source("Kor.Opportunities.Data/Crm/SqlCrmEngagementStore.cs");
         var insert = Regex.Match(source, @"INSERT INTO opportunities\.CrmEngagements\s*\((.*?)\)\s*OUTPUT", RegexOptions.Singleline);
@@ -202,17 +202,19 @@ public sealed class BdDirectorRegressionTests
         var expectedInsert = new[] { "OpportunityId", "Stage", "OwnerStaffId", "AssignedStaffIds", "TargetMargin", "ProposedFee", "ProposedHours", "Notes",
             "OpenedAtUtc", "ClosedAtUtc", "OutcomeNotes", "BuyerCanonicalOrgId", "Region", "ProposalsSubmittedCad", "ProposalsAcceptedCad", "PotentialProjects",
             "WonLostOutcome", "OutcomeReason", "LostToCanonicalOrgId", "WonProjectWbs1", "NextActionDueUtc", "NextActionNote", "ExternalSource", "ExternalSourceKey",
-            "CreatedBy", "UpdatedBy", "SubmittedFileName", "FolderLink" };
+            "CreatedBy", "UpdatedBy", "SubmittedFileName", "FolderLink", "SubmittedFileId" };
         Assert.Equal(expectedInsert.OrderBy(c => c), insert.Groups[1].Value.Split(',').Select(c => c.Trim()).OrderBy(c => c));
         var update = Regex.Match(source, @"UPDATE opportunities\.CrmEngagements\s+SET\s+(.*?)\s+OUTPUT", RegexOptions.Singleline);
         Assert.True(update.Success);
         var actualUpdate = Regex.Matches(update.Groups[1].Value, @"(?:^|,)\s*(\w+)\s*=").Select(m => m.Groups[1].Value).OrderBy(c => c);
         var expectedUpdate = expectedInsert.Except(new[] { "OpportunityId", "ExternalSource", "ExternalSourceKey", "CreatedBy" }).Append("UpdatedAtUtc");
         Assert.Equal(expectedUpdate.OrderBy(c => c), actualUpdate);
-        foreach (var column in new[] { "SubmittedFileName", "FolderLink" })
+        foreach (var column in new[] { "SubmittedFileName", "FolderLink", "SubmittedFileId" })
             Assert.Equal(2, Regex.Matches(source, "inserted\\." + column + @"\b").Count);
         foreach (var clause in new[] { "SubmittedFileName = r.IsDBNull(30) ? null : r.GetString(30)",
-                     "FolderLink = r.IsDBNull(31) ? null : r.GetString(31)", "previousStage = reader.GetInt32(32)",
+                     "FolderLink = r.IsDBNull(31) ? null : r.GetString(31)", "previousStage = reader.GetInt32(33)",
+                     "SubmittedFileId = r.IsDBNull(32) ? null : r.GetInt64(32)",
+                     "cmd.Parameters.Add(\"@submittedFileId\", SqlDbType.BigInt).Value = (object?)e.SubmittedFileId ?? DBNull.Value",
                      "SqlDbType.NVarChar, 260", "SqlDbType.NVarChar, 1000", "WHERE Id = @id AND RowVersion = @rv",
                      "WriteStageHistoryAsync(con, tx, updated.Id, (int)updated.Stage, actorDisplay, ct)",
                      "OpportunityStatusFor(updated.Stage)", "(int)status", "await tx.CommitAsync(ct)",
@@ -221,6 +223,60 @@ public sealed class BdDirectorRegressionTests
             .Select(m => Regex.Replace(m.Value, @"\s+", " ")).OrderBy(s => s).ToArray();
         Assert.Equal(new[] { "INSERT INTO opportunities.CrmEngagements", "INSERT INTO opportunities.CrmEngagementStageHistory",
             "UPDATE opportunities.CrmEngagements", "UPDATE opportunities.Opportunities" }, writes);
+    }
+
+    [Fact]
+    public void Migration354_IsThreeGuardedColumnChanges_AndOneGuardedNoActionForeignKey()
+    {
+        var source = Source("Kor.Opportunities.Data/Schema/354_AttachmentsInTheDatabase.sql");
+        var sql = Regex.Replace(source, @"/\*.*?\*/|--[^\r\n]*", "", RegexOptions.Singleline);
+        var batches = Regex.Split(sql, @"^GO\s*$", RegexOptions.Multiline).Where(b => !string.IsNullOrWhiteSpace(b))
+            .Select(b => Regex.Replace(b, @"\s+", " ").Trim()).ToArray();
+        Assert.Equal(new[]
+        {
+            "IF COL_LENGTH(N'opportunities.OpportunityFiles', N'Content') IS NULL ALTER TABLE opportunities.OpportunityFiles ADD Content VARBINARY(MAX) NULL;",
+            "IF COLUMNPROPERTY(OBJECT_ID(N'opportunities.OpportunityFiles'), N'LocalPath', 'AllowsNull') = 0 ALTER TABLE opportunities.OpportunityFiles ALTER COLUMN LocalPath NVARCHAR(4000) NULL;",
+            "IF COL_LENGTH(N'opportunities.CrmEngagements', N'SubmittedFileId') IS NULL ALTER TABLE opportunities.CrmEngagements ADD SubmittedFileId BIGINT NULL;",
+            "IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_CrmEngagements_SubmittedFile' AND parent_object_id = OBJECT_ID(N'opportunities.CrmEngagements')) ALTER TABLE opportunities.CrmEngagements ADD CONSTRAINT FK_CrmEngagements_SubmittedFile FOREIGN KEY (SubmittedFileId) REFERENCES opportunities.OpportunityFiles(Id) ON DELETE NO ACTION;",
+        }, batches);
+        Assert.False(Regex.IsMatch(sql, @"\b(CREATE|DROP|INSERT|UPDATE|MERGE|GRANT|USE)\b", RegexOptions.IgnoreCase));
+    }
+
+    [Fact]
+    public void AttachmentStore_StreamsOneInsertInATransaction_AndListsMetadataOnly()
+    {
+        var source = Source("Kor.Opportunities.Data/Crm/SqlPursuitFileStore.cs");
+        var start = source.IndexOf("public async Task<PursuitFile> AddAsync(long engagementId", StringComparison.Ordinal);
+        var end = source.IndexOf("public async Task<Stream?> OpenContentAsync", start, StringComparison.Ordinal);
+        Assert.True(start >= 0 && end > start);
+        var upload = source[start..end];
+        Assert.Single(Regex.Matches(upload, @"INSERT INTO opportunities\.OpportunityFiles"));
+        Contains(upload, "SqlDbType.VarBinary, -1).Value = measured");
+        Contains(upload, "BeginTransactionAsync(ct)");
+        Contains(upload, "new SqlCommand(sql, con, tx)");
+        Contains(upload, "measured.Complete()");
+        Contains(upload, "SET Sha256 = @sha, SizeBytes = @size");
+        Contains(upload, "tx.CommitAsync(ct)");
+        Contains(source, "CommandBehavior.SequentialAccess");
+        Contains(source, "reader.GetStream(0)");
+        Contains(source, "new ContentReadStream(reader.GetStream(0), reader, cmd, con)");
+        Contains(source, "EndOfStreamException");
+        Contains(source, "BytesRead > declaredLength");
+        Contains(source, "ValidateLength(BytesRead)");
+        Contains(source, "IncrementalHash.CreateHash(HashAlgorithmName.SHA256)");
+        Assert.DoesNotContain("MemoryStream", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReadAllBytes", source, StringComparison.Ordinal);
+        var listStart = source.IndexOf("public async Task<IReadOnlyList<PursuitFile>> ListByEngagementAsync", StringComparison.Ordinal);
+        var list = source[listStart..start];
+        Contains(list, "SELECT {MetadataColumns}");
+        var columns = Regex.Match(source, "private const string AllColumns =\\s*\"([^\"]+)\"").Groups[1].Value.Split(',').Select(c => c.Trim()).ToArray();
+        Assert.Equal(10, columns.Length);
+        Assert.DoesNotContain("Content", columns);
+        Contains(source, "CAST(CASE WHEN Content IS NULL THEN 0 ELSE 1 END AS bit) AS HasContent");
+        Assert.DoesNotContain("GetStream", list, StringComparison.Ordinal);
+        var bids = Source("Kor.Opportunities.Data/Crm/SqlBdDirectorStore.cs");
+        Contains(bids, "e.NextActionDueUtc, e.SubmittedFileId");
+        Contains(bids, "reader.IsDBNull(14) ? null : reader.GetInt64(14)");
     }
 
     [Theory]
@@ -402,7 +458,7 @@ public sealed class BdDirectorRegressionTests
         }
 
         internal BdDirectorViewModel Create() => new(DirectorStore.Object, Pursuits.Object, RecordStore.Object, Attribution.Object, Ledger.Object, Deltek.Object, Claims.Object,
-            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief());
+            DirectorMarketDefaults.Dashboard(), DirectorMarketDefaults.Opportunities(), DirectorMarketDefaults.Brief(), Mock.Of<IPursuitFileStore>());
     }
 
     private static void Contains(string source, string expected) => Assert.True(source.Contains(expected, StringComparison.Ordinal),

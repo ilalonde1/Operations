@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,6 +43,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     private readonly IBdDashboardStore _dashboard;
     private readonly IOpportunityStore _opportunities;
     private readonly IDirectorBriefStore _brief;
+    private readonly IPursuitFileStore _files;
     private CancellationTokenSource? _briefCts;
     private BdDirectorCitationRow? _selectedBriefCitation;
     private readonly CancellationTokenSource _knowledgeLifetime = new();
@@ -73,7 +75,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public BdDirectorViewModel(IBdDirectorStore director, IPursuitOverwatchStore pursuits,
         ICrmEngagementStore records, IBdAttributionStore attribution, IBdDirectorLedgerStore ledger,
         IDeltekClientContextService deltek, IKnowledgeClaimStore claims, IBdDashboardStore dashboard,
-        IOpportunityStore opportunities, IDirectorBriefStore brief)
+        IOpportunityStore opportunities, IDirectorBriefStore brief, IPursuitFileStore files)
     {
         _director = director ?? throw new ArgumentNullException(nameof(director));
         _pursuits = pursuits ?? throw new ArgumentNullException(nameof(pursuits));
@@ -85,6 +87,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
         _dashboard = dashboard ?? throw new ArgumentNullException(nameof(dashboard));
         _opportunities = opportunities ?? throw new ArgumentNullException(nameof(opportunities));
         _brief = brief ?? throw new ArgumentNullException(nameof(brief));
+        _files = files ?? throw new ArgumentNullException(nameof(files));
     }
 
     public ObservableCollection<BdDirectorPersonRow> People { get; } = new();
@@ -378,22 +381,52 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public async Task MarkSubmittedAsync(BdDirectorPendingBidRow row, SubmittedDetails? submission, string actor, CancellationToken ct)
     {
         if (submission is null) return;
-        var error = SubmittedDetails.Validate(submission.FileName, submission.FolderLink);
+        var error = SubmittedDetails.Validate(submission.FileName, submission.FolderLink, submission.SourcePath, row.Bid.SubmittedFileId);
         if (error is not null) throw new ArgumentException(error, nameof(submission));
         // Fetch the current row and preserve its concurrency token and other fields.
         var record = await _records.GetByIdAsync(row.Bid.EngagementId, ct).ConfigureAwait(true);
-        if (record is null || record.OpportunityId != row.Bid.OpportunityId || record.Stage != CrmEngagementStage.Drafting)
+        if (record is null || record.OpportunityId != row.Bid.OpportunityId
+            || (record.Stage != CrmEngagementStage.Drafting && !(record.Stage == CrmEngagementStage.Submitted && record.SubmittedFileId.HasValue)))
             throw new InvalidOperationException("This bid is no longer pending. Refresh and try again.");
-        await _records.UpdateAsync(record with
+        PursuitFile attachment;
+        var added = !string.IsNullOrWhiteSpace(submission.SourcePath);
+        if (added)
         {
-            Stage = CrmEngagementStage.Submitted,
-            SubmittedFileName = submission.FileName.Trim(),
-            FolderLink = DirectorDialogValues.Optional(submission.FolderLink),
-        }, actor, ct).ConfigureAwait(true);
+            await using var content = new FileStream(submission.SourcePath!, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+            SqlPursuitFileStore.ValidateLength(content.Length);
+            attachment = await _files.AddAsync(record.Id, record.OpportunityId, submission.FileName.Trim(), content,
+                content.Length, "application/pdf", actor, ct).ConfigureAwait(true);
+        }
+        else
+        {
+            attachment = (await _files.ListByEngagementAsync(record.Id, ct).ConfigureAwait(true))
+                .SingleOrDefault(f => f.Id == record.SubmittedFileId)
+                ?? throw new InvalidOperationException("The existing submitted attachment is unavailable. Browse to the PDF again.");
+        }
+        try
+        {
+            await _records.UpdateAsync(record with
+            {
+                Stage = CrmEngagementStage.Submitted,
+                SubmittedFileId = attachment.Id,
+                SubmittedFileName = attachment.FileName,
+                FolderLink = DirectorDialogValues.Optional(submission.FolderLink),
+            }, actor, ct).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (added)
+        {
+            StatusMessage = $"Attached {attachment.FileName}, but could not mark the bid submitted. The attachment remains on the pursuit. Refresh and try again.";
+            throw new InvalidOperationException(StatusMessage, ex);
+        }
         await LoadAsync(ct).ConfigureAwait(true);
         StatusMessage = StatusMessage == "Up to date." ? "Bid marked submitted."
             : "The bid was marked submitted. Could not refresh the figures; try Refresh again.";
     }
+
+    public async Task<PursuitFile> GetSubmittedFileAsync(BdDirectorPendingBidRow row, CancellationToken ct)
+        => (await _files.ListByEngagementAsync(row.Bid.EngagementId, ct).ConfigureAwait(true))
+            .SingleOrDefault(f => f.Id == row.Bid.SubmittedFileId)
+            ?? throw new FileNotFoundException("The submitted attachment could not be found. Refresh and try again.");
 
     public Task<Opportunity?> GetBidOpportunityAsync(BdDirectorPendingBidRow row, CancellationToken ct)
         => _opportunities.GetByIdAsync(row.Bid.OpportunityId, ct);

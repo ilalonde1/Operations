@@ -855,8 +855,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     }
 
     /// <summary>
-    /// Copy dropped/browsed files onto the pursuit — each to the LAN share, then
-    /// indexed in the DB. Returns how many landed; a per-file failure is
+    /// Stream dropped/browsed files into the pursuit's attachment rows. Returns how many landed; a per-file failure is
     /// reported but doesn't abort the rest. The write targeted engagementId
     /// explicitly, so a mid-copy row switch only skips the UI insert (fix
     /// pattern shared with activity/contact adds).
@@ -868,29 +867,10 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         var failures = 0;
         foreach (var source in sourcePaths)
         {
-            PursuitFileUpload stored;
             try
             {
-                stored = await _fileStorage.StoreAsync(engagementId, pursuitLabel, source, ct).ConfigureAwait(true);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                failures++;
-                Serilog.Log.Warning(ex, "Copying '{File}' to the share (engagement {EngagementId}) failed.", source, engagementId);
-                continue;
-            }
-
-            // The bytes are on the share; if indexing them fails, delete the
-            // copy so it can't linger as an invisible orphan (review fix).
-            try
-            {
-                var saved = await _fileStore.AddAsync(
-                    engagementId, opportunityId, stored.FileName, stored.StoredPath,
-                    stored.Sha256, stored.SizeBytes, stored.ContentType, actor, ct).ConfigureAwait(true);
+                var stored = await _fileStorage.StoreAsync(engagementId, opportunityId, pursuitLabel, source, actor, ct).ConfigureAwait(true);
+                var saved = stored.File;
 
                 if (Selected?.Id == engagementId)
                 {
@@ -901,26 +881,23 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             }
             catch (OperationCanceledException)
             {
-                _fileStorage.TryDelete(stored.StoredPath);
                 throw;
             }
             catch (Exception ex)
             {
-                _fileStorage.TryDelete(stored.StoredPath);
                 failures++;
-                Serilog.Log.Warning(ex, "Indexing '{File}' failed; removed the orphaned copy (engagement {EngagementId}).", stored.FileName, engagementId);
+                Serilog.Log.Warning(ex, "Attaching '{File}' failed (engagement {EngagementId}).", source, engagementId);
             }
         }
 
         StatusMessage = failures == 0
             ? $"Attached {added} file{(added == 1 ? "" : "s")}."
-            : $"Attached {added}; {failures} could not be copied to the share.";
+            : $"Attached {added}; {failures} could not be attached. Each file must be 250 MB or smaller.";
         return added;
     }
 
-    /// <summary>Remove an attachment: drop the DB row, then delete the file from
-    /// the share (best-effort). The row goes first so a share hiccup can't leave
-    /// a dangling index entry.</summary>
+    /// <summary>Remove the attachment row and its content. Legacy rows also remove
+    /// their share copy (best-effort). Submitted attachments are protected by the FK.</summary>
     public async Task RemoveFileAsync(PursuitFileRowView row, CancellationToken ct)
     {
         var storedPath = await _fileStore.RemoveAsync(row.Id, ct).ConfigureAwait(true);

@@ -477,7 +477,8 @@
                 <TextBlock Grid.Row="1" Text="{Binding PendingBidsSummary}" TextWrapping="Wrap" Margin="0,0,0,12"/>
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
                     <CheckBox Content="Mine" IsChecked="{Binding MineOnly}" VerticalAlignment="Center" Margin="0,0,20,0"/>
-                    <Button Content="Mark submitted…" Click="MarkSubmitted_Click" IsEnabled="{Binding SelectedPendingBid.IsPending, FallbackValue=False}" Padding="12,6" Margin="0,0,8,0"/>
+                    <Button Content="Mark submitted…" Click="MarkSubmitted_Click" IsEnabled="{Binding SelectedPendingBid.CanSubmit, FallbackValue=False}" Padding="12,6" Margin="0,0,8,0"/>
+                    <Button Content="Build fee proposal…" Click="BuildFeeProposal_Click" Padding="12,6" Margin="0,0,8,0"/>
                     <Button Content="Assign…" Click="AssignBid_Click" Padding="12,6" Margin="0,0,8,0"/>
                     <Button Content="Edit opportunity…" Click="EditOpportunity_Click" Padding="12,6"/>
                 </StackPanel>
@@ -501,7 +502,22 @@
                         <DataGridTextColumn Header="Time left" Binding="{Binding Countdown}" Width="160" ElementStyle="{StaticResource CellText}"/>
                         <DataGridTextColumn Header="Stage" Binding="{Binding Stage}" Width="90" ElementStyle="{StaticResource CellText}"/>
                         <DataGridTextColumn Header="Submitted" Binding="{Binding SubmittedAtUtc, Converter={StaticResource BdDay}, ConverterParameter=Time}" Width="185" ElementStyle="{StaticResource CellText}"/>
-                        <DataGridTextColumn Header="File" Binding="{Binding Bid.SubmittedFileName}" Width="*" MinWidth="150" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTemplateColumn Header="File" Width="*" MinWidth="150">
+                            <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <Grid>
+                                    <TextBlock x:Name="FileText" Text="{Binding Bid.SubmittedFileName}" Style="{StaticResource CellText}"/>
+                                    <TextBlock x:Name="FileLink" Visibility="Collapsed" Style="{StaticResource CellText}">
+                                        <Hyperlink Click="SubmittedFile_Click"><Run Text="{Binding Bid.SubmittedFileName}"/></Hyperlink>
+                                    </TextBlock>
+                                </Grid>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding HasSubmittedFile}" Value="True">
+                                        <Setter TargetName="FileText" Property="Visibility" Value="Collapsed"/>
+                                        <Setter TargetName="FileLink" Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTemplateColumn Header="Link" Width="80">
                             <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                 <TextBlock Style="{StaticResource CellText}" Visibility="{Binding HasFolderLink, Converter={StaticResource BoolVisibility}}">

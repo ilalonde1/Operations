@@ -51,6 +51,8 @@ public sealed record BdDirectorPendingBidRow(PendingBidRow Bid, DateTimeOffset A
     public string Countdown => Bid.DueUtc is { } due ? OpportunityDeadlineDisplay.Countdown(due, AsOf) : "not specified";
     public bool IsUrgent => IsPending && Bid.DueUtc is { } due && due <= AsOf.AddHours(24);
     public bool HasFolderLink => !string.IsNullOrWhiteSpace(Bid.FolderLink);
+    public bool HasSubmittedFile => Bid.SubmittedFileId.HasValue;
+    public bool CanSubmit => IsPending || (Bid.Stage == CrmEngagementStage.Submitted && HasSubmittedFile);
     public bool IsMine(string actor) => !string.IsNullOrWhiteSpace(actor)
         && (string.Equals(Bid.OwnerMailbox, actor, StringComparison.OrdinalIgnoreCase)
             || string.Equals(Bid.OwnerStaffId, actor, StringComparison.OrdinalIgnoreCase));

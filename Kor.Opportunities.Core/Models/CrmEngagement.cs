@@ -108,6 +108,8 @@ public sealed record CrmEngagement
 
     public string? SubmittedFileName { get; init; }
 
+    public long? SubmittedFileId { get; init; }
+
     /// <summary>A pasted path or URL; no folder inspection or inferred stage.</summary>
     public string? FolderLink { get; init; }
 

@@ -274,8 +274,11 @@ internal static class OpportunitiesModule
 
         // Pursuit attachments (Ian, 2026-07-08): DB index + LAN-share bytes.
         services.AddSingleton<IPursuitFileStore>(_ => new SqlPursuitFileStore(options.OpportunitiesDb));
-        services.AddSingleton<App.Crm.IPursuitFileStorage>(
-            _ => new App.Crm.LanPursuitFileStorage(CompositionHelpers.GetStorageOptions().PursuitFilesRoot));
+        services.AddSingleton<App.Crm.IPursuitFileStorage, App.Crm.DbPursuitFileStorage>();
+        services.AddSingleton(_ => new App.Crm.LanPursuitFileStorage(
+            () => CompositionHelpers.GetStorageOptions().PursuitFilesRoot)); // read only when opening a relative legacy path
+        services.AddSingleton<App.Crm.IPursuitFileOpener, App.Crm.PursuitFileOpener>();
+        services.AddSingleton<App.FeeProposal.FeeProposalLauncher>();
 
         // Phase 5c: Deltek client roll-up (lifetime fee, project count, last
         // engagement) shown on the CRM detail panel for any engagement whose

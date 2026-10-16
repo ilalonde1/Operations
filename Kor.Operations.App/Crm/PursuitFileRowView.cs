@@ -15,7 +15,7 @@ public sealed class PursuitFileRowView
     public PursuitFile Model { get; }
     public long Id => Model.Id;
     public string FileName => Model.FileName;
-    public string StoredPath => Model.LocalPath;
+    public string? StoredPath => Model.LocalPath;
     public string TypeDisplay => Model.ContentType ?? "File";
     public string UploadedByDisplay => Model.UploadedBy;
     public string UploadedDisplay => Model.UploadedAtUtc.LocalDateTime.ToString("yyyy-MM-dd HH:mm");

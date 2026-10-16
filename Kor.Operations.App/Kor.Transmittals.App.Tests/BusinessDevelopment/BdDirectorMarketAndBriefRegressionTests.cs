@@ -164,7 +164,7 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
         ledger.Setup(s => s.ListAsksAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdAsk>());
         ledger.Setup(s => s.ListDecisionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDecision>());
         return new(reads, pursuits.Object, records.Object, attribution.Object, ledger.Object,
-            Mock.Of<IDeltekClientContextService>(), claims, fixture.Dashboard.Object, fixture.Opportunities.Object, fixture.Brief);
+            Mock.Of<IDeltekClientContextService>(), claims, fixture.Dashboard.Object, fixture.Opportunities.Object, fixture.Brief, Mock.Of<IPursuitFileStore>());
     }
     private static IEnumerable<string> DirectorFiles() => Directory.EnumerateFiles(Path.Combine(Root(), "Kor.Operations.App/BusinessDevelopment/Director"))
         .Where(f => Path.GetExtension(f) is ".cs" or ".xaml");
