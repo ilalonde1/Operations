@@ -1379,6 +1379,18 @@ builder.Services.AddQuartz(q =>
                      .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
                 });
 
+                // 2026-10-16: BD Director version 2 — the prepared hour, weekdays 06:05, to Ian only.
+                var directorHourKey = new JobKey("DirectorHourEmailJob");
+                q.AddJob<Kor.Opportunities.Worker.Services.Reporting.DirectorHourEmailJob>(opts => opts.WithIdentity(directorHourKey));
+
+                q.AddTrigger(t =>
+                {
+                    var cron = builder.Configuration["DirectorHourEmailCronSchedule"] ?? "0 5 6 ? * MON-FRI";
+                    t.ForJob(directorHourKey)
+                     .WithIdentity("DirectorHourEmailTrigger")
+                     .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+                });
+
                 // 2026-07-13: Monday 06:30 Weekly Attack Sheet — ~25 most pressing
                 // open-structural-seat plays as a PDF, regenerated fresh at send time.
                 var weeklyAttackKey = new JobKey("WeeklyAttackSheetJob");

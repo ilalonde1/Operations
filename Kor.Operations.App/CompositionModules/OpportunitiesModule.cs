@@ -146,6 +146,7 @@ internal static class OpportunitiesModule
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OverwatchView>();
         // Director shares the dashboard/opportunity stores and reads briefs from the same database.
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorViewModel>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Director.BdRhythmViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorWindow>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.AttributionViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.AttributionView>();
@@ -270,6 +271,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<IBdStaffDirectory>(_ => new SqlBdStaffDirectory(options.OpportunitiesDb));
         services.AddSingleton<IDirectorBriefStore>(_ => new SqlDirectorBriefStore(options.OpportunitiesDb));
         services.AddSingleton<IBdDirectorLedgerStore>(_ => new SqlBdDirectorLedgerStore(options.OpportunitiesDb));
+        services.AddSingleton<IBdRhythmStore>(_ => new SqlBdRhythmStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Knowledge.IKnowledgeClaimStore>(_ =>
             new Kor.Opportunities.Data.Knowledge.SqlKnowledgeClaimStore(options.OpportunitiesDb));
 

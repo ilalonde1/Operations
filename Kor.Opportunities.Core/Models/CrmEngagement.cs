@@ -137,6 +137,7 @@ public enum CrmEngagementStage
     Submitted = 3,   // was ProposalSubmitted(3), Presenting(4), Negotiating(5)
     Won = 6,
     Lost = 7,        // was Lost(7), Withdrawn(8)
+    Archived = 8,    // 2026-10-16 clean start (migration 359): out of every live, won and lost count; restorable
 }
 
 /// <summary>Screen names for the existing, stable-on-disk pursuit stages.</summary>
@@ -146,6 +147,7 @@ public static class CrmStageNames
     public const string Submitted = "Submitted";
     public const string Won = "Won";
     public const string Lost = "Lost";
+    public const string Archived = "Archived";
 
     public static string Display(CrmEngagementStage stage) => stage switch
     {
@@ -153,6 +155,7 @@ public static class CrmStageNames
         CrmEngagementStage.Submitted => Submitted,
         CrmEngagementStage.Won => Won,
         CrmEngagementStage.Lost => Lost,
+        CrmEngagementStage.Archived => Archived,
         _ => "Unknown",
     };
 }

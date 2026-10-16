@@ -18,6 +18,18 @@ public static class KorReportLinks
     public const string OrgKind = "org";
     public const string PersonKind = "person";
     public const string OpportunityKind = "opp";
+    public const string PursuitKind = "pursuit";
+    public const string DirectorKind = "director";
+
+    /// <summary>The BD Director's views, by the id a kor://director/{id} link carries.</summary>
+    public const long DirectorToday = 1, DirectorActions = 2, DirectorMeetings = 3, DirectorReferences = 4;
+
+    /// <summary>A CRM pursuit (CrmEngagements id), opened in the BD workspace. Null id yields no link.</summary>
+    public static string? Pursuit(long? engagementId) =>
+        engagementId is { } id ? $"kor://{PursuitKind}/{id.ToString(CultureInfo.InvariantCulture)}" : null;
+
+    /// <summary>A BD Director view: DirectorToday, DirectorActions, DirectorMeetings or DirectorReferences.</summary>
+    public static string Director(long view) => $"kor://{DirectorKind}/{view.ToString(CultureInfo.InvariantCulture)}";
 
     /// <summary>Pursuit/project drill-down: MajorProjectsInventory id.</summary>
     public static string Mpi(long mpiId) => $"kor://{MpiKind}/{mpiId.ToString(CultureInfo.InvariantCulture)}";
@@ -58,7 +70,7 @@ public static class KorReportLinks
         }
 
         var host = parsed.Host.ToLowerInvariant();
-        if (host is not (MpiKind or OrgKind or PersonKind or OpportunityKind))
+        if (host is not (MpiKind or OrgKind or PersonKind or OpportunityKind or PursuitKind or DirectorKind))
         {
             return false;
         }

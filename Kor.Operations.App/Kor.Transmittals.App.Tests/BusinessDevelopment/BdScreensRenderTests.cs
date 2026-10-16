@@ -424,7 +424,7 @@ public sealed class BdScreensRenderTests
         var written = 0;
         for (var i = 0; i < files.Length; i++)
         {
-            tabs.SelectedIndex = i;
+            tabs.SelectedIndex = i + 4; // Today, Actions, Meetings and References come first
             if (i == 3)
             {
                 vm.SelectedAccount = vm.Accounts[0];
@@ -495,7 +495,97 @@ public sealed class BdScreensRenderTests
         claims.Verify(s => s.ListClaimVerdictsAsync(It.IsAny<CancellationToken>()), Times.Once);
         director.Verify(s => s.ListPendingBidsAsync(It.IsAny<CancellationToken>()), Times.Once);
         director.Verify(s => s.CountRelationshipPursuitsAsync(It.IsAny<CancellationToken>()), Times.Once);
-        return written + RenderPendingBids(dir);
+        return written + RenderPendingBids(dir) + RenderRhythm(dir);
+    }
+
+    /// <summary>Version 2's four first tabs on an illustrative rhythm store: the prepared hour,
+    /// the action register (one overdue, one closed and filtered out), two meetings and three references.</summary>
+    private static int RenderRhythm(string dir)
+    {
+        var now = new DateTimeOffset(2026, 10, 16, 8, 0, 0, TimeSpan.FromHours(-7));
+        const string hour = """
+        {
+          "forDate": "2026-10-16", "kind": "BD", "title": "Your BD hour, Friday 16 October",
+          "lede": "Illustrative: a week since the vote. Keep the promises from the call.",
+          "plan": [
+            { "status": "off", "label": "Owed by you", "text": "The recap has not gone out." },
+            { "status": "on", "label": "Clean start", "text": "Stale pursuits archived." }
+          ],
+          "callout": "Illustrative callout: the quiet months are for relationships.",
+          "moves": [
+            { "rank": 1, "title": "Send the recap", "minutes": 15, "whyNow": ["Promised at the close of the call."],
+              "principle": { "quote": "Illustrative quote.", "cite": "Illustrative book, ch. 1" },
+              "drafts": [ { "to": "Ian", "subject": "Recap", "body": "Illustrative draft body." } ],
+              "steps": ["Read it once", "Send it to yourself first"],
+              "links": [ { "label": "Open the actions", "kind": "director", "id": 2 } ] },
+            { "rank": 2, "title": "Call Example Client", "minutes": 20, "whyNow": ["Illustrative reason."],
+              "drafts": [], "steps": [], "links": [ { "label": "Example Client", "kind": "org", "id": 141 } ] }
+          ],
+          "decisions": ["Illustrative decision."], "meetings": ["Illustrative meeting note."],
+          "sources": "Illustrative fixture.", "notCovered": "Everything real."
+        }
+        """;
+        var store = new Mock<IBdRhythmStore>();
+        store.Setup(s => s.GetHourAsync("BD", DateOnly.FromDateTime(now.Date), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DirectorHourRow(1, DateOnly.FromDateTime(now.Date), "BD", hour, "claude", "ilalonde@korstructural.com", now, null));
+        BdActionRow Action(long id, string owner, string name, string text, int dueDays, string status) =>
+            new(id, owner, name, text, "Illustrative why", 15, now.AddDays(dueDays), status, status == "Open" ? null : now, null, null,
+                1, "BD Updates", now.AddDays(-7), "Vancouver", "9 Oct BD call, 12:30", null, null);
+        store.Setup(s => s.ListActionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            Action(1, "ilalonde@korstructural.com", "Ian Lalonde", "Send the recap", -2, "Open"),
+            Action(2, "omar@korstructural.com", "Omar Example", "List five Vancouver targets", 3, "Open"),
+            Action(3, "jim@korstructural.com", "Jim Example", "Book the San Diego trip", -5, "Done"),
+        });
+        store.Setup(s => s.ListMeetingsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new BdMeetingRow(1, "AllHands", "BD Updates", null, null, now.AddDays(-7), 60, "Held", "Team", null, "Illustrative recap.", null),
+            new BdMeetingRow(2, "OneToOne", "Omar one-to-one", "omar@korstructural.com", "Omar Example", now.AddDays(4), 20, "Planned", null, "Illustrative agenda.", null, null),
+        });
+        store.Setup(s => s.ListReferencesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new BdReferenceRow(1, "Fraser Health", "Example school", "Architect", "Example Architects", "Pat Example", "604-555-0100", null, null, null, now.AddDays(-1), "ilalonde@korstructural.com", "Confirmed", null),
+            new BdReferenceRow(2, "Fraser Health", "Example clinic", "Owner", "Example Owner", null, null, null, null, null, null, null, "NotCalled", null),
+            new BdReferenceRow(3, "Fraser Health", "Example hall", "Contractor", null, null, null, null, null, null, null, null, "NotCalled", null),
+        });
+        var rhythm = new BdRhythmViewModel(store.Object, () => now);
+        rhythm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
+        Assert.True(rhythm.HasHour, "EXPECTED the illustrative hour to parse; ACTUAL: " + rhythm.HourMessage);
+        Assert.Equal(2, rhythm.Actions.Count); // Open filter: the closed action is not shown
+        Assert.Equal(2, rhythm.Meetings.Count);
+        Assert.Equal(3, rhythm.References.Count);
+
+        using var vm = new DirectorPendingBidsFixture().Create();
+        var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>(), rhythm);
+        var tabs = Assert.IsType<System.Windows.Controls.TabControl>(window.FindName("Tabs"));
+        var content = (FrameworkElement)window.Content;
+        window.Content = null;
+        content.DataContext = vm;
+        content.Resources.MergedDictionaries.Add(window.Resources);
+        var files = new[] { "director-today.png", "director-actions.png", "director-meetings.png", "director-references.png" };
+        var written = 0;
+        for (var i = 0; i < files.Length; i++)
+        {
+            tabs.SelectedIndex = i;
+            content.UpdateLayout();
+            written += RenderView(content, new Size(1680, i == 0 ? 1600 : 980), Path.Combine(dir, files[i]));
+            if (i == 0)
+            {
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Your BD hour, Friday 16 October");
+                Assert.Contains(VisualChildren<System.Windows.Controls.Button>(content), b => Equals(b.Content, "Open the actions"));
+                // Only move 1 carries a principle; move 2's quote box must not draw empty.
+                var quotes = VisualChildren<System.Windows.Controls.Border>(content)
+                    .Count(b => b.Visibility == Visibility.Visible && b.Background is SolidColorBrush q && q.Color == (Color)ColorConverter.ConvertFromString("#E6EDF3"));
+                Assert.True(quotes == 1, "EXPECTED one visible quote box; ACTUAL " + quotes);
+                // The moves use the page, not the width of their longest line.
+                var title = VisualChildren<System.Windows.Controls.TextBlock>(content).First(b => b.Text == "Your BD hour, Friday 16 October");
+                var column = (FrameworkElement)VisualTreeHelper.GetParent(title);
+                Assert.True(column.ActualWidth >= 1100, "EXPECTED the hour to fill to its 1180 cap; ACTUAL width " + column.ActualWidth);
+            }
+            if (i == 1)
+                Assert.Equal(2, VisualChildren<System.Windows.Controls.DataGrid>(content).Single(g => g.Name == "ActionsGrid").Items.Count);
+        }
+        return written;
     }
 
     private static IEnumerable<T> VisualChildren<T>(DependencyObject root) where T : DependencyObject
@@ -520,7 +610,7 @@ public sealed class BdScreensRenderTests
         window.Content = null;
         content.DataContext = vm;
         content.Resources.MergedDictionaries.Add(window.Resources);
-        tabs.SelectedIndex = 9;
+        tabs.SelectedIndex = 13;
         var written = RenderView(content, new Size(1680, 1280), Path.Combine(dir, "director-myday.png"));
         Assert.Equal(new[] { CallSheetKind.Pursuit, CallSheetKind.Ask, CallSheetKind.Account }, vm.MyDay.Select(r => r.Item.Kind));
         Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Known by Priya Engineer (3 jobs)");
@@ -550,7 +640,7 @@ public sealed class BdScreensRenderTests
         window.Content = null;
         content.DataContext = vm;
         content.Resources.MergedDictionaries.Add(window.Resources);
-        for (var i = 0; i < 9; i++) tabs.SelectedIndex = i;
+        for (var i = 0; i < 13; i++) tabs.SelectedIndex = i;
         var written = RenderView(content, new Size(1680, 980), Path.Combine(dir, "director-pending.png"));
         Assert.Equal(3, vm.PendingBids.Count);
         Assert.Equal(3, vm.RelationshipPursuits);

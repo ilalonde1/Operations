@@ -50,6 +50,40 @@ namespace Kor.Operations
                 return;
             }
 
+            if (kind == KorReportLinks.PursuitKind)
+            {
+                var workspace = Application.Current?.Windows
+                                    .OfType<BdWorkspaceWindow>()
+                                    .FirstOrDefault(w => w.IsVisible)
+                                ?? AppServices.Get<BdWorkspaceWindow>();
+                workspace.NavigateToPursuit(id);
+                workspace.Show();
+                if (workspace.WindowState == WindowState.Minimized)
+                {
+                    workspace.WindowState = WindowState.Normal;
+                }
+
+                workspace.Activate();
+                return;
+            }
+
+            if (kind == KorReportLinks.DirectorKind)
+            {
+                var director = Application.Current?.Windows
+                                   .OfType<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorWindow>()
+                                   .FirstOrDefault(w => w.IsVisible)
+                               ?? AppServices.Get<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorWindow>();
+                director.ShowView(id);
+                director.Show();
+                if (director.WindowState == WindowState.Minimized)
+                {
+                    director.WindowState = WindowState.Normal;
+                }
+
+                director.Activate();
+                return;
+            }
+
             switch (kind)
             {
                 case KorReportLinks.MpiKind:

@@ -323,6 +323,13 @@ public sealed class OpportunitiesWorkerOptions
     public string MorningReportSenderUpn { get; set; } = "ilalonde@korstructural.com";
     public string MorningReportRecipient { get; set; } = "ilalonde@korstructural.com";
 
+    // --- 2026-10-16: BD Director version 2, the prepared hour (DirectorHourEmailJob) ---
+    // Weekdays 06:05 to Ian only ("NOTHING GOES to the team yet", 15 October); Mondays add the
+    // leads' action lists as drafts to the same one recipient. Uses the MorningReport* Graph creds.
+    public bool DirectorHourEmailEnabled { get; set; } = true;
+    public string? DirectorHourEmailCronSchedule { get; set; }
+    public string DirectorHourRecipient { get; set; } = "ilalonde@korstructural.com";
+
     // --- 2026-07-08: per-owner morning digest (plan D6) ---
     // When enabled, each owner of live pursuits ALSO gets their own focused
     // email (their pursuits closing soon + going cold). Ships DORMANT: flip

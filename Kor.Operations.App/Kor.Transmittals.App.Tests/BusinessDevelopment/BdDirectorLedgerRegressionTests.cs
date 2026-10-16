@@ -280,12 +280,12 @@ public sealed class BdDirectorLedgerRegressionTests
     }
 
     [Fact]
-    public void Window_HasTheTenTabs_InOrder_AndPlainWords()
+    public void Window_HasTheFourteenTabs_InOrder_AndPlainWords()
     {
         var xaml = Source(DirectorFolder + "BdDirectorWindow.xaml");
         var headers = XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "TabItem").Select(e => (string?)e.Attribute("Header")).ToArray();
-        Check(headers.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" }),
-            "ten tabs in the specified order", string.Join(", ", headers));
+        Check(headers.SequenceEqual(new[] { "Today", "Actions", "Meetings", "References", "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" }),
+            "fourteen tabs in the specified order", string.Join(", ", headers));
         foreach (var caption in new[] { "Number", "People", "Funnel", "Accounts", "Asks", "Decisions", "Knowledge", "Market", "Brief" })
             Contains(xaml, "{x:Static director:BdDirectorViewModel." + caption + "Caption}");
         foreach (var file in Directory.EnumerateFiles(Path.Combine(RepoRoot(), DirectorFolder)))

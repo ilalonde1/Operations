@@ -1,0 +1,20 @@
+<Window x:Class="Kor.Operations.App.BusinessDevelopment.Director.ReferenceCallDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        Title="Record a reference call" Width="520" SizeToContent="Height" WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False" Background="{StaticResource App.Background}">
+    <StackPanel Margin="20">
+        <TextBlock x:Name="WhoText" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,10"/>
+        <TextBlock Text="What happened" Margin="0,0,0,4"/>
+        <ComboBox x:Name="OutcomeBox" SelectedIndex="0" DisplayMemberPath="Label" SelectedValuePath="Value" Margin="0,0,0,10"/>
+        <TextBlock Text="The person you reached" Margin="0,0,0,4"/>
+        <TextBox x:Name="NameBox" MaxLength="200" controls:Placeholder.Text="Name (keeps the current one when blank)" Margin="0,0,0,10"/>
+        <TextBlock Text="Notes" Margin="0,0,0,4"/>
+        <TextBox x:Name="NotesBox" AcceptsReturn="True" TextWrapping="Wrap" Height="90" MaxLength="1000"
+                 controls:Placeholder.Text="For example: knows we were BMZ, happy to take Fraser Health's call" Margin="0,0,0,16"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" IsCancel="True" Padding="16,6" Margin="0,0,8,0"/>
+            <Button Content="Save" IsDefault="True" Click="Save_Click" Padding="16,6"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

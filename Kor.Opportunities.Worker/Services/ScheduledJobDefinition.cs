@@ -58,6 +58,8 @@ internal static class ScheduledJobDefinitions
         new(nameof(CanonicalLinkBackfillJob), "CanonicalLinkBackfillCronSchedule", "0 0 5 ? * SUN", o => o.CanonicalLinkBackfillEnabled, "Cleanup"),
         new(nameof(Jobs.IntelRetirementJob), "IntelRetirementCronSchedule", "0 0 2 * * ?", _ => true, "Cleanup"),
         new(nameof(BcBidPlanTakerEnrichmentJob), "BcBidPlanTakerEnrichmentCronSchedule", "0 43 0/2 * * ?", o => o.BcBidPlanTakerEnrichmentEnabled, "Enrichment"),
+        // 2026-10-16: BD Director version 2, the prepared hour, weekdays 06:05 to Ian only.
+        new(nameof(Reporting.DirectorHourEmailJob), "DirectorHourEmailCronSchedule", "0 5 6 ? * MON-FRI", o => o.DirectorHourEmailEnabled, "Reporting"),
         // 2026-07-13: Monday 06:30 Weekly Attack Sheet email (fresh-at-send PDF).
         new(nameof(Reporting.WeeklyAttackSheetJob), "WeeklyAttackSheetCronSchedule", "0 30 6 ? * MON", o => o.WeeklyAttackSheetEnabled, "Reporting"),
         // 2026-07-13: pursuit lifecycle — auto-release owned-but-unconverted plays.

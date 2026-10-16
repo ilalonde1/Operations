@@ -4,11 +4,30 @@
         xmlns:converters="clr-namespace:Kor.Operations.Converters"
         xmlns:director="clr-namespace:Kor.Operations.App.BusinessDevelopment.Director"
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        xmlns:opp="clr-namespace:Kor.Operations.App.Opportunities"
         Title="BD Director" Width="1680" Height="980" MinWidth="1100" MinHeight="720"
         WindowStartupLocation="CenterOwner" Background="{StaticResource App.Background}">
     <Window.Resources>
         <converters:BdDayConverter x:Key="BdDay"/>
         <BooleanToVisibilityConverter x:Key="BoolVisibility"/>
+        <opp:NullOrEmptyStringToVisibilityConverter x:Key="TextVisible"/>
+        <Style x:Key="PlanChip" TargetType="Border">
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="Background" Value="#E5F3EA"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="off"><Setter Property="Background" Value="#FBE9E7"/></DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="slow"><Setter Property="Background" Value="#FDF2DC"/></DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="blocked"><Setter Property="Background" Value="#E6EDF3"/></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="LinkButton" TargetType="Button">
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="Margin" Value="0,0,8,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
         <DataTemplate x:Key="PassagePane">
             <Grid>
                 <Grid.RowDefinitions>
@@ -82,6 +101,229 @@
             </StackPanel>
         </DockPanel>
         <TabControl x:Name="Tabs" Grid.Row="1">
+        <TabItem Header="Today" x:Name="TodayTab">
+            <Grid Margin="12">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <TextBlock Text="{Binding HourMessage}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"
+                           Visibility="{Binding HourMessage, Converter={StaticResource TextVisible}}"/>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Visibility="{Binding HasHour, Converter={StaticResource BoolVisibility}}">
+                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" MaxWidth="1180"/></Grid.ColumnDefinitions><StackPanel>
+                        <TextBlock Text="{Binding Hour.Title}" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Hour.Lede}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,0"/>
+                        <TextBlock Text="{Binding TotalMinutesText}" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,12"/>
+
+                        <TextBlock Text="Where we stand" Style="{StaticResource SectionTitle}"/>
+                        <ItemsControl ItemsSource="{Binding Hour.Plan}" Margin="0,0,0,8">
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource PlanChip}"><TextBlock Text="{Binding Label}" FontWeight="SemiBold" Foreground="#17212C" TextWrapping="Wrap"/></Border>
+                                    <TextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap"/>
+                                </Grid>
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Border Background="#FDF2DC" BorderBrush="#8A5A00" BorderThickness="4,0,0,0" Padding="12,8" Margin="0,0,0,14"
+                                Visibility="{Binding Hour.Callout, Converter={StaticResource TextVisible}}">
+                            <TextBlock Text="{Binding Hour.Callout}" TextWrapping="Wrap" Foreground="#17212C"/>
+                        </Border>
+
+                        <TextBlock Text="Today's moves" Style="{StaticResource SectionTitle}"/>
+                        <ItemsControl ItemsSource="{Binding Hour.Moves}">
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,0,0,12" Background="{StaticResource App.Background}">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Right" Foreground="{StaticResource Text.Secondary}"><Run Text="{Binding Minutes, Mode=OneWay}"/><Run Text=" min"/></TextBlock>
+                                            <TextBlock FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"><Run Text="{Binding Rank, Mode=OneWay}"/><Run Text=".  "/><Run Text="{Binding Title, Mode=OneWay}"/></TextBlock>
+                                        </DockPanel>
+                                        <TextBlock Text="Why now" FontWeight="SemiBold" Margin="0,10,0,2" Foreground="{StaticResource Text.Secondary}"/>
+                                        <ItemsControl ItemsSource="{Binding WhyNow}">
+                                            <ItemsControl.ItemTemplate><DataTemplate>
+                                                <TextBlock TextWrapping="Wrap" Margin="0,1"><Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock>
+                                            </DataTemplate></ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Border Background="#E6EDF3" BorderBrush="#2E4A62" BorderThickness="3,0,0,0" Padding="10,6" Margin="0,8,0,0"
+                                                Visibility="{Binding Principle.Quote, Converter={StaticResource TextVisible}, FallbackValue=Collapsed}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Principle.Quote}" TextWrapping="Wrap" Foreground="#17212C"/>
+                                                <TextBlock Text="{Binding Principle.Cite}" Foreground="#5A6876" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <ItemsControl ItemsSource="{Binding Drafts}" Margin="0,8,0,0">
+                                            <ItemsControl.ItemTemplate><DataTemplate>
+                                                <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="4" Margin="0,4">
+                                                    <StackPanel>
+                                                        <DockPanel Margin="10,6">
+                                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                                <Button Content="Draft in Outlook" Click="DraftInOutlook_Click" Tag="{Binding}" Padding="10,3" Margin="0,0,6,0"
+                                                                        ToolTip="Opens a new message in Outlook for you to review and send. Nothing is sent from here."/>
+                                                                <Button Content="Copy" Click="CopyDraft_Click" Tag="{Binding}" Padding="10,3"/>
+                                                            </StackPanel>
+                                                            <TextBlock TextWrapping="Wrap" VerticalAlignment="Center"><Run Text="To "/><Run Text="{Binding To, Mode=OneWay}"/><Run Text="  ·  "/><Run Text="{Binding Subject, Mode=OneWay}" FontWeight="SemiBold"/></TextBlock>
+                                                        </DockPanel>
+                                                        <TextBox Text="{Binding Body, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0,1,0,0" Padding="10,8"
+                                                                 MaxHeight="320" VerticalScrollBarVisibility="Auto"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate></ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <ItemsControl ItemsSource="{Binding Steps}" Margin="0,6,0,0">
+                                            <ItemsControl.ItemTemplate><DataTemplate>
+                                                <TextBlock TextWrapping="Wrap" Margin="0,1"><Run Text="→  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock>
+                                            </DataTemplate></ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <ItemsControl ItemsSource="{Binding Links}" Margin="0,8,0,0">
+                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate><DataTemplate>
+                                                <Button Content="{Binding Label}" Tag="{Binding Url}" Click="OpenLink_Click" Style="{StaticResource LinkButton}"/>
+                                            </DataTemplate></ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Grid Margin="0,6,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Decisions waiting on you" Style="{StaticResource SectionTitle}"/>
+                                <ItemsControl ItemsSource="{Binding Hour.Decisions}">
+                                    <ItemsControl.ItemTemplate><DataTemplate><TextBlock TextWrapping="Wrap" Margin="0,2"><Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock></DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Meetings" Style="{StaticResource SectionTitle}"/>
+                                <ItemsControl ItemsSource="{Binding Hour.Meetings}">
+                                    <ItemsControl.ItemTemplate><DataTemplate><TextBlock TextWrapping="Wrap" Margin="0,2"><Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock></DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Text="{Binding Hour.Sources}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text.Secondary}" Margin="0,16,0,0"/>
+                        <TextBlock Text="{Binding Hour.NotCovered}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,12"/>
+                    </StackPanel></Grid>
+                </ScrollViewer>
+            </Grid>
+        </TabItem>
+        <TabItem Header="Actions" x:Name="ActionsTab">
+            <Grid Margin="12">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Every commitment, with its owner, date and result. Seeded from the 9 October meeting." TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding ActionSummary}" FontWeight="SemiBold" Margin="0,6,0,8"/>
+                </StackPanel>
+                <WrapPanel Grid.Row="1" Margin="0,0,0,8">
+                    <ComboBox ItemsSource="{Binding ActionFilters}" SelectedItem="{Binding ActionFilter}" Width="120" Margin="0,0,8,6"/>
+                    <ComboBox ItemsSource="{Binding Owners}" SelectedItem="{Binding OwnerFilter}" Width="220" Margin="0,0,16,6"/>
+                    <Button Content="Mark done…" Click="ActionDone_Click" IsEnabled="{Binding CanCloseAction}" Padding="12,5" Margin="0,0,6,6"/>
+                    <Button Content="Declined…" Click="ActionDeclined_Click" IsEnabled="{Binding CanCloseAction}" Padding="12,5" Margin="0,0,6,6"/>
+                    <Button Content="Withdraw…" Click="ActionWithdraw_Click" IsEnabled="{Binding CanCloseAction}" Padding="12,5" Margin="0,0,16,6"/>
+                    <Button Content="Add an action…" Click="AddAction_Click" Padding="12,5" Margin="0,0,6,6"/>
+                </WrapPanel>
+                <DataGrid MouseDoubleClick="Row_DoubleClick" Grid.Row="2" x:Name="ActionsGrid" ItemsSource="{Binding Actions}" SelectedItem="{Binding SelectedAction}" RowHeight="NaN">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsOverdue}" Value="True"><Setter Property="Foreground" Value="#B3261E"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="80"/>
+                        <DataGridTextColumn Header="Due" Binding="{Binding Row.DueUtc, Converter={StaticResource BdDay}}" Width="105"/>
+                        <DataGridTextColumn Header="Owner" Binding="{Binding Row.OwnerName}" Width="170"/>
+                        <DataGridTemplateColumn Header="Action" Width="3*">
+                            <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <StackPanel Margin="6,4">
+                                    <TextBlock Text="{Binding Row.Action}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding Row.WhyNow}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text.Secondary}"
+                                               Visibility="{Binding Row.WhyNow, Converter={StaticResource TextVisible}}"/>
+                                </StackPanel>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Region" Binding="{Binding RegionText}" Width="120"/>
+                        <DataGridTextColumn Header="From" Binding="{Binding From}" Width="150"/>
+                        <DataGridTemplateColumn Header="Result" Width="2*">
+                            <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <TextBlock Text="{Binding Row.Result}" TextWrapping="Wrap" Margin="6,4"/>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </TabItem>
+        <TabItem Header="Meetings" x:Name="MeetingsTab">
+            <Grid Margin="12">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="460"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <TextBlock Text="A 20-minute one-to-one with each lead every two weeks, and a 27-minute all-hands each month. Agendas are built from the action register. Nothing is sent from here." TextWrapping="Wrap"/>
+                    <WrapPanel Grid.Row="1" Margin="0,8">
+                        <ComboBox x:Name="LeadPicker" ItemsSource="{Binding Leads}" DisplayMemberPath="Name" SelectedIndex="0" Width="210" Margin="0,0,8,6"/>
+                        <DatePicker x:Name="MeetingDate" Width="130" Margin="0,0,8,6"/>
+                        <Button Content="Plan one-to-one" Click="PlanOneToOne_Click" Padding="10,5" Margin="0,0,8,6"/>
+                        <Button Content="Plan all-hands" Click="PlanAllHands_Click" Padding="10,5" Margin="0,0,8,6"/>
+                    </WrapPanel>
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding Meetings}" SelectedItem="{Binding SelectedMeeting}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="When" Binding="{Binding Row.ScheduledForUtc, Converter={StaticResource BdDay}}" Width="105"/>
+                            <DataGridTextColumn Header="Kind" Binding="{Binding KindText}" Width="95"/>
+                            <DataGridTextColumn Header="Meeting" Binding="{Binding Row.Title}" Width="*"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding Row.Status}" Width="75"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <TextBlock Text="{Binding SelectedMeeting.Row.Title}" Style="{StaticResource SectionTitle}"/>
+                    <WrapPanel Grid.Row="1" Margin="0,4,0,8">
+                        <Button Content="Copy" Click="CopyMeeting_Click" Padding="10,5" Margin="0,0,8,6"/>
+                        <Button Content="Draft invite in Outlook" Click="DraftMeetingInvite_Click" Padding="10,5" Margin="0,0,8,6"
+                                ToolTip="Opens a new message in Outlook with the agenda. Nothing is sent from here."/>
+                        <Button Content="Record as held…" Click="MeetingHeld_Click" Padding="10,5" Margin="0,0,8,6"/>
+                        <Button Content="Cancel meeting" Click="MeetingCancelled_Click" Padding="10,5" Margin="0,0,8,6"/>
+                    </WrapPanel>
+                    <TextBox Grid.Row="2" Text="{Binding SelectedMeeting.Text, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" VerticalContentAlignment="Top"
+                             VerticalScrollBarVisibility="Auto" FontFamily="Consolas" Padding="10"/>
+                </Grid>
+            </Grid>
+        </TabItem>
+        <TabItem Header="References" x:Name="ReferencesTab">
+            <Grid Margin="12">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Every reference KOR gives out. Phone each one before their name goes on an application, and tell them KOR was BMZ. Rows in red still need work." TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding ReferenceSummary}" FontWeight="SemiBold" Margin="0,6,0,8"/>
+                </StackPanel>
+                <WrapPanel Grid.Row="1" Margin="0,0,0,8">
+                    <Button Content="Record a call…" Click="RecordReferenceCall_Click" Padding="12,5" Margin="0,0,8,6"/>
+                </WrapPanel>
+                <DataGrid Grid.Row="2" ItemsSource="{Binding References}" SelectedItem="{Binding SelectedReference}" RowHeight="NaN">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding NeedsAttention}" Value="True"><Setter Property="Foreground" Value="#B3261E"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="Project" Width="2*">
+                            <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Row.Project}" TextWrapping="Wrap" Margin="6,4"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Role" Binding="{Binding Row.Role}" Width="140"/>
+                        <DataGridTextColumn Header="Company" Binding="{Binding Row.Company}" Width="190"/>
+                        <DataGridTextColumn Header="Person" Binding="{Binding Contact}" Width="150"/>
+                        <DataGridTextColumn Header="Phone" Binding="{Binding Row.Phone}" Width="115"/>
+                        <DataGridTextColumn Header="Email" Binding="{Binding Row.Email}" Width="200"/>
+                        <DataGridTextColumn Header="KOR lead" Binding="{Binding Row.KorLeadName}" Width="130"/>
+                        <DataGridTextColumn Header="Call" Binding="{Binding OutcomeText}" Width="105"/>
+                        <DataGridTextColumn Header="Called" Binding="{Binding Row.LastCalledUtc, Converter={StaticResource BdDay}}" Width="95"/>
+                        <DataGridTemplateColumn Header="Notes" Width="2*">
+                            <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Row.Notes}" TextWrapping="Wrap" Margin="6,4"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </TabItem>
         <TabItem Header="The number">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="12">
@@ -134,7 +376,7 @@
                     </DataGrid.Columns>
                 </DataGrid>
                 <TextBlock Text="{Binding SelectedPersonCaption}" FontWeight="SemiBold" Margin="0,10,0,6"/>
-                <DataGrid ItemsSource="{Binding SelectedPursuits}" Height="132">
+                <DataGrid MouseDoubleClick="Row_DoubleClick" ItemsSource="{Binding SelectedPursuits}" Height="132">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Pursuit" Binding="{Binding ProjectName}" Width="3*" ElementStyle="{StaticResource CellText}"/>
                         <DataGridTextColumn Header="Buyer" Binding="{Binding Buyer}" Width="2*" ElementStyle="{StaticResource CellText}"/>
@@ -194,7 +436,7 @@
                     <StackPanel Grid.Column="4">
                         <TextBlock Text="Undecided, past deadline" FontWeight="SemiBold" Margin="0,0,0,4"/>
                         <TextBlock Text="{Binding DeadlineCaption}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6"/>
-                        <DataGrid ItemsSource="{Binding Undecided}" Height="122">
+                        <DataGrid MouseDoubleClick="Row_DoubleClick" ItemsSource="{Binding Undecided}" Height="122">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Pursuit" Binding="{Binding ProjectName}" Width="3*" ElementStyle="{StaticResource CellText}"/>
                                 <DataGridTextColumn Header="Buyer" Binding="{Binding Buyer}" Width="2*" ElementStyle="{StaticResource CellText}"/>
@@ -218,7 +460,7 @@
                     <TextBlock Text="{x:Static director:BdDirectorViewModel.AccountsCaption}" TextWrapping="Wrap" Margin="0,0,0,14"/>
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="20"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                        <DataGrid ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount, Mode=TwoWay}" IsSynchronizedWithCurrentItem="False" Height="620">
+                        <DataGrid MouseDoubleClick="Row_DoubleClick" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount, Mode=TwoWay}" IsSynchronizedWithCurrentItem="False" Height="620">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Account" Binding="{Binding DisplayName}" Width="2*" ElementStyle="{StaticResource CellText}"/>
                                 <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="100" ElementStyle="{StaticResource CellText}"/>
@@ -267,7 +509,7 @@
                         <Button Content="Ask…" Click="Ask_Click" Padding="12,6" Margin="0,0,8,0"/>
                         <Button Content="Withdraw" Click="WithdrawAsk_Click" Padding="12,6" IsEnabled="{Binding SelectedAsk.IsOpen, FallbackValue=False}"/>
                     </StackPanel>
-                    <DataGrid ItemsSource="{Binding Asks}" SelectedItem="{Binding SelectedAsk}" Height="280" RowHeight="58">
+                    <DataGrid MouseDoubleClick="Row_DoubleClick" ItemsSource="{Binding Asks}" SelectedItem="{Binding SelectedAsk}" Height="280" RowHeight="58">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="To" Binding="{Binding ToDisplay}" Width="*" ElementStyle="{StaticResource CellText}"/>
                             <DataGridTextColumn Header="Ask" Binding="{Binding Record.Ask}" Width="3*" ElementStyle="{StaticResource CellText}"/>
@@ -287,7 +529,7 @@
                     </StackPanel>
                     <TextBlock Text="{Binding BriefTrackRecordSummary}" TextWrapping="Wrap" Margin="0,0,0,6"/>
                     <TextBlock Text="{Binding BriefTrackRecordBreakdown}" TextWrapping="Wrap" Margin="0,0,0,10"/>
-                    <DataGrid ItemsSource="{Binding Decisions}" SelectedItem="{Binding SelectedDecision}" Height="280" RowHeight="58">
+                    <DataGrid MouseDoubleClick="Row_DoubleClick" ItemsSource="{Binding Decisions}" SelectedItem="{Binding SelectedDecision}" Height="280" RowHeight="58">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Decided" Binding="{Binding Record.DecidedAtUtc, Converter={StaticResource BdDay}}" Width="125" ElementStyle="{StaticResource CellText}"/>
                             <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="80" ElementStyle="{StaticResource CellText}"/>
@@ -391,7 +633,7 @@
                     <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="18"/><ColumnDefinition/></Grid.ColumnDefinitions>
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top" Text="Signals, 30 days" Style="{StaticResource SectionTitle}"/>
-                        <DataGrid ItemsSource="{Binding MarketSignals}" RowHeight="NaN">
+                        <DataGrid MouseDoubleClick="Row_DoubleClick" ItemsSource="{Binding MarketSignals}" RowHeight="NaN">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Org" Binding="{Binding Org}" Width="2*" ElementStyle="{StaticResource CellText}"/>
                                 <DataGridTextColumn Header="Signal" Binding="{Binding Signal}" Width="*" ElementStyle="{StaticResource CellText}"/>
@@ -403,7 +645,7 @@
                     </DockPanel>
                     <DockPanel Grid.Column="2">
                         <TextBlock DockPanel.Dock="Top" Text="RFPs closing in 30 days" Style="{StaticResource SectionTitle}"/>
-                        <DataGrid ItemsSource="{Binding MarketDeadlines}">
+                        <DataGrid MouseDoubleClick="Row_DoubleClick" ItemsSource="{Binding MarketDeadlines}">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="RFP" Binding="{Binding Name}" Width="2*" ElementStyle="{StaticResource CellText}"/>
                                 <DataGridTextColumn Header="Buyer" Binding="{Binding Buyer}" Width="*" ElementStyle="{StaticResource CellText}"/>
@@ -415,7 +657,7 @@
                     </DockPanel>
                     <DockPanel Grid.Row="2">
                         <TextBlock DockPanel.Dock="Top" Text="Forward pipeline" Style="{StaticResource SectionTitle}"/>
-                        <DataGrid ItemsSource="{Binding ForwardPipeline}">
+                        <DataGrid MouseDoubleClick="Row_DoubleClick" ItemsSource="{Binding ForwardPipeline}">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="2*" ElementStyle="{StaticResource CellText}"/>
                                 <DataGridTextColumn Header="Proponent" Binding="{Binding ProponentName}" Width="*" ElementStyle="{StaticResource CellText}"/>
@@ -428,7 +670,7 @@
                     </DockPanel>
                     <DockPanel Grid.Row="2" Grid.Column="2">
                         <TextBlock DockPanel.Dock="Top" Text="Open structural seats" Style="{StaticResource SectionTitle}"/>
-                        <DataGrid ItemsSource="{Binding OpenSeats}">
+                        <DataGrid MouseDoubleClick="Row_DoubleClick" ItemsSource="{Binding OpenSeats}">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Firm" Binding="{Binding DisplayName}" Width="2*" ElementStyle="{StaticResource CellText}"/>
                                 <DataGridTextColumn Header="Market" Binding="{Binding Market}" Width="*" ElementStyle="{StaticResource CellText}"/>
@@ -503,7 +745,7 @@
                     <Button Content="Assign…" Click="AssignBid_Click" Padding="12,6" Margin="0,0,8,0"/>
                     <Button Content="Edit opportunity…" Click="EditOpportunity_Click" Padding="12,6"/>
                 </WrapPanel>
-                <DataGrid x:Name="PendingBidsGrid" Grid.Row="3" ItemsSource="{Binding PendingBids}" SelectedItem="{Binding SelectedPendingBid}"
+                <DataGrid MouseDoubleClick="Row_DoubleClick" x:Name="PendingBidsGrid" Grid.Row="3" ItemsSource="{Binding PendingBids}" SelectedItem="{Binding SelectedPendingBid}"
                           CanUserSortColumns="False">
                     <DataGrid.RowStyle>
                         <Style TargetType="DataGridRow">
@@ -616,5 +858,7 @@
         </TabItem>
         </TabControl>
         <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="{StaticResource Text.Secondary}"/>
+        <TextBlock Grid.Row="2" x:Name="RhythmStatus" Text="{Binding Status}" Margin="0,8,0,0" HorizontalAlignment="Right"
+                   Foreground="{StaticResource Text.Secondary}"/>
     </Grid>
 </Window>

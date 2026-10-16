@@ -23,11 +23,24 @@ public partial class BdDirectorWindow : Window
 {
     private readonly BdDirectorViewModel _vm;
     private readonly IProposalStaffStore _staffStore;
+    private readonly BdRhythmViewModel? _rhythm;
     private readonly CancellationTokenSource _lifetime = new();
     private bool _initialized;
     private bool _reassignBusy;
     private bool _ledgerBusy;
     private string _actor = "";
+
+    /// <summary>Version 2: Today, Actions, Meetings and References come first, from the operating rhythm store.</summary>
+    public BdDirectorWindow(BdDirectorViewModel vm, IProposalStaffStore staffStore, BdRhythmViewModel rhythm) : this(vm, staffStore)
+    {
+        _rhythm = rhythm ?? throw new ArgumentNullException(nameof(rhythm));
+        TodayTab.DataContext = rhythm;
+        ActionsTab.DataContext = rhythm;
+        MeetingsTab.DataContext = rhythm;
+        ReferencesTab.DataContext = rhythm;
+        RhythmStatus.DataContext = rhythm;
+        MeetingDate.SelectedDate = DateTime.Today.AddDays(1);
+    }
 
     public BdDirectorWindow(BdDirectorViewModel vm, IProposalStaffStore staffStore)
     {
@@ -59,8 +72,208 @@ public partial class BdDirectorWindow : Window
     private async Task ReloadAsync()
     {
         if (_ledgerBusy || _reassignBusy) return;
-        try { await _vm.LoadAsync(_lifetime.Token).ConfigureAwait(true); }
+        try
+        {
+            var director = _vm.LoadAsync(_lifetime.Token);
+            if (_rhythm is not null) await _rhythm.LoadAsync(_lifetime.Token).ConfigureAwait(true);
+            await director.ConfigureAwait(true);
+        }
         catch (OperationCanceledException) { /* Window closed. */ }
+    }
+
+    /// <summary>Selects a view by the id a kor://director/{id} link carries: 1 Today, 2 Actions, 3 Meetings, 4 References.</summary>
+    public void ShowView(long view)
+    {
+        Tabs.SelectedItem = view switch
+        {
+            Kor.Opportunities.Data.BdReports.Generators.KorReportLinks.DirectorActions => ActionsTab,
+            Kor.Opportunities.Data.BdReports.Generators.KorReportLinks.DirectorMeetings => MeetingsTab,
+            Kor.Opportunities.Data.BdReports.Generators.KorReportLinks.DirectorReferences => ReferencesTab,
+            _ => TodayTab,
+        };
+    }
+
+    // ---- Today ----
+
+    private async void OpenLink_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string url } || string.IsNullOrWhiteSpace(url)) return;
+        try { await KorDeepLink.OpenAsync(url).ConfigureAwait(true); }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "BD Director could not open {Url}.", url);
+            MessageBox.Show(this, "Could not open that screen. Please try again.", "Open", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>A double-clicked row opens the screen for what it is about (<see cref="BdDirectorRowLinks"/>).</summary>
+    private async void Row_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.DataGrid grid || e.OriginalSource is not DependencyObject source) return;
+        if (System.Windows.Controls.ItemsControl.ContainerFromElement(grid, source) is not System.Windows.Controls.DataGridRow row) return;
+        if (BdDirectorRowLinks.For(row.Item) is not { } url) return;
+        e.Handled = true;
+        try { await KorDeepLink.OpenAsync(url).ConfigureAwait(true); }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "BD Director could not open {Url}.", url);
+            MessageBox.Show(this, "Could not open that screen. Please try again.", "Open", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void CopyDraft_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: HourDraft draft }) return;
+        if (TrySetClipboard($"To: {draft.To}\r\nSubject: {draft.Subject}\r\n\r\n{draft.Body}") && _rhythm is not null)
+            SetRhythmStatus("Copied the draft to the clipboard.");
+    }
+
+    private void DraftInOutlook_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: HourDraft draft }) OpenMailDraft(draft.To, draft.Subject, draft.Body);
+    }
+
+    /// <summary>
+    /// Opens a new message in the default mail program for Ian to review and send. Nothing is sent from KOR Operations.
+    /// A body too long for a mailto address goes to the clipboard instead, with the subject and recipients prefilled.
+    /// </summary>
+    private void OpenMailDraft(string to, string subject, string body)
+    {
+        var recipients = string.Join(";", to.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        var full = "mailto:" + recipients + "?subject=" + Uri.EscapeDataString(subject) + "&body=" + Uri.EscapeDataString(body.Replace("\n", "\r\n"));
+        var bodyCopied = false;
+        if (full.Length > 1900)
+        {
+            full = "mailto:" + recipients + "?subject=" + Uri.EscapeDataString(subject);
+            bodyCopied = TrySetClipboard(body);
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(full) { UseShellExecute = true });
+            if (bodyCopied)
+                MessageBox.Show(this, "The message is long, so its text is on your clipboard. Paste it into the new message.", "Draft in Outlook",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "BD Director could not open a mail draft.");
+            TrySetClipboard($"To: {to}\r\nSubject: {subject}\r\n\r\n{body}");
+            MessageBox.Show(this, "Outlook could not be opened, so the draft is on your clipboard.", "Draft in Outlook", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
+    private bool TrySetClipboard(string text)
+    {
+        try { Clipboard.SetText(text); return true; }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "BD Director could not use the clipboard.");
+            MessageBox.Show(this, "The clipboard is busy. Try again.", "Copy", MessageBoxButton.OK, MessageBoxImage.Information);
+            return false;
+        }
+    }
+
+    private void SetRhythmStatus(string text) => _rhythm?.Say(text);
+
+    // ---- Actions ----
+
+    private async void ActionDone_Click(object sender, RoutedEventArgs e) => await CloseActionAsync("Done", "What came of it?").ConfigureAwait(true);
+    private async void ActionDeclined_Click(object sender, RoutedEventArgs e) => await CloseActionAsync("Declined", "Why was it declined?").ConfigureAwait(true);
+    private async void ActionWithdraw_Click(object sender, RoutedEventArgs e) => await CloseActionAsync("Withdrawn", "Why is it no longer needed?").ConfigureAwait(true);
+
+    private async Task CloseActionAsync(string status, string prompt)
+    {
+        if (_rhythm?.SelectedAction is not { } action || !action.Row.IsOpen) return;
+        var dialog = new NoteDialog("Close the action", prompt + "\n\n" + action.Row.Action, 500) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+        await RhythmActionAsync(ct => _rhythm.CloseSelectedActionAsync(status, dialog.Note, _actor, ct)).ConfigureAwait(true);
+    }
+
+    private async void AddAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm is null) return;
+        await RhythmActionAsync(async ct =>
+        {
+            await ShowAskAsync(null, null, null, ct).ConfigureAwait(true);
+            await _rhythm.LoadActionsAsync(ct).ConfigureAwait(true);
+        }).ConfigureAwait(true);
+    }
+
+    // ---- Meetings ----
+
+    private async void PlanOneToOne_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm is null) return;
+        if (LeadPicker.SelectedItem is not BdLeadOption lead || MeetingDate.SelectedDate is not { } date)
+        {
+            MessageBox.Show(this, "Choose who the one-to-one is with, and the date.", "Plan one-to-one", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        await RhythmActionAsync(ct => _rhythm.PlanOneToOneAsync(lead.Key, lead.Name, AtNine(date), _actor, ct)).ConfigureAwait(true);
+    }
+
+    private async void PlanAllHands_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm is null) return;
+        if (MeetingDate.SelectedDate is not { } date)
+        {
+            MessageBox.Show(this, "Choose the date of the all-hands.", "Plan all-hands", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        await RhythmActionAsync(ct => _rhythm.PlanAllHandsAsync(AtNine(date), _actor, ct)).ConfigureAwait(true);
+    }
+
+    private static DateTimeOffset AtNine(DateTime date) => new DateTimeOffset(date.Date.AddHours(9), TimeZoneInfo.Local.GetUtcOffset(date.Date.AddHours(9)));
+
+    private void CopyMeeting_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm?.SelectedMeeting is { } m && TrySetClipboard(m.Text)) SetRhythmStatus("Copied: " + m.Row.Title);
+    }
+
+    private void DraftMeetingInvite_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm?.SelectedMeeting is not { } m) return;
+        var to = m.Row.Kind == "OneToOne" ? m.Row.WithStaffKey ?? "" : "";
+        OpenMailDraft(to, m.Row.Title, m.Text);
+    }
+
+    private async void MeetingHeld_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm?.SelectedMeeting is not { } m) return;
+        var dialog = new NoteDialog("Record the meeting", "What was decided, and what each person will do next?", 4000) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+        await RhythmActionAsync(ct => _rhythm.RecordSelectedMeetingAsync("Held", dialog.Note, ct)).ConfigureAwait(true);
+    }
+
+    private async void MeetingCancelled_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm?.SelectedMeeting is not { Row.Status: "Planned" }) return;
+        await RhythmActionAsync(ct => _rhythm.RecordSelectedMeetingAsync("Cancelled", null, ct)).ConfigureAwait(true);
+    }
+
+    // ---- References ----
+
+    private async void RecordReferenceCall_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm?.SelectedReference is not { } r) return;
+        var dialog = new ReferenceCallDialog(r.Row) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+        await RhythmActionAsync(ct => _rhythm.RecordSelectedReferenceCallAsync(dialog.Outcome, dialog.ContactName, dialog.Notes, _actor, ct)).ConfigureAwait(true);
+    }
+
+    private async Task RhythmActionAsync(Func<CancellationToken, Task> action)
+    {
+        try { await action(_lifetime.Token).ConfigureAwait(true); }
+        catch (OperationCanceledException) { /* Window closed. */ }
+        catch (ArgumentException ex) { MessageBox.Show(this, ex.Message, "BD Director", MessageBoxButton.OK, MessageBoxImage.Information); }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "BD Director rhythm action failed.");
+            MessageBox.Show(this, "That did not save. Please try again.", "BD Director", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private async void Reassign_Click(object sender, RoutedEventArgs e)

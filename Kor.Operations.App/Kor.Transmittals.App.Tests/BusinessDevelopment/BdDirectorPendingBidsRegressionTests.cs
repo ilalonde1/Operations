@@ -41,16 +41,16 @@ public sealed class BdDirectorPendingBidsRegressionTests
     private const string Director = "Kor.Operations.App/BusinessDevelopment/Director/";
 
     [Fact]
-    public void Window_HasTenTabs_ExactStaticCaption_AndRequiredColumns()
+    public void Window_HasFourteenTabs_ExactStaticCaption_AndRequiredColumns()
     {
         var xaml = Source(Director + "BdDirectorWindow.xaml");
         var tabs = XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "TabItem").ToArray();
-        Assert.Equal(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" },
+        Assert.Equal(new[] { "Today", "Actions", "Meetings", "References", "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" },
             tabs.Select(t => (string?)t.Attribute("Header")));
         Assert.Equal("Bids in flight: each pursuit that came from an RFP, who holds it, when it is due, and whether it went in. Pursuits without an RFP behind them are relationship work and stay on People and Accounts.", BdDirectorViewModel.PendingBidsCaption);
         Assert.Contains("{x:Static director:BdDirectorViewModel.PendingBidsCaption}", xaml, StringComparison.Ordinal);
         Assert.Equal(new[] { "Client", "Project", "RFP", "Assignee", "Due", "Time left", "Stage", "Submitted", "File", "Link" },
-            tabs[8].Descendants().Where(e => e.Name.LocalName is "DataGridTextColumn" or "DataGridTemplateColumn").Select(e => (string?)e.Attribute("Header")));
+            tabs[12].Descendants().Where(e => e.Name.LocalName is "DataGridTextColumn" or "DataGridTemplateColumn").Select(e => (string?)e.Attribute("Header")));
         Assert.Contains("ConverterParameter=Time", xaml, StringComparison.Ordinal);
         Assert.Contains("Binding=\"{Binding IsUrgent}\" Value=\"True\"", xaml, StringComparison.Ordinal);
     }
@@ -437,9 +437,13 @@ public sealed class BdDirectorPendingBidsRegressionTests
     // Invoked by BdScreensRenderTests after it installs the theme on its STA thread.
     internal static void VerifySubmissionDialogs()
     {
-        var app = Application.Current!;
-        var shutdown = app.ShutdownMode;
-        app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        // In the full suite another test's STA thread may own Application.Current; touching it from here throws.
+        // A window closed on this thread cannot shut down an Application another thread owns, so the guard is only
+        // needed when this thread owns it.
+        var app = Application.Current;
+        var owned = app?.CheckAccess() == true;
+        var shutdown = owned ? app!.ShutdownMode : ShutdownMode.OnExplicitShutdown;
+        if (owned) app!.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         try
         {
             foreach (var accept in new[] { true, false })
@@ -475,7 +479,7 @@ public sealed class BdDirectorPendingBidsRegressionTests
                 fixture.VerifyReads(accept ? Times.Once() : Times.Never());
             }
         }
-        finally { app.ShutdownMode = shutdown; }
+        finally { if (owned) app!.ShutdownMode = shutdown; }
     }
 
     private static string Source(string path) => File.ReadAllText(Path.Combine(Root(), path));

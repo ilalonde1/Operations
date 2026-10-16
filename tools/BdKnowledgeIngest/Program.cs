@@ -13,6 +13,9 @@
 // claims search "<question>" [--take 12]
 // brief export [--week <yyyy-MM-dd>] --to <folder>
 // brief import <export.json> <sections.json> --by <name> [--force]
+// hour import <hour.json> --by <name>       the prepared hour, written in session, for the Today tab and the 6 a.m. email
+// hour render <hour.json> --to <file.html>  the email exactly as it would be sent, for checking; sends nothing
+// rhythm render --to <folder>               agendas and Monday-list drafts from the live action register; sends nothing
 // --db <connection string>   default: env KOR_OPPORTUNITIES_OPPORTUNITIESDB
 // --dry reads/chunks only, without a database connection or embedding call.
 
@@ -45,9 +48,11 @@ internal static class KnowledgeCli
             var options = Arguments.Parse(args);
             if (options.Flag("--help")) { Usage(); return 0; }
             var verb = options.Positionals.FirstOrDefault()?.ToLowerInvariant();
-            if (verb is not ("ingest" or "embed" or "search" or "list" or "export" or "claims" or "brief" or "pursuit")) { Usage(); return 2; }
+            if (verb is not ("ingest" or "embed" or "search" or "list" or "export" or "claims" or "brief" or "pursuit" or "hour" or "rhythm")) { Usage(); return 2; }
             options.ValidateFor(verb);
             var ct = cancellation.Token;
+            if (verb == "hour" && options.Positionals[1].Equals("render", StringComparison.OrdinalIgnoreCase))
+                return await HourRenderAsync(options, ct);
             var dry = verb == "ingest" && options.Flag("--dry");
             IKnowledgeStore? store = null;
             string? connection = null;
@@ -66,6 +71,8 @@ internal static class KnowledgeCli
             if (verb == "export") return await ExportAsync(options, store!, ct);
             if (verb == "claims") return await ClaimsAsync(options, store!, ct);
             if (verb == "brief") return await BriefAsync(options, store!, connection!, ct);
+            if (verb == "hour") return await HourImportAsync(options, new SqlBdRhythmStore(connection!), ct);
+            if (verb == "rhythm") return await RhythmRenderAsync(options, new SqlBdRhythmStore(connection!), ct);
             if (verb == "pursuit")
             {
                 var json = await File.ReadAllTextAsync(options.Positionals[4], ct);
@@ -239,6 +246,64 @@ internal static class KnowledgeCli
         }
         Console.WriteLine($"{ok} of {ids.Length} sources exported");
         return ok == ids.Length ? 0 : 1;
+    }
+
+    private static async Task<int> HourImportAsync(Arguments args, IBdRhythmStore rhythm, CancellationToken ct)
+    {
+        var json = await File.ReadAllTextAsync(args.Positionals[2], ct);
+        var (content, errors) = DirectorHourFile.Parse(json);
+        if (content is null)
+        {
+            foreach (var e in errors) Console.Error.WriteLine("  " + e);
+            Console.Error.WriteLine("Not imported: the hour has " + errors.Count.ToString(CultureInfo.InvariantCulture) + " problem(s).");
+            return 1;
+        }
+
+        var forDate = DateOnly.ParseExact(content.ForDate, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var id = await rhythm.ImportHourAsync(content.Kind, forDate, json, args.Value("--by")!, Environment.UserName, ct);
+        Console.WriteLine($"OK hour {id.ToString(CultureInfo.InvariantCulture)} for {content.ForDate} ({content.Kind}): {content.Moves.Count.ToString(CultureInfo.InvariantCulture)} moves, about {DirectorHourFile.TotalMinutes(content).ToString(CultureInfo.InvariantCulture)} minutes.");
+        return 0;
+    }
+
+    private static async Task<int> HourRenderAsync(Arguments args, CancellationToken ct)
+    {
+        var (content, errors) = DirectorHourFile.Parse(await File.ReadAllTextAsync(args.Positionals[2], ct));
+        if (content is null)
+        {
+            foreach (var e in errors) Console.Error.WriteLine("  " + e);
+            return 1;
+        }
+
+        var to = Path.GetFullPath(args.Value("--to")!);
+        await File.WriteAllTextAsync(to, "<!doctype html><meta charset=\"utf-8\"><title>" + System.Net.WebUtility.HtmlEncode(DirectorHourEmail.Subject(content))
+            + "</title>" + DirectorHourEmail.Render(content), ct);
+        Console.WriteLine("Subject: " + DirectorHourEmail.Subject(content));
+        Console.WriteLine(to);
+        return 0;
+    }
+
+    private static async Task<int> RhythmRenderAsync(Arguments args, IBdRhythmStore rhythm, CancellationToken ct)
+    {
+        var folder = Path.GetFullPath(args.Value("--to")!);
+        Directory.CreateDirectory(folder);
+        var now = DateTimeOffset.UtcNow;
+        var actions = await rhythm.ListActionsAsync(ct);
+        var meetings = await rhythm.ListMeetingsAsync(ct);
+        var lastAllHands = meetings.Where(m => m.Kind == "AllHands" && m.Status == "Held").Select(m => (DateTimeOffset?)m.ScheduledForUtc).FirstOrDefault();
+        await File.WriteAllTextAsync(Path.Combine(folder, "monday-lists-drafts.html"),
+            "<!doctype html><meta charset=\"utf-8\"><title>Monday lists</title>" + BdLeadLists.RenderDraftsEmail(actions, now), ct);
+        await File.WriteAllTextAsync(Path.Combine(folder, "all-hands-agenda.txt"), BdAgenda.ForAllHands(actions, now, lastAllHands).ToText(), ct);
+        foreach (var (key, name, _) in BdLeadLists.Group(actions))
+        {
+            var last = meetings.Where(m => m.Kind == "OneToOne" && m.Status == "Held" && string.Equals(m.WithStaffKey, key, StringComparison.OrdinalIgnoreCase))
+                .Select(m => (DateTimeOffset?)m.ScheduledForUtc).FirstOrDefault();
+            var file = "one-to-one-" + new string(name.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant() + ".txt";
+            await File.WriteAllTextAsync(Path.Combine(folder, file),
+                BdAgenda.ForOneToOne(name, actions.Where(a => string.Equals(a.OwnerKey, key, StringComparison.OrdinalIgnoreCase)), now, last).ToText(), ct);
+        }
+
+        Console.WriteLine($"{actions.Count(a => a.IsOpen).ToString(CultureInfo.InvariantCulture)} open actions; files in {folder}");
+        return 0;
     }
 
     private static async Task<int> BriefAsync(Arguments args, IKnowledgeStore store, string connection, CancellationToken ct)
@@ -415,7 +480,7 @@ internal static class KnowledgeCli
         {
             var claimAction = verb == "claims" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
             var briefAction = verb == "brief" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
-            var expected = verb == "pursuit" ? 5 : verb == "brief" ? briefAction == "import" ? 4 : 2
+            var expected = verb == "pursuit" ? 5 : verb == "hour" ? 3 : verb == "rhythm" ? 2 : verb == "brief" ? briefAction == "import" ? 4 : 2
                 : verb == "claims" ? claimAction == "embed" ? 2 : 3 : verb is "ingest" or "search" or "export" ? 2 : 1;
             if (Positionals.Count != expected) throw new ArgumentException($"Wrong number of arguments for {verb}; use --help.");
             if (verb == "pursuit")
@@ -426,6 +491,19 @@ internal static class KnowledgeCli
                 if (!long.TryParse(Positionals[3], NumberStyles.None, CultureInfo.InvariantCulture, out var engagementId))
                     throw new ArgumentException("A positive pursuit ID is required.");
                 PursuitRequirementValidation.Identity(engagementId, Value("--by") ?? "");
+            }
+            if (verb == "hour")
+            {
+                var hourAction = Positionals[1].ToLowerInvariant();
+                if (hourAction is not ("import" or "render")) throw new ArgumentException("Use hour import <hour.json> --by <name>, or hour render <hour.json> --to <file.html>.");
+                if (hourAction == "import" && (string.IsNullOrWhiteSpace(Value("--by")) || Value("--by")!.Length > 150))
+                    throw new ArgumentException("hour import requires --by <name> (1–150 characters).");
+                if (hourAction == "render" && string.IsNullOrWhiteSpace(Value("--to"))) throw new ArgumentException("hour render requires --to <file.html>.");
+            }
+            if (verb == "rhythm")
+            {
+                if (!Positionals[1].Equals("render", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(Value("--to")))
+                    throw new ArgumentException("Use rhythm render --to <folder>.");
             }
             if (verb == "claims" && claimAction is not ("import" or "embed" or "relate" or "search"))
                 throw new ArgumentException("Use claims import, embed, relate or search.");
@@ -452,6 +530,8 @@ internal static class KnowledgeCli
                 "search" => new[] { "--take", "--per-source" },
                 "export" => new[] { "--to" },
                 "pursuit" => new[] { "--by", "--replace" },
+                "hour" => new[] { "--by", "--to" },
+                "rhythm" => new[] { "--to" },
                 "claims" => claimAction switch { "import" => new[] { "--force", "--by" }, "relate" => new[] { "--by" }, "search" => new[] { "--take" }, _ => Array.Empty<string>() },
                 "brief" => briefAction == "import" ? new[] { "--force", "--by" } : new[] { "--week", "--to" },
                 _ => Array.Empty<string>(),
