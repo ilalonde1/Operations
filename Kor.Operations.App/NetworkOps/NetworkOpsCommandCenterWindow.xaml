@@ -107,18 +107,18 @@
         <!-- Primary nav: the console's surfaces as tabs. Network is folded in here (2026-10-04); Updates/Deploy/Ask Claude
              still open from the Fleet toolbar until each is folded in turn. -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="12,0,12,8">
-            <RadioButton x:Name="FleetTab" Content="Fleet" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" IsChecked="True"
+            <RadioButton x:Name="FleetTab" Content="Fleet" Style="{StaticResource Ops.Segment}" IsChecked="True"
                          ToolTip="The rack and every PC, worst first."/>
-            <RadioButton x:Name="ToClearTab" Content="{Binding ToClearTabText}" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
+            <RadioButton x:Name="ToClearTab" Content="{Binding ToClearTabText}" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
                          Checked="ToClearTab_Checked"
                          ToolTip="Every open issue across the fleet, grouped, with fix-on-all — the path to all-green."/>
-            <RadioButton x:Name="NetworkTab" Content="Network" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
+            <RadioButton x:Name="NetworkTab" Content="Network" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
                          Checked="NetworkTab_Checked"
                          ToolTip="Every switch and port, and what is plugged into each: PC, person, IP. Searchable."/>
-            <RadioButton x:Name="UpdatesTab" Content="Updates" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
+            <RadioButton x:Name="UpdatesTab" Content="Updates" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
                          Checked="UpdatesTab_Checked"
                          ToolTip="What Windows Update has waiting on every PC and server, and installing it on many at once."/>
-            <RadioButton x:Name="DeployTab" Content="Deploy" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
+            <RadioButton x:Name="DeployTab" Content="Deploy" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
                          Checked="DeployTab_Checked"
                          ToolTip="Install an app update or migration on ticked machines, through each PC's agent as SYSTEM (e.g. migrate to KOR-Operations)."/>
         </StackPanel>
@@ -215,9 +215,9 @@
                 <CheckBox Content="Only problems" Margin="14,0,0,0" VerticalAlignment="Center"
                           ToolTip="Hide rack devices and PCs with nothing open."
                           IsChecked="{Binding ProblemsOnly}"/>
-                <RadioButton x:Name="CardsViewBtn" Content="Cards" GroupName="View" Style="{StaticResource Ops.Segment}" Margin="18,0,0,0"
+                <RadioButton x:Name="CardsViewBtn" Content="Cards" Style="{StaticResource Ops.Segment}" Margin="18,0,0,0"
                              IsChecked="{Binding CardView}" ToolTip="Every machine as a card."/>
-                <RadioButton x:Name="TableViewBtn" Content="Table" GroupName="View" Style="{StaticResource Ops.Segment}"
+                <RadioButton x:Name="TableViewBtn" Content="Table" Style="{StaticResource Ops.Segment}"
                              IsChecked="{Binding TableView}" ToolTip="The same machines as a dense table."/>
             </StackPanel>
             <!-- Grouped by purpose, left to right: ACT on the fleet · open a focused TOOL · the selected PC · refresh.

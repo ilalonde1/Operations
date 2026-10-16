@@ -32,9 +32,9 @@
                 <TextBlock x:Name="SublineText" Style="{StaticResource Ops.Caption}" FontSize="13" Margin="0,3,0,0" TextWrapping="Wrap"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <RadioButton x:Name="PanelsViewBtn" Content="Switches" GroupName="NetView" Style="{StaticResource Ops.Segment}" IsChecked="True" Checked="View_Changed"
+                <RadioButton x:Name="PanelsViewBtn" Content="Switches" Style="{StaticResource Ops.Segment}" IsChecked="True" Checked="View_Changed"
                              ToolTip="Each switch as a panel of its ports: click a port for its device."/>
-                <RadioButton x:Name="TableViewBtn" Content="Table" GroupName="NetView" Style="{StaticResource Ops.Segment}" Checked="View_Changed" Margin="0,0,16,0"
+                <RadioButton x:Name="TableViewBtn" Content="Table" Style="{StaticResource Ops.Segment}" Checked="View_Changed" Margin="0,0,16,0"
                              ToolTip="The tree, and a switch's ports (or a search) as rows."/>
                 <TextBlock Text="Find" Style="{StaticResource Ops.Caption}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <TextBox x:Name="SearchBox" Width="260" VerticalContentAlignment="Center" TextChanged="Search_Changed"

@@ -18,7 +18,9 @@ namespace Kor.Operations.App.Tests.NetworkOps;
 ///
 /// WHAT IT COVERS: that each window constructs, that every StaticResource it names resolves, and that
 /// it lays out non-blank with data bound -- the fixture fleet always, and the real one through the API
-/// only when KOR_NETWORKOPS_RENDER_LIVE=1 is set (it signs in, so never during an ordinary test run).
+/// only when KOR_NETWORKOPS_RENDER_LIVE=1 is set (it signs in, so never during an ordinary test run; it reads the installed
+/// app's config, and only ever reads). Since 2026-10-16 also the LANDING screen (console on To clear), the Fleet table, the
+/// connection-lost banner and an empty To clear, and on a live run the Updates and Network tabs from real data.
 /// WHAT IT DOES NOT COVER: whether it looks GOOD (that is what the PNGs are for), anything behind
 /// Loaded (the windows are never shown, so no timer starts and no check is queued), or interaction.
 /// A same-class fault it would NOT catch: text painted in the colour of its background renders,
@@ -50,9 +52,15 @@ public sealed class NetworkOpsWindowsRenderTests
 
                 // The real fleet, when this machine can read it: the fixture shows the layout works,
                 // only real data shows whether it reads well at 38 PCs and real finding text.
-                var real = NetworkOpsClient.FromAppConfig();
-                if (Environment.GetEnvironmentVariable("KOR_NETWORKOPS_RENDER_LIVE") == "1" && real.IsConfigured)
-                    written += RenderFleet(real.GetFleetAsync(CancellationToken.None).GetAwaiter().GetResult(), real, outputDirectory, "live");
+                if (Environment.GetEnvironmentVariable("KOR_NETWORKOPS_RENDER_LIVE") == "1")
+                {
+                    // The test host has no App.config of its own, so FromAppConfig is unconfigured here: read the INSTALLED
+                    // app's settings (or KOR_NETWORKOPS_APP_CONFIG). Same token cache as the app, so it signs in silently.
+                    var real = NetworkOpsClient.FromAppConfig();
+                    if (!real.IsConfigured) real = FromInstalledConfig() ?? real;
+                    if (real.IsConfigured)
+                        written += RenderFleet(real.GetFleetAsync(CancellationToken.None).GetAwaiter().GetResult(), real, outputDirectory, "live");
+                }
             }
             catch (Exception ex)
             {
@@ -111,9 +119,31 @@ public sealed class NetworkOpsWindowsRenderTests
         var device = new NetworkOpsDeviceViewModel(reader, snapshot, worst.Device);
         if (reader.IsConfigured) device.LoadHistoryAsync(CancellationToken.None).GetAwaiter().GetResult();
         else device.SetLastCheck(NetworkOpsComponentTilesTests.Kor208NCheck());   // the "This PC" strip, from a real v10 check
-        device.SetNetwork(NetworkOpsNetworkWindowTests.LiveMap().Map);            // so the device page draws its switch-port strip
+        // The switch-port strip: the live map on a live run (a fixture map there drew another day's ports), else the 10-02 map.
+        var liveMap = label == "live" ? reader.GetNetworkAsync(CancellationToken.None).GetAwaiter().GetResult() : null;
+        device.SetNetwork((liveMap ?? NetworkOpsNetworkWindowTests.LiveMap()).Map);
         written += Render(new NetworkOpsDeviceWindow(device), Path.Combine(dir, $"{label}-pc-{worst.Name}.png"));
-        if (label != "fixture") return written;
+
+        // The LANDING screen as Ian opens it (the console on To clear), and the Fleet table -- never rendered before 10-16.
+        written += RenderLanding(center, reader, snapshot, dir, label);
+        // Its own view model: two console windows bound to one CardView ping-pong their Cards/Table radio buttons forever
+        // (a test-only shape -- the app opens one console).
+        var tableCenter = new NetworkOpsCommandCenterViewModel(reader);
+        tableCenter.Apply(snapshot, DateTime.UtcNow);
+        tableCenter.ApplyRack(rack, DateTime.UtcNow);
+        tableCenter.CardView = false;
+        written += Render(new NetworkOpsCommandCenterWindow(tableCenter), Path.Combine(dir, $"{label}-fleet-table.png"));
+        if (label != "fixture")
+        {
+            // The other tabs on the live fleet: only real data shows whether they read well at 38 PCs and real text.
+            var liveUpdates = new NetworkOpsUpdatesView(reader);
+            liveUpdates.Apply(reader.GetUpdatesAsync(CancellationToken.None).GetAwaiter().GetResult(), DateTime.UtcNow);
+            written += Render(liveUpdates, new Size(1320, 880), Path.Combine(dir, $"{label}-updates.png"));
+            if (liveMap is not null)
+                written += Render(new NetworkOpsNetworkView(liveMap, table: true), new Size(1500, 940), Path.Combine(dir, $"{label}-network.png"));
+            return written;
+        }
+        written += RenderStates(snapshot, rack, dir, label);
         // The Network tab on the real map of 2026-10-02: BMZ-SW01's ports, then a search for one person. Folded from a
         // window into a UserControl (2026-10-04), so it renders at the window's old size.
         var netSize = new Size(1500, 940);
@@ -233,6 +263,48 @@ public sealed class NetworkOpsWindowsRenderTests
     }
 
     /// <summary>Measure/Arrange/Render the content rather than Show: showing raises Loaded, which starts the refresh timer.</summary>
+    /// <summary>The console on its To clear tab, as Window_Loaded leaves it (Loaded never fires here, so select it the same
+    /// way), filled from the service's worklist on a live run and from the fixture fleet otherwise.</summary>
+    private static int RenderLanding(NetworkOpsCommandCenterViewModel center, NetworkOpsClient reader, FleetSnapshot snapshot, string dir, string label)
+    {
+        var data = reader.IsConfigured && label == "live"
+            ? reader.GetToClearAsync(CancellationToken.None).GetAwaiter().GetResult()
+            : ToClear.Build([snapshot], new System.Collections.Generic.HashSet<string>(), DateTime.UtcNow);
+        var landing = new NetworkOpsCommandCenterWindow(center);
+        landing.ToClearTab.IsChecked = true;
+        ((NetworkOpsToClearView)landing.ToClearHost.Content).Apply(data);
+        return Render(landing, Path.Combine(dir, $"{label}-landing.png"));
+    }
+
+    /// <summary>States nobody had looked at (audit 2026-10-16, tier 6): the service not answering, and nothing left to clear.</summary>
+    private static int RenderStates(FleetSnapshot snapshot, FleetSnapshot rack, string dir, string label)
+    {
+        var lost = new NetworkOpsCommandCenterViewModel(NetworkOpsClient.Unconfigured("The NetworkOps service did not answer."));
+        lost.Apply(snapshot, DateTime.UtcNow);
+        lost.ApplyRack(rack, DateTime.UtcNow);
+        lost.RefreshAsync(CancellationToken.None).GetAwaiter().GetResult();   // fails at once (no service): the connection-lost banner
+        var written = Render(new NetworkOpsCommandCenterWindow(lost), Path.Combine(dir, $"{label}-connection-lost.png"));
+
+        var empty = new NetworkOpsToClearView(NetworkOpsClient.Unconfigured("fixture"));
+        empty.Apply(ToClear.Build([snapshot with { OpenFindings = [] }], new System.Collections.Generic.HashSet<string>(), DateTime.UtcNow));
+        written += Render(empty, new Size(1400, 900), Path.Combine(dir, $"{label}-to-clear-empty.png"));
+        return written;
+    }
+
+    /// <summary>A client from the installed app's config file, for a live render run from the test host.</summary>
+    private static NetworkOpsClient? FromInstalledConfig()
+    {
+        var path = Environment.GetEnvironmentVariable("KOR_NETWORKOPS_APP_CONFIG") is { Length: > 0 } p ? p : @"C:\KOR-Operations\Kor.Operations.App.dll.config";
+        if (!File.Exists(path)) return null;
+        var settings = System.Xml.Linq.XDocument.Load(path).Descendants("appSettings").SelectMany(s => s.Elements("add"))
+            .Where(a => a.Attribute("key") is not null)
+            .GroupBy(a => (string)a.Attribute("key")!).ToDictionary(g => g.Key, g => ((string?)g.Last().Attribute("value") ?? "").Trim());
+        string? S(string k) => settings.TryGetValue(k, out var v) && v.Length > 0 ? v : null;
+        return S("NetworkOps.ApiBaseUrl") is { } url && S("NetworkOps.ApiScope") is { } scope && S("NetworkOps.ApiCertSha256") is { } pin
+               && S("Graph.TenantId") is { } tenant && S("Graph.ClientId") is { } client
+            ? new NetworkOpsClient(url, scope, pin, tenant, client) : null;
+    }
+
     private static int Render(Window window, string path)
     {
         var root = window.Content as FrameworkElement
