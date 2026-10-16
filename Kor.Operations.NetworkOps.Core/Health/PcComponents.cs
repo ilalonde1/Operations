@@ -85,7 +85,9 @@ public static class PcComponents
                     ("Restart pending", s.PendingReboot is { } pr && (pr.ComponentServicing || pr.WindowsUpdate || pr.FileRename)
                         ? string.Join(", ", new[] { pr.WindowsUpdate ? "Windows Update" : null, pr.ComponentServicing ? "component servicing" : null,
                             pr.FileRename ? "file renames" : null }.Where(x => x is not null)) : s.PendingReboot is not null ? "no" : null),
-                    ("Last update installed", s.Update?.LastInstall is { } li ? $"{li.ToLocalTime():yyyy-MM-dd}" + (s.Update.LastInstallTitle is { Length: > 0 } t ? $" · {t}" : "") : null),
+                    ("Last security/quality update", s.Update?.LastInstall is { } li ? $"{li.ToLocalTime():yyyy-MM-dd}" + (s.Update.LastInstallTitle is { Length: > 0 } t ? $" · {t}" : "") : null),
+                    ("Last driver / other update", s.Update?.LastOther is { } o && (s.Update.LastPatch is null || o.Date > s.Update.LastPatch.Date)
+                        ? $"{o.Date.ToLocalTime():yyyy-MM-dd}" + (o.Title is { Length: > 0 } ot ? $" · {ot}" : "") : null),
                     ("Microsoft Update", s.Update is null ? null : s.Update.MicrosoftUpdate ? "on" : "off"))));
 
         if (inv?.BiosVersion is { Length: > 0 } bios)

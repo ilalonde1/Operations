@@ -254,19 +254,21 @@ $office = Try-Block 'office' {
     }
 }
 
-# --- patching: who schedules it, and when anything last installed
+# --- patching: who schedules it, and the recent successful install history (classified in C#, not here)
 $update = Try-Block 'update' {
     $sm = New-Object -ComObject Microsoft.Update.ServiceManager
     $mu = [bool]($sm.Services | Where-Object { $_.ServiceID -eq '7971f918-a847-4430-9279-4a52d1efe18d' -and $_.IsRegisteredWithAU })
     $au = Get-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' -ErrorAction SilentlyContinue
+    # Succeeded installs (ResultCode 2), newest first, minus the daily Defender-signature / Store churn that is
+    # never a "patch". Drivers AND OS patches are both kept: which is which is decided in tested C#
+    # (Health/UpdateHistory.cs), never by a regex in this script.
     $hist = @((New-Object -ComObject Microsoft.Update.Session).CreateUpdateSearcher().QueryHistory(0, 50) |
-        Where-Object { $_.ResultCode -eq 2 -and $_.Title -notmatch '^9N|Store|Defender|Security Intelligence' } | Sort-Object Date -Descending)
+        Where-Object { $_.ResultCode -eq 2 -and $_.Title -notmatch '^9N|Store|Defender|Security Intelligence' } |
+        Sort-Object Date -Descending)
     [pscustomobject]@{
         MicrosoftUpdate = $mu
         NoAutoUpdate    = if ($au) { $au.NoAutoUpdate } else { $null }
-        LastInstall     = if ($hist.Count) { $hist[0].Date.ToString('s') } else { $null }
-        LastInstallTitle = if ($hist.Count) { $hist[0].Title } else { $null }
-        LastInstallBy   = if ($hist.Count) { $hist[0].ClientApplicationID } else { $null }
+        Recent          = @($hist | ForEach-Object { [pscustomobject]@{ Title = $_.Title; Date = $_.Date.ToString('s'); By = $_.ClientApplicationID } })
     }
 }
 
@@ -435,7 +437,7 @@ $antivirus = Try-Block 'antivirus' {
 }
 
 [pscustomobject]@{
-    ProbeVersion  = 13
+    ProbeVersion  = 14
     Antivirus     = $antivirus
     Console       = $console
     Wake          = $wake

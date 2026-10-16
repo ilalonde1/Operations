@@ -176,7 +176,28 @@ public sealed record MemoryModuleInfo(string? Slot, string? Bank, int SizeGB, in
 public sealed record CrashCount(string Process, int Count, DateTime? Last);
 public sealed record StoreIndexFailures(string Store, int Count, DateTime? Last);
 public sealed record OfficeInfo(string? C2rMso, string? DownlevelMso, bool AccessEngine);
-public sealed record UpdateInfo(bool MicrosoftUpdate, int? NoAutoUpdate, DateTime? LastInstall, string? LastInstallTitle, string? LastInstallBy);
+public sealed record UpdateHistoryItem(string Title, DateTime Date, string? By);
+
+public sealed record UpdateInfo(bool MicrosoftUpdate, int? NoAutoUpdate)
+{
+    // The deserialization boundary. Probe v14+ sends Recent; pre-v14 captures sent the three scalars and
+    // have no Recent. Classify from whichever is present, so old fixtures behave exactly as before.
+    [JsonPropertyName("Recent")]           public IReadOnlyList<UpdateHistoryItem>? Recent { get; init; }
+    [JsonPropertyName("LastInstall")]      public DateTime? RawLastInstall { get; init; }
+    [JsonPropertyName("LastInstallTitle")] public string? RawLastInstallTitle { get; init; }
+    [JsonPropertyName("LastInstallBy")]    public string? RawLastInstallBy { get; init; }
+
+    /// <summary>The last genuine OS security/quality update (KB-tagged) -- the authoritative "last patched".</summary>
+    [JsonIgnore] public UpdateHistoryItem? LastPatch => UpdateHistory.LastPatch(Recent)
+        ?? (RawLastInstall is { } d ? new UpdateHistoryItem(RawLastInstallTitle ?? "", d, RawLastInstallBy) : null);
+
+    /// <summary>The last non-patch install that got through the probe filter (driver / vendor / other); null on pre-v14 data.</summary>
+    [JsonIgnore] public UpdateHistoryItem? LastOther => UpdateHistory.LastOther(Recent);
+
+    [JsonIgnore] public DateTime? LastInstall => LastPatch?.Date;
+    [JsonIgnore] public string? LastInstallTitle => LastPatch?.Title;
+    [JsonIgnore] public string? LastInstallBy => LastPatch?.By;
+}
 // Width/Height = the resolution the card is DRIVING now (probe v12+; 0/null on an older probe or when it drives no display).
 public sealed record DisplayAdapterInfo(string? Name, string? Driver, int? ErrorCode, int? Width = null, int? Height = null);
 public sealed record ResidueInfo(int NewformaProfiles, IReadOnlyList<string>? NewformaInstalled);
