@@ -1,71 +1,113 @@
 Region,Initiator,Company,BuyerCanonicalOrgId,EngagementId,Activities,ProposalsSubmittedCad,ProposalsAcceptedCad,Status
-Vancouver/LowerMainland,Omar,Areva Living,,,1,200000.00,200000.00,DryRun
-Vancouver/LowerMainland,Omar,Concord Pacifid,,,1,,,DryRun
-Vancouver/LowerMainland,Omar,RBI group,,,1,530000.00,300000.00,DryRun
-Vancouver/LowerMainland,Omar,Grosvenor,,,1,,,DryRun
-Vancouver/LowerMainland,Omar,Shape properties,,,1,,,DryRun
-Vancouver/LowerMainland,Conor,Enso Group,,,1,65000.00,,DryRun
-Vancouver/LowerMainland,Omar,ForteLiving,,,1,,,DryRun
-Vancouver/LowerMainland,Omar,Cadillac Fairview,,,1,,,DryRun
-Vancouver/LowerMainland,Conor,Denciti Development,,,1,,,DryRun
-Vancouver/LowerMainland,Jim,Pinnacle Development,,,1,,,DryRun
-Vancouver/LowerMainland,Conor,Makola Development Services,,,1,,,DryRun
-Vancouver/LowerMainland,Conor,Qualico/Streetside BC,,,1,,,DryRun
-Vancouver/LowerMainland,Jim,PBRV Consulting,,,1,,,DryRun
-Vancouver/LowerMainland,Conor,Purpose Driven,,,1,110000.00,110000.00,DryRun
-Vancouver/LowerMainland,Omar,Fastmark,,,1,,,DryRun
-Vancouver/LowerMainland,Omar,A&H steel,,,1,,,DryRun
-Vancouver/LowerMainland,Omar,PCI Development,,,1,,,DryRun
-Vancouver/LowerMainland,Omar,M'akola Development,,,1,,,DryRun
-Vancouver/LowerMainland,Omar,CIty Spaces consulting,,,1,,,DryRun
-Alberta,Islam,Probus Management,,,1,,,DryRun
-Alberta,Islam,University of Alberta,,,1,,,DryRun
-Alberta,Islam,Metafor Architecture,,,1,,,DryRun
-Alberta,Islam,Turn Group,,,1,620000.00,,DryRun
-Alberta,Omar,A&H Steel,,,2,,,DryRun
-Alberta,Islam,GEC Architecture,,,2,160000.00,,DryRun
-Alberta,Islam,Thurber,,,2,,,DryRun
-Alberta,Conor,Cantiro Group,,,1,18000.00,,DryRun
-Alberta,Omar,PCL,,,1,,,DryRun
-Alberta,Omar,Make Projects,,,1,,,DryRun
-Alberta,Omar,Ledcor,,,2,,,DryRun
-Alberta,Conor,Duke Management,,,1,,,DryRun
-Alberta,Jim,A&H Steel,,,1,,,DryRun
-Alberta,Islam,JLL real estate,,,1,,,DryRun
-Alberta,Islam,Ledcor,,,1,,,DryRun
-Alberta,Islam,Duke Management,,,1,,,DryRun
-Alberta,Islam,Make Projects,,,1,,,DryRun
-Alberta,Jim,Duke Management,,,1,,,DryRun
-Alberta,Jim,Make Projects,,,1,,,DryRun
-Alberta,Islam,HSEA Architecture,,,1,,,DryRun
-Alberta,Islam,L7 Architecture,,,1,,,DryRun
-Alberta,Islam,Sahuri + Partners Architecture,,,1,,,DryRun
-Alberta,Islam,Anu Developements,,,1,,,DryRun
-Alberta,Islam,Dialog Design,,,1,,,DryRun
-Alberta,Islam,Deveraux Group,,,1,,,DryRun
-Alberta,Islam,PK Developments,,,1,,,DryRun
-Alberta,Islam,S2 Architecture,,,1,,,DryRun
-Alberta,Omar,RBI group,,,1,,,DryRun
-Okanagan-BcInterior,Conor,Saba Construction,,,1,,,DryRun
-Okanagan-BcInterior,Conor,Meiklejohn Architects,,,1,110000.00,,DryRun
-Okanagan-BcInterior,Conor,Greenstone Developments,,,1,,,DryRun
-Okanagan-BcInterior,Conor,Holar Developments,,,1,150000.00,,DryRun
-Okanagan-BcInterior,Conor,Novation Architecture,,,1,40000.00,40000.00,DryRun
-Okanagan-BcInterior,Conor,NewTown Architecture,,,1,,,DryRun
-Okanagan-BcInterior,Conor,Denciti Developments,,,1,,,DryRun
-Okanagan-BcInterior,Conor,Traine,,,1,125000.00,15000.00,DryRun
-Okanagan-BcInterior,Conor,Ridge North America,,,1,,,DryRun
-Okanagan-BcInterior,Conor,Lime Architecture,,,1,,,DryRun
-Okanagan-BcInterior,Conor,Wilden,,,1,36000.00,36000.00,DryRun
-Okanagan-BcInterior,Conor,Michael Green Architecture,,,1,,,DryRun
-Okanagan-BcInterior,Omar,Mundi hotels,,,1,,,DryRun
-Okanagan-BcInterior,Conor,Westrich Pacific,,,1,,,DryRun
-Okanagan-BcInterior,Conor,Duke Management,,,1,,,DryRun
-USA,Jim,JWDA Architects,,,2,952000.00,,DryRun
-USA,Jim,DBRDS Design Studio,,,4,197200.00,,DryRun
-USA,John,CDA Architects,,,3,743920.00,,DryRun
-USA,Jim,H + W Mechanical,,,1,,,DryRun
-USA,Jim,Kennedy Wilson,,,1,,,DryRun
-USA,Jim,Kimley Horn,,,1,,,DryRun
-USA,Jim,Bosa Development,,,4,129200.00,,DryRun
-USA,Jim,City of San Diego,,,1,,,DryRun
+Vancouver/LowerMainland,omara@korstructural.com,Areva Living,54846,2,1,200000.00,200000.00,WouldRestore
+Vancouver/LowerMainland,omara@korstructural.com,Concord Pacifid,54464,3,1,,,WouldRestore
+Vancouver/LowerMainland,omara@korstructural.com,RBI group,14,4,1,530000.00,300000.00,WouldRestore
+Vancouver/LowerMainland,omara@korstructural.com,Grosvenor,55066,5,1,,,WouldRestore
+Vancouver/LowerMainland,omara@korstructural.com,Shape properties,69631,6,1,,,WouldRestore
+Vancouver/LowerMainland,cmurtagh@korstructural.com,Enso Group,26460,7,1,65000.00,,WouldRestore
+Vancouver/LowerMainland,omara@korstructural.com,ForteLiving,79,8,1,,,WouldRestore
+Vancouver/LowerMainland,omara@korstructural.com,Cadillac Fairview,70099,9,1,,,WouldRestore
+Vancouver/LowerMainland,cmurtagh@korstructural.com,Denciti Development,68996,10,1,,,WouldRestore
+Vancouver/LowerMainland,jdesroches@korstructural.com,Pinnacle Development,53665,11,2,,,WouldRestore
+Vancouver/LowerMainland,cmurtagh@korstructural.com,Makola Development Services,52,12,1,,,WouldRestore
+Vancouver/LowerMainland,cmurtagh@korstructural.com,Qualico/Streetside BC,,,1,,,WouldCreate (new company)
+Vancouver/LowerMainland,jdesroches@korstructural.com,PBRV Consulting,,,1,,,WouldCreate (new company)
+Vancouver/LowerMainland,cmurtagh@korstructural.com,Purpose Driven,28093,15,1,110000.00,110000.00,WouldRestore
+Vancouver/LowerMainland,omara@korstructural.com,Fastmark,,,1,,,WouldCreate (new company)
+Vancouver/LowerMainland,omara@korstructural.com,A&H steel,,,1,,,WouldCreate (new company)
+Vancouver/LowerMainland,omara@korstructural.com,PCI Development,,,1,,,WouldCreate (new company)
+Vancouver/LowerMainland,omara@korstructural.com,M'akola Development,52,19,1,,,WouldRestore
+Vancouver/LowerMainland,omara@korstructural.com,CIty Spaces consulting,927792,20,1,,,WouldRestore
+Vancouver/LowerMainland,jdesroches@korstructural.com,Aquilini Development,77720,,1,,,WouldCreate
+Vancouver/LowerMainland,jdesroches@korstructural.com,GBL Architects,54190,455,1,,,WouldRestore
+Vancouver/LowerMainland,omara@korstructural.com,CDA Architects,,,1,,,WouldCreate (new company)
+Vancouver/LowerMainland,omara@korstructural.com,Baydo,,,1,390000.00,390000.00,WouldCreate (new company)
+Vancouver/LowerMainland,jdesroches@korstructural.com,Starlight,,,1,,,WouldCreate (new company)
+VancouverIsland,rbeirne@korstructural.com,Three Dog ventures,70799,,1,0.01,,WouldCreate
+VancouverIsland,rbeirne@korstructural.com,Emerge Modular,111,95,5,,,WouldRestore
+VancouverIsland,rbeirne@korstructural.com,Yellowridge,,,1,,,WouldCreate (new company)
+VancouverIsland,rbeirne@korstructural.com,Evantra,,,1,,,WouldCreate (new company)
+VancouverIsland,rbeirne@korstructural.com,DTD Developements,,,1,,,WouldCreate (new company)
+VancouverIsland,rbeirne@korstructural.com,Akers property solutions,,,1,,,WouldCreate (new company)
+VancouverIsland,rbeirne@korstructural.com,Pacific Modular - Akers,,,1,,,WouldCreate (new company)
+VancouverIsland,jdesroches@korstructural.com,Bamm Developments,871422,,1,197825.00,,WouldCreate
+VancouverIsland,jdesroches@korstructural.com,Island West Coast Developments,52771,,1,,,WouldCreate
+Alberta,ishabana@korstructural.com,Probus Management,,,1,,,WouldCreate (new company)
+Alberta,ishabana@korstructural.com,University of Alberta,763,22,1,,,WouldRestore
+Alberta,ishabana@korstructural.com,Metafor Architecture,11697,23,1,,,WouldRestore
+Alberta,ishabana@korstructural.com,Turn Group,6,24,2,620000.00,,WouldRestore
+Alberta,omara@korstructural.com,A&H Steel,,,2,,,WouldCreate (new company)
+Alberta,ishabana@korstructural.com,GEC Architecture,1,26,2,160000.00,,WouldRestore
+Alberta,ishabana@korstructural.com,Thurber,,,2,,,WouldCreate (new company)
+Alberta,cmurtagh@korstructural.com,Cantiro Group,3,28,1,18000.00,,WouldRestore
+Alberta,omara@korstructural.com,PCL,13241,29,1,,,WouldRestore
+Alberta,omara@korstructural.com,Make Projects,11258,30,1,,,WouldRestore
+Alberta,omara@korstructural.com,Ledcor,69671,31,2,,,WouldRestore
+Alberta,cmurtagh@korstructural.com,Duke Management,51,,1,,,WouldCreate
+Alberta,jdesroches@korstructural.com,A&H Steel,,,1,,,WouldCreate (new company)
+Alberta,ishabana@korstructural.com,JLL real estate,70848,34,1,,,WouldRestore
+Alberta,ishabana@korstructural.com,Ledcor,69671,35,1,,,WouldRestore
+Alberta,ishabana@korstructural.com,Duke Management,51,36,1,,,WouldRestore
+Alberta,ishabana@korstructural.com,Make Projects,11258,37,1,,,WouldRestore
+Alberta,jdesroches@korstructural.com,Duke Management,51,38,1,,,WouldRestore
+Alberta,jdesroches@korstructural.com,Make Projects,11258,39,1,,,WouldRestore
+Alberta,ishabana@korstructural.com,HSEA Architecture,71633,40,1,,,WouldRestore
+Alberta,ishabana@korstructural.com,L7 Architecture,48014,41,2,,,WouldRestore
+Alberta,ishabana@korstructural.com,Sahuri + Partners Architecture,,,1,,,WouldCreate (new company)
+Alberta,ishabana@korstructural.com,Anu Developements,,,1,,,WouldCreate (new company)
+Alberta,ishabana@korstructural.com,Dialog Design,6154,44,3,,,WouldRestore
+Alberta,ishabana@korstructural.com,Deveraux Group,70853,45,1,,,WouldRestore
+Alberta,ishabana@korstructural.com,PK Developments,70854,46,1,,,WouldRestore
+Alberta,ishabana@korstructural.com,S2 Architecture,14871,47,1,,,WouldRestore
+Alberta,omara@korstructural.com,RBI group,14,48,1,,,WouldRestore
+Alberta,ishabana@korstructural.com,ACI Architecture,271548,,1,,,WouldCreate
+Alberta,ishabana@korstructural.com,Eleven architects,71362,,1,,,WouldCreate
+Alberta,ishabana@korstructural.com,Group 2 Architecture,271551,,1,,,WouldCreate
+Alberta,ishabana@korstructural.com,Tawaw Architecture,,,1,,,WouldCreate (new company)
+Alberta,ishabana@korstructural.com,Kirsten Reite Architecture,71252,,1,,,WouldCreate
+Alberta,ishabana@korstructural.com,MacLab Development,,,1,,,WouldCreate (new company)
+Alberta,ishabana@korstructural.com,Arcadis,,,2,,,WouldCreate (new company)
+Alberta,ishabana@korstructural.com,A&E Architecture,,,3,,,WouldCreate (new company)
+Alberta,ishabana@korstructural.com,Mazurick Architecture,,,1,,,WouldCreate (new company)
+Alberta,ishabana@korstructural.com,Ellis Don,22257,,1,,,WouldCreate
+Alberta,ishabana@korstructural.com,Bird Construction,54928,,1,,,WouldCreate
+Alberta,ishabana@korstructural.com,Dub Architecture,,,1,,,WouldCreate (new company)
+Okanagan-BcInterior,cmurtagh@korstructural.com,Saba Construction,70855,49,1,,,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Meiklejohn Architects,17,50,1,110000.00,,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Greenstone Developments,149,51,1,,,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Holar Developments,70858,52,1,150000.00,,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Novation Architecture,70681,53,1,40000.00,40000.00,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,NewTown Architecture,70859,54,1,,,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Denciti Developments,70860,55,1,,,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Traine,,,1,125000.00,15000.00,WouldCreate (new company)
+Okanagan-BcInterior,cmurtagh@korstructural.com,Ridge North America,198,57,1,,,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Lime Architecture,70765,58,1,,,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Wilden,25,59,1,36000.00,36000.00,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Michael Green Architecture,69760,60,1,,,WouldRestore
+Okanagan-BcInterior,omara@korstructural.com,Mundi hotels,70864,61,1,53000.00,53000.00,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Westrich Pacific,71356,62,1,,,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Duke Management,51,63,1,,,WouldRestore
+Okanagan-BcInterior,jdesroches@korstructural.com,Ledcor,69671,375,1,,,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Tengri Architecture,69173,,1,,,WouldCreate
+Okanagan-BcInterior,cmurtagh@korstructural.com,Mission Group,193,465,1,,,WouldRestore
+Okanagan-BcInterior,cmurtagh@korstructural.com,Berry Architecture,,,1,,,WouldCreate (new company)
+Okanagan-BcInterior,cmurtagh@korstructural.com,Arcadis Architecture,,,1,,,WouldCreate (new company)
+USA,jdesroches@korstructural.com,JWDA Architects,48,64,3,952000.00,,WouldRestore
+USA,jdesroches@korstructural.com,DBRDS Design Studio,20,65,4,197200.00,,WouldRestore
+USA,jmarkulin@korstructural.com,CDA Architects,,,3,743920.00,,WouldCreate (new company)
+USA,jdesroches@korstructural.com,H + W Mechanical,,,1,,,WouldCreate (new company)
+USA,jdesroches@korstructural.com,Kennedy Wilson,70869,68,1,,,WouldRestore
+USA,jdesroches@korstructural.com,Kimley Horn,,,1,,,WouldCreate (new company)
+USA,jdesroches@korstructural.com,Bosa Development,69677,70,6,149600.00,149600.00,WouldRestore
+USA,jdesroches@korstructural.com,City of San Diego,68835,71,3,,,WouldRestore
+USA,jdesroches@korstructural.com,Greystar,,,1,,,WouldCreate (new company)
+USA,jdesroches@korstructural.com,Verdantas,,,1,,,WouldCreate (new company)
+USA,jdesroches@korstructural.com,Murfey Company,76,,2,129200.00,,WouldCreate
+USA,jdesroches@korstructural.com,MC Properties,,,1,34000.00,34000.00,WouldCreate (new company)
+USA,jdesroches@korstructural.com,H+W & Alex Beaton,,,1,,,WouldCreate (new company)
+USA,jdesroches@korstructural.com,Namdar Group,658682,,1,1455200.00,,WouldCreate
+USA,jdesroches@korstructural.com,Mirka Investment,,,1,20400.00,20400.00,WouldCreate (new company)
+USA,jdesroches@korstructural.com,Martinez + Cutri,,,2,,,WouldCreate (new company)
+USA,jdesroches@korstructural.com,MVE Architects,,,2,,,WouldCreate (new company)
+USA,jdesroches@korstructural.com,Carrier Johnson Culture,112,,1,,,WouldCreate
+USA,jdesroches@korstructural.com,Point Source CM,,,1,,,WouldCreate (new company)

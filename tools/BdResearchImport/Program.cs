@@ -6536,13 +6536,17 @@ WHERE Id = @id;",
         }
         Console.WriteLine($"[BD] parsed {rows.Count} rows");
 
-        // Group by normalized (Initiator, Company, Region). Each group becomes one
-        // engagement with N activities under it.
+        // 16 Oct 2026: owners are mailbox keys (migration 359), so the spreadsheet's Initiator column ("RB", "Jim",
+        // "IS & OAP", "Omar ALcazar") maps through tools/BdTrackingImport/initiators.csv. A label not in the file
+        // stops its group and is reported; it is never guessed from a first name.
+        var initiatorMap = LoadBdTrackingInitiators(Path.Combine(options.BaseDirectory, "Operations", "tools", "BdTrackingImport", "initiators.csv"));
+
+        // Group by (owner, Company, Region). Each group becomes one engagement with N activities under it.
         var groups = rows
             .Where(r => !string.IsNullOrWhiteSpace(r.Company))
             .GroupBy(r => new
             {
-                Initiator = NormalizeInitiator(r.Initiator),
+                Initiator = MapBdTrackingInitiator(initiatorMap, r.Initiator),
                 Company = (r.Company ?? string.Empty).Trim(),
                 Region = r.Region ?? string.Empty,
             })
@@ -6553,6 +6557,8 @@ WHERE Id = @id;",
         var skipped = 0;
         var engagementsCreated = 0;
         var engagementsUpdated = 0;
+        var engagementsRestored = 0;
+        CanonicalOrgResolver? previewResolver = null;
         var activitiesInserted = 0;
         var contactsInserted = 0;
         var unresolvedCompanies = new List<string>();
@@ -6574,6 +6580,12 @@ WHERE Id = @id;",
             var company = g.Key.Company;
             var region = g.Key.Region;
             var groupRows = g.OrderBy(r => r.Date ?? DateTimeOffset.MinValue).ToList();
+            if (initiator.StartsWith(UnmappedInitiator, StringComparison.Ordinal))
+            {
+                Console.WriteLine($"[BD] SKIPPED: initiator '{initiator[UnmappedInitiator.Length..]}' is not in initiators.csv ({company}, {region}).");
+                reconciliation.Add(string.Join(',', new[] { CsvEscape(region), CsvEscape(initiator), CsvEscape(company), "", "", groupRows.Count.ToString(), "", "", "Unmapped initiator" }));
+                continue;
+            }
 
             // Resolve Company -> CanonicalOrg. We use Unknown kind for genuinely new
             // canonicals because BD-tracking companies are a mix of Developers /
@@ -6618,16 +6630,37 @@ WHERE Id = @id;",
             string status;
             if (options.DryRun)
             {
-                Console.WriteLine($"[DRY-RUN] BdTracking engagement: initiator={initiator}; company={company}; region={region}; activities={groupRows.Count}; submitted={submitted ?? 0:N0}; accepted={accepted ?? 0:N0}");
+                // Read-only preview: which company it would land on and what the commit would do. FindExistingAsync
+                // writes nothing (no alias rows, no org creation); the engagement lookup is a SELECT.
                 status = "DryRun";
+                if (!string.IsNullOrWhiteSpace(options.OpportunitiesDb))
+                {
+                    previewResolver ??= new CanonicalOrgResolver(new SqlCanonicalOrgStore(options.OpportunitiesDb), NullLogger<CanonicalOrgResolver>.Instance);
+                    buyerId = await previewResolver.FindExistingAsync(LeadOperator(company), "BdTracking.Company", ct).ConfigureAwait(false);
+                    var match = buyerId is null ? null : await FindBdTrackingEngagementAsync(options.OpportunitiesDb, initiator, region, buyerId.Value, ct).ConfigureAwait(false);
+                    engagementId = match?.Id ?? 0;
+                    status = buyerId is null ? "WouldCreate (new company)"
+                        : match is null ? "WouldCreate"
+                        : match.Value.Stage == 8 ? "WouldRestore" : "WouldUpdate";
+                }
+
+                Console.WriteLine($"[DRY-RUN] BdTracking engagement: {status}; initiator={initiator}; company={company}; region={region}; activities={groupRows.Count}; submitted={submitted ?? 0:N0}; accepted={accepted ?? 0:N0}");
+            }
+            else if (buyerId is null)
+            {
+                // The lookup below treats a NULL buyer as "any company", which would land these rows on another
+                // pursuit of the same owner and region. Refuse instead.
+                Console.WriteLine($"[BD] SKIPPED: '{company}' did not resolve to a company ({initiator}, {region}).");
+                status = "Unresolved company";
             }
             else
             {
                 var upsert = await UpsertBdTrackingEngagementAsync(options.OpportunitiesDb!, initiator, region, buyerId, submitted, accepted, potentialProjects, ct).ConfigureAwait(false);
                 engagementId = upsert.Id;
                 if (upsert.WasInsert) engagementsCreated++;
+                else if (upsert.WasRestore) engagementsRestored++;
                 else engagementsUpdated++;
-                status = upsert.WasInsert ? "Created" : "Updated";
+                status = upsert.WasInsert ? "Created" : upsert.WasRestore ? "Restored" : "Updated";
 
                 // Round 37a (T1.003): re-run idempotency. Delete BdTracking-owned
                 // child rows (activities then contacts to respect the FK) before
@@ -6699,7 +6732,7 @@ WHERE Id = @id;",
         }
 
         Console.WriteLine($"[BD] groups={groups.Count}; activities-rows={rows.Count - skipped}; skipped={skipped}");
-        Console.WriteLine($"[BD] engagements-created={engagementsCreated}; engagements-updated={engagementsUpdated}; activities-inserted={activitiesInserted}; contacts-inserted={contactsInserted}");
+        Console.WriteLine($"[BD] engagements-created={engagementsCreated}; engagements-updated={engagementsUpdated}; engagements-restored={engagementsRestored}; activities-inserted={activitiesInserted}; contacts-inserted={contactsInserted}");
         if (unresolvedCompanies.Count > 0)
         {
             Console.WriteLine($"[BD] unresolved companies (no canonical match — auto-created): {unresolvedCompanies.Count}");
@@ -7047,67 +7080,111 @@ END;";
         }
     }
 
-    private record EngagementUpsertResult(long Id, bool WasInsert);
+    private record EngagementUpsertResult(long Id, bool WasInsert, bool WasRestore = false);
+
+    private const string UnmappedInitiator = "UNMAPPED:";
+
+    /// <summary>Spreadsheet Initiator label → staff mailbox key, from tools/BdTrackingImport/initiators.csv ("label,staffKey").</summary>
+    private static IReadOnlyDictionary<string, string> LoadBdTrackingInitiators(string path)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (!File.Exists(path))
+        {
+            Console.WriteLine($"[WARN] {path} is missing: every group will be reported as an unmapped initiator.");
+            return map;
+        }
+
+        foreach (var line in File.ReadAllLines(path).Skip(1))
+        {
+            var parts = line.Split(',', 2);
+            if (parts.Length == 2 && parts[0].Trim().Length > 0 && parts[1].Trim().Contains('@')) map[parts[0].Trim()] = parts[1].Trim();
+        }
+
+        return map;
+    }
+
+    internal static string MapBdTrackingInitiator(IReadOnlyDictionary<string, string> map, string? raw)
+    {
+        var label = (raw ?? "").Trim();
+        return map.TryGetValue(label, out var key) ? key : UnmappedInitiator + (label.Length == 0 ? "(blank)" : label);
+    }
+
+    /// <summary>The pursuit a tracking group belongs to: a live one first, else the archived one the clean start set aside.</summary>
+    private static async Task<(long Id, int Stage)?> FindBdTrackingEngagementAsync(string connStr, string owner, string region, long buyerId, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(connStr);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(@"
+SELECT TOP 1 Id, Stage FROM opportunities.CrmEngagements
+WHERE OpportunityId IS NULL AND OwnerStaffId = @owner AND Region = @region AND BuyerCanonicalOrgId = @buyer
+ORDER BY CASE WHEN Stage = 8 THEN 1 ELSE 0 END, Id DESC;", con);
+        cmd.Parameters.Add("@owner", System.Data.SqlDbType.NVarChar, 150).Value = owner;
+        cmd.Parameters.Add("@region", System.Data.SqlDbType.NVarChar, 40).Value = region;
+        cmd.Parameters.Add("@buyer", System.Data.SqlDbType.BigInt).Value = buyerId;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        return await r.ReadAsync(ct).ConfigureAwait(false) ? (r.GetInt64(0), r.GetInt32(1)) : null;
+    }
 
     private static async Task<EngagementUpsertResult> UpsertBdTrackingEngagementAsync(
         string connStr, string initiator, string region, long? buyerId, decimal? submitted, decimal? accepted, string? potentialProjects, CancellationToken ct)
     {
-        // Natural key: (OwnerStaffId, Region, BuyerCanonicalOrgId) where
-        // OpportunityId IS NULL (only BD-tracking engagements; existing
-        // opportunity-linked engagements stay in their own lane).
+        // Natural key: (OwnerStaffId, Region, BuyerCanonicalOrgId) where OpportunityId IS NULL. The caller refuses a
+        // NULL buyer (16 Oct 2026: the old "@buyer IS NULL OR ..." matched any pursuit of that owner and region).
+        // A live pursuit is updated; an archived one (migration 359's clean start) is brought back to Pending with a
+        // stage-history row, so its id, contacts and history survive; otherwise a new pursuit is inserted, also with
+        // a stage-history row (closes known bypass F14 for this path).
+        if (buyerId is not long buyer) throw new ArgumentNullException(nameof(buyerId), "A tracking pursuit needs a resolved company.");
+        var actor = $"{initiator} (BdTrackingImport)";
+        var existing = await FindBdTrackingEngagementAsync(connStr, initiator, region, buyer, ct).ConfigureAwait(false);
+
         await using var con = new SqlConnection(connStr);
         await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var tx = (SqlTransaction)await con.BeginTransactionAsync(ct).ConfigureAwait(false);
 
-        const string lookupSql = @"
-SELECT TOP 1 Id
-FROM   opportunities.CrmEngagements
-WHERE  OpportunityId IS NULL
-  AND  OwnerStaffId = @init
-  AND  Region = @region
-  AND  (@buyer IS NULL OR BuyerCanonicalOrgId = @buyer);";
-
-        long? existing = null;
-        await using (var cmd = new SqlCommand(lookupSql, con))
+        void Common(SqlCommand cmd)
         {
-            // 150 matches the column width post-migration 270 (fix F4): a 20-wide
-            // param client-side-truncates long identities into a NEW owner format
-            // that splits one human across attribution GROUP BYs.
-            cmd.Parameters.Add("@init", System.Data.SqlDbType.NVarChar, 150).Value = initiator;
-            cmd.Parameters.Add("@region", System.Data.SqlDbType.NVarChar, 40).Value = region;
-            cmd.Parameters.Add("@buyer", System.Data.SqlDbType.BigInt).Value = (object?)buyerId ?? DBNull.Value;
-            var r = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-            if (r is long lid) existing = lid;
-            else if (r is int iid) existing = iid;
-        }
-
-        if (existing is long eId)
-        {
-            const string updateSql = @"
-UPDATE opportunities.CrmEngagements
-SET    BuyerCanonicalOrgId    = COALESCE(BuyerCanonicalOrgId, @buyer),
-       ProposalsSubmittedCad  = @submitted,
-       ProposalsAcceptedCad   = @accepted,
-       PotentialProjects      = @potential,
-       UpdatedAtUtc           = SYSDATETIMEOFFSET(),
-       UpdatedBy              = @actor
-WHERE  Id = @id;";
-            await using var cmd = new SqlCommand(updateSql, con);
-            cmd.Parameters.Add("@id", System.Data.SqlDbType.BigInt).Value = eId;
-            cmd.Parameters.Add("@buyer", System.Data.SqlDbType.BigInt).Value = (object?)buyerId ?? DBNull.Value;
+            cmd.Parameters.Add("@buyer", System.Data.SqlDbType.BigInt).Value = buyer;
             cmd.Parameters.Add("@submitted", System.Data.SqlDbType.Decimal).Value = (object?)submitted ?? DBNull.Value;
             cmd.Parameters.Add("@accepted", System.Data.SqlDbType.Decimal).Value = (object?)accepted ?? DBNull.Value;
             cmd.Parameters.Add("@potential", System.Data.SqlDbType.NVarChar, -1).Value = (object?)potentialProjects ?? DBNull.Value;
-            cmd.Parameters.Add("@actor", System.Data.SqlDbType.NVarChar, 150).Value = $"{initiator} (BdTrackingImport)";
-            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
-            return new EngagementUpsertResult(eId, false);
+            cmd.Parameters.Add("@actor", System.Data.SqlDbType.NVarChar, 150).Value = actor;
         }
 
-        // KNOWN BYPASS (F14, documented not fixed): this raw INSERT writes no
-        // CrmEngagementStageHistory row, so importer-born engagements have no
-        // stage-history start point. Stage-age readers MUST use
-        // COALESCE(min(history.EnteredAtUtc), e.OpenedAtUtc) — the same fallback
-        // the 75 legacy + 177 backfill rows already require.
-        const string insertSql = @"
+        async Task HistoryAsync(long id)
+        {
+            await using var h = new SqlCommand(@"INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, EnteredAtUtc, ByStaffId)
+VALUES (@id, 1, SYSDATETIMEOFFSET(), N'BdTrackingImport');", con, tx);
+            h.Parameters.Add("@id", System.Data.SqlDbType.BigInt).Value = id;
+            await h.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+
+        if (existing is { } found)
+        {
+            var restore = found.Stage == 8;
+            await using (var cmd = new SqlCommand(@"
+UPDATE opportunities.CrmEngagements
+SET    ProposalsSubmittedCad  = @submitted,
+       ProposalsAcceptedCad   = @accepted,
+       PotentialProjects      = @potential,
+       Stage                  = CASE WHEN @restore = 1 THEN 1 ELSE Stage END,
+       ClosedAtUtc            = CASE WHEN @restore = 1 THEN NULL ELSE ClosedAtUtc END,
+       UpdatedAtUtc           = SYSDATETIMEOFFSET(),
+       UpdatedBy              = @actor
+WHERE  Id = @id AND BuyerCanonicalOrgId = @buyer;", con, tx))
+            {
+                Common(cmd);
+                cmd.Parameters.Add("@id", System.Data.SqlDbType.BigInt).Value = found.Id;
+                cmd.Parameters.Add("@restore", System.Data.SqlDbType.Bit).Value = restore;
+                await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+            }
+
+            if (restore) await HistoryAsync(found.Id).ConfigureAwait(false);
+            await tx.CommitAsync(ct).ConfigureAwait(false);
+            return new EngagementUpsertResult(found.Id, false, restore);
+        }
+
+        long newId;
+        await using (var cmd = new SqlCommand(@"
 INSERT INTO opportunities.CrmEngagements
     (OpportunityId, Stage, OwnerStaffId, BuyerCanonicalOrgId, Region,
      ProposalsSubmittedCad, ProposalsAcceptedCad, PotentialProjects,
@@ -7116,21 +7193,18 @@ OUTPUT INSERTED.Id
 VALUES
     (NULL, 1, @init, @buyer, @region,
      @submitted, @accepted, @potential,
-     @actor, @actor);";
-        await using (var cmd = new SqlCommand(insertSql, con))
+     @actor, @actor);", con, tx))
         {
-            // 150-wide param — see the lookup above (fix F4).
+            Common(cmd);
+            // 150-wide param (fix F4): a narrower one client-side-truncates long identities into a new owner format.
             cmd.Parameters.Add("@init", System.Data.SqlDbType.NVarChar, 150).Value = initiator;
-            cmd.Parameters.Add("@buyer", System.Data.SqlDbType.BigInt).Value = (object?)buyerId ?? DBNull.Value;
             cmd.Parameters.Add("@region", System.Data.SqlDbType.NVarChar, 40).Value = region;
-            cmd.Parameters.Add("@submitted", System.Data.SqlDbType.Decimal).Value = (object?)submitted ?? DBNull.Value;
-            cmd.Parameters.Add("@accepted", System.Data.SqlDbType.Decimal).Value = (object?)accepted ?? DBNull.Value;
-            cmd.Parameters.Add("@potential", System.Data.SqlDbType.NVarChar, -1).Value = (object?)potentialProjects ?? DBNull.Value;
-            cmd.Parameters.Add("@actor", System.Data.SqlDbType.NVarChar, 150).Value = $"{initiator} (BdTrackingImport)";
-            var r = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-            var newId = r is long lid ? lid : Convert.ToInt64(r);
-            return new EngagementUpsertResult(newId, true);
+            newId = Convert.ToInt64(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false), CultureInfo.InvariantCulture);
         }
+
+        await HistoryAsync(newId).ConfigureAwait(false);
+        await tx.CommitAsync(ct).ConfigureAwait(false);
+        return new EngagementUpsertResult(newId, true);
     }
 
     private static async Task<long> UpsertBdTrackingContactAsync(

@@ -136,8 +136,15 @@ def extract_sheet(ws, region_label, currency, has_city_state):
     return out
 
 def main():
-    wb = load_workbook(XLSX, data_only=True)
-    os.makedirs(OUT_DIR, exist_ok=True)
+    # Optional: extract.py [workbook] [output.jsonl]. The team's working copy moves (16 Oct 2026: Ian's
+    # Desktop\BD\Calls); the defaults stay the repo copy and the importer's input.
+    import sys
+    global OUT
+    xlsx = sys.argv[1] if len(sys.argv) > 1 else XLSX
+    if len(sys.argv) > 2:
+        OUT = sys.argv[2]
+    wb = load_workbook(xlsx, data_only=True)
+    os.makedirs(os.path.dirname(OUT) or '.', exist_ok=True)
     all_rows = []
     per_region = {}
     for sheet_name, (region_label, currency, has_city_state) in REGION_MAP.items():
