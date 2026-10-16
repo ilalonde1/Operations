@@ -308,14 +308,6 @@ public static class PursuitBriefPdfExporter
         });
     }
 
-    private static string SeatStatusColor(string? status)
-    {
-        var normalized = status?.Trim().ToLowerInvariant();
-        return normalized is "open" or "rotating" ? "#047857"
-            : normalized is "locked" or "preferred" ? "#B45309"
-            : Purple;
-    }
-
     private static bool HasText(string? value)
         => !string.IsNullOrWhiteSpace(value);
 
