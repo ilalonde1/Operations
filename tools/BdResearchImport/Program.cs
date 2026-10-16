@@ -6540,6 +6540,7 @@ WHERE Id = @id;",
         // "IS & OAP", "Omar ALcazar") maps through tools/BdTrackingImport/initiators.csv. A label not in the file
         // stops its group and is reported; it is never guessed from a first name.
         var initiatorMap = LoadBdTrackingInitiators(Path.Combine(options.BaseDirectory, "Operations", "tools", "BdTrackingImport", "initiators.csv"));
+        var companyMap = LoadBdTrackingCompanies(Path.Combine(options.BaseDirectory, "Operations", "tools", "BdTrackingImport", "companies.csv"));
 
         // Group by (owner, Company, Region). Each group becomes one engagement with N activities under it.
         var groups = rows
@@ -6594,7 +6595,8 @@ WHERE Id = @id;",
             // (preserving their existing Kind), so this default only affects
             // truly new firms — the next data-honing pass reclassifies them
             // based on actual research.
-            var buyerId = await ResolveAsync(resolver, options, stats, LeadOperator(company), OrgKinds.Unknown, "BdTracking.Company", ct).ConfigureAwait(false);
+            var pinned = companyMap.TryGetValue(company, out var pinnedId) ? pinnedId : (long?)null;
+            var buyerId = pinned ?? await ResolveAsync(resolver, options, stats, LeadOperator(company), OrgKinds.Unknown, "BdTracking.Company", ct).ConfigureAwait(false);
             if (buyerId is null && !options.DryRun)
             {
                 unresolvedCompanies.Add(company);
@@ -6636,7 +6638,7 @@ WHERE Id = @id;",
                 if (!string.IsNullOrWhiteSpace(options.OpportunitiesDb))
                 {
                     previewResolver ??= new CanonicalOrgResolver(new SqlCanonicalOrgStore(options.OpportunitiesDb), NullLogger<CanonicalOrgResolver>.Instance);
-                    buyerId = await previewResolver.FindExistingAsync(LeadOperator(company), "BdTracking.Company", ct).ConfigureAwait(false);
+                    buyerId = pinned ?? await previewResolver.FindExistingAsync(LeadOperator(company), "BdTracking.Company", ct).ConfigureAwait(false);
                     var match = buyerId is null ? null : await FindBdTrackingEngagementAsync(options.OpportunitiesDb, initiator, region, buyerId.Value, ct).ConfigureAwait(false);
                     engagementId = match?.Id ?? 0;
                     status = buyerId is null ? "WouldCreate (new company)"
@@ -7098,6 +7100,25 @@ END;";
         {
             var parts = line.Split(',', 2);
             if (parts.Length == 2 && parts[0].Trim().Length > 0 && parts[1].Trim().Contains('@')) map[parts[0].Trim()] = parts[1].Trim();
+        }
+
+        return map;
+    }
+
+    /// <summary>
+    /// The spreadsheet's company names that the resolver cannot match exactly ("Evantra", "Starlight", "Traine"), pinned to
+    /// the company record they mean. Checked by hand against CanonicalOrg on 2026-10-16; a name not in the file goes to the
+    /// resolver as before.
+    /// </summary>
+    private static IReadOnlyDictionary<string, long> LoadBdTrackingCompanies(string path)
+    {
+        var map = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        if (!File.Exists(path)) return map;
+        foreach (var line in File.ReadAllLines(path).Skip(1))
+        {
+            var parts = line.Split(',', 3);
+            if (parts.Length >= 2 && parts[0].Trim().Length > 0 && long.TryParse(parts[1].Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var id))
+                map[parts[0].Trim()] = id;
         }
 
         return map;
