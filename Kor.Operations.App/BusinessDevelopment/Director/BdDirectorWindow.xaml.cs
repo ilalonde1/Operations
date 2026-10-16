@@ -233,6 +233,15 @@ public partial class BdDirectorWindow : Window
     private async void AcceptCard_Click(object sender, RoutedEventArgs e) => await DecideCardAsync(sender, true).ConfigureAwait(true);
     private async void RejectCard_Click(object sender, RoutedEventArgs e) => await DecideCardAsync(sender, false).ConfigureAwait(true);
 
+    private async void AcceptAllCards_Click(object sender, RoutedEventArgs e)
+    {
+        if (_doctrine is null || _doctrine.Proposed.Count == 0) return;
+        var answer = MessageBox.Show(this, $"Accept all {_doctrine.Proposed.Count} card(s) waiting for you? Reject the ones you disagree with first.",
+            "Accept all waiting", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (answer != MessageBoxResult.OK) return;
+        await RhythmActionAsync(ct => _doctrine.AcceptAllAsync(_actor, ct)).ConfigureAwait(true);
+    }
+
     private async Task DecideCardAsync(object sender, bool accept)
     {
         if (_doctrine is null || sender is not FrameworkElement { Tag: DoctrineCardRow card }) return;

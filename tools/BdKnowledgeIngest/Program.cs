@@ -74,6 +74,8 @@ internal static class KnowledgeCli
             if (verb == "hour") return await HourImportAsync(options, new SqlBdRhythmStore(connection!), ct);
             if (verb == "rhythm") return await RhythmRenderAsync(options, new SqlBdRhythmStore(connection!), ct);
             if (verb == "doctrine") return await DoctrineAsync(options, new SqlBdDoctrineStore(connection!), ct);
+            if (verb == "prompt" && options.Positionals[1].Equals("synthesis", StringComparison.OrdinalIgnoreCase))
+                return await PromptSynthesisAsync(options, store!, new SqlBdDoctrineStore(connection!), ct);
             if (verb == "prompt") return await PromptReportAsync(options, new SqlBdDoctrineStore(connection!), ct);
             if (verb == "pursuit")
             {
@@ -440,6 +442,32 @@ internal static class KnowledgeCli
     }
 
     /// <summary>A session's report, checked against its one-time token. Refused with every reason when it does not validate.</summary>
+    /// <summary>
+    /// Opens a synthesis run exactly as BD Director's "Synthesize from the books" does — same composer, same run record,
+    /// same one-time token — and writes the prompt where the app writes it. For seeding the doctrine from a session.
+    /// </summary>
+    private static async Task<int> PromptSynthesisAsync(Arguments args, IKnowledgeStore knowledge, IBdDoctrineStore store, CancellationToken ct)
+    {
+        var by = args.Value("--by")!;
+        var focus = args.Value("--focus");
+        var books = (await knowledge.ListSourcesAsync(ct))
+            .Select(s => $"#{s.Id} {s.Title}{(s.Author is { } a ? " (" + a + ")" : "")}: {s.Claims} claims").ToList();
+        var cards = await store.ListCardsAsync("BD", ct);
+        var (token, tokenSha) = BdDoctrine.NewToken();
+        var subject = string.IsNullOrWhiteSpace(focus) ? "the BD doctrine" : "the BD doctrine: " + focus.Trim();
+        var runId = await store.StartRunAsync("synthesis", "BD", subject, focus, by, new byte[32], tokenSha, ct);
+        var markdown = BdPromptComposer.Synthesis(new BdSynthesisInput("BD", by, books,
+            cards.Where(c => c.Status == "accepted").ToList(), cards.Where(c => c.Status == "proposed").ToList(), focus, DateTimeOffset.Now),
+            new BdPromptHandle(runId, token));
+        await store.SetPromptShaAsync(runId, BdDoctrine.Sha(markdown), ct);
+        var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KorOperations", "Prompts");
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, $"bd-synthesis-{runId}.md");
+        await File.WriteAllTextAsync(path, markdown, ct);
+        Console.WriteLine($"Opened synthesis run {runId}. Prompt: {path}");
+        return 0;
+    }
+
     private static async Task<int> PromptReportAsync(Arguments args, IBdDoctrineStore store, CancellationToken ct)
     {
         var runId = long.Parse(args.Positionals[2], CultureInfo.InvariantCulture);
@@ -476,6 +504,7 @@ internal static class KnowledgeCli
         BdKnowledgeIngest pursuit checklist import <engagementId> <file.json> --by <name> [--replace]
         BdKnowledgeIngest doctrine list [--role BD|Operations]
         BdKnowledgeIngest doctrine show <id> [--role BD|Operations]
+        BdKnowledgeIngest prompt synthesis --by <name> [--focus "<theme>"]
         BdKnowledgeIngest prompt report <runId> <report.json> --token <token>
         --db <connection string> defaults to env KOR_OPPORTUNITIES_OPPORTUNITIESDB
         """);
@@ -484,7 +513,7 @@ internal static class KnowledgeCli
     {
         private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help", "--replace" };
         private static readonly HashSet<string> Values = new(StringComparer.Ordinal)
-            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--week", "--token", "--role" };
+            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--week", "--token", "--role", "--focus" };
         private readonly Dictionary<string, string?> _options = new(StringComparer.Ordinal);
         internal List<string> Positionals { get; } = new();
         internal string? Value(string name) => _options.GetValueOrDefault(name);
@@ -526,7 +555,8 @@ internal static class KnowledgeCli
             var claimAction = verb == "claims" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
             var briefAction = verb == "brief" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
             var doctrineAction = verb == "doctrine" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
-            var expected = verb == "prompt" ? 4 : verb == "doctrine" ? doctrineAction == "show" ? 3 : 2
+            var promptAction = verb == "prompt" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
+            var expected = verb == "prompt" ? promptAction == "synthesis" ? 2 : 4 : verb == "doctrine" ? doctrineAction == "show" ? 3 : 2
                 : verb == "pursuit" ? 5 : verb == "hour" ? 3 : verb == "rhythm" ? 2 : verb == "brief" ? briefAction == "import" ? 4 : 2
                 : verb == "claims" ? claimAction == "embed" ? 2 : 3 : verb is "ingest" or "search" or "export" ? 2 : 1;
             if (Positionals.Count != expected) throw new ArgumentException($"Wrong number of arguments for {verb}; use --help.");
@@ -559,7 +589,12 @@ internal static class KnowledgeCli
                     throw new ArgumentException("doctrine show needs a card id.");
                 if (Value("--role") is { } role && role is not ("BD" or "Operations")) throw new ArgumentException("--role is BD or Operations.");
             }
-            if (verb == "prompt")
+            if (verb == "prompt" && Positionals[1].Equals("synthesis", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(Value("--by")) || Value("--by")!.Length > 150)
+                    throw new ArgumentException("prompt synthesis requires --by <name> (1–150 characters).");
+            }
+            else if (verb == "prompt")
             {
                 if (!Positionals[1].Equals("report", StringComparison.OrdinalIgnoreCase)
                     || !long.TryParse(Positionals[2], NumberStyles.None, CultureInfo.InvariantCulture, out _)
@@ -594,7 +629,7 @@ internal static class KnowledgeCli
                 "hour" => new[] { "--by", "--to" },
                 "rhythm" => new[] { "--to" },
                 "doctrine" => new[] { "--role" },
-                "prompt" => new[] { "--token" },
+                "prompt" => promptAction == "synthesis" ? new[] { "--by", "--focus" } : new[] { "--token" },
                 "claims" => claimAction switch { "import" => new[] { "--force", "--by" }, "relate" => new[] { "--by" }, "search" => new[] { "--take" }, _ => Array.Empty<string>() },
                 "brief" => briefAction == "import" ? new[] { "--force", "--by" } : new[] { "--week", "--to" },
                 _ => Array.Empty<string>(),

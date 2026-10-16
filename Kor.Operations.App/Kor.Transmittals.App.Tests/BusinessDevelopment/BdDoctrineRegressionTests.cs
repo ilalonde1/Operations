@@ -142,6 +142,28 @@ public sealed class BdDoctrineRegressionTests
     }
 
     [Fact]
+    public async Task AcceptAll_AcceptsOnlyWaitingCards_OldestFirst_SoAnAmendmentFollowsWhatItAmends()
+    {
+        var store = new Mock<IBdDoctrineStore>();
+        store.SetupSequence(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { Card(12, "Amends 5", "any", "proposed", amends: 5), Card(5, "First", "any", "proposed"), Card(3, "Kept", "any") })
+            .ReturnsAsync(new[] { Card(3, "Kept", "any"), Card(5, "First", "any"), Card(12, "Amends 5", "any") });
+        store.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
+        var order = new List<long>();
+        store.Setup(s => s.DecideCardAsync(It.IsAny<long>(), true, "ian", It.IsAny<CancellationToken>()))
+            .Callback<long, bool, string, CancellationToken>((id, _, _, _) => order.Add(id)).ReturnsAsync(true);
+        var vm = new BdDoctrineViewModel(store.Object, () => Now);
+        await vm.LoadAsync(CancellationToken.None);
+        Assert.True(vm.HasProposed);
+
+        Assert.Equal(2, await vm.AcceptAllAsync("ian", CancellationToken.None));
+
+        Assert.Equal(new long[] { 5, 12 }, order);
+        Assert.False(vm.HasProposed);
+        Assert.Equal("Accepted 2 card(s).", vm.Status);
+    }
+
+    [Fact]
     public void Store_ChecksTheTokenHash_ReplacesOnlyProposedCards_AndRetiresOnlyAnAcceptedAmendedCard()
     {
         var sql = Source("Kor.Opportunities.Data/Crm/BdDoctrine.cs");
@@ -185,7 +207,8 @@ public sealed class BdDoctrineRegressionTests
     public void Cli_AllowsTheOptionsThePromptsTellClaudeToUse()
     {
         var cli = Source("tools/BdKnowledgeIngest/Program.cs");
-        Assert.Contains("\"prompt\" => new[] { \"--token\" },", cli, StringComparison.Ordinal);
+        Assert.Contains("\"prompt\" => promptAction == \"synthesis\" ? new[] { \"--by\", \"--focus\" } : new[] { \"--token\" },", cli, StringComparison.Ordinal);
+        Assert.Contains("\"--token\", \"--role\", \"--focus\" }", cli, StringComparison.Ordinal);
         Assert.Contains("\"doctrine\" => new[] { \"--role\" },", cli, StringComparison.Ordinal);
         Assert.Contains("or \"doctrine\" or \"prompt\"))", cli, StringComparison.Ordinal);
     }

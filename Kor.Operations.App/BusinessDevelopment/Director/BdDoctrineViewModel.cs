@@ -56,6 +56,7 @@ public sealed class BdDoctrineViewModel : ObservableObject
     public ObservableCollection<BdPromptRunView> Runs { get; } = new();
     public string Summary => $"{Accepted.Count} accepted · {Proposed.Count} waiting for you · {Runs.Count(r => r.Run.Outcome is null)} question(s) still with Claude";
     public string ProposedHeading => Proposed.Count == 0 ? "Nothing waiting for you" : $"Waiting for you: {Proposed.Count}";
+    public bool HasProposed => Proposed.Count > 0;
     public string Status { get => _status; private set => SetField(ref _status, value); }
     public void Say(string text) => Status = text;
 
@@ -80,6 +81,21 @@ public sealed class BdDoctrineViewModel : ObservableObject
 
         OnPropertyChanged(nameof(Summary));
         OnPropertyChanged(nameof(ProposedHeading));
+        OnPropertyChanged(nameof(HasProposed));
+    }
+
+    /// <summary>Accepts every card still waiting, oldest first, so an amendment is decided after the card it amends.</summary>
+    public async Task<int> AcceptAllAsync(string actor, CancellationToken ct)
+    {
+        var accepted = 0;
+        foreach (var card in Proposed.OrderBy(c => c.Id).ToList())
+        {
+            if (await _store.DecideCardAsync(card.Id, true, actor, ct).ConfigureAwait(true)) accepted++;
+        }
+
+        Status = $"Accepted {accepted} card(s).";
+        await LoadAsync(ct).ConfigureAwait(true);
+        return accepted;
     }
 
     /// <summary>Accepts or rejects a proposed card; accepting an amendment retires the card it amends.</summary>
