@@ -56,7 +56,10 @@ Drafting stage, submitted file name and pasted folder link, and a Pending bids t
 Mine, assignment, opportunity editing and Mark submitted. A bid is `OpportunityId IS NOT NULL`;
 relationship pursuits are counted separately. Due remains `Opportunities.SubmissionDeadlineUtc`
 and submitted time comes from stage history. Leduc opportunity rows 39322 / 39332 are a
-cross-source duplicate for ingestion to settle; 39322 is the row to use here.
+cross-source pair that `tools/BdOpportunityDedup` (migration 327) already settled: 39322
+(bids&tenders) is dismissed by migration-327, and **39332 (APC, APCALLBU-AB-2026-06377) is the
+live row to use here**. Ingestion still updates 39322 but leaves its dismissal in place
+(queried 2026-10-15).
 
 ## 3. Actions the platform should offer later — each exists as a script today
 
