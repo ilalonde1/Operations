@@ -13,6 +13,9 @@ $searcher.Online = $true
 $found = $searcher.Search("IsInstalled=0 and IsHidden=0 and Type='Software'")
 $updates = @(foreach ($u in $found.Updates) {
     $cats = @($u.Categories | ForEach-Object { [string]$_.Name })
+    # Exactly what Actions/install-updates.ps1 leaves out: listing an update the install never takes kept "updates-due"
+    # open for ever while the install said "nothing to install" (audit 2026-10-16, 1.12). UpdateTests pins the two lines equal.
+    if ($cats -contains 'Upgrades' -or $u.Title -match '\bPreview\b') { continue }
     [pscustomobject]@{
         Kb          = (@($u.KBArticleIDs) | Select-Object -First 1) -as [string]
         Title       = [string]$u.Title

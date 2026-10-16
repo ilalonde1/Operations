@@ -131,7 +131,7 @@ public static class HealthRules
 
         if (s.Update?.LastInstall is { } last && (s.CollectedAt - last).TotalDays > 35)
             f.Add(new("not-patched", Severity.Warning, "No updates installed in over a month",
-                $"last install {last:yyyy-MM-dd}: {s.Update.LastInstallTitle}"));
+                $"last install {last.ToLocalTime():yyyy-MM-dd}: {s.Update.LastInstallTitle}"));   // WU history is UTC; the device page shows local
 
         if (s.Update is { MicrosoftUpdate: false })
             f.Add(new("microsoft-update-off", Severity.Info, "Office security updates are not being offered",

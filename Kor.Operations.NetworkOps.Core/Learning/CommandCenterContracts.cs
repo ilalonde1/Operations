@@ -147,7 +147,14 @@ public sealed record DeviceHistory(IReadOnlyList<ClearedFinding> Cleared, IReadO
 // ---- fixes: what the page may run on a machine (Core/Actions/FixCatalog), and what became of each run.
 
 /// <summary>A fix as the page offers it.</summary>
-public sealed record FixOption(string Id, string Title, string Explain, bool Disruptive, string? ParamLabel, string? PrefilledParam);
+/// <param name="Clears">Running it clears the finding. False = it may help but the finding stays (a restart for a crash
+/// loop's 14-day count), or it is the run-a-command hatch. Defaults true so an older service's answer still reads.</param>
+public sealed record FixOption(string Id, string Title, string Explain, bool Disruptive, string? ParamLabel, string? PrefilledParam, bool Clears = true)
+{
+    /// <summary>The line the fix dialog shows under a fix that only helps. Null for one that clears it, and for the hatch.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? HelpsOnlyNote => Clears || Id == Actions.FixCatalog.RunCommand ? null : "May help, but does not clear this issue on its own.";
+}
 
 /// <param name="Confirmed">Set by the person after being told someone is actively using the machine (a disruptive fix is refused otherwise).</param>
 public sealed record FixRequest(string ActionId, string? Param, string? FindingKey, string? Note, bool Confirmed);

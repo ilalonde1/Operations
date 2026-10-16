@@ -201,7 +201,7 @@
                         <TextBlock Text="{Binding CableWarning}" Margin="0,4,0,0" TextWrapping="Wrap" FontWeight="SemiBold"
                                    Foreground="#B45309" Visibility="{Binding HasCableWarning, Converter={StaticResource BoolToVis}}"/>
                         <TextBlock Margin="0,6,0,0" FontSize="11" Foreground="{StaticResource Text.Secondary}"
-                                   Text="Green = link up · Amber = link down · Grey = nothing · bordered = this PC"/>
+                                   Text="Green = good · Amber = errors or half-duplex · Red = down or failing · Grey = empty, an uplink, or not read · bordered = this machine"/>
                     </StackPanel>
                 </Border>
             </Grid>

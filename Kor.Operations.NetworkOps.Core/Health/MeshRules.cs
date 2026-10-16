@@ -12,6 +12,9 @@ public sealed record MeshPresence(bool Known, bool Connected);
 //   mesh-silent    MeshCentral knows it, the PC answered this check, but its Mesh agent is not connected: Connect fails.
 public static class MeshRules
 {
+    /// <summary>The findings this class raises -- so a sweep that could not read MeshCentral knows which to leave alone.</summary>
+    public static bool Owns(string ruleKey) => ruleKey is "mesh-missing" or "mesh-silent";
+
     public static IReadOnlyList<Finding> Evaluate(MeshPresence? mesh, bool answered)
     {
         if (mesh is null || !answered) return [];

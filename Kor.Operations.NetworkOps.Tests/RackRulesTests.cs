@@ -233,6 +233,28 @@ public sealed class RackRulesTests
         Assert.Single(second.Findings, f => f.RuleKey.StartsWith("switch.port-down:"));
     }
 
+    // Two reads hid it: the down read overwrote "ports.up", so the THIRD read (still down) raised nothing and the finding
+    // cleared while the link was dead (audit 2026-10-16, 1.4). Down stays down until the port is up again.
+    [Fact]
+    public void A_dropped_port_stays_raised_on_every_read_until_it_comes_back()
+    {
+        var v = Walk(Fx("edgeswitch.txt"));
+        var first = EdgeSwitchRules.Evaluate(v, new Dictionary<string, string>());
+        var upPort = v.First(kv => kv.Key.StartsWith("1.3.6.1.2.1.2.2.1.8.") && kv.Value == "1").Key;
+        var dropped = new Dictionary<string, string>(v) { [upPort] = "2" };
+
+        var second = EdgeSwitchRules.Evaluate(dropped, first.Facts);
+        var third = EdgeSwitchRules.Evaluate(dropped, second.Facts);
+        var fourth = EdgeSwitchRules.Evaluate(dropped, third.Facts);
+        var key = second.Findings.Single(f => f.RuleKey.StartsWith("switch.port-down:")).RuleKey;
+        Assert.Contains(third.Findings, f => f.RuleKey == key);
+        Assert.Contains(fourth.Findings, f => f.RuleKey == key);
+
+        var back = EdgeSwitchRules.Evaluate(v, fourth.Facts);
+        Assert.DoesNotContain(back.Findings, f => f.RuleKey.StartsWith("switch.port-down:"));
+        Assert.False(back.Facts.ContainsKey("ports.down"));   // nothing carried forward once it is back
+    }
+
     [Fact]
     public void Every_finding_family_a_rack_rule_can_raise_has_a_written_explanation()
     {

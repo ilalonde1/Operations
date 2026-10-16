@@ -15,7 +15,7 @@ internal sealed record BatchDecision(int DeviceId, string Name, string? FixId, s
 //   - a machine NetworkOps cannot run anything on is refused with the reason it was listed with;
 //   - the domain controller (UpdateAloneHosts) only goes in a batch of its own: DNS, DHCP and sign-in go with it;
 //   - "restart if needed" never restarts APP01 (UpdateNoRestartHosts): it installs there without the restart, and says so;
-//   - "restart if needed" on a PC someone is actively using is refused until confirmed (the restart-pc rule);
+//   - "restart if needed" on ANY machine is refused until confirmed (the rule for every disruptive fix; the runner enforces it too);
 //   - a machine already installing is not given a second install.
 internal static class UpdateBatch
 {
@@ -37,8 +37,13 @@ internal static class UpdateBatch
             if (t.Guard == "NoRestart")
                 return new BatchDecision(t.DeviceId, t.Name, FixCatalog.InstallUpdates, null, false,
                     $"installs without the restart: {t.Name} runs NetworkOps and is never restarted from here -- restart it yourself when convenient");
-            if (m.PresenceState == "Active" && !confirmed)
-                return new BatchDecision(t.DeviceId, t.Name, null, $"someone is using it right now ({m.Presence}): confirm to restart it if an update needs it", true, null);
+            // EVERY disruptive install needs explicit confirmation -- the same rule as a fix (ApiHost, audit 2026-10-06 #1) and
+            // the runner's last gate. Presence shapes the warning, never waives it. (Asking only when Active queued the restart
+            // variant unconfirmed on every idle, locked or unknown machine, and the runner refused each one: audit 2026-10-16, 1.1.)
+            if (!confirmed)
+                return new BatchDecision(t.DeviceId, t.Name, null, m.PresenceState == "Active"
+                    ? $"someone is using it right now ({m.Presence}): confirm to restart it if an update needs it"
+                    : "it restarts if an update needs it: confirm to go ahead", true, null);
             return new BatchDecision(t.DeviceId, t.Name, FixCatalog.InstallUpdatesRestart, null, false, null);
         }).ToList();
     }

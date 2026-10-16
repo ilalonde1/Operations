@@ -255,7 +255,7 @@
                     <Grid>
                         <ListBox x:Name="RackCards" Style="{StaticResource Ops.CardList}" ItemsSource="{Binding Rack}" ItemTemplate="{StaticResource MachineCard}"
                                  MouseDoubleClick="RackCards_MouseDoubleClick" PreviewKeyDown="RackCards_PreviewKeyDown" SelectionChanged="RackCards_SelectionChanged"/>
-                        <TextBlock Style="{StaticResource Ops.Empty}" Margin="0,8,0,16" Tag="{Binding ElementName=RackCards}" Text="Nothing in the rack matches."/>
+                        <TextBlock Style="{StaticResource Ops.Empty}" Margin="0,8,0,16" Tag="{Binding ElementName=RackCards}" Text="{Binding RackEmptyText}"/>
                     </Grid>
                     <StackPanel Orientation="Horizontal" Margin="2,10,0,8">
                         <TextBlock Text="PCs" Style="{StaticResource Ops.SectionTitle}"/>
@@ -304,7 +304,7 @@
                                     <DataGridTextColumn Header="Open"         Binding="{Binding LiveCount}" Width="56"/>
                                 </DataGrid.Columns>
                             </DataGrid>
-                            <TextBlock Style="{StaticResource Ops.Empty}" Tag="{Binding ElementName=RackGrid}" Text="Nothing in the rack matches."/>
+                            <TextBlock Style="{StaticResource Ops.Empty}" Tag="{Binding ElementName=RackGrid}" Text="{Binding RackEmptyText}"/>
                         </Grid>
                     </Grid>
                 </Border>

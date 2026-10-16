@@ -55,6 +55,11 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
     public string RackSubline { get; private set; } = "Rack";
     public Brush RackBrush { get; private set; } = NetworkOpsBrushes.Unknown;
 
+    /// <summary>What the empty rack list says: "nothing matches" normally, WHY when the rack could not be read -- a failed read
+    /// looked exactly like an empty filter (audit 2026-10-16, 1.13).</summary>
+    public string RackEmptyText { get; private set; } = NothingMatches;
+    private const string NothingMatches = "Nothing in the rack matches.";
+
     // ---- Rack power: both UPSes, the verdict, the chain.
     public ObservableCollection<UpsLine> Ups { get; } = new();
     public string PowerHeadline { get; private set; } = "—";
@@ -219,7 +224,8 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
             {
                 RackSnapshot = null; _allRack.Clear(); Rack.Clear();
                 (RackHeadline, RackSubline, RackBrush) = ("—", $"Rack not available: {ex.Message}", NetworkOpsBrushes.Unknown);
-                foreach (var name in new[] { nameof(RackHeadline), nameof(RackSubline), nameof(RackBrush) }) OnPropertyChanged(name);
+                RackEmptyText = $"The rack could not be read: {ex.Message}";
+                foreach (var name in new[] { nameof(RackHeadline), nameof(RackSubline), nameof(RackBrush), nameof(RackEmptyText) }) OnPropertyChanged(name);
             }
             try { ApplyPower(await _client.GetPowerAsync(ct).ConfigureAwait(true), DateTime.UtcNow); }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -237,12 +243,13 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            StatusMessage = $"Load failed: {ex.GetType().Name}: {ex.Message}";
+            // In words, not exception type names; and the retry is promised only when auto-refresh will actually retry.
+            StatusMessage = $"Could not load: {ex.Message}";
             var since = _lastSuccessfulRefreshAt.HasValue
                 ? $"last good data from {_lastSuccessfulRefreshAt.Value.LocalDateTime:HH:mm:ss}"
                 : "no data has loaded yet";
             ConnectionLostMessage = _client.IsConfigured
-                ? $"Connection lost — {since} — auto-retry in ~15s. ({ex.GetType().Name}: {ex.Message})"
+                ? $"Connection lost — {since}. {ex.Message}{(AutoRefresh ? " Trying again every 15 seconds." : " Refresh to try again.")}"
                 : ex.Message;
             IsConnectionLost = true;
         }
@@ -301,11 +308,14 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
     /// </summary>
     private void UpdateHeadline(DateTime nowUtc)
     {
+        // The four tiles PARTITION the machines -- each counted once, so they add up to "of N". A machine not seen lately
+        // counts there only: its state is old news. (It was counted twice -- 1+23+31+5 = 60 "of 59", audit 2026-10-16, 1.9.)
         var all = _allRows.Concat(_allRack).ToList();
-        var critical = all.Count(r => r.State == HealthState.Critical);
-        var attention = all.Count(r => r.State == HealthState.Attention);
-        var healthy = all.Count(r => r.State is HealthState.Healthy or HealthState.Watch);
-        var stale = all.Count(r => r.IsStale || r.State == HealthState.Unknown);
+        var current = all.Where(r => !(r.IsStale || r.State == HealthState.Unknown)).ToList();
+        var stale = all.Count - current.Count;
+        var critical = current.Count(r => r.State == HealthState.Critical);
+        var attention = current.Count(r => r.State == HealthState.Attention);
+        var healthy = current.Count(r => r.State is HealthState.Healthy or HealthState.Watch);
         CriticalHeadline = critical.ToString();
         AttentionHeadline = attention.ToString();
         HealthyHeadline = healthy.ToString();
@@ -355,7 +365,8 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         RackFreshness = rows.Count == 0 ? "nothing read yet"
             : $"read every 5 minutes, last {CommandCenterView.Ago(_rackReadUtc, nowUtc)}" + (stale > 0 ? $"  ·  {stale} not read in 15 min" : "");
         UpdateHeadline(nowUtc);
-        foreach (var name in new[] { nameof(RackHeadline), nameof(RackSubline), nameof(RackBrush), nameof(RackSnapshot), nameof(RackFreshness) })
+        RackEmptyText = NothingMatches;
+        foreach (var name in new[] { nameof(RackHeadline), nameof(RackSubline), nameof(RackBrush), nameof(RackSnapshot), nameof(RackFreshness), nameof(RackEmptyText) })
             OnPropertyChanged(name);
     }
 

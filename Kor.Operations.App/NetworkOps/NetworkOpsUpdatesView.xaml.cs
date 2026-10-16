@@ -192,10 +192,11 @@ public partial class NetworkOpsUpdatesView : UserControl
         Status($"Queuing {ticked.Count}…");
         var outcomes = (await _client.InstallUpdatesAsync(new UpdateInstallRequest(ticked.Select(t => t.Row.DeviceId).ToList(), restart, false), ct).ConfigureAwait(true)).ToList();
         var ask = outcomes.Where(o => o.NeedsConfirmation).ToList();
+        // Every restart is confirmed (the service asks for each one); the line per machine says whether someone is on it.
         if (ask.Count > 0 && MessageBox.Show(owner,
-                $"Someone is using {(ask.Count == 1 ? "this machine" : "these machines")} right now:\n\n{string.Join("\n", ask.Select(a => $"{a.Name}: {a.Refused}"))}\n\n" +
-                "Install and restart them anyway if an update needs it? They get a 5-minute warning on screen.",
-                "Someone is using it", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes)
+                $"{(ask.Count == 1 ? "This machine restarts" : $"These {ask.Count} machines restart")} if an update needs it:\n\n{string.Join("\n", ask.Select(a => $"{a.Name}: {a.Refused}"))}\n\n" +
+                "Install and restart where needed? Anyone signed in gets a 5-minute warning on screen.",
+                "Confirm the restart", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes)
         {
             var confirmed = await _client.InstallUpdatesAsync(new UpdateInstallRequest(ask.Select(a => a.DeviceId).ToList(), restart, true), ct).ConfigureAwait(true);
             outcomes = outcomes.Where(o => !o.NeedsConfirmation).Concat(confirmed).ToList();

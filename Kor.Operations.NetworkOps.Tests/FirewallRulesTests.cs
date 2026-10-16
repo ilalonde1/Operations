@@ -144,6 +144,22 @@ public sealed class FirewallRulesTests
         Assert.Contains(findings, f => f.RuleKey == "fw.no-wan" && f.Severity == Severity.Critical);   // no WAN up at all
     }
 
+    // The Critical LAN link-down cleared itself on the next read while the LAN was still down (audit 2026-10-16, 1.4).
+    [Fact]
+    public void A_down_link_stays_raised_on_every_read_until_it_is_back()
+    {
+        var down = Walk();
+        down["1.3.6.1.2.1.2.2.1.8.3"] = "2";   // LAN down
+        var first = FirewallRules.Evaluate(down, new Dictionary<string, string> { ["fw.up"] = "WAN2,LAN" }, Now);
+        var second = FirewallRules.Evaluate(down, first.Facts, Now.AddMinutes(5));
+        var third = FirewallRules.Evaluate(down, second.Facts, Now.AddMinutes(10));
+        Assert.Contains(second.Findings, f => f.RuleKey == "fw.link-down:LAN" && f.Severity == Severity.Critical);
+        Assert.Contains(third.Findings, f => f.RuleKey == "fw.link-down:LAN");
+
+        var back = FirewallRules.Evaluate(Walk(), third.Facts, Now.AddMinutes(15));
+        Assert.DoesNotContain(back.Findings, f => f.RuleKey == "fw.link-down:LAN");
+    }
+
     [Fact]
     public void A_state_table_near_its_limit_warns()
     {

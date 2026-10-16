@@ -151,6 +151,21 @@ public sealed class NetworkOpsViewModelTests
         Assert.Equal(["KOR-208-N", "KOR-216", "KOR-305"], vm.Fleet.Select(r => r.Name));
     }
 
+    // Live 2026-10-16: 1 + 23 + 31 + 5 = 60 "of 59" -- a stale machine counted both in its state and in "not seen lately"
+    // (audit 1.9). The tiles PARTITION the fleet: whatever the mix, they add up to N, and a stale machine counts once.
+    [Fact]
+    public void The_four_tiles_add_up_to_the_fleet_even_when_a_critical_machine_goes_stale()
+    {
+        var snap = Fleet();
+        snap = snap with { Devices = snap.Devices.Select(d => d.Name == "KOR-208-N" ? d with { LastCheckedUtc = Now.AddDays(-5), LastReachableUtc = Now.AddDays(-5) } : d).ToList() };
+        var vm = new NetworkOpsCommandCenterViewModel(NetworkOpsClient.Unconfigured("test"));
+        vm.Apply(snap, Now);
+        var sum = int.Parse(vm.CriticalHeadline) + int.Parse(vm.AttentionHeadline) + int.Parse(vm.HealthyHeadline) + int.Parse(vm.StaleHeadline);
+        Assert.Equal($"Healthy, of {sum}", vm.HealthyLabel);
+        Assert.Equal("0", vm.CriticalHeadline);   // its Critical is five days old: it counts as not seen, once
+        Assert.Equal("2", vm.StaleHeadline);
+    }
+
     [Fact]
     public void Tiles_count_the_fleet_and_a_silent_service_shows_red()
     {

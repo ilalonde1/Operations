@@ -109,8 +109,31 @@ public sealed class UpdateTests
         Assert.Contains("batch of its own", withOthers[0].Refused);
         Assert.Equal(FixCatalog.InstallUpdates, withOthers[1].FixId);
 
-        var alone = UpdateBatch.Decide([new(dc, null, null, false)], true, false).Single();
-        Assert.Equal(FixCatalog.InstallUpdatesRestart, alone.FixId);
+        // Alone, it may restart -- once confirmed, like any disruptive install.
+        Assert.True(UpdateBatch.Decide([new(dc, null, null, false)], true, false).Single().NeedsConfirmation);
+        Assert.Equal(FixCatalog.InstallUpdatesRestart, UpdateBatch.Decide([new(dc, null, null, false)], true, true).Single().FixId);
+    }
+
+    // The runner refuses any disruptive fix whose request does not carry confirmed=true (ActionRunner's last gate). The batch
+    // queued the restart variant unconfirmed on every idle, locked or unknown machine, so each one was accepted and then failed
+    // (audit 2026-10-16, 1.1): this is the check that would have caught it -- across EVERY presence, never queue what the
+    // runner will refuse.
+    [Theory]
+    [InlineData("Active")]
+    [InlineData("Locked")]
+    [InlineData("RemoteOnly")]
+    [InlineData("Nobody")]
+    [InlineData(null)]
+    public void The_batch_never_queues_a_disruptive_install_the_runner_would_refuse(string? presence)
+    {
+        foreach (var target in new[] { T(7, "KOR-210"), T(8, "KOR-DC01", "Alone", server: true), T(9, "KOR-APP01", "NoRestart", server: true) })
+            foreach (var restart in new[] { false, true })
+                foreach (var confirmed in new[] { false, true })
+                {
+                    var d = UpdateBatch.Decide([new(target, presence, presence, false)], restart, confirmed).Single();
+                    if (d.FixId is { } id && FixCatalog.Get(id)!.Disruptive)
+                        Assert.True(confirmed, $"{target.Name} ({presence ?? "unknown"}): {id} queued unconfirmed -- the runner will refuse it");
+                }
     }
 
     [Fact]
@@ -122,14 +145,20 @@ public sealed class UpdateTests
     }
 
     [Fact]
-    public void A_restart_on_a_PC_someone_is_using_needs_confirming_an_install_alone_does_not()
+    public void A_restart_needs_confirming_on_any_machine_an_install_alone_does_not()
     {
-        var m = new BatchMember(T(4, "KOR-202"), "Active", "jmarkulin · active", false);
-        var refused = UpdateBatch.Decide([m], true, false).Single();
+        var active = new BatchMember(T(4, "KOR-202"), "Active", "jmarkulin · active", false);
+        var refused = UpdateBatch.Decide([active], true, false).Single();
         Assert.Null(refused.FixId);
         Assert.True(refused.NeedsConfirmation);
-        Assert.Equal(FixCatalog.InstallUpdatesRestart, UpdateBatch.Decide([m], true, true).Single().FixId);
-        Assert.Equal(FixCatalog.InstallUpdates, UpdateBatch.Decide([m], false, false).Single().FixId);
+        Assert.Contains("someone is using it", refused.Refused);
+        Assert.Equal(FixCatalog.InstallUpdatesRestart, UpdateBatch.Decide([active], true, true).Single().FixId);
+        Assert.Equal(FixCatalog.InstallUpdates, UpdateBatch.Decide([active], false, false).Single().FixId);
+
+        // Nobody on it: still asked (the warning says so), never silently queued for the runner to refuse.
+        var idle = UpdateBatch.Decide([new BatchMember(T(4, "KOR-202"), "Nobody", "nobody signed in", false)], true, false).Single();
+        Assert.True(idle.NeedsConfirmation);
+        Assert.DoesNotContain("someone is using", idle.Refused);
     }
 
     [Fact]
@@ -158,6 +187,16 @@ public sealed class UpdateTests
         Assert.Contains("Type='Software'", script);
         Assert.Contains("-contains 'Upgrades'", script);
         Assert.Contains("Type='Software'", Kor.Operations.NetworkOps.Core.Probes.ProbeLibrary.Get("updates"));
+    }
+
+    // The scan listed feature upgrades and previews the install never takes, so "updates-due" could never clear while the
+    // install said "nothing to install" (audit 2026-10-16, 1.12). The two scripts must skip exactly the same updates.
+    [Fact]
+    public void The_scan_counts_only_what_the_install_will_take()
+    {
+        const string skip = "if ($cats -contains 'Upgrades' -or $u.Title -match '\\bPreview\\b') { continue }";
+        Assert.Contains(skip, FixCatalog.Script(FixCatalog.Get(FixCatalog.InstallUpdates)!, null));
+        Assert.Contains(skip, Kor.Operations.NetworkOps.Core.Probes.ProbeLibrary.Get("updates"));
     }
 
     [Fact]

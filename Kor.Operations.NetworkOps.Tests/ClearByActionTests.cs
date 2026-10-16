@@ -27,9 +27,10 @@ public sealed class ClearByActionTests
     }
 
     [Fact]
-    public void Three_reboot_reasons_collapse_into_one_restart_over_the_union_of_machines()
+    public void The_restart_reasons_collapse_into_one_restart_over_the_union_of_machines()
     {
-        // not-restarted, reboot-overdue and crash-loop are ALL cleared by restart-pc (FixCatalog), overlapping on machines.
+        // not-restarted and reboot-overdue are what restart-pc CLEARS, overlapping on machines. crash-loop is a 14-day count a
+        // restart only helps (audit 2026-10-16, 1.5): it must NOT be folded in as "cleared by one restart".
         var v = Build(
             F(1, "KOR-1", "not-restarted", Severity.Warning),
             F(2, "KOR-2", "not-restarted", Severity.Warning),
@@ -40,12 +41,14 @@ public sealed class ClearByActionTests
             F(7, "KOR-3", "crash-loop:x", Severity.Warning),
             F(8, "KOR-5", "crash-loop:x", Severity.Warning));
 
-        var restart = ClearByAction.Of(v.Open).Single(a => a.Fix.Id == "restart-pc");
-        Assert.Equal(5, restart.Machines);          // union of KOR-1..KOR-5, not 3+3+2 = 8
-        Assert.Equal(8, restart.Findings);          // the 8 placements it would clear
-        Assert.Equal(2, restart.OverlapMachines);   // KOR-2 (2 reasons) and KOR-3 (3 reasons) clear several in one restart
-        Assert.Equal(3, restart.Reasons.Count);     // not-restarted, reboot-overdue, crash-loop
+        var actions = ClearByAction.Of(v.Open);
+        var restart = actions.Single(a => a.Fix.Id == "restart-pc");
+        Assert.Equal(4, restart.Machines);          // union of KOR-1..KOR-4, not 3+3 = 6
+        Assert.Equal(6, restart.Findings);          // the 6 placements it clears
+        Assert.Equal(2, restart.OverlapMachines);   // KOR-2 and KOR-3 each carry both reasons: one restart clears both
+        Assert.Equal(2, restart.Reasons.Count);     // not-restarted, reboot-overdue
         Assert.True(restart.Consolidates);
+        Assert.DoesNotContain(actions, a => a.Reasons.Any(r => r.RuleKey.StartsWith("crash-loop", StringComparison.Ordinal)));
     }
 
     [Fact]

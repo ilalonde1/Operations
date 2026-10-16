@@ -252,6 +252,15 @@ internal sealed partial class NetworkOpsStore
                         VALUES (@d, @k, @sev, @t, @e, @now, @now);
                         """, tx);
                     break;
+                case ChangeKind.Escalated when FindingDiff.Resurfaces(ch):
+                    // Became Critical: back on the list even if it was acknowledged or snoozed at a lesser severity (the
+                    // note is kept as history).
+                    cmd = Cmd(c, """
+                        UPDATE NetworkOps.Findings SET Severity = @sev, Title = @t, Evidence = @e, LastSeenUtc = @now,
+                               AcknowledgedUtc = NULL, AcknowledgedBy = NULL, SnoozedUntilUtc = NULL
+                        WHERE DeviceId = @d AND RuleKey = @k AND ClearedUtc IS NULL;
+                        """, tx);
+                    break;
                 case ChangeKind.Escalated:
                 case ChangeKind.Unchanged:
                     cmd = Cmd(c, """

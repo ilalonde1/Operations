@@ -6,13 +6,21 @@ namespace Kor.Operations.NetworkOps.Core.Actions;
 
 /// <param name="Id">Stable id: recorded in NetworkOps.Actions.Kind, which fix learning reads.</param>
 /// <param name="Disruptive">Interrupts the person at the PC (a restart). Refused while someone is ACTIVE unless confirmed.</param>
-/// <param name="Families">Finding families it is offered for; "*" = any finding (the escape hatch).</param>
+/// <param name="Families">Finding families it CLEARS -- the finding is gone at the re-check after it runs; "*" = any finding
+/// (the escape hatch). The worklist's one click and "Clear in one action" use only these (see <see cref="FixAction.Helps"/>).</param>
 /// <param name="ParamLabel">Non-null when the fix needs one input (a service name, a script).</param>
 /// <param name="Target">Where it runs: "windows" (a PC or Windows server, PowerShell as SYSTEM through the SCM channel),
 /// "esxi" (an ESXi host, a Python script over the key APP01 reads the hosts with), or "mesh" (a PowerShell script on the
 /// device's MeshCentral agent -- the way to reach a workgroup/off-domain box like BK01 that the SCM channel cannot).</param>
 public sealed record FixAction(string Id, string Title, string Explain, bool Disruptive, int TimeoutSeconds, IReadOnlyList<string> Families, string? ParamLabel = null,
-    string Target = FixCatalog.Windows);
+    string Target = FixCatalog.Windows)
+{
+    /// <summary>Families it may HELP but cannot clear: a restart relieves a crash loop, but the finding is a 14-day count and
+    /// stays open. Offered on the device page after the fixes that clear, marked as such; never "the fix" on the worklist and
+    /// never counted as clearing anything (audit 2026-10-16, 1.5: "Restart the PC · all 18 -- clears 22 findings" claimed a
+    /// restart cleared crash, hang and indexing counts).</summary>
+    public IReadOnlyList<string> Helps { get; init; } = [];
+}
 
 /// <summary>What the page may run, and nothing else. Each script is embedded (Actions/*.ps1), runs ON the PC as
 /// SYSTEM through the same one-shot SCM channel as the health probe, and returns plain values. Every run is a row in
@@ -24,6 +32,7 @@ public static class FixCatalog
     public const string RunCommandMesh = "run-command-mesh";
     public const string StartService = "start-service";
     public const string RestartMeshAgent = "restart-mesh-agent";
+    public const string FreeDiskSpace = "free-disk-space";
     public const string InstallUpdates = "install-updates";
     public const string InstallUpdatesRestart = "install-updates-restart";
     public const string UpdateBios = "update-bios";
@@ -41,11 +50,16 @@ public static class FixCatalog
 
     public static readonly IReadOnlyList<FixAction> All =
     [
+        // A restart CLEARS "not restarted" and a pending reboot. It only HELPS the rolling event counts (crashes, hangs,
+        // indexing, rising pressure -- the finding stays until the count falls) and an incomplete probe. "not-patched" is
+        // cleared by installing updates, not by restarting.
         new("restart-pc", "Restart the PC",
             "Restarts in 5 minutes with a warning on screen, so whoever is there can save their work. Clears pending updates, stuck drivers and leaking processes.",
-            Disruptive: true, TimeoutSeconds: 120,
-            ["not-restarted", "reboot-overdue", "not-patched", "crash-loop", "gpu-hangs", "outlook-index", "probe-incomplete", "memory-pressure-rising", "app-hangs-rising"]),
-        new("free-disk-space", "Free up disk space",
+            Disruptive: true, TimeoutSeconds: 120, ["not-restarted", "reboot-overdue"])
+        {
+            Helps = ["crash-loop", "gpu-hangs", "outlook-index", "probe-incomplete", "memory-pressure-rising", "app-hangs-rising"],
+        },
+        new(FreeDiskSpace, "Free up disk space",
             "Clears Windows' and every user's temporary files older than 2 days, the downloaded-updates cache and the delivery-optimization cache, then compacts the component store. No user documents are touched.",
             Disruptive: false, TimeoutSeconds: 1800, ["low-disk", "disk-filling", "server.disk-full"]),
         new("repair-wmi", "Repair WMI",
@@ -53,7 +67,11 @@ public static class FixCatalog
             Disruptive: false, TimeoutSeconds: 300, ["wmi-broken", "probe-incomplete"]),
         new("repair-windows", "Repair Windows system files",
             "DISM /RestoreHealth then SFC /scannow: repairs corrupted Windows components. Takes 15-40 minutes; the PC stays usable.",
-            Disruptive: false, TimeoutSeconds: 3000, ["wmi-broken", "crash-loop", "unexpected-shutdowns", "probe-incomplete", "hardware-errors"]),
+            Disruptive: false, TimeoutSeconds: 3000, ["wmi-broken"])
+        {
+            // Repairs what corruption causes; the crash, shutdown and hardware-error counts stay until they age out.
+            Helps = ["crash-loop", "unexpected-shutdowns", "probe-incomplete", "hardware-errors"],
+        },
         new("turn-on-microsoft-update", "Turn on Microsoft Update",
             "Opts Windows Update into Microsoft Update, so Office and other Microsoft products get their patches too (done fleet-wide 28 Sep 2026).",
             Disruptive: false, TimeoutSeconds: 120, ["microsoft-update-off"]),
@@ -106,11 +124,30 @@ public static class FixCatalog
     public static FixAction? Get(string id) => All.FirstOrDefault(a => a.Id == id);
 
     /// <summary>The fixes offered for a finding, most specific first; the escape hatch last.</summary>
+    /// <summary>Every fix offered for a finding: those that clear it, then those that may help, then the escape hatch.</summary>
     public static IReadOnlyList<FixAction> For(string ruleKey)
     {
         var family = FixLearning.FamilyOf(ruleKey);
-        return All.Where(a => a.Families.Contains(family)).Concat(All.Where(a => a.Families.Contains("*"))).ToList();
+        return All.Where(a => a.Families.Contains(family) && Fits(a, ruleKey))
+            .Concat(All.Where(a => a.Helps.Contains(family) && Fits(a, ruleKey)))
+            .Concat(All.Where(a => a.Families.Contains("*"))).ToList();
     }
+
+    /// <summary>THE fix for a finding -- the worklist's one click, and what "Clear in one action" groups by: the first fix, in
+    /// catalog order, that CLEARS it. Never one that only helps, never the run-a-command hatch. Null: no one-click fix.</summary>
+    public static FixAction? PrimaryFor(string ruleKey)
+    {
+        var family = FixLearning.FamilyOf(ruleKey);
+        return All.FirstOrDefault(a => a.Families.Contains(family) && Fits(a, ruleKey));
+    }
+
+    /// <summary>Whether running this fix clears the finding (false: it only helps, or it is the escape hatch).</summary>
+    public static bool Clears(FixAction a, string ruleKey) => a.Families.Contains(FixLearning.FamilyOf(ruleKey)) && Fits(a, ruleKey);
+
+    /// <summary>A fix that works on only part of what its family covers. Free-disk-space cleans C: (Windows' and every user's
+    /// temp, the update caches): it is offered for a full C:, never for a full D: it cannot touch (audit 2026-10-16, 1.5).</summary>
+    private static bool Fits(FixAction a, string ruleKey)
+        => a.Id != FreeDiskSpace || (ruleKey.IndexOf(':') is var i and > 0 ? ruleKey[(i + 1)..].Trim().TrimEnd(':', '\\').ToUpperInvariant() : "C") == "C";
 
     /// <summary>The input a fix gets from its finding, when the finding already names it (server.service-stopped:Certify.Service).</summary>
     public static string? ParamFromFinding(FixAction a, string ruleKey)

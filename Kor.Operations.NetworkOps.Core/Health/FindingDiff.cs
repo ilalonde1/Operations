@@ -46,8 +46,20 @@ public static class FindingDiff
     /// </summary>
     public static bool IsNotifiable(FindingChange c) => c.Kind switch
     {
-        ChangeKind.New or ChangeKind.Escalated => c.Current!.Severity >= Severity.Warning,
+        ChangeKind.New => c.Current!.Severity >= Severity.Warning,
+        // Worse than what was last MAILED, not merely worse than the stored severity: a dip lowers the stored severity, so
+        // comparing with it re-mailed a finding on every bounce back up (audit 2026-10-16, 1.15).
+        ChangeKind.Escalated => c.Current!.Severity >= Severity.Warning
+                                && (c.Previous!.NotifiedSeverity is not { } mailed || c.Current.Severity > mailed),
         ChangeKind.Cleared => c.Previous!.NotifiedSeverity is not null,
         _ => false,
     };
+
+    /// <summary>
+    /// Whether this change takes the finding out of acknowledged/snoozed and back onto the list: it has just become
+    /// CRITICAL. Acknowledging a Warning is not consent to a hidden Critical (audit 2026-10-16, 1.2). Only the step into
+    /// Critical does it -- a Warning that dips to Info and comes back stays acknowledged. (The store keeps no "severity it was
+    /// acknowledged at"; a Critical acknowledged, dipped and Critical again comes back once -- the safe direction.)
+    /// </summary>
+    public static bool Resurfaces(FindingChange c) => c.Kind == ChangeKind.Escalated && c.Current!.Severity == Severity.Critical;
 }

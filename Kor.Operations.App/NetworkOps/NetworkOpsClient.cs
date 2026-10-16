@@ -357,6 +357,12 @@ public sealed class NetworkOpsClient
         {
             return await _http!.SendAsync(req, ct).ConfigureAwait(false);
         }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            // HttpClient's own timeout, not the caller cancelling: a FAILURE, in words. As a TaskCanceledException every page
+            // caught it as "superseded", stayed on "Loading..." and never showed the connection-lost banner (audit 2026-10-16, 1.7).
+            throw new TimeoutException($"The NetworkOps service did not answer within {_http!.Timeout.TotalSeconds:0} seconds.", ex);
+        }
         catch (HttpRequestException ex) when (ex.InnerException is System.Security.Authentication.AuthenticationException)
         {
             throw new InvalidOperationException("The NetworkOps service presented a certificate that is not the pinned one. Nothing was sent. " +

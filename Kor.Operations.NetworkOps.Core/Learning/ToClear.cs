@@ -66,7 +66,7 @@ public static class ToClear
                         ? new ToClearMachine(d.DeviceId, f.Device, f.FindingId, d.Presence, d.PresenceState)
                         : new ToClearMachine(0, f.Device, f.FindingId, null, null))
                     .ToList();
-                var fix = FixCatalog.For(g.Key).FirstOrDefault(a => a.Id != FixCatalog.RunCommand);   // the primary fix; the escape hatch (run-command) is not "the fix"
+                var fix = FixCatalog.PrimaryFor(g.Key);   // the fix that CLEARS it -- never one that only helps, never the escape hatch
                 var option = fix is null ? null
                     : new FixOption(fix.Id, fix.Title, fix.Explain, fix.Disruptive, fix.ParamLabel, FixCatalog.ParamFromFinding(fix, g.Key));
                 // Already being fixed when that fix is in flight on any machine the issue is open on.

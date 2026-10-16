@@ -19,6 +19,26 @@ public sealed class PcComponentsTests
     private static HealthSnapshot Kor208N()
         => HealthSnapshot.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "health", "KOR-208-N-v10-2026-10-02.json")));
 
+    // The probe writes LastBootUpTime as the PC's own clock with no offset; the tile showed it 6-7 hours early by treating it
+    // as UTC (audit 2026-10-16, 1.8). The tile must read the same wall-clock time the probe wrote.
+    [Fact]
+    public void Last_restart_shows_the_time_the_PC_wrote_not_shifted()
+    {
+        var raw = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "health", "KOR-208-N-v10-2026-10-02.json")))
+            .RootElement[0].GetProperty("Os").GetProperty("LastBoot").GetString()!;   // the probe's array wrapper; "2026-10-02T01:27:21"
+        var expected = raw[..16].Replace('T', ' ');                                  // "2026-10-02 01:27"
+        var row = PcComponents.Of(Kor208N(), []).SelectMany(c => c.Info ?? []).Single(r => r.Label == "Last restart");
+        Assert.StartsWith(expected, row.Value);
+    }
+
+    [Theory]
+    [InlineData("Windows Server 2019 Standard", "1809", "Server 2019")]   // BK01: was shown as "11"
+    [InlineData("Windows Server 2022 Datacenter", null, "Server 2022")]
+    [InlineData("Windows 11 Pro", "25H2", "11 25H2")]
+    [InlineData("Windows 10 Pro", "22H2", "10 22H2")]
+    public void The_Windows_tile_names_what_is_installed(string product, string? version, string expected)
+        => Assert.Equal(expected, PcComponents.WindowsLine(product, version));
+
     private static readonly (string, Severity)[] Open208N =
     [
         ("disk-errors:st2000dm006-2dm164", Severity.Critical),

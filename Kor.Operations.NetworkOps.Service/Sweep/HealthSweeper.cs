@@ -85,9 +85,10 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
             //    (null = Lenovo's catalog could not be read: the BIOS is then not judged at all, below).
             var machineType = Core.Bios.LenovoCatalog.MachineTypeOf(snap.Inventory?.Manufacturer, snap.Inventory?.MachineType);
             var biosPackages = machineType is null ? [] : await bios.PackagesAsync(machineType, ct);
+            var meshPresence = o.MeshEnabled ? mesh.PresenceOf(id) : null;
             var raised = HealthRules.Evaluate(snap).Concat(Predictions.Evaluate(snap with { CollectedAt = now }, history))
                 .Concat(AgentRules.Evaluate(AgentStateOf(r.Computer, installed), answeredOverNetwork: r.Stages?.StartsWith("agent:", StringComparison.Ordinal) != true, shipped, now))
-                .Concat(MeshRules.Evaluate(o.MeshEnabled ? mesh.PresenceOf(id) : null, answered: true))
+                .Concat(MeshRules.Evaluate(meshPresence, answered: true))
                 .Concat(biosPackages is null ? [] : Core.Bios.BiosRules.Evaluate(snap.Inventory, (snap.Os?.Build ?? 0) >= 22000, biosPackages))
                 .GroupBy(f => f.RuleKey).Select(g => g.OrderByDescending(f => f.Severity).First()).ToList();
             findings += raised.Count;
@@ -96,8 +97,7 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
             // The update scan owns "updates-due" (Updates/UpdateScanner): this sweep never raises it, so must never clear it.
             // An unread Lenovo catalog is not a current BIOS: the BIOS finding then stands exactly as it was.
             var open = (await store.OpenFindingsAsync(id, FleetCensusJob.SilentRule, ct))
-                .Where(f => !Core.Updates.UpdateRules.Owns(f.RuleKey) && !Core.Network.NetworkFindings.Owns(f.RuleKey)
-                            && (biosPackages is not null || f.RuleKey != Core.Bios.BiosRules.Rule)).ToList();
+                .Where(f => Judges(f.RuleKey, biosRead: biosPackages is not null, meshRead: !o.MeshEnabled || meshPresence is not null)).ToList();
             var changes = FindingDiff.Compute(open, raised);
             await store.ApplyChangesAsync(id, changes, now, ct);
             foreach (var cleared in changes.Where(c => c.Kind == ChangeKind.Cleared && c.Previous is not null))
@@ -138,6 +138,18 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
     }
 
     /// <summary>The agent as the rules see it: installed (SQL), heard right now and which version (the hub, which is live).</summary>
+    /// <summary>
+    /// Whether this sweep JUDGES an open finding (and so may clear it). Not: the update scan's (UpdateScanner owns it), the
+    /// network map's, the BIOS rule's when the Lenovo catalog was not read, nor remote control's when MeshCentral was not
+    /// read freshly. A source that was not read is not evidence that its problem went away: an unread MeshCentral cleared
+    /// every mesh finding, wrote a resolution for a fix that never happened, then raised them all again as new -- new ids,
+    /// acknowledgements lost, mailed again (audit 2026-10-16, 1.3).
+    /// </summary>
+    internal static bool Judges(string ruleKey, bool biosRead, bool meshRead)
+        => !Core.Updates.UpdateRules.Owns(ruleKey) && !Core.Network.NetworkFindings.Owns(ruleKey)
+           && (biosRead || ruleKey != Core.Bios.BiosRules.Rule)
+           && (meshRead || !MeshRules.Owns(ruleKey));
+
     private AgentState? AgentStateOf(string device, IReadOnlyDictionary<string, NetworkOpsStore.AgentRecord> installed)
     {
         if (!installed.TryGetValue(device, out var rec)) return null;

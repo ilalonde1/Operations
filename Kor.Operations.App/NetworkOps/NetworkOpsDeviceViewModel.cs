@@ -220,7 +220,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             // The hardware line stays and the page works without the tiles -- but it says why they are missing.
             _lastCheck = null;
             _readings = null;
-            StatusMessage = $"The {(IsRack ? "device's readings" : "PC's parts")} could not be read ({ex.GetType().Name}: {ex.Message}); showing the summary line instead.";
+            StatusMessage = $"The {(IsRack ? "device's readings" : "PC's parts")} could not be read ({ex.Message}); showing the summary line instead.";
         }
         // Where it is plugged in: the port map's own answer (no copy kept here; the tile opens the map at that port).
         try { _network = (await _client.GetNetworkAsync(ct).ConfigureAwait(true))?.Map; }
@@ -499,7 +499,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            StatusMessage = $"History failed to load: {ex.GetType().Name}: {ex.Message}";
+            StatusMessage = $"Could not load its history: {ex.Message}";
         }
     }
 
@@ -665,7 +665,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            CheckStatus = $"Check failed: {ex.GetType().Name}: {ex.Message}";
+            CheckStatus = $"The check failed: {ex.Message}";
         }
         finally
         {

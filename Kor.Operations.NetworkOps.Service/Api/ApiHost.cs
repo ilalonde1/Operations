@@ -306,7 +306,8 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         // restart) is refused while the last check saw someone actively using the machine, unless the person
         // confirmed after being told -- enforced here, not only in the page. Refusals are recorded like runs.
         api.MapGet("/fixes", (string ruleKey) => Results.Ok(Kor.Operations.NetworkOps.Core.Actions.FixCatalog.For(ruleKey)
-            .Select(f => new FixOption(f.Id, f.Title, f.Explain, f.Disruptive, f.ParamLabel, Kor.Operations.NetworkOps.Core.Actions.FixCatalog.ParamFromFinding(f, ruleKey)))));
+            .Select(f => new FixOption(f.Id, f.Title, f.Explain, f.Disruptive, f.ParamLabel, Kor.Operations.NetworkOps.Core.Actions.FixCatalog.ParamFromFinding(f, ruleKey),
+                Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Clears(f, ruleKey)))));
         api.MapPost("/devices/{id:int}/fixes", async (int id, FixRequest body, HttpContext h, NetworkOpsStore s, IOptions<NetworkOpsOptions> o, CancellationToken ct) =>
         {
             var fix = Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Get(body.ActionId);

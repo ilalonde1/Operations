@@ -39,6 +39,33 @@ public sealed class FindingDiffTests
         Assert.Equal(ChangeKind.Unchanged, better.Kind);
     }
 
+    // A finding that dips and comes back up was mailed again on every rise: the escalation compared with the STORED severity,
+    // which the dip had lowered (audit 2026-10-16, 1.15). It is news only when worse than what was last MAILED.
+    [Fact]
+    public void A_bounce_back_to_what_was_already_mailed_is_not_news()
+    {
+        var bounce = FindingDiff.Compute([O("disk-filling:c", Severity.Info, Severity.Warning)], [F("disk-filling:c", Severity.Warning)]).Single();
+        Assert.Equal(ChangeKind.Escalated, bounce.Kind);
+        Assert.False(FindingDiff.IsNotifiable(bounce));
+
+        var backToCritical = FindingDiff.Compute([O("ups.on-battery", Severity.Warning, Severity.Critical)], [F("ups.on-battery", Severity.Critical)]).Single();
+        Assert.False(FindingDiff.IsNotifiable(backToCritical));
+
+        var beyond = FindingDiff.Compute([O("disk-filling:c", Severity.Info, Severity.Warning)], [F("disk-filling:c", Severity.Critical)]).Single();
+        Assert.True(FindingDiff.IsNotifiable(beyond));
+    }
+
+    // An acknowledged Warning that became Critical stayed acknowledged -- quiet, green, off the worklist (audit 2026-10-16,
+    // 1.2). Becoming Critical takes it back out; a Warning bouncing off Info does not.
+    [Fact]
+    public void Becoming_critical_brings_an_acknowledged_finding_back()
+    {
+        Assert.True(FindingDiff.Resurfaces(FindingDiff.Compute([O("gpu-hangs", Severity.Warning)], [F("gpu-hangs", Severity.Critical)]).Single()));
+        Assert.False(FindingDiff.Resurfaces(FindingDiff.Compute([O("gpu-hangs", Severity.Info)], [F("gpu-hangs", Severity.Warning)]).Single()));
+        Assert.False(FindingDiff.Resurfaces(FindingDiff.Compute([O("gpu-hangs", Severity.Critical)], [F("gpu-hangs", Severity.Critical)]).Single()));
+        Assert.False(FindingDiff.Resurfaces(FindingDiff.Compute([], [F("gpu-hangs", Severity.Critical)]).Single()));
+    }
+
     [Fact]
     public void Clearing_is_announced_only_if_the_raising_was()
     {

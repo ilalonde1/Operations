@@ -27,18 +27,26 @@ internal sealed partial class NetworkOpsStore
                    d.Kind,
                    (SELECT TOP (1) JSON_VALUE(o.PayloadJson, '$.summary') FROM NetworkOps.Observations o
                      WHERE o.DeviceId = d.DeviceId AND o.Probe = 'rack' ORDER BY o.CollectedUtc DESC) AS Summary,
-                   p.Presence, p.PresenceState
+                   p.Presence, p.PresenceState, p.At
             FROM NetworkOps.Devices d
-            OUTER APPLY (SELECT TOP (1) JSON_VALUE(o.PayloadJson, '$[0].Session.Summary') AS Presence, JSON_VALUE(o.PayloadJson, '$[0].Session.State') AS PresenceState
+            OUTER APPLY (SELECT TOP (1) JSON_VALUE(o.PayloadJson, '$[0].Session.Summary') AS Presence, JSON_VALUE(o.PayloadJson, '$[0].Session.State') AS PresenceState,
+                                o.CollectedUtc AS At
                          FROM NetworkOps.Observations o WHERE o.DeviceId = d.DeviceId AND o.Probe = 'health' AND o.Status = 'Ok'
                          ORDER BY o.CollectedUtc DESC) p
             WHERE {which}
             ORDER BY d.Name;
             """))
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            var now = DateTime.UtcNow;
             while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                // Presence as of NOW: a stale reading keeps its words (dated) but loses its state (audit 2026-10-16, 1.11).
+                var (state, presence) = Core.Learning.CommandCenterView.PresenceAsOf(r.IsDBNull(7) ? null : r.GetString(7), r.IsDBNull(6) ? null : r.GetString(6), Utc(r, 8), now);
                 devices.Add(new DeviceRow(r.GetInt32(0), r.GetString(1), Utc(r, 2), Utc(r, 3), r.GetString(4), r.IsDBNull(5) ? null : r.GetString(5),
-                    r.IsDBNull(6) ? null : r.GetString(6), r.IsDBNull(7) ? null : r.GetString(7)));
+                    presence, state));
+            }
+        }
 
         var facts = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
         await using (var cmd = Cmd(c, $"""
@@ -313,16 +321,18 @@ internal sealed partial class NetworkOpsStore
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = Cmd(c, """
-            SELECT d.Name, d.Kind, d.Source, p.S, p.P FROM NetworkOps.Devices d
-            OUTER APPLY (SELECT TOP (1) JSON_VALUE(o.PayloadJson, '$[0].Session.State') AS S, JSON_VALUE(o.PayloadJson, '$[0].Session.Summary') AS P
+            SELECT d.Name, d.Kind, d.Source, p.S, p.P, p.At FROM NetworkOps.Devices d
+            OUTER APPLY (SELECT TOP (1) JSON_VALUE(o.PayloadJson, '$[0].Session.State') AS S, JSON_VALUE(o.PayloadJson, '$[0].Session.Summary') AS P,
+                                o.CollectedUtc AS At
                          FROM NetworkOps.Observations o WHERE o.DeviceId = d.DeviceId AND o.Probe = 'health' AND o.Status = 'Ok' ORDER BY o.CollectedUtc DESC) p
             WHERE d.DeviceId = @d AND d.RetiredUtc IS NULL;
             """);
         cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
-        return await r.ReadAsync(ct).ConfigureAwait(false)
-            ? (r.GetString(0), r.GetString(1), r.GetString(2), r.IsDBNull(3) ? null : r.GetString(3), r.IsDBNull(4) ? null : r.GetString(4))
-            : null;
+        if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+        // Only a fresh reading may say "someone is using it right now" (audit 2026-10-16, 1.11).
+        var (state, presence) = Core.Learning.CommandCenterView.PresenceAsOf(r.IsDBNull(3) ? null : r.GetString(3), r.IsDBNull(4) ? null : r.GetString(4), Utc(r, 5), DateTime.UtcNow);
+        return (r.GetString(0), r.GetString(1), r.GetString(2), state, presence);
     }
 
     /// <summary>The device's last good check as it came back (a PC's health probe first, else its newest), for a prompt to carry.</summary>

@@ -236,8 +236,9 @@ public partial class NetworkOpsToClearView : UserControl
             var outcomes = await _client.RunFixManyAsync(fix.Id, ids, fix.PrefilledParam, confirmed: false, CancellationToken.None).ConfigureAwait(true);
             var need = outcomes.Where(o => o.NeedsConfirmation).Select(o => o.Name).ToList();
             if (need.Count > 0 &&
-                MessageBox.Show($"{fix.Title} will interrupt {need.Count} machine(s): {string.Join(", ", need)}. Go ahead?",
-                    "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                // Owned by this window and defaulting to No, like every other disruptive confirm (audit 2026-10-16, 1.6).
+                MessageBox.Show(Window.GetWindow(this), $"{fix.Title} will interrupt {Machines(need.Count)}: {string.Join(", ", need)}.\n\nGo ahead?",
+                    fix.Title, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes)
                 outcomes = await _client.RunFixManyAsync(fix.Id, ids, fix.PrefilledParam, confirmed: true, CancellationToken.None).ConfigureAwait(true);
             var queued = outcomes.Count(o => o.ActionId is not null);
             var refused = outcomes.Count(o => o.Refused is not null);
@@ -246,7 +247,7 @@ public partial class NetworkOpsToClearView : UserControl
             {
                 // Mark the issue "running" until it clears (the service re-checks after each fix). Disruptive fixes restart.
                 _fixing[row.Issue.RuleKey] = $"queued on {queued} — running ({(fix.Disruptive ? "restart pending" : "a few min")})";
-                Status($"Queued {fix.Title} on {queued} machine(s){(refused > 0 ? $"; {refused} held (someone's using them — open the PC to confirm)" : "")}. Running now — the list clears each as it's fixed and re-checked (auto-refreshing).");
+                Status($"Queued {fix.Title} on {Machines(queued)}{(refused > 0 ? $"; {refused} held (someone's using them — open the PC to confirm)" : "")}. Running now — the list clears each as it's fixed and re-checked (auto-refreshing).");
             }
             else
                 Status($"{fix.Title}: nothing queued ({refused} held/refused). Open a machine to confirm, or Ask Claude.");
@@ -274,8 +275,9 @@ public partial class NetworkOpsToClearView : UserControl
             var outcomes = await _client.RunFixManyAsync(fix.Id, ids, fix.PrefilledParam, confirmed: false, CancellationToken.None).ConfigureAwait(true);
             var need = outcomes.Where(o => o.NeedsConfirmation).Select(o => o.Name).ToList();
             if (need.Count > 0 &&
-                MessageBox.Show($"{fix.Title} will interrupt {need.Count} machine(s): {string.Join(", ", need)}. Go ahead?",
-                    "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                // Owned by this window and defaulting to No, like every other disruptive confirm (audit 2026-10-16, 1.6).
+                MessageBox.Show(Window.GetWindow(this), $"{fix.Title} will interrupt {Machines(need.Count)}: {string.Join(", ", need)}.\n\nGo ahead?",
+                    fix.Title, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes)
                 outcomes = await _client.RunFixManyAsync(fix.Id, ids, fix.PrefilledParam, confirmed: true, CancellationToken.None).ConfigureAwait(true);
             var queued = outcomes.Count(o => o.ActionId is not null);
             var refused = outcomes.Count(o => o.Refused is not null);
@@ -285,7 +287,7 @@ public partial class NetworkOpsToClearView : UserControl
                 // Mark every reason this action covers as running, so each of its cards shows "fixing" until it clears.
                 foreach (var reason in row.Action.Reasons)
                     _fixing[reason.RuleKey] = $"queued on {queued} — running ({(fix.Disruptive ? "restart pending" : "a few min")})";
-                Status($"Queued {fix.Title} on {queued} machine(s){(refused > 0 ? $"; {refused} held (someone's using them — open the PC to confirm)" : "")}. One run clears every reason it covers on each (auto-refreshing).");
+                Status($"Queued {fix.Title} on {Machines(queued)}{(refused > 0 ? $"; {refused} held (someone's using them — open the PC to confirm)" : "")}. One run clears every reason it covers on each (auto-refreshing).");
             }
             else
                 Status($"{fix.Title}: nothing queued ({refused} held/refused). Open a machine to confirm, or Ask Claude.");
@@ -309,7 +311,7 @@ public partial class NetworkOpsToClearView : UserControl
             Status($"Acknowledging {row.Title} on {ids.Count}…");
             var r = await _client.AcknowledgeManyAsync(ids, null, CancellationToken.None).ConfigureAwait(true);
             Log.Information("To clear: acknowledged {Rule} on {Count} -> {Ok} parked", row.Issue.RuleKey, ids.Count, r.Ok);
-            Status($"Acknowledged {row.Title} on {r.Ok} machine(s). It stops counting against green.");
+            Status($"Acknowledged {row.Title} on {Machines(r.Ok)}. It stops counting against green.");
             await ReloadAsync().ConfigureAwait(true);
         }
         catch (Exception ex) { Log.Warning(ex, "To clear: acknowledge failed for {Rule}", row.Issue.RuleKey); Status("Could not acknowledge: " + ex.Message); }
@@ -325,7 +327,7 @@ public partial class NetworkOpsToClearView : UserControl
             Status($"Snoozing {row.Title} on {ids.Count}…");
             var r = await _client.SnoozeManyAsync(ids, DateTime.UtcNow.AddDays(7), null, CancellationToken.None).ConfigureAwait(true);
             Log.Information("To clear: snoozed {Rule} on {Count} -> {Ok} for 7d", row.Issue.RuleKey, ids.Count, r.Ok);
-            Status($"Snoozed {row.Title} on {r.Ok} machine(s) for a week.");
+            Status($"Snoozed {row.Title} on {Machines(r.Ok)} for a week.");
             await ReloadAsync().ConfigureAwait(true);
         }
         catch (Exception ex) { Log.Warning(ex, "To clear: snooze failed for {Rule}", row.Issue.RuleKey); Status("Could not snooze: " + ex.Message); }
@@ -414,4 +416,6 @@ public partial class NetworkOpsToClearView : UserControl
     }
 
     private void Status(string s) => StatusText.Text = s;
+
+    private static string Machines(int n) => n == 1 ? "1 machine" : $"{n} machines";
 }

@@ -158,7 +158,9 @@ public sealed class BiosTests
     {
         var sweep = File.ReadAllText(Path.Combine(RepoRoot(), "Kor.Operations.NetworkOps.Service", "Sweep", "HealthSweeper.cs"));
         Assert.Contains("biosPackages is null ? [] : Core.Bios.BiosRules.Evaluate(", sweep);
-        Assert.Contains("(biosPackages is not null || f.RuleKey != Core.Bios.BiosRules.Rule)", sweep);
+        // The guard lives in HealthSweeper.Judges (with remote control's, audit 2026-10-16 1.3); the sweep feeds it the read.
+        Assert.Contains("biosRead: biosPackages is not null", sweep);
+        Assert.False(Kor.Operations.NetworkOps.Service.Sweep.HealthSweeper.Judges(BiosRules.Rule, biosRead: false, meshRead: true));
     }
 
     [Fact]

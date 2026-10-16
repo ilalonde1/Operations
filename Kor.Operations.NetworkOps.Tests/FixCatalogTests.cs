@@ -33,8 +33,53 @@ public sealed class FixCatalogTests
     {
         var known = Knowledge.Families.ToHashSet();
         foreach (var f in FixCatalog.All)
-            foreach (var fam in f.Families.Where(x => x != "*"))
+            foreach (var fam in f.Families.Where(x => x != "*").Concat(f.Helps))
                 Assert.True(known.Contains(fam), $"{f.Id} is offered for '{fam}', which no rule raises (renamed?)");
+    }
+
+    // THE CLASS (audit 2026-10-16, 1.5): a fix claimed to CLEAR a finding it cannot -- "Restart the PC · all 18, clears 22
+    // findings" counted crash, hang and indexing findings, which are rolling event counts that only time clears. No fix may
+    // list a rolling-count family as one it clears; it may list it under Helps.
+    private static readonly string[] RollingCounts =
+    [
+        "crash-loop", "crashes-rising", "gpu-hangs", "gpu-hangs-rising", "app-hangs-rising", "memory-pressure-rising",
+        "outlook-index", "unexpected-shutdowns", "hardware-errors", "hardware-errors-rising",
+    ];
+
+    [Fact]
+    public void No_fix_claims_to_clear_a_rolling_event_count()
+    {
+        var known = Knowledge.Families.ToHashSet();
+        Assert.All(RollingCounts, r => Assert.True(known.Contains(r), $"'{r}' is not a rule family any more: update this list"));
+        foreach (var f in FixCatalog.All)
+            foreach (var r in RollingCounts.Where(f.Families.Contains))
+                Assert.Fail($"{f.Id} claims to clear '{r}', a rolling event count only time clears: list it under Helps");
+    }
+
+    [Fact]
+    public void The_one_click_fix_is_one_that_clears_it()
+    {
+        Assert.Equal(FixCatalog.InstallUpdates, FixCatalog.PrimaryFor("not-patched")?.Id);   // installing, not restarting
+        Assert.False(FixCatalog.PrimaryFor("not-patched")!.Disruptive);
+        Assert.Equal("repair-wmi", FixCatalog.PrimaryFor("probe-incomplete")?.Id);           // non-disruptive first
+        Assert.Equal("restart-pc", FixCatalog.PrimaryFor("not-restarted")?.Id);
+        foreach (var r in new[] { "crash-loop:revit.exe", "gpu-hangs", "outlook-index:a.ost", "memory-pressure-rising" })
+            Assert.Null(FixCatalog.PrimaryFor(r));                                              // no one-click fix: say so
+
+        // Still offered on the device page, marked as not clearing it.
+        var restart = FixCatalog.For("crash-loop:revit.exe").Single(f => f.Id == "restart-pc");
+        Assert.False(FixCatalog.Clears(restart, "crash-loop:revit.exe"));
+        Assert.True(FixCatalog.Clears(restart, "not-restarted"));
+    }
+
+    [Fact]
+    public void Freeing_disk_space_is_only_offered_for_the_drive_it_cleans()
+    {
+        Assert.Equal(FixCatalog.FreeDiskSpace, FixCatalog.PrimaryFor("low-disk:C")?.Id);
+        Assert.Equal(FixCatalog.FreeDiskSpace, FixCatalog.PrimaryFor("server.disk-full:C:")?.Id);
+        Assert.Null(FixCatalog.PrimaryFor("low-disk:D"));
+        Assert.DoesNotContain(FixCatalog.For("disk-filling:D"), f => f.Id == FixCatalog.FreeDiskSpace);
+        Assert.DoesNotContain(FixCatalog.For("server.disk-full:E:"), f => f.Id == FixCatalog.FreeDiskSpace);
     }
 
     [Fact]

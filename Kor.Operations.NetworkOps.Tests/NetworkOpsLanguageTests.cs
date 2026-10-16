@@ -25,7 +25,7 @@ namespace Kor.Operations.NetworkOps.Tests;
 public sealed class NetworkOpsLanguageTests(ITestOutputHelper output)
 {
     // Ratchets: today's counts (2026-10-16). They may only come DOWN. Tier 3 of the audit takes each to zero.
-    private const int PluralsBaseline = 13;
+    private const int PluralsBaseline = 7;   // 13 -> 7: the To-clear view's "machine(s)" (step 1)
     private const int DashesBaseline = 59;
     private const int ShoutingBaseline = 22;
     private const int DateFormatsBaseline = 34;

@@ -243,9 +243,10 @@ public static class EdgeSwitchRules
         }
         b.Metric("ports.up", up.Count);
         b.Fact("ports.up", string.Join(",", up));
-        if (previousFacts.TryGetValue("ports.up", out var before))
-            foreach (var gone in before.Split(',', StringSplitOptions.RemoveEmptyEntries).Except(up, StringComparer.Ordinal))
-                b.Raise($"switch.port-down:{gone}", Severity.Warning, $"Core switch port {gone} went down", "it was up on the previous read: a server, SAN or uplink may have lost its link");
+        var down = DownLinks.Of(previousFacts, "ports.up", "ports.down", up);
+        b.Fact("ports.down", string.Join(",", down));
+        foreach (var gone in down)
+            b.Raise($"switch.port-down:{gone}", Severity.Warning, $"Core switch port {gone} went down", "it was up and has not come back: a server, SAN or uplink may have lost its link");
         return b.Done($"{up.Count} ports up · up {(b.Metrics.FirstOrDefault(m => m.Metric == "uptime.hours")?.Value / 24 ?? 0):0.#} days");
     }
 
@@ -387,10 +388,11 @@ public static class FirewallRules
 
         // An interface that was up on the last read and is not now. A WAN may be a failover (Warning); the LAN going down
         // cuts the office off (Critical). Dormant standby WANs were never in the list, so they do not raise.
-        if (previousFacts.TryGetValue("fw.up", out var before))
-            foreach (var gone in before.Split(',', StringSplitOptions.RemoveEmptyEntries).Except(upNow, StringComparer.Ordinal))
-                b.Raise($"fw.link-down:{gone}", gone.StartsWith("WAN", StringComparison.OrdinalIgnoreCase) ? Severity.Warning : Severity.Critical,
-                    $"Firewall {gone} link went down", "it was up on the previous read");
+        var downNow = DownLinks.Of(previousFacts, "fw.up", "fw.down", upNow);
+        b.Fact("fw.down", string.Join(",", downNow));
+        foreach (var gone in downNow)
+            b.Raise($"fw.link-down:{gone}", gone.StartsWith("WAN", StringComparison.OrdinalIgnoreCase) ? Severity.Warning : Severity.Critical,
+                $"Firewall {gone} link went down", "it was up and has not come back");
         if (ifaces.Any(i => i.IsWan) && !ifaces.Any(i => i.IsWan && i.Up))
             b.Raise("fw.no-wan", Severity.Critical, "No WAN is up on the firewall", "every WAN-role interface is down or dormant");
 
@@ -432,6 +434,25 @@ public static class FirewallRules
 }
 
 /// <summary>A UPS as a rack device: the watcher's latest reading turned into findings (the shutdown decision itself is PowerPolicy).</summary>
+/// <summary>
+/// The links that went down and have not come back. Each read stores what is up ("…up") and what is down after having been up
+/// ("…down"); a link is down while it is in either list from the last read and not up now. Comparing only with the last
+/// read's "up" list -- which the down read then overwrites -- raised the finding once and cleared it five minutes later while
+/// the link was still down, mailing "Cleared" for a dead LAN (audit 2026-10-16, 1.4). It clears when the link is up again;
+/// a link removed on purpose stays raised until acknowledged.
+/// </summary>
+public static class DownLinks
+{
+    public static IReadOnlyList<string> Of(IReadOnlyDictionary<string, string> previousFacts, string upKey, string downKey, IEnumerable<string> upNow)
+    {
+        // Not trimmed: a link's name is compared exactly as the rule wrote it (switch ports begin with a space).
+        IEnumerable<string> Listed(string key) => previousFacts.TryGetValue(key, out var v)
+            ? v.Split(',', StringSplitOptions.RemoveEmptyEntries) : [];
+        var up = upNow.ToHashSet(StringComparer.Ordinal);
+        return Listed(upKey).Concat(Listed(downKey)).Distinct(StringComparer.Ordinal).Where(l => !up.Contains(l)).ToList();
+    }
+}
+
 public static class UpsRules
 {
     public static RackResult Evaluate(UpsReading r)

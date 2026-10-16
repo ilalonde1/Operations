@@ -34,6 +34,18 @@
                         <StackPanel Margin="6,6,6,8">
                             <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
                             <TextBlock Text="{Binding Explain}" TextWrapping="Wrap" MaxWidth="620" Foreground="{StaticResource Text.Secondary}"/>
+                            <!-- A fix that only helps says so: it will not clear the issue on its own (audit 2026-10-16, 1.5). -->
+                            <TextBlock Text="{Binding HelpsOnlyNote}" FontStyle="Italic" Margin="0,2,0,0" Foreground="{StaticResource Text.Secondary}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HelpsOnlyNote}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

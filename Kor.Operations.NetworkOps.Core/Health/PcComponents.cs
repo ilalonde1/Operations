@@ -40,6 +40,15 @@ public static class PcComponents
     private static readonly string[] WindowsRules = ["updates-due", "reboot-overdue", "not-restarted", "not-patched", "os-unsupported", "microsoft-update-off", "wmi-broken"];
     private static readonly string[] BiosRules = ["bios-behind", "fan-profile-loud", "wake-not-ready"];
 
+    /// <summary>The Windows tile's big line: "11 25H2" for a PC; a server by its own name ("Server 2019") -- anything not
+    /// Windows 10 used to read "11", so BK01 (Server 2019) showed as Windows 11 (audit 2026-10-16).</summary>
+    public static string WindowsLine(string? product, string? displayVersion)
+    {
+        if (product?.IndexOf("Server", StringComparison.OrdinalIgnoreCase) is >= 0 and var i)
+            return product[i..].Replace(" Standard", "").Replace(" Datacenter", "").Trim();
+        return $"{(product?.Contains("Windows 10", StringComparison.OrdinalIgnoreCase) == true ? "10" : "11")} {displayVersion}".Trim();
+    }
+
     public static IReadOnlyList<PcComponent> Of(HealthSnapshot s, IReadOnlyList<(string RuleKey, Severity Severity)> open)
     {
         var list = new List<PcComponent>();
@@ -78,10 +87,12 @@ public static class PcComponents
                     ("Device id", m.InstanceId), ("State", "Installed before, not present now -- unplugged, or dead"))));
 
         if (s.Os is { } os)
-            list.Add(Make("windows", "Windows", $"{(os.Product?.Contains("Windows 10", StringComparison.OrdinalIgnoreCase) == true ? "10" : "11")} {os.DisplayVersion}".Trim(),
+            list.Add(Make("windows", "Windows", WindowsLine(os.Product, os.DisplayVersion),
                 os.Build > 0 ? $"build {os.Build}.{os.Ubr}" : "", null, open, k => Family(k, WindowsRules),
                 info: Rows(("Edition", os.Product), ("Version", os.DisplayVersion), ("Build", os.Build > 0 ? $"{os.Build}.{os.Ubr}" : null),
-                    ("Last restart", os.LastBoot is { } lb ? $"{lb.ToLocalTime():yyyy-MM-dd HH:mm} ({Up(os.UptimeHours)} ago)" : null),
+                    // The probe writes LastBootUpTime as the PC's own wall clock, no offset: show it as it is. ToLocalTime() read
+                    // it as UTC and moved it 6-7 hours (audit 2026-10-16, 1.8).
+                    ("Last restart", os.LastBoot is { } lb ? $"{(lb.Kind == DateTimeKind.Utc ? lb.ToLocalTime() : lb):yyyy-MM-dd HH:mm} ({Up(os.UptimeHours)} ago)" : null),
                     ("Restart pending", s.PendingReboot is { } pr && (pr.ComponentServicing || pr.WindowsUpdate || pr.FileRename)
                         ? string.Join(", ", new[] { pr.WindowsUpdate ? "Windows Update" : null, pr.ComponentServicing ? "component servicing" : null,
                             pr.FileRename ? "file renames" : null }.Where(x => x is not null)) : s.PendingReboot is not null ? "no" : null),
