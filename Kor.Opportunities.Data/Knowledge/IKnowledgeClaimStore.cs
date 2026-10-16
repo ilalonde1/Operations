@@ -8,9 +8,12 @@ public sealed record KnowledgeClaimRow(long Id, long SourceId, string SourceTitl
     DateTimeOffset? ReviewedAtUtc, DateTimeOffset? RetiredAtUtc, string? RetiredReason);
 public sealed record KnowledgeConceptRow(long Id, string Slug, string Name, int Claims, int Sources);
 public sealed record KnowledgePassageText(long Id, string SourceTitle, string? Ref, string Text);
+public sealed record ClaimVerdict(long ClaimId, int Right, int Wrong, int Unclear, int Pending,
+    IReadOnlyList<long> WrongDecisionIds);
 
 public interface IKnowledgeClaimStore
 {
+    Task<IReadOnlyList<ClaimVerdict>> ListClaimVerdictsAsync(CancellationToken ct = default);
     Task<KnowledgeClaimRow?> GetClaimAsync(long claimId, CancellationToken ct);
     Task<IReadOnlyList<KnowledgeSourceSummary>> ListSourcesAsync(CancellationToken ct);
     Task<IReadOnlyList<KnowledgeClaimRow>> ListClaimsAsync(long sourceId, string filter, int take, CancellationToken ct);

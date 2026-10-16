@@ -21,6 +21,7 @@ using System.Globalization;
 using System.Text.Json;
 using Kor.Opportunities.Knowledge;
 using Kor.Opportunities.Data.Crm;
+using Kor.Opportunities.Data.Knowledge;
 using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Knowledge.Brief;
 using Kor.Opportunities.Knowledge.Claims;
@@ -248,14 +249,15 @@ internal static class KnowledgeCli
             ? DateOnly.ParseExact(raw, "yyyy-MM-dd", CultureInfo.InvariantCulture)
             : DirectorBriefExport.NextSunday(DateTimeOffset.UtcNow);
         using var embedder = new KnowledgeEmbedder();
-        using var search = new KnowledgeSearch(store, embedder);
+        var verdicts = await new SqlKnowledgeClaimStore(connection).ListClaimVerdictsAsync(ct);
+        using var search = new KnowledgeSearch(store, embedder, verdicts.ToDictionary(v => v.ClaimId));
         var facts = new DirectorFacts(new SqlBdDirectorStore(connection), new SqlBdDirectorLedgerStore(connection), new SqlBdDashboardStore(connection));
-        var export = await new DirectorBriefExport(facts, search).ExportAsync(week, ct);
+        var export = await new DirectorBriefExport(facts, search, new SqlDirectorBriefStore(connection)).ExportAsync(week, ct);
         var folder = Path.GetFullPath(args.Value("--to")!);
         Directory.CreateDirectory(folder);
         var path = Path.Combine(folder, week.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + "-director-brief.export.json");
         await File.WriteAllBytesAsync(path, JsonSerializer.SerializeToUtf8Bytes(export, DirectorBriefFiles.JsonOptions), ct);
-        foreach (var section in export.Sections) Console.WriteLine($"{section.Section}  {section.Facts.Length} facts characters  {section.Claims.Count} claims");
+        foreach (var section in export.Sections) Console.WriteLine($"{section.Section}  {section.Facts.Length} facts characters  {section.Claims.Count} claims  {section.PriorCalls.Count} prior calls");
         Console.WriteLine(path);
         return 0;
     }

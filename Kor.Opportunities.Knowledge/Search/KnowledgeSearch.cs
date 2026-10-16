@@ -1,3 +1,4 @@
+using Kor.Opportunities.Data.Knowledge;
 using Kor.Opportunities.Knowledge.Embedding;
 using Kor.Opportunities.Knowledge.Store;
 
@@ -7,7 +8,8 @@ namespace Kor.Opportunities.Knowledge.Search;
 /// JoeBrain's in-memory cosine ranking and per-source cap for passages and claims.
 /// An instance snapshots the index once; create a new instance after ingest or repair.
 /// </summary>
-public sealed class KnowledgeSearch(IKnowledgeStore store, IKnowledgeEmbedder embedder) : IDisposable
+public sealed class KnowledgeSearch(IKnowledgeStore store, IKnowledgeEmbedder embedder,
+    IReadOnlyDictionary<long, ClaimVerdict>? verdicts = null) : IDisposable
 {
     private readonly SemaphoreSlim _indexLock = new(1, 1);
     private IReadOnlyList<(long PassageId, long SourceId, float[] Vector)>? _vectors;
@@ -60,7 +62,8 @@ public sealed class KnowledgeSearch(IKnowledgeStore store, IKnowledgeEmbedder em
         finally { _indexLock.Release(); }
         if (vectors.Count == 0) return Array.Empty<KnowledgeClaimHit>();
         var queryVector = embedder.Embed(query);
-        var ranked = vectors.Select(v => (v.ClaimId, v.SourceId, Score: Cosine(queryVector, v.Vector)))
+        var ranked = vectors.Select(v => (v.ClaimId, v.SourceId, Score: Cosine(queryVector, v.Vector)
+            - (verdicts?.GetValueOrDefault(v.ClaimId) is { } verdict ? Math.Min(0.15f, 0.05f * Math.Max(0, verdict.Wrong - verdict.Right)) : 0f)))
             .Where(v => float.IsFinite(v.Score) && v.Score >= minScore).OrderByDescending(v => v.Score).ThenBy(v => v.ClaimId);
         var hits = new List<KnowledgeClaimHit>();
         var counts = new Dictionary<long, int>();

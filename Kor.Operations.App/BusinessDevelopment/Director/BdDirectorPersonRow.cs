@@ -121,11 +121,16 @@ public sealed class BdKnowledgeSourceRow(KnowledgeSourceSummary source) : Observ
     }
 }
 
-public sealed record BdKnowledgeClaimRow(KnowledgeClaimRow Claim)
+public sealed record BdKnowledgeClaimRow(KnowledgeClaimRow Claim, ClaimVerdict? Verdict = null)
 {
     public string Concepts => string.Join(" · ", Claim.Concepts);
     public string Status => Claim.RetiredAtUtc is not null ? "Retired" : Claim.ReviewedAtUtc is not null ? "Kept" : "Unreviewed";
     public bool CanReview => Claim.RetiredAtUtc is null;
+    public string VerdictDisplay => $"{Verdict?.Wrong ?? 0} wrong · {Verdict?.Right ?? 0} right";
+    public bool IsFlagged => Verdict is { Wrong: >= 2, Right: 0 };
+    public string? RetirementReason => Verdict is { Wrong: >= 2, Right: 0 } verdict
+        ? $"Cited by {verdict.Wrong} brief recommendations scored wrong: decisions {string.Join(", ", verdict.WrongDecisionIds)}"
+        : null;
 }
 
 public sealed record BdKnowledgeConceptRow(KnowledgeConceptRow Concept)
@@ -140,8 +145,11 @@ public sealed record BdDirectorCitationRow(DirectorCitation Citation, KnowledgeC
     public string Status => Current is null ? "Claim unavailable; showing the saved citation."
         : Current.RetiredAtUtc is not null ? "Retired · " + (Current.RetiredReason ?? "No reason recorded.") : "";
 }
-public sealed record BdDirectorBriefRow(DirectorBriefRow Brief, IReadOnlyList<BdDirectorCitationRow> Citations)
+public sealed record BdDirectorBriefRow(DirectorBriefRow Brief, IReadOnlyList<BdDirectorCitationRow> Citations, BdDecision? Decision = null)
 {
+    public bool HasCall => Decision is not null;
+    public bool IsCallPending => Decision?.Outcome == "Pending";
+    public string CallStatus => Decision is null ? "" : "Call: " + Decision.Outcome;
     public DateTimeOffset Generated => Brief.ImportedAtUtc;
     public string Section => Brief.Section == "ThisWeek" ? "This week" : Brief.Section;
     public bool CanAcknowledge => Brief.AcknowledgedAtUtc is null;

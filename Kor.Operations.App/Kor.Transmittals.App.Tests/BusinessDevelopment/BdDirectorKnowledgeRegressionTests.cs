@@ -20,6 +20,7 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// Covers migration 350 guards and additive scope, review-only SQL columns, six tabs,
 /// captions/plain literals/date formats, actor/reason forwarding, isolated count refresh,
 /// sampling/concept reads and cancellation of stale claims/passages with mocked stores.
+/// Covers verdict flag thresholds, retirement reason IDs and no retirement on load.
 /// Does not execute SQL, prove permissions/locking/plans, read any real book or passage,
 /// open dialogs, render WPF or prove a claim's meaning/support. Same-class miss: a join
 /// could duplicate claim rows while retaining every SQL clause this source gate checks.
@@ -210,6 +211,37 @@ public sealed class BdDirectorKnowledgeRegressionTests
         }
     }
 
+    [Fact]
+    public async Task WrongVerdicts_FlagAndPrefillRetirement_ButNeverRetireOnLoad()
+    {
+        var fixture = new Fixture();
+        fixture.Claims.Setup(s => s.ListClaimVerdictsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new ClaimVerdict(1, 0, 2, 0, 0, new long[] { 105, 106 }),
+            new ClaimVerdict(2, 1, 1, 0, 0, new long[] { 107 }),
+        });
+        using var vm = fixture.Create();
+        await vm.LoadKnowledgeAsync(CancellationToken.None);
+        var flagged = vm.KnowledgeClaims[0];
+        Assert.True(flagged.IsFlagged);
+        Assert.Equal("2 wrong · 0 right", flagged.VerdictDisplay);
+        Assert.Equal("Cited by 2 brief recommendations scored wrong: decisions 105, 106", flagged.RetirementReason);
+        Assert.False(vm.KnowledgeClaims[1].IsFlagged);
+        Assert.Null(vm.KnowledgeClaims[1].RetirementReason);
+        fixture.Claims.Verify(s => s.RetireAsync(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        fixture.Claims.Verify(s => s.ListClaimVerdictsAsync(It.IsAny<CancellationToken>()), Times.Once);
+        await vm.RetireClaimAsync(flagged, "Ian", flagged.RetirementReason!, CancellationToken.None);
+        fixture.Claims.Verify(s => s.RetireAsync(1, "Ian", "Cited by 2 brief recommendations scored wrong: decisions 105, 106", It.IsAny<CancellationToken>()), Times.Once);
+        Contains(Source(Director + "BdDirectorWindow.xaml.cs"), "initialNote: row.RetirementReason");
+        Contains(Source(Director + "NoteDialog.xaml.cs"), "NoteBox.Text = initialNote ?? \"\"");
+        var xaml = Source(Director + "BdDirectorWindow.xaml");
+        Contains(xaml, "Header=\"Verdict\"");
+        Contains(xaml, "Text=\"{Binding VerdictDisplay}\"");
+        var flag = XDocument.Parse(xaml).Descendants().Single(e => (string?)e.Attribute("Text") == "⚑ Review claim");
+        Assert.Equal("Red", (string?)flag.Attribute("Foreground"));
+        Assert.Equal("{Binding IsFlagged, Converter={StaticResource BoolVisibility}}", (string?)flag.Attribute("Visibility"));
+    }
+
     private sealed class Fixture
     {
         internal readonly Mock<IKnowledgeClaimStore> Claims = new(MockBehavior.Strict);
@@ -220,6 +252,7 @@ public sealed class BdDirectorKnowledgeRegressionTests
         };
         internal Fixture()
         {
+            Claims.Setup(s => s.ListClaimVerdictsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ClaimVerdict>());
             Claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => new[]
             {
                 new KnowledgeSourceSummary(4, "Synthetic book", "Example author", 663, 2, _rows.Count, _rows.Count(r => r.ReviewedAtUtc is not null), _rows.Count(r => r.RetiredAtUtc is not null)),

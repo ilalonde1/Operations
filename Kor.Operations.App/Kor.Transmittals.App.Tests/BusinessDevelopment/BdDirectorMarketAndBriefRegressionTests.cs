@@ -23,8 +23,9 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// <summary>
 /// Covers nine-tab/caption/literal/date contracts, database-store load/acknowledgement,
 /// market read sizes/frequency, Dashboard deadline semantics, retained retired citations,
-/// shared passage resolution and the absence of runtime generation. No real HTTP, SQL, model,
-/// knowledge text or WPF rendering is used. Same-class miss: a binding can name an
+/// shared passage resolution and the absence of runtime generation.
+/// Also covers Brief decision identity, pending review bindings and refresh after scoring.
+/// No real HTTP, SQL, model, knowledge text or WPF rendering is used. Same-class miss: a binding can name an
 /// existing property yet truncate it at a narrow window size; render review is separate.
 /// All market/brief content below is explicitly illustrative, not production evidence.
 /// </summary>
@@ -145,6 +146,36 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
     }
 
     [Fact]
+    public async Task Brief_CallStartsPending_AndScoringRefreshesItAndTheVerdicts()
+    {
+        var fixture = new DirectorMarketFixture();
+        var claims = new Mock<IKnowledgeClaimStore>(); fixture.SetupClaims(claims);
+        claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeSourceSummary>());
+        claims.Setup(s => s.ListConceptsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeConceptRow>());
+        using var vm = Create(fixture, Mock.Of<IBdDirectorStore>(), claims.Object);
+        await vm.LoadDecisionsAsync(CancellationToken.None);
+        await vm.LoadBriefAsync(CancellationToken.None);
+        var pending = vm.BriefSections[0];
+        Assert.Equal("Call: Pending", pending.CallStatus);
+        Assert.True(pending.IsCallPending);
+        Assert.Equal(101L, pending.Brief.DecisionId);
+        Assert.Equal(DirectorScoringFixture.ReviewAt, pending.Decision!.ReviewAtUtc);
+        await vm.ScoreDecisionAsync(101, "Right", "Meeting held.", "Ian", CancellationToken.None);
+        Assert.Equal("Call: Right", vm.BriefSections[0].CallStatus);
+        Assert.False(vm.BriefSections[0].IsCallPending);
+        Assert.Equal("Decision scored.", vm.StatusMessage);
+        fixture.Scoring.Ledger.Verify(s => s.ScoreDecisionAsync(101, "Right", "Meeting held.", "Ian", It.IsAny<CancellationToken>()), Times.Once);
+        fixture.Scoring.Ledger.Verify(s => s.GetBriefTrackRecordAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        claims.Verify(s => s.ListClaimVerdictsAsync(It.IsAny<CancellationToken>()), Times.Once);
+        fixture.BriefStore.Verify(s => s.GetLatestAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        var xaml = Source("Kor.Operations.App/BusinessDevelopment/Director/BdDirectorWindow.xaml");
+        Assert.Contains("Text=\"{Binding CallStatus}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\", review \"", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding Decision.ReviewAtUtc, Mode=OneWay, Converter={StaticResource BdDay}}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding IsCallPending, Converter={StaticResource BoolVisibility}}", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Director_StillContributesZeroInlineDates()
     {
         foreach (var file in DirectorFiles()) Assert.False(Regex.IsMatch(File.ReadAllText(file), "yyyy-MM-dd|MMM d, yyyy"), file);
@@ -159,10 +190,9 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
         var attribution = new Mock<IBdAttributionStore>();
         attribution.Setup(s => s.GetSummaryAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
             new BdAttributionSummary(0, 0m, 0, 0, 0, Array.Empty<AttributionSourceRow>(), Array.Empty<AttributionOwnerRow>()));
-        var ledger = new Mock<IBdDirectorLedgerStore>();
+        var ledger = fixture.Scoring.Ledger;
         ledger.Setup(s => s.ListTargetsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdTarget>());
         ledger.Setup(s => s.ListAsksAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdAsk>());
-        ledger.Setup(s => s.ListDecisionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDecision>());
         return new(reads, pursuits.Object, records.Object, attribution.Object, ledger.Object,
             Mock.Of<IDeltekClientContextService>(), claims, fixture.Dashboard.Object, fixture.Opportunities.Object, fixture.Brief, Mock.Of<IPursuitFileStore>());
     }
@@ -179,6 +209,13 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
 
 internal static class DirectorMarketDefaults
 {
+    internal static void SetupEmptyScoring(Mock<IBdDirectorLedgerStore> ledger, Mock<IKnowledgeClaimStore> claims)
+    {
+        ledger.Setup(s => s.GetBriefTrackRecordAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+            new BriefTrackRecord(0, 0, 0, 0, 0, Array.Empty<(string, int, int)>(), Array.Empty<(string, int, int)>()));
+        claims.Setup(s => s.ListClaimVerdictsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<ClaimVerdict>());
+    }
+
     internal static void SetupPendingBids(Mock<IBdDirectorStore> store)
     {
         store.Setup(s => s.ListPendingBidsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<PendingBidRow>());
@@ -209,13 +246,15 @@ internal static class DirectorMarketDefaults
 
 internal sealed class DirectorMarketFixture
 {
+    internal DirectorScoringFixture Scoring { get; }
     internal Mock<IBdDashboardStore> Dashboard { get; } = new(MockBehavior.Strict);
     internal Mock<IOpportunityStore> Opportunities { get; } = new(MockBehavior.Strict);
     internal Mock<IDirectorBriefStore> BriefStore { get; } = new(MockBehavior.Strict);
     internal IDirectorBriefStore Brief => BriefStore.Object;
     internal IReadOnlyList<DirectorBriefRow> Rows { get; private set; } = Array.Empty<DirectorBriefRow>();
-    internal DirectorMarketFixture()
+    internal DirectorMarketFixture(string bookA = "Illustrative book A", string bookB = "Illustrative book B")
     {
+        Scoring = new(bookA, bookB);
         var now = DateTimeOffset.UtcNow;
         Dashboard.Setup(s => s.GetForwardPipelineAsync(12, It.IsAny<CancellationToken>())).ReturnsAsync(Enumerable.Range(1, 3)
             .Select(i => new BdForwardPipelineRow(i, "Illustrative planned project " + i, "Illustrative proponent", "BC", "Education", i * 10000000m, "Planning")).ToArray());
@@ -227,11 +266,14 @@ internal sealed class DirectorMarketFixture
         opportunities.Add(new Opportunity { Id = 5, Name = "Excluded: past", SubmissionDeadlineUtc = now.AddDays(-1) });
         opportunities.Add(new Opportunity { Id = 6, Name = "Excluded: beyond 30 days", SubmissionDeadlineUtc = now.AddDays(31) });
         Opportunities.Setup(s => s.ListAsync(It.IsAny<CancellationToken>(), 5000, false, false)).ReturnsAsync(opportunities);
-        var citations = new[] { new DirectorCitation(1, 101, "Illustrative: confirm the buyer's need.", "Illustrative book A"),
-            new DirectorCitation(2, 102, "Illustrative: agree on the next step.", "Illustrative book B") };
+        var citations = new[] { new DirectorCitation(1, 101, "Illustrative: confirm the buyer's need.", bookA),
+            new DirectorCitation(2, 102, "Illustrative: agree on the next step.", bookB) };
         Rows = new[] { "ThisWeek", "Pursuits", "Accounts", "Market", "Asks" }.Select((section, i) => new DirectorBriefRow(i + 1, DateOnly.FromDateTime(now.Date),
             section, "Illustrative brief · " + section, "Illustrative synthesis for layout review, written in session.",
-            "Illustrative recommendation: arrange a short conversation.", citations, "Fixture writer", now, null, null)).ToArray();
+            "Illustrative recommendation: arrange a short conversation.",
+            i is 0 or 4 ? citations : new[] { new DirectorCitation(3, 103, "Illustrative: check the available time.", bookB), citations[1] },
+            "Fixture writer", now, null, null,
+            new long[] { 101, 102, 108, 107, 105 }[i])).ToArray();
         BriefStore.Setup(s => s.GetLatestAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => Rows);
         BriefStore.Setup(s => s.AcknowledgeAsync(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Callback((long id, string by, CancellationToken ct) => Rows = Rows.Select(r => r.Id == id && r.AcknowledgedAtUtc is null
@@ -242,10 +284,57 @@ internal sealed class DirectorMarketFixture
         Enumerable.Range(1, 3).Select(i => new BdDirectorSignal(i, "Illustrative firm " + i, "RecentWin", "Illustrative early signal " + i, DateTimeOffset.UtcNow.AddDays(-i), i)).ToArray());
     internal void SetupClaims(Mock<IKnowledgeClaimStore> store)
     {
+        Scoring.SetupVerdicts(store);
         store.Setup(s => s.GetClaimAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync((long id, CancellationToken ct) =>
             new KnowledgeClaimRow(id, id, "Illustrative book " + (id == 1 ? "A" : "B"), id + 100, "Illustrative reference", "Rule", "Illustrative cited statement " + id,
                 0.9m, Array.Empty<string>(), null, id == 2 ? DateTimeOffset.UnixEpoch : null, id == 2 ? "Illustrative retirement reason." : null));
         store.Setup(s => s.GetPassageAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync((long id, CancellationToken ct) =>
             new KnowledgePassageText(id, "Illustrative book", "Illustrative reference", "ILLUSTRATIVE passage for layout review. No book text was read to create this fixture."));
     }
+}
+
+// Eight illustrative calls, six scored and two overdue pending; two wrong calls cite claim 1.
+// This fixture supplies expected aggregates, not a simulation or verification of the SQL.
+internal sealed class DirectorScoringFixture
+{
+    internal static readonly DateTimeOffset ReviewAt = new(2026, 10, 1, 23, 0, 0, TimeSpan.Zero);
+    internal Mock<IBdDirectorLedgerStore> Ledger { get; } = new();
+    private readonly List<(BdDecision Decision, string Section, long ClaimId)> _calls;
+    private readonly string _bookA;
+    private readonly string _bookB;
+    internal DirectorScoringFixture(string bookA = "Illustrative book A", string bookB = "Illustrative book B")
+    {
+        _bookA = bookA; _bookB = bookB;
+        var outcomes = new[] { "Pending", "Right", "Right", "Right", "Wrong", "Wrong", "Unclear", "Pending" };
+        var sections = new[] { "ThisWeek", "Pursuits", "Accounts", "Market", "Asks", "Asks", "Market", "Accounts" };
+        _calls = outcomes.Select((outcome, i) => (new BdDecision(i + 101, "Brief", null, null,
+            "Illustrative call " + (i + 101), "Arrange a conversation.", "A meeting is agreed.", ReviewAt,
+            "Fixture writer", ReviewAt.AddDays(-28), outcome, outcome == "Pending" ? null : "Illustrative outcome note.",
+            outcome == "Pending" ? null : ReviewAt, outcome == "Pending" ? null : "Ian"), sections[i], i is 0 or 4 or 5 ? 1L : 2L)).ToList();
+        SetupLedger(Ledger);
+    }
+    internal void SetupLedger(Mock<IBdDirectorLedgerStore> ledger)
+    {
+        ledger.Setup(s => s.ListDecisionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => _calls.Select(c => c.Decision).ToArray());
+        ledger.Setup(s => s.GetBriefTrackRecordAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => new BriefTrackRecord(
+            _calls.Count(c => c.Decision.Outcome != "Pending"), _calls.Count(c => c.Decision.Outcome == "Right"),
+            _calls.Count(c => c.Decision.Outcome == "Wrong"), _calls.Count(c => c.Decision.Outcome == "Unclear"),
+            _calls.Count(c => c.Decision.Outcome == "Pending"),
+            _calls.GroupBy(c => c.Section).OrderBy(g => g.Key).Select(g => (g.Key, g.Count(c => c.Decision.Outcome == "Right"), g.Count(c => c.Decision.Outcome == "Wrong"))).ToArray(),
+            _calls.SelectMany(c => new[] { _bookB, c.ClaimId == 1 ? _bookA : _bookB }.Distinct().Select(book => (Book: book, c.Decision)))
+                .GroupBy(c => c.Book).OrderBy(g => g.Key).Select(g => (g.Key, g.Count(c => c.Decision.Outcome == "Right"), g.Count(c => c.Decision.Outcome == "Wrong"))).ToArray()));
+        ledger.Setup(s => s.ScoreDecisionAsync(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback((long id, string outcome, string? note, string by, CancellationToken ct) =>
+            {
+                var index = _calls.FindIndex(c => c.Decision.Id == id);
+                var call = _calls[index];
+                _calls[index] = (call.Decision with { Outcome = outcome, OutcomeNote = note, ScoredBy = by, ScoredAtUtc = ReviewAt }, call.Section, call.ClaimId);
+            }).Returns(Task.CompletedTask);
+    }
+    internal void SetupVerdicts(Mock<IKnowledgeClaimStore> claims) => claims.Setup(s => s.ListClaimVerdictsAsync(It.IsAny<CancellationToken>()))
+        .ReturnsAsync(() => _calls.SelectMany(c => new[] { (c.Decision, ClaimId: 2L), (c.Decision, ClaimId: c.ClaimId == 1 ? 1L : 3L) })
+            .GroupBy(c => c.ClaimId).Select(g => new ClaimVerdict(g.Key,
+            g.Count(c => c.Decision.Outcome == "Right"), g.Count(c => c.Decision.Outcome == "Wrong"),
+            g.Count(c => c.Decision.Outcome == "Unclear"), g.Count(c => c.Decision.Outcome == "Pending"),
+            g.Where(c => c.Decision.Outcome == "Wrong").Select(c => c.Decision.Id).ToArray())).ToArray());
 }

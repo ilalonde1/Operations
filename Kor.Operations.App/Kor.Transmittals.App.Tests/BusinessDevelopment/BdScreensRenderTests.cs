@@ -318,11 +318,6 @@ public sealed class BdScreensRenderTests
             new BdAsk(2, "Conor", null, 141, "Arrange a short account review.", "Agree on who follows up.", 60, measuredAt.AddDays(9), "Ian", measuredAt, "Open", null, null, null),
             new BdAsk(3, "Islam", null, null, "Bring two prospects for discussion.", null, 45, measuredAt.AddDays(14), "Ian", measuredAt, "Open", null, null, null),
         });
-        ledger.Setup(s => s.ListDecisionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
-        {
-            new BdDecision(1, "Go", 1, null, "Continue the school pursuit.", "A clear next step and an available team.", "Buyer confirms scope.", measuredAt.AddDays(30), "Ian", measuredAt, "Pending", null, null, null),
-            new BdDecision(2, "Target", null, 141, "Prioritize an account review.", "Start with our established clients.", "One meeting with the buyer.", measuredAt.AddDays(-1), "Ian", measuredAt.AddDays(-90), "Right", "Meeting agreed.", measuredAt, "Ian"),
-        });
         var deltek = new Mock<IDeltekClientContextService>();
         deltek.Setup(s => s.LoadAsync(accounts[0].ClendorClientId, It.IsAny<CancellationToken>())).ReturnsAsync(new DeltekClientIntelligence
         {
@@ -347,12 +342,16 @@ public sealed class BdScreensRenderTests
                 "Illustrative: agree on a buyer's need before preparing a proposal.", 0.95m, new[] { concept.Name }, null, null, null),
             new KnowledgeClaimRow(2, 4, "Managing the professional service firm", 102, "Illustrative passage B", "Heuristic",
                 "Illustrative: review the cost of a pursuit before assigning more staff time.", 0.80m, new[] { concept.Name }, null, null, null),
+            new KnowledgeClaimRow(3, 4, "Managing the professional service firm", 103, "Illustrative passage C", "Rule",
+                "Illustrative: check the available time.", 0.85m, new[] { concept.Name }, null, null, null),
         };
         claims.Setup(s => s.ListClaimsAsync(4, "Unreviewed", It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(illustrativeClaims);
         claims.Setup(s => s.GetPassageAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync((long id, CancellationToken ct) =>
             new KnowledgePassageText(id, "Managing the professional service firm", id == 101 ? "Illustrative passage A" : "Illustrative passage B",
                 "ILLUSTRATIVE RENDER FIXTURE — not a quotation or extracted passage.\n\nThis sample text shows how the reader can compare a claim with its source passage. The production view displays the full stored passage and its original reference."));
-        var market = new DirectorMarketFixture();
+        var market = new DirectorMarketFixture("Managing the professional service firm", "Managing the professional service firm");
+        market.Scoring.SetupLedger(ledger);
+        market.Scoring.SetupVerdicts(claims);
         DirectorMarketDefaults.SetupPendingBids(director);
         market.SetupSignals(director);
         claims.Setup(s => s.GetClaimAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync((long id, CancellationToken ct) =>
@@ -406,11 +405,55 @@ public sealed class BdScreensRenderTests
             }
             content.UpdateLayout();
             written += RenderView(content, new Size(1680, 980), Path.Combine(dir, files[i]));
+            if (i == 4)
+            {
+                Assert.Equal("Brief calls: 6 scored · 3 right · 2 wrong · 1 unclear · 2 past review unscored", vm.BriefTrackRecordSummary);
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == vm.BriefTrackRecordSummary);
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == vm.BriefTrackRecordBreakdown);
+            }
+            if (i == 5)
+            {
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "2 wrong · 0 right");
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "⚑ Review claim"
+                    && b.Visibility == Visibility.Visible && b.Foreground is SolidColorBrush brush && brush.Color == Colors.Red);
+                var row = vm.KnowledgeClaims[0];
+                var dialog = new NoteDialog("Retire claim", "Reason", 200, required: true, initialNote: row.RetirementReason);
+                Assert.Equal("Cited by 2 brief recommendations scored wrong: decisions 105, 106",
+                    Assert.IsType<System.Windows.Controls.TextBox>(dialog.FindName("NoteBox")).Text);
+                dialog.Close();
+                claims.Verify(s => s.RetireAsync(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            }
+            if (i == 7)
+            {
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Call: Pending");
+                var day = new Kor.Operations.Converters.BdDayConverter().Convert(DirectorScoringFixture.ReviewAt, typeof(string), null!, System.Globalization.CultureInfo.CurrentCulture);
+                // A TextBlock composed of <Run>s leaves .Text empty; the words are in its Inlines.
+                static string Shown(System.Windows.Controls.TextBlock b) =>
+                    b.Inlines.Count == 0 ? b.Text : string.Concat(b.Inlines.OfType<System.Windows.Documents.Run>().Select(r => r.Text));
+                var reviewTexts = VisualChildren<System.Windows.Controls.TextBlock>(content).Where(b => Shown(b).StartsWith(", review", StringComparison.Ordinal))
+                    .Select(b => $"[{Shown(b)}] {b.Visibility}").ToList();
+                Assert.True(reviewTexts.Contains($"[, review {day}] Visible"),
+                    $"EXPECTED a visible ', review {day}'; ACTUAL: " + string.Join(" | ", reviewTexts));
+                var callTexts = VisualChildren<System.Windows.Controls.TextBlock>(content).Select(b => b.Text).Where(t => t.StartsWith("Call:", StringComparison.Ordinal)).ToList();
+                Assert.True(callTexts.Contains("Call: Right"), "EXPECTED a rendered 'Call: Right'; ACTUAL call texts: " + string.Join(" | ", callTexts));
+            }
         }
         market.BriefStore.Verify(s => s.GetLatestAsync(It.IsAny<CancellationToken>()), Times.Once);
+        ledger.Verify(s => s.GetBriefTrackRecordAsync(It.IsAny<CancellationToken>()), Times.Once);
+        claims.Verify(s => s.ListClaimVerdictsAsync(It.IsAny<CancellationToken>()), Times.Once);
         director.Verify(s => s.ListPendingBidsAsync(It.IsAny<CancellationToken>()), Times.Once);
         director.Verify(s => s.CountRelationshipPursuitsAsync(It.IsAny<CancellationToken>()), Times.Once);
         return written + RenderPendingBids(dir);
+    }
+
+    private static IEnumerable<T> VisualChildren<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match) yield return match;
+            foreach (var nested in VisualChildren<T>(child)) yield return nested;
+        }
     }
 
     private static int RenderPendingBids(string dir)

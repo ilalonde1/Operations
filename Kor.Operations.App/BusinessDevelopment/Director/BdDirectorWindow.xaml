@@ -284,6 +284,8 @@
                         <Button Content="Wrong" Tag="Wrong" Click="ScoreDecision_Click" Padding="12,6" Margin="0,0,8,0" IsEnabled="{Binding SelectedDecision.IsPending, FallbackValue=False}"/>
                         <Button Content="Unclear" Tag="Unclear" Click="ScoreDecision_Click" Padding="12,6" IsEnabled="{Binding SelectedDecision.IsPending, FallbackValue=False}"/>
                     </StackPanel>
+                    <TextBlock Text="{Binding BriefTrackRecordSummary}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                    <TextBlock Text="{Binding BriefTrackRecordBreakdown}" TextWrapping="Wrap" Margin="0,0,0,10"/>
                     <DataGrid ItemsSource="{Binding Decisions}" SelectedItem="{Binding SelectedDecision}" Height="280" RowHeight="58">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Decided" Binding="{Binding Record.DecidedAtUtc, Converter={StaticResource BdDay}}" Width="125" ElementStyle="{StaticResource CellText}"/>
@@ -349,6 +351,15 @@
                             </DataGrid.RowStyle>
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Kind" Binding="{Binding Claim.Kind}" Width="75" ElementStyle="{StaticResource CellText}"/>
+                                <DataGridTemplateColumn Header="Verdict" Width="135">
+                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                        <StackPanel Margin="6">
+                                            <TextBlock Text="{Binding VerdictDisplay}" TextWrapping="Wrap"/>
+                                            <TextBlock Text="⚑ Review claim" Foreground="Red" FontWeight="Bold"
+                                                       Visibility="{Binding IsFlagged, Converter={StaticResource BoolVisibility}}"/>
+                                        </StackPanel>
+                                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Claim" Binding="{Binding Claim.Statement}" Width="3*" MinWidth="200">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource CellText}">
@@ -448,6 +459,12 @@
                                         <TextBlock Text="{Binding Brief.Headline}" FontWeight="Bold" TextWrapping="Wrap" Margin="0,6"/>
                                         <TextBlock Text="{Binding Brief.Body}" TextWrapping="Wrap"/>
                                         <TextBlock Text="{Binding Brief.Recommendation}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,8"/>
+                                        <StackPanel Orientation="Horizontal" Visibility="{Binding HasCall, Converter={StaticResource BoolVisibility}}" Margin="0,0,0,8">
+                                            <TextBlock Text="{Binding CallStatus}"/>
+                                            <TextBlock Visibility="{Binding IsCallPending, Converter={StaticResource BoolVisibility}}">
+                                                <Run Text=", review "/><Run Text="{Binding Decision.ReviewAtUtc, Mode=OneWay, Converter={StaticResource BdDay}}"/>
+                                            </TextBlock>
+                                        </StackPanel>
                                         <TextBlock Text="{Binding Generated, Converter={StaticResource BdDay}}" Foreground="{StaticResource Text.Secondary}"/>
                                         <TextBlock Text="{Binding Acknowledgement}" Foreground="{StaticResource Text.Secondary}"/>
                                         <ItemsControl ItemsSource="{Binding Citations}" Margin="0,8,0,0">

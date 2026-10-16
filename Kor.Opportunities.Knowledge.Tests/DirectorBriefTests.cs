@@ -5,6 +5,9 @@ using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Knowledge;
 using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Knowledge.Brief;
+using Kor.Opportunities.Knowledge.Claims;
+using Kor.Opportunities.Knowledge.Embedding;
+using Kor.Opportunities.Knowledge.Search;
 using Kor.Opportunities.Knowledge.Store;
 using Xunit;
 
@@ -12,7 +15,8 @@ namespace Kor.Opportunities.Knowledge.Tests;
 
 /// <summary>
 /// Covers bounded facts, export queries/counts/JSON, file-wide rejection, retirement checks,
-/// raw-byte provenance and duplicate/force behavior through the production import coordinator.
+/// raw-byte provenance, expected outcomes/review dates, prior-call JSON and bounded verdict
+/// demotion, and duplicate/force behavior through the production import coordinator.
 /// No SQL, embedding, book content or application is executed. Fake import storage does not
 /// prove transaction isolation, rollback or SQL syntax. Same-class miss: an incorrect SQL lock
 /// could allow two concurrent imports even though the sequential fake duplicate gate passes.
@@ -42,6 +46,9 @@ public sealed class DirectorBriefTests
         var store = new FactsStore();
         var facts = new DirectorFacts(store, store, store);
         var queries = new List<string>();
+        var priorReads = new List<string>();
+        var prior = new PriorCall(Week.AddDays(-7), "Previous headline", "Previous recommendation", "A meeting",
+            "Wrong", "No meeting", new DateTimeOffset(2026, 11, 10, 0, 0, 0, TimeSpan.Zero));
         var exporter = new DirectorBriefExport(facts.GetAsync, (query, take, ct) =>
         {
             Assert.Equal(12, take);
@@ -49,8 +56,16 @@ public sealed class DirectorBriefTests
             return Task.FromResult<IReadOnlyList<KnowledgeClaimHit>>(query == DirectorQuestions.ClaimsQuery(DirectorSection.Asks)
                 ? Array.Empty<KnowledgeClaimHit>() : Enumerable.Range(1, 15)
                     .Select(i => new KnowledgeClaimHit(i, 100, "Synthetic book", i + 1000, "Rule", "Synthetic advice.", 0.8f)).ToArray());
+        }, (section, since, ct) =>
+        {
+            Assert.Equal(Week.AddDays(-28), since);
+            priorReads.Add(section);
+            return Task.FromResult<IReadOnlyList<PriorCall>>(section == "Asks" ? Array.Empty<PriorCall>() : new[] { prior });
         });
         var export = await exporter.ExportAsync(Week);
+        Assert.Equal(DirectorBriefFile.SectionNames, priorReads);
+        Assert.Equal(prior, Assert.Single(export.Sections[0].PriorCalls));
+        Assert.Empty(export.Sections[^1].PriorCalls);
         Assert.Equal(DirectorBriefFile.SectionNames, export.Sections.Select(s => s.Section));
         Assert.Equal(Enum.GetValues<DirectorSection>().Select(DirectorQuestions.ClaimsQuery), queries);
         foreach (var section in export.Sections)
@@ -67,7 +82,82 @@ public sealed class DirectorBriefTests
         Assert.Equal("2026-10-19", json.RootElement.GetProperty("weekOf").GetString());
         Assert.True(json.RootElement.GetProperty("sections")[0].TryGetProperty("claimsQuery", out _));
         Assert.True(json.RootElement.GetProperty("sections")[0].GetProperty("claims")[0].TryGetProperty("sourceTitle", out _));
-        Assert.Equal(bytes, JsonSerializer.SerializeToUtf8Bytes(DirectorBriefFiles.ParseExport(bytes), DirectorBriefFiles.JsonOptions));
+        Assert.Equal("Wrong", json.RootElement.GetProperty("sections")[0].GetProperty("priorCalls")[0].GetProperty("outcome").GetString());
+        var parsed = DirectorBriefFiles.ParseExport(bytes);
+        Assert.Equal(prior, Assert.Single(parsed.Sections[0].PriorCalls));
+        Assert.Equal(bytes, JsonSerializer.SerializeToUtf8Bytes(parsed, DirectorBriefFiles.JsonOptions));
+    }
+
+    [Theory]
+    [InlineData(null, "expected must contain")]
+    [InlineData("", "expected must contain")]
+    [InlineData(" ", "expected must contain")]
+    [InlineData("overlong", "expected must contain")]
+    [InlineData("one\ntwo", "expected must be one line")]
+    [InlineData("one\rtwo", "expected must be one line")]
+    [InlineData("one\u0085two", "expected must be one line")]
+    [InlineData("one\u2028two", "expected must be one line")]
+    [InlineData("one\u2029two", "expected must be one line")]
+    public async Task Recommendation_RequiresOneLineExpectedOutcome_AndRejectsBeforeWriting(string? expected, string reason)
+    {
+        var file = Sections();
+        file = file with { Sections = file.Sections.Select(s => s with { Expected = expected == "overlong" ? new string('x', 501) : expected }).ToArray() };
+        var store = new BriefStore();
+        var options = new JsonSerializerOptions(DirectorBriefFiles.JsonOptions)
+            { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(file, options);
+        if (expected is null) Assert.DoesNotContain("\"expected\"", Encoding.UTF8.GetString(bytes), StringComparison.Ordinal);
+        var result = await DirectorBriefFiles.ImportAsync(JsonSerializer.SerializeToUtf8Bytes(Export(), DirectorBriefFiles.JsonOptions),
+            bytes, "sections.json", "Importer", false, store);
+        Assert.Contains(result.Rejected, e => e.Contains(reason, StringComparison.Ordinal));
+        Assert.Equal(0, store.ImportCalls);
+    }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData(6, false)]
+    [InlineData(7, true)]
+    [InlineData(90, true)]
+    [InlineData(91, false)]
+    public void ReviewDays_AreBounded_EvenWithoutRecommendation(int? days, bool valid)
+    {
+        var file = Sections() with { Sections = Sections().Sections.Select(s => s with
+            { Recommendation = null, Expected = null, ReviewAfterDays = days }).ToArray() };
+        Assert.Equal(valid, DirectorBriefValidation.Validate(file, Export()).Count == 0);
+    }
+
+    [Theory]
+    [InlineData("2026-10-19", null, "2026-11-17T00:00:00+00:00")]
+    [InlineData("2026-10-19", 7, "2026-10-26T23:00:00+00:00")]
+    [InlineData("2026-03-02", 7, "2026-03-09T23:00:00+00:00")]
+    public void ReviewDate_IsSixteenPacificOnTheReviewDay(string week, int? days, string expected)
+    {
+        var section = Sections().Sections[0] with { ReviewAfterDays = days, Expected = new string('x', 500) };
+        Assert.Empty(DirectorBriefValidation.Validate(Sections() with { Sections = Sections().Sections.Skip(1).Prepend(section).ToArray() }, Export()));
+        Assert.Equal(DateTimeOffset.Parse(expected, System.Globalization.CultureInfo.InvariantCulture),
+            section.ReviewAtUtc(DateOnly.Parse(week, System.Globalization.CultureInfo.InvariantCulture)));
+    }
+
+    [Fact]
+    public async Task Search_DemotesWrongClaims_AndCapsThePenaltyAtPointOneFive()
+    {
+        var verdicts = new Dictionary<long, ClaimVerdict>
+        {
+            [1] = new(1, 0, 2, 0, 0, new long[] { 105, 106 }),
+            [3] = new(3, 0, 100, 0, 0, Array.Empty<long>()),
+            [4] = new(4, 1, 1, 0, 0, new long[] { 107 }),
+            [5] = new(5, 1, 2, 0, 0, new long[] { 108, 109 }),
+            [6] = new(6, 3, 1, 0, 0, new long[] { 110 }),
+        };
+        using var search = new KnowledgeSearch(new SearchStore(), new UnitEmbedder(), verdicts);
+        var hits = await search.SearchClaimsAsync("synthetic", 6, perSource: 0);
+        Assert.Equal(new long[] { 2, 4, 6, 5, 1, 3 }, hits.Select(h => h.ClaimId));
+        Assert.Equal(0.90f, hits.Single(h => h.ClaimId == 1).Score, 5);
+        Assert.Equal(0.85f, hits.Single(h => h.ClaimId == 3).Score, 5);
+        Assert.Equal(0.95f, hits.Single(h => h.ClaimId == 5).Score, 5);
+        Assert.All(hits, h => Assert.InRange(h.Score, 0.85f, 1f));
+        using var baseline = new KnowledgeSearch(new SearchStore(), new UnitEmbedder());
+        Assert.Equal(Enumerable.Range(1, 6).Select(i => (long)i), (await baseline.SearchClaimsAsync("synthetic", 6, perSource: 0)).Select(h => h.ClaimId));
     }
 
     [Theory]
@@ -183,10 +273,10 @@ public sealed class DirectorBriefTests
             DirectorBriefExport.NextSunday(DateTimeOffset.Parse(now, System.Globalization.CultureInfo.InvariantCulture)));
 
     private static DirectorBriefFile Sections() => new(Week, "Session writer", DirectorBriefFile.SectionNames
-        .Select((s, i) => new DirectorBriefSection(s, "Synthetic headline.", "Synthetic facts and reasoning.", "Synthetic action.", new long[] { i + 1 })).ToArray());
+        .Select((s, i) => new DirectorBriefSection(s, "Synthetic headline.", "Synthetic facts and reasoning.", "Synthetic action.", new long[] { i + 1 }, "Synthetic expected result.")).ToArray());
     private static DirectorBriefExportFile Export() => new(Week, DateTimeOffset.UnixEpoch, Enum.GetValues<DirectorSection>()
         .Select((s, i) => new ExportSection(s.ToString(), DirectorQuestions.Question(s), DirectorQuestions.ClaimsQuery(s), "Synthetic facts.",
-            new[] { new OfferedClaim(i + 1, i + 101, 1, "Synthetic source", "Rule", "Offered statement.", 0.9f) })).ToArray());
+            new[] { new OfferedClaim(i + 1, i + 101, 1, "Synthetic source", "Rule", "Offered statement.", 0.9f) }, Array.Empty<PriorCall>())).ToArray());
     private static KnowledgeClaimRow Claim(long id) => new(id, 1, "Current source title", id + 100, null, "Rule", "Current statement.", 0.9m,
         Array.Empty<string>(), null, null, null);
 
@@ -212,6 +302,7 @@ public sealed class DirectorBriefTests
         }
         public Task<IReadOnlyList<DirectorBriefRow>> GetLatestAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<DirectorBriefRow>> GetHistoryAsync(int weeks, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<PriorCall>> ListPriorCallsAsync(string section, DateOnly since, CancellationToken ct = default) => throw new NotSupportedException();
         public Task AcknowledgeAsync(long id, string by, CancellationToken ct = default) => throw new NotSupportedException();
     }
     private sealed class FactsStore : IBdDirectorStore, IBdDirectorLedgerStore, IBdDashboardStore
@@ -230,6 +321,7 @@ public sealed class DirectorBriefTests
         public Task<IReadOnlyList<BdTarget>> ListTargetsAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<BdTarget>>(new[] { new BdTarget(1, "LivePursuits", "Firm", null, Now, Now.AddDays(90), 120, null, "Synthetic", Now) });
         public Task<IReadOnlyList<BdAsk>> ListAsksAsync(string? status, CancellationToken ct) => Task.FromResult<IReadOnlyList<BdAsk>>(new[] { new BdAsk(1, "engineer", 1, null, "Synthetic ask", null, 30, Now, "Synthetic", Now, "Open", null, null, null) });
         public Task<IReadOnlyList<BdDecision>> ListDecisionsAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<BdDecision>>(Array.Empty<BdDecision>());
+        public Task<BriefTrackRecord> GetBriefTrackRecordAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<BdForwardPipelineRow>> GetForwardPipelineAsync(int take, CancellationToken ct) => Task.FromResult<IReadOnlyList<BdForwardPipelineRow>>(new[] { new BdForwardPipelineRow(1, "Synthetic project", "Proponent", "BC", "School", 100m, "Planning") });
         public Task<PipelineFunnel> GetPipelineFunnelAsync(CancellationToken ct) => Task.FromResult(new PipelineFunnel(3, 2, 1));
         public Task<IReadOnlyList<BdOpenStructuralSeatRow>> GetOpenStructuralSeatsAsync(int take, CancellationToken ct) => throw new NotSupportedException();
@@ -242,5 +334,31 @@ public sealed class DirectorBriefTests
         public Task CloseAskAsync(long id, string status, string? note, string by, CancellationToken ct) => throw new NotSupportedException();
         public Task<long> RecordDecisionAsync(BdDecision decision, CancellationToken ct) => throw new NotSupportedException();
         public Task ScoreDecisionAsync(long id, string outcome, string? note, string by, CancellationToken ct) => throw new NotSupportedException();
+    }
+
+    private sealed class UnitEmbedder : IKnowledgeEmbedder
+    {
+        public float[] Embed(string text) { var vector = new float[384]; vector[0] = 1; return vector; }
+    }
+
+    // Only vector/claim reads are implemented. An unexpected write or passage search fails.
+    private sealed class SearchStore : IKnowledgeStore
+    {
+        public Task<IReadOnlyList<(long ClaimId, long SourceId, float[] Vector)>> LoadClaimVectorsAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<(long, long, float[])>>(Enumerable.Range(1, 6).Select(i => ((long)i, 1L, new UnitEmbedder().Embed("synthetic"))).ToArray());
+        public Task<IReadOnlyList<KnowledgeClaim>> GetClaimsAsync(IReadOnlyList<long> ids, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<KnowledgeClaim>>(ids.Select(id => new KnowledgeClaim(id, 1, "Synthetic", id + 100, "Rule", "Synthetic statement", 1)).ToArray());
+        public Task<IReadOnlyList<(long Id, string Statement)>> ListUnembeddedClaimsAsync(int take, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task SetClaimEmbeddingsAsync(IReadOnlyList<(long ClaimId, byte[] Embedding)> embeddings, string model, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<(int Written, int Rejected)> ImportRelationsAsync(RelationFile file, string by, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<ClaimFile> ExportAsync(long sourceId, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<(int PassagesCovered, int ClaimsWritten, int ClaimsRejected)> ImportClaimsAsync(ClaimFile file, bool force, string by, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<KnowledgeSource?> FindBySha256Async(string sha256, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<KnowledgeSource>> ListSourcesAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<long> IngestAsync(KnowledgeSource source, IReadOnlyList<(KnowledgePassage Passage, byte[]? Embedding)> passages, bool force, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<KnowledgePassage>> ListUnembeddedAsync(long? sourceId = null, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task SetEmbeddingsAsync(IReadOnlyList<(long PassageId, byte[] Embedding)> embeddings, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<(long PassageId, long SourceId, float[] Vector)>> LoadVectorsAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<KnowledgePassage>> GetPassagesAsync(IReadOnlyList<long> ids, CancellationToken ct = default) => throw new NotSupportedException();
     }
 }

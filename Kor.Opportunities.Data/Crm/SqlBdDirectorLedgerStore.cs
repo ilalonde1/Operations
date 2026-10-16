@@ -111,6 +111,37 @@ OUTPUT INSERTED.Id VALUES (@kind, @pursuit, @account, @decision, @rationale, @ex
         }, ct);
     }
 
+    public async Task<BriefTrackRecord> GetBriefTrackRecordAsync(CancellationToken ct = default)
+    {
+        var rows = await ReadAsync("""
+            WITH Calls AS (
+                SELECT d.Id, d.Outcome, d.ReviewAtUtc, b.Section, b.Citations
+                FROM opportunities.BdDecision d JOIN opportunities.DirectorBrief b ON b.Id = d.BriefRowId
+                WHERE d.Kind = N'Brief' AND d.BriefRowId IS NOT NULL
+            ), Entries AS (
+                SELECT N'Total' AS Category, N'' AS Label, Id, Outcome, ReviewAtUtc FROM Calls
+                UNION ALL
+                SELECT N'Section', Section, Id, Outcome, ReviewAtUtc FROM Calls
+                UNION ALL
+                SELECT DISTINCT N'Book', c.Source, d.Id, d.Outcome, d.ReviewAtUtc
+                FROM Calls d CROSS APPLY OPENJSON(d.Citations) WITH (Source NVARCHAR(512) '$.source') c
+                WHERE c.Source IS NOT NULL
+            )
+            SELECT Category, Label,
+                SUM(CASE WHEN Outcome <> N'Pending' THEN 1 ELSE 0 END) AS Scored,
+                SUM(CASE WHEN Outcome = N'Right' THEN 1 ELSE 0 END) AS [Right],
+                SUM(CASE WHEN Outcome = N'Wrong' THEN 1 ELSE 0 END) AS Wrong,
+                SUM(CASE WHEN Outcome = N'Unclear' THEN 1 ELSE 0 END) AS Unclear,
+                SUM(CASE WHEN Outcome = N'Pending' AND ReviewAtUtc < sysdatetimeoffset() THEN 1 ELSE 0 END) AS PendingPastReview
+            FROM Entries GROUP BY Category, Label ORDER BY Category, Label;
+            """, _ => { }, r => (Category: r.GetString(0), Label: r.GetString(1), Scored: r.GetInt32(2),
+                Right: r.GetInt32(3), Wrong: r.GetInt32(4), Unclear: r.GetInt32(5), PendingPastReview: r.GetInt32(6)), ct).ConfigureAwait(false);
+        var total = rows.SingleOrDefault(r => r.Category == "Total");
+        return new(total.Scored, total.Right, total.Wrong, total.Unclear, total.PendingPastReview,
+            rows.Where(r => r.Category == "Section").Select(r => (r.Label, r.Right, r.Wrong)).ToArray(),
+            rows.Where(r => r.Category == "Book").Select(r => (r.Label, r.Right, r.Wrong)).ToArray());
+    }
+
     public Task ScoreDecisionAsync(long id, string outcome, string? note, string by, CancellationToken ct)
     {
         if (!new[] { "Right", "Wrong", "Unclear" }.Contains(outcome)) throw new ArgumentException("Choose an outcome.", nameof(outcome));

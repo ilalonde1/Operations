@@ -563,6 +563,7 @@ internal sealed class DirectorPendingBidsFixture
         ledger.Setup(s => s.ListAsksAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdAsk>());
         ledger.Setup(s => s.ListDecisionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDecision>());
         var claims = new Mock<IKnowledgeClaimStore>();
+        DirectorMarketDefaults.SetupEmptyScoring(ledger, claims);
         claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeSourceSummary>());
         claims.Setup(s => s.ListConceptsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeConceptRow>());
         return new(Director.Object, Pursuits.Object, Engagements.Object, attribution.Object, ledger.Object, Mock.Of<IDeltekClientContextService>(), claims.Object,

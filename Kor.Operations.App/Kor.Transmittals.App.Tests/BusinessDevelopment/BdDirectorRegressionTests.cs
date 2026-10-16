@@ -25,7 +25,8 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// Covers the role/config/fallback wiring, visible literal wording and captions,
 /// SQL population/join/grouping contracts, date-ratchet inclusion, alias-aware drill
 /// filtering, analytics segmentation, source attribution and guarded reassignment.
-/// Also checks migration 352 and the brief store's two inserts and acknowledgement update.
+/// Also checks migrations 352/356, the brief store's three inserts and acknowledgement update,
+/// and the SELECT-only prior-call, claim-verdict and track-record queries.
 /// 9g adds the bid read, migration 353, exact submission write columns and stage/status mapping.
 /// Person grouping is asserted in SQL (the store already returns one row/person),
 /// not by feeding duplicate person aggregates into the view model.
@@ -107,12 +108,12 @@ public sealed class BdDirectorRegressionTests
     }
 
     [Fact]
-    public void BriefStore_AddsExactlyTwoInsertsAndOneAcknowledgementUpdate()
+    public void BriefStore_AddsExactlyThreeInsertsAndOneAcknowledgementUpdate()
     {
         var source = Source("Kor.Opportunities.Data/Crm/SqlDirectorBriefStore.cs");
         var writes = Regex.Matches(source, @"\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM|MERGE)\s+(\w+\.\w+)", RegexOptions.IgnoreCase)
             .Cast<Match>().Select(m => Regex.Replace(m.Value, @"\s+", " ")).OrderBy(s => s).ToArray();
-        Assert.Equal(new[] { "INSERT INTO opportunities.DirectorBrief", "INSERT INTO opportunities.DirectorBriefImport", "UPDATE opportunities.DirectorBrief" }, writes);
+        Assert.Equal(new[] { "INSERT INTO opportunities.BdDecision", "INSERT INTO opportunities.DirectorBrief", "INSERT INTO opportunities.DirectorBriefImport", "UPDATE opportunities.DirectorBrief" }, writes);
         Contains(source, "WHERE Id = @id AND AcknowledgedAtUtc IS NULL");
         Contains(source, "IsolationLevel.Serializable");
         Contains(source, "DirectorBriefImport WITH (UPDLOCK, HOLDLOCK) WHERE FileSha256 = @hash");
@@ -126,11 +127,84 @@ public sealed class BdDirectorRegressionTests
         Contains(source, "JsonSerializer.Serialize(section.Citations.Distinct().Select(id => citations[id])");
         Contains(source, "await tx.RollbackAsync(ct)");
         Contains(source, "await tx.CommitAsync(ct)");
+        var import = source[source.IndexOf("public async Task<(int SectionsWritten", StringComparison.Ordinal)..source.IndexOf("private async Task<IReadOnlyList<DirectorBriefRow>>", StringComparison.Ordinal)];
+        var decision = Regex.Match(import, "INSERT INTO opportunities.BdDecision(.*?)\"\"\", con, tx", RegexOptions.Singleline);
+        Assert.True(decision.Success, "EXPECTED Brief decision insert in the existing transaction.");
+        Contains(decision.Value, "BriefRowId, EngagementId, CanonicalOrgId");
+        Contains(decision.Value, "VALUES (N'Brief', LEFT(@headline, 500), LEFT(@recommendation, 2000), @expected, @review, @by, @briefRowId, NULL, NULL)");
+        Contains(import, "OUTPUT INSERTED.Id");
+        Contains(import, "if (!string.IsNullOrWhiteSpace(section.Recommendation)) recommendations.Add((rowId, section))");
+        Contains(import, "section.ReviewAtUtc(file.WeekOf)");
+        Assert.True(import.IndexOf("BeginTransactionAsync", StringComparison.Ordinal) < decision.Index);
+        Assert.True(import.IndexOf("return (0, Array.Empty<string>())", StringComparison.Ordinal) < decision.Index);
+        Assert.True(decision.Index < import.LastIndexOf("await tx.CommitAsync(ct)", StringComparison.Ordinal));
+        Assert.Single(Regex.Matches(import, "BeginTransactionAsync"));
+        Assert.Single(Regex.Matches(import, "INSERT INTO opportunities.BdDecision"));
+        Contains(source, "LEFT JOIN opportunities.BdDecision d ON d.BriefRowId = b.Id AND d.Kind = N'Brief'");
         Contains(source, "PARTITION BY Section ORDER BY ImportedAtUtc DESC, Id DESC");
         Contains(source, "WeekOf = (SELECT MAX(WeekOf) FROM opportunities.DirectorBrief)");
         Contains(source, "SELECT DISTINCT TOP (@weeks) WeekOf");
         Contains(Source("Kor.Operations.App/CompositionModules/OpportunitiesModule.cs"),
             "services.AddSingleton<IDirectorBriefStore>(_ => new SqlDirectorBriefStore(options.OpportunitiesDb))");
+    }
+
+    [Fact]
+    public void Migration356_IsAGuardedKindSwap_Column_ForeignKey_AndIndexOnly()
+    {
+        var sql = Regex.Replace(Source("Kor.Opportunities.Data/Schema/356_BriefDecisions.sql"), @"/\*.*?\*/|--[^\r\n]*", "", RegexOptions.Singleline);
+        Contains(sql, "definition NOT LIKE N'%N''Brief''%'");
+        Contains(sql, "DROP CONSTRAINT CK_BdDecision_Kind");
+        Contains(sql, "ADD CONSTRAINT CK_BdDecision_Kind");
+        Contains(sql, "CHECK (Kind IN (N'Go', N'NoGo', N'Drop', N'Reassign', N'Price', N'Target', N'Other', N'Brief'))");
+        Contains(sql, "COL_LENGTH(N'opportunities.BdDecision', N'BriefRowId') IS NULL");
+        Contains(sql, "ADD BriefRowId BIGINT NULL");
+        Contains(sql, "FOREIGN KEY (BriefRowId) REFERENCES opportunities.DirectorBrief(Id) ON DELETE NO ACTION");
+        Contains(sql, "CREATE INDEX IX_BdDecision_BriefRowId ON opportunities.BdDecision (BriefRowId)");
+        var batches = Regex.Split(sql, @"(?im)^GO\s*$").Where(b => !string.IsNullOrWhiteSpace(b)).ToArray();
+        Assert.Equal(6, batches.Length);
+        Assert.All(batches.Skip(1), b => Assert.StartsWith("IF ", b.Trim(), StringComparison.Ordinal));
+        Assert.Single(Regex.Matches(sql, @"\bADD\s+BriefRowId\b"));
+        Assert.Single(Regex.Matches(sql, @"\bFOREIGN KEY\b"));
+        Assert.Single(Regex.Matches(sql, @"\bCREATE INDEX\b"));
+        Assert.Equal(4, Regex.Matches(sql, @"\bALTER TABLE\b").Count);
+        Assert.Equal(2, Regex.Matches(sql, @"FROM sys.check_constraints\b").Count);
+        Assert.Single(Regex.Matches(sql, @"FROM sys.foreign_keys\b"));
+        Assert.Single(Regex.Matches(sql, @"FROM sys.indexes\b"));
+        var statements = Regex.Replace(sql.Replace("ON DELETE NO ACTION", "", StringComparison.Ordinal), @"N?'(?:''|[^'])*'", "''");
+        Assert.False(Regex.IsMatch(statements, @"\b(USE|INSERT|UPDATE|DELETE|MERGE|GRANT|TRUNCATE)\b|\bCREATE TABLE\b", RegexOptions.IgnoreCase));
+        Assert.Single(Regex.Matches(statements, @"\bDROP\b"));
+    }
+
+    [Fact]
+    public void ScoringLoop_ReadsAreSelectOnly_AndCitationsCountOncePerDecision()
+    {
+        var methods = new[]
+        {
+            (Path: "Kor.Opportunities.Data/Knowledge/SqlKnowledgeClaimStore.cs", Name: "ListClaimVerdictsAsync", End: "private const string ClaimSelect"),
+            (Path: "Kor.Opportunities.Data/Crm/SqlDirectorBriefStore.cs", Name: "ListPriorCallsAsync", End: "public async Task AcknowledgeAsync"),
+            (Path: "Kor.Opportunities.Data/Crm/SqlBdDirectorLedgerStore.cs", Name: "GetBriefTrackRecordAsync", End: "public Task ScoreDecisionAsync"),
+        };
+        foreach (var (path, name, end) in methods)
+        {
+            var source = Source(path);
+            var method = source[source.IndexOf(name, StringComparison.Ordinal)..source.IndexOf(end, StringComparison.Ordinal)];
+            var sql = Assert.Single(Regex.Matches(method, "\"\"\"(.*?)\"\"\"", RegexOptions.Singleline).Cast<Match>()).Groups[1].Value;
+            Assert.False(Regex.IsMatch(sql, @"\b(INSERT|UPDATE|DELETE|MERGE|EXEC|INTO|CREATE|ALTER|DROP)\b", RegexOptions.IgnoreCase));
+            Contains(sql, "d.Kind = N'Brief'");
+            Contains(sql, "d.BriefRowId");
+            Assert.Single(Regex.Matches(method, @"(?<!\.)\bReadAsync\(|\bExecuteReaderAsync\("));
+            if (name == "ListPriorCallsAsync")
+            {
+                Contains(sql, "b.Section = @section");
+                Contains(sql, "b.WeekOf >= @since AND b.WeekOf < DATEADD(day, 28, @since)");
+                Contains(sql, "ORDER BY b.WeekOf DESC, b.ImportedAtUtc DESC, d.Id DESC");
+            }
+            else
+            {
+                Contains(sql, "OPENJSON("); Contains(sql, ".Citations)"); Contains(sql, "SELECT DISTINCT");
+                Contains(sql, name == "ListClaimVerdictsAsync" ? "'$.claimId'" : "'$.source'");
+            }
+        }
     }
 
     [Fact]
@@ -438,6 +512,7 @@ public sealed class BdDirectorRegressionTests
 
         internal Fixture()
         {
+            DirectorMarketDefaults.SetupEmptyScoring(Ledger, Claims);
             DirectorMarketDefaults.SetupPendingBids(DirectorStore);
             Claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeSourceSummary>());
             Claims.Setup(s => s.ListConceptsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeConceptRow>());

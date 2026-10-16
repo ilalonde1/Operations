@@ -16,6 +16,9 @@ public sealed record BdDecision(long Id, string Kind, long? EngagementId, long? 
     string Decision, string Rationale, string ExpectedOutcome, DateTimeOffset ReviewAtUtc,
     string DecidedBy, DateTimeOffset DecidedAtUtc, string Outcome, string? OutcomeNote,
     DateTimeOffset? ScoredAtUtc, string? ScoredBy);
+public sealed record BriefTrackRecord(int Scored, int Right, int Wrong, int Unclear, int PendingPastReview,
+    IReadOnlyList<(string Section, int Right, int Wrong)> BySection,
+    IReadOnlyList<(string Book, int Right, int Wrong)> ByBook);
 
 public static class BdTargetMetrics
 {
@@ -37,6 +40,7 @@ public interface IBdDirectorLedgerStore
     Task<long> CreateAskAsync(BdAsk ask, CancellationToken ct);
     Task CloseAskAsync(long id, string status, string? note, string by, CancellationToken ct);
     Task<IReadOnlyList<BdDecision>> ListDecisionsAsync(CancellationToken ct);
+    Task<BriefTrackRecord> GetBriefTrackRecordAsync(CancellationToken ct = default);
     Task<long> RecordDecisionAsync(BdDecision decision, CancellationToken ct);
     Task ScoreDecisionAsync(long id, string outcome, string? note, string by, CancellationToken ct);
 }

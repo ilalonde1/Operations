@@ -283,7 +283,8 @@ public partial class BdDirectorWindow : Window
         if (_vm.SelectedClaim is not { CanReview: true } row) return;
         await LedgerActionAsync(async ct =>
         {
-            var dialog = new NoteDialog("Retire claim", "Why does this claim not hold for KOR? A reason is required (1–200 characters).", 200, required: true) { Owner = this };
+            var dialog = new NoteDialog("Retire claim", "Why does this claim not hold for KOR? A reason is required (1–200 characters).", 200, required: true,
+                initialNote: row.RetirementReason) { Owner = this };
             if (dialog.ShowDialog() == true)
                 await _vm.RetireClaimAsync(row, _actor, dialog.Note!, ct).ConfigureAwait(true);
         }).ConfigureAwait(true);

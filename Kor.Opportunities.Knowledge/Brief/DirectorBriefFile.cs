@@ -5,7 +5,8 @@ using Kor.Opportunities.Data.Crm;
 namespace Kor.Opportunities.Knowledge.Brief;
 
 /// <summary>JSON codec and import boundary for the shared Data file contract. Hashes always
-/// describe the original bytes, including any UTF-8 BOM, not a reserialization.</summary>
+/// describe the original bytes, including any UTF-8 BOM, not a reserialization.
+/// Sections carry expected and optional reviewAfterDays for their imported decisions.</summary>
 public static class DirectorBriefFiles
 {
     public static JsonSerializerOptions JsonOptions { get; } = new()

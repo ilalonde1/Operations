@@ -26,6 +26,7 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// Covers migration guards/batches/check values, allowed ledger mutation columns,
 /// read-only account and target SQL contracts, interface immutability, mocked ask
 /// mirroring/actuals/selection cancellation/ask filtering/Dashboard delivery, tabs, literals and dates.
+/// Covers the Brief track record's two lines and one aggregate read per load/refresh.
 /// Does not apply SQL, prove its execution plan or authorization, render dialogs,
 /// or make a cross-store ask/mirror transaction. Same-class miss: SQL Server could
 /// reject a CHECK whose expected text passes this gate. A literal scan also misses
@@ -115,6 +116,29 @@ public sealed class BdDirectorLedgerRegressionTests
         var forbidden = methods.Where(m => new[] { "Update", "Edit", "Delete", "Remove" }.Any(prefix => m.StartsWith(prefix, StringComparison.Ordinal))).ToArray();
         Check(forbidden.Length == 0, "no text-editing or deletion methods", string.Join(", ", forbidden));
         Check(methods.Contains("ScoreDecisionAsync"), "ScoreDecisionAsync exists", string.Join(", ", methods));
+    }
+
+    [Fact]
+    public async Task BriefTrackRecord_ReadsOncePerLoad_AndRendersBothLines()
+    {
+        var fixture = new Fixture();
+        var scoring = new DirectorScoringFixture();
+        scoring.SetupLedger(fixture.Ledger);
+        using var vm = fixture.Create();
+        await vm.LoadAsync(CancellationToken.None);
+        Assert.Equal("Up to date.", vm.StatusMessage);
+        Assert.True(vm.Decisions.Count == 8, "EXPECTED six scored and two pending Brief decisions.");
+        Assert.Equal("Brief calls: 6 scored · 3 right · 2 wrong · 1 unclear · 2 past review unscored", vm.BriefTrackRecordSummary);
+        Assert.Equal("By section: Accounts 1 right · 0 wrong; Asks 0 right · 2 wrong; Market 1 right · 0 wrong; Pursuits 1 right · 0 wrong; This week 0 right · 0 wrong"
+            + "\nBy book: Illustrative book A 0 right · 2 wrong; Illustrative book B 3 right · 2 wrong", vm.BriefTrackRecordBreakdown);
+        fixture.Ledger.Verify(s => s.GetBriefTrackRecordAsync(It.IsAny<CancellationToken>()), Times.Once);
+        var xaml = Source(DirectorFolder + "BdDirectorWindow.xaml");
+        Contains(xaml, "Text=\"{Binding BriefTrackRecordSummary}\"");
+        Contains(xaml, "Text=\"{Binding BriefTrackRecordBreakdown}\"");
+        var doc = XDocument.Parse(xaml);
+        Assert.All(doc.Descendants().Where(e => e.Name.LocalName is "TabControl" or "TabItem"), e => Assert.Null(e.Attribute("SelectionChanged")));
+        await vm.LoadAsync(CancellationToken.None);
+        fixture.Ledger.Verify(s => s.GetBriefTrackRecordAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Theory]
@@ -320,6 +344,7 @@ public sealed class BdDirectorLedgerRegressionTests
         internal readonly Mock<IBdAttributionStore> Attribution = new();
         internal Fixture()
         {
+            DirectorMarketDefaults.SetupEmptyScoring(Ledger, Claims);
             DirectorMarketDefaults.SetupPendingBids(Reads);
             Claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeSourceSummary>());
             Claims.Setup(s => s.ListConceptsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeConceptRow>());

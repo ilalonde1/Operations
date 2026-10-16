@@ -6,12 +6,13 @@ namespace Kor.Operations.App.BusinessDevelopment.Director;
 public partial class NoteDialog : Window
 {
     private readonly bool _required;
-    public NoteDialog(string title, string prompt, int maxLength = 1000, bool required = false)
+    public NoteDialog(string title, string prompt, int maxLength = 1000, bool required = false, string? initialNote = null)
     {
         InitializeComponent();
         Title = title;
         PromptText.Text = prompt;
         NoteBox.MaxLength = maxLength;
+        NoteBox.Text = initialNote ?? "";
         _required = required;
         if (required) NoteBox.SetValue(Kor.Operations.Controls.Placeholder.TextProperty, "Reason (required)");
     }

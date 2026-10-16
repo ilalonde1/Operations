@@ -52,6 +52,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     private BdKnowledgeSourceRow? _selectedBook;
     private BdKnowledgeConceptRow? _selectedConcept;
     private BdKnowledgeClaimRow? _selectedClaim;
+    private IReadOnlyDictionary<long, ClaimVerdict> _claimVerdicts = new Dictionary<long, ClaimVerdict>();
     private string _claimFilter = "Unreviewed";
     private bool _sampleClaims;
     private CancellationTokenSource? _accountCts;
@@ -99,6 +100,8 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public ObservableCollection<BdDirectorAccountRow> Accounts { get; } = new();
     public ObservableCollection<BdDirectorAskRow> Asks { get; } = new();
     public ObservableCollection<BdDirectorDecisionRow> Decisions { get; } = new();
+    public string BriefTrackRecordSummary { get; private set; } = "";
+    public string BriefTrackRecordBreakdown { get; private set; } = "";
     public ObservableCollection<BdKnowledgeSourceRow> KnowledgeBooks { get; } = new();
     public ObservableCollection<BdKnowledgeClaimRow> KnowledgeClaims { get; } = new();
     public ObservableCollection<BdKnowledgeConceptRow> KnowledgeConcepts { get; } = new();
@@ -556,10 +559,22 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public async Task LoadDecisionsAsync(CancellationToken ct)
     {
         var rows = await _ledger.ListDecisionsAsync(ct).ConfigureAwait(true);
+        var track = await _ledger.GetBriefTrackRecordAsync(ct).ConfigureAwait(true);
         ct.ThrowIfCancellationRequested();
         SelectedDecision = null;
         Decisions.Clear();
         foreach (var decision in rows) Decisions.Add(new BdDirectorDecisionRow(decision));
+        BriefTrackRecordSummary = $"Brief calls: {track.Scored} scored · {track.Right} right · {track.Wrong} wrong · {track.Unclear} unclear · {track.PendingPastReview} past review unscored";
+        BriefTrackRecordBreakdown = "By section: " + Split(track.BySection.Select(s => (s.Section == "ThisWeek" ? "This week" : s.Section, s.Right, s.Wrong)))
+            + "\nBy book: " + Split(track.ByBook);
+        OnPropertyChanged(nameof(BriefTrackRecordSummary));
+        OnPropertyChanged(nameof(BriefTrackRecordBreakdown));
+    }
+
+    private static string Split(IEnumerable<(string Name, int Right, int Wrong)> groups)
+    {
+        var text = string.Join("; ", groups.Select(g => $"{g.Name} {g.Right} right · {g.Wrong} wrong"));
+        return text.Length == 0 ? "none" : text;
     }
 
     public async Task SetTargetAsync(BdTarget target, string actor, CancellationToken ct)
@@ -618,7 +633,12 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public async Task ScoreDecisionAsync(long id, string outcome, string? note, string actor, CancellationToken ct)
     {
         await _ledger.ScoreDecisionAsync(id, outcome, note, actor, ct).ConfigureAwait(true);
-        await RefreshAfterWriteAsync(() => LoadDecisionsAsync(ct), "Decision scored.").ConfigureAwait(true);
+        await RefreshAfterWriteAsync(async () =>
+        {
+            await LoadDecisionsAsync(ct).ConfigureAwait(true);
+            await LoadKnowledgeAsync(ct).ConfigureAwait(true);
+            await LoadBriefAsync(ct).ConfigureAwait(true);
+        }, "Decision scored.").ConfigureAwait(true);
     }
 
     private async Task RefreshAfterWriteAsync(Func<Task> refresh, string saved)
@@ -636,8 +656,10 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     {
         var booksTask = _claims.ListSourcesAsync(ct);
         var conceptsTask = _claims.ListConceptsAsync(ct);
-        await Task.WhenAll(booksTask, conceptsTask).ConfigureAwait(true);
+        var verdictsTask = _claims.ListClaimVerdictsAsync(ct);
+        await Task.WhenAll(booksTask, conceptsTask, verdictsTask).ConfigureAwait(true);
         ct.ThrowIfCancellationRequested();
+        _claimVerdicts = (await verdictsTask.ConfigureAwait(true)).ToDictionary(v => v.ClaimId);
         var bookId = SelectedBook?.Source.Id;
         var conceptId = SelectedConcept?.Concept.Id;
         // Set backing fields during a whole-tab refresh; start one list read afterwards.
@@ -684,7 +706,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
                 : sample ? await _claims.SampleUnreviewedAsync(book!.Source.Id, 20, ct).ConfigureAwait(true)
                 : await _claims.ListClaimsAsync(book!.Source.Id, ClaimFilter, 1000, ct).ConfigureAwait(true);
             ct.ThrowIfCancellationRequested();
-            foreach (var row in rows) KnowledgeClaims.Add(new BdKnowledgeClaimRow(row));
+            foreach (var row in rows) KnowledgeClaims.Add(new BdKnowledgeClaimRow(row, _claimVerdicts.GetValueOrDefault(row.Id)));
             KnowledgeMessage = rows.Count == 1000 ? "Showing the first 1,000 claims. Choose a filter or sample to narrow the list."
                 : rows.Count == 0 ? "No claims in this view." : $"{rows.Count} claims shown.";
             OnPropertyChanged(nameof(KnowledgeMessage));
@@ -799,7 +821,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
                     }
                     citations.Add(new(citation, claim));
                 }
-                sections.Add(new(row, citations));
+                sections.Add(new(row, citations, Decisions.FirstOrDefault(d => d.Record.Id == row.DecisionId)?.Record));
             }
             token.ThrowIfCancellationRequested();
             SelectedBriefCitation = null;

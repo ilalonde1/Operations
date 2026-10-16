@@ -1,5 +1,6 @@
 #nullable enable
 using System.Data;
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
 
@@ -8,6 +9,24 @@ namespace Kor.Opportunities.Data.Knowledge;
 /// <summary>Review changes attribution and retirement fields; original claims stay intact.</summary>
 public sealed class SqlKnowledgeClaimStore(string connectionString) : IKnowledgeClaimStore
 {
+    public Task<IReadOnlyList<ClaimVerdict>> ListClaimVerdictsAsync(CancellationToken ct = default) => ReadAsync("""
+        WITH Cited AS (
+            SELECT DISTINCT d.Id, d.Outcome, c.ClaimId
+            FROM opportunities.BdDecision d
+            JOIN opportunities.DirectorBrief b ON b.Id = d.BriefRowId
+            CROSS APPLY OPENJSON(b.Citations) WITH (ClaimId BIGINT '$.claimId') c
+            WHERE d.Kind = N'Brief' AND d.BriefRowId IS NOT NULL AND c.ClaimId IS NOT NULL
+        )
+        SELECT ClaimId,
+            SUM(CASE WHEN Outcome = N'Right' THEN 1 ELSE 0 END),
+            SUM(CASE WHEN Outcome = N'Wrong' THEN 1 ELSE 0 END),
+            SUM(CASE WHEN Outcome = N'Unclear' THEN 1 ELSE 0 END),
+            SUM(CASE WHEN Outcome = N'Pending' THEN 1 ELSE 0 END),
+            STRING_AGG(CASE WHEN Outcome = N'Wrong' THEN CONVERT(NVARCHAR(MAX), Id) END, N',') WITHIN GROUP (ORDER BY Id)
+        FROM Cited GROUP BY ClaimId ORDER BY ClaimId;
+        """, _ => { }, r => new ClaimVerdict(r.GetInt64(0), r.GetInt32(1), r.GetInt32(2), r.GetInt32(3), r.GetInt32(4),
+            r.IsDBNull(5) ? Array.Empty<long>() : r.GetString(5).Split(',').Select(id => long.Parse(id, CultureInfo.InvariantCulture)).ToArray()), ct);
+
     private const string ClaimSelect = """
         SELECT TOP (@take) c.Id, c.SourceId, s.Title, c.PassageId, p.Ref, c.Kind, c.Statement,
             c.Confidence, c.ReviewedAtUtc, c.RetiredAtUtc, c.RetiredReason,

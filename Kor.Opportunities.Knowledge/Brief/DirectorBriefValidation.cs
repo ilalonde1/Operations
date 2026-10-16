@@ -9,6 +9,9 @@ public static class DirectorBriefValidation
 {
     public static IReadOnlyList<string> Validate(DirectorBriefFile file, DirectorBriefExportFile export)
     {
+        // Shared shape validation also requires a one-line expected outcome (1–500)
+        // for each recommendation and bounds reviewAfterDays to 7–90. The Data store
+        // uses the same gate before starting its import transaction.
         var errors = file.ValidateShape().ToList();
         if (file.WeekOf != export.WeekOf) errors.Add("weekOf must equal the export's weekOf.");
         if (export.Sections is null || export.Sections.Count != 5 || export.Sections.Any(s => s is null)

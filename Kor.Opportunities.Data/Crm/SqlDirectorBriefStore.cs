@@ -7,8 +7,9 @@ namespace Kor.Opportunities.Data.Crm;
 public sealed class SqlDirectorBriefStore(string connectionString) : IDirectorBriefStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-    private const string Columns = "Id, WeekOf, Section, Headline, Body, Recommendation, Citations, WrittenBy, ImportedAtUtc, AcknowledgedAtUtc, AcknowledgedBy";
-    private const string SectionOrder = "CASE Section WHEN N'ThisWeek' THEN 0 WHEN N'Pursuits' THEN 1 WHEN N'Accounts' THEN 2 WHEN N'Market' THEN 3 WHEN N'Asks' THEN 4 ELSE 99 END";
+    private const string Columns = "b.Id, b.WeekOf, b.Section, b.Headline, b.Body, b.Recommendation, b.Citations, b.WrittenBy, b.ImportedAtUtc, b.AcknowledgedAtUtc, b.AcknowledgedBy, d.Id";
+    private const string DecisionJoin = " LEFT JOIN opportunities.BdDecision d ON d.BriefRowId = b.Id AND d.Kind = N'Brief' ";
+    private const string SectionOrder = "CASE b.Section WHEN N'ThisWeek' THEN 0 WHEN N'Pursuits' THEN 1 WHEN N'Accounts' THEN 2 WHEN N'Market' THEN 3 WHEN N'Asks' THEN 4 ELSE 99 END";
 
     public Task<IReadOnlyList<DirectorBriefRow>> GetLatestAsync(CancellationToken ct = default) => QueryAsync("""
         WITH Ranked AS (
@@ -16,14 +17,36 @@ public sealed class SqlDirectorBriefStore(string connectionString) : IDirectorBr
             FROM opportunities.DirectorBrief WHERE WeekOf = (SELECT MAX(WeekOf) FROM opportunities.DirectorBrief)
         )
         SELECT
-        """ + " " + Columns + " FROM Ranked WHERE rn = 1 ORDER BY " + SectionOrder + ";", _ => { }, ct);
+        """ + " " + Columns + " FROM Ranked b" + DecisionJoin + " WHERE b.rn = 1 ORDER BY " + SectionOrder + ";", _ => { }, ct);
 
     public Task<IReadOnlyList<DirectorBriefRow>> GetHistoryAsync(int weeks, CancellationToken ct = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(weeks);
         return QueryAsync("WITH Weeks AS (SELECT DISTINCT TOP (@weeks) WeekOf FROM opportunities.DirectorBrief ORDER BY WeekOf DESC) SELECT "
-            + Columns + " FROM opportunities.DirectorBrief WHERE WeekOf IN (SELECT WeekOf FROM Weeks) ORDER BY WeekOf DESC, ImportedAtUtc DESC, Id DESC;",
+            + Columns + " FROM opportunities.DirectorBrief b" + DecisionJoin + " WHERE b.WeekOf IN (SELECT WeekOf FROM Weeks) ORDER BY b.WeekOf DESC, b.ImportedAtUtc DESC, b.Id DESC;",
             cmd => cmd.Parameters.Add("@weeks", SqlDbType.Int).Value = weeks, ct);
+    }
+
+    public async Task<IReadOnlyList<PriorCall>> ListPriorCallsAsync(string section, DateOnly since, CancellationToken ct = default)
+    {
+        if (!DirectorBriefFile.SectionNames.Contains(section)) throw new ArgumentException("Choose a brief section.", nameof(section));
+        await using var con = new SqlConnection(connectionString);
+        await con.OpenAsync(ct);
+        await using var cmd = new SqlCommand("""
+            SELECT b.WeekOf, b.Headline, b.Recommendation, d.ExpectedOutcome, d.Outcome, d.OutcomeNote, d.ReviewAtUtc
+            FROM opportunities.BdDecision d
+            JOIN opportunities.DirectorBrief b ON b.Id = d.BriefRowId
+            WHERE d.Kind = N'Brief' AND b.Section = @section
+              AND b.WeekOf >= @since AND b.WeekOf < DATEADD(day, 28, @since)
+            ORDER BY b.WeekOf DESC, b.ImportedAtUtc DESC, d.Id DESC;
+            """, con) { CommandTimeout = 30 };
+        Text(cmd, "@section", 32, section);
+        cmd.Parameters.Add("@since", SqlDbType.Date).Value = since.ToDateTime(TimeOnly.MinValue);
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        var rows = new List<PriorCall>();
+        while (await r.ReadAsync(ct)) rows.Add(new(DateOnly.FromDateTime(r.GetDateTime(0)), r.GetString(1),
+            r.IsDBNull(2) ? "" : r.GetString(2), r.GetString(3), r.GetString(4), r.IsDBNull(5) ? null : r.GetString(5), r.GetFieldValue<DateTimeOffset>(6)));
+        return rows;
     }
 
     public async Task AcknowledgeAsync(long id, string by, CancellationToken ct = default)
@@ -87,11 +110,13 @@ public sealed class SqlDirectorBriefStore(string connectionString) : IDirectorBr
         if (errors.Count != 0) { await tx.RollbackAsync(ct); return (0, errors); }
 
         var importedAt = DateTimeOffset.UtcNow;
+        var recommendations = new List<(long BriefRowId, DirectorBriefSection Section)>();
         foreach (var section in file.Sections)
         {
             await using var insert = new SqlCommand("""
                 INSERT INTO opportunities.DirectorBrief
                     (WeekOf, Section, Headline, Body, Recommendation, Citations, WrittenBy, ImportedAtUtc, ImportedBy)
+                OUTPUT INSERTED.Id
                 VALUES (@week, @section, @headline, @body, @recommendation, @citations, @writtenBy, @at, @by);
                 """, con, tx) { CommandTimeout = 30 };
             insert.Parameters.Add("@week", SqlDbType.Date).Value = file.WeekOf.ToDateTime(TimeOnly.MinValue);
@@ -100,7 +125,21 @@ public sealed class SqlDirectorBriefStore(string connectionString) : IDirectorBr
             Text(insert, "@citations", -1, JsonSerializer.Serialize(section.Citations.Distinct().Select(id => citations[id]), JsonOptions));
             Text(insert, "@writtenBy", 100, file.WrittenBy); Text(insert, "@by", 100, by);
             insert.Parameters.Add("@at", SqlDbType.DateTimeOffset).Value = importedAt;
-            await insert.ExecuteNonQueryAsync(ct);
+            var rowId = Convert.ToInt64(await insert.ExecuteScalarAsync(ct));
+            if (!string.IsNullOrWhiteSpace(section.Recommendation)) recommendations.Add((rowId, section));
+        }
+        foreach (var (rowId, section) in recommendations)
+        {
+            await using var decision = new SqlCommand("""
+                INSERT INTO opportunities.BdDecision
+                    (Kind, Decision, Rationale, ExpectedOutcome, ReviewAtUtc, DecidedBy, BriefRowId, EngagementId, CanonicalOrgId)
+                VALUES (N'Brief', LEFT(@headline, 500), LEFT(@recommendation, 2000), @expected, @review, @by, @briefRowId, NULL, NULL);
+                """, con, tx) { CommandTimeout = 30 };
+            Text(decision, "@headline", 512, section.Headline); Text(decision, "@recommendation", -1, section.Recommendation);
+            Text(decision, "@expected", 500, section.Expected); Text(decision, "@by", 150, by);
+            decision.Parameters.Add("@review", SqlDbType.DateTimeOffset).Value = section.ReviewAtUtc(file.WeekOf);
+            decision.Parameters.Add("@briefRowId", SqlDbType.BigInt).Value = rowId;
+            await decision.ExecuteNonQueryAsync(ct);
         }
         await using (var ledger = new SqlCommand("""
             INSERT INTO opportunities.DirectorBriefImport
@@ -131,7 +170,8 @@ public sealed class SqlDirectorBriefStore(string connectionString) : IDirectorBr
         var rows = new List<DirectorBriefRow>();
         while (await r.ReadAsync(ct)) rows.Add(new(r.GetInt64(0), DateOnly.FromDateTime(r.GetDateTime(1)), r.GetString(2), r.GetString(3), r.GetString(4),
             r.IsDBNull(5) ? null : r.GetString(5), JsonSerializer.Deserialize<DirectorCitation[]>(r.GetString(6), JsonOptions) ?? Array.Empty<DirectorCitation>(),
-            r.GetString(7), r.GetFieldValue<DateTimeOffset>(8), r.IsDBNull(9) ? null : r.GetFieldValue<DateTimeOffset>(9), r.IsDBNull(10) ? null : r.GetString(10)));
+            r.GetString(7), r.GetFieldValue<DateTimeOffset>(8), r.IsDBNull(9) ? null : r.GetFieldValue<DateTimeOffset>(9), r.IsDBNull(10) ? null : r.GetString(10),
+            r.IsDBNull(11) ? null : r.GetInt64(11)));
         return rows;
     }
     private static bool IsHash(string value) => value is { Length: 64 } && value.All(Uri.IsHexDigit);
