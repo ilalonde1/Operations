@@ -18,6 +18,10 @@ public static class KorRemoteBridge
     public static readonly IReadOnlyList<string> RequiredFunctions =
         ["connectDesktop", "sendCAD", "deskSaveImage", "deskToggleFull", "deskSendKeys", "deskSetDisplay", "deviceChat", "deviceLockFunction", "go"];
 
+    /// <summary>Page functions the script uses BEST-EFFORT (the aspect-ratio fix). Unlike RequiredFunctions, a
+    /// rename here does NOT turn the toolbar off -- the calls are typeof-guarded and purely cosmetic.</summary>
+    public static readonly IReadOnlyList<string> OptionalFunctions = ["putstore", "toggleAspectRatio"];
+
     private static readonly Lazy<string> _script = new(() =>
     {
         using var s = typeof(KorRemoteBridge).Assembly.GetManifestResourceStream("KorRemoteBridge.js")

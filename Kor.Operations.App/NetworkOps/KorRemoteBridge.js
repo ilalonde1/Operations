@@ -7,8 +7,8 @@
 //      missing (a MeshCentral update that renames one shows here, not as a dead button).
 //   2. CARRIES OUT the toolbar's commands (window.__korRemote.*) by calling the page's OWN functions -- the same ones its
 //      buttons call -- so what a button does is exactly what MeshCentral's button does.
-// Read against MeshCentral 1.2.5 views/default.handlebars. Every function used is in NEED; KorRemoteBridge.cs holds the
-// same list and a test keeps the two equal.
+// Read against MeshCentral 1.2.5 views/default.handlebars. Required functions are in NEED; KorRemoteBridge.cs holds the
+// same list and a test keeps the two equal. Best-effort page calls are declared separately in OptionalFunctions.
 (function () {
     if (window.__korRemote) return;
 
@@ -34,8 +34,21 @@
     }
 
     var autoConnected = false;
+    var aspectFixed = false;
     var wantFiles = false;
     var last = '';
+
+    // MeshCentral persists deskAspectRatio in localStorage; a stray toggle of its (now-hidden) view-mode
+    // button can leave it at 2 = Scale, which STRETCHES the canvas to 100%x100% -- squeezing the wide
+    // combined "All displays" image (and distorting any screen whose aspect != the window). Put it back to
+    // 0 = Fixed aspect (MeshCentral's own letterbox mode; keeps mouse mapping correct). Best-effort.
+    function fixAspect() {
+        try {
+            if (typeof deskAspectRatio === 'undefined') return;
+            if (deskAspectRatio !== 0) { deskAspectRatio = 0; if (typeof putstore === 'function') putstore('deskAspectRatio', 0); }
+            if (typeof toggleAspectRatio === 'function') toggleAspectRatio(0); // toggle!==1: just re-runs deskAdjust.
+        } catch (e) { }
+    }
 
     function read() {
         var onDesktopPage = has('connectDesktop');
@@ -78,6 +91,7 @@
             if (!wantFiles && shown('p11') && !isFull()) deskToggleFull(NO_SHIFT);
             // Connect once, as the page's Connect button does; after that the user decides.
             if (!autoConnected && shown('p11')) { autoConnected = true; if (s.state === 0) connectDesktop(null, 3); }
+            if (!aspectFixed) { aspectFixed = true; fixAspect(); }
         }
         var json = JSON.stringify(s);
         if (json !== last) { last = json; post(s); }

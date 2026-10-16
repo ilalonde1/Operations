@@ -43,16 +43,24 @@ public sealed class KorRemoteViewerTests
     }
 
     [Fact]
-    public void The_script_calls_no_page_function_it_does_not_check_for()
+    public void Every_page_function_the_script_calls_is_declared()
     {
-        // Every call in the script is to one of: its own functions, the browser's, or a checked page function.
+        // Every call in the script is to one of: its own functions, the browser's, or a declared required/optional page function.
         var own = Regex.Matches(Script, @"function ([A-Za-z]+)\(").Select(m => m.Groups[1].Value);
         var browser = new[] { "postMessage", "filter", "push", "parseInt", "isNaN", "querySelectorAll", "querySelector", "getElementById", "createElement",
             "appendChild", "contains", "substring", "stringify", "String", "setInterval", "function", "if", "for", "return", "catch" };
-        var allowed = own.Concat(browser).Concat(KorRemoteBridge.RequiredFunctions).ToHashSet();
+        var allowed = own.Concat(browser).Concat(KorRemoteBridge.RequiredFunctions).Concat(KorRemoteBridge.OptionalFunctions).ToHashSet();
         var calls = Regex.Matches(Script.Split('\n').Where(l => !l.TrimStart().StartsWith("//")).Aggregate("", (a, l) => a + l + "\n"), @"(?<![.\w])([A-Za-z_]\w*)\s*\(")
             .Select(m => m.Groups[1].Value).Distinct().Where(c => !allowed.Contains(c)).ToList();
-        Assert.True(calls.Count == 0, "page functions called without being in NEED: " + string.Join(", ", calls));
+        Assert.True(calls.Count == 0, "page functions called without being declared required or optional: " + string.Join(", ", calls));
+    }
+
+    [Fact]
+    public void Optional_aspect_fix_calls_are_typeof_guarded()
+    {
+        Assert.Contains("typeof putstore === 'function'", Script);
+        Assert.Contains("typeof toggleAspectRatio === 'function'", Script);
+        Assert.Contains("typeof deskAspectRatio === 'undefined'", Script);
     }
 
     [Fact]
