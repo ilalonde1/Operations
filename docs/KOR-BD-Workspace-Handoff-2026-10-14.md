@@ -85,8 +85,8 @@ to 5 is SETTLED. Do not re-derive it, re-prove it, or relitigate it.**
    build log. Ian: "DEPLOY IT LOCALLY FFS" / "Why do I need to ask for this??" when I
    offered instead of doing it. The **firm-share zip** (`tools/deploy-newerforma-app.ps1`,
    `V<N>.zip`) stays Ian's call; never on my own initiative.
-7. **The Worker deploy** (KOR-APP01) is `publish-opportunities.ps1 -SkipTests` then
-   `deploy-opportunities.ps1`, both in the repo root. Commit BEFORE publishing so the
+7. **The Worker deploy** (KOR-APP01) is `tools\publish-opportunities.ps1 -SkipTests` then
+   `tools\deploy-opportunities.ps1` (both moved from the repo root to `tools\` on 2026-10-15). Commit BEFORE publishing so the
    version stamp carries the hash; read ProductVersion and the robocopy `N changed` after.
    `robocopy` must `/XF appsettings.Production.json`. Worker on APP01 as of 2026-10-13:
    `1.0.9782.1088` / commit `8ae3efd1`. Nothing in the App-side commits since touches

@@ -56,7 +56,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = $PSScriptRoot
+$repoRoot = Split-Path -Parent $PSScriptRoot
 $handoff  = Join-Path $repoRoot 'output\_last-worker-publish.txt'
 
 if (-not $PublishPath) {

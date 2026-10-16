@@ -395,7 +395,7 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="RFP" Binding="{Binding Name}" Width="2*" ElementStyle="{StaticResource CellText}"/>
                                 <DataGridTextColumn Header="Buyer" Binding="{Binding Buyer}" Width="*" ElementStyle="{StaticResource CellText}"/>
-                                <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="70"/>
+                                <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="84"/>
                                 <DataGridTextColumn Header="Closing" Binding="{Binding Deadline}" Width="165"/>
                                 <DataGridTextColumn Header="Time left" Binding="{Binding Countdown}" Width="100"/>
                             </DataGrid.Columns>
@@ -407,7 +407,7 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="2*" ElementStyle="{StaticResource CellText}"/>
                                 <DataGridTextColumn Header="Proponent" Binding="{Binding ProponentName}" Width="*" ElementStyle="{StaticResource CellText}"/>
-                                <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="60"/>
+                                <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="84"/>
                                 <DataGridTextColumn Header="Sector" Binding="{Binding Sector}" Width="90"/>
                                 <DataGridTextColumn Header="Est. cost" Binding="{Binding EstimatedCostCad, StringFormat={}{0:C0}}" Width="115"/>
                                 <DataGridTextColumn Header="Stage" Binding="{Binding Stage}" Width="90"/>

@@ -128,7 +128,7 @@ violations set a non-zero exit; the identity and source checks are WARN worklist
 
 ## Publish and deploy
 
-`publish-opportunities.ps1` **publishes only** — it runs its own test gate and drops a timestamped
+`tools\publish-opportunities.ps1` **publishes only** — it runs its own test gate and drops a timestamped
 build under `_Publish`. Deploying is the separate step: stop the service, robocopy with
 `/XF appsettings.Production.json`, start, then verify `FileVersion`. **Ian runs deploys, and Ian runs
 Codex**, unless he says otherwise in the session.

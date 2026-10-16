@@ -23,7 +23,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repo = $PSScriptRoot
+$repo = Split-Path -Parent $PSScriptRoot
 $target = "\\$Server\C$\Program Files\KorOperations\NetworkOps"
 $svc = 'Kor.Operations.NetworkOps'
 

@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = $PSScriptRoot
+$repoRoot = Split-Path -Parent $PSScriptRoot
 $projectPath = Join-Path $repoRoot 'Kor.Opportunities.Worker\Kor.Opportunities.Worker.csproj'
 
 if (-not (Test-Path $projectPath)) {
@@ -92,7 +92,7 @@ if ($LASTEXITCODE -ne 0) {
 # Ship the install/uninstall scripts inside the publish folder so they travel
 # with the binaries to the server.
 foreach ($script in @('install-opportunities-service.ps1', 'uninstall-opportunities-service.ps1')) {
-    $src = Join-Path $repoRoot $script
+    $src = Join-Path $PSScriptRoot $script
     if (Test-Path $src) {
         Copy-Item $src (Join-Path $out $script) -Force
     }

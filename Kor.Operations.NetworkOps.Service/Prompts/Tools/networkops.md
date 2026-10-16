@@ -16,7 +16,7 @@ shows it all in the Command Center (a page in Kor.Operations.App). T-Net does NO
 
 ## Build, test, deploy
 - `dotnet test Kor.Operations.NetworkOps.Tests` (~20 s); app side: `dotnet test Kor.Operations.App\Kor.Transmittals.App.Tests\Kor.Operations.App.Tests.csproj --filter FullyQualifiedName~NetworkOps` (renders PNGs to %TEMP%\kor-networkops-screens -- LOOK at them).
-- Bump `<Version>` in the service csproj, then `.\publish-networkops.ps1` from KOR-1001 (hash-verified deploy). Confirm with `/api/ping`.
+- Bump `<Version>` in the service csproj, then `.\tools\publish-networkops.ps1` from KOR-1001 (hash-verified deploy; the script moved from the repo root to `tools\` on 2026-10-15). Confirm with `/api/ping`.
 - Secrets are KOR_NETWORKOPS_* machine environment variables on APP01, never in the repo or SQL.
 
 ## Gates that already exist (do not weaken them)
