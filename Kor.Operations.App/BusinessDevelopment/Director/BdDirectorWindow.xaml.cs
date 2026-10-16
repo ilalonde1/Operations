@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -44,6 +45,16 @@ public partial class BdDirectorWindow : Window
         PersonMeetingDate.SelectedDate = NextWeekday(DateTime.Today.AddDays(1));
     }
 
+    /// <summary>With the consigliere: Ask Claude on Today, People and Pursuits, and the Doctrine screen.</summary>
+    public BdDirectorWindow(BdDirectorViewModel vm, IProposalStaffStore staffStore, BdRhythmViewModel rhythm, BdDoctrineViewModel doctrine)
+        : this(vm, staffStore, rhythm)
+    {
+        _doctrine = doctrine ?? throw new ArgumentNullException(nameof(doctrine));
+        DoctrineTab.DataContext = doctrine;
+    }
+
+    private readonly BdDoctrineViewModel? _doctrine;
+
     private static DateTime NextWeekday(DateTime day) =>
         day.DayOfWeek switch { DayOfWeek.Saturday => day.AddDays(2), DayOfWeek.Sunday => day.AddDays(1), _ => day };
 
@@ -82,6 +93,7 @@ public partial class BdDirectorWindow : Window
         {
             var director = _vm.LoadAsync(_lifetime.Token);
             if (_rhythm is not null) await _rhythm.LoadAsync(_lifetime.Token).ConfigureAwait(true);
+            if (_doctrine is not null) await _doctrine.LoadAsync(_lifetime.Token).ConfigureAwait(true);
             await director.ConfigureAwait(true);
         }
         catch (OperationCanceledException) { /* Window closed. */ }
@@ -156,6 +168,75 @@ public partial class BdDirectorWindow : Window
     {
         if (_rhythm?.SelectedPerson is not { IsLead: true } person) return;
         OpenMailDraft(person.Key, $"One-to-one: {person.Name}", _rhythm.PersonAgenda);
+    }
+
+    // ---- The consigliere: questions opened in Claude Code on this PC, and the doctrine ----
+
+    private async void AskClaudeToday_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm is null) return;
+        var (subject, context, facts) = _rhythm.TodayAskContext();
+        await OpenQuestionInClaudeAsync(AskTodayBox, subject, context, facts).ConfigureAwait(true);
+    }
+
+    private async void AskClaudePerson_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm?.PersonAskContext() is not { } question) return;
+        await OpenQuestionInClaudeAsync(AskPersonBox, question.Subject, question.Context, question.Facts).ConfigureAwait(true);
+    }
+
+    private async void AskClaudePursuit_Click(object sender, RoutedEventArgs e)
+    {
+        if (PursuitLinesList.SelectedItem is not BdPursuitLine line)
+        {
+            MessageBox.Show(this, "Pick a pursuit in the list first.", "Ask Claude", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var (subject, context, facts) = BdPursuitAsk.For(line);
+        await OpenQuestionInClaudeAsync(AskPursuitBox, subject, context, facts).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Composes the question now, from live data and the doctrine that applies, saves it and opens Claude Code on this PC on it —
+    /// the NetworkOps Prompt Library launcher. No model is called from the app; Claude reports back through the BD CLI.
+    /// </summary>
+    private async Task OpenQuestionInClaudeAsync(System.Windows.Controls.TextBox box, string subject, DoctrineContext context, IReadOnlyList<string> facts)
+    {
+        if (_doctrine is null) return;
+        if (string.IsNullOrWhiteSpace(box.Text))
+        {
+            MessageBox.Show(this, "Type your question first.", "Ask Claude", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        await RhythmActionAsync(async ct =>
+        {
+            var prompt = await _doctrine.PrepareAskAsync(box.Text, subject, context, facts, _actor, ct).ConfigureAwait(true);
+            Kor.Operations.App.NetworkOps.PromptLauncher.OpenInClaude(Kor.Operations.App.NetworkOps.PromptLauncher.Save(prompt.FileName, prompt.Markdown));
+            box.Clear();
+            SetRhythmStatus(_doctrine.Status);
+        }).ConfigureAwait(true);
+    }
+
+    private async void Synthesize_Click(object sender, RoutedEventArgs e)
+    {
+        if (_doctrine is null) return;
+        var books = _vm.KnowledgeBooks.Select(b => $"#{b.Source.Id} {b.Source.Title}{(b.Source.Author is { } a ? " (" + a + ")" : "")}: {b.Source.Claims} claims").ToList();
+        await RhythmActionAsync(async ct =>
+        {
+            var prompt = await _doctrine.PrepareSynthesisAsync(books, SynthesisFocusBox.Text, _actor, ct).ConfigureAwait(true);
+            Kor.Operations.App.NetworkOps.PromptLauncher.OpenInClaude(Kor.Operations.App.NetworkOps.PromptLauncher.Save(prompt.FileName, prompt.Markdown));
+        }).ConfigureAwait(true);
+    }
+
+    private async void AcceptCard_Click(object sender, RoutedEventArgs e) => await DecideCardAsync(sender, true).ConfigureAwait(true);
+    private async void RejectCard_Click(object sender, RoutedEventArgs e) => await DecideCardAsync(sender, false).ConfigureAwait(true);
+
+    private async Task DecideCardAsync(object sender, bool accept)
+    {
+        if (_doctrine is null || sender is not FrameworkElement { Tag: DoctrineCardRow card }) return;
+        await RhythmActionAsync(ct => _doctrine.DecideAsync(card, accept, _actor, ct)).ConfigureAwait(true);
     }
 
     private async void PursuitLine_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)

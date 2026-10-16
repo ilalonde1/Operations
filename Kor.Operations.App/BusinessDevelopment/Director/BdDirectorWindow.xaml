@@ -119,6 +119,11 @@
                                 <TextBlock Text="{Binding DueTomorrowText}" Foreground="#8A5A00" Margin="0,0,22,4"/>
                                 <TextBlock Text="{Binding ClosedSinceYesterdayText}" Foreground="{StaticResource Text.Secondary}" Margin="0,0,22,4"/>
                             </WrapPanel>
+                            <DockPanel Margin="0,10,0,0">
+                                <Button DockPanel.Dock="Right" Content="Ask Claude" Click="AskClaudeToday_Click" Padding="14,4" Margin="8,0,0,0"
+                                        ToolTip="Opens Claude Code on your PC with today's picture and the doctrine that applies. Its answer comes back under Doctrine."/>
+                                <TextBox x:Name="AskTodayBox" MaxLength="2000" controls:Placeholder.Text="Ask Claude about today, the team or what to do next…" Padding="8,4"/>
+                            </DockPanel>
                             <Border Background="#FDF2DC" BorderBrush="#8A5A00" BorderThickness="4,0,0,0" Padding="12,8" Margin="0,10,0,4"
                                     Visibility="{Binding Hour.Callout, Converter={StaticResource TextVisible}}">
                                 <TextBlock Text="{Binding Hour.Callout}" TextWrapping="Wrap" Foreground="#17212C"/>
@@ -279,6 +284,11 @@
                                 <Button DockPanel.Dock="Right" Content="Add an action…" Click="AddActionForPerson_Click" Padding="12,4"/>
                                 <TextBlock Text="{Binding PersonTitle}" Style="{StaticResource SectionTitle}"/>
                             </DockPanel>
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                <Button DockPanel.Dock="Right" Content="Ask Claude" Click="AskClaudePerson_Click" Padding="14,4" Margin="8,0,0,0"
+                                        ToolTip="Opens Claude Code with this person's list, their agenda and the doctrine that applies."/>
+                                <TextBox x:Name="AskPersonBox" MaxLength="2000" controls:Placeholder.Text="Ask Claude about this person: how to run the one-to-one, what to push…" Padding="8,4"/>
+                            </DockPanel>
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding PersonActions}">
                                     <ItemsControl.ItemTemplate><DataTemplate>
@@ -327,9 +337,14 @@
         </TabItem>
         <TabItem Header="Pursuits" x:Name="PursuitsTab">
             <Grid Margin="12">
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <TextBlock Text="{Binding PursuitsMessage}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
-                <ListBox Grid.Row="1" x:Name="PursuitLinesList" ItemsSource="{Binding PursuitLines}" MouseDoubleClick="PursuitLine_DoubleClick"
+                <DockPanel Grid.Row="1" Margin="0,0,0,8">
+                    <Button DockPanel.Dock="Right" Content="Ask Claude" Click="AskClaudePursuit_Click" Padding="14,4" Margin="8,0,0,0"
+                            ToolTip="Opens Claude Code on the selected pursuit, with the doctrine that applies."/>
+                    <TextBox x:Name="AskPursuitBox" MaxLength="2000" controls:Placeholder.Text="Pick a pursuit, then ask Claude about it: how to move it, who to call, what is missing…" Padding="8,4"/>
+                </DockPanel>
+                <ListBox Grid.Row="2" x:Name="PursuitLinesList" ItemsSource="{Binding PursuitLines}" MouseDoubleClick="PursuitLine_DoubleClick"
                          HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" BorderBrush="{StaticResource Panel.Border}">
                     <ListBox.ItemTemplate><DataTemplate>
                         <Grid Margin="6,8">
@@ -345,6 +360,78 @@
                         </Grid>
                     </DataTemplate></ListBox.ItemTemplate>
                 </ListBox>
+            </Grid>
+        </TabItem>
+        <TabItem Header="Doctrine" x:Name="DoctrineTab">
+            <Grid Margin="12">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6"
+                           Text="What the books and your experience say a BD director does, as cards you accept or reject. Only accepted cards reach Claude's later answers. Claude runs on your PC; nothing is sent from here."/>
+                <DockPanel Grid.Row="1" Margin="0,0,0,10">
+                    <Button DockPanel.Dock="Right" Content="Synthesize from the books" Click="Synthesize_Click" Padding="14,4" Margin="8,0,0,0" FontWeight="SemiBold"
+                            ToolTip="Opens Claude Code to read the books in the knowledge base and propose doctrine cards, building on what you have accepted."/>
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Summary}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <TextBox x:Name="SynthesisFocusBox" MaxLength="2000" controls:Placeholder.Text="Optional focus for the synthesis, e.g. pricing and fee proposals" Padding="8,4"/>
+                </DockPanel>
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="20"/><ColumnDefinition Width="560"/></Grid.ColumnDefinitions>
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="{Binding ProposedHeading}" Style="{StaticResource SectionTitle}"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <ItemsControl x:Name="ProposedCardsList" ItemsSource="{Binding Proposed}">
+                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                        <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,0,0,10">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Plain}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,0"><Run Text="{Binding Title, Mode=OneWay}"/><Run Text="  ·  applies to "/><Run Text="{Binding AppliesTo, Mode=OneWay}"/></TextBlock>
+                                                <Expander Header="The card" Margin="0,6,0,0">
+                                                    <StackPanel Margin="0,4,0,0">
+                                                        <TextBlock TextWrapping="Wrap" Margin="0,2"><Run Text="Principle: " FontWeight="SemiBold"/><Run Text="{Binding Principle, Mode=OneWay}"/></TextBlock>
+                                                        <TextBlock TextWrapping="Wrap" Margin="0,2"><Run Text="You are in it when: " FontWeight="SemiBold"/><Run Text="{Binding Recognise, Mode=OneWay}"/></TextBlock>
+                                                        <TextBlock TextWrapping="Wrap" Margin="0,2"><Run Text="The play: " FontWeight="SemiBold"/><Run Text="{Binding Play, Mode=OneWay}"/></TextBlock>
+                                                        <TextBlock TextWrapping="Wrap" Margin="0,2" Visibility="{Binding Warning, Converter={StaticResource TextVisible}}"><Run Text="Warning sign: " FontWeight="SemiBold"/><Run Text="{Binding Warning, Mode=OneWay}"/></TextBlock>
+                                                        <TextBlock TextWrapping="Wrap" Margin="0,2" Foreground="{StaticResource Text.Secondary}"><Run Text="From: "/><Run Text="{Binding Citations, Mode=OneWay}"/></TextBlock>
+                                                    </StackPanel>
+                                                </Expander>
+                                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                    <Button Content="Accept" Click="AcceptCard_Click" Tag="{Binding}" Padding="16,4" Margin="0,0,8,0" FontWeight="SemiBold"/>
+                                                    <Button Content="Reject" Click="RejectCard_Click" Tag="{Binding}" Padding="14,4"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Expander Header="Accepted doctrine" Margin="0,6,0,0">
+                                    <ItemsControl ItemsSource="{Binding Accepted}" Margin="0,4,0,0">
+                                        <ItemsControl.ItemTemplate><DataTemplate>
+                                            <TextBlock TextWrapping="Wrap" Margin="0,3"><Run Text="#"/><Run Text="{Binding Id, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="  ·  "/><Run Text="{Binding Play, Mode=OneWay}" Foreground="#5A6876"/></TextBlock>
+                                        </DataTemplate></ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Expander>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
+                    <DockPanel Grid.Column="2">
+                        <TextBlock DockPanel.Dock="Top" Text="Questions and answers" Style="{StaticResource SectionTitle}"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="RunsList" ItemsSource="{Binding Runs}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,0,0,1" Padding="0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding When}" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+                                            <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="#2E4A62" Margin="0,2,0,0"/>
+                                            <TextBox Text="{Binding Answer, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent"
+                                                     Margin="0,4,0,0" MaxHeight="260" VerticalScrollBarVisibility="Auto"
+                                                     Visibility="{Binding Answer, Converter={StaticResource TextVisible}}"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Grid>
             </Grid>
         </TabItem>
         <TabItem Header="Data" x:Name="DataTab">

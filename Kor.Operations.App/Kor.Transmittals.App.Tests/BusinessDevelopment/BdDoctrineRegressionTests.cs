@@ -1,0 +1,201 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using Kor.Operations.App.BusinessDevelopment.Director;
+using Kor.Opportunities.Data.Crm;
+using Moq;
+using Xunit;
+
+namespace Kor.Operations.App.Tests.BusinessDevelopment;
+
+/// <summary>
+/// The BD consigliere (migration 362): questions opened in Claude Code from the Director, and doctrine cards that only reach
+/// later prompts once Ian accepts them — the NetworkOps Prompt Library method.
+/// WHAT IT COVERS: where a card applies (the closed vocabulary, refused typos, matching); a report's validation (every fault
+/// reported, nothing accepted with one); what a question and a synthesis prompt carry (the rules, the facts, the cards that
+/// apply in full and the rest by title, the report command with its run and token); that the app stores only hashes, the
+/// prompt hash of the text Claude reads; deciding cards; 362 guarded; the window's screens; no API marker in the consigliere.
+/// WHAT IT DOES NOT COVER: Claude's answers (a session's quality is Ian's to judge, card by card); the SQL against a live
+/// database (the store's statements are read, not run); Windows Terminal actually opening.
+/// A same-class fault it would NOT catch: a card whose citations name a passage that does not exist.
+/// </summary>
+public sealed class BdDoctrineRegressionTests
+{
+    private static readonly DateTimeOffset Now = new(2026, 10, 16, 15, 0, 0, TimeSpan.Zero);
+
+    private static DoctrineCardRow Card(long id, string title, string appliesTo, string status = "accepted", long? amends = null) =>
+        new(id, "BD", title, "Plain " + title, appliesTo, "Principle " + id, "Recognise " + id, "Play " + id, null, "Maister, ch. " + id, null,
+            1, amends, status, Now, null, null);
+
+    [Fact]
+    public void AppliesTo_RefusesTypos_AndMatchesOnlyItsContext()
+    {
+        Assert.Null(BdDoctrine.Invalid("situation:going-cold, moment:pursuit"));
+        Assert.Contains("situation 'gone-cold'", BdDoctrine.Invalid("situation:gone-cold"), StringComparison.Ordinal);
+        Assert.Contains("not one of", BdDoctrine.Invalid("device:KOR-217"), StringComparison.Ordinal);
+        Assert.Contains("must be a company id", BdDoctrine.Invalid("org:Bird"), StringComparison.Ordinal);
+        Assert.NotNull(BdDoctrine.Invalid(""));
+        var cold = new DoctrineContext("pursuit", new[] { "going-cold", "relationship-pursuit" }, "Pending", "Alberta", "ishabana@korstructural.com", 141, "health care");
+        Assert.True(BdDoctrine.AppliesTo("situation:Going-Cold", cold));
+        Assert.True(BdDoctrine.AppliesTo("org:141", cold));
+        Assert.True(BdDoctrine.AppliesTo("sector:health", cold));
+        Assert.True(BdDoctrine.AppliesTo("any", cold));
+        Assert.False(BdDoctrine.AppliesTo("situation:late-action, moment:hour, region:USA", cold));
+    }
+
+    [Fact]
+    public void Report_ReportsEveryFault_AndAcceptsAGoodOne()
+    {
+        const string good = """
+        { "outcome": "answered", "answer": "Call Bryson first.", // comments allowed
+          "cards": [ { "plain": "p", "title": "t", "appliesTo": "situation:going-cold", "principle": "x", "recognise": "y",
+                       "play": "z", "citations": "Maister ch. 3", "amends": 4 } ] }
+        """;
+        var (report, errors) = BdDoctrine.ParseReport(good);
+        Assert.Empty(errors);
+        Assert.Equal(4L, Assert.Single(report!.Cards).Amends);
+        var (bad, why) = BdDoctrine.ParseReport("""{ "outcome": "solved", "cards": [ { "title": "t", "appliesTo": "situation:nope" } ] }""");
+        Assert.Null(bad);
+        foreach (var expected in new[] { "outcome must be one of", "answer is required", "card 1: plain is required", "situation 'nope'", "card 1: principle is required", "card 1: citations is required" })
+            Assert.True(why.Any(e => e.Contains(expected, StringComparison.Ordinal)), $"EXPECTED '{expected}'; ACTUAL: {string.Join(" | ", why)}");
+        Assert.StartsWith("Not valid JSON", BdDoctrine.ParseReport("{ nope").Errors.Single(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AskPrompt_CarriesRulesFactsApplyingCardsLibraryAndTheReportCommand()
+    {
+        var context = new DoctrineContext("pursuit", new[] { "going-cold" });
+        var prompt = BdPromptComposer.Ask(new BdAskInput("How do I restart Northland?", "ian", "Northland Revelstoke", context,
+            new[] { "Held by John Bryson.", "Last touch 3 Sep." },
+            new[] { Card(5, "Rescue a quiet relationship", "situation:going-cold") }, new[] { Card(6, "Price on value", "situation:fee-undercut") }, Now),
+            new BdPromptHandle(42, "TOKEN-abcdefghijklmnopqrstu"));
+        foreach (var expected in new[]
+        {
+            "# How do I restart Northland?", "Never call the Anthropic API", "addressed to Ian", "- Held by John Bryson.", "- Situations: going-cold",
+            "### #5 Rescue a quiet relationship", "- The play: Play 5", "- #6 Price on value", "doctrine show <id>",
+            "prompt report 42 <report.json> --token TOKEN-abcdefghijklmnopqrstu", "situation:going-cold|never-touched",
+        })
+            Assert.Contains(expected, prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("### #6", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SynthesisPrompt_ListsTheBooks_BuildsOnAcceptedCards_AndNamesWhatIsWaiting()
+    {
+        var prompt = BdPromptComposer.Synthesis(new BdSynthesisInput("BD", "ian", new[] { "#1 Managing the professional service firm (Maister): 639 claims" },
+            new[] { Card(5, "Rescue a quiet relationship", "any") }, new[] { Card(9, "Waiting card", "any", "proposed") }, "pricing", Now),
+            new BdPromptHandle(7, "TOKEN-abcdefghijklmnopqrstu"));
+        foreach (var expected in new[] { "# Synthesize the BD doctrine from the books", "This run's focus: pricing", "- #1 Managing the professional service firm",
+                     "claims search \"<theme>\" --take 30", "### #5 Rescue a quiet relationship", "- #9 Waiting card", "`amends`", "prompt report 7" })
+            Assert.Contains(expected, prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Asking_StoresOnlyHashes_ThePromptHashIsOfWhatClaudeReads_AndOnlyAcceptedCardsTravel()
+    {
+        var store = new Mock<IBdDoctrineStore>();
+        store.Setup(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            Card(5, "Rescue a quiet relationship", "situation:going-cold"), Card(6, "Price on value", "situation:fee-undercut"),
+            Card(7, "Not yet accepted", "any", "proposed"),
+        });
+        store.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
+        byte[]? tokenSha = null, promptSha = null;
+        store.Setup(s => s.StartRunAsync("ask", "BD", "Northland", "How?", "ian", It.IsAny<byte[]>(), It.IsAny<byte[]>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, string?, string, byte[], byte[], CancellationToken>((_, _, _, _, _, _, t, _) => tokenSha = t).ReturnsAsync(42);
+        store.Setup(s => s.SetPromptShaAsync(42, It.IsAny<byte[]>(), It.IsAny<CancellationToken>()))
+            .Callback<long, byte[], CancellationToken>((_, p, _) => promptSha = p).Returns(Task.CompletedTask);
+        var vm = new BdDoctrineViewModel(store.Object, () => Now);
+        await vm.LoadAsync(CancellationToken.None);
+        Assert.Equal(new long[] { 7 }, vm.Proposed.Select(c => c.Id));
+        Assert.Equal(2, vm.Accepted.Count);
+
+        var prompt = await vm.PrepareAskAsync("How?", "Northland", new DoctrineContext("pursuit", new[] { "going-cold" }), new[] { "fact" }, "ian", CancellationToken.None);
+        Assert.Equal("bd-ask-42.md", prompt.FileName);
+        Assert.Equal(BdDoctrine.Sha(prompt.Markdown), promptSha);
+        var token = Regex.Match(prompt.Markdown, @"--token (\S+)").Groups[1].Value;
+        Assert.True(token.Length >= 20);
+        Assert.Equal(BdDoctrine.Sha(token), tokenSha);
+        Assert.Contains("### #5", prompt.Markdown, StringComparison.Ordinal);
+        Assert.DoesNotContain("Not yet accepted", prompt.Markdown, StringComparison.Ordinal);
+        await Assert.ThrowsAsync<ArgumentException>(() => vm.PrepareAskAsync(" ", "x", new DoctrineContext("hour", Array.Empty<string>()), Array.Empty<string>(), "ian", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Deciding_GoesThroughTheStore_AndSaysWhenItWasAlreadyDecided()
+    {
+        var store = new Mock<IBdDoctrineStore>();
+        store.Setup(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
+        store.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
+        store.Setup(s => s.DecideCardAsync(8, true, "ian", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        store.Setup(s => s.DecideCardAsync(9, false, "ian", It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        var vm = new BdDoctrineViewModel(store.Object, () => Now);
+        Assert.True(await vm.DecideAsync(Card(8, "Amend", "any", "proposed", amends: 3), true, "ian", CancellationToken.None));
+        Assert.Equal("Accepted: Amend (card #3 retired)", vm.Status);
+        Assert.False(await vm.DecideAsync(Card(9, "Old", "any", "proposed"), false, "ian", CancellationToken.None));
+        Assert.Contains("already decided", vm.Status, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Store_ChecksTheTokenHash_ReplacesOnlyProposedCards_AndRetiresOnlyAnAcceptedAmendedCard()
+    {
+        var sql = Source("Kor.Opportunities.Data/Crm/BdDoctrine.cs");
+        Assert.Contains("WHERE Id = @id AND TokenSha256 = @token", sql, StringComparison.Ordinal);
+        Assert.Contains("DELETE FROM opportunities.DoctrineCard WHERE SourceRunId = @id AND Status = N'proposed'", sql, StringComparison.Ordinal);
+        Assert.Contains("WHERE Id = @id AND Status = N'proposed'", sql, StringComparison.Ordinal);
+        Assert.Contains("WHERE Id = @amends AND Status = N'accepted'", sql, StringComparison.Ordinal);
+        Assert.Single(Regex.Matches(sql, @"DELETE FROM"));
+    }
+
+    [Fact]
+    public void Migration362_CreatesGuarded_ChangesNoData()
+    {
+        var sql = Source("Kor.Opportunities.Data/Schema/362_BdDoctrineAndPromptRuns.sql");
+        foreach (var table in new[] { "BdPromptRun", "DoctrineCard" })
+            Assert.Contains($"IF OBJECT_ID(N'opportunities.{table}', N'U') IS NULL", sql, StringComparison.Ordinal);
+        Assert.Contains("CHECK (Status IN (N'proposed', N'accepted', N'rejected', N'retired'))", sql, StringComparison.Ordinal);
+        Assert.DoesNotMatch(@"(?i)\b(DELETE|DROP|TRUNCATE|UPDATE|INSERT)\b", Regex.Replace(sql, @"--[^\r\n]*|/\*.*?\*/", "", RegexOptions.Singleline));
+    }
+
+    [Fact]
+    public void Window_HasTheDoctrineScreen_AndAQuestionBoxOnEachOfTheThreeScreens_AndTheConsigliereCallsNoApi()
+    {
+        var xaml = Source("Kor.Operations.App/BusinessDevelopment/Director/BdDirectorWindow.xaml");
+        foreach (var expected in new[] { "x:Name=\"DoctrineTab\"", "x:Name=\"AskTodayBox\"", "x:Name=\"AskPersonBox\"", "x:Name=\"AskPursuitBox\"",
+                     "Click=\"AskClaudeToday_Click\"", "Click=\"AskClaudePerson_Click\"", "Click=\"AskClaudePursuit_Click\"", "Click=\"Synthesize_Click\"",
+                     "Click=\"AcceptCard_Click\"", "Click=\"RejectCard_Click\"" })
+            Assert.Contains(expected, xaml, StringComparison.Ordinal);
+        foreach (var file in new[] { "Kor.Operations.App/BusinessDevelopment/Director/BdDoctrineViewModel.cs", "Kor.Opportunities.Data/Crm/BdDoctrine.cs",
+                     "Kor.Opportunities.Data/Crm/BdPromptComposer.cs" })
+            Assert.DoesNotMatch(@"api\.anthropic\.com|AskService|HttpClient|x-api-key", Source(file));
+        Assert.Contains("PromptLauncher.OpenInClaude(", Source("Kor.Operations.App/BusinessDevelopment/Director/BdDirectorWindow.xaml.cs"), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The CLI refuses any option not on its verb's allowed list; the first end-to-end report (16 Oct) failed with "--token does not
+    /// apply to prompt" while every unit test passed. A pin on the source, narrow by design: it would not catch a new option added
+    /// to a verb's usage line but left off that verb's list.
+    /// </summary>
+    [Fact]
+    public void Cli_AllowsTheOptionsThePromptsTellClaudeToUse()
+    {
+        var cli = Source("tools/BdKnowledgeIngest/Program.cs");
+        Assert.Contains("\"prompt\" => new[] { \"--token\" },", cli, StringComparison.Ordinal);
+        Assert.Contains("\"doctrine\" => new[] { \"--role\" },", cli, StringComparison.Ordinal);
+        Assert.Contains("or \"doctrine\" or \"prompt\"))", cli, StringComparison.Ordinal);
+    }
+
+    private static string Source(string path) => File.ReadAllText(Path.Combine(RepoRoot(), path));
+
+    private static string RepoRoot()
+    {
+        DirectoryInfo? dir = new(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "CLAUDE.md"))) dir = dir.Parent;
+        return dir?.FullName ?? throw new DirectoryNotFoundException("EXPECTED repository root; ACTUAL not found");
+    }
+}

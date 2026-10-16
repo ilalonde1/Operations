@@ -14,11 +14,14 @@ public static class PromptLauncher
 {
     public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KorOperations", "Prompts");
 
-    public static string Save(RenderedPrompt prompt)
+    public static string Save(RenderedPrompt prompt) => Save(prompt.FileName, prompt.Markdown);
+
+    /// <summary>The same, for a prompt composed outside NetworkOps (BD Director's consigliere asks and syntheses).</summary>
+    public static string Save(string fileName, string markdown)
     {
         Directory.CreateDirectory(Folder);
-        var path = Path.Combine(Folder, Path.GetFileName(prompt.FileName));
-        File.WriteAllText(path, prompt.Markdown);
+        var path = Path.Combine(Folder, Path.GetFileName(fileName));
+        File.WriteAllText(path, markdown);
         return path;
     }
 

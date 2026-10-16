@@ -284,7 +284,7 @@ public sealed class BdDirectorLedgerRegressionTests
     {
         var xaml = Source(DirectorFolder + "BdDirectorWindow.xaml");
         var headers = XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "TabItem").Select(e => (string?)e.Attribute("Header")).ToArray();
-        Check(headers.SequenceEqual(new[] { "Today", "People", "Pursuits", "Data", "Actions", "Meetings", "References", "The number", "By person", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" }),
+        Check(headers.SequenceEqual(new[] { "Today", "People", "Pursuits", "Doctrine", "Data", "Actions", "Meetings", "References", "The number", "By person", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" }),
             "three screens, then Data with its thirteen tabs, in order", string.Join(", ", headers));
         foreach (var caption in new[] { "Number", "People", "Funnel", "Accounts", "Asks", "Decisions", "Knowledge", "Market", "Brief" })
             Contains(xaml, "{x:Static director:BdDirectorViewModel." + caption + "Caption}");

@@ -573,17 +573,38 @@ public sealed class BdScreensRenderTests
         var pending = new DirectorPendingBidsFixture();
         using var vm = pending.Create();
         vm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
-        var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>(), rhythm);
+        var doctrineStore = new Mock<IBdDoctrineStore>();
+        DoctrineCardRow Card(long id, string status, string title, string plain) => new(id, "BD", title, plain, "situation:going-cold, moment:pursuit",
+            "A relationship that has gone quiet is rescued by a useful reason to call, not by checking in.", "No touch in 14 days on a live pursuit.",
+            "Send one piece of their world they have not seen (a permit, a hire, a neighbour's project) and ask one question about it.",
+            "You are writing \"just checking in\".", "Fox, Rain Making, ch. 7; Maister, The Trusted Advisor, ch. 9", null, 1, null, status, now, null, null);
+        doctrineStore.Setup(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            Card(11, "proposed", "Rescue a relationship that has gone quiet", "Illustrative: when a pursuit goes 14 days without a touch, Today will suggest a reason to call instead of a check-in."),
+            Card(12, "proposed", "Price on the value of certainty", "Illustrative: when KOR's fee is far below the field, the doctrine says explain the scope gap before cutting the price."),
+            Card(5, "accepted", "Lead the one-to-one with their list", "Illustrative accepted card."),
+        });
+        doctrineStore.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new BdPromptRunRow(3, "ask", "BD", "Northland Revelstoke", "How do I restart Northland?", "ian", now.AddHours(-1), now.AddMinutes(-40), "answered",
+                "Illustrative answer: call John Bryson first; the relationship is his. Bring the Cabot Revelstoke news as the reason.", 1),
+            new BdPromptRunRow(4, "synthesis", "BD", "the BD doctrine", null, "ian", now.AddMinutes(-5), null, null, null, 0),
+        });
+        var doctrine = new BdDoctrineViewModel(doctrineStore.Object, () => now);
+        doctrine.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
+        Assert.Equal("1 accepted · 2 waiting for you · 1 question(s) still with Claude", doctrine.Summary);
+
+        var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>(), rhythm, doctrine);
         var tabs = Assert.IsType<System.Windows.Controls.TabControl>(window.FindName("Tabs"));
         var content = (FrameworkElement)window.Content;
         window.Content = null;
         content.DataContext = vm;
         content.Resources.MergedDictionaries.Add(window.Resources);
-        var files = new[] { "director-today.png", "director-people.png", "director-pursuits.png", "director-actions.png", "director-meetings.png", "director-references.png" };
+        var files = new[] { "director-today.png", "director-people.png", "director-pursuits.png", "director-doctrine.png", "director-actions.png", "director-meetings.png", "director-references.png" };
         var written = 0;
         for (var i = 0; i < files.Length; i++)
         {
-            if (i < 3) tabs.SelectedIndex = i; else SelectData(tabs, i - 3);
+            if (i < 4) tabs.SelectedIndex = i; else SelectData(tabs, i - 4);
             content.UpdateLayout();
             written += RenderView(content, new Size(1680, i == 0 ? 1500 : 980), Path.Combine(dir, files[i]));
             if (i == 1)
@@ -612,18 +633,23 @@ public sealed class BdScreensRenderTests
                 // Move 2 was answered "Not today": its card folds to its title and says so.
                 Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Not today");
             }
-            if (i == 3)
+            if (i == 4)
                 Assert.Equal(2, VisualChildren<System.Windows.Controls.DataGrid>(content).Single(g => g.Name == "ActionsGrid").Items.Count);
+            if (i == 3)
+            {
+                Assert.Equal(2, VisualChildren<System.Windows.Controls.ItemsControl>(content).Single(c => c.Name == "ProposedCardsList").Items.Count);
+                Assert.Equal(2, VisualChildren<System.Windows.Controls.ItemsControl>(content).Single(c => c.Name == "RunsList").Items.Count);
+                Assert.Contains(VisualChildren<System.Windows.Controls.Button>(content), b => Equals(b.Content, "Synthesize from the books"));
+            }
         }
         return written;
     }
 
-    /// <summary>Today, People and Pursuits are the first three tabs; every other view sits inside the fourth, Data.</summary>
+    /// <summary>Today, People, Pursuits and Doctrine come first; every other view sits inside Data.</summary>
     private static void SelectData(System.Windows.Controls.TabControl tabs, int index)
     {
-        tabs.SelectedIndex = 3;
-        var data = Assert.IsType<System.Windows.Controls.TabItem>(tabs.Items[3]);
-        Assert.Equal("Data", data.Header);
+        var data = tabs.Items.OfType<System.Windows.Controls.TabItem>().Single(t => Equals(t.Header, "Data"));
+        tabs.SelectedItem = data;
         Assert.IsType<System.Windows.Controls.TabControl>(data.Content).SelectedIndex = index;
     }
 

@@ -309,3 +309,24 @@ public sealed record BdPursuitLine(PursuitOverwatchRow Pursuit, string OwnerName
         _ => "",
     };
 }
+
+/// <summary>What a question about one live pursuit carries, and the situations it is in.</summary>
+public static class BdPursuitAsk
+{
+    public static (string Subject, DoctrineContext Context, IReadOnlyList<string> Facts) For(BdPursuitLine line)
+    {
+        var p = line.Pursuit;
+        var facts = new List<string>
+        {
+            $"{line.Title}: {line.StageText}, held by {line.OwnerName}. Buyer: {p.Buyer}. Region: {p.Region ?? "not set"}.",
+            $"{line.TouchText}. {p.ActivityCount} logged touch(es). Opened {BdDateDisplay.Day(p.OpenedAtUtc)}; in its stage since {BdDateDisplay.Day(p.StageSinceUtc)}.",
+            p.OpportunityId is { } o ? $"It came from an RFP (opportunity {o})." : "A relationship pursuit: no RFP behind it.",
+            $"Pursuit id {line.EngagementId} (opportunities.CrmEngagements).",
+        };
+        if (line.Gap.Length > 0) facts.Add("Missing: " + line.Gap);
+        var situations = new List<string> { p.OpportunityId is null ? "relationship-pursuit" : "rfp-response" };
+        if (line.Gap.StartsWith("Going cold", StringComparison.Ordinal)) situations.Add("going-cold");
+        if (line.Gap.StartsWith("Never touched", StringComparison.Ordinal)) situations.Add("never-touched");
+        return (line.Title, new DoctrineContext("pursuit", situations, Stage: line.StageText, Region: p.Region, Person: p.OwnerStaffId), facts);
+    }
+}

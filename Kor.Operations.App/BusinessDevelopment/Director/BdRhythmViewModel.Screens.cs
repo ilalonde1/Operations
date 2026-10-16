@@ -273,6 +273,36 @@ public sealed partial class BdRhythmViewModel
         OnPropertyChanged(nameof(PersonNote));
     }
 
+    /// <summary>What a question about today carries: the hour, how the team stands, and the situations that are live.</summary>
+    public (string Subject, DoctrineContext Context, IReadOnlyList<string> Facts) TodayAskContext()
+    {
+        var facts = new List<string>();
+        if (Hour is { } h)
+        {
+            facts.Add($"Today's prepared hour: {h.Title}. {MovesProgressText}.");
+            facts.AddRange(Moves.Select(m => $"Move {m.Rank}: {m.Title} ({m.SideText})"));
+        }
+        else facts.Add(HourMessage);
+        facts.Add($"{TeamLateText}; {DueTomorrowText}; {ClosedSinceYesterdayText}.");
+        facts.AddRange(PeopleCards.Select(p => $"{p.Name} ({p.RoleText}): {p.OpenText}, {p.LateText}, {p.WeekText}. {p.NextText}."));
+        var situations = new List<string> { "team-cadence" };
+        if (TeamLate > 0) situations.Add("late-action");
+        return ("today", new DoctrineContext("hour", situations), facts);
+    }
+
+    /// <summary>What a question about the selected person carries: their list, how late, and their next one-to-one.</summary>
+    public (string Subject, DoctrineContext Context, IReadOnlyList<string> Facts)? PersonAskContext()
+    {
+        if (SelectedPerson is not { } p) return null;
+        var facts = new List<string> { $"{p.Name}: {p.RoleText}. {p.OpenText}, {p.LateText}, {p.WeekText}. {p.NextText}." };
+        facts.AddRange(PersonActions.Select(a => $"{(a.Row.IsOpen ? "Open" : a.Row.Status)}: {a.Row.Action} ({a.DueText}; {a.From})"
+            + (string.IsNullOrWhiteSpace(a.Row.Result) ? "" : $" Result: {a.Row.Result}")));
+        if (p.IsLead && PersonAgenda.Length > 0) facts.Add("Their one-to-one agenda as built now:\n" + PersonAgenda);
+        var situations = new List<string> { "team-cadence" };
+        if (p.Late > 0) situations.Add("late-action");
+        return (p.Name, new DoctrineContext(p.IsLead ? "one-to-one" : "person", situations, Region: p.Lead.Region, Person: p.Key), facts);
+    }
+
     internal static string DueWords(BdActionRow a, DateTimeOffset now)
     {
         if (!a.IsOpen) return a.Status;

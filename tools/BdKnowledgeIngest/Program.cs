@@ -48,7 +48,7 @@ internal static class KnowledgeCli
             var options = Arguments.Parse(args);
             if (options.Flag("--help")) { Usage(); return 0; }
             var verb = options.Positionals.FirstOrDefault()?.ToLowerInvariant();
-            if (verb is not ("ingest" or "embed" or "search" or "list" or "export" or "claims" or "brief" or "pursuit" or "hour" or "rhythm")) { Usage(); return 2; }
+            if (verb is not ("ingest" or "embed" or "search" or "list" or "export" or "claims" or "brief" or "pursuit" or "hour" or "rhythm" or "doctrine" or "prompt")) { Usage(); return 2; }
             options.ValidateFor(verb);
             var ct = cancellation.Token;
             if (verb == "hour" && options.Positionals[1].Equals("render", StringComparison.OrdinalIgnoreCase))
@@ -73,6 +73,8 @@ internal static class KnowledgeCli
             if (verb == "brief") return await BriefAsync(options, store!, connection!, ct);
             if (verb == "hour") return await HourImportAsync(options, new SqlBdRhythmStore(connection!), ct);
             if (verb == "rhythm") return await RhythmRenderAsync(options, new SqlBdRhythmStore(connection!), ct);
+            if (verb == "doctrine") return await DoctrineAsync(options, new SqlBdDoctrineStore(connection!), ct);
+            if (verb == "prompt") return await PromptReportAsync(options, new SqlBdDoctrineStore(connection!), ct);
             if (verb == "pursuit")
             {
                 var json = await File.ReadAllTextAsync(options.Positionals[4], ct);
@@ -418,6 +420,46 @@ internal static class KnowledgeCli
     private static string Reason(Exception ex) => ex is SqlException sql
         ? $"Database operation failed (SQL {sql.Number})."
         : OneLine(ex.Message);
+    /// <summary>The doctrine a session reads: accepted cards by title, or one card in full (any status).</summary>
+    private static async Task<int> DoctrineAsync(Arguments args, IBdDoctrineStore store, CancellationToken ct)
+    {
+        var cards = await store.ListCardsAsync(args.Value("--role") ?? "BD", ct);
+        if (args.Positionals[1].Equals("list", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (var c in cards.Where(c => c.Status is "accepted" or "proposed"))
+                Console.WriteLine($"#{c.Id}  {c.Status}  {OneLine(c.Title)}  [{c.AppliesTo}]");
+            Console.WriteLine($"{cards.Count(c => c.Status == "accepted")} accepted, {cards.Count(c => c.Status == "proposed")} proposed.");
+            return 0;
+        }
+
+        var id = long.Parse(args.Positionals[2], CultureInfo.InvariantCulture);
+        if (cards.FirstOrDefault(c => c.Id == id) is not { } card) { Console.Error.WriteLine($"FAIL No {args.Value("--role") ?? "BD"} card #{id}."); return 2; }
+        Console.WriteLine($"#{card.Id} {card.Title} ({card.Status})\nApplies to: {card.AppliesTo}\nPlain: {card.Plain}\nPrinciple: {card.Principle}\n"
+            + $"You are in it when: {card.Recognise}\nThe play: {card.Play}\nWarning sign: {card.Warning ?? "—"}\nFrom: {card.Citations}\nTags: {card.Tags ?? "—"}");
+        return 0;
+    }
+
+    /// <summary>A session's report, checked against its one-time token. Refused with every reason when it does not validate.</summary>
+    private static async Task<int> PromptReportAsync(Arguments args, IBdDoctrineStore store, CancellationToken ct)
+    {
+        var runId = long.Parse(args.Positionals[2], CultureInfo.InvariantCulture);
+        var (report, errors) = BdDoctrine.ParseReport(await File.ReadAllTextAsync(args.Positionals[3], ct));
+        if (report is null)
+        {
+            foreach (var e in errors) Console.Error.WriteLine("FAIL " + e);
+            return 2;
+        }
+
+        if (!await store.ReportAsync(runId, args.Value("--token")!, report, ct))
+        {
+            Console.Error.WriteLine($"FAIL The token does not match run {runId}. Use the command exactly as the prompt gave it.");
+            return 2;
+        }
+
+        Console.WriteLine($"Reported run {runId}: {report.Outcome}, {report.Cards.Count} card(s) proposed. Ian sees them in BD Director, Doctrine.");
+        return 0;
+    }
+
     private static void Usage() => Console.WriteLine("""
         BdKnowledgeIngest ingest <file|folder> [--kind Book] [--licence OwnedCopyPrivateStudy]
           [--title ..] [--author ..] [--year ..] [--force] [--dry] [--calibre <path>] [--by <name>]
@@ -432,6 +474,9 @@ internal static class KnowledgeCli
         BdKnowledgeIngest brief export [--week <yyyy-MM-dd>] --to <folder>
         BdKnowledgeIngest brief import <export.json> <sections.json> --by <name> [--force]
         BdKnowledgeIngest pursuit checklist import <engagementId> <file.json> --by <name> [--replace]
+        BdKnowledgeIngest doctrine list [--role BD|Operations]
+        BdKnowledgeIngest doctrine show <id> [--role BD|Operations]
+        BdKnowledgeIngest prompt report <runId> <report.json> --token <token>
         --db <connection string> defaults to env KOR_OPPORTUNITIES_OPPORTUNITIESDB
         """);
 
@@ -439,7 +484,7 @@ internal static class KnowledgeCli
     {
         private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help", "--replace" };
         private static readonly HashSet<string> Values = new(StringComparer.Ordinal)
-            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--week" };
+            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--week", "--token", "--role" };
         private readonly Dictionary<string, string?> _options = new(StringComparer.Ordinal);
         internal List<string> Positionals { get; } = new();
         internal string? Value(string name) => _options.GetValueOrDefault(name);
@@ -480,7 +525,9 @@ internal static class KnowledgeCli
         {
             var claimAction = verb == "claims" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
             var briefAction = verb == "brief" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
-            var expected = verb == "pursuit" ? 5 : verb == "hour" ? 3 : verb == "rhythm" ? 2 : verb == "brief" ? briefAction == "import" ? 4 : 2
+            var doctrineAction = verb == "doctrine" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
+            var expected = verb == "prompt" ? 4 : verb == "doctrine" ? doctrineAction == "show" ? 3 : 2
+                : verb == "pursuit" ? 5 : verb == "hour" ? 3 : verb == "rhythm" ? 2 : verb == "brief" ? briefAction == "import" ? 4 : 2
                 : verb == "claims" ? claimAction == "embed" ? 2 : 3 : verb is "ingest" or "search" or "export" ? 2 : 1;
             if (Positionals.Count != expected) throw new ArgumentException($"Wrong number of arguments for {verb}; use --help.");
             if (verb == "pursuit")
@@ -504,6 +551,20 @@ internal static class KnowledgeCli
             {
                 if (!Positionals[1].Equals("render", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(Value("--to")))
                     throw new ArgumentException("Use rhythm render --to <folder>.");
+            }
+            if (verb == "doctrine")
+            {
+                if (doctrineAction is not ("list" or "show")) throw new ArgumentException("Use doctrine list [--role BD|Operations], or doctrine show <id>.");
+                if (doctrineAction == "show" && !long.TryParse(Positionals[2], NumberStyles.None, CultureInfo.InvariantCulture, out _))
+                    throw new ArgumentException("doctrine show needs a card id.");
+                if (Value("--role") is { } role && role is not ("BD" or "Operations")) throw new ArgumentException("--role is BD or Operations.");
+            }
+            if (verb == "prompt")
+            {
+                if (!Positionals[1].Equals("report", StringComparison.OrdinalIgnoreCase)
+                    || !long.TryParse(Positionals[2], NumberStyles.None, CultureInfo.InvariantCulture, out _)
+                    || Value("--token") is not { Length: >= 20 and <= 100 })
+                    throw new ArgumentException("Use prompt report <runId> <report.json> --token <token>.");
             }
             if (verb == "claims" && claimAction is not ("import" or "embed" or "relate" or "search"))
                 throw new ArgumentException("Use claims import, embed, relate or search.");
@@ -532,6 +593,8 @@ internal static class KnowledgeCli
                 "pursuit" => new[] { "--by", "--replace" },
                 "hour" => new[] { "--by", "--to" },
                 "rhythm" => new[] { "--to" },
+                "doctrine" => new[] { "--role" },
+                "prompt" => new[] { "--token" },
                 "claims" => claimAction switch { "import" => new[] { "--force", "--by" }, "relate" => new[] { "--by" }, "search" => new[] { "--take" }, _ => Array.Empty<string>() },
                 "brief" => briefAction == "import" ? new[] { "--force", "--by" } : new[] { "--week", "--to" },
                 _ => Array.Empty<string>(),
