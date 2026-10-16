@@ -14,12 +14,12 @@ public sealed record BdAgendaDoc(string Title, int Minutes, IReadOnlyList<BdAgen
     public string ToText()
     {
         var sb = new StringBuilder().Append(Title).Append(" (").Append(Minutes.ToString(CultureInfo.InvariantCulture)).AppendLine(" minutes)").AppendLine();
-        foreach (var s in Sections)
+        // A section with nothing to discuss is left out of the invite rather than printed as "Nothing."
+        foreach (var s in Sections.Where(s => s.Lines.Count > 0 || s.IsPrompt))
         {
             sb.Append(s.Heading);
             if (s.Minutes > 0) sb.Append(" (").Append(s.Minutes.ToString(CultureInfo.InvariantCulture)).Append(" min)");
             sb.AppendLine();
-            if (s.Lines.Count == 0 && !s.IsPrompt) sb.AppendLine("  Nothing.");
             foreach (var l in s.Lines) sb.Append("  - ").AppendLine(l);
             sb.AppendLine();
         }

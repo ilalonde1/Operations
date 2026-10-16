@@ -137,10 +137,16 @@ public sealed partial class BdRhythmViewModel
     {
         get
         {
-            var tomorrow = _clock().Date.AddDays(1);
-            return $"{_allActions.Count(a => a.IsOpen && a.DueUtc.ToLocalTime().Date == tomorrow)} due tomorrow";
+            var today = _clock().Date;
+            var next = NextWorkingDay(today);
+            var label = next == today.AddDays(1) ? "tomorrow" : next.DayOfWeek.ToString();
+            return $"{_allActions.Count(a => a.IsOpen && a.DueUtc.ToLocalTime().Date == next)} due {label}";
         }
     }
+    /// <summary>The next working day: on a Friday that is Monday, not Saturday.</summary>
+    public static DateTime NextWorkingDay(DateTime today) =>
+        today.Date.AddDays(today.DayOfWeek switch { DayOfWeek.Friday => 3, DayOfWeek.Saturday => 2, _ => 1 });
+
     public string ClosedSinceYesterdayText =>
         $"Since yesterday: {_allActions.Count(a => a.ClosedAtUtc is { } at && at >= _clock().AddDays(-1))} closed";
     public string MyActionsText => $"{_allActions.Count(a => a.IsOpen && IsMe(a.OwnerKey))} open. Tick one to close it with a one-line result.";

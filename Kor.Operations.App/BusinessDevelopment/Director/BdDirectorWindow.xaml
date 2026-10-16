@@ -109,7 +109,7 @@
                            Visibility="{Binding HourMessage, Converter={StaticResource TextVisible}}"/>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Visibility="{Binding HasHour, Converter={StaticResource BoolVisibility}}">
                     <Grid>
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" MaxWidth="900"/><ColumnDefinition Width="24"/><ColumnDefinition Width="360"/></Grid.ColumnDefinitions>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="2*" MaxWidth="1100"/><ColumnDefinition Width="24"/><ColumnDefinition Width="*" MinWidth="360" MaxWidth="600"/></Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="{Binding Hour.Title}" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap"/>
                             <TextBlock Text="{Binding Hour.Lede}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,0"/>

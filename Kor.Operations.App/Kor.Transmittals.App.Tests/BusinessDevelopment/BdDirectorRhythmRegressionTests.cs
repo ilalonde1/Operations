@@ -105,6 +105,31 @@ public sealed class BdDirectorRhythmRegressionTests
     }
 
     [Fact]
+    public void AnEmptySectionIsLeftOutOfTheInvite_NotPrintedAsNothing()
+    {
+        var doc = new BdAgendaDoc("1:1", 20, new[]
+        {
+            new BdAgendaSection("Overdue", 5, Array.Empty<string>()),
+            new BdAgendaSection("Coming up", 5, new[] { "Soon thing" }),
+        });
+        var text = doc.ToText();
+        Assert.DoesNotContain("Overdue", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Nothing", text, StringComparison.Ordinal);
+        Assert.Contains("Coming up (5 min)", text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("2026-10-16", "2026-10-19")] // Friday -> Monday
+    [InlineData("2026-10-17", "2026-10-19")] // Saturday -> Monday
+    [InlineData("2026-10-18", "2026-10-19")] // Sunday -> Monday
+    [InlineData("2026-10-19", "2026-10-20")] // Monday -> Tuesday
+    public void DueNextIsTheNextWorkingDay(string today, string expected)
+    {
+        Assert.Equal(DateTime.Parse(expected, System.Globalization.CultureInfo.InvariantCulture),
+            BdRhythmViewModel.NextWorkingDay(DateTime.Parse(today, System.Globalization.CultureInfo.InvariantCulture)));
+    }
+
+    [Fact]
     public void AllHands_Is27Minutes_LateGroupedByOwner_DoneSinceLastMeeting()
     {
         var doc = BdAgenda.ForAllHands(new[]
