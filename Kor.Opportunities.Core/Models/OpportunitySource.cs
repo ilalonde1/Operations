@@ -50,6 +50,12 @@ public enum OpportunitySourceType
     // /projects.json is public and unauthenticated. This is the only route into
     // the unincorporated electoral areas, which no municipal feed reaches.
     EngagementHq = 22,
+    // BC Housing's own project pages (2026-10-16). bchousing.org lists every
+    // project it is developing — address, homes, operator and a dated timeline
+    // marked completed / ongoing / pending — and the sitemap names them all.
+    // Earlier than the permit feeds for the same sites, and it names the
+    // operator, which the city's permit record never does.
+    BcHousingProjects = 23,
     Manual = 99,
 }
 

@@ -92,6 +92,7 @@ public sealed class OpportunityHubTests
     [InlineData(OpportunitySourceType.ArcGisFeatureService, OpportunityKind.Application)]
     [InlineData(OpportunitySourceType.TempestProspero, OpportunityKind.Application)]
     [InlineData(OpportunitySourceType.EngagementHq, OpportunityKind.Application)]
+    [InlineData(OpportunitySourceType.BcHousingProjects, OpportunityKind.Application)]
     [InlineData(OpportunitySourceType.BcBid, OpportunityKind.Bid)]
     [InlineData(OpportunitySourceType.GenericJsonAward, OpportunityKind.Award)]
     [InlineData(OpportunitySourceType.Manual, OpportunityKind.Other)]

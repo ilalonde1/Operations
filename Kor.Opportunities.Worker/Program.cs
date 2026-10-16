@@ -692,6 +692,16 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<EngagementHqOpportunityProvider>());
 
+            // BC Housing project pages (2026-10-16). The sitemap names every project;
+            // each page carries the operator and a dated timeline the permit feeds lack.
+            builder.Services.AddHttpClient<BcHousingProjectsProvider>(c =>
+            {
+                c.Timeout = TimeSpan.FromMinutes(1);
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "BcHousingProjects"));
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+                sp.GetRequiredService<BcHousingProjectsProvider>());
+
             // Playwright platform - single browser pool shared across all
             // Playwright-driven scrapers.
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.PlaywrightBrowserPool>();

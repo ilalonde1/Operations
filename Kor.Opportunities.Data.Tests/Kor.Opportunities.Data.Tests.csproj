@@ -16,6 +16,8 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Fixtures\apc-listing-20261008.html" />
+    <EmbeddedResource Include="Fixtures\bchousing-nanaimo-fifth-street-20261016.html" />
+    <EmbeddedResource Include="Fixtures\bchousing-kamloops-no-timeline-20261016.html" />
     <ProjectReference Include="..\Kor.Opportunities.Core\Kor.Opportunities.Core.csproj" />
     <ProjectReference Include="..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
   </ItemGroup>

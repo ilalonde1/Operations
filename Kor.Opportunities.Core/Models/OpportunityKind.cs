@@ -13,7 +13,7 @@ public static class OpportunityKinds
     public static OpportunityKind FromSource(OpportunitySourceType type, string? metadata = null) => type switch
     {
         OpportunitySourceType.ArcGisFeatureService or OpportunitySourceType.TempestProspero
-            or OpportunitySourceType.EngagementHq => OpportunityKind.Application,
+            or OpportunitySourceType.EngagementHq or OpportunitySourceType.BcHousingProjects => OpportunityKind.Application,
         OpportunitySourceType.CivicInfoHtml or OpportunitySourceType.SamGov or OpportunitySourceType.BcBid
             or OpportunitySourceType.BidsAndTenders or OpportunitySourceType.AlbertaPurchasingConnection
             or OpportunitySourceType.MerxDcc => OpportunityKind.Bid,
