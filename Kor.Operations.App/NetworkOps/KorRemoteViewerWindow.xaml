@@ -118,10 +118,26 @@
 
             <!-- The remote screen: MeshCentral's own page, its header, menus and footer hidden. -->
             <Grid Grid.Row="1" Background="#2B333C">
-                <wv2:WebView2 x:Name="View"/>
+                <!-- WebView2 is a child HWND: hide it while the restart prompt is up so it cannot cover the button. -->
+                <wv2:WebView2 x:Name="View">
+                    <wv2:WebView2.Style>
+                        <Style TargetType="wv2:WebView2">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ShowsRestartPrompt}" Value="True">
+                                    <Setter Property="Visibility" Value="Hidden"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </wv2:WebView2.Style>
+                </wv2:WebView2>
                 <Border Background="#2B333C" Visibility="{Binding ShowsOverlay, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="{Binding Overlay}" Foreground="#E5E7EB" FontSize="15" TextWrapping="Wrap" TextAlignment="Center"
-                               MaxWidth="620" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <StackPanel MaxWidth="620" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Overlay}" Foreground="#E5E7EB" FontSize="15" TextWrapping="Wrap" TextAlignment="Center"/>
+                        <Button Content="Restart the remote-control agent" Click="RestartMeshAgent_Click" Style="{StaticResource Ops.Primary}"
+                                Margin="0,18,0,0" HorizontalAlignment="Center"
+                                ToolTip="Briefly disconnects remote-control sessions. Your work stays open. Requires the Windows management connection to this PC."
+                                Visibility="{Binding ShowsRestartPrompt, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
                 </Border>
             </Grid>
         </Grid>

@@ -1,11 +1,15 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using Kor.Operations.NetworkOps.Core.Actions;
+using Kor.Operations.NetworkOps.Core.Learning;
 using Microsoft.Web.WebView2.Core;
 
 namespace Kor.Operations.App.NetworkOps;
@@ -33,6 +37,12 @@ public partial class KorRemoteViewerWindow : Window
     private bool _gotBridge;
     private bool _cookiesPersisted;
     private System.Windows.Threading.DispatcherTimer? _watchdog;
+    private System.Windows.Threading.DispatcherTimer? _wedgeWatchdog;
+    private Stopwatch? _trying;
+    private bool _offeredRestart;
+    private bool _restartingAgent;
+    private bool _closed;
+    private readonly CancellationTokenSource _lifetime = new();
 
     public static string ProfileFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KorOperations", "KorRemote");
     public static string ScreenshotFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "KOR Remote");
@@ -70,7 +80,12 @@ public partial class KorRemoteViewerWindow : Window
         _url = url;
         _reroutes = 0;
         _gotBridge = false;
-        if (View.CoreWebView2 is not null && Uri.TryCreate(url, UriKind.Absolute, out var uri)) View.Source = uri;
+        StartWedgeWatchdog(restart: true);
+        if (View.CoreWebView2 is not null && Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            View.Source = uri;
+            StartWatchdog();
+        }
     }
 
     private KorRemoteViewerWindow(NetworkOpsDeviceWindow device, string url)
@@ -81,7 +96,16 @@ public partial class KorRemoteViewerWindow : Window
         InitializeComponent();
         DataContext = _vm;
         Loaded += async (_, _) => { FitOnScreen(); await StartAsync().ConfigureAwait(true); LogVisualState("loaded"); };
-        Closed += (_, _) => { _watchdog?.Stop(); Open_.Remove(_vm.DeviceName); View.Dispose(); };
+        Closed += (_, _) =>
+        {
+            _closed = true;
+            _watchdog?.Stop();
+            StopWedgeWatchdog();
+            _lifetime.Cancel();
+            _lifetime.Dispose();
+            Open_.Remove(_vm.DeviceName);
+            View.Dispose();
+        };
     }
 
     /// <summary>For the render test only: the window with no page behind it.</summary>
@@ -100,10 +124,12 @@ public partial class KorRemoteViewerWindow : Window
         {
             var env = _environment ??= CoreWebView2Environment.CreateAsync(null, ProfileFolder);
             await View.EnsureCoreWebView2Async(await env.ConfigureAwait(true)).ConfigureAwait(true);
+            if (_closed) return;
             var core = View.CoreWebView2;
             core.Settings.AreDevToolsEnabled = false;
             core.Settings.IsStatusBarEnabled = false;
             await core.AddScriptToExecuteOnDocumentCreatedAsync(KorRemoteBridge.Script).ConfigureAwait(true);
+            if (_closed) return;
             core.WebMessageReceived += (_, e) => OnPage(KorRemoteBridge.Parse(e.WebMessageAsJson));
             core.DownloadStarting += OnDownload;
             // The web page going HTML5 fullscreen makes the WebView's own window fill the top-level window, covering the
@@ -114,6 +140,7 @@ public partial class KorRemoteViewerWindow : Window
                 LogVisualState("fullscreenChanged");
             };
             _log.Information("KorRemote WebView2 ready for {Device}; navigating to {Url}", _vm.DeviceName, _url);
+            StartWedgeWatchdog(restart: true);
             View.Source = new Uri(_url);
             StartWatchdog();
         }
@@ -124,6 +151,7 @@ public partial class KorRemoteViewerWindow : Window
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             if (_environment is { IsFaulted: true } or { IsCanceled: true }) _environment = null;
+            StopWedgeWatchdog();
             _log.Error(ex, "KorRemote viewer failed to start for {Device}", _vm.DeviceName);
             _vm.Apply(new BridgeState("desktop", Missing: ["the remote viewer could not start (" + ex.Message + ")"]));
         }
@@ -144,8 +172,38 @@ public partial class KorRemoteViewerWindow : Window
         _watchdog.Start();
     }
 
+    // Preserve the start time across repeated bridge messages (including Connecting -> Setting up).
+    // A navigation, explicit Connect, or a transition out of those states ends the previous attempt.
+    private void StartWedgeWatchdog(bool restart = false)
+    {
+        if (restart) StopWedgeWatchdog();
+        if (_closed || _restartingAgent || _offeredRestart) return;
+        _trying ??= Stopwatch.StartNew();
+        if (_wedgeWatchdog is null)
+        {
+            _wedgeWatchdog = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _wedgeWatchdog.Tick += (_, _) =>
+            {
+                if (_closed || _restartingAgent || _offeredRestart || !_gotBridge || _trying is null || !_vm.LooksWedged(_trying.Elapsed)) return;
+                _offeredRestart = true;
+                _wedgeWatchdog?.Stop();
+                _vm.SetRestartPrompt(true);
+            };
+        }
+        _wedgeWatchdog.Start();
+    }
+
+    private void StopWedgeWatchdog()
+    {
+        _wedgeWatchdog?.Stop();
+        _trying = null;
+        _offeredRestart = false;
+        _vm.SetRestartPrompt(false);
+    }
+
     private void OnPage(BridgeState? s)
     {
+        if (_closed) return;
         if (s is not null)
         {
             _gotBridge = true;
@@ -155,6 +213,11 @@ public partial class KorRemoteViewerWindow : Window
                 _log.Warning("KorRemote [{Device}]: MeshCentral page is MISSING functions the toolbar needs: {Missing} -- a MeshCentral update likely renamed them, so the toolbar buttons do nothing", _vm.DeviceName, s.Missing);
         }
         _vm.Apply(s);
+        if (s is not null)
+        {
+            if (_vm.IsReady && s is { Page: "desktop", State: 1 or 2 }) StartWedgeWatchdog();
+            else StopWedgeWatchdog();
+        }
         // Keep the sign-in. The moment we are on an authenticated MeshCentral page, promote its session auth cookie to a
         // persistent one -- otherwise every Connect asks to sign in again: WebView2 keeps PERSISTENT cookies in the profile
         // folder across launches but drops SESSION cookies when the viewer's browser process ends, and MeshCentral's login
@@ -234,7 +297,15 @@ public partial class KorRemoteViewerWindow : Window
     private void Screen_Click(object sender, RoutedEventArgs e)
     {
         var menu = new ContextMenu();
-        menu.Items.Add(_vm.IsConnected ? Item("Disconnect", () => Do(KorRemoteBridge.Command("disconnect"))) : Item("Connect", () => Do(KorRemoteBridge.Command("connect"))));
+        menu.Items.Add(_vm.IsConnected ? Item("Disconnect", () =>
+        {
+            StopWedgeWatchdog();
+            Do(KorRemoteBridge.Command("disconnect"));
+        }) : Item("Connect", () =>
+        {
+            StartWedgeWatchdog(restart: true);
+            Do(KorRemoteBridge.Command("connect"));
+        }));
         if (_vm.ShowsDisplays)
         {
             menu.Items.Add(new Separator());
@@ -272,6 +343,70 @@ public partial class KorRemoteViewerWindow : Window
         Show((Button)sender, menu);
     }
 
+    private async void RestartMeshAgent_Click(object sender, RoutedEventArgs e)
+    {
+        if (_closed || _restartingAgent || !_vm.ShowsRestartPrompt) return;
+        _restartingAgent = true;
+        _wedgeWatchdog?.Stop();
+        _vm.SetRestartPrompt(false);
+        var ct = _lifetime.Token;
+        long? actionId = null;
+        try
+        {
+            var device = _device.ViewModel;
+            Toast.Text = "Requesting the remote-control agent restart…";
+            var (id, refused, needsConfirmation) = await device.Client.RequestFixAsync(device.Device.DeviceId,
+                new FixRequest(FixCatalog.RestartMeshAgent, null, null, "KOR Remote: screen connection stalled", Confirmed: false), ct).ConfigureAwait(true);
+            ct.ThrowIfCancellationRequested();
+            if (needsConfirmation || refused is not null || id is null)
+            {
+                Toast.Text = needsConfirmation
+                    ? $"Not run: {refused ?? "the service requires confirmation"}. Use this PC's NetworkOps fix controls to review it."
+                    : $"Not run: {refused ?? "the service returned no action id"}";
+                return;
+            }
+            actionId = id;
+            Toast.Text = $"Agent restart #{id}: queued…";
+            var waiting = Stopwatch.StartNew();
+            while (waiting.Elapsed < TimeSpan.FromMinutes(5))
+            {
+                await Task.Delay(TimeSpan.FromSeconds(3), ct).ConfigureAwait(true);
+                var action = await device.Client.GetActionAsync(id.Value, ct).ConfigureAwait(true);
+                ct.ThrowIfCancellationRequested();
+                if (action is null)
+                {
+                    Toast.Text = $"Agent restart #{id}: the run record is unavailable. Check this PC's NetworkOps history.";
+                    return;
+                }
+                if (action.Status is "Done" or "Failed" or "Refused")
+                {
+                    Toast.Text = $"Agent restart #{id} — {action.Status}: {action.Detail}";
+                    if (KorRemoteViewerModel.RestartSucceeded(action))
+                    {
+                        // The fix completed through NetworkOps; the viewer can now negotiate a fresh session.
+                        _restartingAgent = false;
+                        NavigateTo(_url);
+                    }
+                    else if (action.Status == "Done")
+                        Toast.Text += " · Restart not confirmed; check this PC's NetworkOps history.";
+                    return;
+                }
+                Toast.Text = $"Agent restart #{id}: {action.Status} ({(int)waiting.Elapsed.TotalSeconds}s)…";
+            }
+            Toast.Text = $"Agent restart #{id}: still pending. Check this PC's NetworkOps history; the queued action has not been cancelled.";
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _log.Debug("KorRemote [{Device}]: stopped following agent restart {ActionId} because the viewer closed", _vm.DeviceName, actionId);
+        }
+        catch (Exception ex)
+        {
+            _log.Warning(ex, "KorRemote [{Device}]: could not follow agent restart {ActionId}", _vm.DeviceName, actionId);
+            if (!_closed) Toast.Text = $"Could not confirm the agent restart: {ex.Message}. Check this PC's NetworkOps history before retrying.";
+        }
+        finally { _restartingAgent = false; }
+    }
+
     private void Files_Click(object sender, RoutedEventArgs e) => Do(KorRemoteBridge.Command("files", !_vm.FilesShowing));
 
     private void Screenshot_Click(object sender, RoutedEventArgs e) => Do(KorRemoteBridge.Command("screenshot"));
@@ -299,7 +434,7 @@ public partial class KorRemoteViewerWindow : Window
 
     private void OpenInBrowser_Click(object sender, RoutedEventArgs e) => _device.OpenInBrowser(this);
 
-    private void Reload_Click(object sender, RoutedEventArgs e) { _reroutes = 0; View.Source = new Uri(_url); }
+    private void Reload_Click(object sender, RoutedEventArgs e) => NavigateTo(_url);
 
     private void Minimise_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 

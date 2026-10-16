@@ -23,6 +23,7 @@ public static class FixCatalog
     public const string RunCommand = "run-command";
     public const string RunCommandMesh = "run-command-mesh";
     public const string StartService = "start-service";
+    public const string RestartMeshAgent = "restart-mesh-agent";
     public const string InstallUpdates = "install-updates";
     public const string InstallUpdatesRestart = "install-updates-restart";
     public const string UpdateBios = "update-bios";
@@ -86,6 +87,9 @@ public static class FixCatalog
         new(StartService, "Start the stopped service",
             "Starts the service and sets it to restart itself if it fails again (3 x 60 s) -- the MCP server and Certify on APP01 stayed down for days without that.",
             Disruptive: false, TimeoutSeconds: 180, ["server.service-stopped"], ParamLabel: "Service name"),
+        new(RestartMeshAgent, "Restart the remote-control agent",
+            "Force-restarts this PC's MeshCentral (KOR Remote) agent -- kills the agent process and starts the service again -- for when the agent is connected but a Connect will not render because its desktop session is wedged. Briefly drops any Mesh session to this PC; the user's own work is untouched. Runs as SYSTEM through the audited SCM channel, not through the agent, so it reaches domain PCs -- a workgroup box (BK01) reachable only via Mesh cannot be fixed this way.",
+            Disruptive: false, TimeoutSeconds: 120, ["mesh-silent"]),
         new(UpdateAgent, "Update the agent",
             "Reinstalls the NetworkOps agent from the version APP01 ships -- upgrading an out-of-date agent, or restoring one that stopped calling in. Silent: nothing restarts, and the agent calls back within a minute. Runs through the same audited channel as every other action.",
             Disruptive: false, TimeoutSeconds: 180, ["agent-outdated", "agent-silent"]),

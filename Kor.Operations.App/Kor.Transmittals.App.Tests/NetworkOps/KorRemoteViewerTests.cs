@@ -1,9 +1,12 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Kor.Operations.App.NetworkOps;
+using Kor.Operations.NetworkOps.Core.Actions;
+using Kor.Operations.NetworkOps.Core.Learning;
 using Xunit;
 
 namespace Kor.Operations.App.Tests.NetworkOps;
@@ -16,10 +19,12 @@ namespace Kor.Operations.App.Tests.NetworkOps;
 /// list IS KorRemoteBridge.RequiredFunctions); the script calls no page function outside that list; every toolbar command the
 /// window sends exists in the script; what the bridge reports becomes the right light, words, monitor buttons ("1", "2",
 /// "All", the one on screen filled) and key list (Ctrl+Alt+Del has its own item); a renamed page function turns the
-/// toolbar off and says which; the sign-in page is never covered.
+/// toolbar off and says which; the sign-in page is never covered; a ready Connecting/Setting-up page looks wedged only
+/// after 20 seconds; the restart prompt follows page state and reconnect needs the payload's running-service evidence.
 /// WHAT IT DOES NOT: that MeshCentral's page does what its functions are named for -- the 9 functions and 6 elements were
 /// read in KOR-MESH01's MeshCentral 1.2.5 source on 2026-10-02 (9 of 9, 6 of 6), and the bridge re-checks the functions
-/// every half second in the live page. Nothing here signs in or draws a remote screen.
+/// every half second in the live page. Nothing here signs in or draws a remote screen, exercises dispatcher timing or
+/// the live request/poll flow, or proves that a running agent can negotiate its next desktop session.
 /// A SAME-CLASS FAULT IT WOULD NOT CATCH: a MeshCentral update that keeps a function's name but changes what it does or the
 /// arguments it takes (deskToggleFull reading a new event field) -- named, present, and wrong.
 /// </summary>
@@ -107,6 +112,96 @@ public sealed class KorRemoteViewerTests
         Assert.Contains("deskSetDisplay", vm.Problem);
         Assert.True(vm.ShowsOverlay);
         Assert.Same(NetworkOpsBrushes.Critical, vm.Light);
+    }
+
+    [Fact]
+    public void Only_a_ready_connecting_or_setting_up_page_past_the_threshold_looks_wedged()
+    {
+        Assert.Equal(TimeSpan.FromSeconds(20), KorRemoteViewerModel.StuckAfter);
+        foreach (var state in new[] { 1, 2 })
+        {
+            var vm = new KorRemoteViewerModel("KOR-206", null);
+            vm.Apply(new BridgeState("desktop", [], "KOR-206", state));
+            Assert.False(vm.LooksWedged(TimeSpan.Zero));
+            Assert.False(vm.LooksWedged(KorRemoteViewerModel.StuckAfter - TimeSpan.FromTicks(1)));
+            Assert.True(vm.LooksWedged(KorRemoteViewerModel.StuckAfter));
+            Assert.True(vm.LooksWedged(TimeSpan.FromMinutes(1)));
+        }
+    }
+
+    [Fact]
+    public void Connected_login_disconnected_and_not_ready_pages_never_look_wedged()
+    {
+        var vm = new KorRemoteViewerModel("KOR-206", null);
+        var elapsed = TimeSpan.FromMinutes(1);
+        Assert.False(vm.LooksWedged(elapsed));
+        foreach (var page in new[]
+        {
+            Connected(),
+            new BridgeState("login", [], "KOR-206", 1),
+            new BridgeState("login", [], "KOR-206", 2),
+            new BridgeState("desktop", [], "KOR-206", 0),
+            new BridgeState("desktop", [], null, 1),
+            new BridgeState("desktop", [], "", 2),
+            new BridgeState("desktop", ["deskSetDisplay"], "KOR-206", 1),
+            new BridgeState("desktop", ["deskSetDisplay"], "KOR-206", 2),
+        })
+        {
+            vm.Apply(page);
+            Assert.False(vm.LooksWedged(elapsed));
+            vm.SetRestartPrompt(true);
+            Assert.False(vm.ShowsRestartPrompt);
+        }
+    }
+
+    [Fact]
+    public void The_restart_prompt_uses_the_overlay_and_clears_when_the_attempt_ends()
+    {
+        foreach (var next in new[] { Connected(), new BridgeState("login"), new BridgeState("desktop", [], "KOR-206", 0) })
+        {
+            var vm = new KorRemoteViewerModel("KOR-206", null);
+            vm.Apply(new BridgeState("desktop", [], "KOR-206", 1));
+            Assert.False(vm.ShowsRestartPrompt);
+            Assert.False(vm.ShowsOverlay);
+            var changed = new List<string?>();
+            vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+            vm.SetRestartPrompt(true);
+            Assert.True(vm.ShowsRestartPrompt);
+            Assert.True(vm.ShowsOverlay);
+            Assert.Equal(vm.WedgedHint, vm.Overlay);
+            Assert.Contains(nameof(vm.Overlay), changed);
+            Assert.Contains(nameof(vm.ShowsOverlay), changed);
+            Assert.Contains(nameof(vm.ShowsRestartPrompt), changed);
+            vm.Apply(new BridgeState("desktop", [], "KOR-206", 2));
+            Assert.True(vm.ShowsRestartPrompt); // repeated bridge messages preserve the same prompt
+            vm.Apply(next);
+            Assert.False(vm.ShowsRestartPrompt);
+            Assert.False(vm.ShowsOverlay);
+            vm.Apply(new BridgeState("desktop", [], "KOR-206", 1));
+            Assert.False(vm.ShowsRestartPrompt); // the next attempt must reach its own threshold
+            vm.SetRestartPrompt(true);
+            vm.SetRestartPrompt(false);
+            Assert.False(vm.ShowsOverlay);
+        }
+    }
+
+    [Theory]
+    [InlineData("Done", """[{"Installed":true,"Running":true,"Est443":1}]""", true)]
+    [InlineData("Done", """{"Installed":true,"Running":true,"Est443":0}""", true)]
+    [InlineData("Done", """[{"Installed":false}]""", false)]
+    [InlineData("Done", """[{"Installed":true,"Running":false}]""", false)]
+    [InlineData("Done", """[{"Result":"ran"}]""", false)]
+    [InlineData("Failed", """[{"Installed":true,"Running":true}]""", false)]
+    [InlineData("Refused", """[{"Installed":true,"Running":true}]""", false)]
+    [InlineData("Running", """[{"Installed":true,"Running":true}]""", false)]
+    [InlineData("Done", "[]", false)]
+    [InlineData("Done", "null", false)]
+    [InlineData("Done", "not json", false)]
+    [InlineData("Done", null, false)]
+    public void A_reconnect_needs_a_completed_restart_with_running_service_evidence(string status, string? output, bool succeeded)
+    {
+        var action = new ActionRow(788, FixCatalog.RestartMeshAgent, "operator", DateTime.UtcNow, null, status, null, output);
+        Assert.Equal(succeeded, KorRemoteViewerModel.RestartSucceeded(action));
     }
 
     [Fact]

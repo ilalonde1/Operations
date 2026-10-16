@@ -1,7 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Windows.Media;
 using Kor.Operations.Core;
+using Kor.Operations.NetworkOps.Core.Learning;
 
 namespace Kor.Operations.App.NetworkOps;
 
@@ -12,6 +15,9 @@ namespace Kor.Operations.App.NetworkOps;
 public sealed class KorRemoteViewerModel : ObservableObject
 {
     private BridgeState? _page;
+    private bool _restartPrompt;
+
+    public static readonly TimeSpan StuckAfter = TimeSpan.FromSeconds(20);
 
     public KorRemoteViewerModel(string deviceName, string? presence)
     {
@@ -33,8 +39,9 @@ public sealed class KorRemoteViewerModel : ObservableObject
     {
         if (state is null) return;
         _page = state;
+        if (!LooksWedged(StuckAfter)) _restartPrompt = false;
         foreach (var name in new[] { nameof(IsReady), nameof(IsConnected), nameof(StatusText), nameof(Light), nameof(Problem), nameof(HasProblem),
-                     nameof(Displays), nameof(ShowsDisplays), nameof(Monitors), nameof(Keys), nameof(FilesShowing), nameof(Overlay), nameof(ShowsOverlay) })
+                     nameof(Displays), nameof(ShowsDisplays), nameof(Monitors), nameof(Keys), nameof(FilesShowing), nameof(Overlay), nameof(ShowsOverlay), nameof(ShowsRestartPrompt) })
             OnPropertyChanged(name);
     }
 
@@ -42,6 +49,39 @@ public sealed class KorRemoteViewerModel : ObservableObject
     public bool IsReady => _page is { Page: "desktop", Node: { Length: > 0 } } p && (p.Missing?.Count ?? 0) == 0;
     public bool IsConnected => IsReady && _page!.State == 3;
     public bool FilesShowing => IsReady && _page!.Files;
+
+    /// <summary>The window supplies elapsed time; login, missing device and incompatible pages are not agent wedges.</summary>
+    public bool LooksWedged(TimeSpan trying) => IsReady && _page is { Page: "desktop", State: 1 or 2 } && trying >= StuckAfter;
+    public string WedgedHint => "This PC's remote-control agent is connected but the screen won't start -- it looks wedged. Restart the agent?";
+    public bool ShowsRestartPrompt => _restartPrompt && LooksWedged(StuckAfter);
+
+    public void SetRestartPrompt(bool show)
+    {
+        _restartPrompt = show && LooksWedged(StuckAfter);
+        OnPropertyChanged(nameof(ShowsRestartPrompt));
+        OnPropertyChanged(nameof(Overlay));
+        OnPropertyChanged(nameof(ShowsOverlay));
+    }
+
+    // Done means the Windows payload ran. Its own fields say whether the service was actually found and is running.
+    internal static bool RestartSucceeded(ActionRow action)
+    {
+        if (action.Status != "Done" || string.IsNullOrWhiteSpace(action.Output)) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(action.Output);
+            var result = doc.RootElement;
+            if (result.ValueKind == JsonValueKind.Array)
+            {
+                if (result.GetArrayLength() != 1) return false;
+                result = result[0];
+            }
+            return result.ValueKind == JsonValueKind.Object
+                && result.TryGetProperty("Installed", out var installed) && installed.ValueKind == JsonValueKind.True
+                && result.TryGetProperty("Running", out var running) && running.ValueKind == JsonValueKind.True;
+        }
+        catch (JsonException) { return false; } // Missing/malformed evidence never triggers an automatic reconnect.
+    }
 
     public string StatusText => _page switch
     {
@@ -68,7 +108,7 @@ public sealed class KorRemoteViewerModel : ObservableObject
     public bool HasProblem => Problem.Length > 0;
 
     /// <summary>Over the page only while there is nothing on it to see; the sign-in page must stay visible.</summary>
-    public string Overlay => _page is null ? "Opening KOR Remote…" : HasProblem ? Problem : "";
+    public string Overlay => _page is null ? "Opening KOR Remote…" : HasProblem ? Problem : ShowsRestartPrompt ? WedgedHint : "";
     public bool ShowsOverlay => Overlay.Length > 0;
 
     public IReadOnlyList<BridgeDisplay> Displays => IsReady ? _page!.Displays ?? [] : [];

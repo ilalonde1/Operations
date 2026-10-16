@@ -90,6 +90,38 @@ public sealed class FixCatalogTests
     }
 
     [Fact]
+    public void Restart_the_mesh_agent_is_a_parameterless_windows_fix_offered_only_for_mesh_silent()
+    {
+        Assert.Equal("restart-mesh-agent", FixCatalog.RestartMeshAgent);
+        var fix = Assert.IsType<FixAction>(FixCatalog.Get(FixCatalog.RestartMeshAgent));
+        Assert.Equal("restart-mesh-agent", fix.Id);
+        Assert.False(fix.Disruptive);
+        Assert.Equal(FixCatalog.Windows, fix.Target);
+        Assert.Equal(120, fix.TimeoutSeconds);
+        Assert.Equal(["mesh-silent"], fix.Families);
+        Assert.Contains(fix, FixCatalog.For("mesh-silent"));
+        Assert.DoesNotContain(fix, FixCatalog.For("low-disk:C"));
+        Assert.Null(fix.ParamLabel);
+        Assert.Null(FixCatalog.Invalid(fix, null));
+        Assert.NotNull(FixCatalog.Invalid(fix, "Spooler"));
+        Assert.Null(FixCatalog.ParamFromFinding(fix, "mesh-silent"));
+        Assert.Null(FixCatalog.ParamFromFinding(fix, "server.service-stopped:Spooler"));
+    }
+
+    [Fact]
+    public void Restart_the_mesh_agent_kills_its_pid_instead_of_waiting_for_a_service_stop()
+    {
+        var script = FixCatalog.Script(FixCatalog.Get(FixCatalog.RestartMeshAgent)!, null);
+        Assert.Contains("Stop-Process -Id $svc.ProcessId -Force -ErrorAction Stop", script);
+        Assert.DoesNotContain("Stop-Service", script);
+        Assert.Contains("Start-Service -Name $name -ErrorAction Stop", script);
+        Assert.Contains("[pscustomobject]@{", script);
+        Assert.Contains("Installed = $false", script);
+        Assert.Contains("Running = ($svc2 -and $svc2.State -eq 'Running')", script);
+        Assert.Contains("Est443 = $est", script);
+    }
+
+    [Fact]
     public void Only_the_restarts_are_disruptive()
         => Assert.Equal(["restart-pc", FixCatalog.UpdateBios, FixCatalog.InstallUpdatesRestart], FixCatalog.All.Where(f => f.Disruptive).Select(f => f.Id));
 
