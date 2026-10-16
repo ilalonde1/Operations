@@ -1,0 +1,572 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BC Housing Projects</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+<style>
+  /* Page-specific: density only. */
+  .count { color: var(--ink-faint); font-weight: 400; font-size: .85em; }
+  .kicker { break-after: avoid; }
+  .map { grid-template-columns: 1fr; } .map dt { min-width: 7.5rem; }
+  .table-wrap td:first-child { width: 46%; } .table-wrap td:last-child { white-space: nowrap; }
+  .summary { max-width: 62rem; margin: 0 auto; padding: 2rem 1.5rem 1rem; }
+  .summary .table-wrap td { width: auto !important; white-space: normal !important; padding: .3rem .5rem; } .summary .pill { white-space: nowrap; } .summary .box { margin-top: 3mm; }
+  .sum-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 2rem; }
+  @media (max-width: 760px) { .sum-grid { grid-template-columns: 1fr; } }
+  .sum-grid h3 { margin-top: .4rem; }
+  ol.calls { padding-left: 1.2rem; margin: 0; } ol.calls li { margin: 0 0 .6rem; font-size: .95rem; }
+  .prizes { font-size: .95rem; color: var(--ink-soft); }
+  .dont-chase { font-size: .9rem; color: var(--ink-soft); border-left: 3px solid var(--crit); padding: .2rem 0 .2rem .7rem; margin-top: .8rem; }
+  ul.glance { list-style: none; padding: 0; margin: 0 0 .6rem; } ul.glance li { font-size: .9rem; color: var(--ink-soft); margin: 0 0 .35rem; } ul.glance b { display: inline-block; min-width: 1.8rem; color: var(--ink); } ul.glance .pill { white-space: nowrap; margin-right: .3rem; }
+  @media print { body { font-size: 10.6pt; } .map { break-inside: auto; } .map div { break-inside: avoid; }
+    .summary { max-width: none; padding: 4mm 13mm 0; break-after: page; } .sum-grid { grid-template-columns: 1.15fr 1fr !important; gap: 7mm; } .summary .lede { font-size: 11pt; } ol.calls li { font-size: 10pt; margin-bottom: 2.2mm; } .summary h2 { margin-bottom: 2mm; } }
+</style>
+</head><body>
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Business Development · 16 October 2026</p>
+    <h1>BC Housing: 62 projects, 27 worth a call</h1>
+    <p class="hero__lede">Every project BC Housing is developing, read page by page and checked against council files, permit drawings and trade briefs. <strong>18 structural seats look open</strong>, <strong>9 more have a named architect to ask</strong>, and only <strong>3 name a structural engineer anywhere</strong>.</p>
+    <div class="hero__meta">
+      <span>62 projects</span><span>18 open seats</span><span>9 architects to ask</span><span>3 filled</span>
+    </div>
+  </div>
+</header>
+
+<div class="summary">
+  <p class="kicker">Executive summary</p>
+  <h2>Five calls, eight prizes</h2>
+  <p class="lede">BC Housing owns the land and hires the architect; the architect brings the structural engineer. So the way in is the architects and developers already on these jobs, and three of them are already KOR clients or on our record.</p>
+  <div class="sum-grid">
+    <div>
+      <h3>Make these calls first</h3>
+      <ol class="calls">
+        <li><strong>M'Akola Development Services</strong> (KOR client). Fifth Street, Nanaimo (201 homes, DP in review) and Robron Village, Campbell River (about 248 homes, design now).</li>
+        <li><strong>Station One Architects</strong>, Heather Honeycutt. Two BC Housing jobs, no engineer named on either: Kelowna 1144 Pacific and Smithers 3879 Alfred.</li>
+        <li><strong>Perkins&amp;Will</strong> on Skeena Terrace (about 1,900 homes) and <strong>HUMAN Studio</strong> on Rosewood Village (850). Both firms are on our record.</li>
+        <li><strong>BC Housing, Lower Mainland</strong>: Nicholas Hardy on Stratford Gardens, where the construction manager is being picked now and no architect is public.</li>
+        <li><strong>DAU Studio, Victoria</strong> on Evergreen Terrace: about 1,100 homes up to 20 storeys, rezoned 3 September, Phase 1 permit next.</li>
+      </ol>
+    </div>
+    <div>
+      <h3>The 62 at a glance</h3>
+      <ul class="glance">
+        <li><b>18</b> <span class="pill pill--won">Open</span> no engineer named, early enough to matter</li>
+        <li><b>9</b> <span class="pill pill--sub">Ask architect</span> architect named, engineer not public</li>
+        <li><b>3</b> <span class="pill pill--lost">Filled</span> McElhanney, RJC, Stantec/Stack</li>
+        <li><b>23</b> <span class="pill pill--draft">Built / building</span> too late for this phase</li>
+        <li><b>9</b> <span class="pill pill--draft">Little structural</span> renovations, modular, standard</li>
+      </ul>
+      <h3>The prizes, by homes</h3>
+      <p class="prizes">Skeena Terrace ~1,900 · Hall Towers 1,206 · Evergreen Terrace ~1,100 · Rosewood 850 · Skaha Assembly ~600 · Glenfair 340 · Robron Village ~248 · Fifth Street 201</p>
+    </div>
+  </div>
+  <p class="dont-chase"><strong>Don't chase yet:</strong> Skaha Assembly (start deferred to 2029–30) and Kamloops Fortune Drive (deferred for budget) are relationships, not jobs. Kelowna Bertram's tower was cancelled; watch for a 6–8 storey re-scope.</p>
+</div>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#fifth">Nanaimo Fifth Street</a></li>
+      <li><a href="#how">How BC Housing buys design</a></li>
+      <li><a href="#warm">Doors we already have</a></li>
+      <li><a href="#open">The open seats</a></li>
+      <li><a href="#ask">Ask the architect</a></li>
+      <li><a href="#filled">Who has the filled ones</a></li>
+      <li><a href="#people">Names</a></li>
+      <li><a href="#register">All 62, by region</a></li>
+      <li><a href="#notes">Sources and limits</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="fifth">
+      <p class="kicker">Rory's question</p>
+      <h2>Nanaimo Fifth Street: designed, not yet decided</h2>
+      <p class="lede">201 rental homes at 564 Fifth Street, on land BC Housing keeps. The design is drawn and in for a development permit; the building permit and construction are 2027/28.</p>
+      <dl class="map">
+        <div><dt>What</dt><dd>Two 5-storey buildings over one underground parkade: 34 income-based homes replacing the old Sanala Apartments, 167 near-market rentals for low and moderate incomes. 171 parking stalls.</dd></div>
+        <div><dt>Owner</dt><dd>BC Housing (Provincial Redevelopment Program).</dd></div>
+        <div><dt>Operator</dt><dd>M'akola Housing Society. An earlier version of BC Housing's page said BC Housing and M'akola were preparing the permit applications together, so M'akola may be the 2025 "development partner" as well. The live page names no partner; confirm it.</dd></div>
+        <div><dt>Architect</dt><dd><strong>MacDonald Hagarty Architects, Comox</strong> (title block of the DP drawings, issued 30 June 2026).</dd></div>
+        <div><dt>Structural</dt><dd>Not named on the DP drawings, the City's files or in any coverage.</dd></div>
+        <div><dt>Where it is</dt><dd>CD12 rezoning adopted 23 March 2026. DP001426 submitted 8 July 2026 and active; it goes to the Design Advisory Panel, then council "in the new year". It replaced a cancelled 358-home, four-building scheme (DP001361). Phase 1 still needs provincial budget approval.</dd></div>
+        <div><dt>City contact</dt><dd>Caleb Horn, planner on DP001426, caleb.horn@nanaimo.ca, 250-755-4460 x4344. Jeremy Holm, Director of Community Planning.</dd></div>
+      </dl>
+      <div class="box box--tip">
+        <p class="box__label">The play</p>
+        <p>Two doors, both warm. <strong>M'Akola Development Services is a KOR client</strong> (a project in October 2025), and M'akola also developed 355 Nicol Street for BC Housing. Ask them who MacDonald Hagarty is using for structure on Fifth Street. If the drawings have gone this far there is probably an engineer behind them, so the realistic aim is either the seat if it is still loose, or the next M'akola/BC Housing job, which is <a href="#open" class="inline">Robron Village</a> in Campbell River (about 248 homes, M'akola operating, design development now).</p>
+      </div>
+    </section>
+
+    <section id="how">
+      <p class="kicker">The route in</p>
+      <h2>How BC Housing buys design</h2>
+      <ul class="plain">
+        <li><strong>BC Housing owns the land and hires the design team.</strong> Development-consultant RFPs bundle sites: one 2024 call (RFP 1070-2425/023) hired consultants for Quesnel, Smithers and Terrace together, Quesnel as design-tender and Terrace as design-build. No award was published.</li>
+        <li><strong>The architect brings the structural engineer.</strong> Nothing at prequalification names one: BC Housing's architect rosters score company experience and the project plan only. So the conversation is with the architect, before or at schematic design.</li>
+        <li><strong>Construction managers come off a roster of 14</strong> (Chandos, Farmer, Windley and others). Stratford Gardens' CM call closed 9 October with five invited firms: Metro Can, Ledcor, TL Housing Solutions, Buttcon West and Dawson Wallace.</li>
+        <li><strong>Some of it is standard design.</strong> Cranbrook 217 16th Ave N is a DASH building (BC Housing's standardized, digitally drawn designs), and the steel modular tower at 1406 East King Edward is a Stantec and Bird/Stack package. Those seats are not open to us.</li>
+        <li><strong>Redevelopments are the prize.</strong> Skeena Terrace (about 1,900 homes, 4 to 36 storeys), Hall Towers (1,206 BC Housing homes in two towers), Evergreen Terrace (about 1,100 homes, up to 20 storeys), Rosewood Village (850), Skaha Assembly (about 600) and Glenfair (340) run in phases over years, and every phase is a new design commission.</li>
+      </ul>
+    </section>
+
+    <section id="warm">
+      <p class="kicker">Before any cold call</p>
+      <h2>Doors we already have</h2>
+      <ul class="plain">
+        <li><strong>M'Akola Development Services</strong>: KOR client (October 2025). Developer of 355 Nicol, operator at Fifth Street and Robron Village, partner on the cancelled Kelowna Bertram tower.</li>
+        <li><strong>Holborn</strong>: KOR client, 20 projects (latest January 2023). Holborn is BC Housing's developer at Little Mountain, which is finishing, but it is proof we have built BC Housing homes with a BC Housing developer.</li>
+        <li><strong>Capital Region Housing Corporation</strong>: KOR client, 3 projects (latest May 2024). Will operate the 158 affordable homes at 926–930 Pandora in Victoria.</li>
+        <li><strong>Perkins&amp;Will</strong> (Skeena Terrace) and <strong>HUMAN Studio</strong> (Rosewood Village): one project each on KOR's record.</li>
+        <li><strong>Architects with two BC Housing jobs each</strong>, so one meeting covers two seats: <strong>Station One</strong> (Kelowna 1144 Pacific and Smithers 3879 Alfred, contact Heather Honeycutt; it also drew 1577 Lloyd in 2021), <strong>Ron Hart</strong> (Nanaimo 250 Bryden and Abbotsford Gladys) and <strong>S2 Architecture</strong> (Vancouver 2930 Renfrew and 2540 South Grandview).</li>
+        <li><strong>Island West Coast Developments</strong> (Nanaimo, Dave Quinsey and Patrick) is building three BC Housing projects on the Island: 355 Nicol, 1850 Boxwood and Braidwood in Courtenay.</li>
+      </ul>
+    </section>
+
+    <section id="open">
+      <p class="kicker">18 seats</p>
+      <h2>The open seats</h2>
+      <p class="lede">No structural engineer named, and early enough that one may not be chosen. Biggest and nearest first.</p>
+      <h3>Large redevelopments</h3>
+      <ul class="plain">
+        <li><strong>Vancouver · Skeena Terrace.</strong> About 1,900 homes in 15 buildings, 7 phases, up to 36 storeys. Rezoned March 2024; design refinement now, Phase 1 timing to be set. Architect Perkins&amp;Will (Jason LeBlanc), a firm on our record.</li>
+        <li><strong>Burnaby · Stratford Gardens.</strong> 126 replacement plus about 230 new homes, four 4–6 storey buildings. CM procurement closed 9 October, so construction has not started. No architect found. BC Housing development manager: Nicholas Hardy.</li>
+        <li><strong>Burnaby · Hall Towers.</strong> BC Housing's two towers (1,206 homes) in a 33–52 storey master plan. Held while Burnaby aligns it with the new OCP. Planner Urban Strategies; rezoning applicant Aplin &amp; Martin.</li>
+        <li><strong>Richmond · Rosewood Village.</strong> 850 rentals in 4 phases; Phase 1 is 138 homes. Rezoning and the Phase 1 DP are in review. Architect HUMAN Studio, also on our record.</li>
+        <li><strong>Kamloops · Glenfair.</strong> 340 homes in four 6-storey buildings. Phase 1 is 80 seniors' homes at 1118 Glenfair; council advanced it on 6 October; construction 2027. Rendering by Public Architecture + Design; architect of record not confirmed.</li>
+        <li><strong>Campbell River · Robron Village.</strong> About 248 homes in three buildings up to 6 storeys, M'akola operating. Design development 2025–26, approvals 2026–27. No team public: the earliest seat in the set.</li>
+        <li><strong>Penticton · Skaha Assembly.</strong> About 600 homes, 6–14 storeys, rezoned (third reading). Construction deferred to 2029–30, so this is a relationship, not a near-term job.</li>
+        <li><strong>Kelowna · Bertram.</strong> The 20-storey, 176-home tower was cancelled in July 2026; the mayor wants 6–8 storeys on the same land. A re-scoped scheme means a new design team.</li>
+      </ul>
+      <h3>Mid-size, starting 2026–27</h3>
+      <ul class="plain">
+        <li><strong>Squamish · 39900 Government Road.</strong> Two 6-storey buildings, 65 supportive plus 85–100 affordable (the second unfunded). DP in review; sitework this fall, construction late 2027.</li>
+        <li><strong>North Vancouver · 1234 East Keith Road.</strong> 65 homes, 6 storeys, wood frame, Lu'ma operating. Start estimated fall 2026; a CM call ran in 2024 with no award published.</li>
+        <li><strong>North Vancouver · 1577 Lloyd Avenue.</strong> 73 homes, 5 storeys, wood frame, redesigned 2023–25. Start winter/spring 2027. Station One drew the 2021 scheme.</li>
+        <li><strong>Williams Lake · 845 Carson Drive.</strong> 51 homes, 4 storeys, approved by council August 2026. Altus Group applied for BC Housing; construction late 2026.</li>
+        <li><strong>Terrace · Tetrault Street.</strong> 35 homes, design-build. Variance at council 24 August; start estimated fall 2026.</li>
+        <li><strong>Quesnel · 530 Carson Avenue.</strong> 50 homes, design-tender. Start spring 2027.</li>
+        <li><strong>Powell River · 5010 Joyce Avenue.</strong> 44 homes plus 20 shelter spaces, 3 storeys. Lease endorsed September 2026; start summer 2027.</li>
+        <li><strong>West Kelowna · 2570 Bartley Road.</strong> 60-bed permanent shelter, 2-storey wood frame. Rezoning in 2026; build 2027.</li>
+        <li><strong>Prince George · 3177 McGill Crescent.</strong> 10 complex-care homes, single storey. DP fall 2026.</li>
+        <li><strong>Kamloops · Fortune Drive and Leigh Road.</strong> 54 homes, 4 storeys. Rezoned, then deferred in March 2026 for budget. Architect Tengri Architecture.</li>
+      </ul>
+    </section>
+
+    <section id="ask">
+      <p class="kicker">9 seats</p>
+      <h2>Ask the architect</h2>
+      <p class="lede">An architect is named and the design is moving, but no engineer appears in public. Most will have one; the call is still worth making, because these architects keep winning BC Housing work.</p>
+      <ul class="plain">
+        <li><strong>Nanaimo · Fifth Street</strong>: MacDonald Hagarty, Comox. <a href="#fifth" class="inline">Above.</a></li>
+        <li><strong>Victoria · Evergreen Terrace</strong>: DAU Studio (D'Ambrosio Architecture + Urbanism), Victoria; Erica Sangster, Mark Zupan. About 1,100 homes up to 20 storeys; final rezoning 3 September 2026; Phase 1 DP 01065 at 2501 Blanshard. BC Housing team: Sean MacLean, Elyse Kuwert, Theresa Paul.</li>
+        <li><strong>Kelowna · 1144 Pacific Avenue</strong>: Station One (Heather Honeycutt). 40 complex-care and supportive homes, 5 storeys, concrete, steel and wood. An archaeological find pushed the start to 2027. BC Housing contact: Ogie Soriano.</li>
+        <li><strong>Smithers · 3879 Alfred Avenue</strong>: Station One again. 40 homes plus 20 shelter spaces, 3 storeys. The DP drawings name the civil engineer and no structural one.</li>
+        <li><strong>Nanaimo · 250 Bryden Street</strong>: Ron Hart Architect. 50 homes, 5 storeys, recovery-oriented. Start spring 2027.</li>
+        <li><strong>Abbotsford · 2661–2671 Gladys Avenue</strong>: Ron Hart with Raven Architecture. 48 homes, 5 storeys; DP approved in principle February 2026.</li>
+        <li><strong>Vancouver · 2930 Renfrew Street</strong>: S2 Architecture. 76 homes, 12 storeys, Lu'ma operating. Start estimated fall 2026.</li>
+        <li><strong>Vancouver · 2540 South Grandview Highway</strong>: S2 Architecture. 64 homes, 6 storeys, modular; DP issued November 2024.</li>
+        <li><strong>Port Alberni · 3027–3037 2nd Avenue</strong>: possibly Number Ten Architectural Group (from a search summary of the hearing package, not the document). 55 homes, 6 storeys; rezoned January 2026.</li>
+      </ul>
+    </section>
+
+    <section id="filled">
+      <p class="kicker">3 seats</p>
+      <h2>Who has the filled ones</h2>
+      <ul class="plain">
+        <li><strong>Nanaimo · 355 Nicol Street</strong>: <strong>McElhanney</strong> (Nanaimo). 35 homes, 6-storey modular wood; architect MacDonald Hagarty, developer M'akola, builder Island West Coast Developments.</li>
+        <li><strong>Nanaimo · 1850 Boxwood Road</strong>: <strong>RJC</strong> (Nanaimo). 22 homes, 3 storeys; architect Ryder, project manager Altus Group, builder Island West Coast Developments.</li>
+        <li><strong>Vancouver · 1406–1410 East King Edward</strong>: inside the Stantec / Bird-Stack steel modular package (an inference; no engineer is named).</li>
+      </ul>
+      <div class="box box--screen">
+        <p class="box__label">Worth knowing</p>
+        <p>MacDonald Hagarty used McElhanney on Nicol. If they did the same on Fifth Street, the seat is gone and the target becomes MacDonald Hagarty's next BC Housing job, not this one.</p>
+      </div>
+    </section>
+
+    <section id="people">
+      <p class="kicker">Who to ask for</p>
+      <h2>Names</h2>
+      <ul class="plain">
+        <li><strong>BC Housing</strong>: Nicholas Hardy (development manager, Stratford Gardens); Letizia Romei (acting director, regional development, Lower Mainland); Cluny MacPherson (director, supportive housing delivery); Jennifer Fox (regional director, Vancouver Island); Ogie Soriano (Kelowna 1144 Pacific); Sherry Azimi (contracting, sazimi@bchousing.org).</li>
+        <li><strong>Architects</strong>: Heather Honeycutt (Station One); Jason LeBlanc (Perkins&amp;Will, Skeena Terrace); Erica Sangster and Mark Zupan (DAU Studio, Evergreen Terrace).</li>
+        <li><strong>Builders and developers</strong>: Island West Coast Developments (Dave Quinsey); M'akola Development Services; Altus Group (Jonathan Bloomfield, Boxwood).</li>
+        <li><strong>Cities</strong>: Caleb Horn and Jeremy Holm (Nanaimo, Fifth Street).</li>
+      </ul>
+    </section>
+
+    <section id="register">
+      <p class="kicker">The whole list</p>
+      <h2>All 62, by region</h2>
+      <p>Every project on BC Housing's list, with where it stands and what that means for the structural seat. Each name links to BC Housing's page.</p>
+<h3>Vancouver Island <span class="count">(15)</span></h3>
+<div class="table-wrap"><table><thead><tr><th>Project</th><th>Where it is</th><th>Seat</th></tr></thead><tbody>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/campbell-river-robron-village-redevelopment">Campbell River · Robron Village Redevelopment</a></td><td>Design development now</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/courtenay-925-933-braidwood-road">Courtenay · 925/933 Braidwood Road</a></td><td>Under construction since Aug 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/nanaimo-1030-old-victoria-road">Nanaimo · 1030 Old Victoria Road</a></td><td>Open</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/nanaimo-1850-boxwood-road">Nanaimo · 1850 Boxwood Road</a></td><td>RJC; BP issued Jun 2026</td><td><span class="pill pill--lost">Filled</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/nanaimo-250-Bryden-Street">Nanaimo · 250 Bryden Street</a></td><td>Rezoning closed; start spring 2027</td><td><span class="pill pill--sub">Ask architect</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/nanaimo-355-nicol-street">Nanaimo · 355 Nicol Street</a></td><td>McElhanney; modular wood</td><td><span class="pill pill--lost">Filled</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/nanaimo-fifth-street-redevelopment">Nanaimo · Fifth Street Redevelopment</a></td><td>DP001426 in review; BP 2027/28</td><td><span class="pill pill--sub">Ask architect</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/port-alberni-3027-3037-2nd-avenue">Port Alberni · 3027 2nd Avenue</a></td><td>Rezoned Jan 2026; start est. fall 2026</td><td><span class="pill pill--sub">Ask architect</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/saanich-3690-richmond-road">Saanich · 3690 Richmond Road</a></td><td>Hospital renovation, early</td><td><span class="pill pill--draft">Little structural</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/saanich-nigel-valley-redevelopment">Saanich · Nigel Valley Redevelopment</a></td><td>Phase 2 finishing; Phase 3 TBD</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/victoria-726-discovery-street">Victoria · 726 Discovery Street</a></td><td>Under construction, opens 2027</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/victoria-926-930-pandora-avenue">Victoria · 926-930 Pandora Avenue</a></td><td>Under construction, opens 2029</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/victoria-938-mason-street">Victoria · 938 Mason Street</a></td><td>Under construction since May 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/victoria-douglas-street-redevelopment">Victoria · Douglas Street Redevelopment</a></td><td>Under construction (Chard), opens 2029</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/victoria-evergreen-terrace-redevelopment">Victoria · Evergreen Terrace Redevelopment</a></td><td>Rezoned Sep 2026; Phase 1 DP</td><td><span class="pill pill--sub">Ask architect</span></td></tr>
+</tbody></table></div>
+<h3>Vancouver Coastal <span class="count">(15)</span></h3>
+<div class="table-wrap"><table><thead><tr><th>Project</th><th>Where it is</th><th>Seat</th></tr></thead><tbody>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/north-vancouver-1234-east-keith-road">North Vancouver · 1234 East Keith Road</a></td><td>Rezoned 2024; start est. fall 2026</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/north-vancouver-1577-lloyd-avenue">North Vancouver · 1577 Lloyd Avenue</a></td><td>Redesigned; start winter 2027</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/powell-river-5010-joyce-avenue">Powell River · 5010 Joyce Avenue</a></td><td>Lease endorsed Sep 2026; start 2027</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/powell-river-7104-barnet-street">Powell River · 7104 Barnet Street</a></td><td>Opened Apr 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/richmond-rosewood-village-redevelopment">Richmond · Rosewood Village Redevelopment</a></td><td>Rezoning + Phase 1 DP in review</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/squamish-39900-government-road">Squamish · 39900 Government Road</a></td><td>DP in review; build late 2027</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/squamish-temporary-housing">Squamish · temporary housing</a></td><td>Site not yet chosen</td><td><span class="pill pill--draft">Little structural</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/vancouver-1406-1410-east-king-edward-avenue">Vancouver · 1406-1410 East King Edward Avenue</a></td><td>Steel modular (Stantec / Stack)</td><td><span class="pill pill--lost">Filled</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/vancouver-1726-east-hastings-street">Vancouver · 1726 East Hastings Street</a></td><td>Shelter renovation</td><td><span class="pill pill--draft">Little structural</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/vancouver-2540-south-grandview-highway">Vancouver · 2540 South Grandview Highway</a></td><td>DP issued Nov 2024; modular</td><td><span class="pill pill--sub">Ask architect</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/vancouver-2930-renfrew-street">Vancouver · 2930 Renfrew Street</a></td><td>Rezoned 2024; start est. fall 2026</td><td><span class="pill pill--sub">Ask architect</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/vancouver-8302-beatrice-street">Vancouver · 8302 Beatrice Street</a></td><td>Under construction, opens 2027</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/vancouver-east-1st-avenue-and-clark-drive">Vancouver · East 1st Avenue and Clark Drive</a></td><td>Under construction, opens 2028</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/vancouver-little-mountain-redevelopment">Vancouver · Little Mountain Redevelopment</a></td><td>Last buildings finishing (Holborn)</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/vancouver-skeena-terrace-redevelopment">Vancouver · Skeena Terrace Redevelopment</a></td><td>Rezoned; Phase 1 timing TBD</td><td><span class="pill pill--won">Open</span></td></tr>
+</tbody></table></div>
+<h3>Fraser <span class="count">(9)</span></h3>
+<div class="table-wrap"><table><thead><tr><th>Project</th><th>Where it is</th><th>Seat</th></tr></thead><tbody>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/abbotsford-1610-riverside-road">Abbotsford · 1610 Riverside Road</a></td><td>Under construction, opens 2027</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/abbotsford-2661-2671-gladys-avenue">Abbotsford · 2661-2671 Gladys Avenue</a></td><td>DP approved Feb 2026; start est. summer 2026</td><td><span class="pill pill--sub">Ask architect</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/burnaby-3020-gilmore-diversion">Burnaby · 3020 Gilmore Diversion</a></td><td>Shelter renovation, delayed</td><td><span class="pill pill--draft">Little structural</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/burnaby-hall-towers-redevelopment">Burnaby · Hall Towers Redevelopment</a></td><td>Rezoning held for new OCP</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/burnaby-stratford-gardens-redevelopment">Burnaby · Stratford Gardens Redevelopment</a></td><td>CM bid closed 9 Oct 2026</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/chilliwack-45867-trethewey-avenue">Chilliwack · 45867 Trethewey Avenue</a></td><td>Built; shelter opened 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/hope-1275-7th-avenue">Hope · 1275 7th Avenue</a></td><td>Under construction, opens fall 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/new-westminster-502-20th-street">New Westminster · 502 20th Street</a></td><td>Reused modular tiny homes</td><td><span class="pill pill--draft">Little structural</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/new-westminster-602-agnes-street">New Westminster · 602 Agnes Street</a></td><td>Under construction, opens fall 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+</tbody></table></div>
+<h3>Interior <span class="count">(16)</span></h3>
+<div class="table-wrap"><table><thead><tr><th>Project</th><th>Where it is</th><th>Seat</th></tr></thead><tbody>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/castlegar-2245-6th-avenue">Castlegar · 2245 6th Avenue</a></td><td>Conversion under way</td><td><span class="pill pill--draft">Little structural</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/cranbrook-1525-industrial-road-2">Cranbrook · 1525 Industrial Road 2</a></td><td>1-storey temporary modular</td><td><span class="pill pill--draft">Little structural</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/cranbrook-217-16-avenue-north">Cranbrook · 217 16th Avenue North</a></td><td>DASH standard design; DVP Oct 2026</td><td><span class="pill pill--draft">Little structural</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/kamloops-1055-glenfair-drive">Kamloops · 1055 Glenfair Drive</a></td><td>Under construction, opens Oct 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/kamloops-1100-glenfair-drive-redevelopment">Kamloops · 1100 Glenfair Drive Redevelopment</a></td><td>Phase 1 DP and design 2026; build 2027</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/kamloops-1102-glenfair-drive">Kamloops · 1102 Glenfair Drive</a></td><td>Construction starting Oct 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/kamloops-1449-mcgill-road">Kamloops · 1449 McGill Road</a></td><td>Temporary housing, opening 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/kamloops-777-809-mission-flats-road">Kamloops · 777-809 Mission Flats Road</a></td><td>Under construction, opens 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/kamloops-fortune-drive-and-leigh-road">Kamloops · Fortune Drive and Leigh Road</a></td><td>Deferred Mar 2026 (budget)</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/kelowna-1144-pacific-avenue">Kelowna · 1144 Pacific Avenue</a></td><td>DVP approved; start 2027</td><td><span class="pill pill--sub">Ask architect</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/kelowna-bertram-redevelopment">Kelowna · Bertram Redevelopment</a></td><td>Tower cancelled Jul 2026; re-scope</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/nelson-45-government-road">Nelson · 45 Government Road</a></td><td>Opening Oct 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/penticton-skaha-assembly-redevelopment">Penticton · Skaha Assembly Redevelopment</a></td><td>Rezoned; start deferred to 2029-30</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/revelstoke-downie-street-redevelopment">Revelstoke · Downie Street Redevelopment</a></td><td>Under construction to 2028</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/vernon-3201-24th-avenue">Vernon · 3201 24th Avenue</a></td><td>Demolition/construction from spring 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/west-kelowna-2570-bartley-road">West Kelowna · 2570 Bartley Road</a></td><td>Rezoning 2026; build 2027</td><td><span class="pill pill--won">Open</span></td></tr>
+</tbody></table></div>
+<h3>Northern <span class="count">(7)</span></h3>
+<div class="table-wrap"><table><thead><tr><th>Project</th><th>Where it is</th><th>Seat</th></tr></thead><tbody>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/prince-george-150-ontario-street">Prince George · 150 Ontario Street</a></td><td>Phase 2 opening fall 2026</td><td><span class="pill pill--draft">Built / building</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/prince-george-3177-mcgill-crescent">Prince George · 3177 McGill Crescent</a></td><td>DP est. fall 2026; build 2027</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/quesnel-530-carson-avenue">Quesnel · 530 Carson Avenue</a></td><td>Design-tender; start spring 2027</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/smithers-3879-alfred-avenue">Smithers · 3879 Alfred Avenue</a></td><td>DP Dec 2025; start est. 2026</td><td><span class="pill pill--sub">Ask architect</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/smithers-3892-3rd-avenue">Smithers · 3892 3rd Avenue</a></td><td>Shelter renovation</td><td><span class="pill pill--draft">Little structural</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/terrace-tetrault-street">Terrace · Tetrault Street</a></td><td>Design-build; start est. fall 2026</td><td><span class="pill pill--won">Open</span></td></tr>
+<tr><td><a class="inline" href="https://www.bchousing.org/projects-partners/projects/williams-lake-845-carson-drive">Williams Lake · 845 Carson Drive</a></td><td>Council approved Aug 2026</td><td><span class="pill pill--won">Open</span></td></tr>
+</tbody></table></div>    </section>
+
+    <section id="notes">
+      <p class="kicker">Read before quoting</p>
+      <h2>Sources and limits</h2>
+      <ul class="plain">
+        <li><strong>BC Housing's pages say they are current as of 22 September 2026.</strong> Where a council file or news item is newer, this dossier uses it: Stratford Gardens, Bertram, Glenfair and Fifth Street all differ from BC Housing's own timeline.</li>
+        <li><strong>"Open" means no engineer is named in public</strong>, not that none is engaged. Engineers are rarely named before a building permit. Treat an open seat as a reason to call, not a promise.</li>
+        <li><strong>Unconfirmed:</strong> M'akola as Fifth Street's development partner, Number Ten at Port Alberni, Public Architecture as architect of record at Glenfair, and the Stantec/Stack structural inference. Each came from one indirect source.</li>
+        <li><strong>The list is now tracked.</strong> All 62 projects are in the platform under BC Housing, each with its timeline. BC Housing's site will be reread weekly, so a step that moves (a permit, a construction start) shows up as a change.</li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+</body></html>
