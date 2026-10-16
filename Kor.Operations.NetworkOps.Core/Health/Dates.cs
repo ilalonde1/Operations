@@ -1,0 +1,12 @@
+#nullable enable
+using System.Globalization;
+
+namespace Kor.Operations.NetworkOps.Core.Health;
+
+/// <summary>A calendar day as the rules' evidence and the PC page's rows write it ("2026-10-16"). One place, so the
+/// language ratchet (NetworkOpsLanguageTests.Dates_are_formatted_in_one_place) only ever comes down; the callers convert
+/// to local time first where the value is UTC.</summary>
+public static class Dates
+{
+    public static string Day(DateTime d) => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+}

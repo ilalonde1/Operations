@@ -131,7 +131,19 @@ public static class HealthRules
 
         if (s.Update?.LastInstall is { } last && (s.CollectedAt - last).TotalDays > 35)
             f.Add(new("not-patched", Severity.Warning, "No updates installed in over a month",
-                $"last install {last.ToLocalTime():yyyy-MM-dd}: {s.Update.LastInstallTitle}"));   // WU history is UTC; the device page shows local
+                $"last install {Dates.Day(last.ToLocalTime())}: {s.Update.LastInstallTitle}"));   // WU history is UTC; the device page shows local
+        // No patch at all in the history read: "not patched" when that history reaches back past the month, otherwise unknown
+        // (shown on the PC's page, never as healthy and never as a finding it cannot support -- audit 2026-10-16, tier 2).
+        else if (s.Update is { PatchUnknown: true, Recent: { Count: > 0 } read, OldestRead: { } oldest } && (s.CollectedAt - oldest).TotalDays > 35)
+            f.Add(new("not-patched", Severity.Warning, "No updates installed in over a month",
+                $"no security or quality update among the {read.Count} installs Windows Update lists since {Dates.Day(oldest.ToLocalTime())}"));
+
+        // Windows Update keeps failing to install something, and nothing has installed since (v15: Defender-signature failures
+        // are left out by the probe). Collected since v6 and never judged before 2026-10-16.
+        if (s.Events14d?.UpdateFailures is { Count: >= 2, Last: { } failedAt } fails
+            && (s.Update?.LastPatch is not { } patched || patched.Date < failedAt))
+            f.Add(new("update-install-failing", Severity.Warning, "Windows updates keep failing to install",
+                $"{fails.Count} failed installs in 14 days, the last {Dates.Day(failedAt)}" + (fails.Detail is { Length: > 0 } what ? $": {what}" : "")));
 
         if (s.Update is { MicrosoftUpdate: false })
             f.Add(new("microsoft-update-off", Severity.Info, "Office security updates are not being offered",

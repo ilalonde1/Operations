@@ -56,9 +56,11 @@ public sealed class UpdateRowView(UpdateRow row, DateTime nowUtc) : INotifyPrope
 
     public string WhoText => Row.IsServer ? "–" : Row.Presence ?? "not known";
 
+    // A failed search keeps the last good list; the column says the list is that old (audit 2026-10-16, tier 2).
     public string SearchedText => Row.ScanStatus is null ? "never"
         : Row.ScanStatus == "Ok" ? CommandCenterView.Ago(Row.ScannedUtc, nowUtc)
-        : $"{CommandCenterView.Ago(Row.ScannedUtc, nowUtc)}: {Short(Row.ScanStatus, 60)}";
+        : $"failed {CommandCenterView.Ago(Row.ScannedUtc, nowUtc)}: {Short(Row.ScanStatus, 60)}"
+          + (Row.PendingAsOfUtc is { } kept ? $" · list from {CommandCenterView.Ago(kept, nowUtc)}" : "");
 
     /// <summary>This view's install progress when there is one; otherwise the last install on record.</summary>
     public string InstallText => _progress ?? (!Row.Target ? Row.Why ?? "" : Row.LastInstall is { } l ? $"last: {Short(l, 140)} ({CommandCenterView.Ago(Row.LastInstallUtc, nowUtc)})" : "");
@@ -166,7 +168,8 @@ public partial class NetworkOpsUpdatesView : UserControl
         DetailTitle.Text = r.Name;
         DetailLine.Text = !r.CanTick ? r.Row.Why ?? ""
             : r.Row.ScanStatus is null ? "Not searched yet."
-            : r.Row.ScanStatus != "Ok" ? $"The last search failed: {r.Row.ScanStatus}"
+            : r.Row.ScanStatus != "Ok" ? $"The last search failed: {r.Row.ScanStatus}." +
+                (r.Row.PendingAsOfUtc is { } kept ? $" Below is what the search {CommandCenterView.Ago(kept, DateTime.UtcNow)} found: {r.Row.Pending.Count} waiting." : "")
             : r.HasUpdates ? $"{r.Row.Pending.Count} waiting{(r.Row.RebootPending ? "; a restart is already pending" : "")}." + (r.Row.DueTitle is { } t ? $" {t}." : "")
             : r.Row.RebootPending ? "Up to date, but waiting on a restart to finish what was installed." : "Up to date.";
         DetailList.ItemsSource = r.Row.Pending.OrderByDescending(p => p.Security).ThenBy(p => p.Released)

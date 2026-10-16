@@ -157,8 +157,9 @@ public sealed class HealthRulesTests
     [Fact]
     public void Not_patched_fires_after_35_days_and_not_before()
     {
-        var at34 = Clean() with { Update = new UpdateInfo(true, 1) { RawLastInstall = new DateTime(2026, 8, 25), RawLastInstallTitle = "KB1", RawLastInstallBy = "wusa" } };
-        var at36 = Clean() with { Update = new UpdateInfo(true, 1) { RawLastInstall = new DateTime(2026, 8, 23), RawLastInstallTitle = "KB1", RawLastInstallBy = "wusa" } };
+        // A real KB title: since 2026-10-16 an old scalar counts as the last patch only when it IS a patch.
+        var at34 = Clean() with { Update = new UpdateInfo(true, 1) { RawLastInstall = new DateTime(2026, 8, 25), RawLastInstallTitle = "Update for Windows (KB5124010)", RawLastInstallBy = "wusa" } };
+        var at36 = Clean() with { Update = new UpdateInfo(true, 1) { RawLastInstall = new DateTime(2026, 8, 23), RawLastInstallTitle = "Update for Windows (KB5124010)", RawLastInstallBy = "wusa" } };
         Assert.DoesNotContain(HealthRules.Evaluate(at34), x => x.RuleKey == "not-patched");
         Assert.Contains(HealthRules.Evaluate(at36), x => x.RuleKey == "not-patched");
     }

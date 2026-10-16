@@ -13,10 +13,11 @@ namespace Kor.Operations.NetworkOps.Tests;
 // WHAT IT COVERS: UpdateHistory's KB-tagged classification over a realistic mixed history (cumulative,
 // servicing-stack, .NET, MSRT, and real driver titles incl. the Silicon-Labs / NVIDIA entries seen on the
 // fleet), the UpdateInfo computed members, back-compat with pre-v14 scalar-only captures, and the
-// not-patched rule reading the classified patch date. WHAT IT DOES NOT: that the probe actually emits a
-// populated Recent[] on a real machine (a live run proves that, not this), nor a feature-update / OOB whose
-// title carries no KB (it reads as "other", a documented limitation). A SAME-CLASS FAULT IT WOULD NOT CATCH:
-// a patch whose title is renamed to drop the KB token -- classification is by title only.
+// not-patched rule reading the classified patch date; feature updates as patches; "no patch in what was read" as unknown
+// until the history reaches past a month (then not-patched); repeated install failures (update-install-failing).
+// WHAT IT DOES NOT: that the probe actually emits a populated Recent[] on a real machine (a live run proves that, not
+// this), nor an out-of-band whose title carries neither a KB nor "Windows .. version". A SAME-CLASS FAULT IT WOULD NOT
+// CATCH: a patch whose title is renamed to drop the KB token -- classification is by title only.
 public sealed class UpdateHistoryTests
 {
     private static UpdateHistoryItem H(string title, string date, string? by = null)
@@ -87,20 +88,67 @@ public sealed class UpdateHistoryTests
     }
 
     [Fact]
-    public void Pre_v14_scalar_only_captures_keep_their_old_meaning()
+    public void A_pre_v14_scalar_counts_as_the_last_patch_only_when_it_is_one()
     {
-        // Old fixtures have no Recent. The three scalars are read exactly as before -- including the case
-        // where that scalar was itself a driver (KOR-1001's Silicon-Labs line): it is NOT reclassified away,
-        // because the collapsed history is gone; only fresh v14 captures get the richer split.
+        // Old captures have no Recent, only the last install of ANY kind. A KB there is the last patch, as before. A driver
+        // there (KOR-1001's Silicon-Labs line) used to be shown as the last patch; now it is not a patch, so the patch
+        // date is unknown rather than wrong (audit 2026-10-16, tier 2).
         var patch = new UpdateInfo(true, 1) { RawLastInstall = new DateTime(2026, 9, 28), RawLastInstallTitle = "Update for Windows (KB5124010)", RawLastInstallBy = "wusa" };
         Assert.Equal(new DateTime(2026, 9, 28), patch.LastInstall);
         Assert.Equal("Update for Windows (KB5124010)", patch.LastInstallTitle);
         Assert.Null(patch.LastOther);
 
         var driver = new UpdateInfo(true, 1) { RawLastInstall = new DateTime(2026, 9, 29), RawLastInstallTitle = SiliconLabs, RawLastInstallBy = "pwsh.exe" };
-        Assert.Equal(new DateTime(2026, 9, 29), driver.LastInstall);
-        Assert.Equal(SiliconLabs, driver.LastInstallTitle);
-        Assert.Null(driver.LastOther);
+        Assert.Null(driver.LastInstall);
+        Assert.True(driver.PatchUnknown);
+    }
+
+    [Fact]
+    public void A_feature_update_is_a_patch()
+    {
+        Assert.True(UpdateHistory.IsOsPatch("Windows 11, version 25H2"));
+        Assert.True(UpdateHistory.IsOsPatch("Feature update to Windows 11, version 24H2"));
+        Assert.True(UpdateHistory.IsOsPatch("Windows Server 2025, version 24H2"));
+        Assert.False(UpdateHistory.IsOsPatch("Lenovo - Firmware - 1.0.24H2"));
+        Assert.False(UpdateHistory.IsOsPatch(Nvidia));
+        var recent = new List<UpdateHistoryItem> { H(Nvidia, "2026-10-15"), H("Windows 11, version 25H2", "2026-10-10"), H(Cumulative, "2026-09-10") };
+        Assert.Equal("Windows 11, version 25H2", UpdateHistory.LastPatch(recent)?.Title);
+    }
+
+    [Fact]
+    public void No_patch_in_the_history_is_unknown_until_the_history_reaches_past_a_month()
+    {
+        var now = new DateTime(2026, 10, 16);
+        // Two weeks of drivers and no patch: unknown, so no finding -- and the PC's page says "not known", not nothing.
+        var shortHistory = Snap(now, new UpdateInfo(true, 1) { Recent = [H(Nvidia, "2026-10-12"), H(SiliconLabs, "2026-10-02")] });
+        Assert.DoesNotContain(HealthRules.Evaluate(shortHistory), x => x.RuleKey == "not-patched");
+        var row = PcComponents.Of(shortHistory with { Os = new OsInfo("Windows 11 Pro", "25H2", 26200, 1, null, 5) }, [])
+            .Single(c => c.Kind == "windows").Info!.Single(i => i.Label == "Last security/quality update");
+        Assert.StartsWith("not known", row.Value);
+
+        // Drivers reaching back two months and still no patch: that IS not patched.
+        var longHistory = Snap(now, new UpdateInfo(true, 1) { Recent = [H(Nvidia, "2026-10-12"), H(SiliconLabs, "2026-08-10")] });
+        var f = Assert.Single(HealthRules.Evaluate(longHistory), x => x.RuleKey == "not-patched");
+        Assert.Contains("no security or quality update among the 2 installs", f.Evidence);
+    }
+
+    [Fact]
+    public void Repeated_install_failures_are_a_finding_until_something_installs()
+    {
+        var now = new DateTime(2026, 10, 16);
+        HealthSnapshot With(EventSummary fails, params UpdateHistoryItem[] recent)
+            => Snap(now, new UpdateInfo(true, 1) { Recent = recent }) with { Events14d = new EventCounts(null, null, null, null, null, null, UpdateFailures: fails) };
+
+        var failing = With(new EventSummary(3, new DateTime(2026, 10, 14), "2026-10 Cumulative Update (KB5127648)"), H(Cumulative, "2026-09-10"));
+        var f = Assert.Single(HealthRules.Evaluate(failing), x => x.RuleKey == "update-install-failing");
+        Assert.Contains("KB5127648", f.Evidence);
+
+        // One failure is a retry, not a pattern; and a patch that installed after the last failure means it got through.
+        Assert.DoesNotContain(HealthRules.Evaluate(With(new EventSummary(1, new DateTime(2026, 10, 14)), H(Cumulative, "2026-09-10"))), x => x.RuleKey == "update-install-failing");
+        Assert.DoesNotContain(HealthRules.Evaluate(With(new EventSummary(3, new DateTime(2026, 10, 9)), H(Cumulative, "2026-10-14"))), x => x.RuleKey == "update-install-failing");
+
+        Assert.NotNull(Kor.Operations.NetworkOps.Core.Learning.Knowledge.For("update-install-failing"));
+        Assert.Equal("Updates", Kor.Operations.NetworkOps.Core.Learning.ToClearCategories.CategoryOf("update-install-failing"));
     }
 
     [Fact]

@@ -26,7 +26,7 @@ namespace Kor.Operations.NetworkOps.Service.Api;
 // neither kind of caller can use the other's routes.
 internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsStore store, Power.PowerState power, Agents.AgentHub agents,
     Mesh.MeshState mesh, Prompts.PromptLibrary prompts, Updates.UpdateScanner updates, Agents.MachineRunner runner, ILoggerFactory loggers, ILogger<ApiHost> log,
-    Network.NetworkMapService networkMap, Agents.AgentEnrolment enrolment) : BackgroundService
+    Network.NetworkMapService networkMap, Agents.AgentEnrolment enrolment, FleetView fleetView, Jobs.JobHealth jobHealth) : BackgroundService
 {
     private static readonly TimeSpan MaxSnooze = TimeSpan.FromDays(90);
 
@@ -56,6 +56,8 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.Services.AddSingleton(runner);
         builder.Services.AddSingleton(networkMap);
         builder.Services.AddSingleton(enrolment);
+        builder.Services.AddSingleton(fleetView);
+        builder.Services.AddSingleton(jobHealth);
         builder.Services.AddSingleton<Agents.IAgentDirectory>(store);
         // The MCP server: live, structured NetworkOps context for a Claude session over HTTP, behind the same Entra auth
         // as the rest of the API (mapped below). One authenticated, audited endpoint on APP01; the DB credential stays here.
@@ -188,12 +190,14 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             // Carries whether the finding was closed in the same step, so the UI can say so (verdict -> finding, tied together).
             return result.Decided ? Results.Ok(result) : Results.Conflict(new { error = "that run has no learning waiting for a decision" });
         });
-        api.MapGet("/fleet", async (NetworkOpsStore s, Agents.AgentHub hub, Mesh.MeshState m, CancellationToken ct) =>
-            WithMesh(WithAgents(await s.FleetSnapshotAsync(ct), await s.AgentRecordsAsync(ct), hub), m, await s.MeshRecordsAsync(ct)));
+        // The fleet, assembled ONE way for every reader (FleetView): SQL + agents + remote control + the live UPS reading,
+        // stamped with when it was read.
+        api.MapGet("/fleet", (FleetView f, CancellationToken ct) => f.PcsAsync(ct));
         // The rack (hosts, storage, UPSes, backup, network, internet): the same shape as /fleet, served apart so a
         // page that predates the rack never lists a host or a UPS as a PC.
-        api.MapGet("/rack", async (NetworkOpsStore s, Mesh.MeshState m, CancellationToken ct) =>
-            WithMesh(await s.FleetSnapshotAsync(ct, rack: true), m, await s.MeshRecordsAsync(ct)));
+        api.MapGet("/rack", (FleetView f, CancellationToken ct) => f.RackAsync(ct));
+        // The background jobs behind every reading: failing, hung or stopped is visible here, not only in a mail (Jobs/JobHealth).
+        api.MapGet("/jobs", (Jobs.JobHealth j, CancellationToken ct) => j.StatusAsync(ct));
         api.MapGet("/devices/{id:int}/history", (int id, NetworkOpsStore s, CancellationToken ct) => s.DeviceHistoryAsync(id, ct));
         // Every latest reading of a device (a rack device's tiles are drawn from these and its facts).
         api.MapGet("/devices/{id:int}/readings", (int id, NetworkOpsStore s, CancellationToken ct) => s.LatestReadingsAsync(id, ct));
@@ -337,11 +341,11 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         });
         // ---- To clear (the "path to all-green" worklist): every LIVE finding across the PCs and the rack, grouped by issue,
         // ranked, with the fix that clears each. Composed in Core from the same snapshot the Command Center reads.
-        api.MapGet("/to-clear", async (NetworkOpsStore s, CancellationToken ct) =>
-            Results.Ok(Core.Learning.ToClear.Build(
-                [await s.FleetSnapshotAsync(ct), await s.FleetSnapshotAsync(ct, rack: true)],
-                await s.RunningActionTargetsAsync(ct),
-                DateTime.UtcNow)));
+        api.MapGet("/to-clear", async (NetworkOpsStore s, FleetView f, CancellationToken ct) =>
+        {
+            var (pcs, rack) = await f.BothAsync(ct);
+            return Results.Ok(Core.Learning.ToClear.Build([pcs, rack], await s.RunningActionTargetsAsync(ct), DateTime.UtcNow));
+        });
         // Fix one issue on every machine that has it ("Fix on all N"): the generic fleet fan-out for any catalog fix. Each
         // machine is validated and queued exactly as the single-machine POST above, so a disruptive fix on an active PC is
         // refused per-machine unless confirmed, and every run (and refusal) is audited.
@@ -426,33 +430,6 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             string.IsNullOrWhiteSpace(body.Body) ? Results.BadRequest(new { error = "a note needs text" })
             : await s.AddNoteAsync(id, ApiAccess.UserOf(h.User), body.Body, ct) ? Results.NoContent() : Results.NotFound());
     }
-
-    /// <summary>Each PC's agent: installed (SQL) and live (the hub, which knows within seconds; SQL is written every few minutes).</summary>
-    internal static FleetSnapshot WithAgents(FleetSnapshot fleet, IReadOnlyDictionary<string, NetworkOpsStore.AgentRecord> installed, Agents.AgentHub hub)
-        => fleet with
-        {
-            Devices = fleet.Devices.Select(d =>
-            {
-                if (!installed.TryGetValue(d.Name, out var rec)) return d;
-                var live = hub.Status(d.Name);
-                return d with
-                {
-                    AgentVersion = live?.Version is { Length: > 0 } v ? v : rec.LastVersion ?? rec.Version,
-                    AgentConnected = live?.Connected == true,
-                    AgentLastContactUtc = new[] { live is { LastPollUtc: var p } && p != default ? p : (DateTime?)null, rec.LastContactUtc }.Max(),
-                };
-            }).ToList(),
-        };
-
-    /// <summary>Each device's remote control: the live read when it is fresh, else what was stored (just after a restart).</summary>
-    internal static FleetSnapshot WithMesh(FleetSnapshot fleet, Mesh.MeshState live, IReadOnlyDictionary<int, NetworkOpsStore.MeshRecord> stored)
-        => fleet with
-        {
-            Devices = fleet.Devices.Select(d =>
-                live.Fresh
-                    ? live.For(d.DeviceId) is { } l ? d with { MeshNodeId = l.Node.Id, MeshConnected = l.Node.AgentConnected } : d
-                    : stored.TryGetValue(d.DeviceId, out var r) ? d with { MeshNodeId = r.NodeId, MeshConnected = r.Connected } : d).ToList(),
-        };
 
     private static IResult NoPromptRuns()
         => Results.Json(new { error = "reporting is not switched on: run db/KorNetworkOps/007_PromptLibrary.sql" }, statusCode: StatusCodes.Status503ServiceUnavailable);

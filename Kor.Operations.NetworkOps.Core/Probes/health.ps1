@@ -33,6 +33,14 @@ function Summ($events) {
     $e = @($events | Where-Object { $_ })
     [pscustomobject]@{ Count = $e.Count; Last = if ($e.Count) { ($e | Sort-Object TimeCreated -Descending)[0].TimeCreated.ToString('s') } else { $null } }
 }
+# Windows Update install failures (System 20): the update's title is the event's second property (errorCode, updateTitle, ...).
+function Fails($events) {
+    $e = @($events | Where-Object { $_ } | ForEach-Object {
+            $title = if ($_.Properties.Count -ge 2) { [string]$_.Properties[1].Value } else { '' }
+            [pscustomobject]@{ When = $_.TimeCreated; Title = $title }
+        } | Where-Object { $_.Title -notmatch 'Defender|Security Intelligence|^9N' } | Sort-Object When -Descending)
+    [pscustomobject]@{ Count = $e.Count; Last = if ($e.Count) { $e[0].When.ToString('s') } else { $null }; Detail = if ($e.Count) { $e[0].Title } else { $null } }
+}
 
 # --- operating system, uptime, pending reboot
 $osInfo = Try-Block 'os' {
@@ -136,7 +144,9 @@ $events = Try-Block 'events' {
                                                                        Entries = $_.Entries; Queued = $_.Queued } })
         # v2 -- early-warning signals, each rising before the failure it predicts:
         ResourceExhaustion = Summ (Count-Events 'System' @{ ProviderName = 'Microsoft-Windows-Resource-Exhaustion-Detector'; Id = 2004 })
-        UpdateFailures     = Summ (Count-Events 'System' @{ ProviderName = 'Microsoft-Windows-WindowsUpdateClient'; Id = 20 })
+        # v15: Defender-signature failures are left out (they retry themselves within hours and are never a patch), and
+        # the last failing update's title travels with the count, so the rule can say which update keeps failing.
+        UpdateFailures     = Fails (Count-Events 'System' @{ ProviderName = 'Microsoft-Windows-WindowsUpdateClient'; Id = 20 })
         AppHangs           = Summ (Count-Events 'Application' @{ ProviderName = 'Application Hang'; Id = 1002 })
     }
 }
@@ -262,9 +272,14 @@ $update = Try-Block 'update' {
     # Succeeded installs (ResultCode 2), newest first, minus the daily Defender-signature / Store churn that is
     # never a "patch". Drivers AND OS patches are both kept: which is which is decided in tested C#
     # (Health/UpdateHistory.cs), never by a regex in this script.
-    $hist = @((New-Object -ComObject Microsoft.Update.Session).CreateUpdateSearcher().QueryHistory(0, 50) |
+    # v15: read up to 300 entries BEFORE filtering, keep 40 after. 50 entries were mostly daily Defender signatures, which
+    # left ~5 real installs (~2 weeks) -- too short to know when the last patch was (audit 2026-10-16, tier 2).
+    $searcher = (New-Object -ComObject Microsoft.Update.Session).CreateUpdateSearcher()
+    $total = $searcher.GetTotalHistoryCount()
+    $raw = if ($total -gt 0) { $searcher.QueryHistory(0, [Math]::Min(300, $total)) } else { @() }
+    $hist = @($raw |
         Where-Object { $_.ResultCode -eq 2 -and $_.Title -notmatch '^9N|Store|Defender|Security Intelligence' } |
-        Sort-Object Date -Descending)
+        Sort-Object Date -Descending | Select-Object -First 40)
     [pscustomobject]@{
         MicrosoftUpdate = $mu
         NoAutoUpdate    = if ($au) { $au.NoAutoUpdate } else { $null }
@@ -437,7 +452,7 @@ $antivirus = Try-Block 'antivirus' {
 }
 
 [pscustomobject]@{
-    ProbeVersion  = 14
+    ProbeVersion  = 15
     Antivirus     = $antivirus
     Console       = $console
     Wake          = $wake

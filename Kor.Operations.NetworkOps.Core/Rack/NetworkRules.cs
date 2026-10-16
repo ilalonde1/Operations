@@ -471,6 +471,11 @@ public static class UpsRules
         if (r.ReplaceBattery) b.Raise("ups.replace-battery", Severity.Warning, "UPS asks for a battery replacement", "the battery failed its self-test or is past its life");
         if (r.Source == PowerSource.Mains && r.ChargePercent >= 95 && r.MinutesRemaining is < 15)
             b.Raise("ups.short-runtime", Severity.Warning, "UPS runtime is short on a full battery", $"{r.MinutesRemaining} min at {r.LoadPercent}% load: the battery is ageing or the load has grown");
-        return b.Done($"{r.Source} · {r.MinutesRemaining?.ToString() ?? "?"} min · load {r.LoadPercent?.ToString() ?? "?"}%");
+        return b.Done(Line(r.Source.ToString(), r.MinutesRemaining, r.LoadPercent));
     }
+
+    /// <summary>A UPS's one-line summary, the same words whichever reading it comes from (the rack sweep's, or the power
+    /// watcher's when that is fresher -- Service/Api/FleetView.WithUps).</summary>
+    public static string Line(string source, int? minutesRemaining, int? loadPercent)
+        => $"{source} · {minutesRemaining?.ToString() ?? "?"} min · load {loadPercent?.ToString() ?? "?"}%";
 }

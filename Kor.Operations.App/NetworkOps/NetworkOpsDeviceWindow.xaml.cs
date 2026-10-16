@@ -12,12 +12,16 @@ public partial class NetworkOpsDeviceWindow : Window
     // Closing the window cancels whatever it was waiting on, including a check in progress
     // (the check itself carries on in the service; only the waiting stops).
     private readonly CancellationTokenSource _cts = new();
+    // The page re-reads itself every minute while it is on screen: a fix or check made from anywhere else shows here.
+    private readonly System.Windows.Threading.DispatcherTimer _refresh = new() { Interval = TimeSpan.FromMinutes(1) };
 
     public NetworkOpsDeviceWindow(NetworkOpsDeviceViewModel vm)
     {
         _vm = vm ?? throw new ArgumentNullException(nameof(vm));
         InitializeComponent();
         DataContext = _vm;
+        _refresh.Tick += async (_, _) => { if (IsVisible && WindowState != WindowState.Minimized) await Run(_vm.RefreshAsync).ConfigureAwait(true); };
+        Loaded += (_, _) => _refresh.Start();
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e) => await Run(_vm.LoadHistoryAsync).ConfigureAwait(true);
@@ -134,6 +138,7 @@ public partial class NetworkOpsDeviceWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         // Cancelled, not disposed: a handler still unwinding may read the token after close.
+        _refresh.Stop();
         _cts.Cancel();
         base.OnClosed(e);
     }

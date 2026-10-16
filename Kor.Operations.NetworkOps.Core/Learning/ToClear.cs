@@ -12,7 +12,16 @@ namespace Kor.Operations.NetworkOps.Core.Learning;
 // data pipeline. Built in Core so it is shared by the service (fills /api/to-clear) and tested without a database.
 
 /// <summary>One machine an issue is open on.</summary>
-public sealed record ToClearMachine(int DeviceId, string Name, long FindingId, string? Presence, string? PresenceState);
+/// <param name="LastSeenUtc">The last check that still saw the issue on it (the finding's LastSeenUtc).</param>
+/// <param name="SeenUtc">When NetworkOps last heard from the machine at all: its last check, its last answer on the network,
+/// its agent's last call -- whichever is latest.</param>
+public sealed record ToClearMachine(int DeviceId, string Name, long FindingId, string? Presence, string? PresenceState,
+    DateTime? LastSeenUtc = null, DateTime? SeenUtc = null)
+{
+    /// <summary>Not heard from in over <see cref="ToClear.AwayAfter"/>: off, or gone. A fix sent now fails on it; its issue
+    /// is as of the last time it was seen. Null SeenUtc (an older service) is never "away".</summary>
+    public bool AwayAt(DateTime nowUtc) => SeenUtc is { } s && nowUtc - s > ToClear.AwayAfter;
+}
 
 /// <summary>One issue to clear: a rule, every machine it is open on (worst/most first), and the fix that clears it (null
 /// when nothing in the catalog does -- then it is Ask Claude or a person).</summary>
@@ -39,6 +48,13 @@ public sealed record ToClearView(int Issues, int Machines, int OneClickIssues, i
 
 public static class ToClear
 {
+    /// <summary>How long a machine may go unheard before To clear treats it as away: a day covers a PC switched off
+    /// overnight; anything longer is off for days, and "Fix on all N" counted it (audit 2026-10-16, tier 2).</summary>
+    public static readonly TimeSpan AwayAfter = TimeSpan.FromDays(1);
+
+    /// <summary>When NetworkOps last heard from a device by any route.</summary>
+    public static DateTime? SeenUtc(DeviceRow d) => new[] { d.LastCheckedUtc, d.LastReachableUtc, d.AgentLastContactUtc }.Max();
+
     /// <summary>Build the worklist from one or more fleet snapshots (PCs and the rack). <paramref name="nowUtc"/> decides
     /// which snoozes are still in the future (parked) vs expired (live again). <paramref name="runningTargets"/> is the set
     /// of "&lt;deviceId&gt;|&lt;fixKind&gt;" pairs with an action already in flight, so an issue being fixed shows as "fixing".</summary>
@@ -63,8 +79,8 @@ public static class ToClear
                 var machines = g
                     .OrderBy(f => f.Device, StringComparer.OrdinalIgnoreCase)
                     .Select(f => deviceByName.TryGetValue(f.Device, out var d)
-                        ? new ToClearMachine(d.DeviceId, f.Device, f.FindingId, d.Presence, d.PresenceState)
-                        : new ToClearMachine(0, f.Device, f.FindingId, null, null))
+                        ? new ToClearMachine(d.DeviceId, f.Device, f.FindingId, d.Presence, d.PresenceState, f.LastSeenUtc, SeenUtc(d))
+                        : new ToClearMachine(0, f.Device, f.FindingId, null, null, f.LastSeenUtc))
                     .ToList();
                 var fix = FixCatalog.PrimaryFor(g.Key);   // the fix that CLEARS it -- never one that only helps, never the escape hatch
                 var option = fix is null ? null

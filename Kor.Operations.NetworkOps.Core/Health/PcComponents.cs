@@ -37,7 +37,7 @@ public static class PcComponents
     // Finding families by the part they are about. Drives are matched per drive, by model name or letter, below.
     private static readonly string[] MemoryRules = ["memory-layout", "memory-pressure-rising"];
     private static readonly string[] GpuRules = ["gpu-hangs", "gpu-hangs-rising"];
-    private static readonly string[] WindowsRules = ["updates-due", "reboot-overdue", "not-restarted", "not-patched", "os-unsupported", "microsoft-update-off", "wmi-broken"];
+    private static readonly string[] WindowsRules = ["updates-due", "reboot-overdue", "not-restarted", "not-patched", "update-install-failing", "os-unsupported", "microsoft-update-off", "wmi-broken"];
     private static readonly string[] BiosRules = ["bios-behind", "fan-profile-loud", "wake-not-ready"];
 
     /// <summary>The Windows tile's big line: "11 25H2" for a PC; a server by its own name ("Server 2019") -- anything not
@@ -96,9 +96,14 @@ public static class PcComponents
                     ("Restart pending", s.PendingReboot is { } pr && (pr.ComponentServicing || pr.WindowsUpdate || pr.FileRename)
                         ? string.Join(", ", new[] { pr.WindowsUpdate ? "Windows Update" : null, pr.ComponentServicing ? "component servicing" : null,
                             pr.FileRename ? "file renames" : null }.Where(x => x is not null)) : s.PendingReboot is not null ? "no" : null),
-                    ("Last security/quality update", s.Update?.LastInstall is { } li ? $"{li.ToLocalTime():yyyy-MM-dd}" + (s.Update.LastInstallTitle is { Length: > 0 } t ? $" · {t}" : "") : null),
+                    ("Last security/quality update", s.Update?.LastInstall is { } li ? Dates.Day(li.ToLocalTime()) + (s.Update.LastInstallTitle is { Length: > 0 } t ? $" · {t}" : "")
+                        // Read, and none found: say so, never leave the row out as if all were well (audit 2026-10-16, tier 2).
+                        : s.Update is { Recent: not null } u ? (u.OldestRead is { } since ? $"not known: none among the {u.Recent.Count} installs listed since {Dates.Day(since.ToLocalTime())}" : "not known: Windows Update lists no installs")
+                        : null),
+                    ("Windows Update install failures", s.Events14d?.UpdateFailures is { Count: > 0 } wf
+                        ? $"{wf.Count} in 14 days, last {(wf.Last is { } wl ? Dates.Day(wl) : "?")}" + (wf.Detail is { Length: > 0 } what ? $" · {what}" : "") : null),
                     ("Last driver / other update", s.Update?.LastOther is { } o && (s.Update.LastPatch is null || o.Date > s.Update.LastPatch.Date)
-                        ? $"{o.Date.ToLocalTime():yyyy-MM-dd}" + (o.Title is { Length: > 0 } ot ? $" · {ot}" : "") : null),
+                        ? Dates.Day(o.Date.ToLocalTime()) + (o.Title is { Length: > 0 } ot ? $" · {ot}" : "") : null),
                     ("Microsoft Update", s.Update is null ? null : s.Update.MicrosoftUpdate ? "on" : "off"))));
 
         if (inv?.BiosVersion is { Length: > 0 } bios)

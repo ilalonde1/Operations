@@ -18,12 +18,12 @@ internal static class UpdatesApi
 {
     public static void Map(RouteGroupBuilder api)
     {
-        api.MapGet("/updates", (NetworkOpsStore s, UpdateScanner u, CancellationToken ct) => RowsAsync(s, u, ct));
+        api.MapGet("/updates", (NetworkOpsStore s, UpdateScanner u, FleetView f, CancellationToken ct) => RowsAsync(s, u, f, ct));
 
         api.MapPost("/updates/scan", async (HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
             Results.Accepted(null, new { triggerId = await s.QueueJobAsync(UpdateScanJob.JobName, ApiAccess.UserOf(h.User), ct) }));
 
-        api.MapPost("/updates/install", async (UpdateInstallRequest body, HttpContext h, NetworkOpsStore s, UpdateScanner u, CancellationToken ct) =>
+        api.MapPost("/updates/install", async (UpdateInstallRequest body, HttpContext h, NetworkOpsStore s, UpdateScanner u, FleetView fleetView, CancellationToken ct) =>
         {
             if (body.Restart is not ("none" or "if-needed")) return Results.BadRequest(new { error = "restart must be none or if-needed" });
             var ids = (body.DeviceIds ?? []).Distinct().ToList();
@@ -31,7 +31,7 @@ internal static class UpdatesApi
             if (ids.Count > 100) return Results.BadRequest(new { error = "at most 100 machines in one batch" });
 
             var targets = (await u.TargetsAsync(ct)).ToDictionary(t => t.DeviceId);
-            var presence = (await s.FleetSnapshotAsync(ct)).Devices.ToDictionary(d => d.DeviceId);
+            var presence = (await fleetView.PcsAsync(ct)).Devices.ToDictionary(d => d.DeviceId);
             var installs = await s.LastUpdateInstallsAsync(ct);
             var by = ApiAccess.UserOf(h.User);
             var outcomes = new List<UpdateInstallOutcome>();
@@ -58,13 +58,12 @@ internal static class UpdatesApi
     }
 
     /// <summary>Every PC and Windows server: what its last search found, what is due, and its last install.</summary>
-    internal static async Task<IReadOnlyList<UpdateRow>> RowsAsync(NetworkOpsStore s, UpdateScanner u, CancellationToken ct)
+    internal static async Task<IReadOnlyList<UpdateRow>> RowsAsync(NetworkOpsStore s, UpdateScanner u, FleetView fleetView, CancellationToken ct)
     {
         var targets = await u.TargetsAsync(ct);
         var scans = await s.LatestUpdateScansAsync(ct);
         var installs = await s.LastUpdateInstallsAsync(ct);
-        var fleet = await s.FleetSnapshotAsync(ct);
-        var rack = await s.FleetSnapshotAsync(ct, rack: true);
+        var (fleet, rack) = await fleetView.BothAsync(ct);
         var devices = fleet.Devices.Concat(rack.Devices).GroupBy(d => d.DeviceId).ToDictionary(g => g.Key, g => g.First());
         var due = fleet.OpenFindings.Concat(rack.OpenFindings).Where(f => UpdateRules.Owns(f.RuleKey))
             .GroupBy(f => f.Device, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
@@ -72,24 +71,33 @@ internal static class UpdatesApi
         return targets.Select(t =>
         {
             var dev = devices.GetValueOrDefault(t.DeviceId);
-            var scan = scans.GetValueOrDefault(t.DeviceId);
-            UpdateScan? parsed = null;
-            string? status = null;
-            if (scan is not null)
-            {
-                if (scan.Status == "Ok" && scan.PayloadJson is { } json)
-                {
-                    try { parsed = UpdateScan.Parse(json); status = "Ok"; }
-                    catch (JsonException ex) { status = "Unreadable: " + ex.Message; }
-                }
-                else status = scan.Status + (scan.Error is { Length: > 0 } e ? ": " + e : "");
-            }
             var f = due.GetValueOrDefault(t.Name);
             var last = installs.GetValueOrDefault(t.DeviceId);
+            var (status, parsed, asOf) = Read(scans.GetValueOrDefault(t.DeviceId));
             return new UpdateRow(t.DeviceId, t.Name, t.Kind, t.IsServer, t.Host is not null, t.Why, t.Guard,
-                dev?.Presence, dev?.PresenceState, scan?.CollectedUtc, status, parsed?.RebootPending ?? false,
+                dev?.Presence, dev?.PresenceState, scans.GetValueOrDefault(t.DeviceId)?.CollectedUtc, status, parsed?.RebootPending ?? false,
                 parsed?.Updates ?? [], f?.Severity, f?.Title,
-                last is null ? null : $"{last.Status}{(last.Detail is { Length: > 0 } d ? ": " + d : "")}", last?.CompletedUtc ?? last?.RequestedUtc);
+                last is null ? null : $"{last.Status}{(last.Detail is { Length: > 0 } d ? ": " + d : "")}", last?.CompletedUtc ?? last?.RequestedUtc,
+                asOf);
         }).ToList();
+    }
+
+    /// <summary>
+    /// What a machine's searches say: the latest one's status, and the list from the latest one that WORKED, with its time.
+    /// A failed search keeps the last good list (dated), instead of showing "nothing waiting" until the next search works.
+    /// </summary>
+    internal static (string? Status, UpdateScan? Pending, DateTime? PendingAsOfUtc) Read(NetworkOpsStore.LatestUpdateScan? scan)
+    {
+        if (scan is null) return (null, null, null);
+        var (latestStatus, latestParsed) = Parse(scan);
+        if (latestParsed is not null) return (latestStatus, latestParsed, scan.CollectedUtc);
+        return scan.LastGood is { } good && Parse(good).Parsed is { } kept ? (latestStatus, kept, good.CollectedUtc) : (latestStatus, null, null);
+
+        static (string Status, UpdateScan? Parsed) Parse(NetworkOpsStore.LatestUpdateScan s)
+        {
+            if (s.Status != "Ok" || s.PayloadJson is not { } json) return (s.Status + (s.Error is { Length: > 0 } e ? ": " + e : ""), null);
+            try { return ("Ok", UpdateScan.Parse(json)); }
+            catch (JsonException ex) { return ("Unreadable: " + ex.Message, null); }
+        }
     }
 }

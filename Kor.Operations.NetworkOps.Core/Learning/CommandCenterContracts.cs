@@ -27,12 +27,17 @@ public sealed record MeshRequest(string Action);
 
 /// <param name="Target">False when NetworkOps cannot run anything on it (Why says why): it is listed, never silently left out.</param>
 /// <param name="Guard">Alone (only in a batch by itself: the domain controller) | NoRestart (never restarted from here: the machine running NetworkOps).</param>
+/// <param name="ScannedUtc">When the LAST search ran, whatever became of it.</param>
 /// <param name="ScanStatus">Ok | the reason the last search failed | null = never searched.</param>
-/// <param name="Pending">What the last search found waiting; empty when nothing is.</param>
+/// <param name="Pending">What the last SUCCESSFUL search found waiting; empty when nothing is. A failed search never empties it.</param>
+/// <param name="PendingAsOfUtc">When the search that found <paramref name="Pending"/> ran: the same as ScannedUtc unless the latest
+/// search failed, then the last one that worked (null = no search has ever worked). Audit 2026-10-16, tier 2: a failed search
+/// used to wipe the list.</param>
 /// <param name="LastInstall">The last "Install updates" run on it: status and result line.</param>
 public sealed record UpdateRow(int DeviceId, string Name, string Kind, bool IsServer, bool Target, string? Why, string? Guard,
     string? Presence, string? PresenceState, DateTime? ScannedUtc, string? ScanStatus, bool RebootPending,
-    IReadOnlyList<Updates.PendingUpdate> Pending, Health.Severity? Due, string? DueTitle, string? LastInstall, DateTime? LastInstallUtc);
+    IReadOnlyList<Updates.PendingUpdate> Pending, Health.Severity? Due, string? DueTitle, string? LastInstall, DateTime? LastInstallUtc,
+    DateTime? PendingAsOfUtc = null);
 
 /// <param name="Restart">none | if-needed</param>
 /// <param name="Confirmed">Set after being told someone is actively using one of the machines (a restart is refused otherwise).</param>
@@ -117,12 +122,30 @@ public sealed record LearnedDecision(string Decision);
 
 public sealed record ServiceBeat(string Host, DateTime StartedUtc, DateTime LastBeatUtc, string? Version);
 
+// ---- background jobs (GET /api/jobs): the scheduled work behind every reading, and whether it is keeping up. The heartbeat
+// says the service is alive; this says whether what it is supposed to be doing is getting done.
+
+/// <param name="State">Ok | Running | Failing | Stuck | Late | NeverRan (Service/Jobs/JobHealth).</param>
+/// <param name="Text">One plain line: what is wrong and since when, or when it last worked.</param>
+public sealed record JobStatusRow(string Job, string Why, string State, string Text, DateTime? LastStartedUtc, DateTime? LastFinishedUtc,
+    DateTime? LastSuccessUtc, string? LastResult)
+{
+    /// <summary>Something a person should look at: it failed, hangs, or has stopped running.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool NeedsAttention => State is "Failing" or "Stuck" or "Late";
+}
+
+/// <param name="ReadUtc">When the service assembled this answer (Api/FleetView). Null from a service older than 0.64.</param>
+/// <param name="MeshReadUtc">When the remote-control state in it (MeshConnected) was read from MeshCentral: the live read, or
+/// the stored one just after a service restart. Null when remote control has never been read.</param>
 public sealed record FleetSnapshot(
     IReadOnlyList<DeviceRow> Devices,
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> FactsByDevice,
     IReadOnlyList<FleetFinding> OpenFindings,
     IReadOnlyList<ActivePattern> Patterns,
-    ServiceBeat? Service)
+    ServiceBeat? Service,
+    DateTime? ReadUtc = null,
+    DateTime? MeshReadUtc = null)
 {
     private static readonly IReadOnlyDictionary<string, string> NoFacts = new Dictionary<string, string>();
 

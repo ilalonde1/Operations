@@ -31,7 +31,7 @@ namespace Kor.Operations.NetworkOps.Cli;
 internal static class SessionVerbs
 {
     public static bool Handles(string verb, string[] args)
-        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" or "history" or "readings" or "action" or "trigger" or "updates" or "changes" or "network" or "add-pc" or "token" || (verb == "run" && !args.Contains("--direct"));
+        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" or "history" or "readings" or "action" or "trigger" or "updates" or "changes" or "network" or "add-pc" or "token" or "jobs" || (verb == "run" && !args.Contains("--direct"));
 
     public static async Task<int> RunAsync(string verb, string[] args)
     {
@@ -77,6 +77,15 @@ internal static class SessionVerbs
             if (verb == "findings") return await FindingsAsync(server, hostsArg, ct);
             if (verb == "updates") return await UpdatesAsync(server, scan, ct);
             if (verb == "changes") return await ChangesAsync(server, since, ct);
+            if (verb == "jobs")
+            {
+                // The scheduled jobs behind every reading, and whether each is keeping up (GET /api/jobs). Exit 1 when one needs a look.
+                var jobs = await server.GetAsync<List<JobStatusRow>>("/api/jobs", ct);
+                foreach (var j in jobs) Console.WriteLine($"{j.Job,-18} {j.State,-9} {j.Text}");
+                var bad = jobs.Count(j => j.NeedsAttention);
+                Console.WriteLine(bad == 0 ? $"all {jobs.Count} jobs keeping up" : $"{bad} of {jobs.Count} jobs need a look");
+                return bad == 0 ? 0 : 1;
+            }
             if (verb == "add-pc")
             {
                 // A PC outside the domain: the one-time code and the command to run on it as an administrator.
@@ -278,7 +287,9 @@ internal static class SessionVerbs
         var rows = await server.GetAsync<List<UpdateRow>>("/api/updates", ct);
         foreach (var r in rows.OrderByDescending(r => r.Due).ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase))
             Console.WriteLine($"{r.Name,-34} {(r.Target ? (r.Pending.Count == 0 ? "nothing waiting" : $"{r.Pending.Count(p => p.Security)} security, {r.Pending.Count(p => !p.Security)} other") : $"not searched: {r.Why}"),-28}" +
-                              $"{(r.RebootPending ? " restart pending" : "")}{(r.ScannedUtc is { } s ? $"  (searched {s.ToLocalTime():ddd HH:mm})" : "")}");
+                              $"{(r.RebootPending ? " restart pending" : "")}{(r.ScannedUtc is { } s ? $"  (searched {s.ToLocalTime():ddd HH:mm})" : "")}" +
+                              // A failed search keeps the last good list: say how old that list is.
+                              $"{(r.ScanStatus is { } st && st != "Ok" ? $"  FAILED: {st}{(r.PendingAsOfUtc is { } k ? $"; list from {k.ToLocalTime():ddd HH:mm}" : "")}" : "")}");
         Console.WriteLine($"{rows.Count(r => r.Pending.Count > 0)} of {rows.Count} machines have updates waiting; {rows.Count(r => r.RebootPending)} need a restart");
         return 0;
     }

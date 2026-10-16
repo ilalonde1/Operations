@@ -27,7 +27,7 @@ public static class ToClearCategories
         ("Antivirus",        ["server.av-", "av-conflict", "av-none"]),
         ("App crashes",      ["crash-loop", "crashes-rising"]),
         ("End of support",   ["version.end-of-support", "version.insecure", "os-unsupported", "baseline."]),
-        ("Updates",          ["updates-due", "server.unpatched", "agent-outdated", "agent-silent"]),
+        ("Updates",          ["updates-due", "server.unpatched", "not-patched", "update-install-failing", "agent-outdated", "agent-silent"]),
         ("Network & SAN",    ["esxi.iscsi", "esxi.vm-nic", "link-fault", "fw.", "server.nic-public", "esxi.vm-off", "esxi.vm-tools"]),
         ("Printers",         ["printer."]),
     ];

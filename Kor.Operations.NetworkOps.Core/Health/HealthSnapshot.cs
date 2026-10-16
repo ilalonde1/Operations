@@ -134,7 +134,9 @@ public sealed record VolumeInfo(string Letter, string? Label, double SizeGB, dou
 public sealed record PhysicalDiskInfo(string? Name, string? Media, string? Bus, double SizeGB, string? Health, string? Operational,
     string? Letters = null, bool? System = null, double? UnmountedGB = null);
 public sealed record MissingDiskInfo(string? Name, string? InstanceId);
-public sealed record EventSummary(int Count, DateTime? Last);
+/// <param name="Detail">What the latest event was about, where the probe sends it (v15: the update a Windows Update failure
+/// was installing).</param>
+public sealed record EventSummary(int Count, DateTime? Last, string? Detail = null);
 public sealed record EventCounts(EventSummary? DiskBadBlock, EventSummary? DiskResets, EventSummary? NtfsCorruption,
     EventSummary? Whea, EventSummary? UnexpectedShutdown, EventSummary? GpuHang,
     EventSummary? ResourceExhaustion = null, EventSummary? UpdateFailures = null, EventSummary? AppHangs = null,
@@ -187,9 +189,18 @@ public sealed record UpdateInfo(bool MicrosoftUpdate, int? NoAutoUpdate)
     [JsonPropertyName("LastInstallTitle")] public string? RawLastInstallTitle { get; init; }
     [JsonPropertyName("LastInstallBy")]    public string? RawLastInstallBy { get; init; }
 
-    /// <summary>The last genuine OS security/quality update (KB-tagged) -- the authoritative "last patched".</summary>
+    /// <summary>The last genuine OS security/quality update (KB-tagged, or a feature update) -- the authoritative "last
+    /// patched". Pre-v14 data had one scalar, the last install of ANY kind: it counts only when it is classified a patch too
+    /// (a driver there was shown as the last patch -- audit 2026-10-16, tier 2).</summary>
     [JsonIgnore] public UpdateHistoryItem? LastPatch => UpdateHistory.LastPatch(Recent)
-        ?? (RawLastInstall is { } d ? new UpdateHistoryItem(RawLastInstallTitle ?? "", d, RawLastInstallBy) : null);
+        ?? (Recent is null && RawLastInstall is { } d && UpdateHistory.IsOsPatch(RawLastInstallTitle) ? new UpdateHistoryItem(RawLastInstallTitle!, d, RawLastInstallBy) : null);
+
+    /// <summary>The history was read (v14+) and holds no patch: NOT "patched", NOT "never patched" -- unknown, unless the
+    /// history reaches back far enough to say so (<see cref="OldestRead"/>).</summary>
+    [JsonIgnore] public bool PatchUnknown => LastPatch is null;
+
+    /// <summary>The oldest install in the history the probe read: how far back "no patch in it" reaches.</summary>
+    [JsonIgnore] public DateTime? OldestRead => Recent is { Count: > 0 } r ? r.Min(h => h.Date) : null;
 
     /// <summary>The last non-patch install that got through the probe filter (driver / vendor / other); null on pre-v14 data.</summary>
     [JsonIgnore] public UpdateHistoryItem? LastOther => UpdateHistory.LastOther(Recent);

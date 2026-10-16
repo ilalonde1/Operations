@@ -219,4 +219,26 @@ public sealed class UpdateTests
                 $"{Path.GetFileName(f)} diffs findings without leaving 'updates-due' to the update scan");
         }
     }
+
+    [Fact]
+    public void A_failed_search_keeps_the_last_good_list_with_its_time()
+    {
+        var good = new Kor.Operations.NetworkOps.Service.Store.NetworkOpsStore.LatestUpdateScan(1, Today.AddHours(-5), "Ok",
+            System.Text.Json.JsonSerializer.Serialize(Scan(U("5127648", true, Today.AddDays(-10)))), null);
+        var failed = new Kor.Operations.NetworkOps.Service.Store.NetworkOpsStore.LatestUpdateScan(1, Today, "Offline", null, "no answer") { LastGood = good };
+
+        var (status, pending, asOf) = UpdatesApi.Read(failed);
+        Assert.Equal("Offline: no answer", status);              // the latest search's outcome
+        Assert.Single(pending!.Updates);                         // the list it had, not "nothing waiting"
+        Assert.Equal(Today.AddHours(-5), asOf);                  // dated by the search that found it
+
+        var (s2, p2, a2) = UpdatesApi.Read(failed with { LastGood = null });
+        Assert.Equal("Offline: no answer", s2);
+        Assert.Null(p2);
+        Assert.Null(a2);
+        var (s3, _, a3) = UpdatesApi.Read(good);
+        Assert.Equal("Ok", s3);
+        Assert.Equal(Today.AddHours(-5), a3);
+        Assert.Null(UpdatesApi.Read(null).Status);
+    }
 }

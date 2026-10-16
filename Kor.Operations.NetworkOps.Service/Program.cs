@@ -77,6 +77,8 @@ try
     builder.Services.AddSingleton<IDigestSender, DigestSender>();
     builder.Services.AddSingleton<NetworkOpsStore>();
     builder.Services.AddSingleton<JobDispatcher>();
+    builder.Services.AddSingleton<JobHealth>();
+    builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Api.FleetView>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Sweep.HealthSweeper>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Power.PowerState>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Power.PowerChainRunner>();

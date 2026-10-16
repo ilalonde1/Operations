@@ -84,7 +84,6 @@ public static class CommandCenterView
          : nowUtc - lastCheckedUtc.Value > StaleAfter ? Freshness.Stale
          : Freshness.Current;
 
-    /// <summary>"3 min ago", "5 h ago", "2 d ago" -- how long, never a timestamp to decode.</summary>
     /// <summary>How long a "who is on it" reading counts as NOW. Older, it is history: shown with its age, never used to say
     /// "someone is using it right now" (audit 2026-10-16, 1.11 -- out of hours the latest reading can be days old).</summary>
     public static readonly TimeSpan PresenceFreshFor = TimeSpan.FromHours(2);
@@ -97,6 +96,7 @@ public static class CommandCenterView
         return (null, summary is null ? null : $"{summary}, at the last check {Ago(at, nowUtc)}");
     }
 
+    /// <summary>"3 min ago", "5 h ago", "2 d ago" -- how long, never a timestamp to decode.</summary>
     public static string Ago(DateTime? thenUtc, DateTime nowUtc)
     {
         if (thenUtc is null) return "never";

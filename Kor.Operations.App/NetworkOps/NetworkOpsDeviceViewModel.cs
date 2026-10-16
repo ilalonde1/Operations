@@ -495,12 +495,21 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             _resolutions = await _client.GetResolutionsAsync(ct).ConfigureAwait(true);
             ApplyHistory(history);
             Explain();
-            StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}.";
+            StatusMessage = $"Updated {DateTime.Now:HH:mm:ss} · refreshes every minute.";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             StatusMessage = $"Could not load its history: {ex.Message}";
         }
+    }
+
+    /// <summary>Re-read the device and its history: the window's own timer calls it, so a fix run or a check made anywhere else
+    /// shows here without closing and reopening it (it never refreshed before -- audit 2026-10-16, tier 2).</summary>
+    public async Task RefreshAsync(CancellationToken ct)
+    {
+        if (_isBusy) return;   // a check or a fix is following its own run; it reloads when it is done
+        try { await ReloadAsync(ct).ConfigureAwait(true); }
+        catch (Exception ex) when (ex is not OperationCanceledException) { StatusMessage = $"Could not refresh: {ex.Message}"; }
     }
 
     private async Task ReloadAsync(CancellationToken ct)
@@ -546,7 +555,9 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             OpenFindings.Add(new FindingRow
             {
                 Finding = f,
-                SinceText = $"since {NetworkOpsText.When(f.FirstSeenUtc)}",
+                // When it began, and when a check last saw it: an issue is as old as its last confirmation, and one not seen
+                // by the latest check is shown as such, not as current (audit 2026-10-16, tier 2).
+                SinceText = $"since {NetworkOpsText.When(f.FirstSeenUtc)} · last confirmed {CommandCenterView.Ago(f.LastSeenUtc, nowUtc)}",
                 QuietText = f.AcknowledgedUtc is not null ? $"Acknowledged by {f.AcknowledgedBy}{(f.AckNote is null ? "" : $": {f.AckNote}")}"
                           : f.SnoozedUntilUtc > nowUtc ? $"Snoozed until {NetworkOpsText.When(f.SnoozedUntilUtc.Value)}{(f.AckNote is null ? "" : $": {f.AckNote}")}"
                           : "",

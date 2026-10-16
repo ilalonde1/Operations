@@ -236,6 +236,9 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
             // silent-catch OK: the count only drives the tab label and the nudge; a failed fetch keeps the last value shown.
             try { ToClearIssueCount = (await _client.GetToClearAsync(ct).ConfigureAwait(true)).Issues; }
             catch (Exception ex) when (ex is not OperationCanceledException) { /* keep the last count shown on the tab and nudge */ }
+            // The background jobs behind the readings: a failing or hung one shows on the Service tile, not only in a mail.
+            try { ApplyJobs(await _client.GetJobsAsync(ct).ConfigureAwait(true)); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { ApplyJobs(null, $"the job list could not be read: {ex.Message}"); }
             StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. {Rack.Count} rack devices, {snapshot.Devices.Count} PCs, " +
                             $"{snapshot.OpenFindings.Count + (RackSnapshot?.OpenFindings.Count ?? 0)} open findings, {snapshot.Patterns.Count} fleet patterns.";
             _lastSuccessfulRefreshAt = DateTimeOffset.Now;
@@ -297,6 +300,22 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         UpdateHeadline(nowUtc);
         foreach (var name in new[] { nameof(ServiceHeadline), nameof(ServiceSubline), nameof(ServiceBrush), nameof(Snapshot) })
             OnPropertyChanged(name);
+    }
+
+    /// <summary>
+    /// The Service tile says whether the work behind the readings is getting done, not only that the service beats: the
+    /// heartbeat beat on while jobs failed (audit 2026-10-16, tier 2). A silent service keeps its own (worse) message.
+    /// Internal so the render test can draw a failing job.
+    /// </summary>
+    internal void ApplyJobs(IReadOnlyList<JobStatusRow>? jobs, string? unreadable = null)
+    {
+        if (ServiceHeadline != "Running") return;
+        var bad = jobs?.Where(j => j.NeedsAttention).ToList() ?? [];
+        if (unreadable is null && bad.Count == 0) return;
+        ServiceHeadline = unreadable is not null ? "Running" : bad.Count == 1 ? "1 job failing" : $"{bad.Count} jobs failing";
+        ServiceSubline += unreadable is not null ? $" · {unreadable}" : " · " + string.Join(" · ", bad.Select(j => $"{j.Job} {j.Text}"));
+        ServiceBrush = unreadable is not null ? ServiceBrush : NetworkOpsBrushes.Attention;
+        foreach (var name in new[] { nameof(ServiceHeadline), nameof(ServiceSubline), nameof(ServiceBrush) }) OnPropertyChanged(name);
     }
 
     private DateTime? _pcsCheckedUtc;

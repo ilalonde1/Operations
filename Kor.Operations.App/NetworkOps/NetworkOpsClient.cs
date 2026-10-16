@@ -108,6 +108,15 @@ public sealed class NetworkOpsClient
     public async Task<IReadOnlyList<Resolution>> GetResolutionsAsync(CancellationToken ct)
         => (await GetAsync<List<ResolutionRow>>("api/resolutions", ct).ConfigureAwait(false)).Select(r => r.ToResolution()).ToList();
 
+    /// <summary>Whether each scheduled background job is keeping up. Empty from a service older than 0.64 (no /api/jobs).</summary>
+    public async Task<IReadOnlyList<JobStatusRow>> GetJobsAsync(CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Get, "api/jobs", null, ct).ConfigureAwait(false);
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound) return [];
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        return await res.Content.ReadFromJsonAsync<List<JobStatusRow>>(Json, ct).ConfigureAwait(false) ?? [];
+    }
+
     /// <summary>Both UPSes, the power verdict, whether the shutdown chain is armed, and the recent power timeline.</summary>
     public Task<PowerSnapshot> GetPowerAsync(CancellationToken ct) => GetAsync<PowerSnapshot>("api/power", ct)!;
 

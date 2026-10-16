@@ -85,6 +85,11 @@ internal sealed class MeshState(TimeProvider clock)
 
     public MeshLink? For(int deviceId) => _links.TryGetValue(deviceId, out var l) ? l : null;
 
+    /// <summary>One link per device, after <see cref="Disambiguate"/>: what is stored, so the stored picture (served just
+    /// after a restart) says what the live one says. The raw list, with a stale duplicate, was stored before -- whichever
+    /// MERGE ran last won (audit 2026-10-16, tier 2).</summary>
+    public IReadOnlyList<MeshLink> Links => _links.Values.OrderBy(l => l.DeviceId).ToList();
+
     /// <summary>What the rules see: null when there is nothing trustworthy to say (no read yet, or a stale one).</summary>
     public MeshPresence? PresenceOf(int deviceId) => !Fresh ? null : For(deviceId) is { } l ? new MeshPresence(true, l.Node.AgentConnected) : new MeshPresence(false, false);
 }

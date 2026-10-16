@@ -20,13 +20,9 @@ public sealed class NetworkOpsMcpActions
     private static string By(IServiceProvider s)
         => s.GetService<IHttpContextAccessor>()?.HttpContext?.User is { Identity.IsAuthenticated: true } u ? ApiAccess.UserOf(u) : "mcp";
 
+    // A name lookup, not a fleet read: the exact live (not retired) device of that name.
     private static async Task<int?> DeviceIdAsync(NetworkOpsStore store, string host, CancellationToken ct)
-    {
-        foreach (var rack in new[] { false, true })
-            if ((await store.FleetSnapshotAsync(ct, rack)).Devices.FirstOrDefault(d => d.Name.Equals(host, StringComparison.OrdinalIgnoreCase)) is { } d)
-                return d.DeviceId;
-        return null;
-    }
+        => await store.DeviceByNameAsync(host, ct) is { } d && d.Name.Equals(host, StringComparison.OrdinalIgnoreCase) ? d.DeviceId : null;
 
     [McpServerTool(Name = "networkops_acknowledge"), Description(
         "Acknowledge (park) a finding by its id: it stops counting against green and drops off the to-clear list. Use it " +

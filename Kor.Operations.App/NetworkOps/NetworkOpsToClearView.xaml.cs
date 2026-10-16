@@ -29,20 +29,35 @@ public sealed class ToClearRow
     public string Meaning => Issue.Meaning ?? "";
     public bool ShowMeaning => !string.IsNullOrEmpty(Issue.Meaning);
 
+    /// <summary>When the row was built: what "away" is judged against.</summary>
+    public DateTime NowUtc { get; init; } = DateTime.UtcNow;
+
+    // A machine not heard from in over a day is AWAY: its issue is as of when it was last seen, and a fix sent now would fail
+    // on it. It is named with its age and left out of "Fix on all" (audit 2026-10-16, tier 2: a PC off for 6 days counted).
+    public IReadOnlyList<ToClearMachine> Reachable => Issue.Machines.Where(m => !m.AwayAt(NowUtc)).ToList();
+    public int AwayCount => Issue.Count - Reachable.Count;
+
+    private string NameOf(ToClearMachine m) => m.AwayAt(NowUtc) ? $"{m.Name} (not seen for {Age(m.SeenUtc)})" : m.Name;
+    private string Age(DateTime? t) => CommandCenterView.Ago(t, NowUtc).Replace(" ago", "");
+
     public string Where
     {
         get
         {
-            var names = Issue.Machines.Select(m => m.Name).ToList();
+            var names = Issue.Machines.OrderBy(m => m.AwayAt(NowUtc)).Select(NameOf).ToList();
             if (names.Count == 1) return "on " + names[0];
             var shown = string.Join(", ", names.Take(5));
             return names.Count <= 5 ? $"on {names.Count} machines: {shown}" : $"on {names.Count} machines: {shown} +{names.Count - 5} more";
         }
     }
 
-    // Offer the fix only when it can run without asking for an input (the ruleKey carries the param when it needs one).
-    public bool CanFix => Issue.Fix is { } f && (f.ParamLabel is null || !string.IsNullOrEmpty(f.PrefilledParam));
-    public string FixLabel => Issue.Fix is not { } f ? "" : Issue.Count == 1 ? f.Title : $"{f.Title} · all {Issue.Count}";
+    // Offer the fix only when it can run without asking for an input (the ruleKey carries the param when it needs one), and
+    // only when at least one machine it is open on can be reached.
+    public bool CanFix => Issue.Fix is { } f && (f.ParamLabel is null || !string.IsNullOrEmpty(f.PrefilledParam)) && Reachable.Count > 0;
+    public string FixLabel => Issue.Fix is not { } f ? ""
+        : Issue.Count == 1 ? f.Title
+        : AwayCount == 0 ? $"{f.Title} · all {Issue.Count}"
+        : $"{f.Title} · {Reachable.Count} ({AwayCount} away)";
 
     // Park (acknowledge): the third disposition, for a state that is known/expected (a drive removed on purpose) or won't
     // be chased now. On one machine it parks that one; on several the ellipsis signals a picker (choose which machines).
@@ -60,6 +75,7 @@ public sealed class ToClearRow
     // can't: whether it restarts. For no fix / an input-needed fix it says why there's no button.
     public string FixHint => Issue.Fix is not { } f
         ? "No one-click fix — Ask Claude, or handle it hands-on."
+        : Reachable.Count == 0 ? $"Not seen for over a day on {(Issue.Count == 1 ? "it" : $"any of the {Issue.Count}")}: {f.Title.ToLowerInvariant()} when it is back on."
         : !CanFix ? $"{f.Title} needs an input — open a machine to run it."
         : f.Disruptive ? "Restarts the machine — warns first, and asks if someone's on it."
         : "One click, nothing restarts.";
@@ -108,13 +124,16 @@ public sealed class ClearActionRow
         : $"{Action.OverlapMachines} of the {Action.Machines} carry 2 or more of these — one {Verb} clears every reason on each.";
     // Runnable on all at once only when the fix needs no per-machine input. A restart is runnable (it warns/confirms first);
     // an input-needed fix (start a named service) is not, so it shows the breakdown without a run-all button.
-    public bool CanRun => Action.Fix.ParamLabel is null;
-    public string RunLabel => $"{Action.Fix.Title} · all {Action.Machines}";
+    public bool CanRun => Action.Fix.ParamLabel is null && UnionDeviceIds.Count > 0;
+    public string RunLabel => AwayCount == 0 ? $"{Action.Fix.Title} · all {Action.Machines}" : $"{Action.Fix.Title} · {UnionDeviceIds.Count} ({AwayCount} away)";
     public string ExpandLabel => $"Show {Action.Reasons.Count} reasons ▾";
     public string CollapseLabel => "Hide reasons ▴";
-    // Every machine this action would touch, counted once (the union), as device ids for the run.
+    public DateTime NowUtc { get; init; } = DateTime.UtcNow;
+    // Every machine this action would touch, counted once (the union), as device ids for the run -- never one away for days.
     public IReadOnlyList<int> UnionDeviceIds =>
-        Action.Reasons.SelectMany(i => i.Machines.Select(m => m.DeviceId)).Where(x => x > 0).Distinct().ToList();
+        Action.Reasons.SelectMany(i => i.Machines).Where(m => m.DeviceId > 0 && !m.AwayAt(NowUtc)).Select(m => m.DeviceId).Distinct().ToList();
+    private int AwayCount =>
+        Action.Reasons.SelectMany(i => i.Machines).Where(m => m.DeviceId > 0 && m.AwayAt(NowUtc)).Select(m => m.DeviceId).Distinct().Count();
     private string Verb => Action.Fix.Id == "restart-pc" ? "restart" : "run";
 }
 
@@ -228,7 +247,7 @@ public partial class NetworkOpsToClearView : UserControl
     {
         if ((sender as FrameworkElement)?.DataContext is not ToClearRow row || row.Issue.Fix is not { } fix) return;
         if (sender is Button btn) btn.IsEnabled = false;   // instant feedback; stops a double-fire while it queues
-        var ids = row.Issue.Machines.Select(m => m.DeviceId).Where(x => x > 0).Distinct().ToList();
+        var ids = row.Reachable.Select(m => m.DeviceId).Where(x => x > 0).Distinct().ToList();   // never the machines away for days
         if (ids.Count == 0) return;
         try
         {

@@ -137,7 +137,6 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
         return summary;
     }
 
-    /// <summary>The agent as the rules see it: installed (SQL), heard right now and which version (the hub, which is live).</summary>
     /// <summary>
     /// Whether this sweep JUDGES an open finding (and so may clear it). Not: the update scan's (UpdateScanner owns it), the
     /// network map's, the BIOS rule's when the Lenovo catalog was not read, nor remote control's when MeshCentral was not
@@ -150,7 +149,10 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
            && (biosRead || ruleKey != Core.Bios.BiosRules.Rule)
            && (meshRead || !MeshRules.Owns(ruleKey));
 
-    private AgentState? AgentStateOf(string device, IReadOnlyDictionary<string, NetworkOpsStore.AgentRecord> installed)
+    private AgentState? AgentStateOf(string device, IReadOnlyDictionary<string, NetworkOpsStore.AgentRecord> installed) => AgentStateOf(device, installed, agents);
+
+    /// <summary>The agent as the rules see it: installed (SQL), heard right now and which version (the hub, which is live).</summary>
+    internal static AgentState? AgentStateOf(string device, IReadOnlyDictionary<string, NetworkOpsStore.AgentRecord> installed, Agents.AgentHub agents)
     {
         if (!installed.TryGetValue(device, out var rec)) return null;
         var live = agents.Status(device);

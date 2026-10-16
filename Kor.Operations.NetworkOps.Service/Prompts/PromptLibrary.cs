@@ -15,8 +15,8 @@ namespace Kor.Operations.NetworkOps.Service.Prompts;
 // changes in the same commit as the tool -- plus what the service sees live. Every prompt opened is recorded as a run
 // with its own token, and the session reports its outcome back to that run (ApiHost: /api/prompt-runs/{id}/outcome) --
 // again, to correct it, until Ian decides the run.
-internal sealed class PromptLibrary(NetworkOpsStore store, Agents.AgentHub agents, Mesh.MeshState mesh, Power.PowerState power,
-    IOptions<NetworkOpsOptions> options, TimeProvider clock)
+internal sealed class PromptLibrary(NetworkOpsStore store, Mesh.MeshState mesh, Power.PowerState power,
+    IOptions<NetworkOpsOptions> options, TimeProvider clock, Api.FleetView fleetView)
 {
     public sealed record ToolBrief(string Id, string Title, string Summary);
 
@@ -39,7 +39,7 @@ internal sealed class PromptLibrary(NetworkOpsStore store, Agents.AgentHub agent
 
     public async Task<PromptCatalog> CatalogAsync(CancellationToken ct)
     {
-        var (fleet, rack) = (await store.FleetSnapshotAsync(ct), await store.FleetSnapshotAsync(ct, rack: true));
+        var (fleet, rack) = await fleetView.BothAsync(ct);
         var now = DateTime.UtcNow;
         var devices = fleet.Devices.Concat(rack.Devices)
             .Select(d => new PromptSubject(d.DeviceId, d.Name, d.Kind,
@@ -129,13 +129,8 @@ internal sealed class PromptLibrary(NetworkOpsStore store, Agents.AgentHub agent
          : c.AmendsCardId is <= 0 ? "card.amends: the id of a card to supersede, or leave it out"
          : null;
 
-    private async Task<(FleetSnapshot Fleet, FleetSnapshot Rack)> SnapshotsAsync(CancellationToken ct)
-    {
-        var meshRecords = await store.MeshRecordsAsync(ct);
-        var fleet = Shown(await store.FleetSnapshotAsync(ct), await store.AgentRecordsAsync(ct), agents, mesh, meshRecords);
-        var rack = Api.ApiHost.WithMesh(await store.FleetSnapshotAsync(ct, rack: true), mesh, meshRecords);
-        return (fleet, rack);
-    }
+    // The fleet exactly as the Command Center shows it (Api/FleetView).
+    private Task<(FleetSnapshot Fleet, FleetSnapshot Rack)> SnapshotsAsync(CancellationToken ct) => fleetView.BothAsync(ct);
 
     /// <summary>Everything NetworkOps knows about one device, with the accepted knowledge cards that apply to it.</summary>
     private async Task<(int DeviceId, DevicePromptInput Input)?> DeviceInputAsync(FleetSnapshot fleet, FleetSnapshot rack, FleetFinding? focus, int? deviceId, DateTime now, CancellationToken ct)
@@ -230,8 +225,7 @@ internal sealed class PromptLibrary(NetworkOpsStore store, Agents.AgentHub agent
     private async Task<IReadOnlyList<(string, string)>> LiveAsync(string tool, CancellationToken ct)
     {
         var o = options.Value;
-        var fleet = Shown(await store.FleetSnapshotAsync(ct), await store.AgentRecordsAsync(ct), agents, mesh, await store.MeshRecordsAsync(ct));
-        var rack = Api.ApiHost.WithMesh(await store.FleetSnapshotAsync(ct, rack: true), mesh, await store.MeshRecordsAsync(ct));
+        var (fleet, rack) = await fleetView.BothAsync(ct);
         var now = clock.GetUtcNow().UtcDateTime;
         var live = new List<(string, string)> { ("Service", $"NetworkOps {Jobs.JobDispatcher.Version} on {Environment.MachineName}") };
         switch (tool)
@@ -266,9 +260,4 @@ internal sealed class PromptLibrary(NetworkOpsStore store, Agents.AgentHub agent
         }
         return live;
     }
-
-    /// <summary>The fleet as the Command Center shows it: SQL, plus the agents' and Mesh agents' live state.</summary>
-    private static FleetSnapshot Shown(FleetSnapshot fleet, IReadOnlyDictionary<string, NetworkOpsStore.AgentRecord> installed, Agents.AgentHub hub,
-        Mesh.MeshState mesh, IReadOnlyDictionary<int, NetworkOpsStore.MeshRecord> stored)
-        => Api.ApiHost.WithMesh(Api.ApiHost.WithAgents(fleet, installed, hub), mesh, stored);
 }

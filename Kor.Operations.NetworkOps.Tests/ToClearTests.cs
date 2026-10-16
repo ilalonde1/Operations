@@ -114,4 +114,22 @@ public sealed class ToClearTests
         Assert.Equal(Knowledge.For("not-restarted")!.Meaning, restart.Meaning);
         Assert.False(string.IsNullOrWhiteSpace(restart.Meaning));
     }
+
+    [Fact]
+    public void A_machine_not_seen_for_over_a_day_is_away_and_says_since_when()
+    {
+        var devices = new List<DeviceRow>
+        {
+            new(1, "KOR-1", Now.AddMinutes(-5), Now.AddMinutes(-5)),
+            new(2, "KOR-2", Now.AddDays(-6), Now.AddDays(-6)),
+            new(3, "KOR-3", Now.AddDays(-6), Now.AddDays(-6), AgentLastContactUtc: Now.AddMinutes(-2)),   // its agent still calls in
+        };
+        var findings = new List<FleetFinding> { F(10, "KOR-1", "low-disk:C", Severity.Warning), F(11, "KOR-2", "low-disk:C", Severity.Warning), F(12, "KOR-3", "low-disk:C", Severity.Warning) };
+        var issue = ToClear.Build([new FleetSnapshot(devices, new Dictionary<string, IReadOnlyDictionary<string, string>>(), findings, [], null)], new HashSet<string>(), Now).Open.Single();
+
+        Assert.Equal(["KOR-2"], issue.Machines.Where(m => m.AwayAt(Now)).Select(m => m.Name).ToList());
+        Assert.Equal(Now.AddDays(-6), issue.Machines.Single(m => m.Name == "KOR-2").SeenUtc);
+        Assert.Equal(Now, issue.Machines.Single(m => m.Name == "KOR-1").LastSeenUtc);   // the finding's own last sighting
+        Assert.False(new ToClearMachine(9, "OLD", 1, null, null).AwayAt(Now));          // an older service sends no time: never "away"
+    }
 }

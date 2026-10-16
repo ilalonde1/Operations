@@ -54,7 +54,16 @@ internal sealed class JobDispatcher(NetworkOpsStore store, IDigestSender alerts,
     public async Task<(bool Success, string Result)> RunAsync(string jobName, Func<CancellationToken, Task<string>> work, CancellationToken ct)
     {
         var gate = _perJob.GetOrAdd(jobName, _ => new SemaphoreSlim(1, 1));
-        await gate.WaitAsync(ct).ConfigureAwait(false);
+        // Bounded: a hung run used to hold this gate forever, and every later run of the job queued silently behind it with
+        // no row and no alert. Now the waiter gives up and records WHY it did not run, which JobHealth shows (audit 2026-10-16).
+        if (!await gate.WaitAsync(JobHealth.StuckAfter, ct).ConfigureAwait(false))
+        {
+            var why = $"not run: the previous {jobName} run has held its slot for over {JobHealth.StuckAfter.TotalMinutes:0} minutes";
+            log.LogError("{Job} {Why}", jobName, why);
+            try { await store.FinishRunAsync(await store.StartRunAsync(jobName, Environment.MachineName, Version, ct), false, why, null); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogError(ex, "Could not record that {Job} was skipped", jobName); }
+            return (false, why);
+        }
         try
         {
             return await RunGuardedAsync(jobName, work, ct).ConfigureAwait(false);

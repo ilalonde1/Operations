@@ -236,6 +236,29 @@ internal sealed partial class NetworkOpsStore
         return list;
     }
 
+    /// <summary>Every open finding of these rules, fleet-wide, by device id (one query for the 5-minute live re-judge).</summary>
+    public async Task<IReadOnlyDictionary<int, IReadOnlyList<OpenFinding>>> OpenFindingsOfRulesAsync(IReadOnlyCollection<string> ruleKeys, CancellationToken ct)
+    {
+        var map = new Dictionary<int, List<OpenFinding>>();
+        if (ruleKeys.Count == 0) return new Dictionary<int, IReadOnlyList<OpenFinding>>();
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        var keys = ruleKeys.ToList();
+        await using var cmd = Cmd(c, $"""
+            SELECT f.DeviceId, f.FindingId, f.RuleKey, f.Severity, f.FirstSeenUtc, f.NotifiedSeverity, f.LastSeenUtc
+            FROM NetworkOps.Findings f JOIN NetworkOps.Devices d ON d.DeviceId = f.DeviceId
+            WHERE f.ClearedUtc IS NULL AND d.RetiredUtc IS NULL AND f.RuleKey IN ({string.Join(",", keys.Select((_, i) => "@k" + i))});
+            """);
+        for (var i = 0; i < keys.Count; i++) cmd.Parameters.Add("@k" + i, SqlDbType.NVarChar, 160).Value = keys[i];
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            if (!map.TryGetValue(r.GetInt32(0), out var list)) map[r.GetInt32(0)] = list = [];
+            list.Add(new OpenFinding(r.GetInt64(1), r.GetString(2), (Severity)r.GetByte(3), r.GetDateTime(4),
+                r.IsDBNull(5) ? null : (Severity)r.GetByte(5)) { LastSeenUtc = r.GetDateTime(6) });
+        }
+        return map.ToDictionary(kv => kv.Key, kv => (IReadOnlyList<OpenFinding>)kv.Value);
+    }
+
     /// <summary>Applies one device's diff atomically: insert new, refresh still-open, clear what stopped firing.</summary>
     public async Task ApplyChangesAsync(int deviceId, IReadOnlyList<FindingChange> changes, DateTime nowUtc, CancellationToken ct)
     {
@@ -332,6 +355,28 @@ internal sealed partial class NetworkOpsStore
         cmd.Parameters.Add("@sum", SqlDbType.NVarChar, 2000).Value = (object?)Truncate(summary, 2000) ?? DBNull.Value;
         cmd.Parameters.Add("@err", SqlDbType.NVarChar, -1).Value = (object?)error ?? DBNull.Value;
         await cmd.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>One job's latest run and when it last succeeded (Jobs/JobHealth judges them).</summary>
+    public sealed record JobRunState(string Job, DateTime StartedUtc, DateTime? FinishedUtc, string Status, string? Result, DateTime? LastSuccessUtc);
+
+    /// <summary>Every job's latest run, by name, with its last success. The table had been written since 001 and read by nothing.</summary>
+    public async Task<IReadOnlyDictionary<string, JobRunState>> LatestJobRunsAsync(CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            SELECT x.JobName, x.StartedUtc, x.FinishedUtc, x.Status, COALESCE(x.Summary, LEFT(x.Error, 2000)),
+                   (SELECT MAX(s.FinishedUtc) FROM NetworkOps.JobRuns s WHERE s.JobName = x.JobName AND s.Status = 'Success')
+            FROM (SELECT JobName, StartedUtc, FinishedUtc, Status, Summary, Error,
+                         ROW_NUMBER() OVER (PARTITION BY JobName ORDER BY StartedUtc DESC, RunId DESC) AS n
+                  FROM NetworkOps.JobRuns) x
+            WHERE x.n = 1;
+            """);
+        var map = new Dictionary<string, JobRunState>(StringComparer.OrdinalIgnoreCase);
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+            map[r.GetString(0)] = new JobRunState(r.GetString(0), Utc(r, 1)!.Value, Utc(r, 2), r.GetString(3), r.IsDBNull(4) ? null : r.GetString(4), Utc(r, 5));
+        return map;
     }
 
     public async Task BeatAsync(string host, DateTime startedUtc, string version, CancellationToken ct)

@@ -112,7 +112,7 @@ public sealed class AgentRulesTests
         var hub = new AgentHub(TimeProvider.System);
         hub.Seen("KOR-104N", "1.0.1", null, "KEY");
 
-        var rows = ApiHost.WithAgents(fleet, installed, hub).Devices.ToDictionary(d => d.Name);
+        var rows = FleetView.WithAgents(fleet, installed, hub).Devices.ToDictionary(d => d.Name);
 
         Assert.True(rows["KOR-104N"].AgentConnected);
         Assert.Equal("1.0.1", rows["KOR-104N"].AgentVersion);                 // live beats the record
