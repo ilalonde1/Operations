@@ -250,7 +250,11 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Since" Binding="{Binding SinceText}" Width="150"/>
+                                <DataGridTextColumn Header="Since" Binding="{Binding SinceText}" Width="170">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                         <TextBlock Style="{StaticResource Ops.Empty}" Tag="{Binding ElementName=FindingsGrid}" Text="Nothing open on this machine."/>

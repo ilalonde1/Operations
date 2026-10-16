@@ -557,7 +557,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
                 Finding = f,
                 // When it began, and when a check last saw it: an issue is as old as its last confirmation, and one not seen
                 // by the latest check is shown as such, not as current (audit 2026-10-16, tier 2).
-                SinceText = $"since {NetworkOpsText.When(f.FirstSeenUtc)} · last confirmed {CommandCenterView.Ago(f.LastSeenUtc, nowUtc)}",
+                SinceText = $"since {NetworkOpsText.When(f.FirstSeenUtc)}\nlast confirmed {CommandCenterView.Ago(f.LastSeenUtc, nowUtc)}",
                 QuietText = f.AcknowledgedUtc is not null ? $"Acknowledged by {f.AcknowledgedBy}{(f.AckNote is null ? "" : $": {f.AckNote}")}"
                           : f.SnoozedUntilUtc > nowUtc ? $"Snoozed until {NetworkOpsText.When(f.SnoozedUntilUtc.Value)}{(f.AckNote is null ? "" : $": {f.AckNote}")}"
                           : "",
