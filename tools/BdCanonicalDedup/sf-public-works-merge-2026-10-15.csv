@@ -1,0 +1,4 @@
+# SF Public Works, Bureau of Architecture: one department held twice. 271646 survives: the branch gate reads "San Francisco" in 271648 as a branch suffix.
+# See dedup-non-similar-allowlist.d/sf-public-works-2026-10-15.csv. Approved by Ian 2026-10-15.
+LoserId,SurvivorId
+271648,271646

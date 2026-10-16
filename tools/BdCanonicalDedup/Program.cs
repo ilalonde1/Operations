@@ -91,6 +91,12 @@ internal static class Program
         // we lost to). Mirrors KorPursuits.LostToCanonicalOrgId above; without it
         // the FK-completeness guard (BD-Audit-2026-06-09 C5) blocks every merge.
         new("CrmEngagements", "LostToCanonicalOrgId"),
+        // Migration 348 (2026-10-14, BD Director 9b): asks and decisions can name an account. Both FKs
+        // are NULLable with no unique index on the org column, so a plain repoint is safe. Missing from
+        // this list, they blocked every merge from 348 until 2026-10-15, when the SF Public Works merge
+        // hit the completeness guard.
+        new("BdAsk", "CanonicalOrgId"),
+        new("BdDecision", "CanonicalOrgId"),
         // Round 60e (2026-06-02): migration 59 added ArchitectDisplacementBriefs
         // with FK ON DELETE CASCADE. Without this entry, every merge of an
         // architect canonical silently destroyed its displacement brief.

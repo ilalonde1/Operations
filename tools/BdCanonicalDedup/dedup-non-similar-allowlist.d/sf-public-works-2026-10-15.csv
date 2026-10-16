@@ -1,0 +1,6 @@
+LoserId,SurvivorId,Reason
+# "SF Public Works - Bureau of Architecture" (271646) and "San Francisco Public Works, Bureau of
+# Architecture" (271648) are the same City and County of San Francisco department, created two ids
+# apart. The names differ only by the SF abbreviation, which the similarity gate cannot see through.
+# Merge approved by Ian 2026-10-15.
+271648,271646,San Francisco is SF; same Public Works Bureau of Architecture (direction per the branch gate)
