@@ -792,6 +792,29 @@ invariants.Add(("person_duplicate_active_affiliation",
       HAVING COUNT(*) > 1
       ORDER BY COUNT(*) DESC, co.Id;"));
 
+// UTF-8 text decoded as Windows-1252 ("â€”" for "—", "Ã©" for "é"). 436 honing result files were rewritten
+// that way on 2026-06-14 and the text sat in the store for four months before anyone saw it. Matches the
+// "â€" pair and "Ã" followed by U+00A0..U+00BF; neither occurs in genuine text. Does NOT catch "Ã" followed
+// by a 0x80-0x9F special (garbled "É" is "Ã‰"), double-garbled text, or columns not listed here.
+// Repair: tools/BdIntelTextRepair (dry run by default).
+invariants.Add(("intel_text_misdecoded_utf8",
+    "Intel text whose UTF-8 bytes were read as Windows-1252, so a dossier shows 'â€”' where a dash belongs. Counts rows across signal subjects/details, action recommendations, narratives, work project names, affiliation titles, person names and enrichment payloads. Repair with tools/BdIntelTextRepair.",
+    false,
+    @"WITH garbled AS (
+        SELECT 'IntelSignal' AS T, Id FROM opportunities.IntelSignal WHERE Subject LIKE N'%' + NCHAR(226) + NCHAR(8364) + N'%' OR Subject COLLATE Latin1_General_100_BIN2 LIKE N'%' + NCHAR(195) + N'[' + NCHAR(160) + N'-' + NCHAR(191) + N']%'
+                                                                      OR Detail LIKE N'%' + NCHAR(226) + NCHAR(8364) + N'%' OR Detail COLLATE Latin1_General_100_BIN2 LIKE N'%' + NCHAR(195) + N'[' + NCHAR(160) + N'-' + NCHAR(191) + N']%'
+        UNION ALL SELECT 'IntelAction', Id FROM opportunities.IntelAction WHERE Recommendation LIKE N'%' + NCHAR(226) + NCHAR(8364) + N'%' OR Recommendation COLLATE Latin1_General_100_BIN2 LIKE N'%' + NCHAR(195) + N'[' + NCHAR(160) + N'-' + NCHAR(191) + N']%'
+        UNION ALL SELECT 'IntelNarrative', Id FROM opportunities.IntelNarrative WHERE ParagraphText LIKE N'%' + NCHAR(226) + NCHAR(8364) + N'%' OR ParagraphText COLLATE Latin1_General_100_BIN2 LIKE N'%' + NCHAR(195) + N'[' + NCHAR(160) + N'-' + NCHAR(191) + N']%'
+        UNION ALL SELECT 'IntelWork', Id FROM opportunities.IntelWork WHERE ProjectName LIKE N'%' + NCHAR(226) + NCHAR(8364) + N'%' OR ProjectName COLLATE Latin1_General_100_BIN2 LIKE N'%' + NCHAR(195) + N'[' + NCHAR(160) + N'-' + NCHAR(191) + N']%'
+        UNION ALL SELECT 'IntelPersonAffiliation', Id FROM opportunities.IntelPersonAffiliation WHERE Title LIKE N'%' + NCHAR(226) + NCHAR(8364) + N'%' OR Title COLLATE Latin1_General_100_BIN2 LIKE N'%' + NCHAR(195) + N'[' + NCHAR(160) + N'-' + NCHAR(191) + N']%'
+        UNION ALL SELECT 'IntelPerson', Id FROM opportunities.IntelPerson WHERE DisplayName LIKE N'%' + NCHAR(226) + NCHAR(8364) + N'%' OR DisplayName COLLATE Latin1_General_100_BIN2 LIKE N'%' + NCHAR(195) + N'[' + NCHAR(160) + N'-' + NCHAR(191) + N']%'
+        UNION ALL SELECT 'CanonicalOrgEnrichment', Id FROM opportunities.CanonicalOrgEnrichment WHERE ResultJson LIKE N'%' + NCHAR(226) + NCHAR(8364) + N'%' OR ResultJson COLLATE Latin1_General_100_BIN2 LIKE N'%' + NCHAR(195) + N'[' + NCHAR(160) + N'-' + NCHAR(191) + N']%')
+      SELECT COUNT(*) FROM garbled;",
+    @"SELECT TOP 10 'IntelSignal' AS TableName, Id, LEFT(Subject, 120) AS Sample
+      FROM opportunities.IntelSignal
+      WHERE Subject LIKE N'%' + NCHAR(226) + NCHAR(8364) + N'%' OR Subject COLLATE Latin1_General_100_BIN2 LIKE N'%' + NCHAR(195) + N'[' + NCHAR(160) + N'-' + NCHAR(191) + N']%'
+      ORDER BY Id;"));
+
 invariants.Add(("org_thin_unsafe_redirect",
     "Thin orgs (no people) that a dossier whole-word-prefix redirect could resolve to a RICHER org with a DIFFERENT fuzzy key — the read-time identity substitution the write-time dedup gate would refuse. APPROXIMATION of SqlBriefDataStore.RedirectSafe; treat as a review worklist",
     false,

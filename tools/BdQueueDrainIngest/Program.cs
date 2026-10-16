@@ -338,6 +338,15 @@ foreach (var file in files)
     {
         var rawText = await File.ReadAllTextAsync(file).ConfigureAwait(false);
 
+        // 2026-06-14: 436 honing-orgs result files were rewritten by a Windows PowerShell 5.1 pass that
+        // read them as code page 1252, and the garbled text ("â€”" for "—") reached the store unnoticed for
+        // four months. Repair at the door and say so; Utf8Misdecode leaves genuine accents alone.
+        if (Utf8Misdecode.TryRepair(rawText, out var repairedText))
+        {
+            log.LogWarning("{File}: UTF-8 text had been decoded as Windows-1252; repaired before ingest. Find what rewrote the file.", name);
+            rawText = repairedText;
+        }
+
         // R93c: envelope-first parsing. Sonnet should emit
         // { schemaVersion, kind, generatedAtUtc, items: [<the brief>] }.
         // Legacy files (root IS the brief object directly) still pass.

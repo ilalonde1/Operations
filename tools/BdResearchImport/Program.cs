@@ -24,6 +24,38 @@ internal static class Program
     private const string DefaultBaseDirectory = @"C:\VIsual Studio Projects";
     private const string ProponentSource = "MajorProjectsInventory.Proponent";
     private const string ArchitectSource = "MajorProjectsInventory.Architect";
+
+    // 2026-06-14: research result files rewritten by a Windows PowerShell 5.1 pass carried UTF-8 text
+    // decoded as code page 1252 ("â€”" for "—") into the store for four months. Every research file read
+    // goes through these two, which repair it and say so; genuine accents are left alone.
+    private static string ReadRepairedText(string path)
+    {
+        var text = File.ReadAllText(path);
+        if (!Utf8Misdecode.TryRepair(text, out var repaired)) return text;
+        Console.Error.WriteLine($"WARN {Path.GetFileName(path)}: UTF-8 text had been decoded as Windows-1252; repaired before import. Find what rewrote the file.");
+        return repaired;
+    }
+
+    private static string[] ReadRepairedLines(string path)
+    {
+        var lines = File.ReadAllLines(path);
+        var repairedAny = false;
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (Utf8Misdecode.TryRepair(lines[i], out var repaired))
+            {
+                lines[i] = repaired;
+                repairedAny = true;
+            }
+        }
+
+        if (repairedAny)
+        {
+            Console.Error.WriteLine($"WARN {Path.GetFileName(path)}: UTF-8 text had been decoded as Windows-1252; repaired before import. Find what rewrote the file.");
+        }
+
+        return lines;
+    }
     private const string ClientKind = "Client";
     private const string DeveloperKind = "Developer";
     private const string ContractorKind = "Contractor";
@@ -727,7 +759,7 @@ internal static class Program
             JsonDocument doc;
             try
             {
-                doc = JsonDocument.Parse(File.ReadAllText(path), JsonOptions);
+                doc = JsonDocument.Parse(ReadRepairedText(path), JsonOptions);
             }
             catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
             {
@@ -6086,7 +6118,7 @@ WHERE Id = @id;",
             }
 
             Console.WriteLine($"[FILE] {jsonlPath}");
-            lines = File.ReadAllLines(jsonlPath);
+            lines = ReadRepairedLines(jsonlPath);
             Console.WriteLine($"seismic-pipeline: legacy JSONL ingesting {lines.Length} item(s).");
         }
 
@@ -6291,7 +6323,7 @@ WHERE Id = @id;",
             }
 
             Console.WriteLine($"[FILE] {jsonlPath}");
-            lines = File.ReadAllLines(jsonlPath);
+            lines = ReadRepairedLines(jsonlPath);
             Console.WriteLine($"{logPrefix}: legacy JSONL ingesting {lines.Length} item(s).");
         }
 
@@ -6472,7 +6504,7 @@ WHERE Id = @id;",
             Console.WriteLine($"[FILE] {jsonlPath}");
             try
             {
-                lines = File.ReadAllLines(jsonlPath);
+                lines = ReadRepairedLines(jsonlPath);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -7977,7 +8009,7 @@ WHERE Id = @id
 
         try
         {
-            document = JsonDocument.Parse(File.ReadAllText(path), JsonOptions);
+            document = JsonDocument.Parse(ReadRepairedText(path), JsonOptions);
             Console.WriteLine($"[FILE] {path}");
             return true;
         }
@@ -8085,7 +8117,7 @@ WHERE Id = @id
     {
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(path), JsonOptions);
+            using var doc = JsonDocument.Parse(ReadRepairedText(path), JsonOptions);
             var validation = ResearchEnvelopeValidator.Validate(doc, expectedKind);
             reason = validation.Reason ?? "ok";
             return validation.IsValid;
@@ -8120,7 +8152,7 @@ WHERE Id = @id
     {
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(path), JsonOptions);
+            using var doc = JsonDocument.Parse(ReadRepairedText(path), JsonOptions);
             if (doc.RootElement.ValueKind == JsonValueKind.Object
                 && doc.RootElement.TryGetProperty("kind", out var kind)
                 && kind.ValueKind == JsonValueKind.String
