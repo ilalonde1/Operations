@@ -16,6 +16,8 @@ namespace Kor.Operations.App.BusinessDevelopment.Director;
 public sealed record BdActionView(BdActionRow Row, bool IsOverdue)
 {
     public string StatusText => Row.IsOpen ? (IsOverdue ? "Overdue" : "Open") : Row.Status;
+    /// <summary>When it is due, in words: "3 days late", "today", "tomorrow", "Sat 24 Oct"; or how it closed.</summary>
+    public string DueText { get; init; } = "";
     public string From => Row.SourceRef ?? Row.MeetingTitle ?? "";
     public string RegionText => Row.Region switch
     {
@@ -55,7 +57,7 @@ public sealed record BdReferenceView(BdReferenceRow Row)
 /// BD Director version 2: the prepared hour (Today), the action register, meetings with generated agendas, and the references
 /// register. Reads and writes go through <see cref="IBdRhythmStore"/>; nothing here sends anything to anyone.
 /// </summary>
-public sealed class BdRhythmViewModel : ObservableObject
+public sealed partial class BdRhythmViewModel : ObservableObject
 {
     private readonly IBdRhythmStore _store;
     private readonly Func<DateTimeOffset> _clock;
@@ -134,6 +136,7 @@ public sealed class BdRhythmViewModel : ObservableObject
     {
         Status = "Loading…";
         await Task.WhenAll(LoadHourAsync(ct), LoadActionsAsync(ct), LoadMeetingsAsync(ct), LoadReferencesAsync(ct)).ConfigureAwait(true);
+        await LoadScreensAsync(ct).ConfigureAwait(true);
         Status = "Up to date.";
     }
 
@@ -142,6 +145,7 @@ public sealed class BdRhythmViewModel : ObservableObject
     {
         try
         {
+            _hourId = null;
             var today = DateOnly.FromDateTime(_clock().Date);
             for (var back = 0; back < 7; back++)
             {
@@ -156,6 +160,7 @@ public sealed class BdRhythmViewModel : ObservableObject
                     return;
                 }
 
+                _hourId = row.Id;
                 Hour = content;
                 HourMessage = back == 0 ? "" : "No hour was prepared for today. This is the most recent, for " + date.ToString("dddd d MMMM", CultureInfo.InvariantCulture) + ".";
                 return;
@@ -185,6 +190,7 @@ public sealed class BdRhythmViewModel : ObservableObject
             OnPropertyChanged(nameof(OwnerFilter));
             FilterActions();
             OnPropertyChanged(nameof(Leads));
+            BuildScreens();
         }
         catch (Exception ex)
         {
@@ -202,6 +208,7 @@ public sealed class BdRhythmViewModel : ObservableObject
             Meetings.Clear();
             foreach (var m in rows) Meetings.Add(new BdMeetingView(m));
             SelectedMeeting = Meetings.FirstOrDefault(m => m.Row.Id == keep) ?? Meetings.FirstOrDefault();
+            BuildScreens();
         }
         catch (Exception ex)
         {

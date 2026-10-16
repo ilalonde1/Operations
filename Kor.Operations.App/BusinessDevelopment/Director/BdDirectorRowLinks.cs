@@ -25,6 +25,7 @@ public static class BdDirectorRowLinks
         BdForwardPipelineRow f => KorReportLinks.Mpi(f.Id),
         BdOpenStructuralSeatRow s => KorReportLinks.Org(s.OrgId),
         BdDirectorPendingBidRow b => KorReportLinks.Pursuit(b.Bid.EngagementId),
+        BdPursuitLine l => KorReportLinks.Pursuit(l.EngagementId),
         _ => null,
     };
 

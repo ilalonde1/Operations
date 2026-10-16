@@ -101,6 +101,9 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public ObservableCollection<string> MyDayRegions { get; } = new();
     public string MyDayMessage { get; private set; } = "Your next conversations, asks and untracked clients.";
     public ObservableCollection<BdDirectorPursuitRow> SelectedPursuits { get; } = new();
+    /// <summary>The Pursuits screen: every live pursuit, the ones going cold first.</summary>
+    public ObservableCollection<BdPursuitLine> PursuitLines { get; } = new();
+    public string PursuitsMessage { get; private set; } = "";
     public ObservableCollection<BdDirectorStageRow> Stages { get; } = new();
     public ObservableCollection<BdDirectorDeadlineRow> Undecided { get; } = new();
     public ObservableCollection<AttributionSourceRow> Sources { get; } = new();
@@ -316,6 +319,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
             SelectedPerson = People.FirstOrDefault(p => string.Equals(p.PersonKey, selectedKey, StringComparison.OrdinalIgnoreCase))
                              ?? People.FirstOrDefault();
             FilterPursuits();
+            BuildPursuitLines(DateTimeOffset.UtcNow);
 
             Stages.Clear();
             foreach (var stage in new[] { CrmEngagementStage.Drafting, CrmEngagementStage.Submitted })
@@ -651,6 +655,22 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     internal BdDirectorPursuitRow? PursuitForBid(BdDirectorPendingBidRow row)
         => _allPursuits.FirstOrDefault(p => p.EngagementId == row.Bid.EngagementId) is { } pursuit
             ? new BdDirectorPursuitRow(pursuit) : null;
+
+    /// <summary>Every live pursuit as one line, the ones going cold first, then the most recently touched.</summary>
+    internal void BuildPursuitLines(DateTimeOffset now)
+    {
+        string Owner(string key) => People.FirstOrDefault(p => p.OwnerKeys.Contains(key, StringComparer.OrdinalIgnoreCase)
+                                        || string.Equals(p.PersonKey, key, StringComparison.OrdinalIgnoreCase))?.DisplayName ?? key;
+        PursuitLines.Clear();
+        foreach (var line in _allPursuits.Select(p => new BdPursuitLine(p, Owner(p.OwnerStaffId), now))
+                     .OrderBy(l => l.Gap.Length == 0).ThenByDescending(l => l.LastTouchUtc ?? l.Pursuit.OpenedAtUtc))
+            PursuitLines.Add(line);
+        var cold = PursuitLines.Count(l => l.Gap.Length > 0);
+        PursuitsMessage = PursuitLines.Count == 0
+            ? "No pursuit is live. The old ones were archived in the 16 October clean start; the pipeline is rebuilt from the team's tracking spreadsheet."
+            : $"{PursuitLines.Count} live · {cold} going cold. Double-click one to open it.";
+        OnPropertyChanged(nameof(PursuitsMessage));
+    }
 
     private void FilterPursuits()
     {

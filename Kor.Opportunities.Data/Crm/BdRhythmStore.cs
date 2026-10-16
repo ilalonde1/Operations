@@ -37,8 +37,15 @@ public sealed record BdReferenceRow(long Id, string Application, string Project,
 public sealed record DirectorHourRow(long Id, DateOnly ForDate, string Kind, string ContentJson, string WrittenBy,
     string ImportedBy, DateTimeOffset ImportedAtUtc, DateTimeOffset? EmailedAtUtc);
 
+/// <summary>A person on the BD team (migration 361). Role is Manager, Lead or Partner; Region uses the CRM's names.</summary>
+public sealed record BdLeadRow(string StaffKey, string Name, string Role, string? Region, int SortOrder);
+
+/// <summary>What Ian did with one move of a prepared hour.</summary>
+public sealed record HourMoveResult(int Rank, string Result, string? Note, DateTimeOffset RecordedAtUtc);
+
 public static class BdRhythmValues
 {
+    public static readonly IReadOnlyList<string> MoveResults = new[] { "Done", "NotToday", "NotDoing" };
     public static readonly IReadOnlyList<string> ActionStatuses = new[] { "Open", "Done", "Declined", "Withdrawn" };
     public static readonly IReadOnlyList<string> MeetingKinds = new[] { "AllHands", "OneToOne", "Other" };
     public static readonly IReadOnlyList<string> MeetingStatuses = new[] { "Planned", "Held", "Cancelled" };
@@ -68,6 +75,12 @@ public interface IBdRhythmStore
     Task<DirectorHourRow?> GetHourAsync(string kind, DateOnly forDate, CancellationToken ct);
     Task<long> ImportHourAsync(string kind, DateOnly forDate, string contentJson, string writtenBy, string importedBy, CancellationToken ct);
     Task MarkHourEmailedAsync(long id, CancellationToken ct);
+    /// <summary>The BD team (migration 361): role and region per person, in the order the People screen shows them.</summary>
+    Task<IReadOnlyList<BdLeadRow>> ListLeadsAsync(CancellationToken ct);
+    /// <summary>What Ian did with each move of an hour.</summary>
+    Task<IReadOnlyList<HourMoveResult>> ListMoveResultsAsync(long hourId, CancellationToken ct);
+    /// <summary>Records Done, NotToday or NotDoing for one move; a second answer replaces the first.</summary>
+    Task RecordMoveResultAsync(long hourId, int rank, string result, string? note, string by, CancellationToken ct);
 }
 
 public sealed class SqlBdRhythmStore : IBdRhythmStore
@@ -214,6 +227,33 @@ OUTPUT INSERTED.Id VALUES (@date, @kind, @json, @written, @imported);", cmd =>
     public Task MarkHourEmailedAsync(long id, CancellationToken ct) => ExecuteAsync(
         "UPDATE opportunities.DirectorHour SET EmailedAtUtc = sysdatetimeoffset() WHERE Id = @id AND EmailedAtUtc IS NULL;",
         cmd => cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id, ct);
+
+    public Task<IReadOnlyList<BdLeadRow>> ListLeadsAsync(CancellationToken ct) => ReadAsync(@"
+SELECT l.StaffKey, COALESCE(s.DisplayName, l.StaffKey), l.Role, l.Region, l.SortOrder
+FROM opportunities.BdLead l
+LEFT JOIN opportunities.BdStaff s ON s.StaffKey = l.StaffKey COLLATE SQL_Latin1_General_CP1_CI_AS
+WHERE l.IsActive = 1 ORDER BY l.SortOrder, l.StaffKey;", _ => { },
+        r => new BdLeadRow(r.GetString(0), r.GetString(1), r.GetString(2), Text(r, 3), r.GetInt32(4)), ct);
+
+    public Task<IReadOnlyList<HourMoveResult>> ListMoveResultsAsync(long hourId, CancellationToken ct) => ReadAsync(@"
+SELECT MoveRank, Result, Note, RecordedAtUtc FROM opportunities.DirectorHourMove WHERE HourId = @hour ORDER BY MoveRank;",
+        cmd => cmd.Parameters.Add("@hour", SqlDbType.BigInt).Value = hourId,
+        r => new HourMoveResult(r.GetInt32(0), r.GetString(1), Text(r, 2), r.GetDateTimeOffset(3)), ct);
+
+    public async Task RecordMoveResultAsync(long hourId, int rank, string result, string? note, string by, CancellationToken ct)
+    {
+        if (!BdRhythmValues.MoveResults.Contains(result) || rank is < 1 or > 7 || string.IsNullOrWhiteSpace(by) || note?.Length > 500)
+            throw new ArgumentException("A move result is Done, NotToday or NotDoing, for moves 1 to 7, with who recorded it.", nameof(result));
+        await ExecuteAsync(@"
+UPDATE opportunities.DirectorHourMove SET Result = @result, Note = @note, RecordedBy = @by, RecordedAtUtc = sysdatetimeoffset()
+WHERE HourId = @hour AND MoveRank = @rank;
+IF @@ROWCOUNT = 0
+    INSERT INTO opportunities.DirectorHourMove (HourId, MoveRank, Result, Note, RecordedBy) VALUES (@hour, @rank, @result, @note, @by);", cmd =>
+        {
+            cmd.Parameters.Add("@hour", SqlDbType.BigInt).Value = hourId; cmd.Parameters.Add("@rank", SqlDbType.Int).Value = rank;
+            AddText(cmd, "@result", 20, result); AddText(cmd, "@note", 500, note); AddText(cmd, "@by", 150, by);
+        }, ct).ConfigureAwait(false);
+    }
 
     private async Task<IReadOnlyList<T>> ReadAsync<T>(string sql, Action<SqlCommand> bind, Func<SqlDataReader, T> map, CancellationToken ct)
     {

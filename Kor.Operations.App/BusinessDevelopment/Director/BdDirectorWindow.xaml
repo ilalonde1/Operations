@@ -11,6 +11,7 @@
         <converters:BdDayConverter x:Key="BdDay"/>
         <BooleanToVisibilityConverter x:Key="BoolVisibility"/>
         <opp:NullOrEmptyStringToVisibilityConverter x:Key="TextVisible"/>
+        <opp:InvertBoolConverter x:Key="Not"/>
         <Style x:Key="PlanChip" TargetType="Border">
             <Setter Property="CornerRadius" Value="3"/>
             <Setter Property="Padding" Value="8,3"/>
@@ -107,103 +108,247 @@
                 <TextBlock Text="{Binding HourMessage}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"
                            Visibility="{Binding HourMessage, Converter={StaticResource TextVisible}}"/>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Visibility="{Binding HasHour, Converter={StaticResource BoolVisibility}}">
-                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" MaxWidth="1180"/></Grid.ColumnDefinitions><StackPanel>
-                        <TextBlock Text="{Binding Hour.Title}" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                        <TextBlock Text="{Binding Hour.Lede}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,0"/>
-                        <TextBlock Text="{Binding TotalMinutesText}" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,12"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" MaxWidth="900"/><ColumnDefinition Width="24"/><ColumnDefinition Width="360"/></Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Hour.Title}" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding Hour.Lede}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,0"/>
+                            <WrapPanel Margin="0,10,0,0">
+                                <TextBlock Text="{Binding MovesProgressText}" FontWeight="SemiBold" Margin="0,0,22,4"/>
+                                <TextBlock Text="{Binding TeamLateText}" Foreground="#B0362C" Margin="0,0,22,4"/>
+                                <TextBlock Text="{Binding DueTomorrowText}" Foreground="#8A5A00" Margin="0,0,22,4"/>
+                                <TextBlock Text="{Binding ClosedSinceYesterdayText}" Foreground="{StaticResource Text.Secondary}" Margin="0,0,22,4"/>
+                            </WrapPanel>
+                            <Border Background="#FDF2DC" BorderBrush="#8A5A00" BorderThickness="4,0,0,0" Padding="12,8" Margin="0,10,0,4"
+                                    Visibility="{Binding Hour.Callout, Converter={StaticResource TextVisible}}">
+                                <TextBlock Text="{Binding Hour.Callout}" TextWrapping="Wrap" Foreground="#17212C"/>
+                            </Border>
 
-                        <TextBlock Text="Where we stand" Style="{StaticResource SectionTitle}"/>
-                        <ItemsControl ItemsSource="{Binding Hour.Plan}" Margin="0,0,0,8">
-                            <ItemsControl.ItemTemplate><DataTemplate>
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                    <Border Style="{StaticResource PlanChip}"><TextBlock Text="{Binding Label}" FontWeight="SemiBold" Foreground="#17212C" TextWrapping="Wrap"/></Border>
-                                    <TextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap"/>
-                                </Grid>
-                            </DataTemplate></ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <Border Background="#FDF2DC" BorderBrush="#8A5A00" BorderThickness="4,0,0,0" Padding="12,8" Margin="0,0,0,14"
-                                Visibility="{Binding Hour.Callout, Converter={StaticResource TextVisible}}">
-                            <TextBlock Text="{Binding Hour.Callout}" TextWrapping="Wrap" Foreground="#17212C"/>
-                        </Border>
-
-                        <TextBlock Text="Today's moves" Style="{StaticResource SectionTitle}"/>
-                        <ItemsControl ItemsSource="{Binding Hour.Moves}">
-                            <ItemsControl.ItemTemplate><DataTemplate>
-                                <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,0,0,12" Background="{StaticResource App.Background}">
-                                    <StackPanel>
-                                        <DockPanel>
-                                            <TextBlock DockPanel.Dock="Right" Foreground="{StaticResource Text.Secondary}"><Run Text="{Binding Minutes, Mode=OneWay}"/><Run Text=" min"/></TextBlock>
-                                            <TextBlock FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"><Run Text="{Binding Rank, Mode=OneWay}"/><Run Text=".  "/><Run Text="{Binding Title, Mode=OneWay}"/></TextBlock>
-                                        </DockPanel>
-                                        <TextBlock Text="Why now" FontWeight="SemiBold" Margin="0,10,0,2" Foreground="{StaticResource Text.Secondary}"/>
-                                        <ItemsControl ItemsSource="{Binding WhyNow}">
-                                            <ItemsControl.ItemTemplate><DataTemplate>
-                                                <TextBlock TextWrapping="Wrap" Margin="0,1"><Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock>
-                                            </DataTemplate></ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <Border Background="#E6EDF3" BorderBrush="#2E4A62" BorderThickness="3,0,0,0" Padding="10,6" Margin="0,8,0,0"
-                                                Visibility="{Binding Principle.Quote, Converter={StaticResource TextVisible}, FallbackValue=Collapsed}">
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding Principle.Quote}" TextWrapping="Wrap" Foreground="#17212C"/>
-                                                <TextBlock Text="{Binding Principle.Cite}" Foreground="#5A6876" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                                            </StackPanel>
-                                        </Border>
-                                        <ItemsControl ItemsSource="{Binding Drafts}" Margin="0,8,0,0">
-                                            <ItemsControl.ItemTemplate><DataTemplate>
-                                                <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="4" Margin="0,4">
+                            <TextBlock Text="Today's moves" Style="{StaticResource SectionTitle}" Margin="0,14,0,8"/>
+                            <ItemsControl x:Name="MovesList" ItemsSource="{Binding Moves}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,0,0,10"
+                                            Background="{StaticResource App.Background}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Style.Triggers><DataTrigger Binding="{Binding IsResolved}" Value="True"><Setter Property="Opacity" Value="0.55"/></DataTrigger></Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding SideText}" Foreground="{StaticResource Text.Secondary}"/>
+                                                <TextBlock FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"><Run Text="{Binding Rank, Mode=OneWay}"/><Run Text=".  "/><Run Text="{Binding Title, Mode=OneWay}"/></TextBlock>
+                                            </DockPanel>
+                                            <StackPanel Visibility="{Binding IsOpen, Converter={StaticResource BoolVisibility}}">
+                                                <ItemsControl ItemsSource="{Binding WhyNow}" Margin="0,8,0,0">
+                                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                                        <TextBlock TextWrapping="Wrap" Margin="0,1"><Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock>
+                                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <Border Background="#E6EDF3" BorderBrush="#2E4A62" BorderThickness="3,0,0,0" Padding="10,6" Margin="0,8,0,0"
+                                                        Visibility="{Binding Principle.Quote, Converter={StaticResource TextVisible}, FallbackValue=Collapsed}">
                                                     <StackPanel>
-                                                        <DockPanel Margin="10,6">
-                                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                                                <Button Content="Draft in Outlook" Click="DraftInOutlook_Click" Tag="{Binding}" Padding="10,3" Margin="0,0,6,0"
-                                                                        ToolTip="Opens a new message in Outlook for you to review and send. Nothing is sent from here."/>
-                                                                <Button Content="Copy" Click="CopyDraft_Click" Tag="{Binding}" Padding="10,3"/>
-                                                            </StackPanel>
-                                                            <TextBlock TextWrapping="Wrap" VerticalAlignment="Center"><Run Text="To "/><Run Text="{Binding To, Mode=OneWay}"/><Run Text="  ·  "/><Run Text="{Binding Subject, Mode=OneWay}" FontWeight="SemiBold"/></TextBlock>
-                                                        </DockPanel>
-                                                        <TextBox Text="{Binding Body, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0,1,0,0" Padding="10,8"
-                                                                 MaxHeight="320" VerticalScrollBarVisibility="Auto"/>
+                                                        <TextBlock Text="{Binding Principle.Quote}" TextWrapping="Wrap" Foreground="#17212C"/>
+                                                        <TextBlock Text="{Binding Principle.Cite}" Foreground="#5A6876" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"/>
                                                     </StackPanel>
                                                 </Border>
-                                            </DataTemplate></ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <ItemsControl ItemsSource="{Binding Steps}" Margin="0,6,0,0">
-                                            <ItemsControl.ItemTemplate><DataTemplate>
-                                                <TextBlock TextWrapping="Wrap" Margin="0,1"><Run Text="→  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock>
-                                            </DataTemplate></ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <ItemsControl ItemsSource="{Binding Links}" Margin="0,8,0,0">
-                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate><DataTemplate>
-                                                <Button Content="{Binding Label}" Tag="{Binding Url}" Click="OpenLink_Click" Style="{StaticResource LinkButton}"/>
-                                            </DataTemplate></ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate></ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                                                <ItemsControl ItemsSource="{Binding Drafts}" Margin="0,8,0,0">
+                                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                                        <Expander Margin="0,3" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" Padding="6,3">
+                                                            <Expander.Header>
+                                                                <TextBlock TextWrapping="Wrap"><Run Text="Draft: " FontWeight="SemiBold"/><Run Text="{Binding Subject, Mode=OneWay}"/><Run Text="   to " Foreground="#5A6876"/><Run Text="{Binding ToText, Mode=OneWay}" Foreground="#5A6876"/></TextBlock>
+                                                            </Expander.Header>
+                                                            <StackPanel Margin="0,6,0,4">
+                                                                <TextBox Text="{Binding Body, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Padding="10,8" MaxHeight="320"
+                                                                         VerticalScrollBarVisibility="Auto"/>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                                                    <Button Content="Copy" Click="CopyDraft_Click" Tag="{Binding Draft}" Padding="12,4" Margin="0,0,8,0"/>
+                                                                    <Button Content="Draft in Outlook" Click="DraftInOutlook_Click" Tag="{Binding Draft}" Padding="12,4"
+                                                                            ToolTip="Opens a new message in Outlook for you to review and send. Nothing is sent from here."/>
+                                                                </StackPanel>
+                                                            </StackPanel>
+                                                        </Expander>
+                                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <ItemsControl ItemsSource="{Binding Steps}" Margin="0,6,0,0">
+                                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                                        <TextBlock TextWrapping="Wrap" Margin="0,1"><Run Text="→  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock>
+                                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <WrapPanel Margin="0,10,0,0">
+                                                    <Button Content="Done" Click="MoveResult_Click" Tag="Done" Padding="16,5" Margin="0,0,8,6" FontWeight="SemiBold"/>
+                                                    <Button Content="Not today" Click="MoveResult_Click" Tag="NotToday" Padding="12,5" Margin="0,0,8,6"/>
+                                                    <Button Content="Not doing" Click="MoveResult_Click" Tag="NotDoing" Padding="12,5" Margin="0,0,20,6"/>
+                                                    <ItemsControl ItemsSource="{Binding Links}">
+                                                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate><DataTemplate>
+                                                            <Button Content="{Binding Label}" Tag="{Binding Url}" Click="OpenLink_Click" Style="{StaticResource LinkButton}"/>
+                                                        </DataTemplate></ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </WrapPanel>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Border BorderBrush="#2E7A4C" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,0,0,10"
+                                    Visibility="{Binding IsHourFinished, Converter={StaticResource BoolVisibility}}">
+                                <TextBlock TextWrapping="Wrap"><Run Text="That is the hour." FontWeight="SemiBold"/><Run Text=" Everything you did is recorded. Tomorrow's starts from where you left off."/></TextBlock>
+                            </Border>
+                            <TextBlock Text="{Binding Hour.Sources}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text.Secondary}" Margin="0,10,0,0"/>
+                            <TextBlock Text="{Binding Hour.NotCovered}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,12"/>
+                        </StackPanel>
 
-                        <Grid Margin="0,6,0,0">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock Text="Decisions waiting on you" Style="{StaticResource SectionTitle}"/>
-                                <ItemsControl ItemsSource="{Binding Hour.Decisions}">
-                                    <ItemsControl.ItemTemplate><DataTemplate><TextBlock TextWrapping="Wrap" Margin="0,2"><Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock></DataTemplate></ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="Meetings" Style="{StaticResource SectionTitle}"/>
-                                <ItemsControl ItemsSource="{Binding Hour.Meetings}">
-                                    <ItemsControl.ItemTemplate><DataTemplate><TextBlock TextWrapping="Wrap" Margin="0,2"><Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock></DataTemplate></ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </Grid>
-                        <TextBlock Text="{Binding Hour.Sources}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text.Secondary}" Margin="0,16,0,0"/>
-                        <TextBlock Text="{Binding Hour.NotCovered}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,12"/>
-                    </StackPanel></Grid>
+                        <StackPanel Grid.Column="2">
+                            <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Your list" Style="{StaticResource SectionTitle}"/>
+                                    <ItemsControl ItemsSource="{Binding MyActions}">
+                                        <ItemsControl.ItemTemplate><DataTemplate>
+                                            <Grid Margin="0,5">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <CheckBox Click="ActionCheck_Click" Tag="{Binding}" VerticalAlignment="Top" Margin="0,2,8,0" ToolTip="Mark done"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Row.Action}" TextWrapping="Wrap"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding DueText}" Margin="8,0,0,0" FontSize="12">
+                                                    <TextBlock.Style><Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                                        <Style.Triggers><DataTrigger Binding="{Binding IsOverdue}" Value="True"><Setter Property="Foreground" Value="#B0362C"/></DataTrigger></Style.Triggers>
+                                                    </Style></TextBlock.Style>
+                                                </TextBlock>
+                                            </Grid>
+                                        </DataTemplate></ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding MyActionsText}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text.Secondary}" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Decisions waiting on you" Style="{StaticResource SectionTitle}"/>
+                                    <ItemsControl ItemsSource="{Binding Hour.Decisions}">
+                                        <ItemsControl.ItemTemplate><DataTemplate><TextBlock TextWrapping="Wrap" Margin="0,2"><Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock></DataTemplate></ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                            <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="14,10">
+                                <StackPanel>
+                                    <TextBlock Text="Meetings" Style="{StaticResource SectionTitle}"/>
+                                    <ItemsControl ItemsSource="{Binding Hour.Meetings}">
+                                        <ItemsControl.ItemTemplate><DataTemplate><TextBlock TextWrapping="Wrap" Margin="0,2"><Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock></DataTemplate></ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
                 </ScrollViewer>
             </Grid>
         </TabItem>
+        <TabItem Header="People" x:Name="PeopleTab">
+            <Grid Margin="12">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <TextBlock Text="What each person owes, how late, and when you next see them. Pick a person; their one-to-one agenda is built from their list."
+                           TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
+                <ListBox Grid.Row="1" x:Name="PeopleCardsList" ItemsSource="{Binding PeopleCards}" SelectedItem="{Binding SelectedPerson, Mode=TwoWay}"
+                         BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate><DataTemplate>
+                        <StackPanel Width="230" Margin="6,6">
+                            <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding RoleText}" Foreground="{StaticResource Text.Secondary}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding OpenText}" Margin="0,0,12,0"/>
+                                <TextBlock Text="{Binding LateText}" Margin="0,0,12,0">
+                                    <TextBlock.Style><Style TargetType="TextBlock">
+                                        <Style.Triggers><DataTrigger Binding="{Binding HasLate}" Value="True"><Setter Property="Foreground" Value="#B0362C"/><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger></Style.Triggers>
+                                    </Style></TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding WeekText}">
+                                    <TextBlock.Style><Style TargetType="TextBlock">
+                                        <Style.Triggers><DataTrigger Binding="{Binding HasThisWeek}" Value="True"><Setter Property="Foreground" Value="#8A5A00"/></DataTrigger></Style.Triggers>
+                                    </Style></TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <TextBlock Text="{Binding NextText}" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </DataTemplate></ListBox.ItemTemplate>
+                </ListBox>
+                <Grid Grid.Row="2" Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="20"/><ColumnDefinition Width="520"/></Grid.ColumnDefinitions>
+                    <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="14,10">
+                        <DockPanel>
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                                <Button DockPanel.Dock="Right" Content="Add an action…" Click="AddActionForPerson_Click" Padding="12,4"/>
+                                <TextBlock Text="{Binding PersonTitle}" Style="{StaticResource SectionTitle}"/>
+                            </DockPanel>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding PersonActions}">
+                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                        <Grid Margin="0,6">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <CheckBox Click="ActionCheck_Click" Tag="{Binding}" VerticalAlignment="Top" Margin="0,2,8,0" ToolTip="Mark done"
+                                                      IsEnabled="{Binding Row.IsOpen}" IsChecked="{Binding Row.IsOpen, Mode=OneWay, Converter={StaticResource Not}}"/>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding Row.Action}" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding From}" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="{Binding DueText}" Margin="12,0,0,0">
+                                                <TextBlock.Style><Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                                    <Style.Triggers><DataTrigger Binding="{Binding IsOverdue}" Value="True"><Setter Property="Foreground" Value="#B0362C"/></DataTrigger></Style.Triggers>
+                                                </Style></TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Border>
+                    <Border Grid.Column="2" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="14,10">
+                        <Grid>
+                            <TextBlock Text="{Binding PersonNote}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}"
+                                       Visibility="{Binding PersonNote, Converter={StaticResource TextVisible}}"/>
+                            <DockPanel Visibility="{Binding PersonIsLead, Converter={StaticResource BoolVisibility}}">
+                                <TextBlock DockPanel.Dock="Top" Text="Next one-to-one" Style="{StaticResource SectionTitle}"/>
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,4,0,8">
+                                    <DatePicker x:Name="PersonMeetingDate" Width="140" Margin="0,0,8,0"/>
+                                    <Button Content="Plan it" Click="PlanPersonOneToOne_Click" Padding="14,4" FontWeight="SemiBold"
+                                            ToolTip="Records the one-to-one with this agenda. Nothing is sent; draft the invite next."/>
+                                </StackPanel>
+                                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Button Content="Copy the agenda" Click="CopyPersonAgenda_Click" Padding="12,4" Margin="0,0,8,0"/>
+                                    <Button Content="Draft the invite in Outlook" Click="DraftPersonInvite_Click" Padding="12,4"/>
+                                </StackPanel>
+                                <TextBox Text="{Binding PersonAgenda, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" FontFamily="Consolas" Padding="10"
+                                         VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto"/>
+                            </DockPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+        </TabItem>
+        <TabItem Header="Pursuits" x:Name="PursuitsTab">
+            <Grid Margin="12">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <TextBlock Text="{Binding PursuitsMessage}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
+                <ListBox Grid.Row="1" x:Name="PursuitLinesList" ItemsSource="{Binding PursuitLines}" MouseDoubleClick="PursuitLine_DoubleClick"
+                         HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" BorderBrush="{StaticResource Panel.Border}">
+                    <ListBox.ItemTemplate><DataTemplate>
+                        <Grid Margin="6,8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap"/>
+                                <TextBlock Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"><Run Text="{Binding Line, Mode=OneWay}"/><Run Text="  ·  "/><Run Text="{Binding TouchText, Mode=OneWay}"/></TextBlock>
+                                <TextBlock Text="{Binding Gap}" Foreground="#B0362C" TextWrapping="Wrap" Visibility="{Binding Gap, Converter={StaticResource TextVisible}}"/>
+                            </StackPanel>
+                            <Border Grid.Column="1" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="10" Padding="10,2" Margin="12,0"
+                                    VerticalAlignment="Top"><TextBlock Text="{Binding StageText}" FontSize="12" FontWeight="SemiBold"/></Border>
+                            <Button Grid.Column="2" Content="Open" Click="OpenPursuitLine_Click" Tag="{Binding}" Padding="12,3" VerticalAlignment="Top"/>
+                        </Grid>
+                    </DataTemplate></ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </TabItem>
+        <TabItem Header="Data" x:Name="DataTab">
+        <TabControl x:Name="DataTabs" Margin="0,8,0,0">
         <TabItem Header="Actions" x:Name="ActionsTab">
             <Grid Margin="12">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
@@ -354,7 +499,7 @@
                 </StackPanel>
             </ScrollViewer>
         </TabItem>
-        <TabItem Header="People">
+        <TabItem Header="By person">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="12">
             <StackPanel>
                 <TextBlock Text="People" Style="{StaticResource SectionTitle}"/>
@@ -855,6 +1000,8 @@
                     </ItemsControl>
                 </ScrollViewer>
             </DockPanel>
+        </TabItem>
+        </TabControl>
         </TabItem>
         </TabControl>
         <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="{StaticResource Text.Secondary}"/>

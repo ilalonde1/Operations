@@ -144,7 +144,99 @@ public sealed class BdDirectorRhythmRegressionTests
         {
             new BdReferenceRow(7, "Fraser Health", "School", "Architect", "Firm", null, null, null, null, null, null, null, "NotCalled", null),
         });
+        store.Setup(s => s.ListLeadsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new BdLeadRow("Ian@korstructural.com", "Ian", "Manager", null, 10),
+            new BdLeadRow("Omar@korstructural.com", "Omar", "Lead", "Vancouver/LowerMainland", 20),
+            new BdLeadRow("Jim@korstructural.com", "Jim", "Lead", "USA", 60),
+        });
         return (store, new BdRhythmViewModel(store.Object, () => Now));
+    }
+
+    [Fact]
+    public async Task Today_RecordsAMoveOnce_FoldsIt_AndSaysWhenTheHourIsDone()
+    {
+        var (store, vm) = Rhythm();
+        store.Setup(s => s.GetHourAsync("BD", DateOnly.FromDateTime(Now.Date), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DirectorHourRow(9, DateOnly.FromDateTime(Now.Date), "BD", GoodHour, "claude", "ian", Now, null));
+        store.Setup(s => s.ListMoveResultsAsync(9, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { new HourMoveResult(1, "Done", null, Now) });
+        store.Setup(s => s.RecordMoveResultAsync(9, 2, "NotDoing", null, "ian", It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        await vm.LoadAsync(CancellationToken.None);
+
+        Assert.Equal(new[] { "Done", "20 min" }, vm.Moves.Select(m => m.SideText));
+        Assert.Equal("1 of 2 moves done · about 20 minutes left", vm.MovesProgressText);
+        Assert.False(vm.IsHourFinished);
+        await vm.RecordMoveAsync(vm.Moves[1], "NotDoing", "ian", CancellationToken.None);
+        Assert.True(vm.Moves[1].IsResolved);
+        Assert.Equal("Not doing", vm.Moves[1].SideText);
+        Assert.True(vm.IsHourFinished);
+        Assert.Equal("2 of 2 moves done · about 0 minutes left", vm.MovesProgressText);
+        store.Verify(s => s.RecordMoveResultAsync(It.IsAny<long>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal("3 people", new HourDraftView(new HourDraft("a@x; b@x; c@x", "s", "b")).ToText);
+        Assert.Equal("a@x; b@x", new HourDraftView(new HourDraft("a@x; b@x", "s", "b")).ToText);
+    }
+
+    [Fact]
+    public async Task People_OneCardEach_LeadSelectedFirst_YourListIsTheSignedInPerson()
+    {
+        var (store, vm) = Rhythm();
+        await vm.LoadAsync(CancellationToken.None);
+        Assert.Equal(new[] { "Ian", "Omar", "Jim" }, vm.PeopleCards.Select(p => p.Name));
+        Assert.Equal("Omar", vm.SelectedPerson?.Name);
+        var omar = vm.PeopleCards[1];
+        Assert.Equal((1, 1, 0), (omar.Open, omar.Late, omar.ThisWeek));
+        Assert.Equal("Next one-to-one: not booked", omar.NextText);
+        Assert.Equal("Vancouver and the Lower Mainland", omar.RoleText);
+        Assert.StartsWith("One-to-one: Omar (20 minutes)", vm.PersonAgenda, StringComparison.Ordinal);
+        Assert.Equal("2 days late", vm.PersonActions[0].DueText);
+        Assert.Empty(vm.MyActions); // the manager, Ian, owns nothing here
+        vm.SetMe("omar@korstructural.com"); // keys compare without case
+        Assert.Equal(new long[] { 1 }, vm.MyActions.Select(a => a.Row.Id));
+        vm.SelectedPerson = vm.PeopleCards[0];
+        Assert.False(vm.PersonIsLead);
+        Assert.Equal("", vm.PersonAgenda);
+        Assert.Contains("Your own list", vm.PersonNote, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Ticking_ClosesThatAction_AndRecountsEveryScreen()
+    {
+        var (store, vm) = Rhythm();
+        await vm.LoadAsync(CancellationToken.None);
+        Assert.Equal(1, vm.TeamLate);
+        store.Setup(s => s.CloseActionAsync(1, "Done", "sent", "ian", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        store.Setup(s => s.ListActionsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { Action(1, "Omar", "Open one", -2, "Done", 0), Action(2, "Jim", "Closed one", -2, "Done") });
+        Assert.True(await vm.CloseActionAsync(vm.PersonActions[0], "Done", "sent", "ian", CancellationToken.None));
+        Assert.Equal(0, vm.TeamLate);
+        Assert.Equal(0, vm.PeopleCards.Single(p => p.Name == "Omar").Late);
+        Assert.False(await vm.CloseActionAsync(vm.PersonActions[0], "Done", "again", "ian", CancellationToken.None));
+    }
+
+    [Fact]
+    public void PursuitLine_GoesColdAfter14Days_AndOpensThePursuit()
+    {
+        PursuitOverwatchRow P(long id, int? touchedDaysAgo, int openedDaysAgo) => new(id, null, "omara@korstructural.com", 1, "Tower", "Buyer", "Vancouver",
+            touchedDaysAgo is { } t ? Now.AddDays(-t) : null, Now.AddDays(-openedDaysAgo), 0, null, Now.AddDays(-openedDaysAgo));
+        Assert.Equal("", new BdPursuitLine(P(1, 3, 40), "Omar", Now).Gap);
+        Assert.Equal("Going cold: no touch in 20 days", new BdPursuitLine(P(2, 20, 40), "Omar", Now).Gap);
+        Assert.Equal("Never touched in 30 days", new BdPursuitLine(P(3, null, 30), "Omar", Now).Gap);
+        Assert.Equal("", new BdPursuitLine(P(4, null, 5), "Omar", Now).Gap);
+        Assert.Equal("Omar · Buyer · Vancouver", new BdPursuitLine(P(1, 3, 40), "Omar", Now).Line);
+        Assert.Equal(Links.Pursuit(2), BdDirectorRowLinks.For(new BdPursuitLine(P(2, 20, 40), "Omar", Now)));
+    }
+
+    [Fact]
+    public void Migration361_CreatesGuarded_SeedsOnlyMissingActiveStaff_AndDeletesNothing()
+    {
+        var sql = Source("Kor.Opportunities.Data/Schema/361_DirectorPeopleAndMoves.sql");
+        foreach (var table in new[] { "BdLead", "DirectorHourMove" })
+            Assert.Contains($"IF OBJECT_ID(N'opportunities.{table}', N'U') IS NULL", sql, StringComparison.Ordinal);
+        Assert.Contains("AND NOT EXISTS (SELECT 1 FROM opportunities.BdLead l WHERE l.StaffKey = v.StaffKey)", sql, StringComparison.Ordinal);
+        Assert.Contains("s.IsActive = 1", sql, StringComparison.Ordinal);
+        Assert.Contains("CHECK (Result IN (N'Done', N'NotToday', N'NotDoing'))", sql, StringComparison.Ordinal);
+        Assert.Equal(BdRhythmValues.MoveResults, new[] { "Done", "NotToday", "NotDoing" });
+        Assert.DoesNotMatch(@"(?i)\b(DELETE|DROP|TRUNCATE|UPDATE)\b", Regex.Replace(sql, @"--[^\r\n]*|/\*.*?\*/", "", RegexOptions.Singleline));
     }
 
     [Fact]
@@ -180,12 +272,12 @@ public sealed class BdDirectorRhythmRegressionTests
     }
 
     [Fact]
-    public void Store_WritesOnlyTheFourRhythmTables()
+    public void Store_WritesOnlyTheFiveRhythmTables()
     {
         var sql = Source("Kor.Opportunities.Data/Crm/BdRhythmStore.cs");
         var targets = Regex.Matches(sql, @"\b(?:INSERT INTO|UPDATE|DELETE FROM|MERGE(?: INTO)?)\s+([A-Za-z_.]+)")
             .Select(m => m.Groups[1].Value).Distinct().OrderBy(t => t, StringComparer.Ordinal).ToArray();
-        Assert.Equal(new[] { "opportunities.BdAsk", "opportunities.BdMeeting", "opportunities.BdReference", "opportunities.DirectorHour" }, targets);
+        Assert.Equal(new[] { "opportunities.BdAsk", "opportunities.BdMeeting", "opportunities.BdReference", "opportunities.DirectorHour", "opportunities.DirectorHourMove" }, targets);
         Assert.DoesNotMatch(@"DELETE FROM", sql);
     }
 

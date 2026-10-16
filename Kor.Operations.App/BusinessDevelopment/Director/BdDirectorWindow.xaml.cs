@@ -35,12 +35,17 @@ public partial class BdDirectorWindow : Window
     {
         _rhythm = rhythm ?? throw new ArgumentNullException(nameof(rhythm));
         TodayTab.DataContext = rhythm;
+        PeopleTab.DataContext = rhythm;
         ActionsTab.DataContext = rhythm;
         MeetingsTab.DataContext = rhythm;
         ReferencesTab.DataContext = rhythm;
         RhythmStatus.DataContext = rhythm;
         MeetingDate.SelectedDate = DateTime.Today.AddDays(1);
+        PersonMeetingDate.SelectedDate = NextWeekday(DateTime.Today.AddDays(1));
     }
+
+    private static DateTime NextWeekday(DateTime day) =>
+        day.DayOfWeek switch { DayOfWeek.Saturday => day.AddDays(2), DayOfWeek.Sunday => day.AddDays(1), _ => day };
 
     public BdDirectorWindow(BdDirectorViewModel vm, IProposalStaffStore staffStore)
     {
@@ -62,6 +67,7 @@ public partial class BdDirectorWindow : Window
                 AppServices.Get<UserOptions>().UserUpnOverride, Environment.UserName }
             .First(value => !string.IsNullOrWhiteSpace(value))!.Trim();
         _vm.CurrentActorUpn = _actor;
+        _rhythm?.SetMe(_actor);
         try { AppServices.Get<IBdUiOpenStore>().RecordOpen("BdDirector", _actor); }
         catch (Exception ex) { Log.Warning(ex, "BD Director open instrumentation failed."); }
         await ReloadAsync().ConfigureAwait(true);
@@ -84,13 +90,96 @@ public partial class BdDirectorWindow : Window
     /// <summary>Selects a view by the id a kor://director/{id} link carries: 1 Today, 2 Actions, 3 Meetings, 4 References.</summary>
     public void ShowView(long view)
     {
-        Tabs.SelectedItem = view switch
+        System.Windows.Controls.TabItem? inData = view switch
         {
             Kor.Opportunities.Data.BdReports.Generators.KorReportLinks.DirectorActions => ActionsTab,
             Kor.Opportunities.Data.BdReports.Generators.KorReportLinks.DirectorMeetings => MeetingsTab,
             Kor.Opportunities.Data.BdReports.Generators.KorReportLinks.DirectorReferences => ReferencesTab,
-            _ => TodayTab,
+            _ => null,
         };
+        if (inData is null) { Tabs.SelectedItem = TodayTab; return; }
+        Tabs.SelectedItem = DataTab;
+        DataTabs.SelectedItem = inData;
+    }
+
+    // ---- The three screens ----
+
+    private async void MoveResult_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm is null || sender is not FrameworkElement { Tag: string result, DataContext: HourMoveView move }) return;
+        await RhythmActionAsync(ct => _rhythm.RecordMoveAsync(move, result, _actor, ct)).ConfigureAwait(true);
+    }
+
+    /// <summary>A ticked action on Today or People closes as Done, with a one-line result; cancelling leaves it open.</summary>
+    private async void ActionCheck_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm is null || sender is not System.Windows.Controls.CheckBox { Tag: BdActionView action } box) return;
+        if (!action.Row.IsOpen) { box.IsChecked = true; return; }
+        var dialog = new NoteDialog("Mark done", "What came of it?\n\n" + action.Row.Action, 500) { Owner = this };
+        if (dialog.ShowDialog() != true) { box.IsChecked = false; return; }
+        await RhythmActionAsync(ct => _rhythm.CloseActionAsync(action, "Done", dialog.Note, _actor, ct)).ConfigureAwait(true);
+    }
+
+    private async void AddActionForPerson_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm is null) return;
+        var person = _rhythm.SelectedPerson?.Key;
+        await RhythmActionAsync(async ct =>
+        {
+            await ShowAskAsync(null, null, person, ct).ConfigureAwait(true);
+            await _rhythm.LoadActionsAsync(ct).ConfigureAwait(true);
+        }).ConfigureAwait(true);
+    }
+
+    private async void PlanPersonOneToOne_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm?.SelectedPerson is not { IsLead: true } person) return;
+        if (PersonMeetingDate.SelectedDate is not { } date)
+        {
+            MessageBox.Show(this, "Choose the date of the one-to-one.", "Plan it", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        await RhythmActionAsync(async ct =>
+        {
+            await _rhythm.PlanOneToOneAsync(person.Key, person.Name, AtNine(date), _actor, ct).ConfigureAwait(true);
+            SetRhythmStatus($"Planned the one-to-one with {person.Name} for {date:ddd d MMM}. Nothing was sent; draft the invite next.");
+        }).ConfigureAwait(true);
+    }
+
+    private void CopyPersonAgenda_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm is { PersonAgenda.Length: > 0 } r && TrySetClipboard(r.PersonAgenda)) SetRhythmStatus("Copied the agenda.");
+    }
+
+    private void DraftPersonInvite_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rhythm?.SelectedPerson is not { IsLead: true } person) return;
+        OpenMailDraft(person.Key, $"One-to-one: {person.Name}", _rhythm.PersonAgenda);
+    }
+
+    private async void PursuitLine_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source
+            || System.Windows.Controls.ItemsControl.ContainerFromElement(PursuitLinesList, source) is not System.Windows.Controls.ListBoxItem { DataContext: BdPursuitLine line }) return;
+        e.Handled = true;
+        await OpenUrlAsync(BdDirectorRowLinks.For(line)).ConfigureAwait(true);
+    }
+
+    private async void OpenPursuitLine_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: BdPursuitLine line }) await OpenUrlAsync(BdDirectorRowLinks.For(line)).ConfigureAwait(true);
+    }
+
+    private async Task OpenUrlAsync(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return;
+        try { await KorDeepLink.OpenAsync(url).ConfigureAwait(true); }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "BD Director could not open {Url}.", url);
+            MessageBox.Show(this, "Could not open that screen. Please try again.", "Open", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     // ---- Today ----

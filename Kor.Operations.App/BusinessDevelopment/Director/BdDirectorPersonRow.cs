@@ -289,3 +289,23 @@ public sealed record BdDirectorBriefRow(DirectorBriefRow Brief, IReadOnlyList<Bd
     public bool CanAcknowledge => Brief.AcknowledgedAtUtc is null;
     public string Acknowledgement => Brief.AcknowledgedAtUtc is null ? "" : "Acknowledged by " + Brief.AcknowledgedBy;
 }
+
+/// <summary>
+/// One live pursuit on the Pursuits screen: what it is, who holds it, when it was last touched, and what is missing. A pursuit
+/// is "going cold" after 14 days without a logged touch or email, the same line People draws for Untouched14d.
+/// </summary>
+public sealed record BdPursuitLine(PursuitOverwatchRow Pursuit, string OwnerName, DateTimeOffset Now)
+{
+    public long EngagementId => Pursuit.EngagementId;
+    public string Title => Pursuit.ProjectName;
+    public string StageText => CrmStageNames.Display((CrmEngagementStage)Pursuit.Stage);
+    public DateTimeOffset? LastTouchUtc => new[] { Pursuit.LastActivityUtc, Pursuit.EmailLastTouchUtc }.Max();
+    public string Line => string.Join(" · ", new[] { OwnerName, Pursuit.Buyer, Pursuit.Region }.Where(s => !string.IsNullOrWhiteSpace(s)));
+    public string TouchText => LastTouchUtc is { } at ? "Last touch " + BdDateDisplay.Day(at) : "No touch logged since it opened " + BdDateDisplay.Day(Pursuit.OpenedAtUtc);
+    public string Gap => LastTouchUtc switch
+    {
+        null when (Now - Pursuit.OpenedAtUtc).TotalDays >= 14 => "Never touched in " + ((int)(Now - Pursuit.OpenedAtUtc).TotalDays).ToString(CultureInfo.InvariantCulture) + " days",
+        { } at when (Now - at).TotalDays >= 14 => "Going cold: no touch in " + ((int)(Now - at).TotalDays).ToString(CultureInfo.InvariantCulture) + " days",
+        _ => "",
+    };
+}

@@ -424,7 +424,7 @@ public sealed class BdScreensRenderTests
         var written = 0;
         for (var i = 0; i < files.Length; i++)
         {
-            tabs.SelectedIndex = i + 4; // Today, Actions, Meetings and References come first
+            SelectData(tabs, i + 3); // inside Data, Actions, Meetings and References come first
             if (i == 3)
             {
                 vm.SelectedAccount = vm.Accounts[0];
@@ -542,6 +542,14 @@ public sealed class BdScreensRenderTests
             new BdMeetingRow(1, "AllHands", "BD Updates", null, null, now.AddDays(-7), 60, "Held", "Team", null, "Illustrative recap.", null),
             new BdMeetingRow(2, "OneToOne", "Omar one-to-one", "omar@korstructural.com", "Omar Example", now.AddDays(4), 20, "Planned", null, "Illustrative agenda.", null, null),
         });
+        store.Setup(s => s.ListLeadsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new BdLeadRow("ilalonde@korstructural.com", "Ian Lalonde", "Manager", null, 10),
+            new BdLeadRow("omar@korstructural.com", "Omar Example", "Lead", "Vancouver/LowerMainland", 20),
+            new BdLeadRow("jim@korstructural.com", "Jim Example", "Lead", "USA", 60),
+        });
+        store.Setup(s => s.ListMoveResultsAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { new HourMoveResult(2, "NotToday", null, now) });
         store.Setup(s => s.ListReferencesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new[]
         {
             new BdReferenceRow(1, "Fraser Health", "Example school", "Architect", "Example Architects", "Pat Example", "604-555-0100", null, null, null, now.AddDays(-1), "ilalonde@korstructural.com", "Confirmed", null),
@@ -555,20 +563,40 @@ public sealed class BdScreensRenderTests
         Assert.Equal(2, rhythm.Meetings.Count);
         Assert.Equal(3, rhythm.References.Count);
 
-        using var vm = new DirectorPendingBidsFixture().Create();
+        Assert.Equal(new[] { "Ian Lalonde", "Omar Example", "Jim Example" }, rhythm.PeopleCards.Select(p => p.Name));
+        Assert.Equal("1 of 2 moves done · about 15 minutes left", rhythm.MovesProgressText);
+        Assert.Equal(new long[] { 1 }, rhythm.MyActions.Select(a => a.Row.Id));
+        Assert.Equal("2 days late", rhythm.MyActions[0].DueText);
+        Assert.Equal("Omar Example", rhythm.SelectedPerson?.Name); // the first lead, not the manager
+        Assert.StartsWith("One-to-one: Omar Example (20 minutes)", rhythm.PersonAgenda, StringComparison.Ordinal);
+
+        var pending = new DirectorPendingBidsFixture();
+        using var vm = pending.Create();
+        vm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
         var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>(), rhythm);
         var tabs = Assert.IsType<System.Windows.Controls.TabControl>(window.FindName("Tabs"));
         var content = (FrameworkElement)window.Content;
         window.Content = null;
         content.DataContext = vm;
         content.Resources.MergedDictionaries.Add(window.Resources);
-        var files = new[] { "director-today.png", "director-actions.png", "director-meetings.png", "director-references.png" };
+        var files = new[] { "director-today.png", "director-people.png", "director-pursuits.png", "director-actions.png", "director-meetings.png", "director-references.png" };
         var written = 0;
         for (var i = 0; i < files.Length; i++)
         {
-            tabs.SelectedIndex = i;
+            if (i < 3) tabs.SelectedIndex = i; else SelectData(tabs, i - 3);
             content.UpdateLayout();
-            written += RenderView(content, new Size(1680, i == 0 ? 1600 : 980), Path.Combine(dir, files[i]));
+            written += RenderView(content, new Size(1680, i == 0 ? 1500 : 980), Path.Combine(dir, files[i]));
+            if (i == 1)
+            {
+                Assert.Equal(3, VisualChildren<System.Windows.Controls.ListBox>(content).Single(l => l.Name == "PeopleCardsList").Items.Count);
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Next one-to-one Tue 20 Oct");
+            }
+            if (i == 2)
+            {
+                var list = VisualChildren<System.Windows.Controls.ListBox>(content).Single(l => l.Name == "PursuitLinesList");
+                Assert.Equal(vm.PursuitLines.Count, list.Items.Count);
+                Assert.True(vm.PursuitLines.Count > 0, "EXPECTED the pending-bids fixture's live pursuits on the Pursuits screen");
+            }
             if (i == 0)
             {
                 Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Your BD hour, Friday 16 October");
@@ -580,12 +608,23 @@ public sealed class BdScreensRenderTests
                 // The moves use the page, not the width of their longest line.
                 var title = VisualChildren<System.Windows.Controls.TextBlock>(content).First(b => b.Text == "Your BD hour, Friday 16 October");
                 var column = (FrameworkElement)VisualTreeHelper.GetParent(title);
-                Assert.True(column.ActualWidth >= 1100, "EXPECTED the hour to fill to its 1180 cap; ACTUAL width " + column.ActualWidth);
+                Assert.True(column.ActualWidth >= 880, "EXPECTED the moves to fill their 900 cap; ACTUAL width " + column.ActualWidth);
+                // Move 2 was answered "Not today": its card folds to its title and says so.
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Not today");
             }
-            if (i == 1)
+            if (i == 3)
                 Assert.Equal(2, VisualChildren<System.Windows.Controls.DataGrid>(content).Single(g => g.Name == "ActionsGrid").Items.Count);
         }
         return written;
+    }
+
+    /// <summary>Today, People and Pursuits are the first three tabs; every other view sits inside the fourth, Data.</summary>
+    private static void SelectData(System.Windows.Controls.TabControl tabs, int index)
+    {
+        tabs.SelectedIndex = 3;
+        var data = Assert.IsType<System.Windows.Controls.TabItem>(tabs.Items[3]);
+        Assert.Equal("Data", data.Header);
+        Assert.IsType<System.Windows.Controls.TabControl>(data.Content).SelectedIndex = index;
     }
 
     private static IEnumerable<T> VisualChildren<T>(DependencyObject root) where T : DependencyObject
@@ -610,7 +649,7 @@ public sealed class BdScreensRenderTests
         window.Content = null;
         content.DataContext = vm;
         content.Resources.MergedDictionaries.Add(window.Resources);
-        tabs.SelectedIndex = 13;
+        SelectData(tabs, 12);
         var written = RenderView(content, new Size(1680, 1280), Path.Combine(dir, "director-myday.png"));
         Assert.Equal(new[] { CallSheetKind.Pursuit, CallSheetKind.Ask, CallSheetKind.Account }, vm.MyDay.Select(r => r.Item.Kind));
         Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Known by Priya Engineer (3 jobs)");
@@ -640,7 +679,7 @@ public sealed class BdScreensRenderTests
         window.Content = null;
         content.DataContext = vm;
         content.Resources.MergedDictionaries.Add(window.Resources);
-        for (var i = 0; i < 13; i++) tabs.SelectedIndex = i;
+        for (var i = 0; i < 12; i++) SelectData(tabs, i);
         var written = RenderView(content, new Size(1680, 980), Path.Combine(dir, "director-pending.png"));
         Assert.Equal(3, vm.PendingBids.Count);
         Assert.Equal(3, vm.RelationshipPursuits);

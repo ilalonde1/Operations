@@ -32,11 +32,11 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 public sealed class BdDirectorMarketAndBriefRegressionTests
 {
     [Fact]
-    public void Window_HasFourteenTabs_StaticCaptions_AndPlainWords()
+    public void Window_HasThreeScreensAndData_StaticCaptions_AndPlainWords()
     {
         var xaml = Source("Kor.Operations.App/BusinessDevelopment/Director/BdDirectorWindow.xaml");
         var tabs = XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "TabItem").Select(e => (string?)e.Attribute("Header"));
-        Assert.Equal(new[] { "Today", "Actions", "Meetings", "References", "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" }, tabs);
+        Assert.Equal(new[] { "Today", "People", "Pursuits", "Data", "Actions", "Meetings", "References", "The number", "By person", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" }, tabs);
         Assert.Contains("{x:Static director:BdDirectorViewModel.MarketCaption}", xaml, StringComparison.Ordinal);
         Assert.Contains("{x:Static director:BdDirectorViewModel.BriefCaption}", xaml, StringComparison.Ordinal);
         Assert.Equal("What is coming: signals on the firms we watch, planned projects not yet procured, RFPs closing, and seats no structural engineer holds yet. All of it is what the BD Dashboard already reads.", BdDirectorViewModel.MarketCaption);
