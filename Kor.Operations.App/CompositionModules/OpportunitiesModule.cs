@@ -275,6 +275,8 @@ internal static class OpportunitiesModule
 
         // Pursuit attachments (Ian, 2026-07-08): DB index + LAN-share bytes.
         services.AddSingleton<IPursuitFileStore>(_ => new SqlPursuitFileStore(options.OpportunitiesDb));
+        services.AddSingleton<IPursuitRequirementStore>(_ => new SqlPursuitRequirementStore(options.OpportunitiesDb));
+        services.AddSingleton<App.Brochures.BrochurePursuitLauncher>();
         services.AddSingleton<App.Crm.IPursuitFileStorage, App.Crm.DbPursuitFileStorage>();
         services.AddSingleton(_ => new App.Crm.LanPursuitFileStorage(
             () => CompositionHelpers.GetStorageOptions().PursuitFilesRoot)); // read only when opening a relative legacy path

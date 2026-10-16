@@ -23,6 +23,7 @@ namespace Kor.Operations.Core.Models.Proposal
         public ApprovalToProceedBlockContent? ApprovalToProceed { get; set; }
         public SignaturePageBlockContent? SignaturePage { get; set; }
         public RatesTableBlockContent? RatesTable { get; set; }
+        public RfpRateScheduleBlockContent? RfpRateSchedule { get; set; }
         public FreeTextBlockContent? FreeText { get; set; }
         public PageBreakBlockContent? PageBreak { get; set; }
 
@@ -42,6 +43,7 @@ namespace Kor.Operations.Core.Models.Proposal
             ProposalBlockType.ApprovalToProceed => ApprovalToProceed as T,
             ProposalBlockType.SignaturePage => SignaturePage as T,
             ProposalBlockType.RatesTable => RatesTable as T,
+            ProposalBlockType.RfpRateSchedule => RfpRateSchedule as T,
             ProposalBlockType.FreeText => FreeText as T,
             ProposalBlockType.PageBreak => PageBreak as T,
             _ => null,

@@ -23,6 +23,8 @@
                         MaxWidth="560">
 
                 <!-- Summary stats -->
+                <TextBlock Text="{Binding PursuitLabel}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                <TextBlock Text="{Binding AttachmentMessage}" TextWrapping="Wrap" Margin="0,0,0,12"/>
                 <TextBlock FontSize="14"
                            Foreground="{StaticResource Text.Secondary}"
                            HorizontalAlignment="Center"

@@ -387,6 +387,7 @@ namespace Kor.Operations.App.FeeProposal
             ProposalBlockType.ApprovalToProceed => new ApprovalToProceedEditor { DataContext = vm.Block.ApprovalToProceed },
             ProposalBlockType.SignaturePage => new SignaturePageEditor { DataContext = vm.Block.SignaturePage, StaffMembers = _vm.StaffMembers },
             ProposalBlockType.RatesTable => new RatesTableEditor { DataContext = vm.Block.RatesTable },
+            ProposalBlockType.RfpRateSchedule => new RfpRateScheduleEditor { DataContext = vm.Block.RfpRateSchedule },
             ProposalBlockType.FreeText => new FreeTextEditor { DataContext = vm.Block.FreeText },
             ProposalBlockType.PageBreak => new System.Windows.Controls.TextBlock
             {

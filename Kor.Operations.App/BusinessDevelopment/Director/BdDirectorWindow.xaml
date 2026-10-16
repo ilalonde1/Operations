@@ -493,13 +493,16 @@
                 </Grid.RowDefinitions>
                 <TextBlock Text="{x:Static director:BdDirectorViewModel.PendingBidsCaption}" TextWrapping="Wrap" Margin="0,0,0,12"/>
                 <TextBlock Grid.Row="1" Text="{Binding PendingBidsSummary}" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
+                <WrapPanel Grid.Row="2" Margin="0,0,0,12">
                     <CheckBox Content="Mine" IsChecked="{Binding MineOnly}" VerticalAlignment="Center" Margin="0,0,20,0"/>
                     <Button Content="Mark submitted…" Click="MarkSubmitted_Click" IsEnabled="{Binding SelectedPendingBid.CanSubmit, FallbackValue=False}" Padding="12,6" Margin="0,0,8,0"/>
                     <Button Content="Build fee proposal…" Click="BuildFeeProposal_Click" Padding="12,6" Margin="0,0,8,0"/>
+                    <Button Content="Checklist…" Click="Checklist_Click" Padding="12,6" Margin="0,0,8,0"/>
+                    <Button Content="Org chart…" Click="OrgChart_Click" Padding="12,6" Margin="0,0,8,0"/>
+                    <Button Content="Build brochure…" Click="BuildBrochure_Click" Padding="12,6" Margin="0,0,8,0"/>
                     <Button Content="Assign…" Click="AssignBid_Click" Padding="12,6" Margin="0,0,8,0"/>
                     <Button Content="Edit opportunity…" Click="EditOpportunity_Click" Padding="12,6"/>
-                </StackPanel>
+                </WrapPanel>
                 <DataGrid x:Name="PendingBidsGrid" Grid.Row="3" ItemsSource="{Binding PendingBids}" SelectedItem="{Binding SelectedPendingBid}"
                           CanUserSortColumns="False">
                     <DataGrid.RowStyle>

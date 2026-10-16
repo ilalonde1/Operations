@@ -444,6 +444,7 @@
                                 <Button Content="+ Excluded Services" Tag="ExcludedServices"  Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
                                 <Button Content="+ References"        Tag="References"        Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
                                 <Button Content="+ Rates Table"       Tag="RatesTable"        Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ RFP Rate Schedule" Tag="RfpRateSchedule" Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
                                 <Button Content="+ Approval"          Tag="ApprovalToProceed" Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
                                 <Button Content="+ Signature"         Tag="SignaturePage"     Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
                                 <Button Content="+ Free Text"         Tag="FreeText"          Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
@@ -709,7 +710,23 @@
                         <Border.Effect>
                             <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
                         </Border.Effect>
-                        <ContentControl x:Name="BlockEditorHost" LostFocus="BlockEditorHost_LostFocus"/>
+                        <DockPanel>
+                            <Expander DockPanel.Dock="Right" Header="Guidance" ExpandDirection="Left" IsExpanded="False" Margin="12,0,0,0">
+                                <ScrollViewer Width="320" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel Margin="8">
+                                        <TextBlock Text="{Binding GuidanceMessage}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                        <ListBox ItemsSource="{Binding GuidanceRows}" SelectedItem="{Binding SelectedGuidance}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                            <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4,8">
+                                                <TextBlock Text="{Binding Statement}" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding Citation}" TextWrapping="Wrap" FontStyle="Italic" Margin="0,6,0,0"/>
+                                            </StackPanel></DataTemplate></ListBox.ItemTemplate>
+                                        </ListBox>
+                                        <TextBox Text="{Binding GuidancePassage, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Expander>
+                            <ContentControl x:Name="BlockEditorHost" LostFocus="BlockEditorHost_LostFocus"/>
+                        </DockPanel>
                     </Border>
 
                     <Expander Grid.Row="1" Margin="0,8,0,0" IsExpanded="False"

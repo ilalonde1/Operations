@@ -18,5 +18,6 @@ namespace Kor.Operations.Core.Models.Proposal
         RatesTable,
         FreeText,
         PageBreak,
+        RfpRateSchedule,
     }
 }

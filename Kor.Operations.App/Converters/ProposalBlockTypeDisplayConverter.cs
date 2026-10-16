@@ -30,6 +30,7 @@ namespace Kor.Operations.App.Converters
                     ProposalBlockType.ApprovalToProceed => "Approval to Proceed",
                     ProposalBlockType.SignaturePage => "Signature Page",
                     ProposalBlockType.RatesTable => "Rates Table",
+                    ProposalBlockType.RfpRateSchedule => "RFP Rate Schedule",
                     ProposalBlockType.FreeText => "Free Text",
                     ProposalBlockType.PageBreak => "Page Break",
                     _ => value.ToString() ?? string.Empty

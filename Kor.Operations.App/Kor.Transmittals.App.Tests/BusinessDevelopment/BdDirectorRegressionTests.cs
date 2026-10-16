@@ -583,6 +583,92 @@ public sealed class BdDirectorRegressionTests
             path => Regex.IsMatch(Path.GetFileName(path), "(?i)MyDay|TwoSeats|9J"));
     }
 
+    [Fact]
+    public void Requirements358_IsOneGuardedTable_WithKindsStatusesForeignKeyAndIndex_NoDataStatements()
+    {
+        var sql = Source("Kor.Opportunities.Data/Schema/358_PursuitRequirements.sql");
+        Assert.Single(Regex.Matches(sql, @"(?i)CREATE\s+TABLE"));
+        Contains(sql, "IF OBJECT_ID(N'opportunities.PursuitRequirement', N'U') IS NULL");
+        Contains(sql, "FOREIGN KEY (EngagementId)");
+        Contains(sql, "REFERENCES opportunities.CrmEngagements(Id)");
+        Contains(sql, "IF NOT EXISTS (SELECT 1 FROM sys.indexes");
+        Contains(sql, "ON opportunities.PursuitRequirement(EngagementId, Ordinal)");
+        Contains(sql, "DEFAULT N'Open'");
+        foreach (var kind in PursuitRequirementValidation.Kinds) Contains(sql, $"N'{kind}'");
+        foreach (var status in PursuitRequirementValidation.Statuses) Contains(sql, $"N'{status}'");
+        foreach (var column in new[] { "Requirement NVARCHAR(1000) NOT NULL", "SourceRef NVARCHAR(200) NOT NULL",
+            "CheckParameter NVARCHAR(400) NULL", "StatusNote NVARCHAR(500) NULL", "CheckedBy NVARCHAR(150) NULL",
+            "CheckedAtUtc DATETIMEOFFSET(7) NULL", "CreatedBy NVARCHAR(150) NOT NULL" }) Contains(sql, column);
+        Assert.DoesNotMatch(@"(?i)\b(INSERT|UPDATE|DELETE|MERGE|GRANT)\b", sql);
+        Assert.DoesNotContain("CanonicalOrg", sql);
+    }
+
+    [Fact]
+    public void ChecklistImport_ValidatesBeforeSingleTransaction_AndSerializesNonemptyCheckAndReplace()
+    {
+        var sql = Source("Kor.Opportunities.Data/Crm/SqlPursuitRequirementStore.cs");
+        Assert.Single(Regex.Matches(sql, "BeginTransactionAsync"));
+        Assert.True(sql.IndexOf("PursuitRequirementValidation.Validate(validated)", StringComparison.Ordinal)
+            < sql.IndexOf("BeginTransactionAsync", StringComparison.Ordinal));
+        Contains(sql, "IsolationLevel.Serializable");
+        Contains(sql, "CrmEngagements WITH (UPDLOCK, HOLDLOCK)");
+        Contains(sql, "if (import && existing > 0 && !replace)");
+        Contains(sql, "if (import && replace)");
+        Contains(sql, "await tx.RollbackAsync(CancellationToken.None)");
+        Contains(sql, "await tx.CommitAsync(ct)");
+        Contains(sql, "(@automatic = 0 OR CheckKind <> N'Manual')");
+        var cli = Source("tools/BdKnowledgeIngest/Program.cs");
+        Contains(cli, "pursuit checklist import <engagementId> <file.json> --by <name> [--replace]");
+        Assert.True(cli.IndexOf("if (verb == \"pursuit\")", StringComparison.Ordinal)
+            < cli.IndexOf("using var embedder", StringComparison.Ordinal));
+        var helper = Source("Kor.Opportunities.Data/Crm/IPursuitRequirementStore.cs");
+        Assert.True(helper.IndexOf("var items = PursuitRequirementValidation.Parse(json)", StringComparison.Ordinal)
+            < helper.IndexOf("await store.ListAsync", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ChecklistImport_InvalidLastItemMakesNoCalls_AndNonemptyRequiresReplace()
+    {
+        var store = new Mock<IPursuitRequirementStore>(MockBehavior.Strict);
+        const string valid = """{"requirement":"Quoted requirement", "sourceRef":"RFP 3.2", "checkKind":"Manual"}""";
+        await Assert.ThrowsAsync<ArgumentException>(() => PursuitChecklistImport.ImportAsync(store.Object, 1,
+            "[" + valid + ", {\"requirement\":\"bad\",\"sourceRef\":\"RFP 4\",\"checkKind\":\"PageLimit\",\"checkParameter\":\"zero\"}]",
+            "reviewer", false, CancellationToken.None));
+        store.VerifyNoOtherCalls();
+        store.Setup(s => s.ListAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new PursuitRequirement(1, 1, 1, "Existing", "RFP 1", "Manual", null, "Open", null, null, null, "person", DateTimeOffset.UtcNow)
+        });
+        await Assert.ThrowsAsync<InvalidOperationException>(() => PursuitChecklistImport.ImportAsync(store.Object, 1,
+            "[" + valid + "]", "reviewer", false, CancellationToken.None));
+        store.Verify(s => s.ListAsync(1, It.IsAny<CancellationToken>()), Times.Once);
+        store.Setup(s => s.ImportAsync(1, It.IsAny<IReadOnlyList<PursuitRequirementInput>>(), "reviewer", true, It.IsAny<CancellationToken>()))
+            .Returns(System.Threading.Tasks.Task.CompletedTask);
+        await PursuitChecklistImport.ImportAsync(store.Object, 1, "[" + valid + "]", "reviewer", true, CancellationToken.None);
+        store.Verify(s => s.ImportAsync(1, It.Is<IReadOnlyList<PursuitRequirementInput>>(items => items.Count == 1),
+            "reviewer", true, It.IsAny<CancellationToken>()), Times.Once);
+        store.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public void Builders_NewCodeHasNoModelOrOfficeAutomation_AndGuidanceIsFilteredBeforeTake()
+    {
+        foreach (var file in new[]
+        {
+            Director + "PursuitChecklistViewModel.cs", Director + "PursuitChecklistWindow.xaml.cs", Director + "PursuitDraftChecker.cs",
+            Director + "GenericPursuitChecklist.cs", "Kor.Operations.App/FeeProposal/OrgChartRenderer.cs",
+            "Kor.Operations.App/FeeProposal/PursuitOrgChartViewModel.cs", "Kor.Operations.App/FeeProposal/PursuitOrgChartWindow.xaml.cs",
+            "Kor.Operations.App/FeeProposal/ProposalGuidance.cs", "Kor.Operations.App/FeeProposal/Editors/RfpRateScheduleEditor.xaml.cs",
+            "Kor.Operations.App/Brochures/BrochurePursuitLauncher.cs", "Kor.Operations.App/Brochures/BrochureBuilderViewModel.Pursuit.cs",
+            "Kor.Operations.Rendering/Proposal/ProposalDocxReader.cs", "Kor.Operations.Rendering/Proposal/OrgChartSpec.cs"
+        }) Assert.DoesNotMatch(@"(?i)api\.(anthropic|openai)\.com|AnthropicApiKey|ChatClient|ResponsesClient|ChatCompletion|AskService|\bVisio\b|ComImport|GetTypeFromProgID|InteropServices|dynamic\s+", Source(file));
+        var guidance = Source("Kor.Operations.App/FeeProposal/ProposalGuidance.cs");
+        Assert.DoesNotMatch(@"KeepAsync|RetireAsync|SaveAsync|InsertAsync|UpdateAsync", guidance);
+        Contains(Source("Kor.Opportunities.Data/Knowledge/SqlKnowledgeClaimStore.cs"), "c.Kind = N'Rule' AND c.RetiredAtUtc IS NULL");
+        Contains(Source("Kor.Opportunities.Data/Knowledge/SqlKnowledgeClaimStore.cs"), "STRING_SPLIT(@keywords, N'|')");
+        Contains(Source("Kor.Operations.App/Brochures/BrochureBuilderViewModel.Preview.cs"), "if (IsPursuit) return;");
+    }
+
     private static void Contains(string source, string expected) => Assert.True(source.Contains(expected, StringComparison.Ordinal),
         $"EXPECTED source containing {expected}; ACTUAL missing");
 

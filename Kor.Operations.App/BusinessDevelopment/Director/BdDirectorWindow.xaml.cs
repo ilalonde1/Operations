@@ -128,6 +128,31 @@ public partial class BdDirectorWindow : Window
             message => MessageBox.Show(this, message, "Fee proposal", MessageBoxButton.OK, MessageBoxImage.Information));
     }
 
+    private void Checklist_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedPendingBid is not { } row) return;
+        var checklist = new PursuitChecklistViewModel(AppServices.Get<IPursuitRequirementStore>(),
+            AppServices.Get<IPursuitFileStore>(), row.Bid.EngagementId, row.Bid.RfpNumber, _actor);
+        new PursuitChecklistWindow(checklist) { Owner = this }.Show();
+    }
+
+    private void OrgChart_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedPendingBid is not { } row) return;
+        var chart = new PursuitOrgChartViewModel(AppServices.Get<IPursuitFileStore>(),
+            AppServices.Get<Kor.Opportunities.Data.Opportunities.IOpportunityFeeProposalLinkStore>(),
+            AppServices.Get<IFeeProposalStore>(), _staffStore, row.Bid.EngagementId, row.Bid.OpportunityId,
+            row.Bid.RfpNumber, row.Bid.Project, _actor);
+        new PursuitOrgChartWindow(chart) { Owner = this }.Show();
+    }
+
+    private void BuildBrochure_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedPendingBid is not { } row) return;
+        AppServices.Get<Kor.Operations.App.Brochures.BrochurePursuitLauncher>().Launch(row.Bid.OpportunityId,
+            row.Bid.EngagementId, row.Bid.RfpNumber, row.Bid.Project, _actor, this);
+    }
+
     private async void SubmittedFile_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Hyperlink { DataContext: BdDirectorPendingBidRow row } || !row.HasSubmittedFile) return;

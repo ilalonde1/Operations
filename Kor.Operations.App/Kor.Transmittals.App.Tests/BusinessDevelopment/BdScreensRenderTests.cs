@@ -84,6 +84,7 @@ public sealed class BdScreensRenderTests
                 written += RenderPursuitHealth(dir);
                 written += RenderDirector(dir);
                 written += RenderMyDay(dir);
+                written += RenderBuilders(dir);
                 BdDirectorPendingBidsRegressionTests.VerifySubmissionDialogs();
             }
             catch (Exception ex)
@@ -96,7 +97,51 @@ public sealed class BdScreensRenderTests
 
         Assert.True(thread.Join(TimeSpan.FromMinutes(2)), "Rendering the BD screens did not finish within two minutes.");
         Assert.True(failure is null, $"A BD screen failed to build or render: {failure}");
-        Assert.True(written >= 15, $"EXPECTED at least 15 renders; ACTUAL {written}");
+        Assert.True(written >= 17, $"EXPECTED at least 17 renders; ACTUAL {written}");
+    }
+
+    private static int RenderBuilders(string dir)
+    {
+        var vm = new PursuitChecklistViewModel(Mock.Of<IPursuitRequirementStore>(), Mock.Of<IPursuitFileStore>(),
+            1, "2026-RFP-IP-061", "reviewer");
+        var file = BdDirectorBuildersRegressionTests.Attachment("2026-RFP-IP-061 - KOR Structural - Draft.docx");
+        var attachment = new ChecklistAttachmentRow(file);
+        attachment.SetMetadata(new Kor.Operations.Rendering.Proposal.ProposalDocxMetadata("Proposal author", "Reviewer", "7", Now.UtcDateTime));
+        vm.Attachments.Add(attachment); vm.SelectedAttachment = attachment;
+        vm.Items.Add(BdDirectorBuildersRegressionTests.Requirement(1, "PhrasePresent", "Executive Summary", "Met")
+            with { Requirement = "Include an executive summary.", StatusNote = file.FileName + ": phrase found: Executive Summary" });
+        vm.Items.Add(BdDirectorBuildersRegressionTests.Requirement(2, "FileName", "{rfp} - KOR Structural - *.docx", "Met")
+            with { Requirement = "Name the submission with the RFP number and proponent.", StatusNote = file.FileName + ": file name matches" });
+        vm.Items.Add(BdDirectorBuildersRegressionTests.Requirement(3, "PhrasePresent", "incorporates AI", "NotMet")
+            with { Requirement = "Disclose the use of artificial intelligence in preparing the proposal.", StatusNote = file.FileName + ": phrase not found: incorporates AI" });
+        vm.Items.Add(BdDirectorBuildersRegressionTests.Requirement(4, "Manual", null)
+            with { StatusNote = "Verify the authorized signer's signature." });
+        vm.Items.Add(BdDirectorBuildersRegressionTests.Requirement(5, "PageLimit", "20")
+            with { Requirement = "The proposal must not exceed the stated page limit.", StatusNote = file.FileName + ": Render to PDF to count pages" });
+        vm.SelectedItem = vm.Items[3];
+        Assert.Equal(new[] { "Met", "Met", "NotMet", "Open", "Open" }, vm.Items.Select(i => i.Status));
+        Assert.Equal("Manual", vm.Items[3].CheckKind);
+        Assert.Contains("Render to PDF", vm.Items[4].StatusNote);
+        var window = new PursuitChecklistWindow(vm);
+        var content = (FrameworkElement)window.Content;
+        window.Content = null; content.DataContext = vm;
+        var count = RenderView(content, new Size(1320, 860), Path.Combine(dir, "director-checklist.png"));
+        window.Close();
+
+        var schedule = BdDirectorBuildersRegressionTests.FlaggedSchedule();
+        Assert.Equal(2, schedule.Flags.Count);
+        Assert.Contains(schedule.Flags, flag => flag.Contains("below the stated statutory load", StringComparison.Ordinal));
+        Assert.Contains(schedule.Flags, flag => flag.Contains("quoted hourly implies", StringComparison.Ordinal));
+        var editor = new Kor.Operations.App.FeeProposal.Editors.RfpRateScheduleEditor { DataContext = schedule };
+        count += RenderView(editor, new Size(1100, 720), Path.Combine(dir, "fee-rate-schedule.png"));
+
+        // Additional review artifacts from the same Leduc specification, not another screen count.
+        var spec = Kor.Operations.Rendering.Proposal.OrgChartSpec.FromJson(File.ReadAllText(
+            Path.Combine(BdDirectorBuildersRegressionTests.RepoRoot(), "tools/New-ProposalOrgChart.example.json")));
+        var chart = Kor.Operations.App.FeeProposal.OrgChartRenderer.Render(spec);
+        File.WriteAllText(Path.Combine(dir, "org-chart-leduc.svg"), chart.Svg);
+        File.WriteAllBytes(Path.Combine(dir, "org-chart-leduc.png"), chart.Png);
+        return count;
     }
 
     // ---- the dashboard: funnel, Closing soon, New RFPs, Priority Actions (collapsed) ----

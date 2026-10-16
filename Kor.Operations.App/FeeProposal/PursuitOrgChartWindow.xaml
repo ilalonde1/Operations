@@ -1,0 +1,41 @@
+<Window x:Class="Kor.Operations.App.FeeProposal.PursuitOrgChartWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Project org chart" Width="1200" Height="900" MinWidth="900" MinHeight="700" WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}">
+    <DockPanel Margin="18">
+        <TextBlock DockPanel.Dock="Bottom" Text="{Binding Message}" TextWrapping="Wrap" Margin="0,10"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" IsEnabled="{Binding IsReady}">
+            <StackPanel>
+                <TextBlock Text="Project org chart" FontSize="23" FontWeight="SemiBold"/>
+                <TextBlock Text="Title" Margin="0,10,0,0"/><TextBox Text="{Binding Spec.Title, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock Text="Subtitle"/><TextBox Text="{Binding Spec.Subtitle, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock Text="Context — who the team reports to" Margin="0,10,0,0"/><TextBox Text="{Binding Spec.Context.Name, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Text="{Binding ContextLines, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="42" ToolTip="One context line per line"/>
+                <TextBlock Text="Leadership chain — top to bottom" FontWeight="SemiBold" Margin="0,12,0,6"/>
+                <DataGrid ItemsSource="{Binding Spec.Chain}" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" Height="155">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                        <DataGridTextColumn Header="Credentials" Binding="{Binding Cred, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                        <DataGridTextColumn Header="Title" Binding="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
+                        <DataGridTextColumn Header="Role" Binding="{Binding Role, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+                <TextBlock Text="Groups — left to right; select a group to edit its people" FontWeight="SemiBold" Margin="0,12,0,6"/>
+                <DataGrid ItemsSource="{Binding Spec.Groups}" SelectedItem="{Binding SelectedGroup}" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" Height="105">
+                    <DataGrid.Columns><DataGridTextColumn Header="Group name" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="*"/></DataGrid.Columns>
+                </DataGrid>
+                <DataGrid ItemsSource="{Binding SelectedGroup.People}" AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True" Height="155" Margin="0,6">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                        <DataGridTextColumn Header="Credentials" Binding="{Binding Cred, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                        <DataGridTextColumn Header="Title" Binding="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
+                        <DataGridTextColumn Header="Role" Binding="{Binding Role, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+                <TextBlock Text="Continuity note"/><TextBox Text="{Binding Spec.Note, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="55"/>
+                <WrapPanel Margin="0,12"><Button Content="Save JSON" Click="SaveJson_Click" Padding="12,6" Margin="0,0,8,0"/><Button Content="Render and attach" Click="Render_Click" Padding="12,6"/></WrapPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

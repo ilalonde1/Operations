@@ -57,6 +57,25 @@ public sealed class SqlKnowledgeClaimStore(string connectionString) : IKnowledge
 
     public Task<IReadOnlyList<KnowledgeClaimRow>> ListClaimsAsync(long sourceId, string filter, int take, CancellationToken ct)
     {
+        // Proposal guidance uses a fixed keyword map. Apply it before TOP so later passages
+        // remain eligible even when a book holds more than the UI's 1,000-row read cap.
+        if (filter.StartsWith("Rule:", StringComparison.Ordinal))
+        {
+            var keywords = filter[5..];
+            if (string.IsNullOrWhiteSpace(keywords) || keywords.Length > 400)
+                throw new ArgumentException("Supply guidance keywords.", nameof(filter));
+            return ReadAsync(ClaimSelect + """
+                 WHERE c.SourceId = @id AND c.Kind = N'Rule' AND c.RetiredAtUtc IS NULL
+                   AND EXISTS (SELECT 1 FROM STRING_SPLIT(@keywords, N'|') k
+                       WHERE LEN(k.value) > 0 AND
+                           (CHARINDEX(k.value, c.Statement COLLATE Latin1_General_100_CI_AS) > 0
+                            OR EXISTS (SELECT 1 FROM knowledge.ClaimConcept link
+                                JOIN knowledge.Concept concept ON concept.Id = link.ConceptId
+                                WHERE link.ClaimId = c.Id AND
+                                    CHARINDEX(k.value, concept.Name COLLATE Latin1_General_100_CI_AS) > 0)))
+                 ORDER BY p.Ordinal, c.Id;
+                """, cmd => { Page(cmd, sourceId, take); cmd.Parameters.Add("@keywords", SqlDbType.NVarChar, 400).Value = keywords; }, ReadClaim, ct);
+        }
         var predicate = filter switch
         {
             "Unreviewed" => "c.ReviewedAtUtc IS NULL AND c.RetiredAtUtc IS NULL",

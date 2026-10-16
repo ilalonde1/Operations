@@ -1,6 +1,10 @@
 #nullable enable
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System;
+using System.ComponentModel;
+using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace Kor.Operations.Core.Models.Proposal
 {
@@ -217,6 +221,184 @@ namespace Kor.Operations.Core.Models.Proposal
             var date = string.IsNullOrWhiteSpace(EffectiveDate) ? string.Empty : EffectiveDate;
             var count = Rates?.Count ?? 0;
             return $"Effective: {date} | {count} roles";
+        }
+    }
+
+    public sealed class RfpRateScheduleRow : ObservableObject
+    {
+        private string _name = string.Empty;
+        private string _position = string.Empty;
+        private bool _scored;
+        private decimal? _baseHourly;
+        private decimal? _quotedHourly;
+
+        public string Name { get => _name; set => SetField(ref _name, value); }
+
+        public string Position { get => _position; set => SetField(ref _position, value); }
+
+        public bool Scored { get => _scored; set => SetField(ref _scored, value); }
+
+        public decimal? BaseHourly { get => _baseHourly; set => SetField(ref _baseHourly, value); }
+
+        /// <summary>Quoted hourly means including overhead, before profit (the RFP's incl. OH column).</summary>
+        public decimal? QuotedHourly { get => _quotedHourly; set => SetField(ref _quotedHourly, value); }
+    }
+
+    public sealed record RfpRateCalculation(string Name, string Position, bool Scored, decimal? BaseHourly,
+        decimal? ExcludingOverhead, decimal? IncludingOverhead, decimal? IncludingOverheadAndProfit,
+        decimal? ImpliedOverhead, IReadOnlyList<string> Flags);
+
+    public sealed class RfpRateScheduleBlockContent : ObservableObject, ISummarizable
+    {
+        private readonly HashSet<RfpRateScheduleRow> _observed = new();
+        private decimal _burden;
+        private decimal _overhead;
+        private decimal _profit;
+        private decimal _statutoryLoad;
+        private ObservableCollection<RfpRateScheduleRow> _rows = new();
+
+        public RfpRateScheduleBlockContent()
+        {
+            _rows.CollectionChanged += RowsChanged;
+        }
+
+        public decimal Burden
+        {
+            get => _burden;
+            set
+            {
+                if (SetField(ref _burden, value))
+                {
+                    Recalculate();
+                }
+            }
+        }
+
+        public decimal Overhead
+        {
+            get => _overhead;
+            set
+            {
+                if (SetField(ref _overhead, value))
+                {
+                    Recalculate();
+                }
+            }
+        }
+
+        public decimal Profit
+        {
+            get => _profit;
+            set
+            {
+                if (SetField(ref _profit, value))
+                {
+                    Recalculate();
+                }
+            }
+        }
+
+        public decimal StatutoryLoad
+        {
+            get => _statutoryLoad;
+            set
+            {
+                if (SetField(ref _statutoryLoad, value))
+                {
+                    Recalculate();
+                }
+            }
+        }
+
+        [JsonIgnore]
+        public decimal BurdenPercent { get => Burden * 100; set => Burden = value / 100; }
+
+        [JsonIgnore]
+        public decimal OverheadPercent { get => Overhead * 100; set => Overhead = value / 100; }
+
+        [JsonIgnore]
+        public decimal ProfitPercent { get => Profit * 100; set => Profit = value / 100; }
+
+        [JsonIgnore]
+        public decimal StatutoryLoadPercent { get => StatutoryLoad * 100; set => StatutoryLoad = value / 100; }
+
+        public ObservableCollection<RfpRateScheduleRow> Rows
+        {
+            get => _rows;
+            set
+            {
+                _rows.CollectionChanged -= RowsChanged;
+                _rows = value ?? new();
+                _rows.CollectionChanged += RowsChanged;
+                ObserveRows();
+                OnPropertyChanged();
+                Recalculate();
+            }
+        }
+
+        [JsonIgnore]
+        public IReadOnlyList<RfpRateCalculation> Calculations => Rows.Select(Calculate).ToArray();
+
+        [JsonIgnore]
+        public IReadOnlyList<string> Flags =>
+            (Burden < StatutoryLoad ? new[] { $"Burden {Burden:P2} is below the stated statutory load {StatutoryLoad:P2}." } : Array.Empty<string>())
+            .Concat(Calculations.SelectMany(r => r.Flags)).ToArray();
+
+        public RfpRateCalculation Calculate(RfpRateScheduleRow row)
+        {
+            var excl = row.BaseHourly * (1 + Burden);
+            var incl = excl * (1 + Overhead);
+            var profit = incl * (1 + Profit);
+            var implied = excl is > 0 && row.QuotedHourly.HasValue ? (row.QuotedHourly / excl) - 1 : null;
+            var flags = new List<string>();
+            if (row.Scored && row.BaseHourly is not > 0)
+            {
+                flags.Add($"{row.Name} / {row.Position}: scored position has no rate.");
+            }
+
+            if (implied is { } oh && Math.Abs(oh - Overhead) > 0.005m)
+            {
+                flags.Add($"{row.Name}: quoted hourly implies {oh:P2} overhead; stated {Overhead:P2} (more than 0.5 percentage points apart).");
+            }
+
+            return new(row.Name, row.Position, row.Scored, row.BaseHourly, excl, incl, profit, implied, flags);
+        }
+
+        public string GetSummary() => $"{Rows.Count} people · burden {Burden:P1} · overhead {Overhead:P1} · profit {Profit:P1}";
+
+        private void RowsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            ObserveRows();
+            Recalculate();
+        }
+
+        private void ObserveRows()
+        {
+            foreach (var row in _observed)
+            {
+                row.PropertyChanged -= RowChanged;
+            }
+
+            _observed.Clear();
+            foreach (var row in Rows)
+            {
+                if (_observed.Add(row))
+                {
+                    row.PropertyChanged += RowChanged;
+                }
+            }
+        }
+
+        private void RowChanged(object? sender, PropertyChangedEventArgs e) => Recalculate();
+
+        private void Recalculate()
+        {
+            OnPropertyChanged(nameof(Calculations));
+            OnPropertyChanged(nameof(Flags));
+            OnPropertyChanged(nameof(BurdenPercent));
+            OnPropertyChanged(nameof(OverheadPercent));
+            OnPropertyChanged(nameof(ProfitPercent));
+            OnPropertyChanged(nameof(StatutoryLoadPercent));
         }
     }
 

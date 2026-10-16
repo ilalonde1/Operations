@@ -54,6 +54,18 @@ namespace Kor.Operations.App.FeeProposal
         private readonly IFeeProposalStore _proposalStore;
         private readonly IProposalBlockLibraryStore _libraryStore;
         private readonly IProposalStaffStore _staffStore;
+        private readonly ProposalGuidance? _guidance;
+        private int _guidanceVersion, _passageVersion;
+        public ObservableCollection<ProposalGuidanceRow> GuidanceRows { get; } = new();
+        public string GuidanceMessage { get; private set; } = "Select a block to read guidance.";
+        public string GuidancePassage { get; private set; } = "";
+        public Task GuidanceLoadTask { get; private set; } = Task.CompletedTask;
+        private ProposalGuidanceRow? _selectedGuidance;
+        public ProposalGuidanceRow? SelectedGuidance
+        {
+            get => _selectedGuidance;
+            set { _selectedGuidance = value; OnPropertyChanged(); _ = LoadGuidancePassageAsync(value); }
+        }
 
         private FeeProposalModel _proposal = new();
         private FeeProposalBlockViewModel? _selectedBlock;
@@ -166,17 +178,20 @@ namespace Kor.Operations.App.FeeProposal
             {
                 _selectedBlock = value;
                 OnPropertyChanged();
+                GuidanceLoadTask = LoadGuidanceAsync(value);
             }
         }
 
         public FeeProposalBuilderViewModel(
             IFeeProposalStore proposalStore,
             IProposalBlockLibraryStore libraryStore,
-            IProposalStaffStore staffStore)
+            IProposalStaffStore staffStore,
+            Kor.Opportunities.Data.Knowledge.IKnowledgeClaimStore? claims = null)
         {
             _proposalStore = proposalStore;
             _libraryStore = libraryStore;
             _staffStore = staffStore;
+            _guidance = claims is null ? null : new ProposalGuidance(claims);
 
             Blocks.CollectionChanged += (_, _) =>
             {
@@ -191,6 +206,51 @@ namespace Kor.Operations.App.FeeProposal
         {
             await ReloadStaffAsync(ct);
             await RefreshLibraryAsync(ct);
+        }
+
+        private async Task LoadGuidanceAsync(FeeProposalBlockViewModel? block)
+        {
+            var version = ++_guidanceVersion;
+            GuidanceRows.Clear(); SelectedGuidance = null;
+            GuidanceMessage = block is null ? "Select a block to read guidance." : "Reading Shipley guidance…";
+            OnPropertyChanged(nameof(GuidanceMessage));
+            if (block is null) return;
+            try
+            {
+                if (_guidance is null) throw new InvalidOperationException("Knowledge store is unavailable.");
+                var rows = await _guidance.LoadAsync(block.BlockType, CancellationToken.None).ConfigureAwait(true);
+                if (version != _guidanceVersion) return;
+                foreach (var row in rows) GuidanceRows.Add(row);
+                GuidanceMessage = rows.Count == 0 ? "No live Shipley rules match this block." : "Select a rule to read its passage.";
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Reading proposal guidance failed.");
+                if (version != _guidanceVersion) return;
+                GuidanceMessage = "Could not read guidance. Select the block again to retry.";
+            }
+            OnPropertyChanged(nameof(GuidanceMessage));
+        }
+
+        private async Task LoadGuidancePassageAsync(ProposalGuidanceRow? row)
+        {
+            var version = ++_passageVersion;
+            GuidancePassage = ""; OnPropertyChanged(nameof(GuidancePassage));
+            if (row is null || _guidance is null) return;
+            try
+            {
+                var passage = await _guidance.PassageAsync(row, CancellationToken.None).ConfigureAwait(true);
+                if (version != _passageVersion) return;
+                GuidancePassage = passage is null ? "The passage could not be found."
+                    : $"{passage.SourceTitle}\n{passage.Ref}\n\n{passage.Text}";
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Reading proposal guidance passage failed.");
+                if (version != _passageVersion) return;
+                GuidancePassage = "Could not read the passage. Select the rule again to retry.";
+            }
+            OnPropertyChanged(nameof(GuidancePassage));
         }
 
         public async Task RefreshLibraryAsync(CancellationToken ct = default)
@@ -225,7 +285,7 @@ namespace Kor.Operations.App.FeeProposal
                     copy.InstanceId = Guid.NewGuid().ToString("N");
                     copy.TemplateId = template.Id;
                     copy.TemplateName = template.Name;
-                    var vm = new FeeProposalBlockViewModel(copy);
+                    var vm = WrapBlock(copy);
                     Blocks.Add(vm);
                     SelectedBlock = vm;
                     IsDirty = true;
@@ -266,11 +326,12 @@ namespace Kor.Operations.App.FeeProposal
                 case ProposalBlockType.ApprovalToProceed: block.ApprovalToProceed = new ApprovalToProceedBlockContent(); break;
                 case ProposalBlockType.SignaturePage: block.SignaturePage = new SignaturePageBlockContent(); break;
                 case ProposalBlockType.RatesTable: block.RatesTable = new RatesTableBlockContent(); break;
+                case ProposalBlockType.RfpRateSchedule: block.RfpRateSchedule = new RfpRateScheduleBlockContent(); break;
                 case ProposalBlockType.FreeText: block.FreeText = new FreeTextBlockContent(); break;
                 case ProposalBlockType.PageBreak: block.PageBreak = new PageBreakBlockContent(); break;
             }
 
-            var vm = new FeeProposalBlockViewModel(block);
+            var vm = WrapBlock(block);
             Blocks.Add(vm);
             SelectedBlock = vm;
             IsDirty = true;
@@ -407,7 +468,7 @@ namespace Kor.Operations.App.FeeProposal
             {
                 try
                 {
-                    Blocks.Add(new FeeProposalBlockViewModel(b));
+                    Blocks.Add(WrapBlock(b));
                 }
                 catch (Exception ex)
                 {
@@ -418,6 +479,14 @@ namespace Kor.Operations.App.FeeProposal
             SelectedBlock = null;
             IsDirty = false;
             CurrentStep = 1;
+        }
+
+        private FeeProposalBlockViewModel WrapBlock(FeeProposalBlock block)
+        {
+            var vm = new FeeProposalBlockViewModel(block);
+            if (block.RfpRateSchedule is { } rates)
+                rates.PropertyChanged += (_, _) => { vm.RefreshSummary(); IsDirty = true; };
+            return vm;
         }
 
         public void BeginGenerating() => IsGenerating = true;

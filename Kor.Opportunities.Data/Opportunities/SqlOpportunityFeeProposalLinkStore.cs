@@ -17,6 +17,7 @@ public interface IOpportunityFeeProposalLinkStore
 {
     Task LinkAsync(long opportunityId, Guid feeProposalId, string linkedBy, CancellationToken ct);
     Task<bool> IsLinkedAsync(long opportunityId, Guid feeProposalId, CancellationToken ct);
+    Task<Guid?> LatestAsync(long opportunityId, CancellationToken ct);
 }
 
 public sealed class SqlOpportunityFeeProposalLinkStore : IOpportunityFeeProposalLinkStore
@@ -73,5 +74,17 @@ SELECT CAST(CASE WHEN EXISTS (SELECT 1 FROM opportunities.OpportunityFeeProposal
         cmd.Parameters.Add("@opp", SqlDbType.BigInt).Value = opportunityId;
         cmd.Parameters.Add("@fp", SqlDbType.UniqueIdentifier).Value = feeProposalId;
         return (bool)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
+    }
+
+    public async Task<Guid?> LatestAsync(long opportunityId, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand("""
+            SELECT TOP (1) FeeProposalId FROM opportunities.OpportunityFeeProposalLinks
+            WHERE OpportunityId = @opp ORDER BY LinkedAtUtc DESC, FeeProposalId;
+            """, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@opp", SqlDbType.BigInt).Value = opportunityId;
+        return await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false) is Guid id ? id : null;
     }
 }

@@ -132,6 +132,8 @@ namespace Kor.Operations.Rendering.Proposal
                         AppendSignaturePage(body, block.SignaturePage ?? new SignaturePageBlockContent()); break;
                     case ProposalBlockType.RatesTable:
                         AppendRatesTable(body, block.RatesTable ?? new RatesTableBlockContent()); break;
+                    case ProposalBlockType.RfpRateSchedule:
+                        AppendRfpRateSchedule(body, block.RfpRateSchedule ?? new RfpRateScheduleBlockContent()); break;
                     case ProposalBlockType.FreeText:
                         AppendFreeText(body, block.FreeText ?? new FreeTextBlockContent()); break;
                     case ProposalBlockType.PageBreak:
@@ -430,6 +432,21 @@ namespace Kor.Operations.Rendering.Proposal
             body.Append(CreateSpacerParagraph());
         }
 
+        private void AppendRfpRateSchedule(Body body, RfpRateScheduleBlockContent content)
+        {
+            AppendParagraph(body, "RFP Rate Schedule", bold: true);
+            AppendParagraph(body, $"Burden: {content.Burden:P2}");
+            AppendParagraph(body, $"Proponent Overhead Rate (%): {content.OverheadPercent:0.##}%", bold: true);
+            AppendParagraph(body, $"Proponent Profit (%): {content.ProfitPercent:0.##}%", bold: true);
+            var rows = content.Calculations;
+            AppendTable(body, new[] { "Name", "Position", "Base hourly", "Excl. OH", "Incl. OH", "Incl. OH & profit" },
+                rows.Select(row => new[] { row.Name, row.Position, Rate(row.BaseHourly), Rate(row.ExcludingOverhead),
+                    Rate(row.IncludingOverhead), Rate(row.IncludingOverheadAndProfit) }),
+                boldRows: rows.Select(row => row.Scored).ToArray());
+            body.Append(CreateSpacerParagraph());
+            static string Rate(decimal? value) => value?.ToString("0.00", CultureInfo.InvariantCulture) ?? "—";
+        }
+
         private void AppendRatesTable(Body body, RatesTableBlockContent content)
         {
             AppendSectionHeader(body, "APPENDIX A");
@@ -501,7 +518,7 @@ namespace Kor.Operations.Rendering.Proposal
             }
         }
 
-        private static void AppendTable(Body body, string[] headers, IEnumerable<string[]> rows, bool lastRowBold = false)
+        private static void AppendTable(Body body, string[] headers, IEnumerable<string[]> rows, bool lastRowBold = false, IReadOnlyList<bool>? boldRows = null)
         {
             var rowList = rows.ToList();
             if (headers.Length == 0 && rowList.Count == 0) return;
@@ -527,7 +544,7 @@ namespace Kor.Operations.Rendering.Proposal
                 table.Append(new TableRow(rowList[i].Select((value, col) =>
                     CreateTableCell(
                         value,
-                        bold: lastRowBold && isLast,
+                        bold: (lastRowBold && isLast) || (boldRows is not null && boldRows[i]),
                         rightAlign: col == rowList[i].Length - 1,
                         shadingFill: isLast && lastRowBold ? "EEF2F6" : (i % 2 == 0 ? White : "F8FAFC"),
                         textColor: DarkText))));

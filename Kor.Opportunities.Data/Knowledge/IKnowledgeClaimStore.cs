@@ -16,6 +16,7 @@ public interface IKnowledgeClaimStore
     Task<IReadOnlyList<ClaimVerdict>> ListClaimVerdictsAsync(CancellationToken ct = default);
     Task<KnowledgeClaimRow?> GetClaimAsync(long claimId, CancellationToken ct);
     Task<IReadOnlyList<KnowledgeSourceSummary>> ListSourcesAsync(CancellationToken ct);
+    /// <summary>Filters: All, Unreviewed, Kept, Retired, or Rule:keyword|keyword (live rules, matched before the take limit).</summary>
     Task<IReadOnlyList<KnowledgeClaimRow>> ListClaimsAsync(long sourceId, string filter, int take, CancellationToken ct);
     Task<IReadOnlyList<KnowledgeClaimRow>> SampleUnreviewedAsync(long sourceId, int take, CancellationToken ct);
     Task<IReadOnlyList<KnowledgeConceptRow>> ListConceptsAsync(CancellationToken ct);

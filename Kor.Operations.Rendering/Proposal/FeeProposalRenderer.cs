@@ -289,6 +289,9 @@ namespace Kor.Operations.Rendering.Proposal
                     case ProposalBlockType.RatesTable:
                         RenderRatesTable(column, block.RatesTable ?? new RatesTableBlockContent());
                         break;
+                    case ProposalBlockType.RfpRateSchedule:
+                        RenderRfpRateSchedule(column, block.RfpRateSchedule ?? new RfpRateScheduleBlockContent());
+                        break;
                     case ProposalBlockType.FreeText:
                         RenderFreeText(column, block.FreeText ?? new FreeTextBlockContent());
                         break;
@@ -619,6 +622,34 @@ namespace Kor.Operations.Rendering.Proposal
             ComposeParagraph(column, attachments);
         }
 
+        private void RenderRfpRateSchedule(ColumnDescriptor column, RfpRateScheduleBlockContent content)
+        {
+            column.Item().Element(item => ComposeOrangeHeading(item, "RFP Rate Schedule"));
+            ComposeParagraph(column, $"Burden: {content.Burden:P2}");
+            ComposeParagraph(column, $"Proponent Overhead Rate (%): {content.OverheadPercent:0.##}%");
+            ComposeParagraph(column, $"Proponent Profit (%): {content.ProfitPercent:0.##}%");
+            column.Item().PaddingTop(14).Table(table =>
+            {
+                table.ColumnsDefinition(c => { c.RelativeColumn(2); c.RelativeColumn(2); for (var i = 0; i < 4; i++) c.RelativeColumn(); });
+                table.Header(header =>
+                {
+                    foreach (var label in new[] { "Name", "Position", "Base hourly", "Excl. OH", "Incl. OH", "Incl. OH & profit" })
+                        header.Cell().Element(ComposeTableHeaderCell).Text(label).FontSize(8);
+                });
+                var index = 0;
+                foreach (var row in content.Calculations)
+                {
+                    var background = index++ % 2 == 0 ? "#FFFFFF" : LightRow;
+                    foreach (var value in new[] { row.Name, row.Position, Rate(row.BaseHourly), Rate(row.ExcludingOverhead), Rate(row.IncludingOverhead), Rate(row.IncludingOverheadAndProfit) })
+                    {
+                        var text = table.Cell().Element(c => ComposeTableBodyCell(c, background)).Text(value).FontSize(8);
+                        if (row.Scored) text.Bold();
+                    }
+                }
+            });
+            static string Rate(decimal? value) => value?.ToString("0.00", CultureInfo.InvariantCulture) ?? "—";
+        }
+
         private void RenderRatesTable(ColumnDescriptor column, RatesTableBlockContent content)
         {
             column.Item().Element(item => ComposeOrangeHeading(item, "Schedule of Standard Hourly Billing Rates"));
@@ -806,6 +837,7 @@ namespace Kor.Operations.Rendering.Proposal
             ProposalBlockType.ApprovalToProceed => "Our Proposal",
             ProposalBlockType.SignaturePage => "Our Proposal",
             ProposalBlockType.RatesTable => "Appendix A",
+            ProposalBlockType.RfpRateSchedule => "RFP Rate Schedule",
             ProposalBlockType.FreeText => "Our Proposal",
             _ => block.TemplateName
         };

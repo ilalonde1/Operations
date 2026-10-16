@@ -96,7 +96,7 @@ namespace Kor.Operations.Brochures
             ProduceBrochureCommand = new AsyncRelayCommand(ExecProduceBrochureAsync);
             PreviewBrochureCommand = new AsyncRelayCommand(ExecPreviewBrochureAsync);
             ExportDocxCommand = new AsyncRelayCommand(ExecExportDocxAsync);
-            AnalyzeBrochureCommand = new AsyncRelayCommand(ExecAnalyzeBrochureAsync);
+            AnalyzeBrochureCommand = new AsyncRelayCommand(ExecAnalyzeBrochureAsync, _ => !IsPursuit);
             PickPrimaryColorCommand = new RelayCommand(_ => ExecPickColor(
                 Cover.PrimaryColorOverride,
                 hex =>
@@ -131,6 +131,7 @@ namespace Kor.Operations.Brochures
 
         private async Task ExecAnalyzeBrochureAsync(object? _)
         {
+            if (IsPursuit) return;
             if (string.IsNullOrWhiteSpace(
                 System.Configuration.ConfigurationManager.AppSettings["AnthropicApiKey"]))
             {
@@ -243,6 +244,9 @@ namespace Kor.Operations.Brochures
                 var (pdfPath, previewPages) = await _renderer.RenderWithPreviewAsync(
                     content, outputPath, 280, cts.Token);
 
+                AttachmentMessage = "";
+                await NotifyProposalRenderedAsync(pdfPath);
+
                 Process.Start(new ProcessStartInfo { FileName = pdfPath, UseShellExecute = true });
 
                 try
@@ -259,7 +263,7 @@ namespace Kor.Operations.Brochures
                 }
 
                 MessageBox.Show(
-                    "Brochure generated successfully.",
+                    string.IsNullOrWhiteSpace(AttachmentMessage) ? "Brochure generated successfully." : AttachmentMessage,
                     "Brochure Builder — Brochure Generated",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);

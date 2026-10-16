@@ -45,7 +45,7 @@ internal static class KnowledgeCli
             var options = Arguments.Parse(args);
             if (options.Flag("--help")) { Usage(); return 0; }
             var verb = options.Positionals.FirstOrDefault()?.ToLowerInvariant();
-            if (verb is not ("ingest" or "embed" or "search" or "list" or "export" or "claims" or "brief")) { Usage(); return 2; }
+            if (verb is not ("ingest" or "embed" or "search" or "list" or "export" or "claims" or "brief" or "pursuit")) { Usage(); return 2; }
             options.ValidateFor(verb);
             var ct = cancellation.Token;
             var dry = verb == "ingest" && options.Flag("--dry");
@@ -66,6 +66,15 @@ internal static class KnowledgeCli
             if (verb == "export") return await ExportAsync(options, store!, ct);
             if (verb == "claims") return await ClaimsAsync(options, store!, ct);
             if (verb == "brief") return await BriefAsync(options, store!, connection!, ct);
+            if (verb == "pursuit")
+            {
+                var json = await File.ReadAllTextAsync(options.Positionals[4], ct);
+                await PursuitChecklistImport.ImportAsync(new SqlPursuitRequirementStore(connection!),
+                    long.Parse(options.Positionals[3], CultureInfo.InvariantCulture), json,
+                    options.Value("--by")!, options.Flag("--replace"), ct);
+                Console.WriteLine("Checklist imported.");
+                return 0;
+            }
             using var embedder = new KnowledgeEmbedder(); // ONNX loads lazily; dry/list never load it.
             switch (verb)
             {
@@ -357,12 +366,13 @@ internal static class KnowledgeCli
         BdKnowledgeIngest claims search "<question>" [--take 12]
         BdKnowledgeIngest brief export [--week <yyyy-MM-dd>] --to <folder>
         BdKnowledgeIngest brief import <export.json> <sections.json> --by <name> [--force]
+        BdKnowledgeIngest pursuit checklist import <engagementId> <file.json> --by <name> [--replace]
         --db <connection string> defaults to env KOR_OPPORTUNITIES_OPPORTUNITIESDB
         """);
 
     private sealed class Arguments
     {
-        private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help" };
+        private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help", "--replace" };
         private static readonly HashSet<string> Values = new(StringComparer.Ordinal)
             { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--week" };
         private readonly Dictionary<string, string?> _options = new(StringComparer.Ordinal);
@@ -405,9 +415,18 @@ internal static class KnowledgeCli
         {
             var claimAction = verb == "claims" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
             var briefAction = verb == "brief" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
-            var expected = verb == "brief" ? briefAction == "import" ? 4 : 2
+            var expected = verb == "pursuit" ? 5 : verb == "brief" ? briefAction == "import" ? 4 : 2
                 : verb == "claims" ? claimAction == "embed" ? 2 : 3 : verb is "ingest" or "search" or "export" ? 2 : 1;
             if (Positionals.Count != expected) throw new ArgumentException($"Wrong number of arguments for {verb}; use --help.");
+            if (verb == "pursuit")
+            {
+                if (!Positionals[1].Equals("checklist", StringComparison.OrdinalIgnoreCase)
+                    || !Positionals[2].Equals("import", StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException("Use pursuit checklist import <engagementId> <file.json> --by <name> [--replace].");
+                if (!long.TryParse(Positionals[3], NumberStyles.None, CultureInfo.InvariantCulture, out var engagementId))
+                    throw new ArgumentException("A positive pursuit ID is required.");
+                PursuitRequirementValidation.Identity(engagementId, Value("--by") ?? "");
+            }
             if (verb == "claims" && claimAction is not ("import" or "embed" or "relate" or "search"))
                 throw new ArgumentException("Use claims import, embed, relate or search.");
             if (verb == "brief")
@@ -432,6 +451,7 @@ internal static class KnowledgeCli
                 "embed" => new[] { "--source" },
                 "search" => new[] { "--take", "--per-source" },
                 "export" => new[] { "--to" },
+                "pursuit" => new[] { "--by", "--replace" },
                 "claims" => claimAction switch { "import" => new[] { "--force", "--by" }, "relate" => new[] { "--by" }, "search" => new[] { "--take" }, _ => Array.Empty<string>() },
                 "brief" => briefAction == "import" ? new[] { "--force", "--by" } : new[] { "--week", "--to" },
                 _ => Array.Empty<string>(),
