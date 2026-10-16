@@ -84,6 +84,10 @@ public sealed class BdDoctrineViewModel : ObservableObject
         OnPropertyChanged(nameof(HasProposed));
     }
 
+    /// <summary>A synthesis started in the last two days that has not reported. Older ones are treated as abandoned.</summary>
+    public static BdPromptRunRow? OpenSynthesis(IReadOnlyList<BdPromptRunRow> runs, DateTimeOffset now) =>
+        runs.FirstOrDefault(r => r.Kind == "synthesis" && r.Outcome is null && r.CreatedAtUtc > now.AddDays(-2));
+
     /// <summary>Accepts every card still waiting, oldest first, so an amendment is decided after the card it amends.</summary>
     public async Task<int> AcceptAllAsync(string actor, CancellationToken ct)
     {
@@ -130,6 +134,9 @@ public sealed class BdDoctrineViewModel : ObservableObject
     /// <summary>A synthesis run: the books into doctrine for the role, building on what is accepted and what is waiting.</summary>
     public async Task<BdPreparedPrompt> PrepareSynthesisAsync(IReadOnlyList<string> books, string? focus, string actor, CancellationToken ct)
     {
+        // One synthesis at a time: two running together cannot see each other's cards, which is how duplicates got in.
+        if (OpenSynthesis(await _store.ListRunsAsync(50, ct).ConfigureAwait(true), _clock()) is { } open)
+            throw new ArgumentException($"A synthesis is still running (run {open.Id}, started {open.CreatedAtUtc.ToLocalTime():ddd HH:mm}). Wait for its cards before starting another.");
         var (token, tokenSha) = BdDoctrine.NewToken();
         var subject = string.IsNullOrWhiteSpace(focus) ? "the BD doctrine" : "the BD doctrine: " + focus.Trim();
         var runId = await _store.StartRunAsync("synthesis", Role, subject, focus, actor, new byte[32], tokenSha, ct).ConfigureAwait(true);

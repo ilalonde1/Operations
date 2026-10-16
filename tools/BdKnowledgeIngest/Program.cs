@@ -426,6 +426,20 @@ internal static class KnowledgeCli
     private static async Task<int> DoctrineAsync(Arguments args, IBdDoctrineStore store, CancellationToken ct)
     {
         var cards = await store.ListCardsAsync(args.Value("--role") ?? "BD", ct);
+        if (args.Positionals[1].Equals("similar", StringComparison.OrdinalIgnoreCase))
+        {
+            // Each card in a report beside the closest card already in the doctrine, for calibration and for a session
+            // to check its cards before reporting.
+            var (report, errors) = BdDoctrine.ParseReport(await File.ReadAllTextAsync(args.Positionals[2], ct));
+            if (report is null) { foreach (var e in errors) Console.Error.WriteLine("FAIL " + e); return 2; }
+            var exclude = long.TryParse(args.Value("--exclude-run"), NumberStyles.None, CultureInfo.InvariantCulture, out var x) ? x : (long?)null;
+            var pool = cards.Where(c => exclude is null || c.SourceRunId != exclude).ToList();
+            using var embedder = new KnowledgeEmbedder();
+            foreach (var m in Kor.Opportunities.Knowledge.Doctrine.DoctrineDuplicates.Closest(report.Cards, pool, embedder))
+                Console.WriteLine($"{m.Score.ToString("0.000", CultureInfo.InvariantCulture)}  {OneLine(m.IncomingTitle)}  ~  #{m.ExistingId} {OneLine(m.ExistingTitle)} ({m.ExistingStatus})");
+            return 0;
+        }
+
         if (args.Positionals[1].Equals("list", StringComparison.OrdinalIgnoreCase))
         {
             foreach (var c in cards.Where(c => c.Status is "accepted" or "proposed"))
@@ -450,6 +464,12 @@ internal static class KnowledgeCli
     {
         var by = args.Value("--by")!;
         var focus = args.Value("--focus");
+        var running = (await store.ListRunsAsync(50, ct)).FirstOrDefault(r => r.Kind == "synthesis" && r.Outcome is null && r.CreatedAtUtc > DateTimeOffset.UtcNow.AddDays(-2));
+        if (running is not null)
+        {
+            Console.Error.WriteLine($"FAIL A synthesis is still running (run {running.Id}). Wait for its cards before starting another.");
+            return 2;
+        }
         var books = (await knowledge.ListSourcesAsync(ct))
             .Select(s => $"#{s.Id} {s.Title}{(s.Author is { } a ? " (" + a + ")" : "")}: {s.Claims} claims").ToList();
         var cards = await store.ListCardsAsync("BD", ct);
@@ -478,6 +498,28 @@ internal static class KnowledgeCli
             return 2;
         }
 
+        // Nothing goes into the doctrine twice. Close matches to any card, accepted, waiting or rejected, are refused or held
+        // for the session to look at (DoctrineDuplicates carries the calibration).
+        if (report.Cards.Count > 0)
+        {
+            var existing = await store.ListCardsAsync("BD", ct);
+            using var embedder = new KnowledgeEmbedder();
+            var near = Kor.Opportunities.Knowledge.Doctrine.DoctrineDuplicates.Find(report.Cards, existing, embedder, excludeRunId: runId);
+            var refuse = near.Where(m => m.Score >= Kor.Opportunities.Knowledge.Doctrine.DoctrineDuplicates.RefuseAt).ToList();
+            var review = near.Where(m => m.Score < Kor.Opportunities.Knowledge.Doctrine.DoctrineDuplicates.RefuseAt).ToList();
+            foreach (var m in refuse)
+                Console.Error.WriteLine($"FAIL card '{m.IncomingTitle}' repeats #{m.ExistingId} '{m.ExistingTitle}' ({m.ExistingStatus}, {m.Score.ToString("0.00", CultureInfo.InvariantCulture)}). "
+                    + (m.ExistingStatus == "accepted" ? $"Drop it, or set \"amends\": {m.ExistingId} if it improves that card." : m.ExistingStatus == "rejected" ? "Ian rejected that card; drop it." : "It is already waiting for Ian; drop it."));
+            if (refuse.Count > 0) return 2;
+            if (review.Count > 0 && !args.Flag("--checked"))
+            {
+                foreach (var m in review)
+                    Console.Error.WriteLine($"CHECK card '{m.IncomingTitle}' is close to #{m.ExistingId} '{m.ExistingTitle}' ({m.ExistingStatus}, {m.Score.ToString("0.00", CultureInfo.InvariantCulture)}). Read both: drop it, set amends, or keep it if it says something the other does not.");
+                Console.Error.WriteLine("Then send again with --checked.");
+                return 2;
+            }
+        }
+
         if (!await store.ReportAsync(runId, args.Value("--token")!, report, ct))
         {
             Console.Error.WriteLine($"FAIL The token does not match run {runId}. Use the command exactly as the prompt gave it.");
@@ -504,16 +546,17 @@ internal static class KnowledgeCli
         BdKnowledgeIngest pursuit checklist import <engagementId> <file.json> --by <name> [--replace]
         BdKnowledgeIngest doctrine list [--role BD|Operations]
         BdKnowledgeIngest doctrine show <id> [--role BD|Operations]
+        BdKnowledgeIngest doctrine similar <report.json> [--exclude-run <id>]
         BdKnowledgeIngest prompt synthesis --by <name> [--focus "<theme>"]
-        BdKnowledgeIngest prompt report <runId> <report.json> --token <token>
+        BdKnowledgeIngest prompt report <runId> <report.json> --token <token> [--checked]
         --db <connection string> defaults to env KOR_OPPORTUNITIES_OPPORTUNITIESDB
         """);
 
     private sealed class Arguments
     {
-        private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help", "--replace" };
+        private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help", "--replace", "--checked" };
         private static readonly HashSet<string> Values = new(StringComparer.Ordinal)
-            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--week", "--token", "--role", "--focus" };
+            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--week", "--token", "--role", "--focus", "--exclude-run" };
         private readonly Dictionary<string, string?> _options = new(StringComparer.Ordinal);
         internal List<string> Positionals { get; } = new();
         internal string? Value(string name) => _options.GetValueOrDefault(name);
@@ -556,7 +599,7 @@ internal static class KnowledgeCli
             var briefAction = verb == "brief" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
             var doctrineAction = verb == "doctrine" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
             var promptAction = verb == "prompt" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
-            var expected = verb == "prompt" ? promptAction == "synthesis" ? 2 : 4 : verb == "doctrine" ? doctrineAction == "show" ? 3 : 2
+            var expected = verb == "prompt" ? promptAction == "synthesis" ? 2 : 4 : verb == "doctrine" ? doctrineAction is "show" or "similar" ? 3 : 2
                 : verb == "pursuit" ? 5 : verb == "hour" ? 3 : verb == "rhythm" ? 2 : verb == "brief" ? briefAction == "import" ? 4 : 2
                 : verb == "claims" ? claimAction == "embed" ? 2 : 3 : verb is "ingest" or "search" or "export" ? 2 : 1;
             if (Positionals.Count != expected) throw new ArgumentException($"Wrong number of arguments for {verb}; use --help.");
@@ -584,7 +627,7 @@ internal static class KnowledgeCli
             }
             if (verb == "doctrine")
             {
-                if (doctrineAction is not ("list" or "show")) throw new ArgumentException("Use doctrine list [--role BD|Operations], or doctrine show <id>.");
+                if (doctrineAction is not ("list" or "show" or "similar")) throw new ArgumentException("Use doctrine list [--role BD|Operations], doctrine show <id>, or doctrine similar <report.json> [--exclude-run <id>].");
                 if (doctrineAction == "show" && !long.TryParse(Positionals[2], NumberStyles.None, CultureInfo.InvariantCulture, out _))
                     throw new ArgumentException("doctrine show needs a card id.");
                 if (Value("--role") is { } role && role is not ("BD" or "Operations")) throw new ArgumentException("--role is BD or Operations.");
@@ -628,8 +671,8 @@ internal static class KnowledgeCli
                 "pursuit" => new[] { "--by", "--replace" },
                 "hour" => new[] { "--by", "--to" },
                 "rhythm" => new[] { "--to" },
-                "doctrine" => new[] { "--role" },
-                "prompt" => promptAction == "synthesis" ? new[] { "--by", "--focus" } : new[] { "--token" },
+                "doctrine" => new[] { "--role", "--exclude-run" },
+                "prompt" => promptAction == "synthesis" ? new[] { "--by", "--focus" } : new[] { "--token", "--checked" },
                 "claims" => claimAction switch { "import" => new[] { "--force", "--by" }, "relate" => new[] { "--by" }, "search" => new[] { "--take" }, _ => Array.Empty<string>() },
                 "brief" => briefAction == "import" ? new[] { "--force", "--by" } : new[] { "--week", "--to" },
                 _ => Array.Empty<string>(),

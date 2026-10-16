@@ -142,6 +142,16 @@ public sealed class BdDoctrineRegressionTests
     }
 
     [Fact]
+    public void OnlyOneSynthesisAtATime_ButAnAbandonedOneDoesNotBlockForever()
+    {
+        BdPromptRunRow Run(long id, string kind, string? outcome, double hoursAgo) =>
+            new(id, kind, "BD", "s", null, "ian", Now.AddHours(-hoursAgo), outcome is null ? null : Now, outcome, null, 0);
+        Assert.Equal(7, BdDoctrineViewModel.OpenSynthesis(new[] { Run(7, "synthesis", null, 1), Run(6, "synthesis", "answered", 3) }, Now)!.Id);
+        Assert.Null(BdDoctrineViewModel.OpenSynthesis(new[] { Run(8, "ask", null, 1), Run(6, "synthesis", "answered", 3) }, Now));
+        Assert.Null(BdDoctrineViewModel.OpenSynthesis(new[] { Run(5, "synthesis", null, 72) }, Now));
+    }
+
+    [Fact]
     public async Task AcceptAll_AcceptsOnlyWaitingCards_OldestFirst_SoAnAmendmentFollowsWhatItAmends()
     {
         var store = new Mock<IBdDoctrineStore>();
@@ -207,9 +217,10 @@ public sealed class BdDoctrineRegressionTests
     public void Cli_AllowsTheOptionsThePromptsTellClaudeToUse()
     {
         var cli = Source("tools/BdKnowledgeIngest/Program.cs");
-        Assert.Contains("\"prompt\" => promptAction == \"synthesis\" ? new[] { \"--by\", \"--focus\" } : new[] { \"--token\" },", cli, StringComparison.Ordinal);
-        Assert.Contains("\"--token\", \"--role\", \"--focus\" }", cli, StringComparison.Ordinal);
-        Assert.Contains("\"doctrine\" => new[] { \"--role\" },", cli, StringComparison.Ordinal);
+        Assert.Contains("\"prompt\" => promptAction == \"synthesis\" ? new[] { \"--by\", \"--focus\" } : new[] { \"--token\", \"--checked\" },", cli, StringComparison.Ordinal);
+        Assert.Contains("\"--token\", \"--role\", \"--focus\", \"--exclude-run\" }", cli, StringComparison.Ordinal);
+        Assert.Contains("\"--replace\", \"--checked\" }", cli, StringComparison.Ordinal);
+        Assert.Contains("\"doctrine\" => new[] { \"--role\", \"--exclude-run\" },", cli, StringComparison.Ordinal);
         Assert.Contains("or \"doctrine\" or \"prompt\"))", cli, StringComparison.Ordinal);
     }
 

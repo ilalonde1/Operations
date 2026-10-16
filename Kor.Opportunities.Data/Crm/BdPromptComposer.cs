@@ -176,6 +176,7 @@ public static class BdPromptComposer
         sb.AppendLine("```");
         sb.AppendLine();
         sb.AppendLine("If the command refuses the report it says why; fix the file and run it again. Sending again REPLACES your earlier answer and your still-proposed cards; cards Ian has already decided stay as they are.");
+        sb.AppendLine("Nothing goes into the doctrine twice. The command compares every card by meaning with every card already there, accepted, waiting or rejected: a FAIL repeats one (drop it, or set `amends` to improve an accepted card); a CHECK is close to one (read both, then drop, amend or keep it, and send again with `--checked`). To check before sending: `dotnet run --project tools/BdKnowledgeIngest -- doctrine similar <report.json>`.");
         sb.AppendLine($"The token is for run {report.RunId.ToString(CultureInfo.InvariantCulture)} only.");
     }
 }
