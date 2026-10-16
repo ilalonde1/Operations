@@ -13,6 +13,7 @@
 // Usage:
 //   dotnet run --project tools/IngestSourceOnce -- <SourceName> [--dry-run]
 //   --dry-run   fetch and print every candidate with the gate's verdict; write nothing.
+//   --json <f>  with --dry-run, also write the candidates to <f>, one JSON object per line.
 //
 // Supported source types: the providers whose constructor is (HttpClient, ILogger).
 // Add one to Providers below when needed.
@@ -69,6 +70,15 @@ if (dryRun)
     }
 
     Console.WriteLine($"{candidates.Count} candidate(s); gate keeps {kept}, drops {candidates.Count - kept}.");
+    var jsonAt = Array.IndexOf(args, "--json");
+    if (jsonAt > 0 && jsonAt + 1 < args.Length)
+    {
+        await File.WriteAllLinesAsync(args[jsonAt + 1], candidates.Select(c => System.Text.Json.JsonSerializer.Serialize(new
+        {
+            c.ExternalReference, c.Title, c.Location, c.ProjectCity, c.Url, c.Description,
+        })));
+        Console.WriteLine($"Candidates written to {args[jsonAt + 1]}.");
+    }
     return 0;
 }
 
