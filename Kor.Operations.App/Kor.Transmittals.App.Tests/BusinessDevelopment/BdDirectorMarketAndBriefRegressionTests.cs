@@ -21,7 +21,7 @@ using Xunit;
 namespace Kor.Operations.App.Tests.BusinessDevelopment;
 
 /// <summary>
-/// Covers eight-tab/caption/literal/date contracts, database-store load/acknowledgement,
+/// Covers nine-tab/caption/literal/date contracts, database-store load/acknowledgement,
 /// market read sizes/frequency, Dashboard deadline semantics, retained retired citations,
 /// shared passage resolution and the absence of runtime generation. No real HTTP, SQL, model,
 /// knowledge text or WPF rendering is used. Same-class miss: a binding can name an
@@ -31,11 +31,11 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 public sealed class BdDirectorMarketAndBriefRegressionTests
 {
     [Fact]
-    public void Window_HasEightTabs_StaticCaptions_AndPlainWords()
+    public void Window_HasNineTabs_StaticCaptions_AndPlainWords()
     {
         var xaml = Source("Kor.Operations.App/BusinessDevelopment/Director/BdDirectorWindow.xaml");
         var tabs = XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "TabItem").Select(e => (string?)e.Attribute("Header"));
-        Assert.Equal(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week" }, tabs);
+        Assert.Equal(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids" }, tabs);
         Assert.Contains("{x:Static director:BdDirectorViewModel.MarketCaption}", xaml, StringComparison.Ordinal);
         Assert.Contains("{x:Static director:BdDirectorViewModel.BriefCaption}", xaml, StringComparison.Ordinal);
         Assert.Equal("What is coming: signals on the firms we watch, planned projects not yet procured, RFPs closing, and seats no structural engineer holds yet. All of it is what the BD Dashboard already reads.", BdDirectorViewModel.MarketCaption);
@@ -57,6 +57,7 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
     {
         var fixture = new DirectorMarketFixture();
         var director = new Mock<IBdDirectorStore>();
+        DirectorMarketDefaults.SetupPendingBids(director);
         fixture.SetupSignals(director);
         director.Setup(s => s.GetPeopleAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDirectorPerson>());
         director.Setup(s => s.GetFunnelAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new BdDirectorFunnel(new Dictionary<int, double>(), Array.Empty<BdDirectorUndecidedPursuit>(), 0, 0, 0, 0));
@@ -178,6 +179,12 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
 
 internal static class DirectorMarketDefaults
 {
+    internal static void SetupPendingBids(Mock<IBdDirectorStore> store)
+    {
+        store.Setup(s => s.ListPendingBidsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<PendingBidRow>());
+        store.Setup(s => s.CountRelationshipPursuitsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(0);
+    }
+
     internal static IBdDashboardStore Dashboard()
     {
         var mock = new Mock<IBdDashboardStore>();

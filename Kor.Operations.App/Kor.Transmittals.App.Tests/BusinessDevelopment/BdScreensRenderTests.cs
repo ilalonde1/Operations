@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Kor.Operations.App.BusinessDevelopment;
 using Kor.Operations.App.BusinessDevelopment.Workspace;
 using Kor.Operations.App.BusinessDevelopment.Director;
 using Kor.Operations.App.Crm;
@@ -82,6 +83,7 @@ public sealed class BdScreensRenderTests
                 written += RenderPursuits(dir);
                 written += RenderPursuitHealth(dir);
                 written += RenderDirector(dir);
+                BdDirectorPendingBidsRegressionTests.VerifySubmissionDialogs();
             }
             catch (Exception ex)
             {
@@ -93,7 +95,7 @@ public sealed class BdScreensRenderTests
 
         Assert.True(thread.Join(TimeSpan.FromMinutes(2)), "Rendering the BD screens did not finish within two minutes.");
         Assert.True(failure is null, $"A BD screen failed to build or render: {failure}");
-        Assert.True(written >= 13, $"EXPECTED at least 13 renders; ACTUAL {written}");
+        Assert.True(written >= 14, $"EXPECTED at least 14 renders; ACTUAL {written}");
     }
 
     // ---- the dashboard: funnel, Closing soon, New RFPs, Priority Actions (collapsed) ----
@@ -351,6 +353,7 @@ public sealed class BdScreensRenderTests
             new KnowledgePassageText(id, "Managing the professional service firm", id == 101 ? "Illustrative passage A" : "Illustrative passage B",
                 "ILLUSTRATIVE RENDER FIXTURE — not a quotation or extracted passage.\n\nThis sample text shows how the reader can compare a claim with its source passage. The production view displays the full stored passage and its original reference."));
         var market = new DirectorMarketFixture();
+        DirectorMarketDefaults.SetupPendingBids(director);
         market.SetupSignals(director);
         claims.Setup(s => s.GetClaimAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync((long id, CancellationToken ct) =>
             illustrativeClaims.Single(c => c.Id == id) with
@@ -405,6 +408,47 @@ public sealed class BdScreensRenderTests
             written += RenderView(content, new Size(1680, 980), Path.Combine(dir, files[i]));
         }
         market.BriefStore.Verify(s => s.GetLatestAsync(It.IsAny<CancellationToken>()), Times.Once);
+        director.Verify(s => s.ListPendingBidsAsync(It.IsAny<CancellationToken>()), Times.Once);
+        director.Verify(s => s.CountRelationshipPursuitsAsync(It.IsAny<CancellationToken>()), Times.Once);
+        return written + RenderPendingBids(dir);
+    }
+
+    private static int RenderPendingBids(string dir)
+    {
+        // A coherent six-pursuit fixture for this tab; the older 101-pursuit
+        // fixture above remains the reference for the other eight screenshots.
+        var fixture = new DirectorPendingBidsFixture();
+        using var vm = fixture.Create();
+        vm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
+        Assert.Equal(6, vm.Live);
+        Assert.Equal(2, vm.PeopleCount);
+        var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>());
+        var tabs = Assert.IsType<System.Windows.Controls.TabControl>(window.FindName("Tabs"));
+        var grid = Assert.IsType<System.Windows.Controls.DataGrid>(window.FindName("PendingBidsGrid"));
+        var content = (FrameworkElement)window.Content;
+        window.Content = null;
+        content.DataContext = vm;
+        content.Resources.MergedDictionaries.Add(window.Resources);
+        for (var i = 0; i < 9; i++) tabs.SelectedIndex = i;
+        var written = RenderView(content, new Size(1680, 980), Path.Combine(dir, "director-pending.png"));
+        Assert.Equal(3, vm.PendingBids.Count);
+        Assert.Equal(3, vm.RelationshipPursuits);
+        Assert.Equal(2, vm.PendingBids.Count(b => b.IsPending));
+        Assert.Single(vm.PendingBids, b => b.IsUrgent);
+        Assert.DoesNotContain(vm.PendingBids, b => b.Bid.EngagementId >= 10);
+        Assert.Contains("3 relationship pursuits not shown", vm.PendingBidsSummary, StringComparison.Ordinal);
+        var redRows = 0;
+        foreach (var bid in vm.PendingBids)
+        {
+            var renderedRow = Assert.IsType<System.Windows.Controls.DataGridRow>(grid.ItemContainerGenerator.ContainerFromItem(bid));
+            var red = renderedRow.Foreground is SolidColorBrush brush && brush.Color == Colors.Firebrick;
+            Assert.Equal(bid.IsUrgent, red);
+            if (red) redRows++;
+            var cell = Assert.IsType<System.Windows.Controls.TextBlock>(grid.Columns[7].GetCellContent(bid));
+            Assert.Equal(bid.SubmittedAtUtc is { } at ? BdDateDisplay.DayAndTime(at) : "", cell.Text);
+        }
+        Assert.Equal(1, redRows);
+        fixture.VerifyReads(Times.Once());
         return written;
     }
 

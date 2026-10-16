@@ -202,7 +202,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             if (count > 0)
             {
                 StageSummary.Add(new StageChip(
-                    stage.ToString(), count, CrmEngagementRowView.BrushFor(stage),
+                    CrmStageNames.Display(stage), count, CrmEngagementRowView.BrushFor(stage),
                     stage.ToString(), IsActive: _stageFilterKey == stage.ToString()));
             }
         }
@@ -698,7 +698,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             }
 
             var stageAgeDays = Math.Max(0, (int)(DateTimeOffset.Now - stageSince).TotalDays);
-            parts.Add($"In {row.Engagement.Stage} {stageAgeDays}d");
+            parts.Add($"In {CrmStageNames.Display(row.Engagement.Stage)} {stageAgeDays}d");
             PursuitHistorySummary = string.Join("  ·  ", parts);
         }
         catch (OperationCanceledException) { throw; }
@@ -741,7 +741,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 
         var saved = await _engagementStore.UpdateAsync(updated, actor, ct).ConfigureAwait(true);
         ReplaceEngagement(saved);
-        StatusMessage = $"{row.OpportunityKey}: stage → {newStage}.";
+        StatusMessage = $"{row.OpportunityKey}: stage → {CrmStageNames.Display(newStage)}.";
         return saved;
     }
 
@@ -982,7 +982,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             sb.AppendLine("By stage:");
             foreach (var g in byStage)
             {
-                sb.AppendLine($"  {g.Key}: {g.Count()}");
+                sb.AppendLine($"  {CrmStageNames.Display(g.Key)}: {g.Count()}");
             }
         }
 
@@ -997,7 +997,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             sb.AppendLine("Active pursuits in Submitted:");
             foreach (var r in hot)
             {
-                sb.AppendLine($"  [{r.Engagement.Stage}] {r.OpportunityKey} {r.ProjectName} ({r.Buyer}) — owner {r.OwnerDisplay}");
+                sb.AppendLine($"  [{CrmStageNames.Display(r.Engagement.Stage)}] {r.OpportunityKey} {r.ProjectName} ({r.Buyer}) — owner {r.OwnerDisplay}");
             }
         }
 
@@ -1053,7 +1053,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         var sb = new StringBuilder();
         sb.AppendLine($"Selected engagement: {Selected.OpportunityKey} — {Selected.ProjectName}");
         sb.AppendLine($"Buyer: {Selected.Buyer}");
-        sb.AppendLine($"Stage: {e.Stage}");
+        sb.AppendLine($"Stage: {CrmStageNames.Display(e.Stage)}");
         if (!string.IsNullOrWhiteSpace(e.OwnerStaffId))
         {
             sb.AppendLine($"Owner: {e.OwnerStaffId}");

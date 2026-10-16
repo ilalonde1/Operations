@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Opportunities.Core.Models;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.Opportunities.Data.Crm;
@@ -17,6 +18,51 @@ namespace Kor.Opportunities.Data.Crm;
 /// </summary>
 public sealed class SqlBdDirectorStore : IBdDirectorStore
 {
+    private const string PendingBidsSql = @"
+SELECT e.Id, e.OpportunityId, o.OpportunityKey, o.Name, o.BuyerName,
+       e.OwnerStaffId, s.DisplayName, s.Mailbox, o.SubmissionDeadlineUtc AS DueUtc,
+       e.Stage, h.SubmittedAtUtc, e.SubmittedFileName, e.FolderLink, e.NextActionDueUtc
+FROM opportunities.CrmEngagements e
+JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+LEFT JOIN opportunities.BdStaff s ON s.StaffKey = e.OwnerStaffId
+OUTER APPLY (
+    SELECT MAX(h.EnteredAtUtc) AS SubmittedAtUtc
+    FROM opportunities.CrmEngagementStageHistory h
+    WHERE h.EngagementId = e.Id AND h.Stage = 3
+) h
+WHERE e.OpportunityId IS NOT NULL AND e.Stage IN (1, 3)
+ORDER BY CASE WHEN o.SubmissionDeadlineUtc IS NULL THEN 1 ELSE 0 END,
+         o.SubmissionDeadlineUtc, e.Id;";
+
+    private const string RelationshipPursuitsSql = @"
+SELECT COUNT(*) FROM opportunities.CrmEngagements
+WHERE OpportunityId IS NULL AND Stage IN (1, 3);";
+
+    public async Task<IReadOnlyList<PendingBidRow>> ListPendingBidsAsync(CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(PendingBidsSql, con) { CommandTimeout = 30 };
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        var rows = new List<PendingBidRow>();
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            rows.Add(new PendingBidRow(reader.GetInt64(0), reader.GetInt64(1), reader.GetString(2),
+                reader.GetString(3), reader.GetString(4), reader.IsDBNull(5) ? null : reader.GetString(5),
+                reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : reader.GetString(7),
+                reader.IsDBNull(8) ? null : reader.GetDateTimeOffset(8), (CrmEngagementStage)reader.GetInt32(9),
+                reader.IsDBNull(10) ? null : reader.GetDateTimeOffset(10), reader.IsDBNull(11) ? null : reader.GetString(11),
+                reader.IsDBNull(12) ? null : reader.GetString(12), reader.IsDBNull(13) ? null : reader.GetDateTimeOffset(13)));
+        return rows;
+    }
+
+    public async Task<int> CountRelationshipPursuitsAsync(CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(RelationshipPursuitsSql, con) { CommandTimeout = 30 };
+        return (int)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
+    }
+
     private const string PeopleSql = @"
 DECLARE @now datetimeoffset = SYSUTCDATETIME();
 WITH IdentityKeys AS (

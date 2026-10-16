@@ -8,6 +8,7 @@ using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Knowledge;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
+using Kor.Operations.App.Opportunities;
 
 namespace Kor.Operations.App.BusinessDevelopment.Director;
 
@@ -36,9 +37,23 @@ public sealed class BdDirectorPursuitRow
     public long PursuitId => Pursuit.EngagementId;
     public string ProjectName => Pursuit.ProjectName;
     public string Buyer => Pursuit.Buyer;
-    public string Stage => ((CrmEngagementStage)Pursuit.Stage).ToString();
+    public string Stage => CrmStageNames.Display((CrmEngagementStage)Pursuit.Stage);
     public string LastActivity => Pursuit.LastActivityUtc is { } at ? BdDateDisplay.Day(at) : "never";
     public string Opened => BdDateDisplay.Day(Pursuit.OpenedAtUtc);
+}
+
+public sealed record BdDirectorPendingBidRow(PendingBidRow Bid, DateTimeOffset AsOf)
+{
+    public string Assignee => Bid.OwnerDisplayName ?? Bid.OwnerMailbox ?? Bid.OwnerStaffId ?? "Unassigned";
+    public string Stage => CrmStageNames.Display(Bid.Stage);
+    public bool IsPending => Bid.Stage == CrmEngagementStage.Drafting;
+    public DateTimeOffset? SubmittedAtUtc => IsPending ? null : Bid.SubmittedAtUtc;
+    public string Countdown => Bid.DueUtc is { } due ? OpportunityDeadlineDisplay.Countdown(due, AsOf) : "not specified";
+    public bool IsUrgent => IsPending && Bid.DueUtc is { } due && due <= AsOf.AddHours(24);
+    public bool HasFolderLink => !string.IsNullOrWhiteSpace(Bid.FolderLink);
+    public bool IsMine(string actor) => !string.IsNullOrWhiteSpace(actor)
+        && (string.Equals(Bid.OwnerMailbox, actor, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Bid.OwnerStaffId, actor, StringComparison.OrdinalIgnoreCase));
 }
 
 public sealed record BdDirectorStageRow(string Stage, int Pursuits, double? MedianDays)

@@ -256,12 +256,12 @@ public sealed class BdDirectorLedgerRegressionTests
     }
 
     [Fact]
-    public void Window_HasTheEightTabs_InOrder_AndPlainWords()
+    public void Window_HasTheNineTabs_InOrder_AndPlainWords()
     {
         var xaml = Source(DirectorFolder + "BdDirectorWindow.xaml");
         var headers = XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "TabItem").Select(e => (string?)e.Attribute("Header")).ToArray();
-        Check(headers.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week" }),
-            "eight tabs in the specified order", string.Join(", ", headers));
+        Check(headers.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids" }),
+            "nine tabs in the specified order", string.Join(", ", headers));
         foreach (var caption in new[] { "Number", "People", "Funnel", "Accounts", "Asks", "Decisions", "Knowledge", "Market", "Brief" })
             Contains(xaml, "{x:Static director:BdDirectorViewModel." + caption + "Caption}");
         foreach (var file in Directory.EnumerateFiles(Path.Combine(RepoRoot(), DirectorFolder)))
@@ -320,6 +320,7 @@ public sealed class BdDirectorLedgerRegressionTests
         internal readonly Mock<IBdAttributionStore> Attribution = new();
         internal Fixture()
         {
+            DirectorMarketDefaults.SetupPendingBids(Reads);
             Claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeSourceSummary>());
             Claims.Setup(s => s.ListConceptsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeConceptRow>());
             Reads.Setup(s => s.GetPeopleAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdDirectorPerson>());

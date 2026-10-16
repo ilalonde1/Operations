@@ -216,6 +216,8 @@ public sealed class DirectorBriefTests
     }
     private sealed class FactsStore : IBdDirectorStore, IBdDirectorLedgerStore, IBdDashboardStore
     {
+        public Task<IReadOnlyList<PendingBidRow>> ListPendingBidsAsync(CancellationToken ct) => throw new NotSupportedException();
+        public Task<int> CountRelationshipPursuitsAsync(CancellationToken ct) => throw new NotSupportedException();
         private static readonly DateTimeOffset Now = DateTimeOffset.UnixEpoch;
         public Task<IReadOnlyList<BdDirectorPerson>> GetPeopleAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<BdDirectorPerson>>(new[]
             { new BdDirectorPerson("engineer", "Synthetic engineer", new[] { "engineer" }, 101, 24, 74, 90, 5, 9, 3, 4, 1) });

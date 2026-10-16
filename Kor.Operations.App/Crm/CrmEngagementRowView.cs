@@ -27,7 +27,7 @@ public sealed class CrmEngagementRowView
 
     public long Id => Engagement.Id;
     public long? OpportunityId => Engagement.OpportunityId;
-    public string StageDisplay => Engagement.Stage.ToString();
+    public string StageDisplay => CrmStageNames.Display(Engagement.Stage);
     public string OwnerDisplay => string.IsNullOrWhiteSpace(Engagement.OwnerStaffId) ? "—" : StaffDisplay.Short(Engagement.OwnerStaffId);
 
     /// <summary>True for engagements rooted in a formal Opportunity (RFP); false for BD-tracking touchpoints.</summary>

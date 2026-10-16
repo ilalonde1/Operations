@@ -21,15 +21,16 @@ namespace Kor.Operations.App.BusinessDevelopment.Director;
 
 public sealed class BdDirectorViewModel : ObservableObject, IDisposable
 {
-    public const string PeopleCaption = "Everyone who owns a live pursuit. A live pursuit is Drafting or Submitted. Counts are for that person's pursuits; opens are the BD screens they opened.";
+    public const string PeopleCaption = "Everyone who owns a live pursuit. A live pursuit is Pending or Submitted. Counts are for that person's pursuits; opens are the BD screens they opened.";
     public const string FunnelCaption = "Live pursuits by stage, how long they have sat there, and what has been decided. Deltek history is counted separately and never added to the live numbers.";
-    public const string NumberCaption = "Targets you set, against what the records show today. Won fee and proposals submitted are not offered because no live pursuit carries a fee and none has reached Submitted.";
+    public const string NumberCaption = "Targets you set, against what the records show today. Won fee and proposals submitted are not offered as targets.";
     public const string AccountsCaption = "The firm's Deltek clients, most KOR projects first. Counts are Deltek records, proposals included, unless the row says wins. Select an account to read its Deltek summary.";
     public const string AsksCaption = "One bounded thing, for one person, by a date. Done and declined asks stay on the record.";
     public const string DecisionsCaption = "What was decided, why, and what was expected. A decision is never edited; it is scored Right, Wrong or Unclear when its review date comes.";
     public const string KnowledgeCaption = "What the books assert, one sentence each, cited to the passage it rests on. Keep what holds for KOR; retire what does not. Nothing is deleted.";
     public const string MarketCaption = "What is coming: signals on the firms we watch, planned projects not yet procured, RFPs closing, and seats no structural engineer holds yet. All of it is what the BD Dashboard already reads.";
     public const string BriefCaption = "The Director's brief: five questions a week over these tabs and the rule bank, written from the week's export and imported here. Open a citation to read the passage.";
+    public const string PendingBidsCaption = "Bids in flight: each pursuit that came from an RFP, who holds it, when it is due, and whether it went in. Pursuits without an RFP behind them are relationship work and stay on People and Accounts.";
 
     private readonly IBdDirectorStore _director;
     private readonly IPursuitOverwatchStore _pursuits;
@@ -63,6 +64,11 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     private string _statusMessage = "Ready.";
     private bool _isLoading;
     private bool _isReassigning;
+    private IReadOnlyList<PendingBidRow> _allPendingBids = Array.Empty<PendingBidRow>();
+    private DateTimeOffset _bidsAsOf = DateTimeOffset.UtcNow;
+    private bool _mineOnly;
+    private string _currentActorUpn = "";
+    private BdDirectorPendingBidRow? _selectedPendingBid;
 
     public BdDirectorViewModel(IBdDirectorStore director, IPursuitOverwatchStore pursuits,
         ICrmEngagementStore records, IBdAttributionStore attribution, IBdDirectorLedgerStore ledger,
@@ -98,6 +104,24 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     public ObservableCollection<BdForwardPipelineRow> ForwardPipeline { get; } = new();
     public ObservableCollection<BdOpenStructuralSeatRow> OpenSeats { get; } = new();
     public ObservableCollection<BdDirectorBriefRow> BriefSections { get; } = new();
+    public ObservableCollection<BdDirectorPendingBidRow> PendingBids { get; } = new();
+    public int RelationshipPursuits { get; private set; }
+    public string PendingBidsSummary { get; private set; } = "";
+    public BdDirectorPendingBidRow? SelectedPendingBid
+    {
+        get => _selectedPendingBid;
+        set => SetField(ref _selectedPendingBid, value);
+    }
+    public string CurrentActorUpn
+    {
+        get => _currentActorUpn;
+        set { if (SetField(ref _currentActorUpn, value.Trim())) FilterPendingBids(); }
+    }
+    public bool MineOnly
+    {
+        get => _mineOnly;
+        set { if (SetField(ref _mineOnly, value)) FilterPendingBids(); }
+    }
     public string MarketFunnel { get; private set; } = "";
     public string BriefMessage { get; private set; } = "";
     public string CitationStatus { get; private set; } = "";
@@ -254,13 +278,21 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
             var pursuitsTask = _pursuits.ListAsync(ct);
             var recordsTask = _records.ListAsync(ct);
             var attributionTask = _attribution.GetSummaryAsync(ct);
-            await Task.WhenAll(peopleTask, funnelTask, pursuitsTask, recordsTask, attributionTask).ConfigureAwait(true);
+            var bidsTask = _director.ListPendingBidsAsync(ct);
+            var relationshipsTask = _director.CountRelationshipPursuitsAsync(ct);
+            await Task.WhenAll(peopleTask, funnelTask, pursuitsTask, recordsTask, attributionTask,
+                bidsTask, relationshipsTask).ConfigureAwait(true);
             ct.ThrowIfCancellationRequested();
 
             var people = await peopleTask.ConfigureAwait(true);
             var funnel = await funnelTask.ConfigureAwait(true);
             var records = await recordsTask.ConfigureAwait(true);
             var attribution = await attributionTask.ConfigureAwait(true);
+            _allPendingBids = await bidsTask.ConfigureAwait(true);
+            RelationshipPursuits = await relationshipsTask.ConfigureAwait(true);
+            _bidsAsOf = DateTimeOffset.UtcNow;
+            FilterPendingBids();
+            OnPropertyChanged(nameof(RelationshipPursuits));
             var snapshot = CrmAnalyticsService.Compute(records.ToArray(), new Dictionary<long, Opportunity>());
             var selectedKey = SelectedPerson?.PersonKey;
             _allPursuits = await pursuitsTask.ConfigureAwait(true);
@@ -275,7 +307,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
             foreach (var stage in new[] { CrmEngagementStage.Drafting, CrmEngagementStage.Submitted })
             {
                 var count = snapshot.ByStage.FirstOrDefault(s => s.Stage == stage)?.Count ?? 0;
-                Stages.Add(new BdDirectorStageRow(stage.ToString(), count,
+                Stages.Add(new BdDirectorStageRow(CrmStageNames.Display(stage), count,
                     funnel.MedianDaysInStage.TryGetValue((int)stage, out var median) ? median : null));
             }
             Live = Stages.Sum(s => s.Pursuits);
@@ -283,7 +315,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
                 ? "No live pursuit has been decided yet."
                 : $"Won {snapshot.Won} · Lost {snapshot.Lost} · win rate {snapshot.WinRate.ToString("P0", CultureInfo.CurrentCulture)} on decided live pursuits · {snapshot.BackfillWins} Deltek wins kept separate";
             LostDetails = $"Of the lost: {funnel.LostWithCompetitor} name the competitor, {funnel.LostWithReason} give a reason.";
-            DeadlineCaption = $"Submitted or drafting, deadline more than 30 days gone, no outcome recorded. {funnel.UndecidedNoDeadline} more have no deadline on file.";
+            DeadlineCaption = $"Submitted or pending, deadline more than 30 days gone, no outcome recorded. {funnel.UndecidedNoDeadline} more have no deadline on file.";
             Undecided.Clear();
             foreach (var row in funnel.UndecidedPastDeadline)
             {
@@ -315,6 +347,68 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
         }
         finally { IsLoading = false; }
     }
+
+    private void FilterPendingBids()
+    {
+        var selectedId = SelectedPendingBid?.Bid.EngagementId;
+        ReplaceRows(PendingBids, _allPendingBids.OrderBy(b => b.DueUtc is null).ThenBy(b => b.DueUtc)
+            .ThenBy(b => b.EngagementId).Select(b => new BdDirectorPendingBidRow(b, _bidsAsOf))
+            .Where(row => !MineOnly || row.IsMine(CurrentActorUpn)));
+        SelectedPendingBid = PendingBids.FirstOrDefault(b => b.Bid.EngagementId == selectedId);
+        PendingBidsSummary = SummarizePendingBids(PendingBids, RelationshipPursuits, _bidsAsOf);
+        OnPropertyChanged(nameof(PendingBidsSummary));
+    }
+
+    internal static string SummarizePendingBids(IEnumerable<BdDirectorPendingBidRow> rows, int relationships, DateTimeOffset now)
+    {
+        var bids = rows.ToArray();
+        var pending = bids.Where(b => b.IsPending).ToArray();
+        var assignees = pending.GroupBy(b => b.Bid.OwnerMailbox ?? b.Bid.OwnerStaffId ?? "", StringComparer.OrdinalIgnoreCase)
+            .Select(g => new { Name = g.First().Assignee, Count = g.Count() }).OrderBy(g => g.Name)
+            .Select(g => $"{g.Name} {g.Count}");
+        var weeks = pending.Where(b => b.Bid.DueUtc.HasValue).Select(b => BdDateDisplay.WeekStart(b.Bid.DueUtc!.Value)).ToArray();
+        var thisWeek = BdDateDisplay.WeekStart(now);
+        var nextWeek = thisWeek.AddDays(7);
+        var byAssignee = string.Join(", ", assignees);
+        return $"{pending.Length} pending · {bids.Count(b => b.Bid.Stage == CrmEngagementStage.Submitted)} submitted · by assignee: {(byAssignee.Length == 0 ? "none" : byAssignee)}"
+            + $" · due this week {weeks.Count(w => w == thisWeek)}, next week {weeks.Count(w => w == nextWeek)}, later {weeks.Count(w => w > nextWeek)}"
+            + $" · {relationships} relationship pursuits not shown";
+    }
+
+    public async Task MarkSubmittedAsync(BdDirectorPendingBidRow row, SubmittedDetails? submission, string actor, CancellationToken ct)
+    {
+        if (submission is null) return;
+        var error = SubmittedDetails.Validate(submission.FileName, submission.FolderLink);
+        if (error is not null) throw new ArgumentException(error, nameof(submission));
+        // Fetch the current row and preserve its concurrency token and other fields.
+        var record = await _records.GetByIdAsync(row.Bid.EngagementId, ct).ConfigureAwait(true);
+        if (record is null || record.OpportunityId != row.Bid.OpportunityId || record.Stage != CrmEngagementStage.Drafting)
+            throw new InvalidOperationException("This bid is no longer pending. Refresh and try again.");
+        await _records.UpdateAsync(record with
+        {
+            Stage = CrmEngagementStage.Submitted,
+            SubmittedFileName = submission.FileName.Trim(),
+            FolderLink = DirectorDialogValues.Optional(submission.FolderLink),
+        }, actor, ct).ConfigureAwait(true);
+        await LoadAsync(ct).ConfigureAwait(true);
+        StatusMessage = StatusMessage == "Up to date." ? "Bid marked submitted."
+            : "The bid was marked submitted. Could not refresh the figures; try Refresh again.";
+    }
+
+    public Task<Opportunity?> GetBidOpportunityAsync(BdDirectorPendingBidRow row, CancellationToken ct)
+        => _opportunities.GetByIdAsync(row.Bid.OpportunityId, ct);
+
+    public async Task SaveBidOpportunityAsync(Opportunity opportunity, string actor, CancellationToken ct)
+    {
+        await _opportunities.UpdateAsync(opportunity, actor, ct).ConfigureAwait(true);
+        await LoadAsync(ct).ConfigureAwait(true);
+        StatusMessage = StatusMessage == "Up to date." ? "Opportunity saved."
+            : "The opportunity was saved. Could not refresh the figures; try Refresh again.";
+    }
+
+    internal BdDirectorPursuitRow? PursuitForBid(BdDirectorPendingBidRow row)
+        => _allPursuits.FirstOrDefault(p => p.EngagementId == row.Bid.EngagementId) is { } pursuit
+            ? new BdDirectorPursuitRow(pursuit) : null;
 
     private void FilterPursuits()
     {

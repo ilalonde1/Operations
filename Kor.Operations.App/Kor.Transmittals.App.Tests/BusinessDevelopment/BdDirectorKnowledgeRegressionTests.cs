@@ -82,13 +82,13 @@ public sealed class BdDirectorKnowledgeRegressionTests
     }
 
     [Fact]
-    public void Window_HasEightTabs_KnowledgeSixth_AndPlainWords()
+    public void Window_HasNineTabs_KnowledgeSixth_AndPlainWords()
     {
         var xaml = Source(Director + "BdDirectorWindow.xaml");
         var document = XDocument.Parse(xaml);
         var tabs = document.Descendants().Where(e => e.Name.LocalName == "TabItem").Select(e => (string?)e.Attribute("Header")).ToArray();
-        Check(tabs.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week" }),
-            "eight ordered tabs with Knowledge sixth", string.Join(",", tabs));
+        Check(tabs.SequenceEqual(new[] { "The number", "People", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids" }),
+            "nine ordered tabs with Knowledge sixth", string.Join(",", tabs));
         const string caption = "What the books assert, one sentence each, cited to the passage it rests on. Keep what holds for KOR; retire what does not. Nothing is deleted.";
         Check(BdDirectorViewModel.KnowledgeCaption == caption, "exact Knowledge caption", BdDirectorViewModel.KnowledgeCaption);
         Contains(xaml, "{x:Static director:BdDirectorViewModel.KnowledgeCaption}");

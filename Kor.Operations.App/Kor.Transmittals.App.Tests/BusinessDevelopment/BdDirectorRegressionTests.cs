@@ -26,6 +26,7 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// SQL population/join/grouping contracts, date-ratchet inclusion, alias-aware drill
 /// filtering, analytics segmentation, source attribution and guarded reassignment.
 /// Also checks migration 352 and the brief store's two inserts and acknowledgement update.
+/// 9g adds the bid read, migration 353, exact submission write columns and stage/status mapping.
 /// Person grouping is asserted in SQL (the store already returns one row/person),
 /// not by feeding duplicate person aggregates into the view model.
 /// Does not execute SQL, authenticate a user, render WPF, open dialogs or prove
@@ -62,7 +63,7 @@ public sealed class BdDirectorRegressionTests
     [Fact]
     public void Window_UsesPlainWords_AndBothExactCaptions()
     {
-        const string people = "Everyone who owns a live pursuit. A live pursuit is Drafting or Submitted. Counts are for that person's pursuits; opens are the BD screens they opened.";
+        const string people = "Everyone who owns a live pursuit. A live pursuit is Pending or Submitted. Counts are for that person's pursuits; opens are the BD screens they opened.";
         const string funnel = "Live pursuits by stage, how long they have sat there, and what has been decided. Deltek history is counted separately and never added to the live numbers.";
         var vm = Source(Director + "BdDirectorViewModel.cs");
         var xaml = Source(Director + "BdDirectorWindow.xaml");
@@ -151,6 +152,87 @@ public sealed class BdDirectorRegressionTests
                      "AcknowledgedBy NVARCHAR(100) NULL", "FileName NVARCHAR(260) NOT NULL", "FileSha256 CHAR(64) NOT NULL",
                      "ExportSha256 CHAR(64) NOT NULL", "SectionsWritten INT NOT NULL", "Forced BIT NOT NULL" }) Contains(sql, column);
         Assert.True(Regex.Matches(sql, @"^GO\s*$", RegexOptions.Multiline).Count == 4, "EXPECTED four guarded/setup batches.");
+    }
+
+    [Fact]
+    public void PendingBidsSql_IsReadOnly_RequiresRfp_ResolvesOwner_AndReadsLatestSubmissionHistory()
+    {
+        var store = Source("Kor.Opportunities.Data/Crm/SqlBdDirectorStore.cs");
+        var sql = Regex.Match(store, "PendingBidsSql = @\"(.*?)\";", RegexOptions.Singleline).Groups[1].Value;
+        Assert.NotEmpty(sql);
+        Assert.False(Regex.IsMatch(sql, @"\b(INSERT|UPDATE|DELETE|MERGE|EXEC|INTO)\b", RegexOptions.IgnoreCase));
+        foreach (var clause in new[]
+        {
+            "e.OpportunityId IS NOT NULL AND e.Stage IN (1, 3)",
+            "JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId",
+            "LEFT JOIN opportunities.BdStaff s ON s.StaffKey = e.OwnerStaffId",
+            "o.OpportunityKey, o.Name, o.BuyerName", "o.SubmissionDeadlineUtc AS DueUtc",
+            "s.DisplayName, s.Mailbox", "FROM opportunities.CrmEngagementStageHistory h",
+            "MAX(h.EnteredAtUtc) AS SubmittedAtUtc", "h.EngagementId = e.Id AND h.Stage = 3",
+            "ORDER BY CASE WHEN o.SubmissionDeadlineUtc IS NULL THEN 1 ELSE 0 END",
+            "o.SubmissionDeadlineUtc, e.Id", "e.SubmittedFileName, e.FolderLink, e.NextActionDueUtc",
+        }) Contains(sql, clause);
+        var count = Regex.Match(store, "RelationshipPursuitsSql = @\"(.*?)\";", RegexOptions.Singleline).Groups[1].Value;
+        Contains(count, "OpportunityId IS NULL AND Stage IN (1, 3)");
+        Assert.False(Regex.IsMatch(count, @"\b(INSERT|UPDATE|DELETE|MERGE|EXEC|INTO)\b", RegexOptions.IgnoreCase));
+    }
+
+    [Fact]
+    public void Migration353_IsExactlyTwoGuardedColumnAdds_InSeparateBatches()
+    {
+        var source = Source("Kor.Opportunities.Data/Schema/353_PursuitSubmission.sql");
+        var sql = Regex.Replace(source, @"/\*.*?\*/|--[^\r\n]*", "", RegexOptions.Singleline);
+        var batches = Regex.Split(sql, @"^GO\s*$", RegexOptions.Multiline).Where(b => !string.IsNullOrWhiteSpace(b)).ToArray();
+        Assert.Equal(2, batches.Length);
+        foreach (var pair in new[] { ("SubmittedFileName", 260), ("FolderLink", 1000) }.Select((value, index) => (value, index)))
+        {
+            var (column, size) = pair.value;
+            Assert.Equal($"IF COL_LENGTH(N'opportunities.CrmEngagements', N'{column}') IS NULL ALTER TABLE opportunities.CrmEngagements ADD {column} NVARCHAR({size}) NULL;",
+                Regex.Replace(batches[pair.index], @"\s+", " ").Trim());
+        }
+        Assert.False(Regex.IsMatch(sql, @"\b(CREATE|DROP|INSERT|UPDATE|DELETE|MERGE|GRANT|USE)\b", RegexOptions.IgnoreCase));
+    }
+
+    [Fact]
+    public void EngagementWriteBoundary_AddsExactlyTheTwoSubmissionColumns_PreservesHistoryAndConcurrency()
+    {
+        var source = Source("Kor.Opportunities.Data/Crm/SqlCrmEngagementStore.cs");
+        var insert = Regex.Match(source, @"INSERT INTO opportunities\.CrmEngagements\s*\((.*?)\)\s*OUTPUT", RegexOptions.Singleline);
+        Assert.True(insert.Success);
+        var expectedInsert = new[] { "OpportunityId", "Stage", "OwnerStaffId", "AssignedStaffIds", "TargetMargin", "ProposedFee", "ProposedHours", "Notes",
+            "OpenedAtUtc", "ClosedAtUtc", "OutcomeNotes", "BuyerCanonicalOrgId", "Region", "ProposalsSubmittedCad", "ProposalsAcceptedCad", "PotentialProjects",
+            "WonLostOutcome", "OutcomeReason", "LostToCanonicalOrgId", "WonProjectWbs1", "NextActionDueUtc", "NextActionNote", "ExternalSource", "ExternalSourceKey",
+            "CreatedBy", "UpdatedBy", "SubmittedFileName", "FolderLink" };
+        Assert.Equal(expectedInsert.OrderBy(c => c), insert.Groups[1].Value.Split(',').Select(c => c.Trim()).OrderBy(c => c));
+        var update = Regex.Match(source, @"UPDATE opportunities\.CrmEngagements\s+SET\s+(.*?)\s+OUTPUT", RegexOptions.Singleline);
+        Assert.True(update.Success);
+        var actualUpdate = Regex.Matches(update.Groups[1].Value, @"(?:^|,)\s*(\w+)\s*=").Select(m => m.Groups[1].Value).OrderBy(c => c);
+        var expectedUpdate = expectedInsert.Except(new[] { "OpportunityId", "ExternalSource", "ExternalSourceKey", "CreatedBy" }).Append("UpdatedAtUtc");
+        Assert.Equal(expectedUpdate.OrderBy(c => c), actualUpdate);
+        foreach (var column in new[] { "SubmittedFileName", "FolderLink" })
+            Assert.Equal(2, Regex.Matches(source, "inserted\\." + column + @"\b").Count);
+        foreach (var clause in new[] { "SubmittedFileName = r.IsDBNull(30) ? null : r.GetString(30)",
+                     "FolderLink = r.IsDBNull(31) ? null : r.GetString(31)", "previousStage = reader.GetInt32(32)",
+                     "SqlDbType.NVarChar, 260", "SqlDbType.NVarChar, 1000", "WHERE Id = @id AND RowVersion = @rv",
+                     "WriteStageHistoryAsync(con, tx, updated.Id, (int)updated.Stage, actorDisplay, ct)",
+                     "OpportunityStatusFor(updated.Stage)", "(int)status", "await tx.CommitAsync(ct)",
+                     "ClosedAtUtc           = CASE WHEN @stage IN (6, 7)", "ELSE NULL END" }) Contains(source, clause);
+        var writes = Regex.Matches(source, @"\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM|MERGE)\s+(\w+\.\w+)", RegexOptions.IgnoreCase)
+            .Select(m => Regex.Replace(m.Value, @"\s+", " ")).OrderBy(s => s).ToArray();
+        Assert.Equal(new[] { "INSERT INTO opportunities.CrmEngagements", "INSERT INTO opportunities.CrmEngagementStageHistory",
+            "UPDATE opportunities.CrmEngagements", "UPDATE opportunities.Opportunities" }, writes);
+    }
+
+    [Theory]
+    [InlineData(CrmEngagementStage.Drafting, OpportunityStatus.Pursuing)]
+    [InlineData(CrmEngagementStage.Submitted, OpportunityStatus.Submitted)]
+    [InlineData(CrmEngagementStage.Won, OpportunityStatus.Won)]
+    [InlineData(CrmEngagementStage.Lost, OpportunityStatus.Lost)]
+    public void EngagementStage_MapsToTheParentStatus_NotTheStageInteger(CrmEngagementStage stage, OpportunityStatus expected)
+    {
+        var method = typeof(SqlCrmEngagementStore).GetMethod("OpportunityStatusFor", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        Assert.Equal(expected, Assert.IsType<OpportunityStatus>(method.Invoke(null, new object[] { stage })));
+        Assert.NotEqual((int)CrmEngagementStage.Submitted, (int)OpportunityStatus.Submitted);
     }
 
     [Fact]
@@ -300,6 +382,7 @@ public sealed class BdDirectorRegressionTests
 
         internal Fixture()
         {
+            DirectorMarketDefaults.SetupPendingBids(DirectorStore);
             Claims.Setup(s => s.ListSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeSourceSummary>());
             Claims.Setup(s => s.ListConceptsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<KnowledgeConceptRow>());
             Ledger.Setup(s => s.ListTargetsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdTarget>());

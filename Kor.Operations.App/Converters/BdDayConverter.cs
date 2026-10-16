@@ -11,6 +11,7 @@ public sealed class BdDayConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         => value switch
         {
+            DateTimeOffset date when parameter is "Time" => BdDateDisplay.DayAndTime(date),
             DateTimeOffset date => BdDateDisplay.Day(date),
             DateTime date => BdDateDisplay.Day(date),
             _ => "",

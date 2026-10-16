@@ -1,0 +1,17 @@
+<Window x:Class="Kor.Operations.App.BusinessDevelopment.Director.SubmittedDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Mark submitted" Width="560" SizeToContent="Height" WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False" Background="{StaticResource App.Background}">
+    <StackPanel Margin="20">
+        <TextBlock Text="Submitted file name (required)" Margin="0,0,0,6"/>
+        <TextBox x:Name="FileNameBox" MaxLength="260" Margin="0,0,0,14"/>
+        <TextBlock Text="Folder link (optional path or URL)" Margin="0,0,0,6"/>
+        <TextBox x:Name="FolderLinkBox" MaxLength="1000" Margin="0,0,0,14"/>
+        <TextBlock Text="The submitted time will be recorded as now when you choose OK." TextWrapping="Wrap" Margin="0,0,0,10"/>
+        <TextBlock x:Name="ErrorText" Foreground="Firebrick" TextWrapping="Wrap" Margin="0,0,0,10"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" Padding="16,6" Margin="0,0,8,0"/>
+            <Button x:Name="OkButton" Content="OK" IsDefault="True" Click="Save_Click" Padding="16,6"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

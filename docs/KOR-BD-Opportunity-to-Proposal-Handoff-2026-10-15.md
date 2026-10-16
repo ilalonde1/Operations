@@ -48,6 +48,16 @@ folder link · notes. One pursuit per opportunity. Stage changes are logged (who
 with a countdown · stage · submitted at · link. Sort by due. Red when due < 24 h and not submitted.
 "Mine" filter on assignee. Director's view: count of Pending by assignee and by due week.
 
+### Built on, 2026-10-15
+
+The pursuit record already exists as `opportunities.CrmEngagements`, with its assignee,
+stage history and opportunity link. 9g adds Pending as the display name of its existing
+Drafting stage, submitted file name and pasted folder link, and a Pending bids tab with
+Mine, assignment, opportunity editing and Mark submitted. A bid is `OpportunityId IS NOT NULL`;
+relationship pursuits are counted separately. Due remains `Opportunities.SubmissionDeadlineUtc`
+and submitted time comes from stage history. Leduc opportunity rows 39322 / 39332 are a
+cross-source duplicate for ingestion to settle; 39322 is the row to use here.
+
 ## 3. Actions the platform should offer later — each exists as a script today
 
 These are not part of the stage model. They are what the Leduc session did by hand, promoted into

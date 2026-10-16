@@ -467,6 +467,52 @@
                 </Grid>
             </Grid>
         </TabItem>
+        <TabItem Header="Pending bids">
+            <Grid Margin="12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/><RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="{x:Static director:BdDirectorViewModel.PendingBidsCaption}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                <TextBlock Grid.Row="1" Text="{Binding PendingBidsSummary}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
+                    <CheckBox Content="Mine" IsChecked="{Binding MineOnly}" VerticalAlignment="Center" Margin="0,0,20,0"/>
+                    <Button Content="Mark submitted…" Click="MarkSubmitted_Click" IsEnabled="{Binding SelectedPendingBid.IsPending, FallbackValue=False}" Padding="12,6" Margin="0,0,8,0"/>
+                    <Button Content="Assign…" Click="AssignBid_Click" Padding="12,6" Margin="0,0,8,0"/>
+                    <Button Content="Edit opportunity…" Click="EditOpportunity_Click" Padding="12,6"/>
+                </StackPanel>
+                <DataGrid x:Name="PendingBidsGrid" Grid.Row="3" ItemsSource="{Binding PendingBids}" SelectedItem="{Binding SelectedPendingBid}"
+                          CanUserSortColumns="False">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsUrgent}" Value="True">
+                                    <Setter Property="Foreground" Value="Firebrick"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Client" Binding="{Binding Bid.Client}" Width="*" MinWidth="110" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Project" Binding="{Binding Bid.Project}" Width="2*" MinWidth="180" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="RFP" Binding="{Binding Bid.RfpNumber}" Width="*" MinWidth="145" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Assignee" Binding="{Binding Assignee}" Width="*" MinWidth="130" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Due" Binding="{Binding Bid.DueUtc, Converter={StaticResource BdDay}, ConverterParameter=Time}" Width="185" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Time left" Binding="{Binding Countdown}" Width="160" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Stage" Binding="{Binding Stage}" Width="90" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="Submitted" Binding="{Binding SubmittedAtUtc, Converter={StaticResource BdDay}, ConverterParameter=Time}" Width="185" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTextColumn Header="File" Binding="{Binding Bid.SubmittedFileName}" Width="*" MinWidth="150" ElementStyle="{StaticResource CellText}"/>
+                        <DataGridTemplateColumn Header="Link" Width="80">
+                            <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <TextBlock Style="{StaticResource CellText}" Visibility="{Binding HasFolderLink, Converter={StaticResource BoolVisibility}}">
+                                    <Hyperlink Click="FolderLink_Click" ToolTip="{Binding Bid.FolderLink}">Open</Hyperlink>
+                                </TextBlock>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </TabItem>
         </TabControl>
         <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="{StaticResource Text.Secondary}"/>
     </Grid>

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Windows;
 using Kor.Operations.App.BusinessDevelopment.Workspace;
 using Kor.Opportunities.Core.Models;
@@ -25,8 +26,9 @@ public partial class CrmEngagementDialog : Window
         _original = engagement ?? throw new ArgumentNullException(nameof(engagement));
         InitializeComponent();
 
-        StageBox.ItemsSource = Enum.GetValues<CrmEngagementStage>();
-        StageBox.SelectedItem = engagement.Stage;
+        StageBox.ItemsSource = Enum.GetValues<CrmEngagementStage>()
+            .Select(stage => new { Value = stage, Label = CrmStageNames.Display(stage) }).ToArray();
+        StageBox.SelectedValue = engagement.Stage;
         OwnerCombo.ItemsSource = people ?? Array.Empty<PersonOption>();
         OwnerCombo.Text = engagement.OwnerStaffId ?? string.Empty;
         FeeBox.Text = engagement.ProposedFee?.ToString("0.##", CultureInfo.InvariantCulture) ?? string.Empty;
@@ -47,7 +49,7 @@ public partial class CrmEngagementDialog : Window
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        var stage = StageBox.SelectedItem is CrmEngagementStage s ? s : _original.Stage;
+        var stage = StageBox.SelectedValue is CrmEngagementStage s ? s : _original.Stage;
         var fee = ParseDecimal(FeeBox.Text);
         var hours = ParseDecimal(HoursBox.Text);
         var margin = ParseDecimal(MarginBox.Text);

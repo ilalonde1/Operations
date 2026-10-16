@@ -1,9 +1,11 @@
 #nullable enable
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Documents;
 using Kor.Operations.App.BusinessDevelopment.Workspace;
 using Kor.Operations.App.Options;
 using Kor.Operations.App.Opportunities;
@@ -43,6 +45,7 @@ public partial class BdDirectorWindow : Window
         _actor = new[] { global::Kor.Operations.OperationsApp.SignedInUserUpn,
                 AppServices.Get<UserOptions>().UserUpnOverride, Environment.UserName }
             .First(value => !string.IsNullOrWhiteSpace(value))!.Trim();
+        _vm.CurrentActorUpn = _actor;
         try { AppServices.Get<IBdUiOpenStore>().RecordOpen("BdDirector", _actor); }
         catch (Exception ex) { Log.Warning(ex, "BD Director open instrumentation failed."); }
         await ReloadAsync().ConfigureAwait(true);
@@ -59,7 +62,13 @@ public partial class BdDirectorWindow : Window
 
     private async void Reassign_Click(object sender, RoutedEventArgs e)
     {
-        if (_ledgerBusy || _reassignBusy || _vm.IsLoading || sender is not FrameworkElement { DataContext: BdDirectorPursuitRow row }) return;
+        if (sender is FrameworkElement { DataContext: BdDirectorPursuitRow row })
+            await ReassignPursuitAsync(row).ConfigureAwait(true);
+    }
+
+    private async Task ReassignPursuitAsync(BdDirectorPursuitRow row)
+    {
+        if (_ledgerBusy || _reassignBusy || _vm.IsLoading) return;
         _reassignBusy = true;
         var ct = _lifetime.Token;
         try
@@ -80,6 +89,57 @@ public partial class BdDirectorWindow : Window
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally { _reassignBusy = false; }
+    }
+
+    private async void AssignBid_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedPendingBid is not { } bid) return;
+        if (_vm.PursuitForBid(bid) is { } row)
+            await ReassignPursuitAsync(row).ConfigureAwait(true);
+        else
+            MessageBox.Show(this, "Could not find the owned pursuit. Refresh and try again.", "Assign",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private async void MarkSubmitted_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedPendingBid is not { IsPending: true } row) return;
+        await LedgerActionAsync(ct => SubmitBidAsync(row, dialog => dialog.ShowDialog(), _actor, ct)).ConfigureAwait(true);
+    }
+
+    // The same dialog-to-store path is exercised by the modal interaction gate.
+    internal async Task SubmitBidAsync(BdDirectorPendingBidRow row, Func<SubmittedDialog, bool?> show,
+        string actor, CancellationToken ct)
+    {
+        var dialog = new SubmittedDialog(row.Bid.SubmittedFileName, row.Bid.FolderLink);
+        if (IsVisible) dialog.Owner = this;
+        if (show(dialog) == true)
+            await _vm.MarkSubmittedAsync(row, dialog.Result, actor, ct).ConfigureAwait(true);
+    }
+
+    private async void EditOpportunity_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedPendingBid is not { } row) return;
+        await LedgerActionAsync(async ct =>
+        {
+            var opportunity = await _vm.GetBidOpportunityAsync(row, ct).ConfigureAwait(true)
+                ?? throw new InvalidOperationException("The opportunity could not be found.");
+            ct.ThrowIfCancellationRequested();
+            var dialog = new OpportunityEntryDialog(opportunity) { Owner = this };
+            if (dialog.ShowDialog() == true && dialog.Result is { } result)
+                await _vm.SaveBidOpportunityAsync(result, _actor, ct).ConfigureAwait(true);
+        }).ConfigureAwait(true);
+    }
+
+    private void FolderLink_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Hyperlink { DataContext: BdDirectorPendingBidRow row } || !row.HasFolderLink) return;
+        try { Process.Start(new ProcessStartInfo(row.Bid.FolderLink!) { UseShellExecute = true }); }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "BD Director could not open the folder link.");
+            MessageBox.Show(this, "Could not open the link.", "Folder link", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void OpenPursuit_Click(object sender, RoutedEventArgs e)

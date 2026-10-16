@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Opportunities.Core.Models;
 
 namespace Kor.Opportunities.Data.Crm;
 
@@ -14,7 +15,14 @@ public interface IBdDirectorStore
     Task<BdDirectorFunnel> GetFunnelAsync(CancellationToken ct);
     Task<BdTargetActuals> GetTargetActualsAsync(IReadOnlyList<BdTargetKey> keys, CancellationToken ct);
     Task<IReadOnlyList<BdDirectorAccount>> GetAccountsAsync(int take, CancellationToken ct);
+    Task<IReadOnlyList<PendingBidRow>> ListPendingBidsAsync(CancellationToken ct);
+    Task<int> CountRelationshipPursuitsAsync(CancellationToken ct);
 }
+
+public sealed record PendingBidRow(long EngagementId, long OpportunityId, string RfpNumber,
+    string Project, string Client, string? OwnerStaffId, string? OwnerDisplayName, string? OwnerMailbox,
+    DateTimeOffset? DueUtc, CrmEngagementStage Stage, DateTimeOffset? SubmittedAtUtc,
+    string? SubmittedFileName, string? FolderLink, DateTimeOffset? NextActionDueUtc);
 
 public sealed record BdDirectorSignal(long OrgId, string Org, string Signal, string Subject, DateTimeOffset LastSeenAtUtc, int Corroborations);
 

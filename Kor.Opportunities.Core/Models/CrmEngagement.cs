@@ -106,6 +106,11 @@ public sealed record CrmEngagement
 
     public string? NextActionNote { get; init; }
 
+    public string? SubmittedFileName { get; init; }
+
+    /// <summary>A pasted path or URL; no folder inspection or inferred stage.</summary>
+    public string? FolderLink { get; init; }
+
     /// <summary>Birth provenance: 'Grab.&lt;feed&gt;' for claimed opportunities,
     /// 'Deltek.CustomProposal' for the migration-268 win backfill. Immutable.</summary>
     public string? ExternalSource { get; init; }
@@ -130,4 +135,22 @@ public enum CrmEngagementStage
     Submitted = 3,   // was ProposalSubmitted(3), Presenting(4), Negotiating(5)
     Won = 6,
     Lost = 7,        // was Lost(7), Withdrawn(8)
+}
+
+/// <summary>Screen names for the existing, stable-on-disk pursuit stages.</summary>
+public static class CrmStageNames
+{
+    public const string Pending = "Pending";
+    public const string Submitted = "Submitted";
+    public const string Won = "Won";
+    public const string Lost = "Lost";
+
+    public static string Display(CrmEngagementStage stage) => stage switch
+    {
+        CrmEngagementStage.Drafting => Pending,
+        CrmEngagementStage.Submitted => Submitted,
+        CrmEngagementStage.Won => Won,
+        CrmEngagementStage.Lost => Lost,
+        _ => "Unknown",
+    };
 }
