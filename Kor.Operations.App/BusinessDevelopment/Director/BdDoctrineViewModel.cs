@@ -47,7 +47,10 @@ public sealed record DoctrineCardView(DoctrineCardRow Card, DoctrineCardRecord R
 /// </summary>
 public sealed class BdDoctrineViewModel : ObservableObject
 {
-    public const string Role = "BD";
+    private string _role = "BD";
+    private int _loadVersion;
+    public IReadOnlyList<string> Roles { get; } = new[] { "BD", "Operations" };
+    public string Role { get => _role; private set => SetField(ref _role, value); }
     private readonly IBdDoctrineStore _store;
     private readonly Func<DateTimeOffset> _clock;
     private IReadOnlyList<DoctrineCardRow> _cards = Array.Empty<DoctrineCardRow>();
@@ -67,6 +70,7 @@ public sealed class BdDoctrineViewModel : ObservableObject
     public ObservableCollection<DoctrineCardView> Accepted { get; } = new();
     public ObservableCollection<DoctrineCardView> NeedsLook { get; } = new();
     public IReadOnlyList<DoctrineCardRow> Cards => _cards;
+    public IReadOnlyList<DoctrineCardRow> CitationCards { get; private set; } = Array.Empty<DoctrineCardRow>();
     public DoctrineCardView? FocusedCard { get => _focusedCard; private set => SetField(ref _focusedCard, value); }
     public bool HasNeedsLook => NeedsLook.Count > 0;
     public string RecordRule => DoctrineTrackRecord.Rule;
@@ -77,14 +81,32 @@ public sealed class BdDoctrineViewModel : ObservableObject
     public string Status { get => _status; private set => SetField(ref _status, value); }
     public void Say(string text) => Status = text;
 
+    public async Task SelectRoleAsync(string role, CancellationToken ct)
+    {
+        if (!Roles.Contains(role)) throw new ArgumentException("Role must be BD or Operations.", nameof(role));
+        if (Role == role) return;
+        Role = role;
+        _cards = Array.Empty<DoctrineCardRow>();
+        _records = new Dictionary<long, DoctrineCardRecord>();
+        FocusedCard = null;
+        Proposed.Clear(); Accepted.Clear(); NeedsLook.Clear(); Runs.Clear();
+        await LoadAsync(ct).ConfigureAwait(true);
+    }
+
     public async Task LoadAsync(CancellationToken ct)
     {
+        var role = Role;
+        var version = ++_loadVersion;
         try
         {
-            _cards = await _store.ListCardsAsync(Role, ct).ConfigureAwait(true);
-            var records = (await _store.ListRecordsAsync(Role, ct).ConfigureAwait(true)).ToDictionary(r => r.CardId);
+            var cards = await _store.ListCardsAsync(role, ct).ConfigureAwait(true);
+            var otherCards = await _store.ListCardsAsync(role == "BD" ? "Operations" : "BD", ct).ConfigureAwait(true);
+            var records = (await _store.ListRecordsAsync(role, ct).ConfigureAwait(true)).ToDictionary(r => r.CardId);
+            var runs = await _store.ListRunsAsync(role, 50, ct).ConfigureAwait(true);
+            if (version != _loadVersion || role != Role) return;
+            _cards = cards.Where(c => c.Role == role).ToArray();
+            CitationCards = cards.Concat(otherCards).ToArray();
             _records = records;
-            var runs = await _store.ListRunsAsync(50, ct).ConfigureAwait(true);
             Proposed.Clear();
             foreach (var c in _cards.Where(c => c.Status == "proposed")) Proposed.Add(c);
             Accepted.Clear();
@@ -98,11 +120,12 @@ public sealed class BdDoctrineViewModel : ObservableObject
                 FocusedCard = card is null ? null : new DoctrineCardView(card, records.GetValueOrDefault(card.Id) ?? DoctrineCardRecord.Empty(card.Id));
             }
             Runs.Clear();
-            foreach (var r in runs) Runs.Add(new BdPromptRunView(r));
+            foreach (var r in runs.Where(r => r.Role == role).Take(50)) Runs.Add(new BdPromptRunView(r));
         }
         catch (Exception ex)
         {
             Log.Warning(ex, "BD Director could not load the doctrine.");
+            if (version != _loadVersion || role != Role) return;
             Status = "The doctrine could not be loaded. Refresh to try again.";
         }
 
@@ -111,6 +134,7 @@ public sealed class BdDoctrineViewModel : ObservableObject
         OnPropertyChanged(nameof(HasProposed));
         OnPropertyChanged(nameof(HasNeedsLook));
         OnPropertyChanged(nameof(Cards));
+        OnPropertyChanged(nameof(CitationCards));
     }
 
     public void FocusCard(long id)
@@ -122,6 +146,7 @@ public sealed class BdDoctrineViewModel : ObservableObject
 
     public async Task<bool> RetireAsync(DoctrineCardView card, CancellationToken ct)
     {
+        if (card.Card.Role != Role) { Status = "Select the card's role first."; return false; }
         var retired = await _store.RetireCardAsync(card.Id, "Ian", ct).ConfigureAwait(true);
         Status = retired ? $"Retired: {card.Title}" : "That card is no longer accepted. Refreshed.";
         await LoadAsync(ct).ConfigureAwait(true);
@@ -147,7 +172,8 @@ public sealed class BdDoctrineViewModel : ObservableObject
     public async Task<int> AcceptAllAsync(string actor, CancellationToken ct)
     {
         var accepted = 0;
-        foreach (var card in Proposed.OrderBy(c => c.Id).ToList())
+        var role = Role;
+        foreach (var card in Proposed.Where(c => c.Role == role && c.Status == "proposed").OrderBy(c => c.Id).ToList())
         {
             if (await _store.DecideCardAsync(card.Id, true, actor, ct).ConfigureAwait(true)) accepted++;
         }
@@ -161,6 +187,7 @@ public sealed class BdDoctrineViewModel : ObservableObject
     public async Task<bool> DecideAsync(DoctrineCardRow card, bool accept, string actor, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(card);
+        if (card.Role != Role) { Status = "Select the card's role first."; return false; }
         var done = await _store.DecideCardAsync(card.Id, accept, actor, ct).ConfigureAwait(true);
         Status = !done ? "That card was already decided. Refreshed."
             : accept ? $"Accepted: {card.Title}" + (card.AmendsCardId is { } a ? $" (card #{a} retired)" : "") : $"Rejected: {card.Title}";
@@ -169,16 +196,18 @@ public sealed class BdDoctrineViewModel : ObservableObject
     }
 
     /// <summary>A question about today, a person or a pursuit, composed now from what the Director knows, with the doctrine that applies.</summary>
-    public async Task<BdPreparedPrompt> PrepareAskAsync(string question, string subject, DoctrineContext context, IReadOnlyList<string> facts, string actor, CancellationToken ct)
+    public async Task<BdPreparedPrompt> PrepareAskAsync(string question, string subject, DoctrineContext context, IReadOnlyList<string> facts, string actor, CancellationToken ct, string role = "BD")
     {
         if (string.IsNullOrWhiteSpace(question)) throw new ArgumentException("Type the question first.", nameof(question));
-        var accepted = _cards.Where(c => c.Status == "accepted").ToList();
+        if (!Roles.Contains(role)) throw new ArgumentException("Role must be BD or Operations.", nameof(role));
+        var cards = role == Role ? _cards : await _store.ListCardsAsync(role, ct).ConfigureAwait(true);
+        var accepted = cards.Where(c => c.Role == role && c.Status == "accepted").ToList();
         var applies = accepted.Where(c => BdDoctrine.AppliesTo(c.AppliesTo, context)).ToList();
         var library = accepted.Except(applies).ToList();
         var (token, tokenSha) = BdDoctrine.NewToken();
         var draft = new BdAskInput(question.Trim(), actor, subject, context, facts, applies, library, _clock());
         // The prompt carries its run id, so the run is recorded first and the hash of the final text stored after.
-        var runId = await _store.StartRunAsync("ask", Role, subject, question.Trim(), actor, new byte[32], tokenSha, ct).ConfigureAwait(true);
+        var runId = await _store.StartRunAsync("ask", role, subject, question.Trim(), actor, new byte[32], tokenSha, ct).ConfigureAwait(true);
         var markdown = BdPromptComposer.Ask(draft, new BdPromptHandle(runId, token));
         await _store.SetPromptShaAsync(runId, BdDoctrine.Sha(markdown), ct).ConfigureAwait(true);
         Status = $"Opened Claude on your question (run {runId}). Its answer appears under Doctrine when it reports back.";
@@ -190,17 +219,18 @@ public sealed class BdDoctrineViewModel : ObservableObject
     public async Task<BdPreparedPrompt> PrepareSynthesisAsync(IReadOnlyList<string> books, string? focus, string actor, CancellationToken ct)
     {
         // One synthesis at a time: two running together cannot see each other's cards, which is how duplicates got in.
-        if (OpenSynthesis(await _store.ListRunsAsync(50, ct).ConfigureAwait(true), _clock()) is { } open)
+        var role = Role;
+        if (OpenSynthesis(await _store.ListRunsAsync(role, 50, ct).ConfigureAwait(true), _clock()) is { } open)
             throw new ArgumentException($"A synthesis is still running (run {open.Id}, started {open.CreatedAtUtc.ToLocalTime():ddd HH:mm}). Wait for its cards before starting another.");
         var now = _clock();
-        _cards = await _store.ListCardsAsync(Role, ct).ConfigureAwait(true);
-        var records = await _store.ListRecordsAsync(Role, ct).ConfigureAwait(true);
-        var closed = await _store.ListClosedPursuitsAsync(now.AddDays(-90), now, ct).ConfigureAwait(true);
+        var cards = await _store.ListCardsAsync(role, ct).ConfigureAwait(true);
+        var records = await _store.ListRecordsAsync(role, ct).ConfigureAwait(true);
+        var closed = role == "BD" ? await _store.ListClosedPursuitsAsync(now.AddDays(-90), now, ct).ConfigureAwait(true) : Array.Empty<ClosedPursuit>();
         var (token, tokenSha) = BdDoctrine.NewToken();
-        var subject = string.IsNullOrWhiteSpace(focus) ? "the BD doctrine" : "the BD doctrine: " + focus.Trim();
-        var runId = await _store.StartRunAsync("synthesis", Role, subject, focus, actor, new byte[32], tokenSha, ct).ConfigureAwait(true);
-        var markdown = BdPromptComposer.Synthesis(new BdSynthesisInput(Role, actor, books,
-            _cards.Where(c => c.Status == "accepted").ToList(), _cards.Where(c => c.Status == "proposed").ToList(), focus, now, records, closed),
+        var subject = "the " + role + " doctrine" + (string.IsNullOrWhiteSpace(focus) ? "" : ": " + focus.Trim());
+        var runId = await _store.StartRunAsync("synthesis", role, subject, focus, actor, new byte[32], tokenSha, ct).ConfigureAwait(true);
+        var markdown = BdPromptComposer.Synthesis(new BdSynthesisInput(role, actor, books,
+            cards.Where(c => c.Status == "accepted").ToList(), cards.Where(c => c.Status == "proposed").ToList(), focus, now, records, closed),
             new BdPromptHandle(runId, token));
         await _store.SetPromptShaAsync(runId, BdDoctrine.Sha(markdown), ct).ConfigureAwait(true);
         Status = $"Opened Claude on the synthesis (run {runId}). Its cards appear here, waiting for you, when it reports back.";

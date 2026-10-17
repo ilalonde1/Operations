@@ -102,13 +102,14 @@ public sealed class BdDoctrineRegressionTests
     public async Task Asking_StoresOnlyHashes_ThePromptHashIsOfWhatClaudeReads_AndOnlyAcceptedCardsTravel()
     {
         var store = new Mock<IBdDoctrineStore>();
+        store.Setup(s => s.ListCardsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRecord>());
         store.Setup(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[]
         {
             Card(5, "Rescue a quiet relationship", "situation:going-cold"), Card(6, "Price on value", "situation:fee-undercut"),
             Card(7, "Not yet accepted", "any", "proposed"),
         });
-        store.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
+        store.Setup(s => s.ListRunsAsync("BD", It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
         byte[]? tokenSha = null, promptSha = null;
         store.Setup(s => s.StartRunAsync("ask", "BD", "Northland", "How?", "ian", It.IsAny<byte[]>(), It.IsAny<byte[]>(), It.IsAny<CancellationToken>()))
             .Callback<string, string, string, string?, string, byte[], byte[], CancellationToken>((_, _, _, _, _, _, t, _) => tokenSha = t).ReturnsAsync(42);
@@ -134,9 +135,10 @@ public sealed class BdDoctrineRegressionTests
     public async Task Deciding_GoesThroughTheStore_AndSaysWhenItWasAlreadyDecided()
     {
         var store = new Mock<IBdDoctrineStore>();
+        store.Setup(s => s.ListCardsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRecord>());
         store.Setup(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
-        store.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
+        store.Setup(s => s.ListRunsAsync("BD", It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
         store.Setup(s => s.DecideCardAsync(8, true, "ian", It.IsAny<CancellationToken>())).ReturnsAsync(true);
         store.Setup(s => s.DecideCardAsync(9, false, "ian", It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var vm = new BdDoctrineViewModel(store.Object, () => Now);
@@ -160,11 +162,12 @@ public sealed class BdDoctrineRegressionTests
     public async Task AcceptAll_AcceptsOnlyWaitingCards_OldestFirst_SoAnAmendmentFollowsWhatItAmends()
     {
         var store = new Mock<IBdDoctrineStore>();
+        store.Setup(s => s.ListCardsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRecord>());
         store.SetupSequence(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { Card(12, "Amends 5", "any", "proposed", amends: 5), Card(5, "First", "any", "proposed"), Card(3, "Kept", "any") })
             .ReturnsAsync(new[] { Card(3, "Kept", "any"), Card(5, "First", "any"), Card(12, "Amends 5", "any") });
-        store.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
+        store.Setup(s => s.ListRunsAsync("BD", It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
         var order = new List<long>();
         store.Setup(s => s.DecideCardAsync(It.IsAny<long>(), true, "ian", It.IsAny<CancellationToken>()))
             .Callback<long, bool, string, CancellationToken>((id, _, _, _) => order.Add(id)).ReturnsAsync(true);
@@ -225,7 +228,7 @@ public sealed class BdDoctrineRegressionTests
     {
         var cli = Source("tools/BdKnowledgeIngest/Program.cs");
         Assert.Contains("\"prompt\" => promptAction == \"synthesis\" ? new[] { \"--by\", \"--focus\", \"--role\" } : new[] { \"--token\", \"--checked\" },", cli, StringComparison.Ordinal);
-        Assert.Contains("\"--token\", \"--role\", \"--focus\", \"--exclude-run\" }", cli, StringComparison.Ordinal);
+        Assert.Contains("\"--token\", \"--role\", \"--focus\", \"--exclude-run\", \"--after\" }", cli, StringComparison.Ordinal);
         Assert.Contains("\"--replace\", \"--checked\" }", cli, StringComparison.Ordinal);
         Assert.Contains("\"doctrine\" => new[] { \"--role\", \"--exclude-run\" },", cli, StringComparison.Ordinal);
         Assert.Contains("or \"doctrine\" or \"prompt\"))", cli, StringComparison.Ordinal);
@@ -247,7 +250,7 @@ public sealed class BdDoctrineRegressionTests
             new[] { Card(5, "Yes", "any") }));
         // The CLI is not referenced by this test assembly. Pin that it executes this gate before writing the hour.
         var cli = Source("tools/BdKnowledgeIngest/Program.cs");
-        var gate = cli.IndexOf("DirectorHourFile.ValidateCards(content, await doctrine.ListCardsAsync(content.Kind, ct))", StringComparison.Ordinal);
+        var gate = cli.IndexOf("DirectorHourFile.ValidateCards(content, cards)", StringComparison.Ordinal);
         var write = cli.IndexOf("rhythm.ImportHourAsync", StringComparison.Ordinal);
         Assert.True(gate >= 0 && write > gate);
         Assert.Contains("return 1;", cli[gate..write], StringComparison.Ordinal);
@@ -297,11 +300,12 @@ public sealed class BdDoctrineRegressionTests
         var accepted = Card(5, "Quiet relationship", "any");
         var record = new DoctrineCardRecord(5, 3, 0, 0, 3, 0, 0, 0, 0, new DateOnly(2026, 10, 16), new[] { "Skipped" });
         var store = new Mock<IBdDoctrineStore>();
+        store.Setup(s => s.ListCardsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         store.SetupSequence(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { accepted, Card(6, "Rejected", "any", "rejected") })
             .ReturnsAsync(new[] { accepted with { Status = "retired" }, Card(6, "Rejected", "any", "rejected") });
         store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[] { record, record with { CardId = 6 } });
-        store.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
+        store.Setup(s => s.ListRunsAsync("BD", It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
         store.Setup(s => s.RetireCardAsync(5, "Ian", It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var vm = new BdDoctrineViewModel(store.Object, () => Now);
         await vm.LoadAsync(CancellationToken.None);
@@ -333,8 +337,9 @@ public sealed class BdDoctrineRegressionTests
             new ClosedPursuit(103, "Too old", 6, "Do not include", Now.AddDays(-91)),
             new ClosedPursuit(104, "Future", 6, "Do not include", Now.AddDays(1)) };
         var store = new Mock<IBdDoctrineStore>();
+        store.Setup(s => s.ListCardsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         store.Setup(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[] { Card(5, "Quiet relationship", "any") });
-        store.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
+        store.Setup(s => s.ListRunsAsync("BD", It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
         store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(records);
         store.Setup(s => s.ListClosedPursuitsAsync(Now.AddDays(-90), Now, It.IsAny<CancellationToken>())).ReturnsAsync(closed);
         var vm = new BdDoctrineViewModel(store.Object, () => Now);

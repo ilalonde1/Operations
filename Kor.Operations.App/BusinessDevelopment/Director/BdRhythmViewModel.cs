@@ -150,7 +150,8 @@ public sealed partial class BdRhythmViewModel : ObservableObject
             for (var back = 0; back < 7; back++)
             {
                 var date = today.AddDays(-back);
-                var row = await _store.GetHourAsync("BD", date, ct).ConfigureAwait(true);
+                var row = await _store.GetHourAsync("Morning", date, ct).ConfigureAwait(true)
+                    ?? await _store.GetHourAsync("BD", date, ct).ConfigureAwait(true);
                 if (row is null) continue;
                 var (content, errors) = DirectorHourFile.Parse(row.ContentJson);
                 if (content is null)

@@ -162,6 +162,7 @@ public interface IBdDoctrineStore
     /// </summary>
     Task<bool> ReportAsync(long runId, string token, BdPromptReport report, CancellationToken ct);
     Task<IReadOnlyList<BdPromptRunRow>> ListRunsAsync(int take, CancellationToken ct);
+    Task<IReadOnlyList<BdPromptRunRow>> ListRunsAsync(string role, int take, CancellationToken ct);
     Task<IReadOnlyList<DoctrineCardRow>> ListCardsAsync(string role, CancellationToken ct);
     /// <summary>Accepts or rejects a PROPOSED card. Accepting an amendment retires the card it amends. False when it was not proposed.</summary>
     Task<bool> DecideCardAsync(long cardId, bool accept, string by, CancellationToken ct);
@@ -247,7 +248,11 @@ SELECT @role, @title, @plain, @applies, @principle, @recognise, @play, @warning,
         return true;
     }
 
-    public async Task<IReadOnlyList<BdPromptRunRow>> ListRunsAsync(int take, CancellationToken ct)
+    public Task<IReadOnlyList<BdPromptRunRow>> ListRunsAsync(int take, CancellationToken ct) => ReadRunsAsync(null, take, ct);
+
+    public Task<IReadOnlyList<BdPromptRunRow>> ListRunsAsync(string role, int take, CancellationToken ct) => ReadRunsAsync(role, take, ct);
+
+    private async Task<IReadOnlyList<BdPromptRunRow>> ReadRunsAsync(string? role, int take, CancellationToken ct)
     {
         var rows = new List<BdPromptRunRow>();
         await using var con = new SqlConnection(_connectionString);
@@ -255,8 +260,9 @@ SELECT @role, @title, @plain, @applies, @principle, @recognise, @play, @warning,
         await using var cmd = new SqlCommand(@"
 SELECT TOP (@take) r.Id, r.Kind, r.Role, r.Subject, r.Question, r.CreatedBy, r.CreatedAtUtc, r.OutcomeAtUtc, r.Outcome, r.Answer,
        (SELECT COUNT(*) FROM opportunities.DoctrineCard c WHERE c.SourceRunId = r.Id AND c.Status = N'proposed')
-FROM opportunities.BdPromptRun r ORDER BY r.CreatedAtUtc DESC, r.Id DESC;", con);
+FROM opportunities.BdPromptRun r WHERE (@role IS NULL OR r.Role = @role) ORDER BY r.CreatedAtUtc DESC, r.Id DESC;", con);
         cmd.Parameters.Add("@take", SqlDbType.Int).Value = Math.Clamp(take, 1, 500);
+        Text(cmd, "@role", 20, role);
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         while (await r.ReadAsync(ct).ConfigureAwait(false))
             rows.Add(new BdPromptRunRow(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3), Opt(r, 4), r.GetString(5), r.GetDateTimeOffset(6),
@@ -331,9 +337,9 @@ SELECT @@ROWCOUNT;", con);
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using (var cmd = new SqlCommand(@"
-SELECT Id, ForDate, ContentJson FROM opportunities.DirectorHour WHERE Kind = @role;
+SELECT Id, ForDate, ContentJson FROM opportunities.DirectorHour WHERE Kind = @role OR Kind = N'Morning';
 SELECT m.HourId, m.MoveRank, m.Result FROM opportunities.DirectorHourMove m
-JOIN opportunities.DirectorHour h ON h.Id = m.HourId WHERE h.Kind = @role;", con))
+JOIN opportunities.DirectorHour h ON h.Id = m.HourId WHERE h.Kind = @role OR h.Kind = N'Morning';", con))
         {
             Text(cmd, "@role", 20, role);
             await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -347,7 +353,7 @@ JOIN opportunities.DirectorHour h ON h.Id = m.HourId WHERE h.Kind = @role;", con
             while (await r.ReadAsync(ct).ConfigureAwait(false)) results.Add((r.GetInt64(0), r.GetInt32(1), r.GetString(2)));
         }
 
-        var linked = hours.SelectMany(h => h.Content.Moves).SelectMany(m => m.Links)
+        var linked = hours.SelectMany(h => DirectorHourFile.AllMoves(h.Content)).SelectMany(m => m.Links)
             .Where(l => l.Kind == "pursuit").Select(l => l.Id).Distinct().ToArray();
         if (linked.Length > 0)
         {

@@ -36,7 +36,9 @@ namespace Kor.Operations.Financials
         public WipFinancialsResult Load(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
             => LoadCore(cn, wbs1, usdToCadRate, ct);
 
-        public async Task<WipFinancialsResult> LoadAsync(CancellationToken ct)
+        public Task<WipFinancialsResult> LoadAsync(CancellationToken ct) => LoadAsync(ct, failOnReadError: false);
+
+        public async Task<WipFinancialsResult> LoadAsync(CancellationToken ct, bool failOnReadError)
         {
             return await Task.Run(() =>
             {
@@ -44,11 +46,11 @@ namespace Kor.Operations.Financials
                 using var cn = CreateConnection();
                 cn.Open();
                 var usdToCadRate = OrgFx.ParseUsdToCadRate(_financialsOptions.BilledUsdToCadRate);
-                return LoadCore(cn, new List<string>(), usdToCadRate, ct);
+                return LoadCore(cn, new List<string>(), usdToCadRate, ct, failOnReadError);
             }, ct).ConfigureAwait(false);
         }
 
-        private WipFinancialsResult LoadCore(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
+        private WipFinancialsResult LoadCore(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct, bool failOnReadError = false)
         {
             var asOfPeriod = LoadMaxPrSummaryPeriod(cn, ct);
             if (string.IsNullOrWhiteSpace(asOfPeriod) || asOfPeriod.Length != 6 || !asOfPeriod.All(char.IsDigit))
@@ -87,7 +89,7 @@ namespace Kor.Operations.Financials
             {
                 wipProjectRows = LoadWipProjectBreakdownByProject(cn, wbs1, asOfPeriod, useUnbilledAsOf: unbilledColumnHasAny, usdToCadRate, ct);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!failOnReadError)
             {
                 Log.Error(ex, "Failed to load WIP project breakdown in {Loader} for Period={Period}.", nameof(WipFinancialsService), asOfPeriod);
                 wipProjectRows = Array.Empty<WipProjectBreakdownRow>();
@@ -99,7 +101,7 @@ namespace Kor.Operations.Financials
 
             (double Earned, double Overbilled, double Net) firmWip;
             try { firmWip = LoadFirmwideWipBalance(cn, asOfPeriod, useUnbilledAsOf: unbilledColumnHasAny, usdToCadRate, ct); }
-            catch (Exception ex)
+            catch (Exception ex) when (!failOnReadError)
             {
                 Log.Error(ex, "Failed to load firmwide WIP balances in {Loader} for Period={Period}.", nameof(WipFinancialsService), asOfPeriod);
                 firmWip = (0.0, 0.0, 0.0);

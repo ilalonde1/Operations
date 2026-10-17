@@ -64,7 +64,7 @@ public sealed class DirectorHourEmailJob : IJob
             var store = _storeFor(opt.OpportunitiesDb);
             var now = DateTimeOffset.Now;
             var today = DateOnly.FromDateTime(now.Date);
-            var hour = await store.GetHourAsync("BD", today, context.CancellationToken).ConfigureAwait(false);
+            var hour = await SelectHourAsync(store, today, context.CancellationToken).ConfigureAwait(false);
             var actions = now.DayOfWeek == DayOfWeek.Monday
                 ? await store.ListActionsAsync(context.CancellationToken).ConfigureAwait(false)
                 : Array.Empty<BdActionRow>();
@@ -88,6 +88,10 @@ public sealed class DirectorHourEmailJob : IJob
     /// was, so silence never has to be read as a broken job; the error list when the stored hour does not validate. On a
     /// Monday with open actions, the leads' lists as drafts.
     /// </summary>
+    internal static async Task<DirectorHourRow?> SelectHourAsync(IBdRhythmStore store, DateOnly today, CancellationToken ct) =>
+        await store.GetHourAsync("Morning", today, ct).ConfigureAwait(false)
+        ?? await store.GetHourAsync("BD", today, ct).ConfigureAwait(false);
+
     internal static IReadOnlyList<Outgoing> Compose(DirectorHourRow? hour, IReadOnlyList<BdActionRow> mondayActions, DateOnly today, DateTimeOffset now)
     {
         var mails = new List<Outgoing>();
@@ -101,7 +105,7 @@ public sealed class DirectorHourEmailJob : IJob
         {
             var (content, errors) = DirectorHourFile.Parse(hour.ContentJson);
             mails.Add(content is null
-                ? new Outgoing($"The BD hour for {day} could not be read", Note("The imported hour did not validate: " + string.Join(" ", errors)), null)
+                ? new Outgoing($"{(hour.Kind == "Morning" ? "Your morning" : "The BD hour")} for {day} could not be read", Note("The imported hour did not validate: " + string.Join(" ", errors)), null)
                 : new Outgoing(DirectorHourEmail.Subject(content), DirectorHourEmail.Render(content), hour.Id));
         }
 

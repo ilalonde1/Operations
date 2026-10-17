@@ -130,6 +130,17 @@
                             </Border>
 
                             <TextBlock Text="Today's moves" Style="{StaticResource SectionTitle}" Margin="0,14,0,8"/>
+                            <ItemsControl x:Name="HourSectionsList" ItemsSource="{Binding HourSections}">
+                                <ItemsControl.ItemTemplate><DataTemplate><StackPanel>
+                                    <TextBlock Text="{Binding Role}" FontSize="22" FontWeight="SemiBold" Margin="0,12,0,4"
+                                               Visibility="{Binding Role, Converter={StaticResource TextVisible}}"/>
+                                    <TextBlock Text="{Binding Title}" FontSize="17" TextWrapping="Wrap" Margin="0,0,0,8"
+                                               Visibility="{Binding Title, Converter={StaticResource TextVisible}}"/>
+                                    <ItemsControl ItemsSource="{Binding Plan}" Margin="0,0,0,8">
+                                        <ItemsControl.ItemTemplate><DataTemplate>
+                                            <TextBlock TextWrapping="Wrap" Margin="0,2"><Run Text="{Binding Label, Mode=OneWay}" FontWeight="SemiBold"/><Run Text=": "/><Run Text="{Binding Text, Mode=OneWay}"/></TextBlock>
+                                        </DataTemplate></ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                             <ItemsControl x:Name="MovesList" ItemsSource="{Binding Moves}">
                                 <ItemsControl.ItemTemplate><DataTemplate>
                                     <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,0,0,10"
@@ -209,6 +220,13 @@
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                                    <ItemsControl ItemsSource="{Binding Decisions}" Margin="0,0,0,8">
+                                        <ItemsControl.ItemTemplate><DataTemplate>
+                                            <TextBlock TextWrapping="Wrap" Margin="0,2"><Run Text="Decision: " FontWeight="SemiBold"/><Run Text="{Binding Mode=OneWay}"/></TextBlock>
+                                        </DataTemplate></ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel></DataTemplate></ItemsControl.ItemTemplate>
                             </ItemsControl>
                             <Border BorderBrush="#2E7A4C" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,0,0,10"
                                     Visibility="{Binding IsHourFinished, Converter={StaticResource BoolVisibility}}">
@@ -380,10 +398,12 @@
             <Grid Margin="12">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6"
-                           Text="What the books and your experience say a BD director does, as cards you accept or reject. Only accepted cards reach Claude's later answers. Claude runs on your PC; nothing is sent from here."/>
+                           Text="What the books and your experience say for BD and Operations, as cards you accept or reject. Only accepted cards reach Claude's later answers. Claude runs on your PC; nothing is sent from here."/>
                 <DockPanel Grid.Row="1" Margin="0,0,0,10">
                     <Button DockPanel.Dock="Right" Content="Synthesize from the books" Click="Synthesize_Click" Padding="14,4" Margin="8,0,0,0" FontWeight="SemiBold"
                             ToolTip="Opens Claude Code to read the books in the knowledge base and propose doctrine cards, building on what you have accepted."/>
+                    <ComboBox x:Name="DoctrineRoleSelector" DockPanel.Dock="Left" ItemsSource="{Binding Roles}" SelectedItem="{Binding Role, Mode=OneWay}"
+                              SelectionChanged="DoctrineRole_SelectionChanged" MinWidth="120" Margin="0,0,16,0" VerticalAlignment="Center"/>
                     <TextBlock DockPanel.Dock="Left" Text="{Binding Summary}" VerticalAlignment="Center" Margin="0,0,16,0"/>
                     <TextBox x:Name="SynthesisFocusBox" MaxLength="2000" controls:Placeholder.Text="Optional focus for the synthesis, e.g. pricing and fee proposals" Padding="8,4"/>
                 </DockPanel>

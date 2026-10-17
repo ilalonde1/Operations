@@ -49,7 +49,7 @@ public static class DoctrineTrackRecord
     {
         var answers = results.ToDictionary(r => (r.HourId, r.MoveRank), r => r.Result);
         var stages = history.ToLookup(h => h.EngagementId);
-        var suggestions = hours.SelectMany(h => h.Content.Moves.Select(m => (h.HourId, h.ForDate, Move: m)))
+        var suggestions = hours.SelectMany(h => DirectorHourFile.AllMoves(h.Content).Select(m => (h.HourId, h.ForDate, Move: m)))
             .OrderByDescending(s => s.ForDate).ThenByDescending(s => s.HourId).ThenByDescending(s => s.Move.Rank)
             .SelectMany(s => s.Move.Cards.Distinct().Select(id => (CardId: id, s.HourId, s.ForDate, s.Move)))
             .ToLookup(s => s.CardId);

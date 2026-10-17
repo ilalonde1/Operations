@@ -587,12 +587,19 @@ public sealed class BdScreensRenderTests
             Card(6, "accepted", "Give the buyer a useful reason to call", "Illustrative recorded card."),
             Card(7, "retired", "Retired recap habit", "Illustrative retired citation."),
         });
+        doctrineStore.Setup(s => s.ListCardsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            Card(101, "accepted", "Make working capital visible", "Illustrative Operations doctrine.") with { Role = "Operations" },
+            Card(102, "proposed", "Review the billing queue", "Illustrative Operations proposal.") with { Role = "Operations" },
+        });
+        doctrineStore.Setup(s => s.ListRecordsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRecord>());
+        doctrineStore.Setup(s => s.ListRunsAsync("Operations", It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
         doctrineStore.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[]
         {
             new DoctrineCardRecord(5, 3, 0, 0, 3, 0, 0, 0, 0, new DateOnly(2026, 10, 16), new[] { "Skipped" }),
             new DoctrineCardRecord(6, 6, 4, 1, 1, 0, 2, 1, 0, new DateOnly(2026, 10, 15), Array.Empty<string>()),
         });
-        doctrineStore.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        doctrineStore.Setup(s => s.ListRunsAsync("BD", It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(new[]
         {
             new BdPromptRunRow(3, "ask", "BD", "Northland Revelstoke", "How do I restart Northland?", "ian", now.AddHours(-1), now.AddMinutes(-40), "answered",
                 "Illustrative answer: call John Bryson first; the relationship is his. Bring the Cabot Revelstoke news as the reason.", 1),
@@ -667,6 +674,36 @@ public sealed class BdScreensRenderTests
                 Assert.Contains(VisualChildren<System.Windows.Controls.Button>(content), b => Equals(b.Content, "Ask Claude to amend"));
             }
         }
+        var morning = MorningBriefTests.FixtureHour();
+        store.Setup(s => s.GetHourAsync("Morning", DateOnly.FromDateTime(now.Date), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DirectorHourRow(9, DateOnly.FromDateTime(now.Date), "Morning",
+                System.Text.Json.JsonSerializer.Serialize(morning, DirectorHourFile.JsonOptions), "session", "Ian", now, null));
+        store.Setup(s => s.ListMoveResultsAsync(9, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<HourMoveResult>());
+        rhythm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
+        tabs.SelectedIndex = 0;
+        content.UpdateLayout();
+        written += RenderView(content, new Size(1680, 1900), Path.Combine(dir, "director-today-morning.png"));
+        Assert.Equal("0 of 3 moves done · about 60 minutes left", rhythm.MovesProgressText);
+        foreach (var role in new[] { "BD", "COO", "IT" })
+        {
+            Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == role);
+            // The decision line is two Runs (a bold label, then the text), so TextBlock.Text is empty; read the Runs.
+            Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content),
+                b => string.Concat(b.Inlines.OfType<System.Windows.Documents.Run>().Select(r => r.Text)) == "Decision: " + role + " decision");
+        }
+        Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "From the doctrine: Make working capital visible");
+        Assert.Equal(3, VisualChildren<System.Windows.Controls.Button>(content).Count(b => Equals(b.Content, "Done")));
+
+        // A tab's content is only templated once it is laid out in a host, so render the Doctrine tab
+        // before looking for its role selector; then render it again showing the Operations doctrine.
+        tabs.SelectedIndex = 3;
+        RenderView(content, new Size(1680, 1500), Path.Combine(dir, "director-doctrine.png"));
+        var selector = VisualChildren<System.Windows.Controls.ComboBox>(content).Single(c => c.Name == "DoctrineRoleSelector");
+        selector.SelectedItem = "Operations"; // mocked reads complete synchronously in the selection handler
+        written += RenderView(content, new Size(1680, 1500), Path.Combine(dir, "director-doctrine-operations.png"));
+        Assert.Equal("Operations", doctrine.Role);
+        Assert.Equal(102L, Assert.Single(doctrine.Proposed).Id);
+        Assert.Equal(101L, Assert.Single(doctrine.Accepted).Id);
         return written;
     }
 

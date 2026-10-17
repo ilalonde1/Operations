@@ -15,6 +15,7 @@
 // brief import <export.json> <sections.json> --by <name> [--force]
 // hour import <hour.json> --by <name>       the prepared hour, written in session, for the Today tab and the 6 a.m. email
 // hour render <hour.json> --to <file.html>  the email exactly as it would be sent, for checking; sends nothing
+// hour verify <yyyy-MM-dd> --kind Morning [--after <ISO timestamp>]  read and validate the stored hour; nonzero if absent or stale
 // rhythm render --to <folder>               agendas and Monday-list drafts from the live action register; sends nothing
 // --db <connection string>   default: env KOR_OPPORTUNITIES_OPPORTUNITIESDB
 // --dry reads/chunks only, without a database connection or embedding call.
@@ -71,6 +72,8 @@ internal static class KnowledgeCli
             if (verb == "export") return await ExportAsync(options, store!, ct);
             if (verb == "claims") return await ClaimsAsync(options, store!, ct);
             if (verb == "brief") return await BriefAsync(options, store!, connection!, ct);
+            if (verb == "hour" && options.Positionals[1].Equals("verify", StringComparison.OrdinalIgnoreCase))
+                return await HourVerifyAsync(options, new SqlBdRhythmStore(connection!), ct);
             if (verb == "hour") return await HourImportAsync(options, new SqlBdRhythmStore(connection!), new SqlBdDoctrineStore(connection!), ct);
             if (verb == "rhythm") return await RhythmRenderAsync(options, new SqlBdRhythmStore(connection!), ct);
             if (verb == "doctrine") return await DoctrineAsync(options, new SqlBdDoctrineStore(connection!), ct);
@@ -263,7 +266,10 @@ internal static class KnowledgeCli
             return 1;
         }
 
-        var cardErrors = DirectorHourFile.ValidateCards(content, await doctrine.ListCardsAsync(content.Kind, ct));
+        var cards = content.Kind == "Morning"
+            ? (await doctrine.ListCardsAsync("BD", ct)).Concat(await doctrine.ListCardsAsync("Operations", ct)).ToArray()
+            : await doctrine.ListCardsAsync(content.Kind, ct);
+        var cardErrors = DirectorHourFile.ValidateCards(content, cards);
         if (cardErrors.Count > 0)
         {
             foreach (var error in cardErrors) Console.Error.WriteLine("  " + error);
@@ -273,7 +279,23 @@ internal static class KnowledgeCli
 
         var forDate = DateOnly.ParseExact(content.ForDate, "yyyy-MM-dd", CultureInfo.InvariantCulture);
         var id = await rhythm.ImportHourAsync(content.Kind, forDate, json, args.Value("--by")!, Environment.UserName, ct);
-        Console.WriteLine($"OK hour {id.ToString(CultureInfo.InvariantCulture)} for {content.ForDate} ({content.Kind}): {content.Moves.Count.ToString(CultureInfo.InvariantCulture)} moves, about {DirectorHourFile.TotalMinutes(content).ToString(CultureInfo.InvariantCulture)} minutes.");
+        Console.WriteLine($"OK hour {id.ToString(CultureInfo.InvariantCulture)} for {content.ForDate} ({content.Kind}): {DirectorHourFile.AllMoves(content).Count().ToString(CultureInfo.InvariantCulture)} moves, about {DirectorHourFile.TotalMinutes(content).ToString(CultureInfo.InvariantCulture)} minutes.");
+        return 0;
+    }
+
+    private static async Task<int> HourVerifyAsync(Arguments args, IBdRhythmStore rhythm, CancellationToken ct)
+    {
+        var date = DateOnly.ParseExact(args.Positionals[2], "yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var kind = args.Value("--kind") ?? "Morning";
+        var row = await rhythm.GetHourAsync(kind, date, ct);
+        var content = row is null ? null : DirectorHourFile.Parse(row.ContentJson).Content;
+        if (row is null || content is null || content.Kind != kind || content.ForDate != args.Positionals[2]
+            || (args.Value("--after") is { } after && row.ImportedAtUtc < DateTimeOffset.Parse(after, CultureInfo.InvariantCulture)))
+        {
+            Console.Error.WriteLine("No valid, current " + kind + " hour was found for " + args.Positionals[2] + ".");
+            return 1;
+        }
+        Console.WriteLine($"Verified {kind} hour {row.Id} for {content.ForDate}.");
         return 0;
     }
 
@@ -557,6 +579,9 @@ internal static class KnowledgeCli
         BdKnowledgeIngest claims search "<question>" [--take 12]
         BdKnowledgeIngest brief export [--week <yyyy-MM-dd>] --to <folder>
         BdKnowledgeIngest brief import <export.json> <sections.json> --by <name> [--force]
+        BdKnowledgeIngest hour import <hour.json> --by <name>
+        BdKnowledgeIngest hour render <hour.json> --to <file.html>
+        BdKnowledgeIngest hour verify <yyyy-MM-dd> --kind Morning [--after <ISO timestamp>]
         BdKnowledgeIngest pursuit checklist import <engagementId> <file.json> --by <name> [--replace]
         BdKnowledgeIngest doctrine list [--role BD|Operations]
         BdKnowledgeIngest doctrine show <id> [--role BD|Operations]
@@ -570,7 +595,7 @@ internal static class KnowledgeCli
     {
         private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help", "--replace", "--checked" };
         private static readonly HashSet<string> Values = new(StringComparer.Ordinal)
-            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--week", "--token", "--role", "--focus", "--exclude-run" };
+            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--week", "--token", "--role", "--focus", "--exclude-run", "--after" };
         private readonly Dictionary<string, string?> _options = new(StringComparer.Ordinal);
         internal List<string> Positionals { get; } = new();
         internal string? Value(string name) => _options.GetValueOrDefault(name);
@@ -629,7 +654,15 @@ internal static class KnowledgeCli
             if (verb == "hour")
             {
                 var hourAction = Positionals[1].ToLowerInvariant();
-                if (hourAction is not ("import" or "render")) throw new ArgumentException("Use hour import <hour.json> --by <name>, or hour render <hour.json> --to <file.html>.");
+                if (hourAction is not ("import" or "render" or "verify")) throw new ArgumentException("Use hour import, hour render, or hour verify; see --help.");
+                if (hourAction == "verify")
+                {
+                    if (!DateOnly.TryParseExact(Positionals[2], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _)
+                        || !BdRhythmValues.HourKinds.Contains(Value("--kind") ?? "Morning"))
+                        throw new ArgumentException("hour verify needs yyyy-MM-dd and --kind BD|Operations|Morning.");
+                    if (Value("--after") is { } after && !DateTimeOffset.TryParse(after, CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+                        throw new ArgumentException("--after must be an ISO timestamp with offset.");
+                }
                 if (hourAction == "import" && (string.IsNullOrWhiteSpace(Value("--by")) || Value("--by")!.Length > 150))
                     throw new ArgumentException("hour import requires --by <name> (1–150 characters).");
                 if (hourAction == "render" && string.IsNullOrWhiteSpace(Value("--to"))) throw new ArgumentException("hour render requires --to <file.html>.");
@@ -684,7 +717,8 @@ internal static class KnowledgeCli
                 "search" => new[] { "--take", "--per-source" },
                 "export" => new[] { "--to" },
                 "pursuit" => new[] { "--by", "--replace" },
-                "hour" => new[] { "--by", "--to" },
+                "hour" => Positionals[1].Equals("verify", StringComparison.OrdinalIgnoreCase)
+                    ? new[] { "--kind", "--after" } : new[] { "--by", "--to" },
                 "rhythm" => new[] { "--to" },
                 "doctrine" => new[] { "--role", "--exclude-run" },
                 "prompt" => promptAction == "synthesis" ? new[] { "--by", "--focus", "--role" } : new[] { "--token", "--checked" },

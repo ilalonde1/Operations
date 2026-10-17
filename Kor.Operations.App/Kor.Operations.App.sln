@@ -78,12 +78,18 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.NetworkOps.T
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.NetworkOps.Service", "..\Kor.Operations.NetworkOps.Service\Kor.Operations.NetworkOps.Service.csproj", "{84275C6B-593E-4CBB-9632-B205081484FC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MorningBrief", "..\tools\MorningBrief\MorningBrief.csproj", "{D5C2CB62-FA4D-4ACF-89BD-9EBAD70382C5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D5C2CB62-FA4D-4ACF-89BD-9EBAD70382C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D5C2CB62-FA4D-4ACF-89BD-9EBAD70382C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D5C2CB62-FA4D-4ACF-89BD-9EBAD70382C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D5C2CB62-FA4D-4ACF-89BD-9EBAD70382C5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7F4A2461-66A5-43B2-BF4F-AC499CA79DEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{7F4A2461-66A5-43B2-BF4F-AC499CA79DEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7F4A2461-66A5-43B2-BF4F-AC499CA79DEA}.Release|Any CPU.ActiveCfg = Release|Any CPU

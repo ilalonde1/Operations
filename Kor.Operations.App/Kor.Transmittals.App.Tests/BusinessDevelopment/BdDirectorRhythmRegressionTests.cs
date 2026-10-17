@@ -65,7 +65,7 @@ public sealed class BdDirectorRhythmRegressionTests
             .Replace("\"kind\": \"org\"", "\"kind\": \"website\"", StringComparison.Ordinal);
         var (content, errors) = DirectorHourFile.Parse(bad);
         Assert.Null(content);
-        foreach (var expected in new[] { "kind must be BD or Operations", "plan status 'red'", "ranks must run", "minutes must be 5 to 90", "has no valid id", "link kind 'website'" })
+        foreach (var expected in new[] { "kind must be BD, Operations or Morning", "plan status 'red'", "ranks must run", "minutes must be 5 to 90", "has no valid id", "link kind 'website'" })
             Assert.True(errors.Any(e => e.Contains(expected, StringComparison.Ordinal)), $"EXPECTED an error containing '{expected}'; ACTUAL: {string.Join(" | ", errors)}");
         Assert.Equal("Not valid JSON", DirectorHourFile.Parse("{ not json").Errors.Single()[..14]);
     }

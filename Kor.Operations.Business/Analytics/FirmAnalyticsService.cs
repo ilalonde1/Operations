@@ -22,7 +22,13 @@ public sealed class FirmAnalyticsService
     }
 
     public FirmUtilizationStats LoadFirmUtilizationSync(CancellationToken ct)
+        => LoadFirmUtilizationSync(null, null, ct);
+
+    /// <summary>The same firmwide definition, restricted to [from, until) when both dates are supplied.</summary>
+    public FirmUtilizationStats LoadFirmUtilizationSync(DateTime? from, DateTime? until, CancellationToken ct)
     {
+        if (from.HasValue != until.HasValue || (from.HasValue && from.Value >= until!.Value))
+            throw new ArgumentException("Supply an increasing pair of dates, or neither date.");
         using var cn = CreateConnection();
         cn.Open();
         using var cmd = cn.CreateCommand();
@@ -38,9 +44,16 @@ SELECT
              THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS BillableHrs
 FROM [{_catalog}].dbo.tkDetail
 WHERE TransDate IS NOT NULL
+  {(from.HasValue ? "AND TransDate >= ? AND TransDate < ?" : "")}
   AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 GROUP BY YEAR(TransDate)
 ORDER BY YEAR(TransDate);";
+
+        if (from.HasValue)
+        {
+            cmd.Parameters.Add("from", OdbcType.DateTime).Value = from.Value;
+            cmd.Parameters.Add("until", OdbcType.DateTime).Value = until!.Value;
+        }
 
         using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
         var byYear = new Dictionary<int, (double Total, double Billable)>();

@@ -52,14 +52,14 @@ public partial class BdDirectorWindow : Window
         _doctrine = doctrine ?? throw new ArgumentNullException(nameof(doctrine));
         DoctrineTab.DataContext = doctrine;
         doctrine.PropertyChanged += DoctrineChanged;
-        rhythm.SetDoctrineCards(doctrine.Cards);
+        rhythm.SetDoctrineCards(doctrine.CitationCards);
         Closed += (_, _) => doctrine.PropertyChanged -= DoctrineChanged;
     }
 
     private void DoctrineChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(BdDoctrineViewModel.Cards) && _doctrine is not null)
-            _rhythm?.SetDoctrineCards(_doctrine.Cards);
+        if (e.PropertyName == nameof(BdDoctrineViewModel.CitationCards) && _doctrine is not null)
+            _rhythm?.SetDoctrineCards(_doctrine.CitationCards);
     }
 
     private readonly BdDoctrineViewModel? _doctrine;
@@ -211,7 +211,7 @@ public partial class BdDirectorWindow : Window
     /// Composes the question now, from live data and the doctrine that applies, saves it and opens Claude Code on this PC on it —
     /// the NetworkOps Prompt Library launcher. No model is called from the app; Claude reports back through the BD CLI.
     /// </summary>
-    private async Task OpenQuestionInClaudeAsync(System.Windows.Controls.TextBox box, string subject, DoctrineContext context, IReadOnlyList<string> facts)
+    private async Task OpenQuestionInClaudeAsync(System.Windows.Controls.TextBox box, string subject, DoctrineContext context, IReadOnlyList<string> facts, string role = "BD")
     {
         if (_doctrine is null) return;
         if (string.IsNullOrWhiteSpace(box.Text))
@@ -222,7 +222,7 @@ public partial class BdDirectorWindow : Window
 
         await RhythmActionAsync(async ct =>
         {
-            var prompt = await _doctrine.PrepareAskAsync(box.Text, subject, context, facts, _actor, ct).ConfigureAwait(true);
+            var prompt = await _doctrine.PrepareAskAsync(box.Text, subject, context, facts, _actor, ct, role).ConfigureAwait(true);
             Kor.Operations.App.NetworkOps.PromptLauncher.OpenInClaude(Kor.Operations.App.NetworkOps.PromptLauncher.Save(prompt.FileName, prompt.Markdown));
             box.Clear();
             SetRhythmStatus(_doctrine.Status);
@@ -243,9 +243,17 @@ public partial class BdDirectorWindow : Window
     private async void AcceptCard_Click(object sender, RoutedEventArgs e) => await DecideCardAsync(sender, true).ConfigureAwait(true);
     private async void RejectCard_Click(object sender, RoutedEventArgs e) => await DecideCardAsync(sender, false).ConfigureAwait(true);
 
-    private void OpenDoctrineCard_Click(object sender, RoutedEventArgs e)
+    private async void DoctrineRole_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_doctrine is null || sender is not System.Windows.Controls.ComboBox { SelectedItem: string role } || role == _doctrine.Role) return;
+        await RhythmActionAsync(ct => _doctrine.SelectRoleAsync(role, ct)).ConfigureAwait(true);
+    }
+
+    private async void OpenDoctrineCard_Click(object sender, RoutedEventArgs e)
     {
         if (_doctrine is null || sender is not FrameworkElement { Tag: long id }) return;
+        if (_doctrine.CitationCards.FirstOrDefault(c => c.Id == id) is { } card && card.Role != _doctrine.Role)
+            await RhythmActionAsync(ct => _doctrine.SelectRoleAsync(card.Role, ct)).ConfigureAwait(true);
         _doctrine.FocusCard(id);
         Tabs.SelectedItem = DoctrineTab;
         DoctrineTab.UpdateLayout();
@@ -268,7 +276,7 @@ public partial class BdDirectorWindow : Window
         if (dialog.ShowDialog() != true) return;
         var question = new System.Windows.Controls.TextBox { Text = dialog.Note ?? "" };
         await OpenQuestionInClaudeAsync(question, $"doctrine card #{card.Id}: {card.Title}",
-            new DoctrineContext("ask", Array.Empty<string>()), BdDoctrineViewModel.AmendmentFacts(card)).ConfigureAwait(true);
+            new DoctrineContext("ask", Array.Empty<string>()), BdDoctrineViewModel.AmendmentFacts(card), card.Card.Role).ConfigureAwait(true);
     }
 
     private async void AcceptAllCards_Click(object sender, RoutedEventArgs e)

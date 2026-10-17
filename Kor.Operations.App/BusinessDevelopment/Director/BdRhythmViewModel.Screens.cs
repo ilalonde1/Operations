@@ -121,6 +121,10 @@ public sealed record BdPersonCard(BdLeadRow Lead, int Open, int Late, int ThisWe
     };
 }
 
+/// <summary>A role heading with the same move instances used by Today's progress and result buttons.</summary>
+public sealed record HourSectionView(string Role, string Title, IReadOnlyList<HourPlanLine> Plan,
+    IReadOnlyList<HourMoveView> Moves, IReadOnlyList<string> Decisions);
+
 /// <summary>
 /// The three screens Ian asked for on 16 October ("v1 was brutal"): Today, where each move is done on its card; People, one card
 /// per person with what they owe and their next one-to-one; Pursuits lives on the Director view model. Everything here reads and
@@ -145,6 +149,7 @@ public sealed partial class BdRhythmViewModel
 
     // ---- Today ----
     public ObservableCollection<HourMoveView> Moves { get; } = new();
+    public ObservableCollection<HourSectionView> HourSections { get; } = new();
     public ObservableCollection<BdActionView> MyActions { get; } = new();
     public string MovesProgressText
     {
@@ -230,13 +235,21 @@ public sealed partial class BdRhythmViewModel
         }
 
         Moves.Clear();
+        HourSections.Clear();
         if (Hour is { } hour)
-            foreach (var m in hour.Moves.OrderBy(m => m.Rank))
+        {
+            foreach (var m in DirectorHourFile.AllMoves(hour).OrderBy(m => m.Rank))
             {
                 var view = new HourMoveView(m, _moveResults.TryGetValue(m.Rank, out var r) ? r : null);
                 view.SetCards(_doctrineCards);
                 Moves.Add(view);
             }
+            if (hour.Kind == "Morning")
+                foreach (var section in hour.Sections ?? Array.Empty<HourSection>())
+                    HourSections.Add(new HourSectionView(section.Role, section.Title, section.Plan,
+                        section.Moves.Select(m => Moves.Single(v => v.Rank == m.Rank)).ToArray(), section.Decisions));
+            else HourSections.Add(new HourSectionView("", "", hour.Plan, Moves.ToArray(), Array.Empty<string>()));
+        }
         BuildScreens();
     }
 

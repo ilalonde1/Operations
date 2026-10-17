@@ -50,7 +50,7 @@ public static class BdRhythmValues
     public static readonly IReadOnlyList<string> MeetingKinds = new[] { "AllHands", "OneToOne", "Other" };
     public static readonly IReadOnlyList<string> MeetingStatuses = new[] { "Planned", "Held", "Cancelled" };
     public static readonly IReadOnlyList<string> CallOutcomes = new[] { "NotCalled", "Confirmed", "LeftMessage", "NoLongerThere", "Declined" };
-    public static readonly IReadOnlyList<string> HourKinds = new[] { "BD", "Operations" };
+    public static readonly IReadOnlyList<string> HourKinds = new[] { "BD", "Operations", "Morning" };
 }
 
 /// <summary>
@@ -242,8 +242,8 @@ SELECT MoveRank, Result, Note, RecordedAtUtc FROM opportunities.DirectorHourMove
 
     public async Task RecordMoveResultAsync(long hourId, int rank, string result, string? note, string by, CancellationToken ct)
     {
-        if (!BdRhythmValues.MoveResults.Contains(result) || rank is < 1 or > 7 || string.IsNullOrWhiteSpace(by) || note?.Length > 500)
-            throw new ArgumentException("A move result is Done, NotToday or NotDoing, for moves 1 to 7, with who recorded it.", nameof(result));
+        if (!BdRhythmValues.MoveResults.Contains(result) || rank is < 1 or > 12 || string.IsNullOrWhiteSpace(by) || note?.Length > 500)
+            throw new ArgumentException("A move result is Done, NotToday or NotDoing, for moves 1 to 12, with who recorded it.", nameof(result));
         await ExecuteAsync(@"
 UPDATE opportunities.DirectorHourMove SET Result = @result, Note = @note, RecordedBy = @by, RecordedAtUtc = sysdatetimeoffset()
 WHERE HourId = @hour AND MoveRank = @rank;
