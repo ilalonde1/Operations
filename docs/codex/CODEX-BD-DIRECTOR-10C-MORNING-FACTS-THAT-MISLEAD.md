@@ -5,6 +5,7 @@ Response goes beside this file as `CODEX-BD-DIRECTOR-10C-MORNING-FACTS-THAT-MISL
 one section per part (what changed, the gate authored and not executed, anything in the code that contradicted this
 brief). Do not open earlier responses. `git diff --check` clean. **Rule 14 holds: no model call, no outside service.**
 
+**Run order:** `CODEX-FINANCIALS-AR-BALANCE-IS-PER-PHASE.md` first; this brief assumes its change is in the tree.
 **This replaces the first 10c draft.** A partial run of that draft is parked in `stash@{0}`
 ("codex-10c-partial-2026-10-17"). Do not pop, apply or drop it. Part 4 below reuses its BD hunks by reading them.
 
@@ -55,14 +56,17 @@ var result = await exec.GetExecutiveSummaryAsync(forceRefresh: true, existingSna
 - Keep `EmployeeFacts` and the Operations doctrine cards read. Delete the composer's own over-budget ratio, firmwide WIP
   line, and direct AR, WIP, FirmAnalytics and ProjectAnalytics calls.
 
-## Part 3 — the two things the engine does not have
+## Part 3 — invoices and partial weeks
 
-These were checked in the code first, and stay in the composer as presentation. They are not new definitions.
+Item 1 is fixed in the engine by the AR brief, and the composer only prints it. Item 2 is the one thing the engine does
+not have; it stays in the composer as presentation, not as a new definition.
 
-1. **Invoices repeat across phases.** Measured on 16 Oct: of the open invoices, 333 have one AR row, 33 have several
-   rows with *differing* balances (phase shares; for example 00038658 is 84,000 on 2.SD plus 77,962.50 on 3.DD), and 1
-   repeats one balance. So the engine's SUM is right and the rows should be **grouped by (WBS1, Invoice), summing
-   Balance**. Apply that only to the `KpiArInvoiceRow` list when you print it. Also: 0 of 407 open AR rows carry a
+1. **Invoices repeat across phases.** Measured on 17 Oct against `LedgerAR`: 66 of 69 AR rows on multi-phase open
+   invoices equal their own phase's ledger net (for example 00038658 is 84,000 on 2.SD plus 77,962.50 on 3.DD), and
+   SUM per invoice matches the ledger on 358 of 367 open invoices. So the rows are phase shares. **The engine now groups
+   them**: `docs/codex/CODEX-FINANCIALS-AR-BALANCE-IS-PER-PHASE.md` (site 5) runs before this brief and makes
+   `ArFinancialsService` return one row per invoice. Do not group again in the composer. Print the drilldown rows as
+   given. Also: 0 of 407 open AR rows carry a
    DueDate, so never print a due-date clause. Wherever the engine's days figure is computed from InvoiceDate, label it
    "days since invoice".
 2. **Partial timesheet weeks.** The engine has no completeness check. Searched: `tkMaster` 0 files; `timesheet` 8 files,
@@ -71,8 +75,9 @@ These were checked in the code first, and stay in the composer as presentation. 
    **10-04 632.5/19, 10-11 292.5/11**. Using `EmployeeAnalyticsService.LoadEmployeeWeeklyUtilizationSync` rows, a week
    is complete when its distinct-people count reaches the median of up to eight prior weeks (ties count as complete).
    Write one fact: "partial: week W, N of M people", and run `EmployeeFacts` on the last complete week. Name that week.
-   Next to the engine's Utilization KPI (30 days), add one line saying how many partial weeks fall inside its window.
-   Do not change the KPI.
+   Do not touch or annotate the engine's Utilization KPI. Measured on 17 Oct, its 30-day ratio is 72.7% against 71.6%
+   over the last four complete weeks, because a missing timesheet drops hours from both billable and recorded. Partial
+   weeks distort hour totals and per-person weeks, not the ratio.
 
 ## Part 4 — BD fixes (not financial)
 
@@ -89,7 +94,7 @@ the organisation, then `(untitled)`.
 2. `ExecutiveFacts` on a synthetic `ExecutiveSummaryResult` (see `Financials/Executive/SyntheticDeltekData.cs` for
    shapes): every KPI and alert appears; rows keep the given order; the count is shown as X of Y; DataUnavailable KPIs
    print their reason.
-3. Invoice grouping: 00038658's two rows print as one line of 161,962.50, with no "due".
+3. No due-date clause is printed for an invoice row whose DueDate is null; the age is labelled "days since invoice".
 4. The seven week counts above as a fixture: 10-04 and 10-11 are partial; outliers come from 09-27.
 5. Pursuits order by quiet days, dates only, title fallback.
 
