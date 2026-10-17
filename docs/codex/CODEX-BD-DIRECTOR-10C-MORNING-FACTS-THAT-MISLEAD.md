@@ -46,7 +46,8 @@ var result = await exec.GetExecutiveSummaryAsync(forceRefresh: true, existingSna
   projects (N)" in the section header using `snap.Rows.Count`.
 - The trend store is never called when `existingTrend` is supplied (`ExecutiveSummaryService.cs:91`). Confirm this in
   the code and say so in the response; if it is called anyway, stop and say where.
-- No collections provider is passed. Print one line: "Collections-case split not supplied to the morning run."
+- No collections provider is passed, because the Collections module is not built out (Ian, 17 Oct). The AR KPI then
+  shows its single firmwide number. Print nothing about collections.
 - Write a pure `public static IReadOnlyList<MorningFact> ExecutiveFacts(ExecutiveSummaryResult r, int activeProjects)`.
   For every `ExecutiveKpi`, write one fact: Title, ValueText, InlineSubText, StatusMessage, and up to 10 rows from
   whichever drilldown list is non-null, **in the engine's order**, with the true count as X of Y. For every
