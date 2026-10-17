@@ -76,7 +76,11 @@ headless on KOR-APP01 from a scheduled task. Nothing in code calls a model or an
 4. **CLI — `hour import`** accepts kind Morning (the role check near `Program.cs:644`).
 5. **App — Today** renders a Morning hour's sections (decision 6).
 6. **Runner — `tools/run-morning.ps1`** (decision 7), with a header saying what it does and does not do.
-7. **Gates (authored, not run):**
+7. **App — Doctrine for both roles:** `BdDoctrineViewModel.Role` is the constant `"BD"` today, so Operations
+   cards (now being written) never show. Add a BD | Operations selector on the Doctrine tab; it reloads cards,
+   records and runs for that role; Accept, Reject, Accept all waiting, Retire and Synthesize act on the selected
+   role (Synthesize passes it to `PrepareSynthesisAsync`). Default BD.
+8. **Gates (authored, not run):**
    (1) a Morning hour with three sections parses; one with top-level moves, a section with 0 or 5 moves,
    duplicate ranks across sections, or an unknown role is refused with a message naming it; (2) BD and
    Operations hours without sections still parse unchanged; (3) card validation by section role; (4) the email
@@ -84,7 +88,8 @@ headless on KOR-APP01 from a scheduled task. Nothing in code calls a model or an
    over BD for the same date; (5) `MorningPromptComposer` with fixture facts contains each role's heading, the
    card lists by id, the "nothing goes to anyone" rule, the import command, and a "could not read" line when a
    role's facts are missing; (6) no API marker or model call in the tool or runner; (7) render
-   `BdScreensRenderTests`: Today with a three-section Morning hour (`director-today-morning.png`).
+   `BdScreensRenderTests`: Today with a three-section Morning hour (`director-today-morning.png`); (8) the
+   Doctrine role selector loads Operations cards and Accept all acts only on the selected role's waiting cards.
 
 ## Claude's run after apply (not yours)
 
@@ -94,7 +99,7 @@ App; publish the tool and CLI to APP01; with Ian, install Claude Code there and 
 
 ## Read bound
 
-About 115 KB, measured. **Read the line ranges given, not whole files**; search (`rg -n`) and read 40 lines
+About 135 KB, measured. **Read the line ranges given, not whole files**; search (`rg -n`) and read 40 lines
 around a hit for anything else; never open a file over 30 KB whole. Lines as of the current HEAD; if a range has
 drifted, search for the named symbol.
 
@@ -114,7 +119,8 @@ drifted, search for the named symbol.
 | `Kor.Operations.NetworkOps.Service/Store/NetworkOpsStore.CommandCenter.cs` | 90–170 | changes SQL |
 | `Kor.Opportunities.Data/Crm/BdPromptComposer.cs` | 1–120 | prompt voice and rules |
 | `Kor.Operations.App/BusinessDevelopment/Director/BdRhythmViewModel.Screens.cs` | 1–140 | Today's moves |
-| `Kor.Operations.App/BusinessDevelopment/Director/BdDirectorWindow.xaml` | 105–260 | the Today tab only |
+| `Kor.Operations.App/BusinessDevelopment/Director/BdDirectorWindow.xaml` | 105–260, 379–490 | the Today and Doctrine tabs only |
+| `Kor.Operations.App/BusinessDevelopment/Director/BdDoctrineViewModel.cs` | all (12 KB) | the Doctrine screen's role |
 | `tools/BdKnowledgeIngest/Program.cs` | 255–300, and search `HourKinds` | hour import |
 | `tools/BdKnowledgeIngest/BdKnowledgeIngest.csproj` | all | csproj pattern for a tool |
 
