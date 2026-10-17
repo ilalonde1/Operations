@@ -224,7 +224,7 @@ public sealed class BdDoctrineRegressionTests
     public void Cli_AllowsTheOptionsThePromptsTellClaudeToUse()
     {
         var cli = Source("tools/BdKnowledgeIngest/Program.cs");
-        Assert.Contains("\"prompt\" => promptAction == \"synthesis\" ? new[] { \"--by\", \"--focus\" } : new[] { \"--token\", \"--checked\" },", cli, StringComparison.Ordinal);
+        Assert.Contains("\"prompt\" => promptAction == \"synthesis\" ? new[] { \"--by\", \"--focus\", \"--role\" } : new[] { \"--token\", \"--checked\" },", cli, StringComparison.Ordinal);
         Assert.Contains("\"--token\", \"--role\", \"--focus\", \"--exclude-run\" }", cli, StringComparison.Ordinal);
         Assert.Contains("\"--replace\", \"--checked\" }", cli, StringComparison.Ordinal);
         Assert.Contains("\"doctrine\" => new[] { \"--role\", \"--exclude-run\" },", cli, StringComparison.Ordinal);
@@ -348,7 +348,8 @@ public sealed class BdDoctrineRegressionTests
         Assert.True(prompt.IndexOf("| #5 |", StringComparison.Ordinal) < prompt.IndexOf("| #8 |", StringComparison.Ordinal));
         store.Verify(s => s.ListClosedPursuitsAsync(Now.AddDays(-90), Now, It.IsAny<CancellationToken>()), Times.Once);
         var cli = Source("tools/BdKnowledgeIngest/Program.cs");
-        Assert.Contains("store.ListRecordsAsync(\"BD\", ct)", cli, StringComparison.Ordinal);
+        Assert.Contains("store.ListRecordsAsync(role, ct)", cli, StringComparison.Ordinal);
+        Assert.Contains("var role = args.Value(\"--role\") ?? \"BD\";", cli, StringComparison.Ordinal);
         Assert.Contains("store.ListClosedPursuitsAsync(now.AddDays(-90), now, ct)", cli, StringComparison.Ordinal);
     }
 

@@ -480,20 +480,22 @@ internal static class KnowledgeCli
         }
         var books = (await knowledge.ListSourcesAsync(ct))
             .Select(s => $"#{s.Id} {s.Title}{(s.Author is { } a ? " (" + a + ")" : "")}: {s.Claims} claims").ToList();
-        var cards = await store.ListCardsAsync("BD", ct);
+        var role = args.Value("--role") ?? "BD";
+        var cards = await store.ListCardsAsync(role, ct);
         var now = DateTimeOffset.Now;
-        var records = await store.ListRecordsAsync("BD", ct);
-        var closed = await store.ListClosedPursuitsAsync(now.AddDays(-90), now, ct);
+        var records = await store.ListRecordsAsync(role, ct);
+        // Closed pursuits are BD evidence; an Operations synthesis has none yet.
+        var closed = role == "BD" ? await store.ListClosedPursuitsAsync(now.AddDays(-90), now, ct) : Array.Empty<ClosedPursuit>();
         var (token, tokenSha) = BdDoctrine.NewToken();
-        var subject = string.IsNullOrWhiteSpace(focus) ? "the BD doctrine" : "the BD doctrine: " + focus.Trim();
-        var runId = await store.StartRunAsync("synthesis", "BD", subject, focus, by, new byte[32], tokenSha, ct);
-        var markdown = BdPromptComposer.Synthesis(new BdSynthesisInput("BD", by, books,
+        var subject = string.IsNullOrWhiteSpace(focus) ? $"the {role} doctrine" : $"the {role} doctrine: " + focus.Trim();
+        var runId = await store.StartRunAsync("synthesis", role, subject, focus, by, new byte[32], tokenSha, ct);
+        var markdown = BdPromptComposer.Synthesis(new BdSynthesisInput(role, by, books,
             cards.Where(c => c.Status == "accepted").ToList(), cards.Where(c => c.Status == "proposed").ToList(), focus, now, records, closed),
             new BdPromptHandle(runId, token));
         await store.SetPromptShaAsync(runId, BdDoctrine.Sha(markdown), ct);
         var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KorOperations", "Prompts");
         Directory.CreateDirectory(folder);
-        var path = Path.Combine(folder, $"bd-synthesis-{runId}.md");
+        var path = Path.Combine(folder, $"{role.ToLowerInvariant()}-synthesis-{runId}.md");
         await File.WriteAllTextAsync(path, markdown, ct);
         Console.WriteLine($"Opened synthesis run {runId}. Prompt: {path}");
         return 0;
@@ -513,7 +515,8 @@ internal static class KnowledgeCli
         // for the session to look at (DoctrineDuplicates carries the calibration).
         if (report.Cards.Count > 0)
         {
-            var existing = await store.ListCardsAsync("BD", ct);
+            var runRole = (await store.ListRunsAsync(500, ct)).FirstOrDefault(r => r.Id == runId)?.Role ?? "BD";
+            var existing = await store.ListCardsAsync(runRole, ct);
             using var embedder = new KnowledgeEmbedder();
             var near = Kor.Opportunities.Knowledge.Doctrine.DoctrineDuplicates.Find(report.Cards, existing, embedder, excludeRunId: runId);
             var refuse = near.Where(m => m.Score >= Kor.Opportunities.Knowledge.Doctrine.DoctrineDuplicates.RefuseAt).ToList();
@@ -647,6 +650,7 @@ internal static class KnowledgeCli
             {
                 if (string.IsNullOrWhiteSpace(Value("--by")) || Value("--by")!.Length > 150)
                     throw new ArgumentException("prompt synthesis requires --by <name> (1–150 characters).");
+                if (Value("--role") is { } synthesisRole && synthesisRole is not ("BD" or "Operations")) throw new ArgumentException("--role is BD or Operations.");
             }
             else if (verb == "prompt")
             {
@@ -683,7 +687,7 @@ internal static class KnowledgeCli
                 "hour" => new[] { "--by", "--to" },
                 "rhythm" => new[] { "--to" },
                 "doctrine" => new[] { "--role", "--exclude-run" },
-                "prompt" => promptAction == "synthesis" ? new[] { "--by", "--focus" } : new[] { "--token", "--checked" },
+                "prompt" => promptAction == "synthesis" ? new[] { "--by", "--focus", "--role" } : new[] { "--token", "--checked" },
                 "claims" => claimAction switch { "import" => new[] { "--force", "--by" }, "relate" => new[] { "--by" }, "search" => new[] { "--take" }, _ => Array.Empty<string>() },
                 "brief" => briefAction == "import" ? new[] { "--force", "--by" } : new[] { "--week", "--to" },
                 _ => Array.Empty<string>(),
