@@ -30,7 +30,7 @@ public sealed class ArAgingRule : IAlertRule
         //   * The client master table in this Deltek install is `CL` (NOT ClientInfo).
         //     CL has inconsistent column-nullability metadata under MSDASQL, so we
         //     read it via OPENQUERY which forces a stable shape on the provider side.
-        //   * AR has one row per WBS sub-phase per invoice — dedupe by (WBS1, Invoice).
+        //   * AR rows hold WBS phase shares; sum their balances per (WBS1, Invoice).
         //   * DueDate is intentionally ignored (often NULL in KOR's data).
         const string sql = @"
             WITH ARDeduped AS (
@@ -38,7 +38,7 @@ public sealed class ArAgingRule : IAlertRule
                     WBS1, Invoice,
                     MAX(ClientID)                 AS ClientID,
                     MAX(InvoiceDate)              AS InvoiceDate,
-                    MAX(InvBalanceSourceCurrency) AS OutstandingBalance
+                    SUM(InvBalanceSourceCurrency) AS OutstandingBalance
                 FROM [DELTEK_VP].[C0000052267P_1_KOR00000000].dbo.AR
                 GROUP BY WBS1, Invoice
             ),

@@ -765,10 +765,9 @@ WHERE pr.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
             IReadOnlySet<(string Wbs1, string Invoice)> activeCaseInvoices,
             CancellationToken ct)
         {
-            var result = new Dictionary<string, (double Total, double Aged90Plus)>(StringComparer.OrdinalIgnoreCase);
             if (activeCaseInvoices.Count == 0)
             {
-                return result;
+                return new Dictionary<string, (double Total, double Aged90Plus)>(StringComparer.OrdinalIgnoreCase);
             }
 
             using var cn = factory.Create();
@@ -792,18 +791,33 @@ WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency, 0)) > 0.004";
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
-            // AR has one row per WBS sub-phase per invoice; InvBalanceSourceCurrency
-            // is replicated across those rows. Without deduping by (WBS1, Invoice)
-            // a 3-sub-phase invoice would contribute 3x its balance to the per-WBS1
-            // total, inflating the in-collections figure. Outer caller clamps at
-            // projectOutstanding (which is itself over-counted the same way) so the
-            // ratio looked right, but the raw dollars were wrong.
-            var seen = new HashSet<(string Wbs1, string Invoice)>();
+            // Measured against Deltek on 2026-10-17: each AR row's balance is
+            // that WBS phase's share of the invoice. Sum every matching phase;
+            // keeping one row per (WBS1, Invoice) understates collections AR.
+            var rows = new List<(string Wbs1, string Invoice, double Balance, string Bucket, DateTime? InvoiceDate, DateTime? DueDate)>();
             while (r.Read())
             {
                 ct.ThrowIfCancellationRequested();
-                var wbs1 = GetTrimmed(r, 0);
-                var invoice = GetTrimmed(r, 1);
+                rows.Add((
+                    GetTrimmed(r, 0), GetTrimmed(r, 1), GetDouble(r, 2), GetTrimmed(r, 3),
+                    r.IsDBNull(4) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(4), CultureInfo.InvariantCulture),
+                    r.IsDBNull(5) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(5), CultureInfo.InvariantCulture)));
+            }
+
+            return AccumulateInCollectionsByWbs1(rows, asOf, usdToCadRate, activeCaseInvoices);
+        }
+
+        internal static Dictionary<string, (double Total, double Aged90Plus)> AccumulateInCollectionsByWbs1(
+            IEnumerable<(string Wbs1, string Invoice, double Balance, string Bucket, DateTime? InvoiceDate, DateTime? DueDate)> rows,
+            DateTime asOf,
+            double usdToCadRate,
+            IReadOnlySet<(string Wbs1, string Invoice)> activeCaseInvoices)
+        {
+            var result = new Dictionary<string, (double Total, double Aged90Plus)>(StringComparer.OrdinalIgnoreCase);
+            foreach (var row in rows)
+            {
+                var wbs1 = row.Wbs1;
+                var invoice = row.Invoice;
                 if (wbs1.Length == 0 || invoice.Length == 0)
                 {
                     continue;
@@ -814,23 +828,14 @@ WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency, 0)) > 0.004";
                     continue;
                 }
 
-                if (!seen.Add((wbs1, invoice)))
-                {
-                    continue;
-                }
-
-                var bal = GetDouble(r, 2);
-                var bucket = GetTrimmed(r, 3);
-                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
-                var contrib = bal * fx;
+                var fx = string.Equals(row.Bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+                var contrib = row.Balance * fx;
 
                 // Aged90+ is computed from COALESCE(DueDate, InvoiceDate) the
                 // same way the rollup's arSum.Aged90Plus is — keeps the two
                 // numbers reconcilable. DueDate is often NULL in KOR's data
                 // and InvoiceDate carries the age in that case.
-                var invoiceDate = r.IsDBNull(4) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(4), CultureInfo.InvariantCulture);
-                var dueDate     = r.IsDBNull(5) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(5), CultureInfo.InvariantCulture);
-                var ageBase = dueDate ?? invoiceDate;
+                var ageBase = row.DueDate ?? row.InvoiceDate;
                 var aged90Contrib = (ageBase is DateTime ab && (asOf - ab).TotalDays > 90) ? contrib : 0.0;
 
                 if (result.TryGetValue(wbs1, out var existing))

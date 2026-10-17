@@ -21,8 +21,8 @@ public sealed class WrittenOffInvoicePaidRule : LegalRuleBase
     public override string RuleId => "written-off-invoice-paid";
 
     // Per-invoice grain: WriteOff cases can cover N invoices, each may
-    // pay back independently. ARDeduped collapses AR's per-WBS duplicate
-    // rows so we get one balance per (WBS1, Invoice).
+    // pay back independently. AR rows hold WBS phase shares; ARDeduped sums
+    // those shares to get the net balance per (WBS1, Invoice).
     protected override string Sql => @"
 WITH Clients AS (
     SELECT ClientID, Name
@@ -31,7 +31,7 @@ WITH Clients AS (
 ARDeduped AS (
     SELECT WBS1, Invoice,
            MAX(InvoiceDate) AS InvoiceDate,
-           MAX(InvBalanceSourceCurrency) AS OutstandingBalance
+           SUM(InvBalanceSourceCurrency) AS OutstandingBalance
     FROM [DELTEK_VP].[C0000052267P_1_KOR00000000].dbo.AR
     GROUP BY WBS1, Invoice
 )

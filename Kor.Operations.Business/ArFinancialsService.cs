@@ -178,7 +178,7 @@ GROUP BY Bucket;";
         {
             var asOf = DateTime.Today.Date;
             var byWbs = new Dictionary<string, ArProjectOutstandingRow>(StringComparer.OrdinalIgnoreCase);
-            var invoiceRows = new List<ArInvoiceOutstandingRow>(256);
+            var invoiceRows = new List<(ArInvoiceOutstandingRow Row, string Bucket)>(256);
 
             // Firmwide path runs one query with no WBS filter; scoped path chunks the wbs1 list.
             // A single sentinel chunk (null) drives the firmwide branch through the same loop.
@@ -332,12 +332,9 @@ LEFT JOIN [{_catalog}].dbo.Clendor cc
                         GetTrimmed(rd, 9),
                         GetTrimmed(rd, 10),
                         GetTrimmed(rd, 11));
-                    var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
-                    var anchor = dueDate ?? invoiceDate;
-                    var dpd = anchor.HasValue ? Math.Max(0, (int)(asOf - anchor.Value.Date).TotalDays) : 0;
-                    invoiceRows.Add(new ArInvoiceOutstandingRow(
+                    invoiceRows.Add((new ArInvoiceOutstandingRow(
                         w, projectName, pm, invoice, clientId, clientName,
-                        invoiceDate, dueDate, dpd, bal * fx));
+                        invoiceDate, dueDate, 0, bal), bucket));
                 }
             }
 
@@ -345,13 +342,45 @@ LEFT JOIN [{_catalog}].dbo.Clendor cc
                 .OrderByDescending(x => x.Aged90Plus)
                 .ThenByDescending(x => x.Total)
                 .ToList();
-            var detail = invoiceRows
+            var detail = AggregateInvoicePhaseRows(invoiceRows, asOf, usdToCadRate)
                 .OrderByDescending(x => x.DaysPastDue)
                 .ThenByDescending(x => Math.Abs(x.Balance))
                 .ToList();
             var outstanding = rows.Sum(x => x.Total);
             var over60 = rows.Sum(x => x.Aged61To90 + x.Aged90Plus);
             return (outstanding, over60, rows, detail);
+        }
+
+        /// <summary>
+        /// Converts each phase's source-currency balance to CAD-equivalent, then sums
+        /// by (WBS1, Invoice). Uses the earliest non-null dates and the first row's
+        /// other fields. Aging is recomputed from DueDate, falling back to InvoiceDate.
+        /// </summary>
+        public static IReadOnlyList<ArInvoiceOutstandingRow> AggregateInvoicePhaseRows(
+            IEnumerable<(ArInvoiceOutstandingRow Row, string Bucket)> phaseRows,
+            DateTime asOf,
+            double usdToCadRate)
+        {
+            return phaseRows
+                .GroupBy(x => (x.Row.Wbs1, x.Row.Invoice))
+                .Select(group =>
+                {
+                    var first = group.First().Row;
+                    var invoiceDate = group.Min(x => x.Row.InvoiceDate);
+                    var dueDate = group.Min(x => x.Row.DueDate);
+                    var anchor = dueDate ?? invoiceDate;
+                    var daysPastDue = anchor.HasValue ? Math.Max(0, (int)(asOf - anchor.Value.Date).TotalDays) : 0;
+                    var balance = group.Sum(x => x.Row.Balance *
+                        (string.Equals(x.Bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0));
+                    return first with
+                    {
+                        InvoiceDate = invoiceDate,
+                        DueDate = dueDate,
+                        DaysPastDue = daysPastDue,
+                        Balance = balance,
+                    };
+                })
+                .ToList();
         }
 
         private OdbcConnection CreateConnection()

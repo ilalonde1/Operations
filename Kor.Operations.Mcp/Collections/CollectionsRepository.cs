@@ -118,7 +118,7 @@ WHERE cc.ClientID = @ClientID
         // round-trip; we only LEFT JOIN to local Mcp.* tables here. ~1-2s.
         var inner = $@"
 WITH ARDeduped AS (
-    SELECT WBS1, Invoice, MAX(InvoiceDate) AS InvoiceDate, MAX(InvBalanceSourceCurrency) AS OutstandingBalance
+    SELECT WBS1, Invoice, MAX(InvoiceDate) AS InvoiceDate, SUM(InvBalanceSourceCurrency) AS OutstandingBalance
     FROM C0000052267P_1_KOR00000000.dbo.AR
     WHERE ClientID = '{clientId}'
     GROUP BY WBS1, Invoice
