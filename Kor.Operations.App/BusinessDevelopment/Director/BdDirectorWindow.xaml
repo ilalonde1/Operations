@@ -157,6 +157,20 @@
                                                         <TextBlock Text="{Binding Principle.Cite}" Foreground="#5A6876" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"/>
                                                     </StackPanel>
                                                 </Border>
+                                                <ItemsControl ItemsSource="{Binding Cards}" Margin="0,6,0,0">
+                                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                                        <WrapPanel>
+                                                            <Button Tag="{Binding Id}" Click="OpenDoctrineCard_Click" Style="{StaticResource LinkButton}">
+                                                                <TextBlock Text="{Binding Title}" TextWrapping="Wrap">
+                                                                    <TextBlock.Style><Style TargetType="TextBlock">
+                                                                        <Style.Triggers><DataTrigger Binding="{Binding IsRetired}" Value="True"><Setter Property="TextDecorations" Value="Strikethrough"/></DataTrigger></Style.Triggers>
+                                                                    </Style></TextBlock.Style>
+                                                                </TextBlock>
+                                                            </Button>
+                                                            <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                                        </WrapPanel>
+                                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                                </ItemsControl>
                                                 <ItemsControl ItemsSource="{Binding Drafts}" Margin="0,8,0,0">
                                                     <ItemsControl.ItemTemplate><DataTemplate>
                                                         <Expander Margin="0,3" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" Padding="6,3">
@@ -407,13 +421,48 @@
                                         </Border>
                                     </DataTemplate></ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <Expander Header="Accepted doctrine" Margin="0,6,0,0">
+                                <Border x:Name="FocusedDoctrineCard" DataContext="{Binding FocusedCard}" BorderBrush="#2E4A62" BorderThickness="2" Padding="12" Margin="0,8"
+                                        Visibility="{Binding Title, Converter={StaticResource TextVisible}, FallbackValue=Collapsed}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding Card.Status}" Foreground="{StaticResource Text.Secondary}"/>
+                                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,4"/>
+                                        <TextBlock Text="{Binding Card.Principle}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding Play}" TextWrapping="Wrap" Margin="0,4"/>
+                                        <TextBlock Text="{Binding Card.Citations}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}"/>
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel Visibility="{Binding HasNeedsLook, Converter={StaticResource BoolVisibility}}" Margin="0,8">
+                                    <TextBlock Text="Needs a look" Style="{StaticResource SectionTitle}"/>
+                                    <ItemsControl x:Name="FlaggedCardsList" ItemsSource="{Binding NeedsLook}">
+                                        <ItemsControl.ItemTemplate><DataTemplate>
+                                            <Border BorderBrush="#B58037" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,8">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding FlagText}" TextWrapping="Wrap" Margin="0,4"/>
+                                                    <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}"/>
+                                                    <WrapPanel Margin="0,8,0,0">
+                                                        <Button Content="Retire" Click="RetireCard_Click" Tag="{Binding}" Padding="14,4" Margin="0,0,8,0"/>
+                                                        <Button Content="Ask Claude to amend" Click="AmendCard_Click" Tag="{Binding}" Padding="14,4"/>
+                                                    </WrapPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate></ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                                <Expander Header="Accepted doctrine" IsExpanded="True" Margin="0,6,0,0">
                                     <ItemsControl ItemsSource="{Binding Accepted}" Margin="0,4,0,0">
                                         <ItemsControl.ItemTemplate><DataTemplate>
-                                            <TextBlock TextWrapping="Wrap" Margin="0,3"><Run Text="#"/><Run Text="{Binding Id, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="  ·  "/><Run Text="{Binding Play, Mode=OneWay}" Foreground="#5A6876"/></TextBlock>
+                                            <StackPanel Margin="0,6">
+                                                <TextBlock TextWrapping="Wrap"><Run Text="#"/><Run Text="{Binding Id, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold"/></TextBlock>
+                                                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,3"/>
+                                                <TextBlock Text="{Binding Outcomes}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                                                <TextBlock Text="{Binding Play}" TextWrapping="Wrap"/>
+                                            </StackPanel>
                                         </DataTemplate></ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </Expander>
+                                <TextBlock Text="{Binding RecordRule}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,8"/>
                             </StackPanel>
                         </ScrollViewer>
                     </DockPanel>

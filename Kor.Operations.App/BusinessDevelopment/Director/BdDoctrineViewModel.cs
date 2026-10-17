@@ -30,6 +30,16 @@ public sealed record BdPromptRunView(BdPromptRunRow Run)
 /// <summary>A prompt ready to open in Claude: its file name and text.</summary>
 public sealed record BdPreparedPrompt(long RunId, string FileName, string Markdown);
 
+public sealed record DoctrineCardView(DoctrineCardRow Card, DoctrineCardRecord Record)
+{
+    public long Id => Card.Id;
+    public string Title => Card.Title;
+    public string Play => Card.Play;
+    public string Summary => Record.Summary;
+    public string FlagText => Record.FlagText;
+    public string Outcomes => $"{Record.Undecided} undecided · {Record.PursuitsWon} won · {Record.PursuitsLost} lost · {Record.PursuitsArchived} archived";
+}
+
 /// <summary>
 /// The BD consigliere: asking Claude from the Director, and the doctrine it learns from. The NetworkOps Prompt Library method —
 /// compose the prompt from live data when it is opened, open Claude Code on it, take the report back by one-time token, and let
@@ -41,7 +51,9 @@ public sealed class BdDoctrineViewModel : ObservableObject
     private readonly IBdDoctrineStore _store;
     private readonly Func<DateTimeOffset> _clock;
     private IReadOnlyList<DoctrineCardRow> _cards = Array.Empty<DoctrineCardRow>();
+    private IReadOnlyDictionary<long, DoctrineCardRecord> _records = new Dictionary<long, DoctrineCardRecord>();
     private string _status = "";
+    private DoctrineCardView? _focusedCard;
 
     public BdDoctrineViewModel(IBdDoctrineStore store) : this(store, () => DateTimeOffset.Now) { }
 
@@ -52,7 +64,12 @@ public sealed class BdDoctrineViewModel : ObservableObject
     }
 
     public ObservableCollection<DoctrineCardRow> Proposed { get; } = new();
-    public ObservableCollection<DoctrineCardRow> Accepted { get; } = new();
+    public ObservableCollection<DoctrineCardView> Accepted { get; } = new();
+    public ObservableCollection<DoctrineCardView> NeedsLook { get; } = new();
+    public IReadOnlyList<DoctrineCardRow> Cards => _cards;
+    public DoctrineCardView? FocusedCard { get => _focusedCard; private set => SetField(ref _focusedCard, value); }
+    public bool HasNeedsLook => NeedsLook.Count > 0;
+    public string RecordRule => DoctrineTrackRecord.Rule;
     public ObservableCollection<BdPromptRunView> Runs { get; } = new();
     public string Summary => $"{Accepted.Count} accepted · {Proposed.Count} waiting for you · {Runs.Count(r => r.Run.Outcome is null)} question(s) still with Claude";
     public string ProposedHeading => Proposed.Count == 0 ? "Nothing waiting for you" : $"Waiting for you: {Proposed.Count}";
@@ -65,11 +82,21 @@ public sealed class BdDoctrineViewModel : ObservableObject
         try
         {
             _cards = await _store.ListCardsAsync(Role, ct).ConfigureAwait(true);
+            var records = (await _store.ListRecordsAsync(Role, ct).ConfigureAwait(true)).ToDictionary(r => r.CardId);
+            _records = records;
             var runs = await _store.ListRunsAsync(50, ct).ConfigureAwait(true);
             Proposed.Clear();
             foreach (var c in _cards.Where(c => c.Status == "proposed")) Proposed.Add(c);
             Accepted.Clear();
-            foreach (var c in _cards.Where(c => c.Status == "accepted").OrderBy(c => c.Title, StringComparer.CurrentCulture)) Accepted.Add(c);
+            foreach (var c in _cards.Where(c => c.Status == "accepted").OrderBy(c => c.Title, StringComparer.CurrentCulture))
+                Accepted.Add(new DoctrineCardView(c, records.GetValueOrDefault(c.Id) ?? DoctrineCardRecord.Empty(c.Id)));
+            NeedsLook.Clear();
+            foreach (var c in Accepted.Where(c => c.Record.Flags.Count > 0)) NeedsLook.Add(c);
+            if (FocusedCard is { } focused)
+            {
+                var card = _cards.FirstOrDefault(c => c.Id == focused.Id);
+                FocusedCard = card is null ? null : new DoctrineCardView(card, records.GetValueOrDefault(card.Id) ?? DoctrineCardRecord.Empty(card.Id));
+            }
             Runs.Clear();
             foreach (var r in runs) Runs.Add(new BdPromptRunView(r));
         }
@@ -82,7 +109,35 @@ public sealed class BdDoctrineViewModel : ObservableObject
         OnPropertyChanged(nameof(Summary));
         OnPropertyChanged(nameof(ProposedHeading));
         OnPropertyChanged(nameof(HasProposed));
+        OnPropertyChanged(nameof(HasNeedsLook));
+        OnPropertyChanged(nameof(Cards));
     }
+
+    public void FocusCard(long id)
+    {
+        var card = _cards.FirstOrDefault(c => c.Id == id && c.Status is "accepted" or "retired");
+        FocusedCard = card is null ? null : Accepted.FirstOrDefault(c => c.Id == id)
+            ?? new DoctrineCardView(card, _records.GetValueOrDefault(id) ?? DoctrineCardRecord.Empty(id));
+    }
+
+    public async Task<bool> RetireAsync(DoctrineCardView card, CancellationToken ct)
+    {
+        var retired = await _store.RetireCardAsync(card.Id, "Ian", ct).ConfigureAwait(true);
+        Status = retired ? $"Retired: {card.Title}" : "That card is no longer accepted. Refreshed.";
+        await LoadAsync(ct).ConfigureAwait(true);
+        return retired;
+    }
+
+    public static string AmendmentQuestion(DoctrineCardView card) =>
+        $"Please review doctrine card #{card.Id}, “{card.Title}”, and propose an amendment using amends: {card.Id}. "
+        + $"Its record: {card.Summary}; {card.Outcomes}. {card.FlagText}. Explain what the evidence supports.";
+
+    public static IReadOnlyList<string> AmendmentFacts(DoctrineCardView card) => new[]
+    {
+        $"Card #{card.Id}: {card.Title}", card.Card.Plain, $"Principle: {card.Card.Principle}",
+        $"Recognise: {card.Card.Recognise}", $"Play: {card.Card.Play}", $"Citations: {card.Card.Citations}",
+        card.Summary, card.Outcomes, card.FlagText, DoctrineTrackRecord.Rule,
+    };
 
     /// <summary>A synthesis started in the last two days that has not reported. Older ones are treated as abandoned.</summary>
     public static BdPromptRunRow? OpenSynthesis(IReadOnlyList<BdPromptRunRow> runs, DateTimeOffset now) =>
@@ -137,11 +192,15 @@ public sealed class BdDoctrineViewModel : ObservableObject
         // One synthesis at a time: two running together cannot see each other's cards, which is how duplicates got in.
         if (OpenSynthesis(await _store.ListRunsAsync(50, ct).ConfigureAwait(true), _clock()) is { } open)
             throw new ArgumentException($"A synthesis is still running (run {open.Id}, started {open.CreatedAtUtc.ToLocalTime():ddd HH:mm}). Wait for its cards before starting another.");
+        var now = _clock();
+        _cards = await _store.ListCardsAsync(Role, ct).ConfigureAwait(true);
+        var records = await _store.ListRecordsAsync(Role, ct).ConfigureAwait(true);
+        var closed = await _store.ListClosedPursuitsAsync(now.AddDays(-90), now, ct).ConfigureAwait(true);
         var (token, tokenSha) = BdDoctrine.NewToken();
         var subject = string.IsNullOrWhiteSpace(focus) ? "the BD doctrine" : "the BD doctrine: " + focus.Trim();
         var runId = await _store.StartRunAsync("synthesis", Role, subject, focus, actor, new byte[32], tokenSha, ct).ConfigureAwait(true);
         var markdown = BdPromptComposer.Synthesis(new BdSynthesisInput(Role, actor, books,
-            _cards.Where(c => c.Status == "accepted").ToList(), _cards.Where(c => c.Status == "proposed").ToList(), focus, _clock()),
+            _cards.Where(c => c.Status == "accepted").ToList(), _cards.Where(c => c.Status == "proposed").ToList(), focus, now, records, closed),
             new BdPromptHandle(runId, token));
         await _store.SetPromptShaAsync(runId, BdDoctrine.Sha(markdown), ct).ConfigureAwait(true);
         Status = $"Opened Claude on the synthesis (run {runId}). Its cards appear here, waiting for you, when it reports back.";

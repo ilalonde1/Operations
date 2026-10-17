@@ -732,12 +732,14 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         }
     }
 
-    public async Task<CrmEngagement> ChangeStageAsync(CrmEngagementRowView row, CrmEngagementStage newStage, string actor, CancellationToken ct)
+    public async Task<CrmEngagement> ChangeStageAsync(CrmEngagementRowView row, CrmEngagementStage newStage, string actor, CancellationToken ct, string? outcomeReason = null)
     {
         // ClosedAtUtc is server-owned (fix F7): the store's UpdateAsync stamps it
-        // on entering Won/Lost, preserves it while terminal, and clears it on
+        // on entering Won/Lost/Archived, preserves it while terminal, and clears it on
         // reopen — identically for every close door.
-        var updated = row.Engagement with { Stage = newStage };
+        var reason = newStage == row.Engagement.Stage ? outcomeReason ?? row.Engagement.OutcomeReason
+            : PursuitCloseReason.IsClosed(newStage) ? PursuitCloseReason.Require(outcomeReason) : null;
+        var updated = row.Engagement with { Stage = newStage, OutcomeReason = reason };
 
         var saved = await _engagementStore.UpdateAsync(updated, actor, ct).ConfigureAwait(true);
         ReplaceEngagement(saved);
@@ -757,7 +759,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         {
             WonLostOutcome = outcome,
             LostToCanonicalOrgId = outcome == Kor.Opportunities.Core.Models.WonLostOutcome.Lost ? lostToCanonicalOrgId : null,
-            OutcomeReason = string.IsNullOrWhiteSpace(reason) ? fresh.OutcomeReason : reason.Trim(),
+            OutcomeReason = string.IsNullOrWhiteSpace(reason) ? fresh.OutcomeReason : PursuitCloseReason.Require(reason),
         };
 
         var saved = await _engagementStore.UpdateAsync(updated, actor, ct).ConfigureAwait(true);
@@ -775,6 +777,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 
     public async Task<CrmEngagement> SaveEngagementAsync(CrmEngagement edited, string actor, CancellationToken ct)
     {
+        if (PursuitCloseReason.IsClosed(edited.Stage))
+            edited = edited with { OutcomeReason = PursuitCloseReason.Require(edited.OutcomeReason) };
         var saved = edited.Id == 0
             ? await _engagementStore.InsertAsync(edited, actor, ct).ConfigureAwait(true)
             : await _engagementStore.UpdateAsync(edited, actor, ct).ConfigureAwait(true);

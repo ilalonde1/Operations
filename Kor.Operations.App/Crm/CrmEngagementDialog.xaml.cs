@@ -50,11 +50,13 @@ public partial class CrmEngagementDialog : Window
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
         var stage = StageBox.SelectedValue is CrmEngagementStage s ? s : _original.Stage;
+        var prepared = PursuitCloseReason.Prompt(this, _original, stage);
+        if (prepared is null) return;
         var fee = ParseDecimal(FeeBox.Text);
         var hours = ParseDecimal(HoursBox.Text);
         var margin = ParseDecimal(MarginBox.Text);
 
-        Result = _original with
+        Result = prepared with
         {
             Stage = stage,
             OwnerStaffId = ResolveOwner(),

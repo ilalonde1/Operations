@@ -292,7 +292,7 @@ public sealed class BdDirectorRegressionTests
                      "SqlDbType.NVarChar, 260", "SqlDbType.NVarChar, 1000", "WHERE Id = @id AND RowVersion = @rv",
                      "WriteStageHistoryAsync(con, tx, updated.Id, (int)updated.Stage, actorDisplay, ct)",
                      "OpportunityStatusFor(updated.Stage)", "(int)status", "await tx.CommitAsync(ct)",
-                     "ClosedAtUtc           = CASE WHEN @stage IN (6, 7)", "ELSE NULL END" }) Contains(source, clause);
+                     "ClosedAtUtc           = CASE WHEN @stage IN (6, 7, 8)", "ELSE NULL END" }) Contains(source, clause);
         var writes = Regex.Matches(source, @"\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM|MERGE)\s+(\w+\.\w+)", RegexOptions.IgnoreCase)
             .Select(m => Regex.Replace(m.Value, @"\s+", " ")).OrderBy(s => s).ToArray();
         Assert.Equal(new[] { "INSERT INTO opportunities.CrmEngagements", "INSERT INTO opportunities.CrmEngagementStageHistory",

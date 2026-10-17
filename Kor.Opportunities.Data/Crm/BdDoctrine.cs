@@ -165,6 +165,9 @@ public interface IBdDoctrineStore
     Task<IReadOnlyList<DoctrineCardRow>> ListCardsAsync(string role, CancellationToken ct);
     /// <summary>Accepts or rejects a PROPOSED card. Accepting an amendment retires the card it amends. False when it was not proposed.</summary>
     Task<bool> DecideCardAsync(long cardId, bool accept, string by, CancellationToken ct);
+    Task<bool> RetireCardAsync(long cardId, string actor, CancellationToken ct);
+    Task<IReadOnlyList<DoctrineCardRecord>> ListRecordsAsync(string role, CancellationToken ct);
+    Task<IReadOnlyList<ClosedPursuit>> ListClosedPursuitsAsync(DateTimeOffset since, DateTimeOffset until, CancellationToken ct);
 }
 
 public sealed class SqlBdDoctrineStore : IBdDoctrineStore
@@ -301,6 +304,79 @@ SELECT 1;", con, tx);
         var ok = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false), CultureInfo.InvariantCulture) == 1;
         await tx.CommitAsync(ct).ConfigureAwait(false);
         return ok;
+    }
+
+    /// <summary>Ian's explicit decision; proposed, rejected and already retired cards are unchanged.</summary>
+    public async Task<bool> RetireCardAsync(long cardId, string actor, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(actor)) throw new ArgumentException("Who decided is required.", nameof(actor));
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(@"
+UPDATE opportunities.DoctrineCard SET Status = N'retired', DecidedAtUtc = sysdatetimeoffset(), DecidedBy = @by
+WHERE Id = @id AND Status = N'accepted';
+SELECT @@ROWCOUNT;", con);
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = cardId;
+        Text(cmd, "@by", 150, actor);
+        return Convert.ToInt32(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false), CultureInfo.InvariantCulture) == 1;
+    }
+
+    /// <summary>Reads existing evidence only. All counting and flags belong to the pure function.</summary>
+    public async Task<IReadOnlyList<DoctrineCardRecord>> ListRecordsAsync(string role, CancellationToken ct)
+    {
+        var cards = await ListCardsAsync(role, ct).ConfigureAwait(false);
+        var hours = new List<(long HourId, DateOnly ForDate, DirectorHourContent Content)>();
+        var results = new List<(long HourId, int MoveRank, string Result)>();
+        var history = new List<(long EngagementId, int Stage, DateTimeOffset EnteredAtUtc)>();
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using (var cmd = new SqlCommand(@"
+SELECT Id, ForDate, ContentJson FROM opportunities.DirectorHour WHERE Kind = @role;
+SELECT m.HourId, m.MoveRank, m.Result FROM opportunities.DirectorHourMove m
+JOIN opportunities.DirectorHour h ON h.Id = m.HourId WHERE h.Kind = @role;", con))
+        {
+            Text(cmd, "@role", 20, role);
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var (content, errors) = DirectorHourFile.Parse(r.GetString(2));
+                if (content is null) throw new InvalidOperationException($"Hour {r.GetInt64(0)} could not be read: {string.Join("; ", errors)}");
+                hours.Add((r.GetInt64(0), DateOnly.FromDateTime(r.GetDateTime(1)), content));
+            }
+            await r.NextResultAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false)) results.Add((r.GetInt64(0), r.GetInt32(1), r.GetString(2)));
+        }
+
+        var linked = hours.SelectMany(h => h.Content.Moves).SelectMany(m => m.Links)
+            .Where(l => l.Kind == "pursuit").Select(l => l.Id).Distinct().ToArray();
+        if (linked.Length > 0)
+        {
+            await using var cmd = new SqlCommand(@"
+SELECT h.EngagementId, h.Stage, h.EnteredAtUtc FROM opportunities.CrmEngagementStageHistory h
+JOIN OPENJSON(@ids) WITH (Id BIGINT '$') ids ON ids.Id = h.EngagementId;", con);
+            Text(cmd, "@ids", -1, JsonSerializer.Serialize(linked));
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false)) history.Add((r.GetInt64(0), r.GetInt32(1), r.GetDateTimeOffset(2)));
+        }
+        return DoctrineTrackRecord.Compute(hours, results, history, cards.Select(c => c.Id).ToArray());
+    }
+
+    public async Task<IReadOnlyList<ClosedPursuit>> ListClosedPursuitsAsync(DateTimeOffset since, DateTimeOffset until, CancellationToken ct)
+    {
+        var rows = new List<ClosedPursuit>();
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(@"
+SELECT e.Id, COALESCE(c.DisplayName, N'(company not recorded)'), e.Stage, e.OutcomeReason, e.ClosedAtUtc
+FROM opportunities.CrmEngagements e
+LEFT JOIN opportunities.CanonicalOrg c ON c.Id = e.BuyerCanonicalOrgId
+WHERE e.Stage IN (6, 7, 8) AND e.ClosedAtUtc >= @since AND e.ClosedAtUtc <= @until
+ORDER BY e.ClosedAtUtc DESC, e.Id;", con);
+        cmd.Parameters.Add("@since", SqlDbType.DateTimeOffset).Value = since;
+        cmd.Parameters.Add("@until", SqlDbType.DateTimeOffset).Value = until;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false)) rows.Add(new ClosedPursuit(r.GetInt64(0), r.GetString(1), r.GetInt32(2), Opt(r, 3), r.GetDateTimeOffset(4)));
+        return rows;
     }
 
     private static string Clip(string s, int max) => s.Length <= max ? s : s[..(max - 1)] + "…";

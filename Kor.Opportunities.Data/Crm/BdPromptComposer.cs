@@ -19,7 +19,8 @@ public sealed record BdAskInput(string Question, string AskedBy, string Subject,
 
 /// <summary>Turn the books into doctrine for a role, building on what Ian has already accepted.</summary>
 public sealed record BdSynthesisInput(string Role, string AskedBy, IReadOnlyList<string> Books, IReadOnlyList<DoctrineCardRow> Accepted,
-    IReadOnlyList<DoctrineCardRow> Proposed, string? Focus, DateTimeOffset Now);
+    IReadOnlyList<DoctrineCardRow> Proposed, string? Focus, DateTimeOffset Now,
+    IReadOnlyList<DoctrineCardRecord> Records, IReadOnlyList<ClosedPursuit> Closed);
 
 /// <summary>
 /// The BD consigliere's prompts, composed from what the Director knows at the moment one is opened, so they cannot go stale —
@@ -60,7 +61,7 @@ public static class BdPromptComposer
         sb.AppendLine($"Your job: read the books in KOR's knowledge base and turn them into the working doctrine of {role} at KOR Structural, as doctrine cards Ian accepts or rejects one by one.");
         if (!string.IsNullOrWhiteSpace(i.Focus)) sb.AppendLine($"This run's focus: {i.Focus!.Trim()}");
         sb.AppendLine();
-        Rules(sb);
+        Rules(sb, experience: true);
         sb.AppendLine("## KOR, briefly");
         sb.AppendLine("- KOR Structural is a structural engineering consultancy. Business development runs in five regions, each with a lead: Vancouver and the Lower Mainland, Vancouver Island, the Okanagan and BC Interior, Alberta, and the United States.");
         sb.AppendLine("- Ian Lalonde was voted in to manage BD on 9 October 2026. He is not an engineer. He committed to a short monthly all-hands, a 20-minute one-to-one with each lead every two weeks, and a maintained action list.");
@@ -74,7 +75,7 @@ public static class BdPromptComposer
         sb.AppendLine($"2. For each theme, pull the passages: `{Cli} claims search \"<theme>\" --take 30` and `{Cli} search \"<theme>\" --take 15 --per-source 3`. Read them; export a whole book with `{Cli} export <sourceId> --to <folder>` only when you need its argument end to end.");
         sb.AppendLine("3. Where the authors agree, write one card. Where they disagree, say so in the card and say which applies to a firm like KOR and why.");
         sb.AppendLine("4. Aim for 40 to 100 cards that together are the doctrine. A card earns its place by changing what Ian does on a real day; drop what is true but idle.");
-        sb.AppendLine("5. Every card cites its passages: book title and the passage reference or claim id your search printed. Two sources beat one.");
+        sb.AppendLine("5. Book-derived cards cite their passages: book title and passage reference or claim id. Experience-derived cards cite the pursuit ids under KOR's own record below. Two sources beat one.");
         sb.AppendLine("6. Do not repeat an accepted card. To correct or widen one, propose a card with `amends` set to its id.");
         sb.AppendLine();
         Doctrine(sb, i.Accepted, Array.Empty<DoctrineCardRow>());
@@ -85,16 +86,46 @@ public static class BdPromptComposer
             sb.AppendLine();
         }
 
+        OwnRecord(sb, i);
         LookFurther(sb);
         Closing(sb, report, synthesis: true);
         return sb.ToString();
     }
 
-    private static void Rules(StringBuilder sb)
+    private static void OwnRecord(StringBuilder sb, BdSynthesisInput i)
+    {
+        sb.AppendLine("## What KOR's own record shows");
+        sb.AppendLine(DoctrineTrackRecord.Rule);
+        sb.AppendLine();
+        sb.AppendLine("### Cards needing a look");
+        var flagged = i.Records.Where(r => r.Flags.Count > 0).ToArray();
+        if (flagged.Length == 0) sb.AppendLine("No flagged cards in this record.");
+        foreach (var r in flagged) sb.AppendLine($"- Card #{r.CardId}: {r.FlagText}. {r.Summary}.");
+        sb.AppendLine();
+        sb.AppendLine("| Card | Suggested | Done | Not today | Not doing | Undecided | Advanced | Won | Lost | Archived | Last suggested |");
+        sb.AppendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |");
+        foreach (var r in i.Records.OrderByDescending(r => r.Flags.Count > 0).ThenBy(r => r.CardId))
+            sb.AppendLine($"| #{r.CardId} | {r.Suggested} | {r.Done} | {r.NotToday} | {r.NotDoing} | {r.Undecided} | {r.PursuitsAdvanced} | {r.PursuitsWon} | {r.PursuitsLost} | {r.PursuitsArchived} | {r.LastSuggested?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "never"} |");
+        sb.AppendLine();
+        sb.AppendLine("### Pursuits closed in the last 90 days");
+        foreach (var p in i.Closed.Where(p => p.ClosedAtUtc >= i.Now.AddDays(-90) && p.ClosedAtUtc <= i.Now && p.Stage is 6 or 7 or 8))
+        {
+            var stage = p.Stage switch { 6 => "Won", 7 => "Lost", _ => "Archived" };
+            sb.AppendLine($"- Pursuit #{p.EngagementId}: {p.Company} · {stage} · {p.ClosedAtUtc:yyyy-MM-dd}. Reason: {(string.IsNullOrWhiteSpace(p.Reason) ? "not recorded" : p.Reason)}");
+        }
+        sb.AppendLine();
+        sb.AppendLine("Propose amendments or retirements where the record argues for them. Use `amends` for an amendment; recommend retirements by card id in your answer for Ian to decide with Retire. Nothing retires automatically.");
+        sb.AppendLine("Propose a card from KOR's experience only when two or more outcomes share a reason, citing those pursuits by id in the card's citations. A missing reason is not shared evidence. Distinguish observation from causation; a flag alone is not a verdict.");
+        sb.AppendLine();
+    }
+
+    private static void Rules(StringBuilder sb, bool experience = false)
     {
         sb.AppendLine("## Rules");
         sb.AppendLine("- Never call the Anthropic API or any outside service, and never send anything to anyone. Every message you draft is addressed to Ian; he decides what goes out.");
-        sb.AppendLine("- Ground every recommendation in the books: name the book and the passage. If the books do not speak to it, say so instead of inventing a principle.");
+        sb.AppendLine(experience
+            ? "- Ground recommendations in cited book passages or in KOR's recorded outcomes under the experience rule below. Say when the evidence is missing."
+            : "- Ground every recommendation in the books: name the book and the passage. If the books do not speak to it, say so instead of inventing a principle.");
         sb.AppendLine("- Ground every fact in what is below or in a query you ran and show. Never say something is absent without the query that proves it.");
         sb.AppendLine("- Read only. The one write you make is the report at the end; changes to pursuits, actions and people are Ian's, in the app.");
         sb.AppendLine("- Plain words, short sentences. Ian manages BD; he is not an engineer and has no time for jargon.");
@@ -160,7 +191,9 @@ public static class BdPromptComposer
         sb.AppendLine("      \"recognise\": \"How you know you are in this situation, from what the Director shows.\",");
         sb.AppendLine("      \"play\": \"What to do, concretely, this week.\",");
         sb.AppendLine("      \"warning\": \"What it looks like when this is going wrong (optional).\",");
-        sb.AppendLine("      \"citations\": \"Book title, passage reference or claim id; a second source.\",");
+        sb.AppendLine(synthesis
+            ? "      \"citations\": \"Book title and passage reference or claim id; or KOR experience: pursuit #101 and pursuit #102 with their shared outcome reason.\","
+            : "      \"citations\": \"Book title, passage reference or claim id; a second source.\",");
         sb.AppendLine("      \"tags\": \"relationships, follow-up\"");
         sb.AppendLine("      // \"amends\": 12   to correct or widen accepted card #12: accepted, it retires #12");
         sb.AppendLine("    }");

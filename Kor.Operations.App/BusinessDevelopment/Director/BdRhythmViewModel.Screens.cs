@@ -28,6 +28,15 @@ public sealed record HourDraftView(HourDraft Draft)
     }
 }
 
+/// <summary>An accepted or retired card cited by a move.</summary>
+public sealed record HourDoctrineCard(DoctrineCardRow Card)
+{
+    public long Id => Card.Id;
+    public string Title => "From the doctrine: " + Card.Title;
+    public bool IsRetired => Card.Status == "retired";
+    public string StatusText => IsRetired ? "retired" : "";
+}
+
 /// <summary>One move of the hour and what Ian did with it. A move with a result folds away.</summary>
 public sealed class HourMoveView : ObservableObject
 {
@@ -48,6 +57,15 @@ public sealed class HourMoveView : ObservableObject
     public IReadOnlyList<HourDraftView> Drafts { get; }
     public IReadOnlyList<string> Steps => Move.Steps;
     public IReadOnlyList<HourLink> Links => Move.Links;
+    public ObservableCollection<HourDoctrineCard> Cards { get; } = new();
+
+    public void SetCards(IReadOnlyList<DoctrineCardRow> cards)
+    {
+        Cards.Clear();
+        foreach (var id in Move.Cards)
+            if (cards.FirstOrDefault(c => c.Id == id && c.Status is "accepted" or "retired") is { } card)
+                Cards.Add(new HourDoctrineCard(card));
+    }
 
     public string? Result
     {
@@ -117,6 +135,13 @@ public sealed partial class BdRhythmViewModel
     private BdPersonCard? _selectedPerson;
     private string? _selectedPersonKey;
     private string _personAgenda = "";
+    private IReadOnlyList<DoctrineCardRow> _doctrineCards = Array.Empty<DoctrineCardRow>();
+
+    public void SetDoctrineCards(IReadOnlyList<DoctrineCardRow> cards)
+    {
+        _doctrineCards = cards;
+        foreach (var move in Moves) move.SetCards(cards);
+    }
 
     // ---- Today ----
     public ObservableCollection<HourMoveView> Moves { get; } = new();
@@ -207,7 +232,11 @@ public sealed partial class BdRhythmViewModel
         Moves.Clear();
         if (Hour is { } hour)
             foreach (var m in hour.Moves.OrderBy(m => m.Rank))
-                Moves.Add(new HourMoveView(m, _moveResults.TryGetValue(m.Rank, out var r) ? r : null));
+            {
+                var view = new HourMoveView(m, _moveResults.TryGetValue(m.Rank, out var r) ? r : null);
+                view.SetCards(_doctrineCards);
+                Moves.Add(view);
+            }
         BuildScreens();
     }
 

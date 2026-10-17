@@ -71,7 +71,7 @@ internal static class KnowledgeCli
             if (verb == "export") return await ExportAsync(options, store!, ct);
             if (verb == "claims") return await ClaimsAsync(options, store!, ct);
             if (verb == "brief") return await BriefAsync(options, store!, connection!, ct);
-            if (verb == "hour") return await HourImportAsync(options, new SqlBdRhythmStore(connection!), ct);
+            if (verb == "hour") return await HourImportAsync(options, new SqlBdRhythmStore(connection!), new SqlBdDoctrineStore(connection!), ct);
             if (verb == "rhythm") return await RhythmRenderAsync(options, new SqlBdRhythmStore(connection!), ct);
             if (verb == "doctrine") return await DoctrineAsync(options, new SqlBdDoctrineStore(connection!), ct);
             if (verb == "prompt" && options.Positionals[1].Equals("synthesis", StringComparison.OrdinalIgnoreCase))
@@ -252,7 +252,7 @@ internal static class KnowledgeCli
         return ok == ids.Length ? 0 : 1;
     }
 
-    private static async Task<int> HourImportAsync(Arguments args, IBdRhythmStore rhythm, CancellationToken ct)
+    private static async Task<int> HourImportAsync(Arguments args, IBdRhythmStore rhythm, IBdDoctrineStore doctrine, CancellationToken ct)
     {
         var json = await File.ReadAllTextAsync(args.Positionals[2], ct);
         var (content, errors) = DirectorHourFile.Parse(json);
@@ -260,6 +260,14 @@ internal static class KnowledgeCli
         {
             foreach (var e in errors) Console.Error.WriteLine("  " + e);
             Console.Error.WriteLine("Not imported: the hour has " + errors.Count.ToString(CultureInfo.InvariantCulture) + " problem(s).");
+            return 1;
+        }
+
+        var cardErrors = DirectorHourFile.ValidateCards(content, await doctrine.ListCardsAsync(content.Kind, ct));
+        if (cardErrors.Count > 0)
+        {
+            foreach (var error in cardErrors) Console.Error.WriteLine("  " + error);
+            Console.Error.WriteLine("Not imported: the hour cites cards that are not accepted for its role.");
             return 1;
         }
 
@@ -473,11 +481,14 @@ internal static class KnowledgeCli
         var books = (await knowledge.ListSourcesAsync(ct))
             .Select(s => $"#{s.Id} {s.Title}{(s.Author is { } a ? " (" + a + ")" : "")}: {s.Claims} claims").ToList();
         var cards = await store.ListCardsAsync("BD", ct);
+        var now = DateTimeOffset.Now;
+        var records = await store.ListRecordsAsync("BD", ct);
+        var closed = await store.ListClosedPursuitsAsync(now.AddDays(-90), now, ct);
         var (token, tokenSha) = BdDoctrine.NewToken();
         var subject = string.IsNullOrWhiteSpace(focus) ? "the BD doctrine" : "the BD doctrine: " + focus.Trim();
         var runId = await store.StartRunAsync("synthesis", "BD", subject, focus, by, new byte[32], tokenSha, ct);
         var markdown = BdPromptComposer.Synthesis(new BdSynthesisInput("BD", by, books,
-            cards.Where(c => c.Status == "accepted").ToList(), cards.Where(c => c.Status == "proposed").ToList(), focus, DateTimeOffset.Now),
+            cards.Where(c => c.Status == "accepted").ToList(), cards.Where(c => c.Status == "proposed").ToList(), focus, now, records, closed),
             new BdPromptHandle(runId, token));
         await store.SetPromptShaAsync(runId, BdDoctrine.Sha(markdown), ct);
         var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KorOperations", "Prompts");

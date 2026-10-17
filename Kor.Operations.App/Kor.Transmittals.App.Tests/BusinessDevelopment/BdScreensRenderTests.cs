@@ -514,6 +514,7 @@ public sealed class BdScreensRenderTests
           "callout": "Illustrative callout: the quiet months are for relationships.",
           "moves": [
             { "rank": 1, "title": "Send the recap", "minutes": 15, "whyNow": ["Promised at the close of the call."],
+              "cards": [5, 7],
               "principle": { "quote": "Illustrative quote.", "cite": "Illustrative book, ch. 1" },
               "drafts": [ { "to": "Ian", "subject": "Recap", "body": "Illustrative draft body." } ],
               "steps": ["Read it once", "Send it to yourself first"],
@@ -583,6 +584,13 @@ public sealed class BdScreensRenderTests
             Card(11, "proposed", "Rescue a relationship that has gone quiet", "Illustrative: when a pursuit goes 14 days without a touch, Today will suggest a reason to call instead of a check-in."),
             Card(12, "proposed", "Price on the value of certainty", "Illustrative: when KOR's fee is far below the field, the doctrine says explain the scope gap before cutting the price."),
             Card(5, "accepted", "Lead the one-to-one with their list", "Illustrative accepted card."),
+            Card(6, "accepted", "Give the buyer a useful reason to call", "Illustrative recorded card."),
+            Card(7, "retired", "Retired recap habit", "Illustrative retired citation."),
+        });
+        doctrineStore.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[]
+        {
+            new DoctrineCardRecord(5, 3, 0, 0, 3, 0, 0, 0, 0, new DateOnly(2026, 10, 16), new[] { "Skipped" }),
+            new DoctrineCardRecord(6, 6, 4, 1, 1, 0, 2, 1, 0, new DateOnly(2026, 10, 15), Array.Empty<string>()),
         });
         doctrineStore.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(new[]
         {
@@ -592,7 +600,8 @@ public sealed class BdScreensRenderTests
         });
         var doctrine = new BdDoctrineViewModel(doctrineStore.Object, () => now);
         doctrine.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
-        Assert.Equal("1 accepted · 2 waiting for you · 1 question(s) still with Claude", doctrine.Summary);
+        Assert.Equal("2 accepted · 2 waiting for you · 1 question(s) still with Claude", doctrine.Summary);
+        Assert.Single(doctrine.NeedsLook);
 
         var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>(), rhythm, doctrine);
         var tabs = Assert.IsType<System.Windows.Controls.TabControl>(window.FindName("Tabs"));
@@ -606,7 +615,7 @@ public sealed class BdScreensRenderTests
         {
             if (i < 4) tabs.SelectedIndex = i; else SelectData(tabs, i - 4);
             content.UpdateLayout();
-            written += RenderView(content, new Size(1680, i == 0 ? 1500 : 980), Path.Combine(dir, files[i]));
+            written += RenderView(content, new Size(1680, i is 0 or 3 ? 1500 : 980), Path.Combine(dir, files[i]));
             if (i == 1)
             {
                 Assert.Equal(3, VisualChildren<System.Windows.Controls.ListBox>(content).Single(l => l.Name == "PeopleCardsList").Items.Count);
@@ -632,6 +641,16 @@ public sealed class BdScreensRenderTests
                 Assert.True(column.ActualWidth >= 880, "EXPECTED the moves to fill their 900 cap; ACTUAL width " + column.ActualWidth);
                 // Move 2 was answered "Not today": its card folds to its title and says so.
                 Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Not today");
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "From the doctrine: Lead the one-to-one with their list");
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "retired");
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "From the doctrine: Retired recap habit"
+                    && b.TextDecorations.Any(d => d.Location == TextDecorationLocation.Strikethrough));
+                var citation = VisualChildren<System.Windows.Controls.Button>(content).Single(b => Equals(b.Tag, 5L));
+                citation.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+                Assert.Same(window.FindName("DoctrineTab"), tabs.SelectedItem);
+                Assert.Equal(5L, doctrine.FocusedCard!.Id);
+                doctrine.FocusCard(-1);
+                tabs.SelectedIndex = 0;
             }
             if (i == 4)
                 Assert.Equal(2, VisualChildren<System.Windows.Controls.DataGrid>(content).Single(g => g.Name == "ActionsGrid").Items.Count);
@@ -640,6 +659,12 @@ public sealed class BdScreensRenderTests
                 Assert.Equal(2, VisualChildren<System.Windows.Controls.ItemsControl>(content).Single(c => c.Name == "ProposedCardsList").Items.Count);
                 Assert.Equal(2, VisualChildren<System.Windows.Controls.ItemsControl>(content).Single(c => c.Name == "RunsList").Items.Count);
                 Assert.Contains(VisualChildren<System.Windows.Controls.Button>(content), b => Equals(b.Content, "Synthesize from the books"));
+                Assert.Single(VisualChildren<System.Windows.Controls.ItemsControl>(content).Single(c => c.Name == "FlaggedCardsList").Items);
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Needs a look");
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Skipped the last 3 times it came up");
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Suggested 6 · done 4 · not today 1 · not doing 1 · 2 pursuits advanced");
+                Assert.Contains(VisualChildren<System.Windows.Controls.Button>(content), b => Equals(b.Content, "Retire"));
+                Assert.Contains(VisualChildren<System.Windows.Controls.Button>(content), b => Equals(b.Content, "Ask Claude to amend"));
             }
         }
         return written;

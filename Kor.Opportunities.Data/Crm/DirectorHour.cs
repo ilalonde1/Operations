@@ -40,7 +40,10 @@ public sealed record HourMove(
     HourPrinciple? Principle,
     IReadOnlyList<HourDraft> Drafts,
     IReadOnlyList<string> Steps,
-    IReadOnlyList<HourLink> Links);
+    IReadOnlyList<HourLink> Links)
+{
+    public IReadOnlyList<long> Cards { get; init; } = Array.Empty<long>();
+}
 
 /// <summary>A passage from the books, quoted with its source.</summary>
 public sealed record HourPrinciple(string Quote, string Cite);
@@ -115,6 +118,8 @@ public static class DirectorHourFile
             foreach (var m in c.Moves)
             {
                 var at = $"move {m.Rank}";
+                if (m.Cards is null || m.Cards.Any(id => id <= 0) || m.Cards.Distinct().Count() != m.Cards.Count)
+                    errors.Add($"{at}: cards must contain positive, unique card ids.");
                 if (string.IsNullOrWhiteSpace(m.Title)) errors.Add($"{at}: title is required.");
                 if (m.Minutes is < 5 or > 90) errors.Add($"{at}: minutes must be 5 to 90.");
                 if (m.WhyNow is null || m.WhyNow.Count == 0 || m.WhyNow.Any(string.IsNullOrWhiteSpace)) errors.Add($"{at}: whyNow needs at least one line.");
@@ -147,6 +152,14 @@ public static class DirectorHourFile
     };
 
     public static int TotalMinutes(DirectorHourContent c) => c.Moves.Sum(m => m.Minutes);
+
+    /// <summary>Import gate: a citation must be an accepted card for this hour's role.</summary>
+    public static IReadOnlyList<string> ValidateCards(DirectorHourContent content, IReadOnlyList<DoctrineCardRow> cards)
+    {
+        var accepted = cards.Where(c => c.Role == content.Kind && c.Status == "accepted").Select(c => c.Id).ToHashSet();
+        return content.Moves.SelectMany(m => m.Cards.Where(id => !accepted.Contains(id))
+            .Select(id => $"move {m.Rank}: card {id} is not an accepted {content.Kind} card.")).ToArray();
+    }
 }
 
 /// <summary>

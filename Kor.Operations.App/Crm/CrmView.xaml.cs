@@ -353,7 +353,9 @@ public partial class CrmView : UserControl
         try
         {
             var wasLost = _vm.Selected.Engagement.Stage == CrmEngagementStage.Lost;
-            var saved = await _vm.ChangeStageAsync(_vm.Selected, newStage, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+            var prepared = PursuitCloseReason.Prompt(Window.GetWindow(this), _vm.Selected.Engagement, newStage);
+            if (prepared is null) return;
+            var saved = await _vm.ChangeStageAsync(_vm.Selected, newStage, ResolveActor(), CancellationToken.None, prepared.OutcomeReason).ConfigureAwait(true);
 
             if (newStage == CrmEngagementStage.Lost && !wasLost)
             {

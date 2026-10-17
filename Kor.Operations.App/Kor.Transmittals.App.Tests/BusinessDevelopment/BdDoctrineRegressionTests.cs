@@ -7,6 +7,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.BusinessDevelopment.Director;
+using Kor.Operations.App.Crm;
+using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Crm;
 using Moq;
 using Xunit;
@@ -88,7 +90,8 @@ public sealed class BdDoctrineRegressionTests
     public void SynthesisPrompt_ListsTheBooks_BuildsOnAcceptedCards_AndNamesWhatIsWaiting()
     {
         var prompt = BdPromptComposer.Synthesis(new BdSynthesisInput("BD", "ian", new[] { "#1 Managing the professional service firm (Maister): 639 claims" },
-            new[] { Card(5, "Rescue a quiet relationship", "any") }, new[] { Card(9, "Waiting card", "any", "proposed") }, "pricing", Now),
+            new[] { Card(5, "Rescue a quiet relationship", "any") }, new[] { Card(9, "Waiting card", "any", "proposed") }, "pricing", Now,
+            Array.Empty<DoctrineCardRecord>(), Array.Empty<ClosedPursuit>()),
             new BdPromptHandle(7, "TOKEN-abcdefghijklmnopqrstu"));
         foreach (var expected in new[] { "# Synthesize the BD doctrine from the books", "This run's focus: pricing", "- #1 Managing the professional service firm",
                      "claims search \"<theme>\" --take 30", "### #5 Rescue a quiet relationship", "- #9 Waiting card", "`amends`", "prompt report 7" })
@@ -99,6 +102,7 @@ public sealed class BdDoctrineRegressionTests
     public async Task Asking_StoresOnlyHashes_ThePromptHashIsOfWhatClaudeReads_AndOnlyAcceptedCardsTravel()
     {
         var store = new Mock<IBdDoctrineStore>();
+        store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRecord>());
         store.Setup(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[]
         {
             Card(5, "Rescue a quiet relationship", "situation:going-cold"), Card(6, "Price on value", "situation:fee-undercut"),
@@ -130,6 +134,7 @@ public sealed class BdDoctrineRegressionTests
     public async Task Deciding_GoesThroughTheStore_AndSaysWhenItWasAlreadyDecided()
     {
         var store = new Mock<IBdDoctrineStore>();
+        store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRecord>());
         store.Setup(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         store.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
         store.Setup(s => s.DecideCardAsync(8, true, "ian", It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -155,6 +160,7 @@ public sealed class BdDoctrineRegressionTests
     public async Task AcceptAll_AcceptsOnlyWaitingCards_OldestFirst_SoAnAmendmentFollowsWhatItAmends()
     {
         var store = new Mock<IBdDoctrineStore>();
+        store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRecord>());
         store.SetupSequence(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { Card(12, "Amends 5", "any", "proposed", amends: 5), Card(5, "First", "any", "proposed"), Card(3, "Kept", "any") })
             .ReturnsAsync(new[] { Card(3, "Kept", "any"), Card(5, "First", "any"), Card(12, "Amends 5", "any") });
@@ -203,7 +209,8 @@ public sealed class BdDoctrineRegressionTests
                      "Click=\"AcceptCard_Click\"", "Click=\"RejectCard_Click\"" })
             Assert.Contains(expected, xaml, StringComparison.Ordinal);
         foreach (var file in new[] { "Kor.Operations.App/BusinessDevelopment/Director/BdDoctrineViewModel.cs", "Kor.Opportunities.Data/Crm/BdDoctrine.cs",
-                     "Kor.Opportunities.Data/Crm/BdPromptComposer.cs" })
+                     "Kor.Opportunities.Data/Crm/BdPromptComposer.cs", "Kor.Opportunities.Data/Crm/DoctrineTrackRecord.cs",
+                     "Kor.Operations.App/Crm/PursuitCloseReason.cs" })
             Assert.DoesNotMatch(@"api\.anthropic\.com|AskService|HttpClient|x-api-key", Source(file));
         Assert.Contains("PromptLauncher.OpenInClaude(", Source("Kor.Operations.App/BusinessDevelopment/Director/BdDirectorWindow.xaml.cs"), StringComparison.Ordinal);
     }
@@ -222,6 +229,139 @@ public sealed class BdDoctrineRegressionTests
         Assert.Contains("\"--replace\", \"--checked\" }", cli, StringComparison.Ordinal);
         Assert.Contains("\"doctrine\" => new[] { \"--role\", \"--exclude-run\" },", cli, StringComparison.Ordinal);
         Assert.Contains("or \"doctrine\" or \"prompt\"))", cli, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HourImport_RefusesNonAcceptedOrWrongRoleCards_WithMoveRankAndId()
+    {
+        const string json = """
+        { "forDate":"2026-10-16", "kind":"BD", "title":"Hour", "plan":[],
+          "moves":[{"rank":1,"title":"Call","minutes":15,"whyNow":["Due"],"cards":[5,6,7,8,9,999]}] }
+        """;
+        var content = DirectorHourFile.Parse(json).Content!;
+        var errors = DirectorHourFile.ValidateCards(content, new[] { Card(5, "Yes", "any"), Card(6, "Waiting", "any", "proposed"),
+            Card(7, "No", "any", "rejected"), Card(8, "Retired", "any", "retired"), Card(9, "Other role", "any") with { Role = "Operations" } });
+        Assert.Equal(5, errors.Count);
+        foreach (var id in new[] { 6, 7, 8, 9, 999 }) Assert.Contains($"move 1: card {id} is not an accepted BD card.", errors);
+        Assert.Empty(DirectorHourFile.ValidateCards(content with { Moves = content.Moves.Select(m => m with { Cards = new long[] { 5 } }).ToArray() },
+            new[] { Card(5, "Yes", "any") }));
+        // The CLI is not referenced by this test assembly. Pin that it executes this gate before writing the hour.
+        var cli = Source("tools/BdKnowledgeIngest/Program.cs");
+        var gate = cli.IndexOf("DirectorHourFile.ValidateCards(content, await doctrine.ListCardsAsync(content.Kind, ct))", StringComparison.Ordinal);
+        var write = cli.IndexOf("rhythm.ImportHourAsync", StringComparison.Ordinal);
+        Assert.True(gate >= 0 && write > gate);
+        Assert.Contains("return 1;", cli[gate..write], StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(CrmEngagementStage.Won)]
+    [InlineData(CrmEngagementStage.Lost)]
+    [InlineData(CrmEngagementStage.Archived)]
+    public void Closing_RequiresOneLine_AndCancelLeavesThePursuitOpen(CrmEngagementStage stage)
+    {
+        var current = new CrmEngagement { Id = 12, Stage = CrmEngagementStage.Submitted, OutcomeReason = "stale reason" };
+        var calls = 0;
+        Assert.Null(PursuitCloseReason.Prepare(current, stage, _ => { calls++; return null; }));
+        Assert.Equal(1, calls);
+        Assert.Equal(CrmEngagementStage.Submitted, current.Stage);
+        Assert.Throws<ArgumentException>(() => PursuitCloseReason.Prepare(current, stage, _ => "  "));
+        Assert.Throws<ArgumentException>(() => PursuitCloseReason.Prepare(current, stage, _ => "first\nsecond"));
+        var saved = PursuitCloseReason.Prepare(current, stage, _ => "  Buyer changed the scope.  ")!;
+        Assert.Equal(stage, saved.Stage);
+        Assert.Equal("Buyer changed the scope.", saved.OutcomeReason);
+        var reopened = PursuitCloseReason.Prepare(saved, CrmEngagementStage.Drafting, _ => throw new InvalidOperationException("Must not prompt"));
+        Assert.Null(reopened!.OutcomeReason);
+        Assert.Equal("stale reason", current.OutcomeReason);
+    }
+
+    [Fact]
+    public void CloseDoors_UseTheSharedGate_BeforeSaving_AndArchivedKeepsReasonAndDate()
+    {
+        var menu = Source("Kor.Operations.App/Crm/CrmView.xaml.cs");
+        var editor = Source("Kor.Operations.App/Crm/CrmEngagementDialog.xaml.cs");
+        Assert.Contains("PursuitCloseReason.Prompt(Window.GetWindow(this), _vm.Selected.Engagement, newStage)", menu, StringComparison.Ordinal);
+        Assert.Contains("CancellationToken.None, prepared.OutcomeReason)", menu, StringComparison.Ordinal);
+        Assert.Contains("PursuitCloseReason.Prompt(this, _original, stage)", editor, StringComparison.Ordinal);
+        Assert.Contains("Result = prepared with", editor, StringComparison.Ordinal);
+        foreach (var source in new[] { menu, editor }) Assert.Contains("if (prepared is null) return;", source, StringComparison.Ordinal);
+        var helper = Source("Kor.Operations.App/Crm/PursuitCloseReason.cs");
+        Assert.Contains("required: true, singleLine: true", helper, StringComparison.Ordinal);
+        var sql = Source("Kor.Opportunities.Data/Crm/SqlCrmEngagementStore.cs");
+        Assert.Contains("OutcomeReason         = CASE WHEN @stage IN (6, 7, 8) THEN @outcomeReason ELSE NULL END", sql, StringComparison.Ordinal);
+        Assert.Contains("ClosedAtUtc           = CASE WHEN @stage IN (6, 7, 8)", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RecordScreen_FlagsOnlyAcceptedCards_RetiresAsIan_AndKeepsRetiredCitationsNavigable()
+    {
+        var accepted = Card(5, "Quiet relationship", "any");
+        var record = new DoctrineCardRecord(5, 3, 0, 0, 3, 0, 0, 0, 0, new DateOnly(2026, 10, 16), new[] { "Skipped" });
+        var store = new Mock<IBdDoctrineStore>();
+        store.SetupSequence(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { accepted, Card(6, "Rejected", "any", "rejected") })
+            .ReturnsAsync(new[] { accepted with { Status = "retired" }, Card(6, "Rejected", "any", "rejected") });
+        store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[] { record, record with { CardId = 6 } });
+        store.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
+        store.Setup(s => s.RetireCardAsync(5, "Ian", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var vm = new BdDoctrineViewModel(store.Object, () => Now);
+        await vm.LoadAsync(CancellationToken.None);
+        var flagged = Assert.Single(vm.NeedsLook);
+        Assert.Equal("Skipped the last 3 times it came up", flagged.FlagText);
+        Assert.Contains("card #5", BdDoctrineViewModel.AmendmentQuestion(flagged), StringComparison.Ordinal);
+        Assert.Contains(record.Summary, BdDoctrineViewModel.AmendmentFacts(flagged));
+        Assert.True(await vm.RetireAsync(flagged, CancellationToken.None));
+        Assert.Empty(vm.NeedsLook);
+        Assert.Empty(vm.Accepted);
+        vm.FocusCard(5);
+        Assert.Equal("retired", vm.FocusedCard!.Card.Status);
+        Assert.Equal(3, vm.FocusedCard.Record.Suggested);
+        var move = new HourMove(1, "Call", 15, new[] { "Due" }, null, Array.Empty<HourDraft>(), Array.Empty<string>(), Array.Empty<HourLink>())
+            { Cards = new long[] { 5, 6, 7 } };
+        var view = new HourMoveView(move, null);
+        view.SetCards(vm.Cards.Append(Card(7, "Proposed", "any", "proposed")).ToArray());
+        Assert.True(Assert.Single(view.Cards).IsRetired);
+        store.Verify(s => s.RetireCardAsync(5, "Ian", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Synthesis_ReadsFreshRecordsAndNinetyDaysOfReasons_AndRequiresTwoOutcomesForExperience()
+    {
+        var records = new[] { DoctrineCardRecord.Empty(8), new DoctrineCardRecord(5, 4, 4, 0, 0, 0, 0, 0, 0,
+            new DateOnly(2026, 10, 16), new[] { "NoEffect" }) };
+        var closed = new[] { new ClosedPursuit(101, "Example One", 7, "Scope changed", Now.AddDays(-1)),
+            new ClosedPursuit(102, "Example Two", 8, "Scope changed", Now.AddDays(-90)),
+            new ClosedPursuit(103, "Too old", 6, "Do not include", Now.AddDays(-91)),
+            new ClosedPursuit(104, "Future", 6, "Do not include", Now.AddDays(1)) };
+        var store = new Mock<IBdDoctrineStore>();
+        store.Setup(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[] { Card(5, "Quiet relationship", "any") });
+        store.Setup(s => s.ListRunsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
+        store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(records);
+        store.Setup(s => s.ListClosedPursuitsAsync(Now.AddDays(-90), Now, It.IsAny<CancellationToken>())).ReturnsAsync(closed);
+        var vm = new BdDoctrineViewModel(store.Object, () => Now);
+        var prompt = (await vm.PrepareSynthesisAsync(new[] { "Book" }, null, "Ian", CancellationToken.None)).Markdown;
+        foreach (var expected in new[] { "What KOR's own record shows", "Cards needing a look", "| #5 | 4 | 4 |", "Pursuit #101", "Pursuit #102",
+            "Scope changed", "Propose amendments or retirements", "only when two or more outcomes share a reason", "citing those pursuits by id", DoctrineTrackRecord.Rule })
+            Assert.Contains(expected, prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("Pursuit #103", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("Pursuit #104", prompt, StringComparison.Ordinal);
+        Assert.True(prompt.IndexOf("Card #5:", StringComparison.Ordinal) < prompt.IndexOf("| Card |", StringComparison.Ordinal));
+        Assert.True(prompt.IndexOf("| #5 |", StringComparison.Ordinal) < prompt.IndexOf("| #8 |", StringComparison.Ordinal));
+        store.Verify(s => s.ListClosedPursuitsAsync(Now.AddDays(-90), Now, It.IsAny<CancellationToken>()), Times.Once);
+        var cli = Source("tools/BdKnowledgeIngest/Program.cs");
+        Assert.Contains("store.ListRecordsAsync(\"BD\", ct)", cli, StringComparison.Ordinal);
+        Assert.Contains("store.ListClosedPursuitsAsync(now.AddDays(-90), now, ct)", cli, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Retirement_IsGuardedByAcceptedStatus_AndReturnsTheUpdateCount()
+    {
+        var sql = Source("Kor.Opportunities.Data/Crm/BdDoctrine.cs");
+        var start = sql.IndexOf("public async Task<bool> RetireCardAsync", StringComparison.Ordinal);
+        var end = sql.IndexOf("public async Task<IReadOnlyList<DoctrineCardRecord>> ListRecordsAsync", start, StringComparison.Ordinal);
+        var retirement = sql[start..end];
+        Assert.Contains("WHERE Id = @id AND Status = N'accepted';", retirement, StringComparison.Ordinal);
+        Assert.Contains("SELECT @@ROWCOUNT;", retirement, StringComparison.Ordinal);
+        Assert.Contains("DecidedBy = @by", retirement, StringComparison.Ordinal);
     }
 
     private static string Source(string path) => File.ReadAllText(Path.Combine(RepoRoot(), path));

@@ -288,8 +288,8 @@ SET Stage                 = @stage,
     ProposedHours         = @hours,
     Notes                 = @notes,
     OpenedAtUtc           = @openedAt,
-    ClosedAtUtc           = CASE WHEN @stage IN (6, 7)
-                                 THEN CASE WHEN Stage IN (6, 7) THEN ClosedAtUtc ELSE COALESCE(@closedAt, sysdatetimeoffset()) END
+    ClosedAtUtc           = CASE WHEN @stage IN (6, 7, 8)
+                                 THEN CASE WHEN Stage IN (6, 7, 8) THEN COALESCE(ClosedAtUtc, @closedAt, sysdatetimeoffset()) ELSE COALESCE(@closedAt, sysdatetimeoffset()) END
                                  ELSE NULL END,
     OutcomeNotes          = @outcomeNotes,
     BuyerCanonicalOrgId   = @buyerCanonicalOrgId,
@@ -300,7 +300,7 @@ SET Stage                 = @stage,
     WonLostOutcome        = CASE WHEN @stage = 6 THEN 1
                                  WHEN @stage = 7 THEN CASE WHEN @wonLostOutcome IN (2, 3, 4) THEN @wonLostOutcome ELSE NULL END
                                  ELSE NULL END,
-    OutcomeReason         = CASE WHEN @stage IN (6, 7) THEN @outcomeReason ELSE NULL END,
+    OutcomeReason         = CASE WHEN @stage IN (6, 7, 8) THEN @outcomeReason ELSE NULL END,
     LostToCanonicalOrgId  = CASE WHEN @stage = 7 THEN @lostToCanonicalOrgId ELSE NULL END,
     WonProjectWbs1        = CASE WHEN @stage = 6 THEN @wonProjectWbs1 ELSE NULL END,
     NextActionDueUtc      = @nextActionDueUtc,

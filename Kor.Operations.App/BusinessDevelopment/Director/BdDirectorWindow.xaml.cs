@@ -51,6 +51,15 @@ public partial class BdDirectorWindow : Window
     {
         _doctrine = doctrine ?? throw new ArgumentNullException(nameof(doctrine));
         DoctrineTab.DataContext = doctrine;
+        doctrine.PropertyChanged += DoctrineChanged;
+        rhythm.SetDoctrineCards(doctrine.Cards);
+        Closed += (_, _) => doctrine.PropertyChanged -= DoctrineChanged;
+    }
+
+    private void DoctrineChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(BdDoctrineViewModel.Cards) && _doctrine is not null)
+            _rhythm?.SetDoctrineCards(_doctrine.Cards);
     }
 
     private readonly BdDoctrineViewModel? _doctrine;
@@ -120,6 +129,7 @@ public partial class BdDirectorWindow : Window
     {
         if (_rhythm is null || sender is not FrameworkElement { Tag: string result, DataContext: HourMoveView move }) return;
         await RhythmActionAsync(ct => _rhythm.RecordMoveAsync(move, result, _actor, ct)).ConfigureAwait(true);
+        if (_doctrine is not null) await _doctrine.LoadAsync(_lifetime.Token).ConfigureAwait(true);
     }
 
     /// <summary>A ticked action on Today or People closes as Done, with a one-line result; cancelling leaves it open.</summary>
@@ -232,6 +242,34 @@ public partial class BdDirectorWindow : Window
 
     private async void AcceptCard_Click(object sender, RoutedEventArgs e) => await DecideCardAsync(sender, true).ConfigureAwait(true);
     private async void RejectCard_Click(object sender, RoutedEventArgs e) => await DecideCardAsync(sender, false).ConfigureAwait(true);
+
+    private void OpenDoctrineCard_Click(object sender, RoutedEventArgs e)
+    {
+        if (_doctrine is null || sender is not FrameworkElement { Tag: long id }) return;
+        _doctrine.FocusCard(id);
+        Tabs.SelectedItem = DoctrineTab;
+        DoctrineTab.UpdateLayout();
+        FocusedDoctrineCard.BringIntoView();
+    }
+
+    private async void RetireCard_Click(object sender, RoutedEventArgs e)
+    {
+        if (_doctrine is null || sender is not FrameworkElement { Tag: DoctrineCardView card }) return;
+        if (MessageBox.Show(this, $"Retire “{card.Title}”? It will stop informing future suggestions. Its record stays available.",
+            "Retire doctrine card", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+        await RhythmActionAsync(ct => _doctrine.RetireAsync(card, ct)).ConfigureAwait(true);
+    }
+
+    private async void AmendCard_Click(object sender, RoutedEventArgs e)
+    {
+        if (_doctrine is null || sender is not FrameworkElement { Tag: DoctrineCardView card }) return;
+        var dialog = new NoteDialog("Ask Claude to amend", "Review the question, then open it in Claude.", 2000,
+            required: true, initialNote: BdDoctrineViewModel.AmendmentQuestion(card)) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+        var question = new System.Windows.Controls.TextBox { Text = dialog.Note ?? "" };
+        await OpenQuestionInClaudeAsync(question, $"doctrine card #{card.Id}: {card.Title}",
+            new DoctrineContext("ask", Array.Empty<string>()), BdDoctrineViewModel.AmendmentFacts(card)).ConfigureAwait(true);
+    }
 
     private async void AcceptAllCards_Click(object sender, RoutedEventArgs e)
     {
