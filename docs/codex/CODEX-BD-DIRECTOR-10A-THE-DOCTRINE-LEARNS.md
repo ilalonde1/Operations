@@ -132,17 +132,31 @@ write the next hour citing card ids and import it; check the track record by que
 
 ## Read bound
 
-About 150 KB:
-- this brief; `docs/codex/CODEX-BD-DIRECTOR-9K-THE-BUILDERS-ON-THE-BID.md` (format only)
-- `Kor.Opportunities.Data/Crm/DirectorHour.cs`, `BdDoctrine.cs`, `BdPromptComposer.cs`, `SqlBdRhythmStore.cs`
-  (move results), `SqlCrmEngagementStore.cs` (the stage update, ~lines 260–320)
-- `Kor.Opportunities.Data/Schema/360_*.sql`, `361_*.sql`, `362_*.sql`
-- `tools/BdKnowledgeIngest/Program.cs` (`HourImportAsync`, `PromptSynthesisAsync`, verb parsing)
-- `Kor.Operations.App/BusinessDevelopment/Director/BdDoctrineViewModel.cs`, `BdRhythmViewModel.cs` and
-  `.Screens.cs`, `BdDirectorWindow.xaml` (Today and Doctrine tabs) and `.xaml.cs`, `NoteDialog.xaml.cs`
-- `Kor.Operations.App/Crm/CrmViewModel.cs` (`ChangeStageAsync`) and any other stage-change path you find
-  by searching for `ChangeStageAsync` and `CrmEngagementStage.Won|Lost|Archived`
-- tests: `BdDoctrineRegressionTests.cs`, `BdDirectorRhythmRegressionTests.cs`, `BdScreensRenderTests.cs`
+About 130 KB, measured. **Read the line ranges given, not the whole file.** Several of these files are
+large (the Director window XAML is 102 KB, the render tests 62 KB, `CrmViewModel.cs` 48 KB, the CLI 43 KB)
+and only a slice matters. To find anything else, search (`rg -n`) and read 40 lines around the hit; never
+open a file over 30 KB whole. Line numbers are as of commit 9f9217fc; if a range has drifted, search for
+the named symbol. The table columns are given in this brief, so do not open the migrations.
+
+| File | Lines | For |
+|---|---|---|
+| `Kor.Opportunities.Data/Crm/DirectorHour.cs` | all (12 KB) | `HourMove`, validation |
+| `Kor.Opportunities.Data/Crm/BdDoctrine.cs` | 1–200 | records, `IBdDoctrineStore`, `DecideCardAsync` |
+| `Kor.Opportunities.Data/Crm/BdPromptComposer.cs` | 1–30, 50–190 | inputs, `Synthesis` |
+| `Kor.Opportunities.Data/Crm/BdRhythmStore.cs` | 55–100, 230–260 | `IBdRhythmStore`, move results |
+| `Kor.Opportunities.Data/Crm/SqlCrmEngagementStore.cs` | 260–320 | the stage update and `OutcomeReason` |
+| `tools/BdKnowledgeIngest/Program.cs` | 255–300, 463–495, 596–690 | `HourImportAsync`, `PromptSynthesisAsync`, `ValidateFor` |
+| `.../Director/BdDoctrineViewModel.cs` | all (9 KB) | the Doctrine screen's model |
+| `.../Director/BdRhythmViewModel.Screens.cs` | 1–120 | `HourMoveView`, Today's moves |
+| `.../Director/BdDirectorWindow.xaml` | 105–249, 365–441 | the Today and Doctrine tabs only |
+| `.../Director/BdDirectorWindow.xaml.cs` | 170–260 | Ask, Synthesize, Accept handlers |
+| `Kor.Operations.App/Crm/CrmViewModel.cs` | 730–790 | `ChangeStageAsync` |
+| `Kor.Operations.App/Crm/CrmView.xaml.cs` | 340–375 | the stage-change caller |
+| `.../Tests/BusinessDevelopment/BdDoctrineRegressionTests.cs` | 1–60 | fixtures and helpers |
+| `.../Tests/BusinessDevelopment/BdScreensRenderTests.cs` | 500–620 | the Director render fixture |
+
+Other close paths: find them with `rg -n "CrmEngagementStage\.(Won|Lost|Archived)|ChangeStageAsync" Kor.Operations.App --glob "!*Tests*"`
+and read only around each hit.
 
 Do not open the live databases, the share or Deltek. App projects with `UseWPF` have no implicit
 `System.IO`. The API guard (`tools/claude_api_guard.py`) refuses the `/ask` service's method name in
