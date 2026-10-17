@@ -2,7 +2,7 @@
 
 Bounded brief for Codex. Source edits only; nothing is built, run, applied or deployed by you.
 Response goes beside this file as `CODEX-BD-DIRECTOR-10A-THE-DOCTRINE-LEARNS-RESPONSE.md` in the
-9a–9k format.
+format set out under Response (do not open earlier responses).
 
 ## Why this exists
 
@@ -173,6 +173,6 @@ store, `tools/BdKnowledgeIngest/Program.cs`, `BdDoctrineViewModel.cs`, `BdRhythm
 
 ## Response
 
-In the 9a–9k format: what changed per piece, every close path found, the gates authored and not
+Plain markdown, one section per piece: what changed per piece, every close path found, the gates authored and not
 executed, what was not done and why, and anything in the existing code that contradicted this brief.
 Do not build, test, run tools, open a database or commit. `git diff --check` clean.
