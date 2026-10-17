@@ -33,8 +33,9 @@ share** of the invoice. It is not the invoice total repeated.
 | `WrittenOffInvoicePaidRule` (31–37) | MAX per invoice | wrong, **out of scope** |
 | `DeltekSchemaValidator`, `ExecutiveSummaryService` 329, `FinancialsService` 507, metric definitions, `ArTool` text, `ToolDefinitionDriftTests` | column lists, prose, docs | no amount computed; definitions already say SUM |
 
-**Out of scope: the Collections module.** Ian, 17 Oct: it is barely built. The last three rows above only produce a
-number when collections cases exist. Do not touch them. They are recorded here so the fix is ready when that module
+**Out of scope: the Collections module.** It is barely built. Measured 17 Oct in KorMcp: `Mcp.CollectionsCase` has 1 row
+ever, a test opened 2026-05-09 09:09:30 and resolved 43 seconds later; there are 0 active cases; and
+`Mcp.CollectionsCaseInvoice` has 1 row. The last three rows above only produce a number when cases exist. Do not touch them. They are recorded here so the fix is ready when that module
 is built out.
 
 ## The two sites
