@@ -15,8 +15,8 @@ namespace Kor.MorningBrief;
 public sealed record MorningFact(string Name, IReadOnlyList<string> Lines, int Shown, int? Total,
     string? CouldNotRead = null, string? SectionScope = null)
 {
-    // Retain the row text and cards already read; matching adds no situation/card queries.
-    public IReadOnlyList<string> Situations { get; init; } = Array.Empty<string>();
+    // Retain row text separately from meaning and cards already read; matching adds no situation/card queries.
+    public IReadOnlyList<MorningSituation> Situations { get; init; } = Array.Empty<MorningSituation>();
     public IReadOnlyList<DoctrineCardRow> AcceptedCards { get; init; } = Array.Empty<DoctrineCardRow>();
 }
 
@@ -70,7 +70,7 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
                 var touches = new[] { opened, reader.IsDBNull(6) ? opened : reader.GetDateTimeOffset(6),
                     reader.IsDBNull(7) ? opened : reader.GetDateTimeOffset(7) };
                 rows.Add(new Pursuit(reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
-                    reader.IsDBNull(4) ? null : reader.GetDecimal(4), touches.Max(), reader.GetString(8)));
+                    reader.IsDBNull(4) ? null : reader.GetDecimal(4), touches.Max(), reader.GetString(8), opened));
             }
             return PursuitFacts(rows, now);
         }, ct);
@@ -113,7 +113,7 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
     }
 
     public sealed record Pursuit(long Id, string Owner, string Region, string Title, decimal? Value, DateTimeOffset LastTouch,
-        string? OrganizationName = null);
+        string? OrganizationName = null, DateTimeOffset? OpenedAtUtc = null);
 
     public static IReadOnlyList<MorningFact> PursuitFacts(IReadOnlyList<Pursuit> rows, DateTimeOffset now)
     {
@@ -128,7 +128,10 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         {
             new MorningFact("Live pursuits by owner and region (value is proposed fee; currency not supplied)", lines, rows.Count, rows.Count),
             new MorningFact("No touch in 14+ days, top 10 by days quiet (proposed fee breaks ties)", stale.Take(10).Select(r => Describe(r, now)).ToArray(), Math.Min(10, stale.Length), stale.Length)
-            { Situations = stale.Take(10).Select(r => Describe(r, now)).ToArray() },
+            { Situations = stale.Take(10).Select(r => new MorningSituation("stale pursuit",
+                FormattableString.Invariant($"A client pursuit has gone quiet: no contact for {QuietDays(r, now)} days{(r.Value.HasValue ? "" : ", no proposed fee")}. Revive a quiet relationship, or decide to stop pursuing."),
+                Describe(r, now), r.OpenedAtUtc is { } opened && r.LastTouch <= opened
+                    ? new[] { "going-cold", "never-touched" } : new[] { "going-cold" })).ToArray() },
         };
     }
 
@@ -154,7 +157,10 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         return new[]
         {
             new MorningFact("Open actions by owner (late means due before snapshot)", lines, open.Length, open.Length),
-            new MorningFact("Late actions, Ian first, top 10", lateLines, lateLines.Length, late.Length) { Situations = lateLines },
+            new MorningFact("Late actions, Ian first, top 10", lateLines, lateLines.Length, late.Length)
+            { Situations = late.Take(10).Select((a, i) => new MorningSituation("late action",
+                FormattableString.Invariant($"A promised follow-up is overdue by {(int)(now - a.DueUtc).TotalDays} days: {MorningKnowledge.WithoutIdentifiers(a.Action, a.OwnerName, a.OwnerKey)}."),
+                lateLines[i], new[] { "late-action" })).ToArray() },
         };
     }
 
@@ -227,9 +233,13 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             {
                 Situations = kpi.Title switch
                 {
-                    "AR > 60 Days" => rows.OfType<KpiArInvoiceRow>().Take(10).Select(ExecutiveRow).ToArray(),
-                    "Projects Over Budget" => rows.Take(5).Select(ExecutiveRow).ToArray(),
-                    _ => Array.Empty<string>(),
+                    "AR > 60 Days" => rows.OfType<KpiArInvoiceRow>().Take(10).Select(p => new MorningSituation("AR invoice",
+                        FormattableString.Invariant($"An invoice to a developer client is {p.DaysPastDue} days unpaid ({(p.Balance < 5000 ? "under 5k" : p.Balance <= 25000 ? "5–25k" : "over 25k")}). Collect old receivables, or decide on a write-off."),
+                        ExecutiveRow(p), Array.Empty<string>())).ToArray(),
+                    "Projects Over Budget" => rows.OfType<KpiProjectDrilldownRow>().Take(5).Select(p => new MorningSituation("over budget",
+                        FormattableString.Invariant($"A project is {(p.PercentEngUsed - 1) * 100:0.#}% over its engineering-hours budget with {p.PercentBilled * 100:0.#}% of the fee billed. Diagnose the overrun and recover fee through change orders."),
+                        ExecutiveRow(p), Array.Empty<string>())).ToArray(),
+                    _ => Array.Empty<MorningSituation>(),
                 },
             });
         }
@@ -351,7 +361,11 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             new("Partial timesheet weeks (distinct people; median of up to eight prior weeks; ties complete)",
                 notes, partial.Length, weeks.Length,
                 lastComplete.HasValue ? null : "No complete week with a prior-week baseline is available.")
-            { Situations = partial.Length == 0 ? Array.Empty<string>() : new[] { partialLine } },
+            { Situations = partial.Length == 0 ? Array.Empty<MorningSituation>() : new[]
+                {
+                    new MorningSituation("partial timesheets", "Timesheets are incomplete for recent weeks; utilization and billing are understated.",
+                        partialLine, Array.Empty<string>()),
+                } },
         };
         if (lastComplete is { } last)
             facts.AddRange(EmployeeFacts(rows, last));
@@ -393,8 +407,8 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
                 FROM NetworkOps.Findings f JOIN NetworkOps.Devices d ON d.DeviceId = f.DeviceId
                 WHERE f.ClearedUtc IS NULL AND d.RetiredUtc IS NULL
                 GROUP BY d.DeviceId, d.Name, f.Severity ORDER BY f.Severity DESC, d.Name;
-                """, now, r => $"{Severity(r.GetByte(1))} / {r.GetString(0)}: {r.GetInt32(2)} open findings: {r.GetString(3)}", ct);
-            return new[] { new MorningFact($"Open findings grouped by severity and device (groups); connection variable {rows.ConnectionVariable}", rows.Lines, rows.Lines.Count, rows.Total,
+                """, now, r => FindingSituation(r.GetString(0), r.GetByte(1), r.GetInt32(2), r.GetString(3)), ct);
+            return new[] { new MorningFact($"Open findings grouped by severity and device (groups); connection variable {rows.ConnectionVariable}", rows.Lines.Select(s => s.Printed).ToArray(), rows.Lines.Count, rows.Total,
                 SectionScope: "NetworkOps SELECT snapshots; connection variable " + rows.ConnectionVariable)
             { Situations = rows.Lines.Take(10).ToArray() } };
         }, ct);
@@ -421,8 +435,12 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         await CardsAsync(facts, "IT", ct);
     }
 
-    private static async Task<(IReadOnlyList<string> Lines, int Total, string ConnectionVariable)> NetworkRowsAsync(string sql, DateTimeOffset now,
-        Func<SqlDataReader, string> format, CancellationToken ct, bool counted = false)
+    public static MorningSituation FindingSituation(string device, byte severity, int count, string titles) => new("IT finding",
+        MorningKnowledge.WithoutIdentifiers(titles, device),
+        $"{Severity(severity)} / {device}: {count} open findings: {titles}", Array.Empty<string>());
+
+    private static async Task<(IReadOnlyList<T> Lines, int Total, string ConnectionVariable)> NetworkRowsAsync<T>(string sql, DateTimeOffset now,
+        Func<SqlDataReader, T> format, CancellationToken ct, bool counted = false)
     {
         var watchConnection = OptionalConnection("KOR_NETWORKOPS_WATCHDB");
         var connection = watchConnection ?? Connection("KOR_NETWORKOPS_DB");
@@ -432,7 +450,7 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
         cmd.Parameters.Add("@since", SqlDbType.DateTime2).Value = now.AddHours(-24).UtcDateTime;
         cmd.Parameters.Add("@until", SqlDbType.DateTime2).Value = now.UtcDateTime;
-        var lines = new List<string>();
+        var lines = new List<T>();
         var total = 0;
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))

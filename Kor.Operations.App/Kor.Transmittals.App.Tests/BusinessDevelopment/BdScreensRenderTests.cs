@@ -592,6 +592,7 @@ public sealed class BdScreensRenderTests
             Card(101, "accepted", "Make working capital visible", "Illustrative Operations doctrine.") with { Role = "Operations" },
             Card(102, "proposed", "Review the billing queue", "Illustrative Operations proposal.") with { Role = "Operations" },
         });
+        doctrineStore.Setup(s => s.ListCardsAsync("IT", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         doctrineStore.Setup(s => s.ListRecordsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRecord>());
         doctrineStore.Setup(s => s.ListRunsAsync("Operations", It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
         doctrineStore.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[]

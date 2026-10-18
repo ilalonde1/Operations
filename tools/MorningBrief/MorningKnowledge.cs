@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Knowledge.Embedding;
 using Kor.Opportunities.Knowledge.Search;
@@ -6,7 +7,8 @@ using Kor.Opportunities.Knowledge.Store;
 
 namespace Kor.MorningBrief;
 
-public sealed record MorningCardVector(long Id, float[] Vector);
+public sealed record MorningSituation(string Kind, string Query, string Printed, IReadOnlyCollection<string> Situations);
+public sealed record MorningCardVector(long Id, float[] Vector, string AppliesTo = "any");
 public sealed record MorningCardMatch(long Id, float Score);
 public sealed record MorningSituationMatch(string Situation, IReadOnlyList<MorningCardMatch> Cards,
     IReadOnlyList<KnowledgeClaimHit> Claims, IReadOnlyList<KnowledgeClaimRelation> Relations, string? CouldNotRead = null);
@@ -15,16 +17,44 @@ public sealed record MorningSituationMatch(string Situation, IReadOnlyList<Morni
 public static class MorningKnowledge
 {
     public const string FactName = "Knowledge matched to today's situations";
+    public const float ClaimFloor = .55f;
+
+    /// <summary>Removes structured identifiers and supplied names, without guessing names from ordinary words.</summary>
+    public static string WithoutIdentifiers(string text, params string?[] names)
+    {
+        // Remove whole mailboxes before a supplied name can consume their local part.
+        text = Regex.Replace(text, @"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", " ", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        foreach (var name in names.Where(n => !string.IsNullOrWhiteSpace(n)).OrderByDescending(n => n!.Length))
+            text = Regex.Replace(text, @"(?<!\w)" + Regex.Escape(name!) + @"(?!\w)", " ", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        const string identifiers = @"#\d+\b|\b\d{5}-\d{2}\b|\b\d{8}\b"
+            + @"|\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?\b"
+            + @"|(?:(?:\b(?:CAD|USD|EUR|GBP)\s*)?[$€£]\s*|\b(?:CAD|USD|EUR|GBP)\s+)\d[\d,]*(?:\.\d+)?(?:\s*[kKmM]\b)?"
+            + @"|\b\d[\d,]*(?:\.\d+)?\s*(?:CAD|USD|EUR|GBP)\b";
+        text = Regex.Replace(text, identifiers, " ", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return Regex.Replace(text, @"\s+", " ").Trim();
+    }
 
     public static string CardText(DoctrineCardRow card) => $"{card.Title}. {card.Plain}. {card.Recognise}.";
 
     public static IReadOnlyList<MorningCardVector> EmbedCards(IEnumerable<DoctrineCardRow> cards, string role,
         IKnowledgeEmbedder embedder) => cards.Where(c => c.Role == role && c.Status == "accepted").DistinctBy(c => c.Id)
-        .Select(c => new MorningCardVector(c.Id, embedder.Embed(CardText(c)))).ToArray();
+        .Select(c => new MorningCardVector(c.Id, embedder.Embed(CardText(c)), c.AppliesTo)).ToArray();
 
-    public static IReadOnlyList<MorningCardMatch> RankCards(float[] situation, IReadOnlyList<MorningCardVector> cards) =>
-        cards.Select(c => new MorningCardMatch(c.Id, KnowledgeSearch.Cosine(situation, c.Vector)))
-            .OrderByDescending(c => c.Score).ThenBy(c => c.Id).Take(3).ToArray();
+    public static IReadOnlyList<MorningCardMatch> RankCards(float[] situation, IReadOnlyList<MorningCardVector> cards,
+        IReadOnlyCollection<string>? situations = null)
+    {
+        var context = new DoctrineContext("hour", situations ?? Array.Empty<string>());
+        return cards.Select(c => new
+            {
+                Match = new MorningCardMatch(c.Id, KnowledgeSearch.Cosine(situation, c.Vector)),
+                // Only a situation term is specific. "any" and "moment:hour" hold for every morning situation, so letting them
+                // count put a moment:hour card first on every row (live 19 Oct: #287 premortem above #210 receivables on all AR rows).
+                Specific = BdDoctrine.AppliesTo(string.Join(",", c.AppliesTo.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Where(term => term.StartsWith("situation:", StringComparison.OrdinalIgnoreCase))), context),
+            })
+            .OrderByDescending(c => c.Specific).ThenByDescending(c => c.Match.Score).ThenBy(c => c.Match.Id)
+            .Take(3).Select(c => c.Match).ToArray();
+    }
 
     // X counts situations with at least one candidate and no failed knowledge read; Y includes every selected situation.
     public static MorningFact Format(IReadOnlyList<MorningSituationMatch> matches)
@@ -39,9 +69,9 @@ public static class MorningKnowledge
     {
         var situation = OneLine(match.Situation);
         if (situation.Length > 160) situation = situation[..160];
-        var cards = match.Cards.OrderByDescending(c => c.Score).ThenBy(c => c.Id).Take(3).ToArray();
+        var cards = match.Cards.Take(3).ToArray();
         var line = situation + " → cards " + (cards.Length == 0 ? "none" : string.Join(", ", cards.Select(c => $"#{c.Id} ({Score(c.Score)})")))
-            + "; claims: " + (match.Claims.Count == 0 ? "none" : string.Join("; ", match.Claims.Select(c => $"{Quote(c.SourceTitle, c.Statement)} ({Score(c.Score)})")));
+            + "; claims: " + (match.Claims.Count == 0 ? "no claim above 0.55" : string.Join("; ", match.Claims.Select(c => $"{Quote(c.SourceTitle, c.Statement)} ({Score(c.Score)})")));
         var ids = match.Claims.Select(c => c.ClaimId).ToHashSet();
         foreach (var relation in match.Relations.Distinct().OrderBy(r => r.FromClaimId).ThenBy(r => r.ToClaimId).ThenBy(r => r.Kind, StringComparer.Ordinal))
         {
@@ -86,9 +116,11 @@ public sealed class MorningKnowledgeReader(Func<IKnowledgeStore> createStore, IK
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            return MorningKnowledge.Format(situations.Select(s => new MorningSituationMatch(s,
+            return MorningKnowledge.Format(situations.Select(s => new MorningSituationMatch(s.Printed,
                 Array.Empty<MorningCardMatch>(), Array.Empty<KnowledgeClaimHit>(), Array.Empty<KnowledgeClaimRelation>(), Failure(ex))).ToArray());
         }
+        // One call is one role's situations; other roles share the index, not their repeat allowance.
+        var claimCounts = new Dictionary<long, int>();
         foreach (var situation in situations)
         {
             ct.ThrowIfCancellationRequested();
@@ -96,14 +128,18 @@ public sealed class MorningKnowledgeReader(Func<IKnowledgeStore> createStore, IK
             IReadOnlyList<KnowledgeClaimHit> claims = Array.Empty<KnowledgeClaimHit>();
             try
             {
-                ranked = MorningKnowledge.RankCards(embedder.Embed(situation), cards);
-                claims = await _search.SearchClaimsAsync(situation, take: 3, perSource: 1, ct: ct);
+                ranked = MorningKnowledge.RankCards(embedder.Embed(situation.Query), cards, situation.Situations);
+                var candidates = await _search.SearchClaimsAsync(situation.Query, take: 6, perSource: 1, ct: ct);
+                claims = candidates.Where(c => c.Score >= MorningKnowledge.ClaimFloor && claimCounts.GetValueOrDefault(c.ClaimId) < 3)
+                    .Take(3).ToArray();
+                // These claims remain printed even if the relation read fails.
+                foreach (var claim in claims) claimCounts[claim.ClaimId] = claimCounts.GetValueOrDefault(claim.ClaimId) + 1;
                 var relations = await _store.ListRelationsAsync(claims.Select(c => c.ClaimId).ToArray(), ct);
-                matches.Add(new(situation, ranked, claims, relations));
+                matches.Add(new(situation.Printed, ranked, claims, relations));
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
-                matches.Add(new(situation, ranked, claims, Array.Empty<KnowledgeClaimRelation>(), Failure(ex)));
+                matches.Add(new(situation.Printed, ranked, claims, Array.Empty<KnowledgeClaimRelation>(), Failure(ex)));
             }
         }
         return MorningKnowledge.Format(matches);

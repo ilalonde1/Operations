@@ -492,7 +492,7 @@ public sealed class MorningBriefTests
 
         Assert.Contains(facts[0].Lines, line => line.Contains("partial: week 2026-10-04, 19 of 24 people", StringComparison.Ordinal));
         Assert.Contains(facts[0].Lines, line => line.Contains("partial: week 2026-10-11, 11 of 24 people", StringComparison.Ordinal));
-        Assert.Contains(Assert.Single(facts[0].Situations), facts[0].Lines);
+        Assert.Contains(Assert.Single(facts[0].Situations).Printed, facts[0].Lines);
         Assert.Equal(2, facts[0].Shown);
         Assert.Equal(7, facts[0].Total);
         var outliers = facts[1];
