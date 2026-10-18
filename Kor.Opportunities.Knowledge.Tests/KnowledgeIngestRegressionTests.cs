@@ -530,6 +530,8 @@ public sealed class KnowledgeIngestRegressionTests
 
     private sealed class MemoryStore : IKnowledgeStore
     {
+        public Task<IReadOnlyList<KnowledgeClaimRelation>> ListRelationsAsync(IReadOnlyCollection<long> claimIds, CancellationToken ct = default)
+            => throw new NotSupportedException("Relations are gated as SQL source.");
         internal List<KnowledgeClaim> SearchClaims { get; } = new();
         internal List<(long ClaimId, long SourceId, float[] Vector)> ClaimVectors { get; } = new();
         internal HashSet<long> RetiredClaimIds { get; } = new();

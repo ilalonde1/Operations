@@ -201,10 +201,10 @@ public static class DirectorHourFile
         return sections.SelectMany(s =>
         {
             var role = s.Role == "COO" ? "Operations" : s.Role;
-            var accepted = cards.Where(c => c.Role == role && c.Status == "accepted" && role != "IT").Select(c => c.Id).ToHashSet();
+            var accepted = cards.Where(c => c.Role == role && c.Status == "accepted").Select(c => c.Id).ToHashSet();
             return s.Moves.SelectMany(m => m.Cards.Where(id => !accepted.Contains(id))
                 .Select(id => (content.Kind == "Morning" ? $"section {s.Role}, " : "")
-                    + $"move {m.Rank}: card {id} is not an accepted {role} card." + (role == "IT" ? " IT moves cannot cite cards." : "")));
+                    + $"move {m.Rank}: card {id} is not an accepted {role} card."));
         }).ToArray();
     }
 }

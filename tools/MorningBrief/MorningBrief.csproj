@@ -13,6 +13,7 @@
     <ProjectReference Include="..\..\Kor.Operations.Business\Kor.Operations.Business.csproj" />
     <ProjectReference Include="..\..\Kor.Operations.App\Kor.Operations.App.csproj" />
     <ProjectReference Include="..\..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
+    <ProjectReference Include="..\..\Kor.Opportunities.Knowledge\Kor.Opportunities.Knowledge.csproj" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.3" />

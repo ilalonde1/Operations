@@ -54,7 +54,12 @@ public static class BdPromptComposer
     public static string Synthesis(BdSynthesisInput i, BdPromptHandle report)
     {
         var sb = new StringBuilder();
-        var role = i.Role == "Operations" ? "an operations director" : "a business development director";
+        var role = i.Role switch
+        {
+            "Operations" => "an operations director",
+            "IT" => "a systems and IT director for a sixty-person engineering firm",
+            _ => "a business development director",
+        };
         sb.AppendLine($"# Synthesize the {i.Role} doctrine from the books");
         sb.AppendLine();
         sb.AppendLine($"Asked by {i.AskedBy} at {i.Now.ToLocalTime():yyyy-MM-dd HH:mm}.");

@@ -9,6 +9,9 @@ public sealed record KnowledgePassage(long Id, long SourceId, int Ordinal, strin
 public sealed record KnowledgeHit(KnowledgePassage Passage, string SourceTitle, float Score);
 public sealed record KnowledgeClaim(long Id, long SourceId, string SourceTitle, long PassageId, string Kind, string Statement, decimal Confidence);
 public sealed record KnowledgeClaimHit(long ClaimId, long SourceId, string SourceTitle, long PassageId, string Kind, string Statement, float Score);
+/// <summary>Directed relation: the From claim supports, contradicts or refines the To claim.</summary>
+public sealed record KnowledgeClaimRelation(long FromClaimId, string FromStatement, string FromSourceTitle,
+    long ToClaimId, string ToStatement, string ToSourceTitle, string Kind, string? Note);
 
 public interface IKnowledgeStore
 {
@@ -16,6 +19,7 @@ public interface IKnowledgeStore
     Task SetClaimEmbeddingsAsync(IReadOnlyList<(long ClaimId, byte[] Embedding)> embeddings, string model, CancellationToken ct = default);
     Task<IReadOnlyList<(long ClaimId, long SourceId, float[] Vector)>> LoadClaimVectorsAsync(CancellationToken ct = default);
     Task<IReadOnlyList<KnowledgeClaim>> GetClaimsAsync(IReadOnlyList<long> ids, CancellationToken ct = default);
+    Task<IReadOnlyList<KnowledgeClaimRelation>> ListRelationsAsync(IReadOnlyCollection<long> claimIds, CancellationToken ct = default);
     Task<(int Written, int Rejected)> ImportRelationsAsync(RelationFile file, string by, CancellationToken ct = default);
     Task<ClaimFile> ExportAsync(long sourceId, CancellationToken ct = default);
     Task<(int PassagesCovered, int ClaimsWritten, int ClaimsRejected)> ImportClaimsAsync(

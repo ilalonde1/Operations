@@ -288,6 +288,44 @@ public sealed class SqlKnowledgeStore : IKnowledgeStore
         return rows;
     }
 
+    public async Task<IReadOnlyList<KnowledgeClaimRelation>> ListRelationsAsync(IReadOnlyCollection<long> claimIds, CancellationToken ct = default)
+    {
+        if (claimIds.Count == 0) return Array.Empty<KnowledgeClaimRelation>();
+        var rows = new Dictionary<(long From, long To, string Kind), KnowledgeClaimRelation>();
+        await using var con = await OpenAsync(ct);
+        foreach (var batch in claimIds.Distinct().Order().Chunk(500))
+        {
+            await using var cmd = new SqlCommand { Connection = con, CommandTimeout = 120 };
+            var names = batch.Select((id, i) =>
+            {
+                var name = "@id" + i.ToString(CultureInfo.InvariantCulture);
+                cmd.Parameters.Add(name, SqlDbType.BigInt).Value = id;
+                return name;
+            }).ToArray();
+            var parameters = string.Join(",", names);
+            cmd.CommandText = $"""
+                SELECT r.FromClaimId, f.Statement, fs.Title, r.ToClaimId, t.Statement, ts.Title, r.Kind, r.Note
+                FROM knowledge.ClaimRelation r
+                JOIN knowledge.Claim f ON f.Id = r.FromClaimId
+                JOIN knowledge.Source fs ON fs.Id = f.SourceId
+                JOIN knowledge.Claim t ON t.Id = r.ToClaimId
+                JOIN knowledge.Source ts ON ts.Id = t.SourceId
+                WHERE (r.FromClaimId IN ({parameters}) OR r.ToClaimId IN ({parameters}))
+                  AND f.RetiredAtUtc IS NULL AND t.RetiredAtUtc IS NULL;
+                """;
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var row = new KnowledgeClaimRelation(reader.GetInt64(0), reader.GetString(1), reader.GetString(2),
+                    reader.GetInt64(3), reader.GetString(4), reader.GetString(5), reader.GetString(6),
+                    reader.IsDBNull(7) ? null : reader.GetString(7));
+                // Either end may occur in another batch; emit each directed relation only once.
+                rows.TryAdd((row.FromClaimId, row.ToClaimId, row.Kind), row);
+            }
+        }
+        return rows.Values.OrderBy(r => r.FromClaimId).ThenBy(r => r.ToClaimId).ThenBy(r => r.Kind, StringComparer.Ordinal).ToArray();
+    }
+
     public async Task<(int Written, int Rejected)> ImportRelationsAsync(RelationFile file, string by, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(by) || by.Length > 100) throw new ArgumentException("Created-by name must contain 1–100 characters.", nameof(by));

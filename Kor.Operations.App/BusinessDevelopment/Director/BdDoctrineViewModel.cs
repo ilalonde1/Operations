@@ -49,7 +49,7 @@ public sealed class BdDoctrineViewModel : ObservableObject
 {
     private string _role = "BD";
     private int _loadVersion;
-    public IReadOnlyList<string> Roles { get; } = new[] { "BD", "Operations" };
+    public IReadOnlyList<string> Roles { get; } = new[] { "BD", "Operations", "IT" };
     public string Role { get => _role; private set => SetField(ref _role, value); }
     private readonly IBdDoctrineStore _store;
     private readonly Func<DateTimeOffset> _clock;
@@ -83,7 +83,7 @@ public sealed class BdDoctrineViewModel : ObservableObject
 
     public async Task SelectRoleAsync(string role, CancellationToken ct)
     {
-        if (!Roles.Contains(role)) throw new ArgumentException("Role must be BD or Operations.", nameof(role));
+        if (!Roles.Contains(role)) throw new ArgumentException("Role must be BD, Operations or IT.", nameof(role));
         if (Role == role) return;
         Role = role;
         _cards = Array.Empty<DoctrineCardRow>();
@@ -100,7 +100,9 @@ public sealed class BdDoctrineViewModel : ObservableObject
         try
         {
             var cards = await _store.ListCardsAsync(role, ct).ConfigureAwait(true);
-            var otherCards = await _store.ListCardsAsync(role == "BD" ? "Operations" : "BD", ct).ConfigureAwait(true);
+            var otherCards = new List<DoctrineCardRow>();
+            foreach (var otherRole in Roles.Where(value => value != role))
+                otherCards.AddRange(await _store.ListCardsAsync(otherRole, ct).ConfigureAwait(true));
             var records = (await _store.ListRecordsAsync(role, ct).ConfigureAwait(true)).ToDictionary(r => r.CardId);
             var runs = await _store.ListRunsAsync(role, 50, ct).ConfigureAwait(true);
             if (version != _loadVersion || role != Role) return;
@@ -199,7 +201,7 @@ public sealed class BdDoctrineViewModel : ObservableObject
     public async Task<BdPreparedPrompt> PrepareAskAsync(string question, string subject, DoctrineContext context, IReadOnlyList<string> facts, string actor, CancellationToken ct, string role = "BD")
     {
         if (string.IsNullOrWhiteSpace(question)) throw new ArgumentException("Type the question first.", nameof(question));
-        if (!Roles.Contains(role)) throw new ArgumentException("Role must be BD or Operations.", nameof(role));
+        if (!Roles.Contains(role)) throw new ArgumentException("Role must be BD, Operations or IT.", nameof(role));
         var cards = role == Role ? _cards : await _store.ListCardsAsync(role, ct).ConfigureAwait(true);
         var accepted = cards.Where(c => c.Role == role && c.Status == "accepted").ToList();
         var applies = accepted.Where(c => BdDoctrine.AppliesTo(c.AppliesTo, context)).ToList();

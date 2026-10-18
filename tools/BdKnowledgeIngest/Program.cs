@@ -267,7 +267,8 @@ internal static class KnowledgeCli
         }
 
         var cards = content.Kind == "Morning"
-            ? (await doctrine.ListCardsAsync("BD", ct)).Concat(await doctrine.ListCardsAsync("Operations", ct)).ToArray()
+            ? (await doctrine.ListCardsAsync("BD", ct)).Concat(await doctrine.ListCardsAsync("Operations", ct))
+                .Concat(await doctrine.ListCardsAsync("IT", ct)).ToArray()
             : await doctrine.ListCardsAsync(content.Kind, ct);
         var cardErrors = DirectorHourFile.ValidateCards(content, cards);
         if (cardErrors.Count > 0)
@@ -458,6 +459,8 @@ internal static class KnowledgeCli
         var cards = await store.ListCardsAsync(args.Value("--role") ?? "BD", ct);
         if (args.Positionals[1].Equals("similar", StringComparison.OrdinalIgnoreCase))
         {
+            foreach (var otherRole in new[] { "BD", "Operations", "IT" }.Where(role => role != (args.Value("--role") ?? "BD")))
+                cards = cards.Concat(await store.ListCardsAsync(otherRole, ct)).ToArray();
             // Each card in a report beside the closest card already in the doctrine, for calibration and for a session
             // to check its cards before reporting.
             var (report, errors) = BdDoctrine.ParseReport(await File.ReadAllTextAsync(args.Positionals[2], ct));
@@ -583,10 +586,10 @@ internal static class KnowledgeCli
         BdKnowledgeIngest hour render <hour.json> --to <file.html>
         BdKnowledgeIngest hour verify <yyyy-MM-dd> --kind Morning [--after <ISO timestamp>]
         BdKnowledgeIngest pursuit checklist import <engagementId> <file.json> --by <name> [--replace]
-        BdKnowledgeIngest doctrine list [--role BD|Operations]
-        BdKnowledgeIngest doctrine show <id> [--role BD|Operations]
-        BdKnowledgeIngest doctrine similar <report.json> [--exclude-run <id>]
-        BdKnowledgeIngest prompt synthesis --by <name> [--focus "<theme>"]
+        BdKnowledgeIngest doctrine list [--role BD|Operations|IT]
+        BdKnowledgeIngest doctrine show <id> [--role BD|Operations|IT]
+        BdKnowledgeIngest doctrine similar <report.json> [--role BD|Operations|IT] [--exclude-run <id>]
+        BdKnowledgeIngest prompt synthesis --by <name> [--role BD|Operations|IT] [--focus "<theme>"]
         BdKnowledgeIngest prompt report <runId> <report.json> --token <token> [--checked]
         --db <connection string> defaults to env KOR_OPPORTUNITIES_OPPORTUNITIESDB
         """);
@@ -674,16 +677,16 @@ internal static class KnowledgeCli
             }
             if (verb == "doctrine")
             {
-                if (doctrineAction is not ("list" or "show" or "similar")) throw new ArgumentException("Use doctrine list [--role BD|Operations], doctrine show <id>, or doctrine similar <report.json> [--exclude-run <id>].");
+                if (doctrineAction is not ("list" or "show" or "similar")) throw new ArgumentException("Use doctrine list [--role BD|Operations|IT], doctrine show <id>, or doctrine similar <report.json> [--exclude-run <id>].");
                 if (doctrineAction == "show" && !long.TryParse(Positionals[2], NumberStyles.None, CultureInfo.InvariantCulture, out _))
                     throw new ArgumentException("doctrine show needs a card id.");
-                if (Value("--role") is { } role && role is not ("BD" or "Operations")) throw new ArgumentException("--role is BD or Operations.");
+                if (Value("--role") is { } role && role is not ("BD" or "Operations" or "IT")) throw new ArgumentException("--role is BD, Operations or IT.");
             }
             if (verb == "prompt" && Positionals[1].Equals("synthesis", StringComparison.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrWhiteSpace(Value("--by")) || Value("--by")!.Length > 150)
                     throw new ArgumentException("prompt synthesis requires --by <name> (1–150 characters).");
-                if (Value("--role") is { } synthesisRole && synthesisRole is not ("BD" or "Operations")) throw new ArgumentException("--role is BD or Operations.");
+                if (Value("--role") is { } synthesisRole && synthesisRole is not ("BD" or "Operations" or "IT")) throw new ArgumentException("--role is BD, Operations or IT.");
             }
             else if (verb == "prompt")
             {

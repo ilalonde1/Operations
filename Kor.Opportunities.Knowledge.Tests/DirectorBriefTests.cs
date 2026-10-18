@@ -346,6 +346,8 @@ public sealed class DirectorBriefTests
     // Only vector/claim reads are implemented. An unexpected write or passage search fails.
     private sealed class SearchStore : IKnowledgeStore
     {
+        public Task<IReadOnlyList<KnowledgeClaimRelation>> ListRelationsAsync(IReadOnlyCollection<long> claimIds, CancellationToken ct = default)
+            => throw new NotSupportedException();
         public Task<IReadOnlyList<(long ClaimId, long SourceId, float[] Vector)>> LoadClaimVectorsAsync(CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<(long, long, float[])>>(Enumerable.Range(1, 6).Select(i => ((long)i, 1L, new UnitEmbedder().Embed("synthetic"))).ToArray());
         public Task<IReadOnlyList<KnowledgeClaim>> GetClaimsAsync(IReadOnlyList<long> ids, CancellationToken ct = default)

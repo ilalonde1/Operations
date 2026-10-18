@@ -103,6 +103,7 @@ public sealed class BdDoctrineRegressionTests
     {
         var store = new Mock<IBdDoctrineStore>();
         store.Setup(s => s.ListCardsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
+        store.Setup(s => s.ListCardsAsync("IT", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRecord>());
         store.Setup(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[]
         {
@@ -136,6 +137,7 @@ public sealed class BdDoctrineRegressionTests
     {
         var store = new Mock<IBdDoctrineStore>();
         store.Setup(s => s.ListCardsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
+        store.Setup(s => s.ListCardsAsync("IT", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRecord>());
         store.Setup(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         store.Setup(s => s.ListRunsAsync("BD", It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
@@ -163,6 +165,7 @@ public sealed class BdDoctrineRegressionTests
     {
         var store = new Mock<IBdDoctrineStore>();
         store.Setup(s => s.ListCardsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
+        store.Setup(s => s.ListCardsAsync("IT", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRecord>());
         store.SetupSequence(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { Card(12, "Amends 5", "any", "proposed", amends: 5), Card(5, "First", "any", "proposed"), Card(3, "Kept", "any") })
@@ -301,6 +304,7 @@ public sealed class BdDoctrineRegressionTests
         var record = new DoctrineCardRecord(5, 3, 0, 0, 3, 0, 0, 0, 0, new DateOnly(2026, 10, 16), new[] { "Skipped" });
         var store = new Mock<IBdDoctrineStore>();
         store.Setup(s => s.ListCardsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
+        store.Setup(s => s.ListCardsAsync("IT", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         store.SetupSequence(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { accepted, Card(6, "Rejected", "any", "rejected") })
             .ReturnsAsync(new[] { accepted with { Status = "retired" }, Card(6, "Rejected", "any", "rejected") });
@@ -338,6 +342,7 @@ public sealed class BdDoctrineRegressionTests
             new ClosedPursuit(104, "Future", 6, "Do not include", Now.AddDays(1)) };
         var store = new Mock<IBdDoctrineStore>();
         store.Setup(s => s.ListCardsAsync("Operations", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
+        store.Setup(s => s.ListCardsAsync("IT", It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<DoctrineCardRow>());
         store.Setup(s => s.ListCardsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(new[] { Card(5, "Quiet relationship", "any") });
         store.Setup(s => s.ListRunsAsync("BD", It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdPromptRunRow>());
         store.Setup(s => s.ListRecordsAsync("BD", It.IsAny<CancellationToken>())).ReturnsAsync(records);

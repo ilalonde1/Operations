@@ -5,20 +5,26 @@ using Kor.Operations.Data;
 using Kor.Operations.Financials;
 using Kor.Operations.PMTools;
 using Kor.Opportunities.Data.Crm;
+using Kor.Opportunities.Knowledge.Embedding;
+using Kor.Opportunities.Knowledge.Store;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 
 namespace Kor.MorningBrief;
 
 public sealed record MorningFact(string Name, IReadOnlyList<string> Lines, int Shown, int? Total,
-    string? CouldNotRead = null, string? SectionScope = null);
+    string? CouldNotRead = null, string? SectionScope = null)
+{
+    // Retain the row text and cards already read; matching adds no situation/card queries.
+    public IReadOnlyList<string> Situations { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<DoctrineCardRow> AcceptedCards { get; init; } = Array.Empty<DoctrineCardRow>();
+}
 
 /// <summary>Read-only snapshots. A failed source stays visible, and does not suppress another source.</summary>
 public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<MorningFact> Bd,
     IReadOnlyList<MorningFact> Coo, IReadOnlyList<MorningFact> It)
 {
     private const string BdConnection = "KOR_OPPORTUNITIES_OPPORTUNITIESDB";
-    private const string NetworkConnection = "KOR_NETWORKOPS_WATCHDB";
 
     public static async Task<MorningFacts> GatherAsync(IConfiguration configuration, DateOnly date, DateTimeOffset now, CancellationToken ct)
     {
@@ -29,6 +35,11 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         await GatherBdAsync(bd, date, now, ct);
         await GatherCooAsync(coo, odbc, financials, date, ct);
         await GatherItAsync(it, now, ct);
+        using var embedder = new KnowledgeEmbedder();
+        using var knowledge = new MorningKnowledgeReader(() => new SqlKnowledgeStore(Connection(BdConnection)), embedder);
+        bd.Add(await knowledge.MatchAsync(bd, "BD", ct));
+        coo.Add(await knowledge.MatchAsync(coo, "Operations", ct));
+        it.Add(await knowledge.MatchAsync(it, "IT", ct));
         return new MorningFacts(now, bd, coo, it);
     }
 
@@ -116,7 +127,8 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         return new[]
         {
             new MorningFact("Live pursuits by owner and region (value is proposed fee; currency not supplied)", lines, rows.Count, rows.Count),
-            new MorningFact("No touch in 14+ days, top 10 by days quiet (proposed fee breaks ties)", stale.Take(10).Select(r => Describe(r, now)).ToArray(), Math.Min(10, stale.Length), stale.Length),
+            new MorningFact("No touch in 14+ days, top 10 by days quiet (proposed fee breaks ties)", stale.Take(10).Select(r => Describe(r, now)).ToArray(), Math.Min(10, stale.Length), stale.Length)
+            { Situations = stale.Take(10).Select(r => Describe(r, now)).ToArray() },
         };
     }
 
@@ -137,8 +149,19 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         var groups = open.GroupBy(a => a.OwnerKey).OrderBy(g => g.Key, StringComparer.Ordinal);
         var lines = groups.Select(g => $"{g.First().OwnerName}: {g.Count()} of {open.Length} open; {g.Count(a => a.DueUtc < now)} of {g.Count()} late. "
             + string.Join("; ", g.OrderBy(a => a.DueUtc).Select(a => $"#{a.Id} {a.Action} (due {a.DueUtc:yyyy-MM-dd})"))).ToArray();
-        return new[] { new MorningFact("Open actions by owner (late means due before snapshot)", lines, open.Length, open.Length) };
+        var late = open.Where(a => a.DueUtc < now).OrderByDescending(IsIan).ThenBy(a => a.DueUtc).ThenBy(a => a.Id).ToArray();
+        var lateLines = late.Take(10).Select(a => $"{a.OwnerName}: #{a.Id} {a.Action} (due {a.DueUtc:yyyy-MM-dd})").ToArray();
+        return new[]
+        {
+            new MorningFact("Open actions by owner (late means due before snapshot)", lines, open.Length, open.Length),
+            new MorningFact("Late actions, Ian first, top 10", lateLines, lateLines.Length, late.Length) { Situations = lateLines },
+        };
     }
+
+    private static bool IsIan(BdActionRow action) =>
+        action.OwnerKey.Split('@')[0].Equals("ilalonde", StringComparison.OrdinalIgnoreCase)
+        || action.OwnerKey.Equals("ian", StringComparison.OrdinalIgnoreCase)
+        || action.OwnerName.Equals("Ian Lalonde", StringComparison.OrdinalIgnoreCase);
 
     private static async Task GatherCooAsync(List<MorningFact> facts, DeltekOdbcOptions odbc, FinancialsOptions financialsOptions, DateOnly date, CancellationToken ct)
     {
@@ -200,7 +223,15 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
                 .Where(text => !string.IsNullOrWhiteSpace(text))
                 .Concat(rows.Take(10).Select(ExecutiveRow)).ToArray();
             facts.Add(new MorningFact($"{kpi.Title} · {ScopeLabel(kpi.Scope, activeProjects)}", lines, Math.Min(10, rows.Count), rows.Count,
-                kpi.ValueText == "Data unavailable" ? kpi.StatusMessage : null));
+                kpi.ValueText == "Data unavailable" ? kpi.StatusMessage : null)
+            {
+                Situations = kpi.Title switch
+                {
+                    "AR > 60 Days" => rows.OfType<KpiArInvoiceRow>().Take(10).Select(ExecutiveRow).ToArray(),
+                    "Projects Over Budget" => rows.Take(5).Select(ExecutiveRow).ToArray(),
+                    _ => Array.Empty<string>(),
+                },
+            });
         }
         foreach (var trend in r.Trends)
         {
@@ -308,7 +339,8 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             return (week.Week, week.People, Median: median, Complete: median.HasValue && week.People >= median.Value);
         }).ToArray();
         var partial = weeks.Where(week => week.Median.HasValue && !week.Complete).ToArray();
-        var notes = partial.Select(week => $"partial: week {week.Week:yyyy-MM-dd}, {week.People} of {week.Median!.Value.ToString("0.#", CultureInfo.InvariantCulture)} people").ToList();
+        var partialLine = string.Join("; ", partial.Select(week => $"partial: week {week.Week:yyyy-MM-dd}, {week.People} of {week.Median!.Value.ToString("0.#", CultureInfo.InvariantCulture)} people"));
+        var notes = partial.Length == 0 ? new List<string>() : new List<string> { partialLine };
         notes.AddRange(weeks.Where(week => !week.Median.HasValue)
             .Select(week => $"Week {week.Week:yyyy-MM-dd}: {week.People} people; completeness unknown without a prior-week baseline."));
         var lastComplete = weeks.Where(week => week.Complete).Select(week => (DateTime?)week.Week).LastOrDefault();
@@ -318,7 +350,8 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         {
             new("Partial timesheet weeks (distinct people; median of up to eight prior weeks; ties complete)",
                 notes, partial.Length, weeks.Length,
-                lastComplete.HasValue ? null : "No complete week with a prior-week baseline is available."),
+                lastComplete.HasValue ? null : "No complete week with a prior-week baseline is available.")
+            { Situations = partial.Length == 0 ? Array.Empty<string>() : new[] { partialLine } },
         };
         if (lastComplete is { } last)
             facts.AddRange(EmployeeFacts(rows, last));
@@ -344,7 +377,8 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         await ReadAsync(facts, "Accepted " + role + " cards", async () =>
         {
             var cards = (await new SqlBdDoctrineStore(Connection(BdConnection)).ListCardsAsync(role, ct)).Where(c => c.Role == role && c.Status == "accepted").ToArray();
-            return new[] { new MorningFact("Accepted " + role + " cards", cards.Select(c => $"#{c.Id} {c.Title}").ToArray(), cards.Length, cards.Length) };
+            return new[] { new MorningFact("Accepted " + role + " cards", cards.Select(c => $"#{c.Id} {c.Title}").ToArray(), cards.Length, cards.Length)
+            { AcceptedCards = cards } };
         }, ct);
 
     private static async Task GatherItAsync(List<MorningFact> facts, DateTimeOffset now, CancellationToken ct)
@@ -360,7 +394,9 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
                 WHERE f.ClearedUtc IS NULL AND d.RetiredUtc IS NULL
                 GROUP BY d.DeviceId, d.Name, f.Severity ORDER BY f.Severity DESC, d.Name;
                 """, now, r => $"{Severity(r.GetByte(1))} / {r.GetString(0)}: {r.GetInt32(2)} open findings: {r.GetString(3)}", ct);
-            return new[] { new MorningFact("Open findings grouped by severity and device (groups)", rows.Lines, rows.Lines.Count, rows.Total) };
+            return new[] { new MorningFact($"Open findings grouped by severity and device (groups); connection variable {rows.ConnectionVariable}", rows.Lines, rows.Lines.Count, rows.Total,
+                SectionScope: "NetworkOps SELECT snapshots; connection variable " + rows.ConnectionVariable)
+            { Situations = rows.Lines.Take(10).ToArray() } };
         }, ct);
         await ReadAsync(facts, "NetworkOps finding changes in the last 24 hours", async () =>
         {
@@ -371,7 +407,7 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
                   AND ((f.FirstSeenUtc >= @since AND f.FirstSeenUtc <= @until) OR (f.ClearedUtc >= @since AND f.ClearedUtc <= @until))
                 ORDER BY f.Severity DESC, d.Name, f.RuleKey, f.FindingId;
                 """, now, r => $"{r.GetString(0)} / {Severity(r.GetByte(2))} / {r.GetString(1)}: {r.GetString(3)}; first seen {r.GetDateTime(4):O} UTC; cleared {(r.IsDBNull(5) ? "no" : r.GetDateTime(5).ToString("O", CultureInfo.InvariantCulture) + " UTC")}", ct, counted: true);
-            return new[] { new MorningFact($"Finding changes [{now.AddHours(-24):O}, {now:O}] (a row may have opened AND cleared)", rows.Lines, rows.Lines.Count, rows.Total) };
+            return new[] { new MorningFact($"Finding changes [{now.AddHours(-24):O}, {now:O}] (a row may have opened AND cleared); connection variable {rows.ConnectionVariable}", rows.Lines, rows.Lines.Count, rows.Total) };
         }, ct);
         await ReadAsync(facts, "NetworkOps actions in the last 24 hours", async () =>
         {
@@ -380,14 +416,19 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
                 FROM NetworkOps.Actions a JOIN NetworkOps.Devices d ON d.DeviceId = a.DeviceId
                 WHERE d.RetiredUtc IS NULL AND a.RequestedUtc >= @since AND a.RequestedUtc <= @until ORDER BY a.ActionId;
                 """, now, r => $"{r.GetString(0)} action #{r.GetInt64(1)} {r.GetString(2)}, requested by {r.GetString(3)} at {r.GetDateTime(4):O} UTC: {r.GetString(5)}; {(r.IsDBNull(6) ? "" : r.GetString(6))}", ct, counted: true);
-            return new[] { new MorningFact($"Actions requested [{now.AddHours(-24):O}, {now:O}]", rows.Lines, rows.Lines.Count, rows.Total) };
+            return new[] { new MorningFact($"Actions requested [{now.AddHours(-24):O}, {now:O}]; connection variable {rows.ConnectionVariable}", rows.Lines, rows.Lines.Count, rows.Total) };
         }, ct);
+        await CardsAsync(facts, "IT", ct);
     }
 
-    private static async Task<(IReadOnlyList<string> Lines, int Total)> NetworkRowsAsync(string sql, DateTimeOffset now,
+    private static async Task<(IReadOnlyList<string> Lines, int Total, string ConnectionVariable)> NetworkRowsAsync(string sql, DateTimeOffset now,
         Func<SqlDataReader, string> format, CancellationToken ct, bool counted = false)
     {
-        await using var con = await OpenAsync(NetworkConnection, ct);
+        var watchConnection = OptionalConnection("KOR_NETWORKOPS_WATCHDB");
+        var connection = watchConnection ?? Connection("KOR_NETWORKOPS_DB");
+        var connectionVariable = watchConnection is not null ? "KOR_NETWORKOPS_WATCHDB" : "KOR_NETWORKOPS_DB";
+        await using var con = new SqlConnection(new SqlConnectionStringBuilder(connection) { ConnectTimeout = 20 }.ConnectionString);
+        await con.OpenAsync(ct);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
         cmd.Parameters.Add("@since", SqlDbType.DateTime2).Value = now.AddHours(-24).UtcDateTime;
         cmd.Parameters.Add("@until", SqlDbType.DateTime2).Value = now.UtcDateTime;
@@ -399,7 +440,7 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             lines.Add(format(reader));
             if (counted) total = reader.GetInt32(reader.FieldCount - 1);
         }
-        return (lines, counted ? total : lines.Count);
+        return (lines, counted ? total : lines.Count, connectionVariable);
     }
 
     private static string Severity(byte value) => value switch { 2 => "Critical", 1 => "Warning", 0 => "Info", _ => "Unknown " + value };

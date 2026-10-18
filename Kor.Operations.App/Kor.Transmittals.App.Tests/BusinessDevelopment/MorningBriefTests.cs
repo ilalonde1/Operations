@@ -110,18 +110,24 @@ public sealed class MorningBriefTests
         Assert.Equal(20, DirectorHourFile.TotalMinutes(content));
     }
 
+    /// <summary>Checks accepted-role citations including IT and COO mapping; not live cards, imports or match quality.</summary>
     [Fact]
-    public void Card_gate_enforces_each_sections_role_status_and_no_IT_doctrine()
+    public void Card_gate_enforces_each_sections_role_and_status_including_IT()
     {
         var cards = new[] { Card(5, "BD"), Card(101, "Operations"), Card(9, "IT"), Card(6, "BD", "proposed"), Card(7, "BD", "retired"), Card(8, "Operations", "rejected") };
         var hour = FixtureHour();
         Assert.Empty(DirectorHourFile.ValidateCards(hour, cards));
+        var withIt = hour with { Sections = hour.Sections!.Select(s => s.Role == "IT"
+            ? s with { Moves = s.Moves.Select(m => m with { Cards = new long[] { 9 } }).ToArray() } : s).ToArray() };
+        Assert.Empty(DirectorHourFile.ValidateCards(withIt, cards));
         var sections = hour.Sections!.Select(s => s with { Moves = s.Moves.Select(m => m with { Cards = new long[] { 5, 101, 9, 6, 7, 8, 999 } }).ToArray() }).ToArray();
         var errors = DirectorHourFile.ValidateCards(hour with { Sections = sections }, cards);
-        Assert.Equal(19, errors.Count); // two valid citations, and seven refused in IT
+        Assert.Equal(18, errors.Count); // one valid citation in each role; six refused in each
         Assert.Contains(errors, e => e.Contains("section BD, move 1: card 101", StringComparison.Ordinal));
         Assert.Contains(errors, e => e.Contains("section COO, move 2: card 5", StringComparison.Ordinal));
-        Assert.Contains(errors, e => e.Contains("section IT, move 3: card 9", StringComparison.Ordinal));
+        Assert.Contains(errors, e => e.Contains("section IT, move 3: card 5", StringComparison.Ordinal));
+        // "card 9 " with the space: "card 999" is a legitimate refusal and must not match.
+        Assert.DoesNotContain(errors, e => e.Contains("section IT, move 3: card 9 ", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -201,7 +207,7 @@ public sealed class MorningBriefTests
 
     /// <summary>
     /// Guards the engine-only call path and project-reference direction by source text.
-    /// Does not validate a build, live snapshot scope, constructor/configuration needs, or engine numbers.
+    /// Does not validate a build, transitive runtime dependencies, live snapshot scope, configuration, engine numbers or match quality.
     /// </summary>
     [Fact]
     public void Coo_source_uses_the_executive_engine_and_references_the_App()
@@ -219,6 +225,15 @@ public sealed class MorningBriefTests
         Assert.Contains("<Using Include=\"System.IO\"", project, StringComparison.Ordinal);
         Assert.Contains("Kor.Operations.App\\Kor.Operations.App.csproj", project, StringComparison.Ordinal);
         Assert.DoesNotContain("MorningBrief", Source("Kor.Operations.App/Kor.Operations.App.csproj"), StringComparison.Ordinal);
+        Assert.Contains("Kor.Opportunities.Knowledge\\Kor.Opportunities.Knowledge.csproj", project, StringComparison.Ordinal);
+        foreach (var appProject in Directory.EnumerateFiles(Path.Combine(Root(), "Kor.Operations.App"), "*.csproj", SearchOption.AllDirectories)
+            .Where(path => !path.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                && !path.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
+        {
+            var references = System.Xml.Linq.XDocument.Load(appProject).Descendants()
+                .Where(element => element.Name.LocalName == "ProjectReference").Select(element => (string?)element.Attribute("Include") ?? "");
+            Assert.DoesNotContain(references, reference => reference.Contains("Kor.Opportunities.Knowledge", StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     /// <summary>
@@ -475,8 +490,9 @@ public sealed class MorningBriefTests
 
         var facts = MorningFacts.EmployeeWeekFacts(rows, new DateTime(2026, 10, 11));
 
-        Assert.Contains("partial: week 2026-10-04, 19 of 24 people", facts[0].Lines);
-        Assert.Contains("partial: week 2026-10-11, 11 of 24 people", facts[0].Lines);
+        Assert.Contains(facts[0].Lines, line => line.Contains("partial: week 2026-10-04, 19 of 24 people", StringComparison.Ordinal));
+        Assert.Contains(facts[0].Lines, line => line.Contains("partial: week 2026-10-11, 11 of 24 people", StringComparison.Ordinal));
+        Assert.Contains(Assert.Single(facts[0].Situations), facts[0].Lines);
         Assert.Equal(2, facts[0].Shown);
         Assert.Equal(7, facts[0].Total);
         var outliers = facts[1];
@@ -514,7 +530,7 @@ public sealed class MorningBriefTests
         Assert.Contains("last touch/opened floor 2026-08-27", stale.Lines[0], StringComparison.Ordinal);
         var action = new BdActionRow(1, "ian", "Ian", "Call buyer", null, 20, Now.AddDays(-1), "Open",
             null, null, null, null, null, null, null, null, null, null);
-        var actions = Assert.Single(MorningFacts.ActionFacts(new[] { action, action with { Id = 2, Status = "Closed" } }, Now));
+        var actions = MorningFacts.ActionFacts(new[] { action, action with { Id = 2, Status = "Closed" } }, Now)[0];
         Assert.Equal(1, actions.Shown);
         Assert.Contains("(due 2026-10-15)", Assert.Single(actions.Lines), StringComparison.Ordinal);
         Assert.DoesNotMatch(@"\d{4}-\d{2}-\d{2}T", actions.Lines[0]);
