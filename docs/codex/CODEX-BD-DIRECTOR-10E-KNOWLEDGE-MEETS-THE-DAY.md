@@ -83,6 +83,25 @@ Systems Director can have doctrine the same way the other two roles do.
    - `BdRhythmStore.HourKinds` and `CK_DirectorHour_Kind` are hour kinds, not doctrine roles. Leave them.
 3. Change no card text and no existing card.
 
+## Part 3: the IT read on APP01
+
+**Measured 17 Oct.**
+- **The watch login:** `networkops_watch`, the login in `KOR_NETWORKOPS_WATCHDB` on FS01, can SELECT exactly 1
+  object, `NetworkOps.ServiceHeartbeat`. That is by design: `db/KorNetworkOps/003_WatchdogLogin.sql` keeps the
+  credential on FS01 "worth as little as possible".
+- **APP01:** it has no `KOR_NETWORKOPS_WATCHDB`. It does have `KOR_NETWORKOPS_DB`, the service's own login on the same
+  server as the database.
+
+So the composer's IT reads (Findings, Devices, Actions) fail on APP01. Do not widen the watch login.
+
+**Fix** (`tools/MorningBrief/MorningFacts.cs`): the NetworkOps connection becomes
+`OptionalConnection("KOR_NETWORKOPS_WATCHDB") ?? Connection("KOR_NETWORKOPS_DB")`.
+- Keep the composer's SQL strictly SELECT, as it is now.
+- Its coverage line names which variable was used. Print the variable's name only, never its value.
+
+**Gate.** As source text: the IT connection resolves WATCHDB first, then DB. No `INSERT`, `UPDATE`, `DELETE`, `MERGE`
+or `EXEC` appears in any `NetworkRowsAsync` SQL.
+
 ## Gates (authored, not run)
 
 1. **Pure formatter.** Synthetic situations, cards, claims and relations give:
