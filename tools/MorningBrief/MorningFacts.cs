@@ -146,13 +146,21 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         {
             var financials = new FinancialsService(odbc, financialsOptions);
             var snap = await financials.GetSnapshotAsync(forceRefresh: true, ct, watchlistOnly: false);
+            var trendConnection = OptionalConnection("KOR_FILESYNC_KORTRANSMITTALSDB");
+            var trendNote = trendConnection is null
+                ? "Portfolio trend not read: KOR_FILESYNC_KORTRANSMITTALSDB unset."
+                : null;
             var exec = new ExecutiveSummaryService(financials,
-                new SqlFinancialPortfolioSnapshotStore("unused: trend supplied by caller"),
+                new SqlFinancialPortfolioSnapshotStore(trendConnection ?? "unused: trend supplied by caller"),
                 new ExecutiveSummaryDeltekLoader(odbc, financialsOptions));
-            var result = await exec.GetExecutiveSummaryAsync(forceRefresh: true, existingSnapshot: snap,
-                existingTrend: Array.Empty<PortfolioTrendPoint>(),
-                existingUtilRows: snap.Rows.Select(UtilizationRow.FromProject).ToArray(), ct: ct);
-            return ExecutiveFacts(result, snap.Rows.Count);
+            var result = trendConnection is not null
+                ? await exec.GetExecutiveSummaryAsync(forceRefresh: true, existingSnapshot: snap,
+                    existingTrend: null,
+                    existingUtilRows: snap.Rows.Select(UtilizationRow.FromProject).ToArray(), ct: ct)
+                : await exec.GetExecutiveSummaryAsync(forceRefresh: true, existingSnapshot: snap,
+                    existingTrend: Array.Empty<PortfolioTrendPoint>(),
+                    existingUtilRows: snap.Rows.Select(UtilizationRow.FromProject).ToArray(), ct: ct);
+            return ExecutiveFacts(result, snap.Rows.Count, trendNote);
         }, ct);
         // Weekly completeness only selects the employee outlier week; the engine's
         // Utilization KPI above is printed unchanged.
@@ -165,20 +173,25 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         await CardsAsync(facts, "Operations", ct);
     }
 
-    public static IReadOnlyList<MorningFact> ExecutiveFacts(ExecutiveSummaryResult r, int activeProjects)
+    public static IReadOnlyList<MorningFact> ExecutiveFacts(ExecutiveSummaryResult r, int activeProjects, string? trendNote = null)
     {
         var gaps = new List<string>();
         if (!r.SnapshotLoaded) gaps.Add("Active-project snapshot unavailable.");
         if (!r.DeltekLoaded) gaps.Add("Deltek supplement unavailable.");
+        if (!r.TrendLoaded) gaps.Add(trendNote ?? "Portfolio trend unavailable.");
         gaps.AddRange((r.LoaderFailureMessages ?? Array.Empty<string>()).Select(message => "Loader: " + message));
         gaps.AddRange((r.SchemaDriftMessages ?? Array.Empty<string>()).Select(message => "Schema drift: " + message));
         var facts = new List<MorningFact>
         {
             new("Executive Summary coverage",
-                new[] { $"SnapshotLoaded: {r.SnapshotLoaded}; DeltekLoaded: {r.DeltekLoaded}." }.Concat(gaps).ToArray(),
-                (r.SnapshotLoaded ? 1 : 0) + (r.DeltekLoaded ? 1 : 0), 2,
+                new[]
+                {
+                    $"SnapshotLoaded: {r.SnapshotLoaded}; DeltekLoaded: {r.DeltekLoaded}; TrendLoaded: {r.TrendLoaded}.",
+                    $"MaxPostedPeriod: {r.MaxPostedPeriod?.ToString("yyyy-MM", CultureInfo.InvariantCulture) ?? "unknown"}.",
+                }.Concat(gaps).ToArray(),
+                (r.SnapshotLoaded ? 1 : 0) + (r.DeltekLoaded ? 1 : 0) + (r.TrendLoaded ? 1 : 0), 3,
                 gaps.Count == 0 ? null : string.Join("; ", gaps),
-                SectionScope: $"all active projects ({activeProjects})"),
+                SectionScope: $"Executive Summary engine; project-scoped figures cover all active projects ({activeProjects})"),
         };
         foreach (var kpi in r.Kpis)
         {
@@ -186,17 +199,34 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             var lines = new[] { kpi.ValueText, kpi.InlineSubText, kpi.StatusMessage }
                 .Where(text => !string.IsNullOrWhiteSpace(text))
                 .Concat(rows.Take(10).Select(ExecutiveRow)).ToArray();
-            facts.Add(new MorningFact(kpi.Title, lines, Math.Min(10, rows.Count), rows.Count,
+            facts.Add(new MorningFact($"{kpi.Title} · {ScopeLabel(kpi.Scope, activeProjects)}", lines, Math.Min(10, rows.Count), rows.Count,
                 kpi.ValueText == "Data unavailable" ? kpi.StatusMessage : null));
+        }
+        foreach (var trend in r.Trends)
+        {
+            var rows = TrendRows(trend);
+            var lines = new[] { trend.ValueText, trend.StatusMessage }.Where(text => !string.IsNullOrWhiteSpace(text)).ToList();
+            if (trend.Values is { } values)
+                lines.Add($"Series, {values.Length} periods, oldest first (period labels are not carried by the engine): {string.Join("; ", values.Select(Money))}");
+            lines.AddRange(rows.Take(10).Select(ExecutiveRow));
+            facts.Add(new MorningFact($"{trend.Title} · {ScopeLabel(trend.Scope, activeProjects)}", lines, Math.Min(10, rows.Count), rows.Count,
+                trend.ValueText == "Data unavailable" ? trend.StatusMessage : null));
         }
         foreach (var alert in r.Alerts)
         {
             var rows = AlertRows(alert);
-            facts.Add(new MorningFact(alert.Title, new[] { alert.Message }
+            facts.Add(new MorningFact($"{alert.Title} · {ScopeLabel(ScopeKind.None, activeProjects)}", new[] { alert.Message }
                 .Concat(rows.Take(10).Select(ExecutiveRow)).ToArray(), Math.Min(10, rows.Count), rows.Count));
         }
         return facts;
     }
+
+    private static string ScopeLabel(ScopeKind scope, int activeProjects) => scope switch
+    {
+        ScopeKind.Firmwide => "firmwide",
+        ScopeKind.Scoped => $"all active projects ({activeProjects})",
+        _ => "scope not stated by the engine",
+    };
 
     // AR and cash KPIs can carry two lists. Prefer invoice detail and cash accounts;
     // otherwise use the supplied list, including an explicitly empty list.
@@ -213,6 +243,13 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         { BudgetBurnRows: { } rows } => rows,
         { DeliveryRiskRows: { } rows } => rows,
         { UtilizationRows: { } rows } => rows,
+        _ => Array.Empty<object>(),
+    };
+
+    private static IReadOnlyList<object> TrendRows(ExecutiveTrend trend) => trend switch
+    {
+        { TrendPayerRows: { } rows } => rows,
+        { DeliveryRiskRows: { } rows } => rows,
         _ => Array.Empty<object>(),
     };
 
@@ -248,6 +285,8 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             + $"engineering used {P(p.PercentEngUsed)}; remaining {N(p.RemainingHours)} hours.",
         KpiUtilizationRow p => $"{p.Wbs1} {p.ProjectName}, PM {p.Pm}: {N(p.BillableHours)} billable / {N(p.TotalHours)} recorded hours; "
             + $"nonbillable {N(p.NonBillableHours)} hours; utilization {P(p.UtilizationPct)}.",
+        TrendPayerRow p => $"{p.Wbs1} {p.ProjectName}, PM {p.Pm}, payer {p.PayerName}: amount {Money(p.Amount)}; "
+            + $"earned {Money(p.RevenueAmount)}; invoiced {Money(p.BilledAmount)}; AR {Money(p.ArOutstandingAmount)}.",
         _ => throw new ArgumentException("Unsupported Executive Summary drilldown row.", nameof(row)),
     };
 
@@ -365,8 +404,10 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
 
     private static string Severity(byte value) => value switch { 2 => "Critical", 1 => "Warning", 0 => "Info", _ => "Unknown " + value };
     private static string N(double value) => value.ToString("N2", CultureInfo.InvariantCulture);
-    private static string Connection(string name) => Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine)
-        ?? Environment.GetEnvironmentVariable(name) ?? throw new InvalidOperationException("Source environment variable is unset.");
+    private static string? OptionalConnection(string name) => Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine)
+        ?? Environment.GetEnvironmentVariable(name);
+    private static string Connection(string name) => OptionalConnection(name)
+        ?? throw new InvalidOperationException("Source environment variable is unset.");
 
     private static async Task<SqlConnection> OpenAsync(string name, CancellationToken ct)
     {

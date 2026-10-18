@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Kor.Operations.App.Tests.BusinessDevelopment;
 
-/// <summary>Offline gates for 10b/10c. Authored only; no database, session or mail is invoked.</summary>
+/// <summary>Offline gates for 10b/10c/10d. Authored only; no database, session or mail is invoked.</summary>
 public sealed class MorningBriefTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 16, 15, 0, 0, TimeSpan.Zero);
@@ -211,7 +211,7 @@ public sealed class MorningBriefTests
             Assert.DoesNotContain(forbidden, source, StringComparison.Ordinal);
         foreach (var required in new[] { "new FinancialsService", "new ExecutiveSummaryService", "watchlistOnly: false",
             "existingSnapshot: snap", "existingTrend: Array.Empty<PortfolioTrendPoint>()",
-            "existingUtilRows: snap.Rows.Select(UtilizationRow.FromProject).ToArray()", "ExecutiveFacts(result, snap.Rows.Count)" })
+            "existingUtilRows: snap.Rows.Select(UtilizationRow.FromProject).ToArray()", "ExecutiveFacts(result, snap.Rows.Count, trendNote)" })
             Assert.Contains(required, source, StringComparison.Ordinal);
         var project = Source("tools/MorningBrief/MorningBrief.csproj");
         Assert.Contains("<TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>", project, StringComparison.Ordinal);
@@ -267,8 +267,9 @@ public sealed class MorningBriefTests
 
         var facts = MorningFacts.ExecutiveFacts(result, 123);
 
-        Assert.Equal(kpis.Select(kpi => kpi.Title), facts.Skip(1).Take(kpis.Count).Select(fact => fact.Name));
-        Assert.Equal(alerts.Select(alert => alert.Title), facts.Skip(1 + kpis.Count).Select(fact => fact.Name));
+        const string scopeSuffix = " · scope not stated by the engine";
+        Assert.Equal(kpis.Select(kpi => kpi.Title + scopeSuffix), facts.Skip(1).Take(kpis.Count).Select(fact => fact.Name));
+        Assert.Equal(alerts.Select(alert => alert.Title + scopeSuffix), facts.Skip(1 + kpis.Count).Select(fact => fact.Name));
         for (var i = 0; i < kpis.Count; i++)
         {
             var fact = facts[i + 1];
@@ -280,23 +281,23 @@ public sealed class MorningBriefTests
             Assert.Contains(alerts[i].Message, facts[1 + kpis.Count + i].Lines);
         foreach (var title in new[] { "Invoices", "Invoice alert" })
         {
-            var fact = Assert.Single(facts, f => f.Name == title);
+            var fact = Assert.Single(facts, f => f.Name == title + scopeSuffix);
             Assert.Equal(10, fact.Shown);
             Assert.Equal(12, fact.Total);
             var shown = fact.Lines.TakeLast(10).ToArray();
             for (var i = 0; i < shown.Length; i++)
                 Assert.Contains($"invoice {invoices[i].Invoice},", shown[i], StringComparison.Ordinal);
         }
-        Assert.Contains("CAD, account 1110, org CAD: CAD 1,000.", Assert.Single(facts, f => f.Name == "Cash accounts").Lines);
-        Assert.Equal("Fixture reason", Assert.Single(facts, f => f.Name == "Missing KPI").CouldNotRead);
-        Assert.Contains("SnapshotLoaded: False; DeltekLoaded: False.", facts[0].Lines);
+        Assert.Contains("CAD, account 1110, org CAD: CAD 1,000.", Assert.Single(facts, f => f.Name == "Cash accounts" + scopeSuffix).Lines);
+        Assert.Equal("Fixture reason", Assert.Single(facts, f => f.Name == "Missing KPI" + scopeSuffix).CouldNotRead);
+        Assert.Contains("SnapshotLoaded: False; DeltekLoaded: False; TrendLoaded: True.", facts[0].Lines);
         Assert.Contains("Loader: Fixture loader failure", facts[0].Lines);
         Assert.Contains("Schema drift: Fixture schema drift", facts[0].Lines);
         var prompt = MorningPromptComposer.Compose(new MorningFacts(Now, Array.Empty<MorningFact>(), facts, Array.Empty<MorningFact>()), Day);
-        Assert.Contains("## COO — all active projects (123)", prompt, StringComparison.Ordinal);
-        Assert.Contains("### Invoices · 10 of 12", prompt, StringComparison.Ordinal);
-        Assert.Contains("### Invoice alert · 10 of 12", prompt, StringComparison.Ordinal);
-        Assert.DoesNotContain("partial", string.Join(" ", Assert.Single(facts, f => f.Name == "Utilization").Lines), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("## COO — Executive Summary engine; project-scoped figures cover all active projects (123)", prompt, StringComparison.Ordinal);
+        Assert.Contains("### Invoices" + scopeSuffix + " · 10 of 12", prompt, StringComparison.Ordinal);
+        Assert.Contains("### Invoice alert" + scopeSuffix + " · 10 of 12", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("partial", string.Join(" ", Assert.Single(facts, f => f.Name == "Utilization" + scopeSuffix).Lines), StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -312,7 +313,7 @@ public sealed class MorningBriefTests
             new List<ExecutiveKpi> { new("AR", "3,000", "", "", ArInvoiceRows: rows) },
             new List<ExecutiveTrend>(), new List<ExecutiveAlert>());
 
-        var fact = Assert.Single(MorningFacts.ExecutiveFacts(result, 2), f => f.Name == "AR");
+        var fact = Assert.Single(MorningFacts.ExecutiveFacts(result, 2), f => f.Name == "AR · scope not stated by the engine");
 
         Assert.Equal(2, fact.Shown);
         Assert.Equal(2, fact.Total);
@@ -325,6 +326,127 @@ public sealed class MorningBriefTests
             Assert.DoesNotContain("due", line, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotMatch(@"\d{4}-\d{2}-\d{2}T", line);
         }
+    }
+
+    /// <summary>
+    /// Proves scope labels come from the field even when familiar titles suggest the opposite scope.
+    /// Does not read a database or validate engine scopes, store connections, trend-table contents, or screen sparklines.
+    /// </summary>
+    [Fact]
+    public void Executive_scope_labels_follow_fields_and_the_header_describes_mixed_scopes()
+    {
+        var result = new ExecutiveSummaryResult(Now, new List<ExecutiveKpi>
+        {
+            new("AR Outstanding", "1,000", "", "", Scope: ScopeKind.Scoped),
+            new("Backlog", "2,000", "", "", Scope: ScopeKind.Firmwide),
+            new("Utilization", "75%", "", "", Scope: ScopeKind.None),
+        }, new List<ExecutiveTrend>(), new List<ExecutiveAlert> { new("AR alert", "Engine message") });
+
+        var facts = MorningFacts.ExecutiveFacts(result, 812);
+
+        Assert.Equal(new[]
+        {
+            "Executive Summary coverage",
+            "AR Outstanding · all active projects (812)",
+            "Backlog · firmwide",
+            "Utilization · scope not stated by the engine",
+            "AR alert · scope not stated by the engine",
+        }, facts.Select(fact => fact.Name));
+        const string header = "Executive Summary engine; project-scoped figures cover all active projects (812)";
+        Assert.Equal(header, facts[0].SectionScope);
+        var prompt = MorningPromptComposer.Compose(new MorningFacts(Now, Array.Empty<MorningFact>(), facts, Array.Empty<MorningFact>()), Day);
+        Assert.Contains("## COO — " + header + Environment.NewLine, prompt, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Covers supplied series/row order, top-ten counts, group order, scopes and trend coverage reasons.
+    /// Does not read a database, validate the store connection/table, or compare series values with the screen's sparkline.
+    /// </summary>
+    [Fact]
+    public void Executive_trends_print_series_drilldowns_and_unavailable_coverage_in_engine_order()
+    {
+        var payers = new[] { 4, 1, 11, 2, 12, 3, 10, 5, 9, 6, 8, 7 }.Select(i =>
+            new TrendPayerRow("P" + i, "Project", "PM", "Payer " + i, i * 1000.0, i * 2000.0, i * 3000.0, i * 4000.0)).ToArray();
+        var risk = new[]
+        {
+            new KpiDeliveryRiskRow("R2", "Second project", "PM", "Critical", "Over budget", 1.2, -20),
+            new KpiDeliveryRiskRow("R1", "First project", "PM", "At risk", "Watch", .8, 20),
+        };
+        var trends = new List<ExecutiveTrend>
+        {
+            new("Revenue", "3,000 / 9,000", "Engine revenue status", new[] { 3000.4, -1500.4, 12.4 },
+                TrendPayerRows: payers, DeliveryRiskRows: risk, Scope: ScopeKind.Firmwide),
+            new("Delivery Risk", "2 projects", "", new[] { 3.0, 1.0, 2.0 }, DeliveryRiskRows: risk, Scope: ScopeKind.Scoped),
+            ExecutiveTrend.DataUnavailable("Missing trend", "Fixture trend unavailable"),
+        };
+        var result = new ExecutiveSummaryResult(Now,
+            new List<ExecutiveKpi> { new("Cash", "1,000", "", "", Scope: ScopeKind.Firmwide) },
+            trends, new List<ExecutiveAlert> { new("Alert", "Engine alert") },
+            MaxPostedPeriod: new DateTime(2026, 8, 31), TrendLoaded: false);
+        const string note = "Portfolio trend not read: KOR_FILESYNC_KORTRANSMITTALSDB unset.";
+
+        var facts = MorningFacts.ExecutiveFacts(result, 23, note);
+
+        Assert.Equal(new[]
+        {
+            "Executive Summary coverage", "Cash · firmwide", "Revenue · firmwide",
+            "Delivery Risk · all active projects (23)", "Missing trend · scope not stated by the engine",
+            "Alert · scope not stated by the engine",
+        }, facts.Select(fact => fact.Name));
+        Assert.Contains("SnapshotLoaded: True; DeltekLoaded: True; TrendLoaded: False.", facts[0].Lines);
+        Assert.Contains("MaxPostedPeriod: 2026-08.", facts[0].Lines);
+        Assert.Contains(note, facts[0].Lines);
+        Assert.Equal(note, facts[0].CouldNotRead);
+        Assert.Equal(2, facts[0].Shown);
+        Assert.Equal(3, facts[0].Total);
+        var revenue = facts[2];
+        Assert.Equal(10, revenue.Shown);
+        Assert.Equal(12, revenue.Total);
+        Assert.Equal("3,000 / 9,000", revenue.Lines[0]);
+        Assert.Equal("Engine revenue status", revenue.Lines[1]);
+        Assert.Equal("Series, 3 periods, oldest first (period labels are not carried by the engine): 3,000; -1,500; 12", revenue.Lines[2]);
+        Assert.Equal("P4 Project, PM PM, payer Payer 4: amount 4,000; earned 8,000; invoiced 12,000; AR 16,000.", revenue.Lines[3]);
+        for (var i = 0; i < 10; i++)
+            Assert.StartsWith(payers[i].Wbs1 + " ", revenue.Lines[3 + i], StringComparison.Ordinal);
+        var delivery = facts[3];
+        Assert.Equal(2, delivery.Shown);
+        Assert.Equal(2, delivery.Total);
+        Assert.Equal("Series, 3 periods, oldest first (period labels are not carried by the engine): 3; 1; 2", delivery.Lines[1]);
+        Assert.StartsWith("R2 Second project", delivery.Lines[2], StringComparison.Ordinal);
+        Assert.StartsWith("R1 First project", delivery.Lines[3], StringComparison.Ordinal);
+        Assert.DoesNotContain(delivery.Lines, string.IsNullOrWhiteSpace);
+        Assert.Equal("Fixture trend unavailable", facts[4].CouldNotRead);
+        Assert.Equal(new[] { "Data unavailable", "Fixture trend unavailable" }, facts[4].Lines);
+        var prompt = MorningPromptComposer.Compose(new MorningFacts(Now, Array.Empty<MorningFact>(), facts, Array.Empty<MorningFact>()), Day);
+        Assert.Contains("### Revenue · firmwide · 10 of 12", prompt, StringComparison.Ordinal);
+        var fallback = MorningFacts.ExecutiveFacts(result with { MaxPostedPeriod = null }, 23)[0];
+        Assert.Equal("Portfolio trend unavailable.", fallback.CouldNotRead);
+        Assert.Contains("MaxPostedPeriod: unknown.", fallback.Lines);
+    }
+
+    /// <summary>
+    /// Checks configured-store and missing-variable wiring by source text without reading environment values.
+    /// Does not validate the actual connection, an empty trend table, database execution, or screen sparkline parity.
+    /// </summary>
+    [Fact]
+    public void Coo_trend_store_uses_optional_connection_with_an_empty_fallback()
+    {
+        var source = Source("tools/MorningBrief/MorningFacts.cs");
+        var start = source.IndexOf("private static async Task GatherCooAsync", StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        var end = source.IndexOf("public static IReadOnlyList<MorningFact> ExecutiveFacts", start, StringComparison.Ordinal);
+        Assert.True(end > start);
+        var gather = source[start..end];
+
+        Assert.Contains("OptionalConnection(\"KOR_FILESYNC_KORTRANSMITTALSDB\")", gather, StringComparison.Ordinal);
+        Assert.Contains("new SqlFinancialPortfolioSnapshotStore(trendConnection ?? \"unused: trend supplied by caller\")", gather, StringComparison.Ordinal);
+        Assert.Contains("trendConnection is not null", gather, StringComparison.Ordinal);
+        Assert.Contains("existingTrend: null", gather, StringComparison.Ordinal);
+        Assert.Contains("existingTrend: Array.Empty<PortfolioTrendPoint>()", gather, StringComparison.Ordinal);
+        Assert.Contains("Portfolio trend not read: KOR_FILESYNC_KORTRANSMITTALSDB unset.", gather, StringComparison.Ordinal);
+        Assert.DoesNotMatch(@"\bConnection\s*\(\s*""KOR_FILESYNC_KORTRANSMITTALSDB""", gather);
+        Assert.Contains("OptionalConnection(string name) => Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine)" +
+            "\n        ?? Environment.GetEnvironmentVariable(name);", source.Replace("\r\n", "\n"), StringComparison.Ordinal);
     }
 
     /// <summary>
