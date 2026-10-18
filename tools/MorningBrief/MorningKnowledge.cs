@@ -44,7 +44,9 @@ public static class MorningKnowledge
         IReadOnlyCollection<string>? situations = null)
     {
         var context = new DoctrineContext("hour", situations ?? Array.Empty<string>());
-        return cards.Select(c => new
+        // A card written for another moment (synthesis, one-to-one) never reaches the hour: live 19 Oct, #524 (staff wages,
+        // moment:synthesis) topped every unpaid-client-invoice row on cosine alone.
+        return cards.Where(c => BdDoctrine.AppliesTo(c.AppliesTo, context)).Select(c => new
             {
                 Match = new MorningCardMatch(c.Id, KnowledgeSearch.Cosine(situation, c.Vector)),
                 // Only a situation term is specific. "any" and "moment:hour" hold for every morning situation, so letting them

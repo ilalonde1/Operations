@@ -128,7 +128,8 @@ public sealed class MorningKnowledgeTests
         });
         Assert.Contains("cards #2 (0.50), #4 (0.40), #1 (0.70)", Assert.Single(formatted.Lines), StringComparison.Ordinal);
         var ar = MorningKnowledge.RankCards(Vector(1, 0), embedded, Array.Empty<string>());
-        Assert.Equal(new long[] { 1, 3, 2 }, ar.Select(c => c.Id));
+        // Card 2 applies only to situation:going-cold, so it never reaches an AR row; card 4 also carries "any".
+        Assert.Equal(new long[] { 1, 3, 4 }, ar.Select(c => c.Id));
         var hour = MorningKnowledge.RankCards(Vector(1, 0), new[]
         {
             embedded[0], embedded[1] with { AppliesTo = "moment:hour" },
@@ -140,6 +141,12 @@ public sealed class MorningKnowledgeTests
             embedded[0], embedded[1] with { AppliesTo = "moment:hour" }, embedded[3] with { AppliesTo = "moment:hour, situation:going-cold" },
         }, new[] { "going-cold" });
         Assert.Equal(new long[] { 4, 1, 2 }, hourCold.Select(c => c.Id));
+        // A card for another moment never reaches the hour, however close its text.
+        var otherMoment = MorningKnowledge.RankCards(Vector(1, 0), new[]
+        {
+            embedded[0] with { AppliesTo = "moment:synthesis" }, embedded[1] with { AppliesTo = "moment:one-to-one" }, embedded[2],
+        }, Array.Empty<string>());
+        Assert.Equal(new long[] { 3 }, otherMoment.Select(c => c.Id));
     }
 
     /// <summary>Checks six-candidate backfill, three-per-situation/role caps, printed failures and query-only embedding;
