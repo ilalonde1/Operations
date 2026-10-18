@@ -217,7 +217,7 @@ public sealed class MorningBriefTests
             Assert.DoesNotContain(forbidden, source, StringComparison.Ordinal);
         foreach (var required in new[] { "new FinancialsService", "new ExecutiveSummaryService", "watchlistOnly: false",
             "existingSnapshot: snap", "existingTrend: Array.Empty<PortfolioTrendPoint>()",
-            "existingUtilRows: snap.Rows.Select(UtilizationRow.FromProject).ToArray()", "ExecutiveFacts(result, snap.Rows.Count, trendNote)" })
+            "var utilRows = snap.Rows.Select(UtilizationRow.FromProject).ToArray()", "existingUtilRows: utilRows", "ExecutiveFacts(result, snap.Rows.Count, trendNote)" })
             Assert.Contains(required, source, StringComparison.Ordinal);
         var project = Source("tools/MorningBrief/MorningBrief.csproj");
         Assert.Contains("<TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>", project, StringComparison.Ordinal);

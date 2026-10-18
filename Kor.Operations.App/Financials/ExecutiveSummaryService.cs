@@ -56,7 +56,8 @@ namespace Kor.Operations.Financials
             FinancialsSnapshot? existingSnapshot,
             PortfolioTrendPoint[]? existingTrend,
             UtilizationRow[]? existingUtilRows,
-            CancellationToken ct)
+            CancellationToken ct,
+            string trendScope = PortfolioSnapshotScope.Watchlist)
         {
             lock (_cacheLock)
             {
@@ -96,7 +97,8 @@ namespace Kor.Operations.Financials
                     {
                         // Best-effort: if the portfolio store is unavailable, we still render everything else.
                         var start = DateTime.Now.Date.AddDays(-7 * 12);
-                        var rows = await _portfolioStore.LoadSnapshotsAsync(start, ct).ConfigureAwait(false);
+                        // Only the caller's own scope: a watchlist series never stands in for all active projects.
+                        var rows = await _portfolioStore.LoadSnapshotsAsync(start, trendScope, ct).ConfigureAwait(false);
                         trend = rows
                             .Select(r => new PortfolioTrendPoint(r.SnapshotDate, r.HealthyCount, r.WatchCount, r.CriticalCount, r.TotalProjects))
                             .ToArray();

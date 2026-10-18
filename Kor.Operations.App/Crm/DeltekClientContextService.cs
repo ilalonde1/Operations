@@ -304,7 +304,7 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
     {
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = 30;
-        cmd.CommandText = $@"SELECT MAX(Period) FROM [{catalog}].dbo.PRSummaryMain;";
+        cmd.CommandText = global::Kor.Operations.Financials.PrSummaryPeriod.MaxPostedPeriodSql(catalog);
         using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         var value = cmd.ExecuteScalar();
         if (value is null || value == DBNull.Value)

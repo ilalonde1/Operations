@@ -126,7 +126,7 @@ namespace Kor.Operations.Financials
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
-                cmd.CommandText = $"SELECT MAX(Period) FROM [{_catalog}].dbo.PRSummaryMain;";
+                cmd.CommandText = PrSummaryPeriod.MaxPostedPeriodSql(_catalog);
                 using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
                 var v = cmd.ExecuteScalar();
                 if (v == null || v == DBNull.Value) return null;

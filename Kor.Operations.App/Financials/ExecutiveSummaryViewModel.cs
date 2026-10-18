@@ -146,7 +146,8 @@ namespace Kor.Operations.Financials
             FinancialsSnapshot? existingSnapshot,
             PortfolioTrendPoint[]? existingTrend,
             UtilizationRow[]? existingUtilRows,
-            CancellationToken ct)
+            CancellationToken ct,
+            string trendScope = Kor.Operations.Data.PortfolioSnapshotScope.Watchlist)
         {
             if (_isLoading) return;
             _isLoading = true;
@@ -155,7 +156,7 @@ namespace Kor.Operations.Financials
 
             try
             {
-                var result = await _svc.GetExecutiveSummaryAsync(forceRefresh, existingSnapshot, existingTrend, existingUtilRows, ct)
+                var result = await _svc.GetExecutiveSummaryAsync(forceRefresh, existingSnapshot, existingTrend, existingUtilRows, ct, trendScope)
                     .ConfigureAwait(true);
 
                 Apply(result);

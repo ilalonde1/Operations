@@ -383,6 +383,7 @@ namespace Kor.Operations.Financials
         }
         public bool IsWatchlistOnly => _showWatchlistOnly;
         public bool IsAllActive => !_showWatchlistOnly;
+        public string TrendScope => _showWatchlistOnly ? PortfolioSnapshotScope.Watchlist : PortfolioSnapshotScope.AllActive;
         public string WatchlistCountDisplay => _watchlistCount > 0 ? $"({_watchlistCount:N0})" : "";
         public string AllActiveCountDisplay => _allActiveCount > 0 ? $"({_allActiveCount:N0})" : "";
 
@@ -676,7 +677,8 @@ namespace Kor.Operations.Financials
                     existingSnapshot: snap,
                     existingTrend: PortfolioTrend.ToArray(),
                     existingUtilRows: UtilizationRows.ToArray(),
-                    ct);
+                    ct,
+                    TrendScope);
 
                 _ = PartnerFinancials.RefreshAsync(ct);
 
@@ -703,7 +705,8 @@ namespace Kor.Operations.Financials
                         existingSnapshot: null,
                         existingTrend: PortfolioTrend.ToArray(),
                         existingUtilRows: UtilizationRows.ToArray(),
-                        ct);
+                        ct,
+                        TrendScope);
                 }
                 catch (Exception fallbackEx)
                 {
@@ -824,18 +827,13 @@ namespace Kor.Operations.Financials
             {
                 await _portfolioStore.EnsureSchemaAsync(ct);
 
-                var total = UtilizationRows.Count;
-                var critical = PortfolioCriticalCount;
-
-                // Trend buckets are 3-wide. Match the on-screen 4-bucket portfolio health:
-                // Healthy = High Confidence + Watch, Watch = At Risk, Critical = Critical.
-                var healthy = PortfolioHighConfidenceCount + PortfolioWatchCount;
-                var watch = PortfolioAtRiskCount;
-
-                await _portfolioStore.TryInsertSnapshotAsync(DateTime.Today, healthy, watch, critical, total, ct);
+                // The scope on screen is the scope written and read, so the watchlist and all-active series never mix.
+                var scope = TrendScope;
+                var counts = PortfolioHealthCounts.From(UtilizationRows);
+                await _portfolioStore.TryInsertSnapshotAsync(DateTime.Today, scope, counts.Healthy, counts.Watch, counts.Critical, counts.Total, ct);
 
                 var start = DateTime.Today.AddDays(-7 * 12);
-                var rows = await _portfolioStore.LoadSnapshotsAsync(start, ct);
+                var rows = await _portfolioStore.LoadSnapshotsAsync(start, scope, ct);
 
                 // Weekly rollup: show last snapshot per week for the last 12 weeks.
                 var weekly = rows

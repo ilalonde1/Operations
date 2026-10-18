@@ -1207,7 +1207,7 @@ GROUP BY sm.Period, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' T
             {
                 using var maxCmd = cn.CreateCommand();
                 maxCmd.CommandTimeout = SqlTimeouts.Batch;
-                maxCmd.CommandText = $@"SELECT MAX(Period) FROM [{catalog}].dbo.PRSummaryMain;";
+                maxCmd.CommandText = global::Kor.Operations.Financials.PrSummaryPeriod.MaxPostedPeriodSql(catalog);
                 using var maxReg = ct.Register(() => { try { maxCmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 var maxPeriodObj = maxCmd.ExecuteScalar();
                 if (maxPeriodObj != null && maxPeriodObj != DBNull.Value)
@@ -1263,7 +1263,7 @@ GROUP BY sm.Period, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' T
 
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
-            cmd.CommandText = $@"SELECT MAX(Period) FROM [{catalog}].dbo.PRSummaryMain;";
+            cmd.CommandText = global::Kor.Operations.Financials.PrSummaryPeriod.MaxPostedPeriodSql(catalog);
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             var maxPeriodObj = cmd.ExecuteScalar();
             if (maxPeriodObj == null || maxPeriodObj == DBNull.Value)

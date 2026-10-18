@@ -179,16 +179,28 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             var trendNote = trendConnection is null
                 ? "Portfolio trend not read: KOR_FILESYNC_KORTRANSMITTALSDB unset."
                 : null;
-            var exec = new ExecutiveSummaryService(financials,
-                new SqlFinancialPortfolioSnapshotStore(trendConnection ?? "unused: trend supplied by caller"),
-                new ExecutiveSummaryDeltekLoader(odbc, financialsOptions));
+            var store = new SqlFinancialPortfolioSnapshotStore(trendConnection ?? "unused: trend supplied by caller");
+            var exec = new ExecutiveSummaryService(financials, store, new ExecutiveSummaryDeltekLoader(odbc, financialsOptions));
+            var utilRows = snap.Rows.Select(UtilizationRow.FromProject).ToArray();
+            if (trendConnection is not null)
+            {
+                // The composer is the daily writer of the all-active series, the scope it reads. This is its only write.
+                try
+                {
+                    var counts = PortfolioHealthCounts.From(utilRows);
+                    await store.TryInsertSnapshotAsync(date.ToDateTime(TimeOnly.MinValue), PortfolioSnapshotScope.AllActive,
+                        counts.Healthy, counts.Watch, counts.Critical, counts.Total, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+                {
+                    trendNote = $"Today's all-active portfolio point not recorded ({ex.GetType().Name}).";
+                }
+            }
             var result = trendConnection is not null
                 ? await exec.GetExecutiveSummaryAsync(forceRefresh: true, existingSnapshot: snap,
-                    existingTrend: null,
-                    existingUtilRows: snap.Rows.Select(UtilizationRow.FromProject).ToArray(), ct: ct)
+                    existingTrend: null, existingUtilRows: utilRows, ct: ct, trendScope: PortfolioSnapshotScope.AllActive)
                 : await exec.GetExecutiveSummaryAsync(forceRefresh: true, existingSnapshot: snap,
-                    existingTrend: Array.Empty<PortfolioTrendPoint>(),
-                    existingUtilRows: snap.Rows.Select(UtilizationRow.FromProject).ToArray(), ct: ct);
+                    existingTrend: Array.Empty<PortfolioTrendPoint>(), existingUtilRows: utilRows, ct: ct);
             return ExecutiveFacts(result, snap.Rows.Count, trendNote);
         }, ct);
         // Weekly completeness only selects the employee outlier week; the engine's

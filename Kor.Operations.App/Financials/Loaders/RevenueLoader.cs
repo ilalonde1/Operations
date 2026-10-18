@@ -416,8 +416,27 @@ WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count
         return map;
     }
 
-    private static BuiltSeries BuildSeries(Dictionary<string, PrAgg> prByPeriod, Dictionary<string, CalRow> cal, int points)
+    /// <summary>
+    /// PRSummaryMain.AR is each period's CHANGE in receivables, not its balance: on 17 Oct 2026 the trend printed
+    /// −21,687 "outstanding" against an open balance of 1,365,977. The balance at a period is the running total of
+    /// every change up to it, in period order, including period "0" (the opening balance, which has no end date).
+    /// </summary>
+    internal static Dictionary<string, double> RunningArBalance(IEnumerable<KeyValuePair<string, double>> arChangeByPeriod)
     {
+        var balance = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var total = 0.0;
+        foreach (var period in arChangeByPeriod.OrderBy(p => p.Key, StringComparer.Ordinal))
+        {
+            total += period.Value;
+            balance[period.Key] = total;
+        }
+        return balance;
+    }
+
+    internal static BuiltSeries BuildSeries(Dictionary<string, PrAgg> prByPeriod, Dictionary<string, CalRow> cal, int points)
+    {
+        // Accumulate before any period is dropped, so period "0" and unparseable periods still count.
+        var arBalance = RunningArBalance(prByPeriod.Values.Select(p => new KeyValuePair<string, double>(p.Period, p.Ar)));
         var unbilledColumnHasAny =
             prByPeriod.Values.Any(p =>
                 Math.Abs(p.UnbilledNet) > 1e-9 ||
@@ -456,7 +475,7 @@ WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count
                     else if (proxy < 0) overbilled = -proxy;
                 }
 
-                return new SeriesPeriod(p.Period, PeriodEnd(p.Period), p.Revenue, p.Billed, p.Ar, unbilledNet, unbilledEarned, overbilled);
+                return new SeriesPeriod(p.Period, PeriodEnd(p.Period), p.Revenue, p.Billed, arBalance[p.Period], unbilledNet, unbilledEarned, overbilled);
             })
             .Where(p => p.EndDate != DateTime.MinValue)
             .OrderBy(p => p.EndDate)
