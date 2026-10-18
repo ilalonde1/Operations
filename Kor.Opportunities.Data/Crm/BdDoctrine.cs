@@ -333,12 +333,13 @@ SELECT @@ROWCOUNT;", con);
         var cards = await ListCardsAsync(role, ct).ConfigureAwait(false);
         var hours = new List<(long HourId, DateOnly ForDate, DirectorHourContent Content)>();
         var results = new List<(long HourId, int MoveRank, string Result)>();
+        var notes = new Dictionary<(long HourId, int MoveRank), string>();
         var history = new List<(long EngagementId, int Stage, DateTimeOffset EnteredAtUtc)>();
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using (var cmd = new SqlCommand(@"
 SELECT Id, ForDate, ContentJson FROM opportunities.DirectorHour WHERE Kind = @role OR Kind = N'Morning';
-SELECT m.HourId, m.MoveRank, m.Result FROM opportunities.DirectorHourMove m
+SELECT m.HourId, m.MoveRank, m.Result, m.Note FROM opportunities.DirectorHourMove m
 JOIN opportunities.DirectorHour h ON h.Id = m.HourId WHERE h.Kind = @role OR h.Kind = N'Morning';", con))
         {
             Text(cmd, "@role", 20, role);
@@ -350,7 +351,11 @@ JOIN opportunities.DirectorHour h ON h.Id = m.HourId WHERE h.Kind = @role OR h.K
                 hours.Add((r.GetInt64(0), DateOnly.FromDateTime(r.GetDateTime(1)), content));
             }
             await r.NextResultAsync(ct).ConfigureAwait(false);
-            while (await r.ReadAsync(ct).ConfigureAwait(false)) results.Add((r.GetInt64(0), r.GetInt32(1), r.GetString(2)));
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                results.Add((r.GetInt64(0), r.GetInt32(1), r.GetString(2)));
+                if (!r.IsDBNull(3)) notes[(r.GetInt64(0), r.GetInt32(1))] = r.GetString(3);
+            }
         }
 
         var linked = hours.SelectMany(h => DirectorHourFile.AllMoves(h.Content)).SelectMany(m => m.Links)
@@ -364,7 +369,7 @@ JOIN OPENJSON(@ids) WITH (Id BIGINT '$') ids ON ids.Id = h.EngagementId;", con);
             await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
             while (await r.ReadAsync(ct).ConfigureAwait(false)) history.Add((r.GetInt64(0), r.GetInt32(1), r.GetDateTimeOffset(2)));
         }
-        return DoctrineTrackRecord.Compute(hours, results, history, cards.Select(c => c.Id).ToArray());
+        return DoctrineTrackRecord.Compute(hours, results, history, cards.Select(c => c.Id).ToArray(), notes);
     }
 
     public async Task<IReadOnlyList<ClosedPursuit>> ListClosedPursuitsAsync(DateTimeOffset since, DateTimeOffset until, CancellationToken ct)

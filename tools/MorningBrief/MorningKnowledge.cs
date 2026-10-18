@@ -8,8 +8,9 @@ using Kor.Opportunities.Knowledge.Store;
 namespace Kor.MorningBrief;
 
 public sealed record MorningSituation(string Kind, string Query, string Printed, IReadOnlyCollection<string> Situations);
-public sealed record MorningCardVector(long Id, float[] Vector, string AppliesTo = "any");
-public sealed record MorningCardMatch(long Id, float Score);
+public sealed record MorningCardVector(long Id, float[] Vector, string AppliesTo = "any", double Weight = 1.0);
+/// <summary>Score is relevance (cosine); Weight is the card's own record (DoctrineTrackRecord.RankWeight). They rank by Score × Weight.</summary>
+public sealed record MorningCardMatch(long Id, float Score, double Weight = 1.0);
 public sealed record MorningSituationMatch(string Situation, IReadOnlyList<MorningCardMatch> Cards,
     IReadOnlyList<KnowledgeClaimHit> Claims, IReadOnlyList<KnowledgeClaimRelation> Relations, string? CouldNotRead = null);
 
@@ -37,8 +38,13 @@ public static class MorningKnowledge
     public static string CardText(DoctrineCardRow card) => $"{card.Title}. {card.Plain}. {card.Recognise}.";
 
     public static IReadOnlyList<MorningCardVector> EmbedCards(IEnumerable<DoctrineCardRow> cards, string role,
-        IKnowledgeEmbedder embedder) => cards.Where(c => c.Role == role && c.Status == "accepted").DistinctBy(c => c.Id)
-        .Select(c => new MorningCardVector(c.Id, embedder.Embed(CardText(c)), c.AppliesTo)).ToArray();
+        IKnowledgeEmbedder embedder, IReadOnlyList<DoctrineCardRecord>? records = null)
+    {
+        var byCard = (records ?? Array.Empty<DoctrineCardRecord>()).DistinctBy(r => r.CardId).ToDictionary(r => r.CardId);
+        return cards.Where(c => c.Role == role && c.Status == "accepted").DistinctBy(c => c.Id)
+            .Select(c => new MorningCardVector(c.Id, embedder.Embed(CardText(c)), c.AppliesTo,
+                DoctrineTrackRecord.RankWeight(byCard.GetValueOrDefault(c.Id)))).ToArray();
+    }
 
     public static IReadOnlyList<MorningCardMatch> RankCards(float[] situation, IReadOnlyList<MorningCardVector> cards,
         IReadOnlyCollection<string>? situations = null)
@@ -48,13 +54,14 @@ public static class MorningKnowledge
         // moment:synthesis) topped every unpaid-client-invoice row on cosine alone.
         return cards.Where(c => BdDoctrine.AppliesTo(c.AppliesTo, context)).Select(c => new
             {
-                Match = new MorningCardMatch(c.Id, KnowledgeSearch.Cosine(situation, c.Vector)),
+                Match = new MorningCardMatch(c.Id, KnowledgeSearch.Cosine(situation, c.Vector), c.Weight),
                 // Only a situation term is specific. "any" and "moment:hour" hold for every morning situation, so letting them
                 // count put a moment:hour card first on every row (live 19 Oct: #287 premortem above #210 receivables on all AR rows).
                 Specific = BdDoctrine.AppliesTo(string.Join(",", c.AppliesTo.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                     .Where(term => term.StartsWith("situation:", StringComparison.OrdinalIgnoreCase))), context),
             })
-            .OrderByDescending(c => c.Specific).ThenByDescending(c => c.Match.Score).ThenBy(c => c.Match.Id)
+            // Within each group the card's own record moves it at most a quarter either way; relevance still decides.
+            .OrderByDescending(c => c.Specific).ThenByDescending(c => c.Match.Score * c.Match.Weight).ThenBy(c => c.Match.Id)
             .Take(3).Select(c => c.Match).ToArray();
     }
 
@@ -72,7 +79,7 @@ public static class MorningKnowledge
         var situation = OneLine(match.Situation);
         if (situation.Length > 160) situation = situation[..160];
         var cards = match.Cards.Take(3).ToArray();
-        var line = situation + " → cards " + (cards.Length == 0 ? "none" : string.Join(", ", cards.Select(c => $"#{c.Id} ({Score(c.Score)})")))
+        var line = situation + " → cards " + (cards.Length == 0 ? "none" : string.Join(", ", cards.Select(c => $"#{c.Id} ({Score(c.Score)}{Weight(c.Weight)})")))
             + "; claims: " + (match.Claims.Count == 0 ? "no claim above 0.55" : string.Join("; ", match.Claims.Select(c => $"{Quote(c.SourceTitle, c.Statement)} ({Score(c.Score)})")));
         var ids = match.Claims.Select(c => c.ClaimId).ToHashSet();
         foreach (var relation in match.Relations.Distinct().OrderBy(r => r.FromClaimId).ThenBy(r => r.ToClaimId).ThenBy(r => r.Kind, StringComparer.Ordinal))
@@ -93,6 +100,8 @@ public static class MorningKnowledge
         $"; {kind}: {Quote(title, statement)} ({OneLine(note ?? "no note")}; matched claim #{matchedId})";
     private static string Quote(string title, string statement) => $"[{OneLine(title)}] \"{OneLine(statement)}\"";
     private static string Score(float value) => value.ToString("0.00", CultureInfo.InvariantCulture);
+    // Printed only when the record has moved the card, so an unrecorded card reads exactly as before.
+    private static string Weight(double value) => Math.Abs(value - 1.0) < 0.005 ? "" : " ×" + value.ToString("0.00", CultureInfo.InvariantCulture);
     private static string OneLine(string value) => value.Replace('\r', ' ').Replace('\n', ' ').Replace('\t', ' ');
 }
 
@@ -112,7 +121,7 @@ public sealed class MorningKnowledgeReader(Func<IKnowledgeStore> createStore, IK
         {
             var cardFact = facts.Single(f => f.Name == "Accepted " + role + " cards");
             if (cardFact.CouldNotRead is not null) throw new InvalidOperationException("Accepted cards unavailable.");
-            cards = MorningKnowledge.EmbedCards(cardFact.AcceptedCards, role, embedder);
+            cards = MorningKnowledge.EmbedCards(cardFact.AcceptedCards, role, embedder, cardFact.CardRecords);
             _store ??= createStore();
             _search ??= new KnowledgeSearch(_store, embedder);
         }

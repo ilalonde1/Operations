@@ -148,6 +148,39 @@ public sealed class DoctrineTrackRecordTests
         Assert.Null(content);
         Assert.Contains(errors, e => e.Contains("move 1: cards must contain positive, unique card ids.", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void RankWeight_IsOneWithoutARecord_AndBoundedAQuarterEitherWay()
+    {
+        Assert.Equal(1.0, DoctrineTrackRecord.RankWeight(null));
+        Assert.Equal(1.0, DoctrineTrackRecord.RankWeight(DoctrineCardRecord.Empty(7)), 10);
+        var always = DoctrineTrackRecord.RankWeight(new DoctrineCardRecord(7, 1000, 1000, 0, 0, 0, 1000, 1000, 0, Day, Array.Empty<string>()));
+        var never = DoctrineTrackRecord.RankWeight(new DoctrineCardRecord(7, 1000, 0, 0, 1000, 0, 0, 0, 1000, Day, Array.Empty<string>()));
+        Assert.InRange(always, 1.24, 1.25);
+        Assert.InRange(never, 0.75, 0.76);
+        // One answer moves a card a little, not to the bound; Not today is neutral.
+        Assert.InRange(DoctrineTrackRecord.RankWeight(Record(1, "Done")), 1.04, 1.06);
+        Assert.Equal(1.0, DoctrineTrackRecord.RankWeight(Record(4, "NotToday")), 10);
+    }
+
+    [Fact]
+    public void RankWeight_CapsACardSkippedThreeTimes()
+    {
+        var skipped = Record(3, "NotDoing");
+        Assert.Contains("Skipped", skipped.Flags);
+        Assert.True(DoctrineTrackRecord.RankWeight(skipped) <= 0.8);
+    }
+
+    [Fact]
+    public void Reasons_CarryIansNotesOnDeclinedMoves_NewestFirst_AndIgnoreDoneNotes()
+    {
+        var older = (1L, Day, Content(Move(1), Move(2)));
+        var newer = (2L, Day.AddDays(3), Content(Move(1)));
+        var r = Assert.Single(DoctrineTrackRecord.Compute(new[] { older, newer },
+            new[] { (1L, 1, "NotDoing"), (1L, 2, "Done"), (2L, 1, "NotToday") }, Array.Empty<(long, int, DateTimeOffset)>(), new long[] { 7 },
+            new Dictionary<(long, int), string> { [(1L, 1)] = " client is Jim's ", [(1L, 2)] = "went well", [(2L, 1)] = "travelling" }));
+        Assert.Equal(new[] { "2026-09-04 not today: travelling", "2026-09-01 not doing: client is Jim's" }, r.Reasons);
+    }
 }
 
 /// <summary>

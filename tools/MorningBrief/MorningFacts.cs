@@ -18,6 +18,7 @@ public sealed record MorningFact(string Name, IReadOnlyList<string> Lines, int S
     // Retain row text separately from meaning and cards already read; matching adds no situation/card queries.
     public IReadOnlyList<MorningSituation> Situations { get; init; } = Array.Empty<MorningSituation>();
     public IReadOnlyList<DoctrineCardRow> AcceptedCards { get; init; } = Array.Empty<DoctrineCardRow>();
+    public IReadOnlyList<DoctrineCardRecord> CardRecords { get; init; } = Array.Empty<DoctrineCardRecord>();
 }
 
 /// <summary>Read-only snapshots. A failed source stays visible, and does not suppress another source.</summary>
@@ -101,13 +102,6 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             var lines = moves.Select(m => $"{hour.ForDate} {hour.Kind} hour #{id}, move {m.Rank} {m.Title}: "
                 + (results.TryGetValue(m.Rank, out var r) ? $"{r.Result}; {r.Note}" : "no result recorded")).ToArray();
             return new[] { new MorningFact($"Last hour's moves ({results.Count} of {moves.Length} have a recorded result)", lines, moves.Length, moves.Length) };
-        }, ct);
-        await ReadAsync(facts, "Flagged BD doctrine cards", async () =>
-        {
-            var records = await new SqlBdDoctrineStore(Connection(BdConnection)).ListRecordsAsync("BD", ct);
-            var flagged = records.Where(r => r.Flags.Count > 0).ToArray();
-            return new[] { new MorningFact($"Flagged BD doctrine ({flagged.Length} of {records.Count} card records flagged)",
-                flagged.Select(r => $"#{r.CardId}: {r.FlagText}; {r.Summary}").ToArray(), flagged.Length, flagged.Length) };
         }, ct);
         await CardsAsync(facts, "BD", ct);
     }
@@ -399,13 +393,34 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             measured.Length == last.Length ? null : "Some people have no positive recorded hours; their utilization is unknown.") };
     }
 
-    private static async Task CardsAsync(List<MorningFact> facts, string role, CancellationToken ct) =>
+    private static async Task CardsAsync(List<MorningFact> facts, string role, CancellationToken ct)
+    {
+        var store = new SqlBdDoctrineStore(Connection(BdConnection));
+        // The record is read first and separately: a failed record leaves the cards ranked on relevance alone, never missing.
+        IReadOnlyList<DoctrineCardRecord> records = Array.Empty<DoctrineCardRecord>();
+        await ReadAsync(facts, "Flagged " + role + " doctrine cards", async () =>
+        {
+            records = await store.ListRecordsAsync(role, ct);
+            return new[] { RecordFact(role, records) };
+        }, ct);
         await ReadAsync(facts, "Accepted " + role + " cards", async () =>
         {
-            var cards = (await new SqlBdDoctrineStore(Connection(BdConnection)).ListCardsAsync(role, ct)).Where(c => c.Role == role && c.Status == "accepted").ToArray();
+            var cards = (await store.ListCardsAsync(role, ct)).Where(c => c.Role == role && c.Status == "accepted").ToArray();
             return new[] { new MorningFact("Accepted " + role + " cards", cards.Select(c => $"#{c.Id} {c.Title}").ToArray(), cards.Length, cards.Length)
-            { AcceptedCards = cards } };
+            { AcceptedCards = cards, CardRecords = records } };
         }, ct);
+    }
+
+    /// <summary>Flagged cards and every reason Ian gave on a move citing a card, so the hour writer leaves out what he declines.</summary>
+    public static MorningFact RecordFact(string role, IReadOnlyList<DoctrineCardRecord> records)
+    {
+        var flagged = records.Where(r => r.Flags.Count > 0).ToArray();
+        var reasons = records.Where(r => r.Reasons.Count > 0).OrderBy(r => r.CardId).ToArray();
+        var lines = flagged.Select(r => $"#{r.CardId}: {r.FlagText}; {r.Summary}")
+            .Concat(reasons.SelectMany(r => r.Reasons.Take(3).Select(reason => $"#{r.CardId} Ian's reason: {reason}"))).ToArray();
+        return new MorningFact($"Flagged {role} doctrine ({flagged.Length} of {records.Count} card records flagged; "
+            + $"{reasons.Length} of {records.Count} carry Ian's reasons)", lines, lines.Length, lines.Length);
+    }
 
     private static async Task GatherItAsync(List<MorningFact> facts, DateTimeOffset now, CancellationToken ct)
     {

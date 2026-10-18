@@ -10,6 +10,8 @@ public sealed record DoctrineCardRecord(long CardId, int Suggested, int Done, in
 {
     // Kept outside the positional contract: archived is a separate outcome, never an advance or loss.
     public int PursuitsArchived { get; init; }
+    /// <summary>Ian's notes on Not today / Not doing moves citing this card, newest first: "2026-10-19 not doing: client is Jim's".</summary>
+    public IReadOnlyList<string> Reasons { get; init; } = Array.Empty<string>();
     public string Summary => Suggested == 0 ? "Not suggested yet"
         : $"Suggested {Suggested} · done {Done} · not today {NotToday} · not doing {NotDoing} · {PursuitsAdvanced} pursuits advanced";
     public string FlagText => string.Join(" · ", Flags.Select(DoctrineTrackRecord.FlagText));
@@ -41,11 +43,29 @@ public static class DoctrineTrackRecord
         _ => flag,
     };
 
+    public const string WeightRule = "Ranking weight: 1 + 0.3 × (acted − ½) + 0.2 × (advanced − ½), where acted = (done + 1) / (done + not doing + 2) "
+        + "and advanced = (pursuits advanced + 1) / (advanced + lost + 2); a card skipped the last 3 times is capped at 0.8. "
+        + "A card with no record weighs exactly 1, and no record moves a card by more than a quarter, so relevance still decides.";
+
+    /// <summary>
+    /// How much a card's own record moves its ranking: a bounded multiplier on relevance, 0.75 to 1.25. Not today is neutral.
+    /// Smoothed (Laplace) so one answer cannot swing a card, and observational: association, not proof of cause.
+    /// </summary>
+    public static double RankWeight(DoctrineCardRecord? record)
+    {
+        if (record is null) return 1.0;
+        var acted = (record.Done + 1.0) / (record.Done + record.NotDoing + 2.0);
+        var advanced = (record.PursuitsAdvanced + 1.0) / (record.PursuitsAdvanced + record.PursuitsLost + 2.0);
+        var weight = 1.0 + 0.3 * (acted - 0.5) + 0.2 * (advanced - 0.5);
+        return record.Flags.Contains("Skipped") ? Math.Min(weight, 0.8) : weight;
+    }
+
     public static IReadOnlyList<DoctrineCardRecord> Compute(
         IReadOnlyList<(long HourId, DateOnly ForDate, DirectorHourContent Content)> hours,
         IReadOnlyList<(long HourId, int MoveRank, string Result)> results,
         IReadOnlyList<(long EngagementId, int Stage, DateTimeOffset EnteredAtUtc)> history,
-        IReadOnlyList<long> cardIds)
+        IReadOnlyList<long> cardIds,
+        IReadOnlyDictionary<(long HourId, int MoveRank), string>? notes = null)
     {
         var answers = results.ToDictionary(r => (r.HourId, r.MoveRank), r => r.Result);
         var stages = history.ToLookup(h => h.EngagementId);
@@ -100,8 +120,15 @@ public static class DoctrineTrackRecord
                 flags.Add("Skipped");
             if (moves.Length >= 5 && done == 0) flags.Add("Idle");
             if (donePursuitMoves >= 4 && !doneAdvanced) flags.Add("NoEffect");
+            // moves are newest first, so the reasons are too.
+            var reasons = moves
+                .Where(m => answers.TryGetValue((m.HourId, m.Move.Rank), out var r) && r is ("NotDoing" or "NotToday")
+                    && notes is not null && notes.TryGetValue((m.HourId, m.Move.Rank), out var n) && !string.IsNullOrWhiteSpace(n))
+                .Select(m => $"{m.ForDate:yyyy-MM-dd} {(answers[(m.HourId, m.Move.Rank)] == "NotDoing" ? "not doing" : "not today")}: {notes![(m.HourId, m.Move.Rank)].Trim()}")
+                .ToArray();
             records.Add(new DoctrineCardRecord(id, moves.Length, done, notToday, notDoing, moves.Length - done - notToday - notDoing,
-                advanced.Count, won.Count, lost.Count, moves.Length == 0 ? null : moves[0].ForDate, flags) { PursuitsArchived = archived.Count });
+                advanced.Count, won.Count, lost.Count, moves.Length == 0 ? null : moves[0].ForDate, flags)
+                { PursuitsArchived = archived.Count, Reasons = reasons });
         }
         return records;
     }

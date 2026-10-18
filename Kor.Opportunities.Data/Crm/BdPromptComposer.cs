@@ -112,6 +112,17 @@ public static class BdPromptComposer
         foreach (var r in i.Records.OrderByDescending(r => r.Flags.Count > 0).ThenBy(r => r.CardId))
             sb.AppendLine($"| #{r.CardId} | {r.Suggested} | {r.Done} | {r.NotToday} | {r.NotDoing} | {r.Undecided} | {r.PursuitsAdvanced} | {r.PursuitsWon} | {r.PursuitsLost} | {r.PursuitsArchived} | {r.LastSuggested?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "never"} |");
         sb.AppendLine();
+        // Ian's own words outrank the books: a reason he gives twice is doctrine in waiting.
+        sb.AppendLine("### Ian's reasons for not doing what a card suggested");
+        var reasons = i.Records.Where(r => r.Reasons.Count > 0).OrderBy(r => r.CardId).ToArray();
+        if (reasons.Length == 0) sb.AppendLine("Ian has not given a reason on any move citing these cards yet.");
+        foreach (var r in reasons)
+            foreach (var reason in r.Reasons.Take(10)) sb.AppendLine($"- Card #{r.CardId}: {reason}");
+        sb.AppendLine();
+        sb.AppendLine("Where Ian's reasons show a card is wrong for KOR, or wrong in a situation, amend it (`amends`) so the play states his rule, "
+            + "citing \"Ian, move notes\" with the dates. Where the same reason recurs across cards, propose one card that states it. "
+            + "Ian's stated practice governs over any book.");
+        sb.AppendLine();
         sb.AppendLine("### Pursuits closed in the last 90 days");
         foreach (var p in i.Closed.Where(p => p.ClosedAtUtc >= i.Now.AddDays(-90) && p.ClosedAtUtc <= i.Now && p.Stage is 6 or 7 or 8))
         {

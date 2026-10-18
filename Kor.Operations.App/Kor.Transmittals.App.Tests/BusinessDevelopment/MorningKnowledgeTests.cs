@@ -269,6 +269,33 @@ public sealed class MorningKnowledgeTests
         Assert.Contains("KnowledgeSearch.Cosine", Source("tools/MorningBrief/MorningKnowledge.cs"), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The card's own record reorders close matches but never lifts a general card over a situation-specific one, and an
+    /// unrecorded card prints as before. Does not read the store or check the weight formula (DoctrineTrackRecordTests does).
+    /// </summary>
+    [Fact]
+    public void Card_record_reorders_close_matches_within_their_group_only()
+    {
+        var close = new[]
+        {
+            new MorningCardVector(1, Vector(1, 0), "any", 0.8),
+            new MorningCardVector(2, Vector(95, 31), "any", 1.2),   // cosine .95, but acted on and it worked
+            new MorningCardVector(3, Vector(0, 1), "situation:going-cold", 0.75),
+        };
+        var ranked = MorningKnowledge.RankCards(Vector(1, 0), close, new[] { "going-cold" });
+        Assert.Equal(new long[] { 3, 2, 1 }, ranked.Select(c => c.Id));
+        Assert.Equal(1.2, ranked[1].Weight);
+
+        var line = Assert.Single(MorningKnowledge.Format(new[] { new MorningSituationMatch("Row", ranked,
+            Array.Empty<KnowledgeClaimHit>(), Array.Empty<KnowledgeClaimRelation>()) }).Lines);
+        Assert.Contains("#2 (0.95 ×1.20)", line, StringComparison.Ordinal);
+        Assert.Contains("#1 (1.00 ×0.80)", line, StringComparison.Ordinal);
+
+        var plain = MorningKnowledge.RankCards(Vector(1, 0), new[] { new MorningCardVector(9, Vector(1, 0)) });
+        Assert.Contains("#9 (1.00);", Assert.Single(MorningKnowledge.Format(new[] { new MorningSituationMatch("Row", plain,
+            Array.Empty<KnowledgeClaimHit>(), Array.Empty<KnowledgeClaimRelation>()) }).Lines), StringComparison.Ordinal);
+    }
+
     /// <summary>Checks caps, row reuse and Ian-first priority; not source freshness, identity resolution or match quality.</summary>
     [Fact]
     public void Situation_selection_reuses_printed_rows_with_each_cap()
