@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using Kor.MorningBrief;
 using Kor.Operations.App.BusinessDevelopment.Director;
+using Kor.Operations.Financials;
 using Kor.Operations.PMTools;
 using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Worker.Services.Reporting;
@@ -10,7 +11,7 @@ using Xunit;
 
 namespace Kor.Operations.App.Tests.BusinessDevelopment;
 
-/// <summary>Offline gates for 10b. Authored only; no database, session or mail is invoked.</summary>
+/// <summary>Offline gates for 10b/10c. Authored only; no database, session or mail is invoked.</summary>
 public sealed class MorningBriefTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 16, 15, 0, 0, TimeSpan.Zero);
@@ -196,6 +197,205 @@ public sealed class MorningBriefTests
         Assert.Contains(fact.Lines, l => l.StartsWith("Over", StringComparison.Ordinal));
         Assert.DoesNotContain(fact.Lines, l => l.StartsWith("Wrong week", StringComparison.Ordinal));
         Assert.NotNull(Assert.Single(MorningFacts.EmployeeFacts(rows, week.AddDays(-7))).CouldNotRead);
+    }
+
+    /// <summary>
+    /// Guards the engine-only call path and project-reference direction by source text.
+    /// Does not validate a build, live snapshot scope, constructor/configuration needs, or engine numbers.
+    /// </summary>
+    [Fact]
+    public void Coo_source_uses_the_executive_engine_and_references_the_App()
+    {
+        var source = Source("tools/MorningBrief/MorningFacts.cs");
+        foreach (var forbidden in new[] { "new WipFinancialsService", "new ArFinancialsService", "new FirmAnalyticsService", "new ProjectAnalyticsService", "ChargeType" })
+            Assert.DoesNotContain(forbidden, source, StringComparison.Ordinal);
+        foreach (var required in new[] { "new FinancialsService", "new ExecutiveSummaryService", "watchlistOnly: false",
+            "existingSnapshot: snap", "existingTrend: Array.Empty<PortfolioTrendPoint>()",
+            "existingUtilRows: snap.Rows.Select(UtilizationRow.FromProject).ToArray()", "ExecutiveFacts(result, snap.Rows.Count)" })
+            Assert.Contains(required, source, StringComparison.Ordinal);
+        var project = Source("tools/MorningBrief/MorningBrief.csproj");
+        Assert.Contains("<TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>", project, StringComparison.Ordinal);
+        Assert.Contains("<UseWPF>true</UseWPF>", project, StringComparison.Ordinal);
+        Assert.Contains("<Using Include=\"System.IO\"", project, StringComparison.Ordinal);
+        Assert.Contains("Kor.Operations.App\\Kor.Operations.App.csproj", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("MorningBrief", Source("Kor.Operations.App/Kor.Operations.App.csproj"), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Covers all current KPI/alert row shapes, supplied order, top-ten counts and failure notes.
+    /// Synthetic results do not validate live scope, constructor/configuration needs, or engine numbers.
+    /// </summary>
+    [Fact]
+    public void Executive_facts_preserve_every_KPI_alert_order_count_and_unavailable_reason()
+    {
+        var invoices = new[] { 3, 1, 12, 2, 11, 4, 10, 5, 9, 6, 8, 7 }.Select(i =>
+            new KpiArInvoiceRow("P" + i, "Project", "PM", "I" + i, "C", "Client", new DateTime(2026, 8, 1), null, i, i * 1000)).ToArray();
+        var projects = new[] { new KpiProjectDrilldownRow("P", "Project", "PM", 20, 1.2, .5, .6, true) };
+        var ar = new[] { new KpiArOutstandingRow("P", "Project", "PM", 1000, 100, 200, 300, 400, new DateTime(2026, 8, 1)) };
+        var history = new[] { new KpiCashHistoryRow("202608", 1000, 600, 300, 100) };
+        var accounts = new[] { new KpiCashAccountRow("CAD", "1110", "CAD", "CAD", 1000.25) };
+        var backlog = new[] { new KpiBacklogRow("P", "Project", "PM", 1000, 200, 50, 750, .2) };
+        var burn = new[] { new KpiBudgetBurnRow("P", "Project", "PM", 120, 100, 1.2, -20) };
+        var template = new ExecutiveKpi("Projects", "engine value", "long drill-in prose", "engine status", InlineSubText: "engine inline");
+        var kpis = new List<ExecutiveKpi>
+        {
+            template with { ProjectDrilldownRows = projects },
+            template with { Title = "Invoices", ArInvoiceRows = invoices, ArOutstandingRows = ar },
+            template with { Title = "AR projects", ArOutstandingRows = ar },
+            template with { Title = "Cash accounts", CashAccountRows = accounts, CashHistoryRows = history },
+            template with { Title = "Cash history", CashHistoryRows = history },
+            template with { Title = "WIP", WipUnbilledRows = new[] { new KpiWipUnbilledRow("P", "Project", "PM", 1000, 200, 800, .8, "202608") } },
+            template with { Title = "Backlog", BacklogRows = backlog },
+            template with { Title = "Billings", BillingsRows = new[] { new KpiBillingsRow("P", "Project", "PM", 200, 50, 1000, .2, .5) } },
+            template with { Title = "Budget burn", BudgetBurnRows = burn },
+            template with { Title = "Delivery risk", DeliveryRiskRows = new[] { new KpiDeliveryRiskRow("P", "Project", "PM", "Critical", "Over budget", 1.2, -20) } },
+            template with { Title = "Utilization", ValueText = "72.7%", UtilizationRows = new[] { new KpiUtilizationRow("P", "Project", "PM", 30, 10, 40, .75) } },
+            ExecutiveKpi.DataUnavailable("Missing KPI", "Fixture reason"),
+        };
+        var alerts = new List<ExecutiveAlert>
+        {
+            new("Project alert", "Project message", ProjectDrilldownRows: projects),
+            new("Invoice alert", "Invoice message", ArInvoiceRows: invoices, ArOutstandingRows: ar),
+            new("AR alert", "AR message", ArOutstandingRows: ar),
+            new("Backlog alert", "Backlog message", BacklogRows: backlog),
+            new("Burn alert", "Burn message", BudgetBurnRows: burn),
+            new("Message-only alert", "No row list"),
+        };
+        var result = new ExecutiveSummaryResult(Now, kpis, new List<ExecutiveTrend>(), alerts,
+            SnapshotLoaded: false, DeltekLoaded: false,
+            LoaderFailureMessages: new[] { "Fixture loader failure" }, SchemaDriftMessages: new[] { "Fixture schema drift" });
+
+        var facts = MorningFacts.ExecutiveFacts(result, 123);
+
+        Assert.Equal(kpis.Select(kpi => kpi.Title), facts.Skip(1).Take(kpis.Count).Select(fact => fact.Name));
+        Assert.Equal(alerts.Select(alert => alert.Title), facts.Skip(1 + kpis.Count).Select(fact => fact.Name));
+        for (var i = 0; i < kpis.Count; i++)
+        {
+            var fact = facts[i + 1];
+            Assert.Contains(kpis[i].ValueText, fact.Lines);
+            Assert.Contains(kpis[i].StatusMessage, fact.Lines);
+            if (kpis[i].InlineSubText.Length > 0) Assert.Contains(kpis[i].InlineSubText, fact.Lines);
+        }
+        for (var i = 0; i < alerts.Count; i++)
+            Assert.Contains(alerts[i].Message, facts[1 + kpis.Count + i].Lines);
+        foreach (var title in new[] { "Invoices", "Invoice alert" })
+        {
+            var fact = Assert.Single(facts, f => f.Name == title);
+            Assert.Equal(10, fact.Shown);
+            Assert.Equal(12, fact.Total);
+            var shown = fact.Lines.TakeLast(10).ToArray();
+            for (var i = 0; i < shown.Length; i++)
+                Assert.Contains($"invoice {invoices[i].Invoice},", shown[i], StringComparison.Ordinal);
+        }
+        Assert.Contains("CAD, account 1110, org CAD: CAD 1,000.", Assert.Single(facts, f => f.Name == "Cash accounts").Lines);
+        Assert.Equal("Fixture reason", Assert.Single(facts, f => f.Name == "Missing KPI").CouldNotRead);
+        Assert.Contains("SnapshotLoaded: False; DeltekLoaded: False.", facts[0].Lines);
+        Assert.Contains("Loader: Fixture loader failure", facts[0].Lines);
+        Assert.Contains("Schema drift: Fixture schema drift", facts[0].Lines);
+        var prompt = MorningPromptComposer.Compose(new MorningFacts(Now, Array.Empty<MorningFact>(), facts, Array.Empty<MorningFact>()), Day);
+        Assert.Contains("## COO — all active projects (123)", prompt, StringComparison.Ordinal);
+        Assert.Contains("### Invoices · 10 of 12", prompt, StringComparison.Ordinal);
+        Assert.Contains("### Invoice alert · 10 of 12", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("partial", string.Join(" ", Assert.Single(facts, f => f.Name == "Utilization").Lines), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Checks invoice presentation without regrouping or inventing a due date.
+    /// Does not validate live invoice grain, snapshot scope, constructors/configuration, or engine ages/balances.
+    /// </summary>
+    [Fact]
+    public void Executive_invoice_rows_keep_the_engine_grain_and_label_invoice_age()
+    {
+        var invoice = new KpiArInvoiceRow("P1", "First project", "PM", "00038658", "C", "Client", new DateTime(2026, 8, 1), null, 77, 1000.25);
+        var rows = new[] { invoice, invoice with { Wbs1 = "P2", ProjectName = "Second project", Balance = 2000 } };
+        var result = new ExecutiveSummaryResult(Now,
+            new List<ExecutiveKpi> { new("AR", "3,000", "", "", ArInvoiceRows: rows) },
+            new List<ExecutiveTrend>(), new List<ExecutiveAlert>());
+
+        var fact = Assert.Single(MorningFacts.ExecutiveFacts(result, 2), f => f.Name == "AR");
+
+        Assert.Equal(2, fact.Shown);
+        Assert.Equal(2, fact.Total);
+        Assert.StartsWith("P1 First project", fact.Lines[1], StringComparison.Ordinal);
+        Assert.StartsWith("P2 Second project", fact.Lines[2], StringComparison.Ordinal);
+        foreach (var line in fact.Lines.Skip(1))
+        {
+            Assert.Contains("invoice date 2026-08-01", line, StringComparison.Ordinal);
+            Assert.Contains("77 days since invoice", line, StringComparison.Ordinal);
+            Assert.DoesNotContain("due", line, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotMatch(@"\d{4}-\d{2}-\d{2}T", line);
+        }
+    }
+
+    /// <summary>
+    /// Uses the seven measured week counts to gate median completeness and last-complete-week outliers.
+    /// Does not read timesheets or validate live scope, constructors/configuration, or the engine's utilization ratio.
+    /// </summary>
+    [Fact]
+    public void Employee_partial_weeks_are_named_and_outliers_use_September_27()
+    {
+        var fixture = new[]
+        {
+            (Week: new DateTime(2026, 8, 30), Hours: 927.5, People: 24),
+            (Week: new DateTime(2026, 9, 6), Hours: 952.5, People: 24),
+            (Week: new DateTime(2026, 9, 13), Hours: 987.0, People: 24),
+            (Week: new DateTime(2026, 9, 20), Hours: 928.0, People: 24),
+            (Week: new DateTime(2026, 9, 27), Hours: 944.5, People: 24),
+            (Week: new DateTime(2026, 10, 4), Hours: 632.5, People: 19),
+            (Week: new DateTime(2026, 10, 11), Hours: 292.5, People: 11),
+        };
+        var rows = fixture.SelectMany(week => Enumerable.Range(0, week.People).Select(i => new EmployeeWeeklyHours
+        {
+            EmployeeId = "E" + i, EmployeeName = $"{week.Week:yyyy-MM-dd} employee {i}", WeekStart = week.Week,
+            TotalHrs = week.Hours / week.People, BillableHrs = week.Hours / week.People * (i == 0 ? .25 : .75),
+        })).ToList();
+        rows.Add(new EmployeeWeeklyHours { EmployeeId = "e0", WeekStart = new DateTime(2026, 10, 4) });
+
+        var facts = MorningFacts.EmployeeWeekFacts(rows, new DateTime(2026, 10, 11));
+
+        Assert.Contains("partial: week 2026-10-04, 19 of 24 people", facts[0].Lines);
+        Assert.Contains("partial: week 2026-10-11, 11 of 24 people", facts[0].Lines);
+        Assert.Equal(2, facts[0].Shown);
+        Assert.Equal(7, facts[0].Total);
+        var outliers = facts[1];
+        Assert.Contains("last complete week 2026-09-27", outliers.Name, StringComparison.Ordinal);
+        Assert.Equal(1, outliers.Shown);
+        Assert.Contains(outliers.Lines, line => line.StartsWith("2026-09-27 employee 0", StringComparison.Ordinal));
+        Assert.DoesNotContain(outliers.Lines, line => line.Contains("2026-10-04", StringComparison.Ordinal) || line.Contains("2026-10-11", StringComparison.Ordinal));
+        Assert.NotNull(MorningFacts.EmployeeWeekFacts(Array.Empty<EmployeeWeeklyHours>(), new DateTime(2026, 10, 11))[1].CouldNotRead);
+    }
+
+    /// <summary>
+    /// Checks quiet-day ranking, fee tie-breaks, date-only BD output and title fallback.
+    /// Does not execute the pursuit/action SQL or validate live joins, scope, constructors/configuration, or engine numbers.
+    /// </summary>
+    [Fact]
+    public void Pursuits_rank_by_days_quiet_and_BD_dates_and_title_fallbacks_are_plain()
+    {
+        var rows = new[]
+        {
+            new MorningFacts.Pursuit(1, "Owner", "Region", "Oldest", null, Now.AddDays(-50)),
+            new MorningFacts.Pursuit(2, "Owner", "Region", "Known title", 1000, Now.AddDays(-30)),
+            new MorningFacts.Pursuit(3, "Owner", "Region", "  ", 5000, Now.AddDays(-30), "Buyer organisation"),
+            new MorningFacts.Pursuit(4, "Owner", "Region", "", null, Now.AddDays(-30), " "),
+            new MorningFacts.Pursuit(5, "Owner", "Region", "Recent", 999999, Now.AddDays(-13)),
+        };
+
+        var stale = MorningFacts.PursuitFacts(rows, Now)[1];
+
+        foreach (var (id, index) in new[] { 1, 3, 2, 4 }.Select((id, index) => (id, index)))
+            Assert.StartsWith($"Pursuit #{id}:", stale.Lines[index], StringComparison.Ordinal);
+        Assert.Contains("50 days quiet", stale.Lines[0], StringComparison.Ordinal);
+        Assert.Contains("Pursuit #3: Buyer organisation;", stale.Lines[1], StringComparison.Ordinal);
+        Assert.Contains("Pursuit #4: (untitled);", stale.Lines[3], StringComparison.Ordinal);
+        Assert.All(stale.Lines, line => Assert.DoesNotMatch(@"\d{4}-\d{2}-\d{2}T", line));
+        Assert.Contains("last touch/opened floor 2026-08-27", stale.Lines[0], StringComparison.Ordinal);
+        var action = new BdActionRow(1, "ian", "Ian", "Call buyer", null, 20, Now.AddDays(-1), "Open",
+            null, null, null, null, null, null, null, null, null, null);
+        var actions = Assert.Single(MorningFacts.ActionFacts(new[] { action, action with { Id = 2, Status = "Closed" } }, Now));
+        Assert.Equal(1, actions.Shown);
+        Assert.Contains("(due 2026-10-15)", Assert.Single(actions.Lines), StringComparison.Ordinal);
+        Assert.DoesNotMatch(@"\d{4}-\d{2}-\d{2}T", actions.Lines[0]);
     }
 
     [Fact]

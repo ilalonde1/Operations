@@ -1,6 +1,7 @@
 using System.Data;
 using System.Globalization;
 using Kor.Operations.App.Options;
+using Kor.Operations.Data;
 using Kor.Operations.Financials;
 using Kor.Operations.PMTools;
 using Kor.Opportunities.Data.Crm;
@@ -9,7 +10,8 @@ using Microsoft.Extensions.Configuration;
 
 namespace Kor.MorningBrief;
 
-public sealed record MorningFact(string Name, IReadOnlyList<string> Lines, int Shown, int? Total, string? CouldNotRead = null);
+public sealed record MorningFact(string Name, IReadOnlyList<string> Lines, int Shown, int? Total,
+    string? CouldNotRead = null, string? SectionScope = null);
 
 /// <summary>Read-only snapshots. A failed source stays visible, and does not suppress another source.</summary>
 public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<MorningFact> Bd,
@@ -39,10 +41,12 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             // Same activity/email fusion as SqlPursuitOverwatchStore; include unassigned live pursuits too.
             await using var cmd = new SqlCommand("""
                 SELECT e.Id, COALESCE(e.OwnerStaffId, N'(unassigned)'), COALESCE(e.Region, o.ProjectProvince, N'(unknown)'),
-                       COALESCE(o.Name, e.PotentialProjects, N'(unnamed)'), e.ProposedFee, e.OpenedAtUtc,
-                       la.LastActivityUtc, w.LastTouchUtc
+                       COALESCE(NULLIF(LTRIM(RTRIM(o.Name)), N''), NULLIF(LTRIM(RTRIM(e.PotentialProjects)), N''), N''),
+                       e.ProposedFee, e.OpenedAtUtc, la.LastActivityUtc, w.LastTouchUtc,
+                       COALESCE(NULLIF(LTRIM(RTRIM(co.DisplayName)), N''), o.BuyerName, N'')
                 FROM opportunities.CrmEngagements e
                 LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+                LEFT JOIN opportunities.CanonicalOrg co ON co.Id = e.BuyerCanonicalOrgId
                 LEFT JOIN opportunities.CrmBuyerEmailWarmth w ON w.CanonicalOrgId = e.BuyerCanonicalOrgId
                 OUTER APPLY (SELECT MAX(a.OccurredAtUtc) AS LastActivityUtc
                              FROM opportunities.CrmActivities a WHERE a.EngagementId = e.Id) la
@@ -55,17 +59,14 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
                 var touches = new[] { opened, reader.IsDBNull(6) ? opened : reader.GetDateTimeOffset(6),
                     reader.IsDBNull(7) ? opened : reader.GetDateTimeOffset(7) };
                 rows.Add(new Pursuit(reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
-                    reader.IsDBNull(4) ? null : reader.GetDecimal(4), touches.Max()));
+                    reader.IsDBNull(4) ? null : reader.GetDecimal(4), touches.Max(), reader.GetString(8)));
             }
             return PursuitFacts(rows, now);
         }, ct);
         await ReadAsync(facts, "Open and late actions by owner", async () =>
         {
-            var rows = (await new SqlBdRhythmStore(Connection(BdConnection)).ListActionsAsync(ct)).Where(a => a.IsOpen).ToArray();
-            var groups = rows.GroupBy(a => a.OwnerKey).OrderBy(g => g.Key, StringComparer.Ordinal);
-            var lines = groups.Select(g => $"{g.First().OwnerName}: {g.Count()} of {rows.Length} open; {g.Count(a => a.DueUtc < now)} of {g.Count()} late. "
-                + string.Join("; ", g.OrderBy(a => a.DueUtc).Select(a => $"#{a.Id} {a.Action} (due {a.DueUtc:O})"))).ToArray();
-            return new[] { new MorningFact("Open actions by owner (late means due before snapshot)", lines, rows.Length, rows.Length) };
+            var rows = await new SqlBdRhythmStore(Connection(BdConnection)).ListActionsAsync(ct);
+            return ActionFacts(rows, now);
         }, ct);
         await ReadAsync(facts, "Last hour's move results", async () =>
         {
@@ -100,91 +101,201 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         await CardsAsync(facts, "BD", ct);
     }
 
-    public sealed record Pursuit(long Id, string Owner, string Region, string Title, decimal? Value, DateTimeOffset LastTouch);
+    public sealed record Pursuit(long Id, string Owner, string Region, string Title, decimal? Value, DateTimeOffset LastTouch,
+        string? OrganizationName = null);
 
     public static IReadOnlyList<MorningFact> PursuitFacts(IReadOnlyList<Pursuit> rows, DateTimeOffset now)
     {
         var groups = rows.GroupBy(r => (r.Owner, r.Region)).OrderBy(g => g.Key.Owner, StringComparer.Ordinal).ThenBy(g => g.Key.Region, StringComparer.Ordinal);
         var lines = groups.Select(g => $"{g.Key.Owner} / {g.Key.Region}: {g.Count()} of {rows.Count} live pursuits; "
             + $"{g.Count(r => r.Value.HasValue)} of {g.Count()} have proposed fees. "
-            + string.Join("; ", g.Select(Describe))).ToArray();
-        var stale = rows.Where(r => r.LastTouch <= now.AddDays(-14)).OrderByDescending(r => r.Value.HasValue)
+            + string.Join("; ", g.Select(r => Describe(r, now)))).ToArray();
+        var stale = rows.Where(r => r.LastTouch <= now.AddDays(-14)).OrderByDescending(r => QuietDays(r, now))
+            .ThenByDescending(r => r.Value.HasValue)
             .ThenByDescending(r => r.Value).ThenBy(r => r.Id).ToArray();
         return new[]
         {
             new MorningFact("Live pursuits by owner and region (value is proposed fee; currency not supplied)", lines, rows.Count, rows.Count),
-            new MorningFact("No touch in 14+ days, top 10 by proposed fee (unknown fees last)", stale.Take(10).Select(Describe).ToArray(), Math.Min(10, stale.Length), stale.Length),
+            new MorningFact("No touch in 14+ days, top 10 by days quiet (proposed fee breaks ties)", stale.Take(10).Select(r => Describe(r, now)).ToArray(), Math.Min(10, stale.Length), stale.Length),
         };
     }
 
-    private static string Describe(Pursuit p) => $"Pursuit #{p.Id}: {p.Title}; {p.Owner} / {p.Region}; proposed fee "
-        + (p.Value?.ToString("N0", CultureInfo.InvariantCulture) ?? "unknown") + $"; last touch/opened floor {p.LastTouch:O}";
+    private static int QuietDays(Pursuit p, DateTimeOffset now) => Math.Max(0, (int)(now - p.LastTouch).TotalDays);
 
-    private static async Task GatherCooAsync(List<MorningFact> facts, DeltekOdbcOptions odbc, FinancialsOptions financials, DateOnly date, CancellationToken ct)
+    private static string Describe(Pursuit p, DateTimeOffset now)
     {
-        await ReadAsync(facts, "Deltek AR aging and overdue invoices", async () =>
+        var title = !string.IsNullOrWhiteSpace(p.Title) ? p.Title
+            : !string.IsNullOrWhiteSpace(p.OrganizationName) ? p.OrganizationName : "(untitled)";
+        return $"Pursuit #{p.Id}: {title}; {p.Owner} / {p.Region}; proposed fee "
+            + (p.Value?.ToString("N0", CultureInfo.InvariantCulture) ?? "unknown")
+            + $"; {QuietDays(p, now)} days quiet; last touch/opened floor {p.LastTouch:yyyy-MM-dd}";
+    }
+
+    public static IReadOnlyList<MorningFact> ActionFacts(IReadOnlyList<BdActionRow> rows, DateTimeOffset now)
+    {
+        var open = rows.Where(a => a.IsOpen).ToArray();
+        var groups = open.GroupBy(a => a.OwnerKey).OrderBy(g => g.Key, StringComparer.Ordinal);
+        var lines = groups.Select(g => $"{g.First().OwnerName}: {g.Count()} of {open.Length} open; {g.Count(a => a.DueUtc < now)} of {g.Count()} late. "
+            + string.Join("; ", g.OrderBy(a => a.DueUtc).Select(a => $"#{a.Id} {a.Action} (due {a.DueUtc:yyyy-MM-dd})"))).ToArray();
+        return new[] { new MorningFact("Open actions by owner (late means due before snapshot)", lines, open.Length, open.Length) };
+    }
+
+    private static async Task GatherCooAsync(List<MorningFact> facts, DeltekOdbcOptions odbc, FinancialsOptions financialsOptions, DateOnly date, CancellationToken ct)
+    {
+        await ReadAsync(facts, "Executive Summary", async () =>
         {
-            var ar = await new ArFinancialsService(odbc, financials).LoadAsync(ct);
-            var overdue = ar.InvoiceRows.Where(r => r.DaysPastDue > 0 && r.Balance > 0).OrderByDescending(r => r.Balance).ToArray();
-            return new[]
-            {
-                new MorningFact("AR aging, CAD equivalent (all project rows)", new[] {
-                    $"Outstanding {N(ar.FirmwideOutstandingCadEquiv)}; current {N(ar.ProjectRows.Sum(r => r.Current))}; 31–60 {N(ar.ProjectRows.Sum(r => r.Aged31To60))}; "
-                    + $"61–90 {N(ar.ProjectRows.Sum(r => r.Aged61To90))}; 90+ {N(ar.ProjectRows.Sum(r => r.Aged90Plus))}; USD/CAD {N(ar.UsdToCadRate)}."
-                }, ar.ProjectRows.Count, ar.ProjectRows.Count),
-                new MorningFact("Largest overdue invoices, CAD equivalent", overdue.Take(10).Select(r =>
-                    $"{r.Wbs1} {r.ProjectName}, invoice {r.Invoice}, client {r.ClientName}, PM {r.Pm}: {N(r.Balance)}, {r.DaysPastDue} days past due (due {r.DueDate:yyyy-MM-dd}).").ToArray(), Math.Min(10, overdue.Length), overdue.Length),
-            };
+            var financials = new FinancialsService(odbc, financialsOptions);
+            var snap = await financials.GetSnapshotAsync(forceRefresh: true, ct, watchlistOnly: false);
+            var exec = new ExecutiveSummaryService(financials,
+                new SqlFinancialPortfolioSnapshotStore("unused: trend supplied by caller"),
+                new ExecutiveSummaryDeltekLoader(odbc, financialsOptions));
+            var result = await exec.GetExecutiveSummaryAsync(forceRefresh: true, existingSnapshot: snap,
+                existingTrend: Array.Empty<PortfolioTrendPoint>(),
+                existingUtilRows: snap.Rows.Select(UtilizationRow.FromProject).ToArray(), ct: ct);
+            return ExecutiveFacts(result, snap.Rows.Count);
         }, ct);
-        await ReadAsync(facts, "Deltek unbilled WIP", async () =>
-        {
-            var wip = await new WipFinancialsService(odbc, financials).LoadAsync(ct, failOnReadError: true);
-            if (!wip.DataLoaded || !wip.RevenueGenerationDetected || wip.WipUnbilledPeriod == "n/a")
-                return new[] { new MorningFact("Unbilled WIP", Array.Empty<string>(), 0, null, "No usable revenue-generation/WIP signal; service zeros are not a measured balance.") };
-            var rows = wip.WipProjectRows.Where(r => r.Earned > 0).OrderByDescending(r => r.Earned).ToArray();
-            return new[]
-            {
-                new MorningFact("Firm unbilled WIP, CAD equivalent", new[] { $"Period {wip.WipUnbilledPeriod}: unbilled {N(wip.FirmWipUnbilled)}, overbilled {N(wip.FirmWipOverbilled)}, net {N(wip.FirmWipNet)}." }, 1, 1),
-                new MorningFact("Top unbilled WIP projects, CAD equivalent", rows.Take(10).Select(r => $"{r.Wbs1} {r.ProjectName}, client {r.ClientName}, PM {r.Pm}: {N(r.Earned)}.").ToArray(), Math.Min(10, rows.Length), rows.Length),
-            };
-        }, ct);
-        // EmployeeAnalyticsService uses Sunday-start weeks. Use the last four completed matching weeks.
+        // Weekly completeness only selects the employee outlier week; the engine's
+        // Utilization KPI above is printed unchanged.
         var thisWeek = date.ToDateTime(TimeOnly.MinValue).AddDays(-(int)date.DayOfWeek);
-        for (var back = 4; back >= 1; back--)
-        {
-            var from = thisWeek.AddDays(-7 * back);
-            await ReadAsync(facts, $"Firm utilization week {from:yyyy-MM-dd}", async () =>
-            {
-                var stats = await Task.Run(() => new FirmAnalyticsService(odbc).LoadFirmUtilizationSync(from, from.AddDays(7), ct), ct);
-                return new[] { stats.TotalHrs == 0
-                    ? new MorningFact($"Firm utilization week {from:yyyy-MM-dd}", Array.Empty<string>(), 0, 1, "No recorded hours for this week.")
-                    : new MorningFact($"Firm utilization week {from:yyyy-MM-dd}", new[] { $"{N(stats.BillablePct * 100)}% = {N(stats.BillableHrs)} billable / {N(stats.TotalHrs)} recorded hours (all staff)." }, 1, 1) };
-            }, ct);
-        }
-        await ReadAsync(facts, "People under 50% or over 110% last week", async () =>
+        await ReadAsync(facts, "Timesheet completeness and people utilization", async () =>
         {
             var rows = await Task.Run(() => new EmployeeAnalyticsService(odbc).LoadEmployeeWeeklyUtilizationSync(ct), ct);
-            return EmployeeFacts(rows, thisWeek.AddDays(-7));
-        }, ct);
-        await ReadAsync(facts, "Projects most over budget", async () =>
-        {
-            var rows = await Task.Run(() => new ProjectAnalyticsService(odbc, financials).LoadProjectRowsSync(ct), ct);
-            var threshold = AnalyticsThresholds.OverBudgetFactor;
-            var atRisk = rows.Where(r => r.EstEngBudget > 0 && r.EngHrs > r.EstEngBudget * threshold).OrderByDescending(r => r.EngHrs / r.EstEngBudget).ToArray();
-            return new[] { new MorningFact($"Most over budget, engineering-hours ratio > {N(threshold)} ({atRisk.Length} of {rows.Count} projects qualify)",
-                atRisk.Take(10).Select(r => $"{r.Wbs1} {r.Name}, PM {r.Pm}, DM {r.DraftingManager}: {N(r.EngHrs)} hours / {N(r.EstEngBudget)} estimated budget = {N(r.EngHrs / r.EstEngBudget)}; overage {N(r.EngHrs - r.EstEngBudget)} hours.").ToArray(),
-                Math.Min(10, atRisk.Length), atRisk.Length) };
+            return EmployeeWeekFacts(rows, thisWeek);
         }, ct);
         await CardsAsync(facts, "Operations", ct);
+    }
+
+    public static IReadOnlyList<MorningFact> ExecutiveFacts(ExecutiveSummaryResult r, int activeProjects)
+    {
+        var gaps = new List<string>();
+        if (!r.SnapshotLoaded) gaps.Add("Active-project snapshot unavailable.");
+        if (!r.DeltekLoaded) gaps.Add("Deltek supplement unavailable.");
+        gaps.AddRange((r.LoaderFailureMessages ?? Array.Empty<string>()).Select(message => "Loader: " + message));
+        gaps.AddRange((r.SchemaDriftMessages ?? Array.Empty<string>()).Select(message => "Schema drift: " + message));
+        var facts = new List<MorningFact>
+        {
+            new("Executive Summary coverage",
+                new[] { $"SnapshotLoaded: {r.SnapshotLoaded}; DeltekLoaded: {r.DeltekLoaded}." }.Concat(gaps).ToArray(),
+                (r.SnapshotLoaded ? 1 : 0) + (r.DeltekLoaded ? 1 : 0), 2,
+                gaps.Count == 0 ? null : string.Join("; ", gaps),
+                SectionScope: $"all active projects ({activeProjects})"),
+        };
+        foreach (var kpi in r.Kpis)
+        {
+            var rows = KpiRows(kpi);
+            var lines = new[] { kpi.ValueText, kpi.InlineSubText, kpi.StatusMessage }
+                .Where(text => !string.IsNullOrWhiteSpace(text))
+                .Concat(rows.Take(10).Select(ExecutiveRow)).ToArray();
+            facts.Add(new MorningFact(kpi.Title, lines, Math.Min(10, rows.Count), rows.Count,
+                kpi.ValueText == "Data unavailable" ? kpi.StatusMessage : null));
+        }
+        foreach (var alert in r.Alerts)
+        {
+            var rows = AlertRows(alert);
+            facts.Add(new MorningFact(alert.Title, new[] { alert.Message }
+                .Concat(rows.Take(10).Select(ExecutiveRow)).ToArray(), Math.Min(10, rows.Count), rows.Count));
+        }
+        return facts;
+    }
+
+    // AR and cash KPIs can carry two lists. Prefer invoice detail and cash accounts;
+    // otherwise use the supplied list, including an explicitly empty list.
+    private static IReadOnlyList<object> KpiRows(ExecutiveKpi kpi) => kpi switch
+    {
+        { ArInvoiceRows: { } rows } => rows,
+        { CashAccountRows: { } rows } => rows,
+        { ProjectDrilldownRows: { } rows } => rows,
+        { CashHistoryRows: { } rows } => rows,
+        { ArOutstandingRows: { } rows } => rows,
+        { WipUnbilledRows: { } rows } => rows,
+        { BacklogRows: { } rows } => rows,
+        { BillingsRows: { } rows } => rows,
+        { BudgetBurnRows: { } rows } => rows,
+        { DeliveryRiskRows: { } rows } => rows,
+        { UtilizationRows: { } rows } => rows,
+        _ => Array.Empty<object>(),
+    };
+
+    private static IReadOnlyList<object> AlertRows(ExecutiveAlert alert) => alert switch
+    {
+        { ArInvoiceRows: { } rows } => rows,
+        { ProjectDrilldownRows: { } rows } => rows,
+        { ArOutstandingRows: { } rows } => rows,
+        { BacklogRows: { } rows } => rows,
+        { BudgetBurnRows: { } rows } => rows,
+        _ => Array.Empty<object>(),
+    };
+
+    private static string ExecutiveRow(object row) => row switch
+    {
+        KpiProjectDrilldownRow p => $"{p.Wbs1} {p.ProjectName}, PM {p.Pm}: over by {N(p.OverByHours)} hours; engineering used {P(p.PercentEngUsed)}; "
+            + $"billed {P(p.PercentBilled)}, with unposted {P(p.PercentBilledWithUnposted)}; unposted billing {(p.HasUnpostedBilling ? "yes" : "no")}.",
+        KpiCashHistoryRow p => $"Period {p.Period}: total {Money(p.Total)}; CAD {Money(p.Cad)}; USA {Money(p.Usa)}; BCC {Money(p.Bcc)}.",
+        KpiCashAccountRow p => $"{p.Company}, account {p.Account}, org {p.Org}: {p.Currency} {Money(p.Balance)}.",
+        KpiArOutstandingRow p => $"{p.Wbs1} {p.ProjectName}, PM {p.Pm}: total {Money(p.Total)}; current {Money(p.Current)}; "
+            + $"31–60 {Money(p.Aged31To60)}; 61–90 {Money(p.Aged61To90)}; 90+ {Money(p.Aged90Plus)}; oldest invoice {D(p.OldestInvoiceDate)}.",
+        KpiArInvoiceRow p => $"{p.Wbs1} {p.ProjectName}, invoice {p.Invoice}, client {p.ClientName} ({p.ClientId}), PM {p.Pm}: "
+            + $"balance {Money(p.Balance)}; invoice date {D(p.InvoiceDate)}; {p.DaysPastDue} {(p.DueDate.HasValue ? "days past due" : "days since invoice")}.",
+        KpiWipUnbilledRow p => $"{p.Wbs1} {p.ProjectName}, PM {p.Pm}, period {p.Period}: earned {Money(p.Earned)}; "
+            + $"overbilled {Money(p.Overbilled)}; net {Money(p.Net)}; net/fee {P(p.NetAsPercentOfFee)}.",
+        KpiBacklogRow p => $"{p.Wbs1} {p.ProjectName}, PM {p.Pm}: fee {Money(p.Fee)}; billed {Money(p.FeeBilled)}; "
+            + $"unposted {Money(p.UnpostedFeeBilled)}; backlog {Money(p.Backlog)}; billed {P(p.PercentBilled)}.",
+        KpiBillingsRow p => $"{p.Wbs1} {p.ProjectName}, PM {p.Pm}: billed {Money(p.FeeBilled)}; unposted {Money(p.UnpostedFeeBilled)}; "
+            + $"fee {Money(p.Fee)}; billed {P(p.PercentBilled)}; contribution {P(p.ContributionPercent)}.",
+        KpiBudgetBurnRow p => $"{p.Wbs1} {p.ProjectName}, PM {p.Pm}: {N(p.EngHours)} engineering hours / {N(p.EngBudget)} budget; "
+            + $"used {P(p.PercentUsed)}; remaining {N(p.RemainingHours)} hours.",
+        KpiDeliveryRiskRow p => $"{p.Wbs1} {p.ProjectName}, PM {p.Pm}: delivery risk {p.DeliveryRisk}; budget {p.BudgetStatus}; "
+            + $"engineering used {P(p.PercentEngUsed)}; remaining {N(p.RemainingHours)} hours.",
+        KpiUtilizationRow p => $"{p.Wbs1} {p.ProjectName}, PM {p.Pm}: {N(p.BillableHours)} billable / {N(p.TotalHours)} recorded hours; "
+            + $"nonbillable {N(p.NonBillableHours)} hours; utilization {P(p.UtilizationPct)}.",
+        _ => throw new ArgumentException("Unsupported Executive Summary drilldown row.", nameof(row)),
+    };
+
+    private static string Money(double value) => value.ToString("N0", CultureInfo.InvariantCulture);
+    private static string P(double value) => value.ToString("P1", CultureInfo.InvariantCulture);
+    private static string D(DateTime? value) => value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "unknown";
+
+    public static IReadOnlyList<MorningFact> EmployeeWeekFacts(IReadOnlyList<EmployeeWeeklyHours> rows, DateTime throughWeek)
+    {
+        // Include the current Sunday week: it can have records and still be partial.
+        var counts = rows.Where(row => row.WeekStart.Date <= throughWeek.Date).GroupBy(row => row.WeekStart.Date)
+            .OrderBy(group => group.Key)
+            .Select(group => (Week: group.Key, People: group.Select(row => row.EmployeeId).Distinct(StringComparer.OrdinalIgnoreCase).Count()))
+            .ToArray();
+        var weeks = counts.Select((week, index) =>
+        {
+            var prior = counts.Take(index).TakeLast(8).Select(p => p.People).OrderBy(n => n).ToArray();
+            double? median = prior.Length == 0 ? null : (prior[(prior.Length - 1) / 2] + prior[prior.Length / 2]) / 2.0;
+            return (week.Week, week.People, Median: median, Complete: median.HasValue && week.People >= median.Value);
+        }).ToArray();
+        var partial = weeks.Where(week => week.Median.HasValue && !week.Complete).ToArray();
+        var notes = partial.Select(week => $"partial: week {week.Week:yyyy-MM-dd}, {week.People} of {week.Median!.Value.ToString("0.#", CultureInfo.InvariantCulture)} people").ToList();
+        notes.AddRange(weeks.Where(week => !week.Median.HasValue)
+            .Select(week => $"Week {week.Week:yyyy-MM-dd}: {week.People} people; completeness unknown without a prior-week baseline."));
+        var lastComplete = weeks.Where(week => week.Complete).Select(week => (DateTime?)week.Week).LastOrDefault();
+        if (lastComplete is { } selected)
+            notes.Add($"People outliers use last complete week {selected:yyyy-MM-dd}.");
+        var facts = new List<MorningFact>
+        {
+            new("Partial timesheet weeks (distinct people; median of up to eight prior weeks; ties complete)",
+                notes, partial.Length, weeks.Length,
+                lastComplete.HasValue ? null : "No complete week with a prior-week baseline is available."),
+        };
+        if (lastComplete is { } last)
+            facts.AddRange(EmployeeFacts(rows, last));
+        else
+            facts.Add(new MorningFact("People, last complete week", Array.Empty<string>(), 0, null,
+                "No complete week with a prior-week baseline is available."));
+        return facts;
     }
 
     public static IReadOnlyList<MorningFact> EmployeeFacts(IReadOnlyList<EmployeeWeeklyHours> rows, DateTime week)
     {
         var last = rows.Where(r => r.WeekStart.Date == week.Date).ToArray();
-        if (last.Length == 0) return new[] { new MorningFact($"People week {week:yyyy-MM-dd}", Array.Empty<string>(), 0, null, "No employee hours returned for last week; no older week was substituted.") };
+        if (last.Length == 0) return new[] { new MorningFact($"People week {week:yyyy-MM-dd}", Array.Empty<string>(), 0, null, "No employee hours returned for the selected week.") };
         var measured = last.Where(r => r.TotalHrs > 0).ToArray();
         var outside = measured.Where(r => r.BillableHrs / r.TotalHrs < .5 || r.BillableHrs / r.TotalHrs > 1.1).ToArray();
-        return new[] { new MorningFact($"People under 50% or over 110%, week {week:yyyy-MM-dd} ({outside.Length} of {measured.Length} measured people; {measured.Length} of {last.Length} have positive hours)",
+        return new[] { new MorningFact($"People under 50% or over 110%, last complete week {week:yyyy-MM-dd} ({outside.Length} of {measured.Length} measured people; {measured.Length} of {last.Length} have positive hours)",
             new[] { "Utilization means billable / recorded hours, as in the existing employee tool; it is not workload / contracted capacity. Missing timesheets and contracted hours are not supplied." }
                 .Concat(outside.Select(r => $"{r.EmployeeName} ({r.EmployeeId}): {N(r.BillableHrs / r.TotalHrs * 100)}% = {N(r.BillableHrs)} / {N(r.TotalHrs)} hours.")).ToArray(), outside.Length, outside.Length,
             measured.Length == last.Length ? null : "Some people have no positive recorded hours; their utilization is unknown.") };

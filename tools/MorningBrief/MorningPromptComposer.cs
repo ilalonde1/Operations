@@ -54,7 +54,8 @@ public static class MorningPromptComposer
 
     private static void Role(StringBuilder sb, string role, IReadOnlyList<MorningFact> facts)
     {
-        sb.AppendLine($"## {role}");
+        var scope = facts.Select(fact => fact.SectionScope).FirstOrDefault(value => value is not null);
+        sb.AppendLine($"## {role}" + (scope is null ? "" : $" — {scope}"));
         if (facts.Count == 0)
         {
             sb.AppendLine($"Could not read: {role} facts were not supplied (0 of unknown records).");

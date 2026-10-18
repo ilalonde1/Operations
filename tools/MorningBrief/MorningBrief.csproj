@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>MorningBrief</AssemblyName>
@@ -10,9 +11,14 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Kor.Operations.Business\Kor.Operations.Business.csproj" />
+    <ProjectReference Include="..\..\Kor.Operations.App\Kor.Operations.App.csproj" />
     <ProjectReference Include="..\..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- UseWPF drops System.IO from the SDK implicit usings; restore it for this console. -->
+    <Using Include="System.IO" />
   </ItemGroup>
 </Project>
