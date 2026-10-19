@@ -75,6 +75,15 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             }
             return PursuitFacts(rows, now);
         }, ct);
+        await ReadAsync(facts, "Pursuit touchstones", async () =>
+        {
+            var store = new SqlPursuitTouchstoneStore(Connection(BdConnection));
+            var zone = MeetingsDue.Pacific();
+            var pursuits = await store.ListPursuitsAsync(30, ct);
+            var drafts = await store.ListDraftsAsync(ct);
+            var due = PursuitTouchstones.Compute(await store.ListRulesAsync(ct), pursuits, drafts, now, zone);
+            return new[] { MorningTouchstones.Facts(PursuitTouchstones.Rollups(due, pursuits, drafts, now, zone), now, zone) };
+        }, ct);
         await ReadAsync(facts, "Open and late actions by owner", async () =>
         {
             var rows = await new SqlBdRhythmStore(Connection(BdConnection)).ListActionsAsync(ct);

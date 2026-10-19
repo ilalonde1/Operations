@@ -62,6 +62,11 @@ public sealed record HourDraft(string To, string Subject, string Body)
     public int? Minutes { get; init; }
     /// <summary>The recurring meeting the invite is for (migration 369). Opening the invite plans that occurrence.</summary>
     public int? CadenceId { get; init; }
+    /// <summary>
+    /// The pursuit touchstones an owner's roll-up covers (migration 371), as "engagement:touchstone:anchor-date". Opening the
+    /// draft records them as drafted, so the next roll-up moves on.
+    /// </summary>
+    public IReadOnlyList<string>? Touchstones { get; init; }
 
     /// <summary>An invite draft for a meeting starting at <paramref name="start"/>.</summary>
     public static HourDraft Invite(string to, string subject, string body, DateTimeOffset start, int minutes) =>
@@ -179,6 +184,12 @@ public static class DirectorHourFile
                     if (d.IsInvite && d.Minutes is not (>= 5 and <= 240)) errors.Add($"{at}: invite '{d.Subject}' needs minutes from 5 to 240.");
                     if (!d.IsInvite && (d.Minutes is not null || d.CadenceId is not null)) errors.Add($"{at}: draft '{d.Subject}' has minutes or cadenceId but no when; only an invite carries them.");
                     if (d.CadenceId is <= 0) errors.Add($"{at}: draft '{d.Subject}' has an invalid cadenceId.");
+                    if (d.Touchstones is { Count: > 0 } keys)
+                    {
+                        if (d.IsInvite) errors.Add($"{at}: invite '{d.Subject}' cannot carry touchstones; only an owner's roll-up does.");
+                        foreach (var key in keys.Where(k => !TouchstoneKey.TryParse(k, out _)))
+                            errors.Add($"{at}: draft '{d.Subject}' touchstone '{key}' must be engagement:touchstone:yyyy-MM-dd as printed in the facts.");
+                    }
                 }
                 foreach (var l in m.Links ?? Array.Empty<HourLink>())
                 {

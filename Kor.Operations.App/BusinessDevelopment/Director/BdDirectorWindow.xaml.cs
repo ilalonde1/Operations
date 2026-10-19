@@ -455,6 +455,7 @@ public partial class BdDirectorWindow : Window
             return;
         }
 
+        await RecordTouchstonesAsync(draft).ConfigureAwait(true);
         if (draft is not { IsInvite: true, CadenceId: { } cadence, Start: { } start }) return;
         try
         {
@@ -467,6 +468,23 @@ public partial class BdDirectorWindow : Window
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log.Warning(ex, "Planning cadence {Cadence} at {Start} failed.", cadence, start);
+        }
+    }
+
+    /// <summary>An owner's roll-up, once opened, records the touchstones it covers so the next roll-up moves on.</summary>
+    private async Task RecordTouchstonesAsync(HourDraft draft)
+    {
+        var keys = (draft.Touchstones ?? Array.Empty<string>())
+            .Select(text => TouchstoneKey.TryParse(text, out var key) ? key : null).OfType<TouchstoneKey>().ToList();
+        if (keys.Count == 0) return;
+        try
+        {
+            var added = await AppServices.Get<IPursuitTouchstoneStore>().RecordDraftedAsync(keys, CurrentActor(), _lifetime.Token).ConfigureAwait(true);
+            if (_rhythm is not null) SetRhythmStatus($"Recorded {added} of {keys.Count} pursuit touchstones as drafted.");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Warning(ex, "Recording {Count} touchstones for {Subject} failed.", keys.Count, draft.Subject);
         }
     }
 
