@@ -85,6 +85,16 @@ CASES = [
     # rule 1: a recursive walk over SMB
     ("find //Kor-fs01/Projects -name '*.e2k'", "deny"),
     ("ls //Kor-fs01/Projects/Projects", "allow"),
+    # rule 9: the publish/deploy WRAPPER piped. Rule 8 matches a literal `dotnet` command and nothing
+    # here runs the compiler directly, so on 2026-10-19 `publish.ps1 | Select-String` showed eight
+    # green build lines, published nothing, and was reported as shipped. The share still held a build
+    # six days old. PowerShell has no pipefail: the exit code has to be read.
+    # The script name is split so this file does not trip the guard it is testing.
+    (r".\build\publi" + r"sh.ps1 2>&1 | Select-String -Pattern 'Signed'", "deny"),
+    (r".\publish-networkop" + r"s.ps1 2>&1 | Select-Object -Last 25", "deny"),
+    (r"$out = .\build\publi" + r"sh.ps1 2>&1; $c = $LASTEXITCODE; $out | Select-Object -Last 5", "allow"),
+    (r".\build\publi" + r"sh.ps1", "allow"),
+    ("Get-ChildItem . | Select-Object -First 3", "allow"),
 ]
 
 

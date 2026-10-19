@@ -76,6 +76,25 @@ RULES = [
      "A dotnet build/test/publish piped without pipefail: the pipe's exit code replaces the build's "
      "(2026-10-14: four CS0104 errors reported as a green build; tests and PNGs then ran on stale "
      "binaries). Prefix the command with `set -o pipefail &&`, or do not pipe it."),
+
+    # 9. THE SAME FAULT, THROUGH THE WRAPPER SCRIPT. Rule 8 matches the literal `dotnet` command, and
+    #    nothing in this shop runs the compiler directly: every deploy is a .ps1 that wraps it
+    #    (publish.ps1, publish-networkops.ps1, publish-opportunities.ps1, deploy-*.ps1). So the rule
+    #    read as covered while the thing actually typed went straight through.
+    #    On 2026-10-19 `.\build\publish.ps1 2>&1 | Select-String ...` showed eight green builds and
+    #    was reported as published. It had not published: the share still held the previous build,
+    #    six days old, and the filter had eaten the failure. Found only because the next command
+    #    happened to read version.txt off the share. Ian: "Why not read the rules FIRST?" - the rule
+    #    had been read ten minutes earlier, which is the whole point of putting it in a gate.
+    #    PowerShell has no pipefail, so the check is different: capture the output and read
+    #    $LASTEXITCODE, which is the only thing that carries the script's real outcome.
+    (re.compile(r"(?is)^(?!.*(?:pipefail|LASTEXITCODE)).*?"
+                r"\b(?:publish|deploy)[A-Za-z0-9._-]*\.ps1\b[^|;\n]*\|(?!\|)"),
+     "A publish/deploy script piped without reading its exit code: the pipe's result replaces the "
+     "script's, so a failed deploy reads as a successful one (2026-10-19: eight green build lines "
+     "from publish.ps1 that never reached the share, reported as published). Assign it instead - "
+     "`$out = .\\build\\publish.ps1 2>&1` - then check $LASTEXITCODE and print what you need from "
+     "$out. Or run it unpiped."),
 ]
 
 BUILD = re.compile(r"dotnet\s+(?:test|build)")
