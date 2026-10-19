@@ -217,11 +217,21 @@ public partial class BdDirectorWindow : Window
         if (_rhythm is { PersonAgenda.Length: > 0 } r && TrySetClipboard(r.PersonAgenda)) SetRhythmStatus("Copied the agenda.");
     }
 
-    private void DraftPersonInvite_Click(object sender, RoutedEventArgs e)
+    /// <summary>The booked one-to-one opens as its Outlook invite; with none booked, the agenda opens as a message to the lead.</summary>
+    private async void DraftPersonInvite_Click(object sender, RoutedEventArgs e)
     {
         if (_rhythm?.SelectedPerson is not { IsLead: true } person) return;
-        OpenMailDraft(person.Key, $"One-to-one: {person.Name}", _rhythm.PersonAgenda);
+        var booked = _rhythm.Meetings.Select(m => m.Row).FirstOrDefault(m => m.Kind == "OneToOne" && m.Status == "Planned"
+            && string.Equals(m.WithStaffKey, person.Key, StringComparison.OrdinalIgnoreCase) && m.ScheduledForUtc == person.NextMeetingUtc);
+        await OpenOutlookDraftAsync(booked is null
+            ? new HourDraft(person.Key, $"One-to-one: {person.Name}", _rhythm.PersonAgenda)
+            : InviteFor(booked, _rhythm.PersonAgenda)).ConfigureAwait(true);
     }
+
+    /// <summary>A stored meeting as an unsent invite: its people, time, length and agenda.</summary>
+    private HourDraft InviteFor(BdMeetingRow meeting, string body) =>
+        HourDraft.Invite(string.Join(";", MeetingInvite.Recipients(meeting, _rhythm?.PeopleCards.Select(p => p.Lead).ToList() ?? new List<BdLeadRow>())),
+            meeting.Title, body, meeting.ScheduledForUtc, meeting.DurationMinutes);
 
     // ---- The consigliere: questions opened in Claude Code on this PC, and the doctrine ----
 
@@ -438,7 +448,7 @@ public partial class BdDirectorWindow : Window
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log.Warning(ex, "Outlook could not open the draft {Subject}.", draft.Subject);
-            if (!draft.IsInvite) { OpenMailDraft(draft.To, draft.Subject, draft.Body); return; }
+            if (!draft.IsInvite) { OpenMailtoDraft(draft.To, draft.Subject, draft.Body); return; }
             TrySetClipboard($"Invite: {draft.Subject}\r\nTo: {draft.To}\r\nWhen: {draft.When} ({draft.Minutes} min)\r\n\r\n{draft.Body}");
             MessageBox.Show(this, "Outlook could not open the invite, so it is on your clipboard.", "Invite in Outlook",
                 MessageBoxButton.OK, MessageBoxImage.Information);
@@ -465,10 +475,10 @@ public partial class BdDirectorWindow : Window
         .First(value => !string.IsNullOrWhiteSpace(value))!.Trim();
 
     /// <summary>
-    /// Opens a new message in the default mail program for Ian to review and send. Nothing is sent from KOR Operations.
+    /// The fallback when Outlook cannot be reached: a new message in the default mail program for Ian to review and send.
     /// A body too long for a mailto address goes to the clipboard instead, with the subject and recipients prefilled.
     /// </summary>
-    private void OpenMailDraft(string to, string subject, string body)
+    private void OpenMailtoDraft(string to, string subject, string body)
     {
         var recipients = string.Join(";", to.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         var full = "mailto:" + recipients + "?subject=" + Uri.EscapeDataString(subject) + "&body=" + Uri.EscapeDataString(body.Replace("\n", "\r\n"));
@@ -564,11 +574,12 @@ public partial class BdDirectorWindow : Window
         if (_rhythm?.SelectedMeeting is { } m && TrySetClipboard(m.Text)) SetRhythmStatus("Copied: " + m.Row.Title);
     }
 
-    private void DraftMeetingInvite_Click(object sender, RoutedEventArgs e)
+    /// <summary>A planned meeting opens as its Outlook invite; a held one opens its recap as a message to the same people.</summary>
+    private async void DraftMeetingInvite_Click(object sender, RoutedEventArgs e)
     {
         if (_rhythm?.SelectedMeeting is not { } m) return;
-        var to = m.Row.Kind == "OneToOne" ? m.Row.WithStaffKey ?? "" : "";
-        OpenMailDraft(to, m.Row.Title, m.Text);
+        var invite = InviteFor(m.Row, m.Text);
+        await OpenOutlookDraftAsync(m.Row.Status == "Planned" ? invite : invite with { When = null, Minutes = null }).ConfigureAwait(true);
     }
 
     private async void MeetingHeld_Click(object sender, RoutedEventArgs e)

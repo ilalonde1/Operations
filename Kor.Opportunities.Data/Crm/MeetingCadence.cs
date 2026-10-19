@@ -20,6 +20,38 @@ public sealed record MeetingCadenceRow(int Id, string Seat, string Cadence, stri
 public sealed record MeetingDue(MeetingCadenceRow Cadence, string State, DateTimeOffset? LastHeldUtc, DateTimeOffset? PlannedUtc,
     DateTimeOffset ProposedUtc);
 
+/// <summary>Who an Outlook invite for a stored meeting goes to.</summary>
+public static class MeetingInvite
+{
+    private static readonly Dictionary<string, string> Nicknames = new(StringComparer.OrdinalIgnoreCase) { ["Jim"] = "James", ["James"] = "Jim" };
+
+    /// <summary>
+    /// A one-to-one goes to its person. Otherwise each name in Attendees ("Ian, Jim, John" or "Ian Lalonde, Omar Alcazar Pastrana")
+    /// becomes that lead's staff address, matched on the full name or the first name (Jim and James are the same person);
+    /// Ian is left out, notes in brackets are dropped, and a name that matches no lead is kept for Outlook to resolve.
+    /// </summary>
+    public static IReadOnlyList<string> Recipients(BdMeetingRow meeting, IReadOnlyList<BdLeadRow> leads, string ianKey = "ilalonde@korstructural.com")
+    {
+        if (meeting.Kind == "OneToOne" && !string.IsNullOrWhiteSpace(meeting.WithStaffKey)) return new[] { meeting.WithStaffKey!.Trim() };
+        var text = System.Text.RegularExpressions.Regex.Replace(meeting.Attendees ?? "", @"\([^)]*\)", "");
+        var result = new List<string>();
+        foreach (var name in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var first = name.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+            var lead = leads.FirstOrDefault(l => string.Equals(l.Name, name, StringComparison.OrdinalIgnoreCase))
+                ?? leads.FirstOrDefault(l => FirstName(l.Name) is { } f
+                    && (string.Equals(f, first, StringComparison.OrdinalIgnoreCase)
+                        || (Nicknames.TryGetValue(first, out var alt) && string.Equals(f, alt, StringComparison.OrdinalIgnoreCase))));
+            var address = lead?.StaffKey ?? name;
+            if (string.Equals(address, ianKey, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!result.Contains(address, StringComparer.OrdinalIgnoreCase)) result.Add(address);
+        }
+        return result;
+    }
+
+    private static string? FirstName(string name) => name.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+}
+
 public static class MeetingsDue
 {
     public static readonly IReadOnlyList<string> States = new[] { "Prepare", "Planned", "NotRecorded", "Later" };

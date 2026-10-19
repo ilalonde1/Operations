@@ -153,6 +153,39 @@ public sealed class MeetingCadenceTests
         Assert.Single(fact.Situations);
     }
 
+    private static readonly BdLeadRow[] Leads =
+    {
+        new("ilalonde@korstructural.com", "Ian Lalonde", "Manager", null, 10),
+        new("omara@korstructural.com", "Omar Alcazar Pastrana", "Lead", "Vancouver/LowerMainland", 20),
+        new("jdesroches@korstructural.com", "James DesRoches", "Lead", "USA", 60),
+        new("jmarkulin@korstructural.com", "John Markulin", "Partner", null, 70),
+        new("rbeirne@korstructural.com", "Rory Beirne", "Lead", "VancouverIsland", 50),
+    };
+
+    [Fact]
+    public void Invite_recipients_from_the_9_October_attendee_text()
+    {
+        var ninth = NinthOctober with { Attendees = "Ian Lalonde, Jim DesRoches, John Markulin, Conor Murtagh, Omar Alcazar (Rory Beirne absent)" };
+
+        var to = MeetingInvite.Recipients(ninth, Leads);
+
+        // Ian left out; Jim is James; Omar matched on his first name; Conor is no lead here, so his name is kept for Outlook;
+        // the bracketed absence is not an attendee.
+        Assert.Equal(new[] { "jdesroches@korstructural.com", "jmarkulin@korstructural.com", "Conor Murtagh", "omara@korstructural.com" }, to);
+    }
+
+    [Fact]
+    public void A_one_to_one_invite_goes_to_its_person_and_the_factory_round_trips_the_time()
+    {
+        var meeting = Meeting(6, "OneToOne", "omara@korstructural.com", new DateTimeOffset(2026, 10, 20, 17, 0, 0, TimeSpan.Zero), "Planned", 3)
+            with { Attendees = "Ian Lalonde, Omar Alcazar Pastrana" };
+        Assert.Equal(new[] { "omara@korstructural.com" }, MeetingInvite.Recipients(meeting, Leads));
+
+        var draft = HourDraft.Invite("omara@korstructural.com", "BD quickie: Omar", "Agenda", meeting.ScheduledForUtc, 15);
+        Assert.True(draft.IsInvite);
+        Assert.Equal(meeting.ScheduledForUtc, draft.Start);
+    }
+
     private static (DirectorHourContent? Content, System.Collections.Generic.IReadOnlyList<string> Errors) ParseWith(params HourDraft[] drafts)
     {
         var hour = MorningBriefTests.FixtureHour();

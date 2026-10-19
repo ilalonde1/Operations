@@ -63,6 +63,10 @@ public sealed record HourDraft(string To, string Subject, string Body)
     /// <summary>The recurring meeting the invite is for (migration 369). Opening the invite plans that occurrence.</summary>
     public int? CadenceId { get; init; }
 
+    /// <summary>An invite draft for a meeting starting at <paramref name="start"/>.</summary>
+    public static HourDraft Invite(string to, string subject, string body, DateTimeOffset start, int minutes) =>
+        new(to, subject, body) { When = start.ToString("O", CultureInfo.InvariantCulture), Minutes = minutes };
+
     [JsonIgnore] public bool IsInvite => !string.IsNullOrWhiteSpace(When);
 
     [JsonIgnore] public DateTimeOffset? Start => DateTimeOffset.TryParse(When, System.Globalization.CultureInfo.InvariantCulture,
