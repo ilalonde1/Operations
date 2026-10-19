@@ -1,0 +1,525 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thirty questions</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head><body>
+<style>
+  .kicker { break-after: avoid; }
+  .qa dt { font-weight: 600; margin-top: .7rem; }
+  .qa dd { margin: .2rem 0 0 1rem; }
+  @media print { body { font-size: 10.8pt; } .box, .qa dt, .qa dd { break-inside: avoid; } }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Structural engineering for the people who sell it · Lesson 8 of 8</p>
+    <h1>Thirty questions that make you sound like you know the business</h1>
+    <p class="hero__lede">You don't have to know the answers. You have to ask the questions an engineer would ask, <strong>listen to what comes back</strong>, and know when to say "let's get our engineer on a call." This lesson is the questions, the five things never to say, and the whole course on one page.</p>
+    <div class="hero__meta">
+      <span>20-minute read</span>
+      <span>Thirty questions · five don'ts</span>
+      <span>One-page cheat sheet</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#how">How to use these questions</a></li>
+      <li><a href="#architect">For an architect at concept</a></li>
+      <li><a href="#developer">For a developer with a site</a></li>
+      <li><a href="#contractor">For a contractor or design-builder</a></li>
+      <li><a href="#ground">About the site and the ground</a></li>
+      <li><a href="#risk">About schedule, cost and risk</a></li>
+      <li><a href="#never">Five things never to say</a></li>
+      <li><a href="#cheat">Cheat sheet: twelve terms</a></li>
+      <li><a href="#check">Check yourself</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="how">
+      <p class="kicker">Before you start</p>
+      <h2>How to use these questions</h2>
+      <p class="lede">A good question does two things: it shows you understand where the money and the risk are, and it gives the client a reason to bring KOR in now rather than later.</p>
+      <ul class="plain">
+        <li><strong>Pick three, not thirty.</strong> A question asked from a checklist backfires. The moment the client thinks "why is he asking me that?", you have lost credibility. Choose the ones that fit the project in front of you.</li>
+        <li><strong>Then listen, and show you listened.</strong> Play back what you heard: "So the core isn't fixed yet. Do I have that right?" Listening is what earns the right to suggest anything.</li>
+        <li><strong>Ask what it would be worth.</strong> "How would it help if we could settle that before you go to the city?" Questions like that let the client explain the value of early structural input in their own words, which is what they will repeat to their partners when you are not in the room.</li>
+      </ul>
+      <div class="box box--tip">
+        <p class="box__label">✓ The line that ends most answers</p>
+        <p>"That's exactly the kind of thing our engineer should look at. Can I set up a call this week?" It is honest, it gets the second meeting, and it puts a KOR engineer in front of the client at the point where their advice is worth most.</p>
+      </div>
+    </section>
+
+    <section id="architect">
+      <p class="kicker">Questions 1 to 6</p>
+      <h2>For an architect at concept</h2>
+      <p class="lede">Architects choose the structural engineer on most projects, often at the start of schematic design. These questions show you know which early decisions lock in structural cost.</p>
+      <dl class="qa">
+        <dt>1. "Where's the core, and is it fixed yet?"</dt>
+        <dd><strong>Why it works:</strong> on a concrete tower the core resists the earthquake. EGBC's tall-building guideline says its size, location and openings should be agreed with the structural engineer early.</dd>
+        <dd><strong>If they say "we're still moving it around":</strong> that is the best moment for a KOR engineer to sit in.</dd>
+
+        <dt>2. "Do the tower columns line up with the parking grid, or are we looking at transfers?"</dt>
+        <dd><strong>Why it works:</strong> transfers are the most expensive structural surprise, and the only cheap time to design them out is now.</dd>
+        <dd><strong>If they say "the parking grid is different":</strong> "Let's get our engineer to look at it before it goes further."</dd>
+
+        <dt>3. "What's your height limit and floor-to-floor? How many storeys are you trying to fit?"</dt>
+        <dd><strong>Why it works:</strong> slab thickness drives floor-to-floor height, so it decides whether the last storey fits. It tells you how tight the envelope is.</dd>
+
+        <dt>4. "Does anything need to punch through the core at grade, like a parking stair?"</dt>
+        <dd><strong>Why it works:</strong> an opening at the base of the core is exactly where the walls work hardest in an earthquake. EGBC expects the structural engineer to offer other stair layouts that meet the architect's need.</dd>
+
+        <dt>5. "Concrete, wood or hybrid, and has anyone tested a five- or six-storey wood scheme?"</dt>
+        <dd><strong>Why it works:</strong> it shows you know the options. It also opens KOR's line on wood: shear-wall transfers aren't allowed in wood frame over four storeys, so the walls have to be designed into the unit plans from the start.</dd>
+
+        <dt>6. "If it's mass timber, have you talked to a supplier about panel sizes yet?"</dt>
+        <dd><strong>Why it works:</strong> timber spans differ a lot from concrete. The joint mass-timber guideline says the grid should be set with the structural engineer once the supplier's product sizes and transport limits are known.</dd>
+        <dd><strong>If they say "not yet":</strong> "Our engineer can help you set the grid before you commit."</dd>
+      </dl>
+    </section>
+
+    <section id="developer">
+      <p class="kicker">Questions 7 to 12</p>
+      <h2>For a developer with a site</h2>
+      <p class="lede">Developers care about units, cost, schedule and certainty. Ask about the deal, not the drawings.</p>
+      <dl class="qa">
+        <dt>7. "What does the site need to deliver: unit count, height, parking?"</dt>
+        <dd><strong>Why it works:</strong> it starts from their pro forma, not your services. Every structural decision (grid, transfers, slab depth) feeds one of those three numbers.</dd>
+
+        <dt>8. "Who's your architect, and how far along are they?"</dt>
+        <dd><strong>Why it works:</strong> it tells you where the decision sits. If there is no architect yet, you can make introductions; if there is one, KOR's route in usually goes through them.</dd>
+
+        <dt>9. "How much parking are you carrying underground?"</dt>
+        <dd><strong>Why it works:</strong> deep parking means excavation, shoring, groundwater and a column grid the tower above has to respect. It is where a lot of the structural cost lives.</dd>
+
+        <dt>10. "Have you looked at a wood scheme, or is it concrete because that's what you've always done?"</dt>
+        <dd><strong>Why it works:</strong> it gently challenges an assumption, which is what a trusted adviser does. Asked with curiosity, not a pitch.</dd>
+        <dd><strong>If they say "we've never priced wood":</strong> "Our engineer can walk you through what changes at five and six storeys."</dd>
+
+        <dt>11. "What's driving the schedule: a financing date, presales, a permit window?"</dt>
+        <dd><strong>Why it works:</strong> it finds the deadline that actually matters to them, and shows you understand structure is on the critical path to the building permit.</dd>
+
+        <dt>12. "What went wrong structurally on your last project?"</dt>
+        <dd><strong>Why it works:</strong> it brings out real pain (late drawings, slow site reviews, a transfer nobody saw coming), and that pain is the reason they would switch engineers.</dd>
+        <dd><strong>If they name a problem:</strong> ask "what did that cost you?" before saying anything about KOR.</dd>
+      </dl>
+    </section>
+
+    <section id="contractor">
+      <p class="kicker">Questions 13 to 18</p>
+      <h2>For a contractor or design-builder</h2>
+      <p class="lede">On design-build the contractor is the client, and takes on the job of coordinating the design team. Contractors buy constructability, speed and engineers who answer the phone.</p>
+      <dl class="qa">
+        <dt>13. "Where are you in the procurement, and when do you name your design team?"</dt>
+        <dd><strong>Why it works:</strong> on a design-build or P3 bid the structural engineer is picked while the bidding teams form, often only weeks before award. It tells you how long KOR has to get on the team.</dd>
+
+        <dt>14. "What's your preferred forming system and crane plan?"</dt>
+        <dd><strong>Why it works:</strong> the contractor's means and methods shape slab layout and repetition. It shows KOR designs for how they build, not just for the drawings.</dd>
+
+        <dt>15. "Which parts are you designing yourselves, through your own engineers or suppliers?"</dt>
+        <dd><strong>Why it works:</strong> shoring, formwork, connections and pre-engineered items are often designed by the contractor's specialty engineer and sealed by them. It sets the scope line early, before it becomes a dispute.</dd>
+
+        <dt>16. "How fast do you need shop drawings back, and how much notice do you give for site reviews?"</dt>
+        <dd><strong>Why it works:</strong> these are the two places contractors feel the engineer every week. KOR asks for 24 hours' notice for a field review in normal hours, 7:30 to 4:00 on weekdays, and 48 hours for anything outside them.</dd>
+
+        <dt>17. "On wood, how are you handling the tie-downs as you go up?"</dt>
+        <dd><strong>Why it works:</strong> KOR's specification assumes rod tie-downs go in floor by floor so the shear walls brace the building during construction. Any other temporary bracing is the contractor's to design and pay for. Asking shows you know the job site.</dd>
+
+        <dt>18. "Where do you usually see the most RFIs and changes on a job like this?"</dt>
+        <dd><strong>Why it works:</strong> it invites them to tell you what a bad engineer costs them, in their words.</dd>
+        <dd><strong>If they say "coordination between consultants":</strong> "Let's get our project lead on a call. That's worth talking through before you bid."</dd>
+      </dl>
+    </section>
+
+    <section id="ground">
+      <p class="kicker">Questions 19 to 24</p>
+      <h2>About the site and the ground</h2>
+      <p class="lede">The ground decides the foundations, and the foundations can swing a budget. The geotechnical engineer owns the soil; the structural engineer owns what sits on it.</p>
+      <dl class="qa">
+        <dt>19. "Is there a geotechnical report yet, and who's the geotech?"</dt>
+        <dd><strong>Why it works:</strong> it is the first question on any site. The geotech is usually hired by the owner, sometimes by the design-builder; either way KOR needs to work with them.</dd>
+        <dd><strong>If they say "not yet":</strong> "Our engineer can tell you what the geotech will need from us: loads, settlement limits and seismic requirements."</dd>
+
+        <dt>20. "Anything soft, wet or filled on the site?"</dt>
+        <dd><strong>Why it works:</strong> soft or liquefiable soil means piles or ground improvement. In plain words, it signals you know where the foundation money goes.</dd>
+
+        <dt>21. "How close are the neighbours, and how deep are you digging?"</dt>
+        <dd><strong>Why it works:</strong> shoring and underpinning next to existing buildings involve both geotechnical and structural design, including the extra load the neighbour puts on the soil. Tight urban sites are where this bites.</dd>
+
+        <dt>22. "Is the site sloping, or are there retaining walls?"</dt>
+        <dd><strong>Why it works:</strong> retaining walls that hold up the building's foundations are structural elements, and a slope changes the foundation design and the excavation plan.</dd>
+
+        <dt>23. "On a tall tower, is anyone planning a site-specific seismic study?"</dt>
+        <dd><strong>Why it works:</strong> for tall buildings the geotech may provide a site-specific seismic hazard analysis, and EGBC expects the structural and geotechnical engineers to agree who does what. Asking shows you know tall work is a different league.</dd>
+
+        <dt>24. "Are there existing structures on site you want to keep or reuse?"</dt>
+        <dd><strong>Why it works:</strong> reuse means a condition assessment, which is its own service with its own guideline. It also signals renovation and retrofit work KOR does.</dd>
+      </dl>
+    </section>
+
+    <section id="risk">
+      <p class="kicker">Questions 25 to 30</p>
+      <h2>About schedule, cost and risk</h2>
+      <p class="lede">These are the questions that turn a technical chat into a business one, and they are the ones decision-makers respond to.</p>
+      <dl class="qa">
+        <dt>25. "What happens to the project if the structure comes in late or over?"</dt>
+        <dd><strong>Why it works:</strong> it makes the cost of a weak engineer concrete. When the client answers, they are explaining the value of KOR to themselves.</dd>
+
+        <dt>26. "How much design is done before you go for the building permit?"</dt>
+        <dd><strong>Why it works:</strong> it shows you know the stages: concept, design development, permit, construction documents, tender and construction. It tells you what scope KOR would be quoting.</dd>
+
+        <dt>27. "Is this going to need a peer review or an independent review?"</dt>
+        <dd><strong>Why it works:</strong> on tall concrete buildings EGBC requires a documented independent review before drawings go out for construction, and a peer review where advanced analysis is used. Both take time and belong in the schedule.</dd>
+        <dd><strong>If they don't know:</strong> "That's a question for our engineer. Let me set up a call."</dd>
+
+        <dt>28. "How many site reviews have you budgeted, and how long is construction?"</dt>
+        <dd><strong>Why it works:</strong> field reviews are a large part of the fee, and KOR's fixed fees cover a reasonable number, not unlimited. Asking early avoids a fight later.</dd>
+
+        <dt>29. "Are you expecting changes after the permit drawings, like unit mix or a sale of the project?"</dt>
+        <dd><strong>Why it works:</strong> change is the biggest fee risk. KOR bills work outside the agreed scope at hourly rates, so knowing what is likely to change shapes the proposal.</dd>
+
+        <dt>30. "If we could settle the structure early, what would that be worth to you?"</dt>
+        <dd><strong>Why it works:</strong> a need-payoff question. It gets the client to say the benefit out loud, and gives them words to use when they sell KOR to their partners or board.</dd>
+      </dl>
+    </section>
+
+    <section id="never">
+      <p class="kicker">Hold the line</p>
+      <h2>Five things never to say</h2>
+      <p class="lede">Each of these feels helpful in the room. Each one either commits KOR to something an engineer hasn't checked, or costs the trust the questions just earned.</p>
+      <div class="box box--dont">
+        <p class="box__label">✕ Never</p>
+        <ol>
+          <li><strong>A number.</strong> No slab thickness, column size, member size or rough steel quantity, "ballpark" included. It will be quoted back to KOR.</li>
+          <li><strong>A promise on cost or schedule.</strong> Not "we can have permit drawings in eight weeks," not "that'll save you money." Say "Let me find out what's realistic and come back to you."</li>
+          <li><strong>A word against a competitor.</strong> The client may have hired them, may again, and may repeat it. Talk about what KOR does well.</li>
+          <li><strong>A code interpretation.</strong> "The code allows that" or "you won't need a peer review" is engineering judgment. It belongs to a registered engineer, and the authority having jurisdiction has the final word.</li>
+          <li><strong>A commitment of an engineer's time.</strong> Not "John will be at every meeting" or "we'll turn that around tomorrow." Offer the call; let the engineer set the commitment.</li>
+        </ol>
+      </div>
+      <div class="box box--screen">
+        <p class="box__label">What to say instead</p>
+        <p>"Good question. I don't want to guess on that. Let me get our engineer on a call this week." Clients hear this as a sign that KOR takes its answers seriously.</p>
+      </div>
+    </section>
+
+    <section id="cheat">
+      <p class="kicker">One page</p>
+      <h2>Cheat sheet: twelve terms from the course</h2>
+      <ul class="plain">
+        <li><strong>Load path:</strong> the route every load takes to the ground: slab, beams, columns or walls, foundations, soil.</li>
+        <li><strong>Lateral system:</strong> whatever keeps the building standing when wind or an earthquake pushes it sideways.</li>
+        <li><strong>Core:</strong> the concrete walls around elevators and stairs; a tower's backbone against earthquakes.</li>
+        <li><strong>Shear wall:</strong> a wall that resists sideways force; in wood frame, the walls that must stack floor to floor.</li>
+        <li><strong>Transfer:</strong> a deep beam or thick slab that carries a column or wall sideways because the support below isn't there. Expensive.</li>
+        <li><strong>PT slab:</strong> a post-tensioned concrete slab, with tensioned steel tendons, so it can be thinner and span further.</li>
+        <li><strong>Part 3 / Part 9:</strong> the two tracks of the BC Building Code: larger or complex buildings that need engineers throughout, and small houses and buildings.</li>
+        <li><strong>SER (Structural Engineer of Record):</strong> the engineer responsible for the structure as a whole and for signing the structural letters of assurance.</li>
+        <li><strong>Letters of Assurance:</strong> the code's schedules where registered professionals commit to design (Schedule B) and confirm field review (Schedule C-B).</li>
+        <li><strong>Field review:</strong> the engineer's site visits during construction to check the work follows the design.</li>
+        <li><strong>Geotech:</strong> the geotechnical engineer, who reports what the soil can carry; the structural engineer designs the foundations on it.</li>
+        <li><strong>Shop drawings:</strong> drawings prepared by fabricators and contractors from KOR's design, which KOR reviews before things are built.</li>
+      </ul>
+    </section>
+
+    <section id="check">
+      <p class="kicker">Two minutes</p>
+      <h2>Check yourself</h2>
+      <dl class="qa">
+        <dt>1. An architect says the core is "still moving around." What do you do?</dt><dd>Offer a call with a KOR engineer now. Core size, location and openings are what EGBC says should be agreed early, and moving the core later is expensive.</dd>
+        <dt>2. Why ask a developer what went wrong on their last project?</dt><dd>It surfaces real pain, which is the reason they would change engineers. Ask what it cost them before you talk about KOR.</dd>
+        <dt>3. A contractor asks you whether the slab can be thinner. What do you say?</dt><dd>"Good question. Let me get our engineer on a call." No numbers, ever.</dd>
+        <dt>4. What is the first question about any site?</dt><dd>Is there a geotechnical report, and who is the geotech?</dd>
+        <dt>5. What makes question 30 ("what would that be worth to you?") work?</dt><dd>The client states the benefit in their own words, and those are the words they will use to sell KOR internally when you are not there.</dd>
+      </dl>
+      <div class="box box--auto">
+        <p class="box__label">Sources, and the review this still needs</p>
+        <p>EGBC's Professional Practice Guidelines for tall concrete buildings, Part 3 buildings, geotechnical services, shop drawings and condition assessments; the joint guidelines for encapsulated mass timber; EGBC's bulletin on five- and six-storey wood frame; the Guide to the Letters of Assurance; KOR's proposal templates, company introductions, specifications and field review procedures; on question technique, <em>SPIN Selling</em> and <em>The Trusted Advisor</em>. A KOR engineer reads each lesson before it is used with a client.</p>
+      </div>
+    </section>
+  </main>
+</div>
+</body></html>

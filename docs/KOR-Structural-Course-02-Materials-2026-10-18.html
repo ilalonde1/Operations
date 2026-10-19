@@ -1,0 +1,476 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Materials</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head><body>
+<style>
+  .kicker { break-after: avoid; }
+  .qa dt { font-weight: 600; margin-top: .7rem; }
+  .qa dd { margin: .2rem 0 0 1rem; }
+  @media print { body { font-size: 10.8pt; } .box, .qa dt, .qa dd { break-inside: avoid; } }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Structural engineering for the people who sell it · Lesson 2 of 8</p>
+    <h1>Concrete, wood, mass timber and steel</h1>
+    <p class="hero__lede">Choosing the material is one of the first big decisions on a project, and one of the most expensive to change later. Each material is good at some things and bad at others. Developers pick on <strong>cost, speed, height and carbon</strong>. The structural engineer's job is to tell them early what each choice really costs. This lesson tells you enough to ask the right questions.</p>
+    <div class="hero__meta">
+      <span>15-minute read</span>
+      <span>Concrete · wood · mass timber · steel</span>
+      <span>What to ask a developer</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#concrete">Concrete: towers, podiums, parkades</a></li>
+      <li><a href="#wood">Wood frame: the five- and six-storey market</a></li>
+      <li><a href="#timber">Mass timber: up to twelve storeys</a></li>
+      <li><a href="#steel">Steel: long spans and hybrids</a></li>
+      <li><a href="#carbon">Embodied carbon</a></li>
+      <li><a href="#words">Words to use</a></li>
+      <li><a href="#talk">What to ask, what not to say</a></li>
+      <li><a href="#check">Check yourself</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="concrete">
+      <p class="kicker">Material one</p>
+      <h2>Concrete: towers, podiums and parkades</h2>
+      <p class="lede">Concrete is strong when squeezed and weak when pulled. Steel reinforcing bars (rebar) cast inside it take the pulling. Together they make <strong>reinforced concrete</strong>, which is most of what KOR designs.</p>
+      <ul class="plain">
+        <li><strong>Good at:</strong> height, fire resistance, sound separation between suites, durability, and stiffness. It does not burn, and it can be cast into almost any shape.</li>
+        <li><strong>Bad at:</strong> weight and speed. It is heavy, so it puts more load on the foundations and attracts more earthquake force. Each floor waits for formwork, rebar, a pour and curing.</li>
+        <li><strong>Where KOR uses it:</strong> residential towers, the podiums under them, and parkades. Below grade, almost everything is concrete, whatever sits on top.</li>
+      </ul>
+      <p><strong>Post-tensioned (PT) slabs</strong> are standard in Vancouver towers. Steel tendons run through the slab inside ducts. Once the concrete has gained strength, the tendons are stretched tight and locked off. That squeezes the slab and lets it be thinner and span further. A thinner slab means a lower floor-to-floor height, which can mean more storeys under a height limit.</p>
+      <div class="box box--screen">
+        <p class="box__label">How PT works on a KOR job</p>
+        <p>A specialty engineer working for the contractor usually lays out the tendons and anchors. KOR, as structural engineer of record, reviews that work and takes overall responsibility for it, as EGBC's Part 3 guideline describes. KOR's specification also requires the slab's strength to be verified before stressing, and a materials consultant on site full time when suspended PT slabs are poured. One catch for owners: you can't drill or shoot anchors into a PT slab without the engineer's approval, because you might cut a tendon.</p>
+      </div>
+      <div class="box box--tip">
+        <p class="box__label">✓ KOR's concrete record</p>
+        <p>The Paradox Hotel at 1161 West Georgia, 63 storeys over nine parking levels, a twisted Arthur Erickson tower for Holborn Group and TA Global; The Standard in Burnaby for Anthem, a 43-storey tower beside a six-storey wood-frame rental building over shared parking; Hudson Place in Victoria for Townline, 28 storeys. KOR's own BD view is that mid-rise concrete is its competitive sweet spot for BC Housing's supportive and transitional housing.</p>
+      </div>
+    </section>
+
+    <section id="wood">
+      <p class="kicker">Material two</p>
+      <h2>Wood frame: the five- and six-storey market</h2>
+      <p class="lede">Light wood frame is studs, joists and plywood: the way houses are built, scaled up. BC allows it to six storeys, usually over a concrete podium and parkade. That makes it a big market.</p>
+      <ul class="plain">
+        <li><strong>Why developers want it:</strong> it is usually cheaper and faster to build than concrete, it uses trades that are widely available, and it is light, so foundations are smaller.</li>
+        <li><strong>The usual shape:</strong> four to six storeys of wood on a concrete podium, with concrete parking below. KOR's Monument at 2485 Larch Street, Vancouver, is wood frame and cross-laminated timber on a concrete podium over two parking levels.</li>
+        <li><strong>What changes going from four storeys to five or six:</strong> EGBC's bulletin on mid-rise wood says sideways loads go up, shrinkage adds up, framing gets heavier and the fire requirements get stricter. Structural, fire and envelope engineering all take more effort and more coordination.</li>
+      </ul>
+      <p>There are three structural catches. Each is a reason to bring KOR in at schematic design.</p>
+      <ul class="plain">
+        <li><strong>Shrinkage.</strong> Wood shrinks as it dries, mostly across the grain: in the plates and joists at every floor. Over six floors it adds up, and the concrete stair, the elevator, the plumbing stacks and the cladding don't shrink with it. EGBC's bulletin gives a planning allowance of about 20 mm (3/4 inch) per floor unless the engineer does a more refined analysis. KOR's specification requires the tie-down rods in shear walls to have a shrinkage take-up device at every storey, with no storeys skipped.</li>
+        <li><strong>Shear walls must stack.</strong> In wood, the walls that resist earthquakes are plywood-sheathed walls tied down to the floor below. They need to sit on top of one another all the way down to the podium.</li>
+        <li><strong>No transfers over four storeys.</strong> KOR tells clients that the Building Code prohibits shear-wall transfers in wood-frame buildings over four storeys. So the shear walls have to be built into the unit plans and the massing from the start. If the architect lays out suites first and calls KOR later, walls may need to move, and suites with them.</li>
+      </ul>
+      <div class="box box--screen">
+        <p class="box__label">KOR's own line on mid-rise wood</p>
+        <p>KOR markets a dedicated wood-frame design department, and presents itself as experienced in numerous five- and six-storey wood-frame projects and expert in their special design issues. Examples: Chelsea Marine on SW Marine Drive, two six-storey buildings with 102 affordable units for the Vancouver Affordable Housing Agency, completed in 2022; Salt &amp; Meadow in Tsawwassen, three six-storey buildings for Aquilini Development; Parker House in Coquitlam, two five-storey buildings for Polygon.</p>
+      </div>
+      <div class="box box--tip">
+        <p class="box__label">✓ Where wood sits in KOR's BD</p>
+        <p>KOR's 2026 BD view is honest about this: stick-frame wood is a less differentiated service than concrete, and very small wood-frame jobs fall below KOR's engagement threshold. But a six-storey wood first phase can position KOR for the larger concrete phases that follow.</p>
+      </div>
+    </section>
+
+    <section id="timber">
+      <p class="kicker">Material three</p>
+      <h2>Mass timber: up to twelve storeys</h2>
+      <p class="lede">Mass timber means large solid panels and beams made in a factory: <strong>CLT</strong> (cross-laminated timber, layers of boards glued crosswise into slabs and walls) and <strong>glulam</strong> (glued-laminated beams and columns). BC now allows <strong>encapsulated mass timber</strong> up to twelve storeys.</p>
+      <ul class="plain">
+        <li><strong>The code line:</strong> in BC, buildings of seven to twelve storeys may be encapsulated mass timber or non-combustible construction. Light wood frame stops at six. "Encapsulated" means the timber is covered, usually in gypsum board, to protect it in a fire.</li>
+        <li><strong>Good at:</strong> speed of erection, light weight, precision, lower embodied carbon, and a look that clients and the public like.</li>
+        <li><strong>Bad at:</strong> cost can be higher, the supply chain is narrower, and it needs much more coordination early, because panels are made in a factory and changes are expensive once ordered.</li>
+      </ul>
+      <p>The catches a developer should know about:</p>
+      <ul class="plain">
+        <li><strong>The core is usually concrete.</strong> The stair and elevator shafts usually form part of the lateral system. The joint EGBC/AIBC guideline says CLT shear walls are height-limited, so timber cores above grade are unlikely in high-seismic areas like coastal BC. In practice: a concrete core, with timber floors and columns around it.</li>
+        <li><strong>CLT shear walls can't do the whole job when it's tall.</strong> The same guideline says code height limits, and the CSA wood standard's restriction to platform framing, mean CLT shear walls cannot be a code-compliant lateral system in tall encapsulated mass timber buildings.</li>
+        <li><strong>Timber and concrete are built to different tolerances.</strong> The guideline says timber is built to a few millimetres while a twelve-storey concrete core may be out by 25 to 40 mm. Every connection between them has to absorb the difference.</li>
+        <li><strong>Fire and char.</strong> Wood in a fire chars on the surface, and the char protects the wood inside. Where timber is left exposed, the structural engineer must calculate the extra char depth and size members for it. Exposed timber means bigger members.</li>
+        <li><strong>Shrinkage and smoke.</strong> The structural engineer calculates mass timber shrinkage too. Most seven-to-twelve storey buildings need smoke control, so timber shafts need careful airtight detailing.</li>
+      </ul>
+      <div class="box box--screen">
+        <p class="box__label">Where KOR stands in mass timber</p>
+        <p>KOR has designed long-span glulam on the Port Coquitlam Community Recreation Centre (glulam beams on wood V-columns, with steel trusses), and CLT levels at Monument on Larch Street. KOR's own BD view is that in mass-timber hybrid work it competes with Equilibrium, Fast + Epp and ASPECT. Jericho Lands Phase 1 (MST Development) plans about 35% mass timber, and KOR's 2026 BD report saw it as a direct fit.</p>
+      </div>
+    </section>
+
+    <section id="steel">
+      <p class="kicker">Material four</p>
+      <h2>Steel: long spans, industrial and hybrids</h2>
+      <p class="lede">Steel is strong in both pulling and squeezing, and much lighter for its strength than concrete. It is made in a shop and bolted or welded on site.</p>
+      <ul class="plain">
+        <li><strong>Good at:</strong> long spans (arenas, warehouses, gyms, roofs), speed of erection, and being bent in an earthquake without breaking. It is also easy to modify later.</li>
+        <li><strong>Bad at:</strong> fire, because it loses strength when hot and needs fire protection in most buildings. It can be costly for residential, it transmits sound and vibration more than concrete, and it needs corrosion protection where exposed.</li>
+        <li><strong>Where KOR uses it:</strong> single-storey warehouses with steel roofs, arena and recreation roofs, and hybrids. KOR designed nine tilt-up warehouses with steel roofs at Golden Ears North Business Park in Pitt Meadows for Onni Group. Ross Place in Victoria, eight storeys of seniors rental, used load-bearing steel studs, open-web steel joists, steel beams and concrete. At Langford Central, Tower B is steel modular above Level 4 with concrete elsewhere.</li>
+        <li><strong>Who designs what:</strong> steel connections and open-web joists are often designed by a specialty engineer working for the fabricator. KOR's steel specifications set the loads and the rules; the fabricator's engineer designs to them.</li>
+      </ul>
+      <div class="box box--tip">
+        <p class="box__label">✓ Hybrids are normal</p>
+        <p>Most real buildings mix materials. Concrete parking under wood frame. A concrete core with timber floors. A concrete arena with a steel roof. The skill is in the joints between them, where tolerances, shrinkage and fire ratings all meet. That is where an experienced structural engineer earns the fee.</p>
+      </div>
+    </section>
+
+    <section id="carbon">
+      <p class="kicker">The new client topic</p>
+      <h2>Embodied carbon</h2>
+      <p class="lede">Embodied carbon is the greenhouse gas released making and building the materials, before anyone moves in. Clients ask about it more each year, and some cities now require it to be counted.</p>
+      <ul class="plain">
+        <li><strong>The structure is most of it.</strong> EGBC's practice advisory says that under typical structure-and-shell reporting scopes, structural materials are roughly two-thirds of a building's embodied carbon. That puts the structural engineer at the centre of the conversation.</li>
+        <li><strong>It is being regulated.</strong> In jurisdictions like the City of Vancouver that regulate building greenhouse gas emissions, the embodied carbon of the materials must be calculated and reported.</li>
+        <li><strong>Concrete can be cut too.</strong> A building doesn't have to switch to timber to lower carbon. The advisory describes setting carbon targets for concrete mixes, allowing lower-carbon cements and supplementary materials, and using later-age strengths where the schedule allows.</li>
+        <li><strong>Substitutions need the engineer.</strong> EGBC's tall concrete guideline says the structural engineer must assess any material substitution made to lower carbon for structural performance, including whether it is covered by code.</li>
+        <li><strong>Mandates point to timber.</strong> KOR's 2026 BD report reads net-zero mandates on institutional housing, such as UBC's Lower Mall, as a pointer toward mass timber and hybrid concrete.</li>
+      </ul>
+      <div class="box box--dont">
+        <p class="box__label">✕ Don't</p>
+        <p>Don't promise a carbon number or a percentage saving. An estimate comes from a quantity take-off and validated carbon data, and it is the engineer's job. Say instead: "We can give you an early carbon estimate alongside the structural options."</p>
+      </div>
+    </section>
+
+    <section id="words">
+      <p class="kicker">Vocabulary</p>
+      <h2>Words to use</h2>
+      <ul class="plain">
+        <li><strong>Reinforced concrete:</strong> concrete with rebar inside to take the pulling.</li>
+        <li><strong>PT (post-tensioned) slab:</strong> a slab with tendons stretched after the concrete hardens, so it can be thinner and span further.</li>
+        <li><strong>Podium:</strong> the concrete base storeys that a tower or wood building sits on.</li>
+        <li><strong>Light wood frame / stick frame:</strong> studs, joists and plywood; allowed to six storeys in BC.</li>
+        <li><strong>Shrinkage:</strong> wood getting smaller as it dries; it adds up over floors.</li>
+        <li><strong>Tie-down / hold-down:</strong> the rods or straps that stop a wood shear wall lifting off in an earthquake.</li>
+        <li><strong>Mass timber:</strong> factory-made solid wood panels and beams.</li>
+        <li><strong>CLT:</strong> cross-laminated timber; boards glued in crossing layers into panels.</li>
+        <li><strong>Glulam:</strong> glued-laminated timber beams and columns.</li>
+        <li><strong>Encapsulated mass timber (EMTC):</strong> mass timber covered for fire protection; allowed to twelve storeys in BC.</li>
+        <li><strong>Char:</strong> the burnt layer that protects wood in a fire.</li>
+        <li><strong>Embodied carbon:</strong> the carbon released making and building the materials.</li>
+        <li><strong>Hybrid:</strong> a building that mixes structural materials.</li>
+      </ul>
+    </section>
+
+    <section id="talk">
+      <p class="kicker">In the room</p>
+      <h2>What to ask, and what not to say</h2>
+      <p><strong>Six questions for a developer about material choice.</strong> Each shows you know where the risk is, and each is a reason to bring KOR in now.</p>
+      <ol>
+        <li>What's driving the material choice: cost, schedule, height, carbon, or the lender?</li>
+        <li>How many storeys? If it's five or six in wood, are the shear walls stacking in the unit plans yet?</li>
+        <li>What's under the wood: how many podium and parking levels, and does the grid line up?</li>
+        <li>Have you looked at mass timber or a hybrid? Who is your timber supplier, and when do panels need to be ordered?</li>
+        <li>Do you have carbon targets or reporting requirements from the city or a funder?</li>
+        <li>Is there a fire engineer and an envelope engineer on the team yet?</li>
+      </ol>
+      <div class="box box--dont">
+        <p class="box__label">✕ Don't</p>
+        <p>Don't say one material is cheaper, faster or greener for their project, and don't quote member sizes, slab thicknesses, shrinkage numbers or costs per square foot. The answer depends on the site, the height and the market. The right answer is "That's exactly the comparison we run at concept. Let me get [engineer] on a call this week."</p>
+      </div>
+    </section>
+
+    <section id="check">
+      <p class="kicker">Two minutes</p>
+      <h2>Check yourself</h2>
+      <dl class="qa">
+        <dt>1. Why do Vancouver towers use post-tensioned slabs?</dt><dd>Tensioned tendons let the slab be thinner and span further, which lowers floor-to-floor height and can fit more storeys under a height limit.</dd>
+        <dt>2. Why does KOR want to be involved at schematic design on five- and six-storey wood?</dt><dd>The code prohibits shear-wall transfers in wood-frame buildings over four storeys, so the shear walls have to stack and be built into the unit plans from the start.</dd>
+        <dt>3. What is the shrinkage problem in wood frame?</dt><dd>Wood shrinks at every floor and it adds up over six storeys, while concrete stairs, elevators, plumbing and cladding don't. Everything has to be detailed to allow for it.</dd>
+        <dt>4. In a twelve-storey mass timber building in Vancouver, what is the core usually made of, and why?</dt><dd>Concrete. The core resists earthquakes, and CLT shear walls are height-limited, so timber cores above grade are unlikely in high-seismic areas.</dd>
+        <dt>5. A client says they want "low carbon". What do you ask?</dt><dd>Whether they have a target or a reporting requirement, from the city or a funder. Then offer an early carbon estimate alongside the structural options, without promising a number.</dd>
+      </dl>
+      <div class="box box--auto">
+        <p class="box__label">Sources, and the review this still needs</p>
+        <p>KOR's own portfolio, proposal and specification text, and KOR's 2026 BD reports; EGBC's Professional Practice Guidelines for Part 3 buildings and for tall concrete buildings; the Joint Professional Practice Guidelines for encapsulated mass timber construction up to 12 storeys; the Technical and Practice Bulletin on 5 and 6 storey wood frame residential buildings; and EGBC's Practice Advisory on embodied carbon for structural engineers. A KOR engineer reads each lesson before it is used with a client.</p>
+      </div>
+    </section>
+  </main>
+</div>
+</body></html>

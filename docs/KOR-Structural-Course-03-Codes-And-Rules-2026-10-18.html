@@ -1,0 +1,473 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codes and rules</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head><body>
+<style>
+  .kicker { break-after: avoid; }
+  .qa dt { font-weight: 600; margin-top: .7rem; }
+  .qa dd { margin: .2rem 0 0 1rem; }
+  @media print { body { font-size: 10.8pt; } .box, .qa dt, .qa dd { break-inside: avoid; } }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Structural engineering for the people who sell it · Lesson 3 of 8</p>
+    <h1>The rules: building codes in BC and beyond</h1>
+    <p class="hero__lede">Every building KOR designs answers to a <strong>building code</strong>, and every one gets built only after a city issues a <strong>permit</strong>. Knowing which code applies, who signs what, and when the rules change is how you sound like you belong in the room, and how you spot the next client who needs help.</p>
+    <div class="hero__meta">
+      <span>15-minute read</span>
+      <span>Codes · permits · signatures</span>
+      <span>What to ask about code timing</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#which">Which code applies</a></li>
+      <li><a href="#part3">Part 3 and Part 9</a></li>
+      <li><a href="#signing">Permits, and who signs what</a></li>
+      <li><a href="#seismic">Seismic rules, and what changed</a></li>
+      <li><a href="#wood">Wood: five, six, and twelve storeys</a></li>
+      <li><a href="#openings">Code changes are BD openings</a></li>
+      <li><a href="#words">Words to use</a></li>
+      <li><a href="#talk">What to ask, what not to say</a></li>
+      <li><a href="#check">Check yourself</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="which">
+      <p class="kicker">The rulebooks</p>
+      <h2>Which code applies</h2>
+      <p class="lede">There is one national model code, and each province adopts its own version of it. The question is never "what does the code say" but "which code, and which edition".</p>
+      <ul class="plain">
+        <li><strong>National Building Code of Canada (NBC):</strong> the model code. It has no force on its own; provinces adopt it, usually with changes. BC's current code is based on NBC 2020.</li>
+        <li><strong>BC Building Code (BCBC):</strong> BC's version, based on the NBC. Outside Vancouver, the code in force is the BCBC 2024.</li>
+        <li><strong>Vancouver Building By-law (VBBL):</strong> the City of Vancouver writes its own code under the Vancouver Charter. Inside the city it applies <em>instead of</em> the BCBC. The current edition is VBBL 2025. It differs in real ways: it has its own Letter of Assurance forms, under the VBBL any retaining wall over 1.2 m high counts as a building and needs an engineer, and some BCBC permissions for exposed mass timber in suites do not apply in Vancouver.</li>
+        <li><strong>Not every address is a city:</strong> UBC is its own jurisdiction, separate from Vancouver, and uses the provincial forms.</li>
+        <li><strong>Alberta:</strong> uses the Alberta edition of the National Building Code. The signed forms are different too: KOR provides Schedules A-2 and B-2 at permit and Schedule C-2 at completion, and stamps Alberta drawings with its APEGA Permit to Practice number.</li>
+        <li><strong>California:</strong> uses the California Building Code, with its own process. The owner must hire a <strong>special inspector</strong> the code requires; KOR, as engineer of record, confirms one is engaged and makes the structural observations the city requires. Tall towers there are often designed by <strong>performance-based design</strong> and go through city peer review and plan check.</li>
+      </ul>
+      <div class="box box--screen">
+        <p class="box__label">KOR's own wording</p>
+        <p>KOR's current fee template provides the Schedule B under the 2025 Vancouver Building By-law for City of Vancouver projects, or under the 2024 BC Building Code to the local authority elsewhere in BC. If you can say that sentence, you already know the most important split.</p>
+      </div>
+    </section>
+
+    <section id="part3">
+      <p class="kicker">Big or small</p>
+      <h2>Part 3 and Part 9 buildings</h2>
+      <p class="lede">The BC code sorts buildings into two families. Which family a project falls in decides whether a structural engineer is required, and how much of the building they sign for.</p>
+      <ul class="plain">
+        <li><strong>Part 9:</strong> small buildings. Three storeys or less, a building area of no more than 600 square metres, and an ordinary use such as housing, offices or shops. Houses, small walk-ups, small commercial. Part 9 has "prescriptive" rules: a builder can follow tables without an engineer.</li>
+        <li><strong>Part 3:</strong> everything bigger, plus some uses no matter how small, such as places of assembly and care facilities. Every KOR tower and every mid-rise is Part 3.</li>
+        <li><strong>Part 4</strong> is the chapter on structural design. On a Part 3 building, the structure is designed to Part 4 by an engineer, always. On a Part 9 building, an engineer is only required for the pieces that fall outside the tables, such as a long-span beam or a deep foundation.</li>
+        <li><strong>A change of use can flip it:</strong> turning a Part 9 building into a Part 3 one (a shop into a daycare, say) usually needs Letters of Assurance and can trigger upgrades to the existing building. Settle that with the city early.</li>
+      </ul>
+      <div class="box box--tip">
+        <p class="box__label">✓ Why a salesperson cares</p>
+        <p>Part 3 means a structural engineer of record on every project, from concept to occupancy. Part 9 means maybe a few beams. When a lead looks small, ask how many storeys and how many square metres. That tells you whether it is KOR's kind of work.</p>
+      </div>
+    </section>
+
+    <section id="signing">
+      <p class="kicker">Permits</p>
+      <h2>The permit, and who signs what</h2>
+      <p class="lede">The <strong>authority having jurisdiction (AHJ)</strong> is the city or district building department that issues the building permit. It does not check every calculation. It relies on registered professionals signing that they did.</p>
+      <ul class="plain">
+        <li><strong>Letters of Assurance:</strong> standard signed forms that tell the AHJ the professionals' work is coordinated, that the design substantially complies with the code, and that field reviews will be and have been done. Vancouver introduced them in 1990 and the BC code in 1992.</li>
+        <li><strong>Schedule A:</strong> signed by the owner and the Coordinating Registered Professional. The city will not issue a permit without it.</li>
+        <li><strong>Schedule B:</strong> one per discipline. The structural engineer of record signs the structural one, listing the code items they will design and review on site. The structural items include the structure itself, deep foundations, shop drawing review, post-tensioned concrete, and independent review of the design.</li>
+        <li><strong>Schedule C-B:</strong> signed at the end, confirming the field reviews were done. It goes in before occupancy.</li>
+        <li><strong>The Coordinating Registered Professional (CRP):</strong> the prime consultant who coordinates every professional's design and field reviews and is the contact between the city, the owner and the team. On most building projects the CRP is the <strong>architect</strong>. On design-build, it is usually someone working for the design-build contractor.</li>
+        <li><strong>Struct.Eng.:</strong> EGBC's designation for an engineer approved to be the structural engineer of record on Part 4 buildings. Some cities accept only a Struct.Eng. on certain buildings.</li>
+        <li><strong>Independent review:</strong> EGBC requires a second, uninvolved structural engineer to review the design before it is issued for construction. Some cities want it before the permit.</li>
+      </ul>
+      <div class="box box--tip">
+        <p class="box__label">✓ The architect hires us, so the architect matters</p>
+        <p>Because the architect is usually the CRP and prime consultant, KOR is usually their sub-consultant. The architect picks, or strongly influences, who does the structure. That is why so much of BD is architect relationships.</p>
+      </div>
+    </section>
+
+    <section id="seismic">
+      <p class="kicker">Earthquakes</p>
+      <h2>Seismic rules, and what changed</h2>
+      <p class="lede">In coastal BC the earthquake usually decides the structure. The code's first goal is that the building does not collapse and people get out. It is not designed to come through undamaged.</p>
+      <ul class="plain">
+        <li><strong>The design earthquake</strong> is a level of ground shaking, not a magnitude. KOR's own seismic memo for clients (SOCO Towers) describes it as shaking with a 1-in-2,450-year return period, and says the design aims to prevent collapse and limit damage.</li>
+        <li><strong>Site class:</strong> how the ground under the building changes the shaking. Soft ground generally shakes harder than rock, so the same building can need more structure on one site than another. The geotechnical report decides it.</li>
+        <li><strong>The hazard maps were updated.</strong> NBC 2020 brought in Canada's newer seismic hazard model, and BCBC 2024 is based on NBC 2020. In parts of BC that means higher seismic demands than before. Which sites and by how much is an engineering question; do not guess.</li>
+        <li><strong>Damage limitation for tall buildings:</strong> NBC 2020 adds a new requirement for ordinary buildings over 30 m in the highest seismic category. The parts of the frame that are not the main earthquake system (in a concrete tower, typically the columns and slabs outside the core) must stay undamaged in a smaller, more frequent earthquake. Ask the engineer whether a given tower falls under it.</li>
+        <li><strong>Gravity frames:</strong> the 2018 BC code and 2019 Vancouver by-law already added major seismic requirements for the columns and slabs of concrete buildings, which matter most for tall towers in the Lower Mainland and on Vancouver Island.</li>
+        <li><strong>Important buildings:</strong> under NBC 2020, institutional buildings in moderate and high seismic zones are also designed to stay usable after a smaller earthquake, on top of the life-safety design. ACEC-BC's fee guidelines add half a percent to the structural base fee for this.</li>
+        <li><strong>Very tall or unusual towers</strong> may be designed using advanced computer analysis. When that analysis is used to justify a concrete building, the standard requires an independent peer review panel.</li>
+      </ul>
+      <div class="box box--screen">
+        <p class="box__label">What KOR brings to it</p>
+        <p>KOR runs 3D seismic analysis in ETABS and nonlinear analysis in PERFORM3D, and presents Jeremy Atkinson, licensed in BC and California, as its adviser on challenging projects using performance-based design and peer review by seismic experts.</p>
+      </div>
+    </section>
+
+    <section id="wood">
+      <p class="kicker">Timber</p>
+      <h2>Wood: five, six, and twelve storeys</h2>
+      <ul class="plain">
+        <li><strong>Five- and six-storey wood frame</strong> came into the BC code with the 2009 mid-rise provisions. EGBC's bulletin says going from four storeys to five or six raises the lateral loads, the wood shrinkage and the fire requirements, and needs more coordination, so engineering effort goes up.</li>
+        <li><strong>KOR's line:</strong> the code prohibits shear wall transfers in wood-frame buildings over four storeys, so shear walls have to be built into the unit plans. Bring KOR in at schematic design.</li>
+        <li><strong>A common mix:</strong> concrete at the bottom, wood above. KOR's Cambie Christian Centre in Vancouver is two six-storey buildings with two concrete and four wood-frame levels.</li>
+        <li><strong>Encapsulated mass timber</strong> (large solid timber panels and beams, covered for fire) up to <strong>12 storeys</strong> for residential and office use was added to the BC code on December 12, 2019, and to the Vancouver by-law on July 1, 2020. Most of these buildings are "high buildings" with extra fire and life-safety requirements. The permitted height has been under review since, so check the current limit with the engineer.</li>
+        <li><strong>Mass timber still often has a concrete core.</strong> The code limits timber shear walls to 20 m or 30 m depending on site seismicity, so taller timber buildings usually rely on a concrete core or steel bracing.</li>
+      </ul>
+    </section>
+
+    <section id="openings">
+      <p class="kicker">Why it sells</p>
+      <h2>Code changes are BD openings</h2>
+      <p class="lede">Every new code edition leaves developers asking two questions: does it apply to my project, and what will it cost me? A firm that answers clearly, early, earns trust and often the job.</p>
+      <ul class="plain">
+        <li><strong>Timing decides the code.</strong> In general the code in force when the permit is applied for is the one the building is designed to, and a new edition usually comes with a transition period. The exact cut-off for any project is a question for the engineer and the city, not for you.</li>
+        <li><strong>Presales put pressure on the permit.</strong> In BC, developers can start presales at third reading of the rezoning, but then have about 12 months to get a building permit. The structural permit drawings have to be done inside that window.</li>
+        <li><strong>Old designs on the shelf:</strong> a project designed to an earlier code and shelved may need a redesign if it misses the cut-off. That is a review KOR can offer.</li>
+        <li><strong>Higher seismic demands</strong> can mean more concrete, more reinforcing, or a different system. A developer comparing pro formas needs an engineer to say what that means for their building.</li>
+        <li><strong>New permissions open new options:</strong> taller wood, mass timber and mixed systems. Clients want to know whether the option is real for their site before they pay to design it.</li>
+      </ul>
+      <div class="box box--dont">
+        <p class="box__label">✕ Don't</p>
+        <p>Don't tell a client their project is "under the old code" or "won't be affected". Don't estimate the cost of a code change. Say: "That's exactly the question to put to our engineer. Can I set up a call?"</p>
+      </div>
+    </section>
+
+    <section id="words">
+      <p class="kicker">Vocabulary</p>
+      <h2>Words to use</h2>
+      <ul class="plain">
+        <li><strong>NBC / BCBC / VBBL:</strong> national model code / BC Building Code / Vancouver Building By-law.</li>
+        <li><strong>AHJ (authority having jurisdiction):</strong> the building department that issues the permit.</li>
+        <li><strong>Part 3 / Part 9:</strong> large or special-use buildings / small, simple buildings.</li>
+        <li><strong>Part 4:</strong> the structural design chapter of the code.</li>
+        <li><strong>Letters of Assurance (Schedules A, B, C-B):</strong> the signed forms that tell the city the professionals take responsibility.</li>
+        <li><strong>CRP (Coordinating Registered Professional):</strong> the prime consultant coordinating the team; usually the architect.</li>
+        <li><strong>SER / Struct.Eng.:</strong> structural engineer of record / EGBC's designation for engineers approved to take that role.</li>
+        <li><strong>Site class:</strong> how the soil changes the earthquake shaking.</li>
+        <li><strong>Independent review / peer review:</strong> a second engineer checking the design.</li>
+        <li><strong>Encapsulated mass timber:</strong> solid timber structure covered for fire protection.</li>
+      </ul>
+    </section>
+
+    <section id="talk">
+      <p class="kicker">In the room</p>
+      <h2>What to ask, and what not to say</h2>
+      <p><strong>Five questions for a developer about code timing.</strong> Each one shows you know the rules matter, and each is a reason to get KOR on the phone.</p>
+      <ol>
+        <li>Which city is the permit in, and is it Vancouver, so the Vancouver by-law?</li>
+        <li>When do you expect to apply for the building permit? Has the structural engineer confirmed which code edition that falls under?</li>
+        <li>Are you presales-driven? When was third reading, and what's your permit deadline?</li>
+        <li>Was any of this design done to an earlier code? Has anyone checked what the new seismic rules mean for it?</li>
+        <li>Who is the architect, and are they acting as coordinating registered professional?</li>
+      </ol>
+      <div class="box box--dont">
+        <p class="box__label">✕ Don't</p>
+        <p>Don't quote code clauses, seismic values, height limits for a specific site or the cost of a code change. Don't say whether a project needs a structural engineer if it is borderline Part 9. Every one of those is the engineer's call, and saying "let me get [engineer] on that" is the right answer.</p>
+      </div>
+    </section>
+
+    <section id="check">
+      <p class="kicker">Two minutes</p>
+      <h2>Check yourself</h2>
+      <dl class="qa">
+        <dt>1. A project is in the City of Vancouver. Which code applies?</dt><dd>The Vancouver Building By-law, not the BC Building Code. Vancouver writes its own.</dd>
+        <dt>2. What makes a building Part 9 rather than Part 3?</dt><dd>Three storeys or less, no more than 600 square metres of building area, and an ordinary use. Anything bigger, or an assembly or care use, is Part 3.</dd>
+        <dt>3. Who usually signs Schedule A, and why does it matter to BD?</dt><dd>The owner and the Coordinating Registered Professional, usually the architect. The architect is the prime consultant, so they usually decide who does the structure.</dd>
+        <dt>4. What did NBC 2020 add for tall buildings in high seismic areas?</dt><dd>Damage limitation: for ordinary buildings over 30 m in the highest seismic category, the frame outside the main earthquake system must stay undamaged in a smaller, more frequent earthquake.</dd>
+        <dt>5. A developer asks if the new code will raise their costs. What do you say?</dt><dd>"Good question. It depends on the site and when the permit goes in. Let me set up a call with our engineer." Never estimate it yourself.</dd>
+      </dl>
+      <div class="box box--auto">
+        <p class="box__label">Sources, and the review this still needs</p>
+        <p>KOR's own fee templates, field review procedures, specifications and portfolio text; EGBC's Professional Practice Guidelines for Part 3 structural services, tall concrete buildings, Part 9 structural services and geotechnical services; the Joint Guidelines for Letters of Assurance on Part 9 buildings and for encapsulated mass timber; the EGBC bulletin on 5- and 6-storey wood frame; the provincial Guide to the Letters of Assurance; ACEC-BC's budget guidelines; BC's real estate development marketing policy statements. Code editions and transition dates change: a KOR engineer reads each lesson before it is used with a client.</p>
+      </div>
+    </section>
+  </main>
+</div>
+</body></html>

@@ -1,0 +1,502 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reading a drawing set</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head><body>
+<style>
+  .kicker { break-after: avoid; }
+  .qa dt { font-weight: 600; margin-top: .7rem; }
+  .qa dd { margin: .2rem 0 0 1rem; }
+  @media print { body { font-size: 10.8pt; } .box, .qa dt, .qa dd { break-inside: avoid; } }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Structural engineering for the people who sell it · Lesson 6 of 8</p>
+    <h1>Reading a drawing set in five minutes</h1>
+    <p class="hero__lede">A drawing set looks like a hundred sheets of noise. It isn't. It is <strong>organised like a book</strong>: an index up front, the rules next, then plans, then the close-ups. Learn the order and a few symbols, and you can find the core, the grid and the parking layout before the coffee arrives.</p>
+    <div class="hero__meta">
+      <span>15-minute read</span>
+      <span>Sheets · grids · callouts · title block</span>
+      <span>A five-minute routine</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#set">How a set is organised</a></li>
+      <li><a href="#notes">General notes: the rules of the job</a></li>
+      <li><a href="#views">Plans, sections, details, and the bubbles that link them</a></li>
+      <li><a href="#grids">Grids: how everyone finds things</a></li>
+      <li><a href="#schedules">Schedules and reinforcing callouts</a></li>
+      <li><a href="#status">Title block, issues and revisions</a></li>
+      <li><a href="#arch">Reading the architect's plan for structure</a></li>
+      <li><a href="#routine">The five-minute routine</a></li>
+      <li><a href="#words">Words to use</a></li>
+      <li><a href="#talk">What to ask, what not to say</a></li>
+      <li><a href="#check">Check yourself</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="set">
+      <p class="kicker">The map</p>
+      <h2>How a set is organised</h2>
+      <p class="lede">Every consultant issues their own drawings, and each sheet number starts with a letter for the discipline: <strong>A</strong> for the architect, <strong>S</strong> for structural, <strong>M</strong>, <strong>E</strong> and so on for the others. The number after the letter tells you roughly what kind of sheet it is.</p>
+      <ul class="plain">
+        <li><strong>Architectural (A) sheets:</strong> the building as people will use it. Site plan, floor plans, elevations (the outside faces), building sections, then wall types, details and finishes. The architect's set is usually the biggest and the first to exist.</li>
+        <li><strong>Structural (S) sheets:</strong> only what holds the building up. Grouped in series by the first digit, and each firm sets its own scheme. A typical pattern: the lowest series for <strong>general notes</strong>, then <strong>foundation plans</strong>, then <strong>floor framing or slab plans</strong> level by level, then <strong>sections and details</strong>, then <strong>schedules</strong>.</li>
+        <li><strong>The first sheet</strong> usually carries a drawing list. Read it first: it tells you what is in the set and how far along the set is.</li>
+      </ul>
+      <div class="box box--screen">
+        <p class="box__label">How KOR numbers some of its sheets</p>
+        <p>KOR's own drafting decisions give a few fixed points. The <strong>Design Loads table</strong> sits on <strong>S1.01</strong>. Where a slab carries loads that table doesn't cover (ground floors, podiums, roof decks with planters), KOR adds <strong>Design Load Plans</strong>, starting at S1.11 on concrete jobs and S1.21 on wood frame. Shear wall notes are kept in one place (S3.02 is the example given). On towers, a separate <strong>S4.00 column schedule</strong> covers the typical floors. Treat these as KOR habits, not rules every firm follows.</p>
+      </div>
+    </section>
+
+    <section id="notes">
+      <p class="kicker">The rules</p>
+      <h2>General notes: the rules of the job</h2>
+      <p class="lede">The general notes are pages of small text that most people skip. They are the design brief, written down. Two minutes here tell you what kind of building the engineer thinks this is.</p>
+      <ul class="plain">
+        <li><strong>Code:</strong> which building code and edition the design follows: the BC Building Code, the Vancouver Building By-law, or, in Alberta, the Alberta edition of the National Building Code.</li>
+        <li><strong>Design loads:</strong> live loads by use (suites, corridors, parkade, roof), snow, wind and the seismic parameters. Usually set out as a table.</li>
+        <li><strong>Materials:</strong> concrete strength in MPa, often different for columns, walls and slabs; reinforcing steel grade; and for wood or steel, the grades and products.</li>
+        <li><strong>Foundations:</strong> the soil capacity taken from the geotechnical report, and the report it came from.</li>
+        <li><strong>Shop drawings and specialty engineers:</strong> which parts somebody else designs and seals (trusses, guards, canopies, cladding framing). EGBC's bulletin for five- and six-storey wood frame says the structural drawings should state these requirements.</li>
+      </ul>
+    </section>
+
+    <section id="views">
+      <p class="kicker">The views</p>
+      <h2>Plans, sections, details, and the bubbles that link them</h2>
+      <ul class="plain">
+        <li><strong>Plan:</strong> looking straight down at one floor, cut at about waist height. Most structural sheets are plans: one per level, or one "typical" plan covering a run of identical floors (the title then reads something like "Levels 4 to 14").</li>
+        <li><strong>Section:</strong> the building sliced vertically, as if cut with a knife. It shows how floors, walls and footings stack.</li>
+        <li><strong>Elevation:</strong> a face of the building or of one wall, seen straight on. Shear wall elevations show openings and reinforcing in a wall from floor to floor.</li>
+        <li><strong>Detail:</strong> a small area blown up large: a slab edge, a wall-to-slab joint, a stair landing. Details carry most of the construction information.</li>
+      </ul>
+      <p><strong>How they reference each other.</strong> A plan has small circles on it, usually split by a line. The top half is the <strong>detail or section number</strong>, the bottom half is the <strong>sheet</strong> it is drawn on. A section mark adds an arrow or a cut line showing which way you are looking. "3 over S5.02" means: drawing 3, on sheet S5.02. Follow the bubble, find the drawing; the drawing's title carries the same bubble pointing back.</p>
+      <div class="box box--tip">
+        <p class="box__label">✓ Slab callouts worth recognising</p>
+        <p><strong>Slab edge:</strong> the outline of the floor plate; balconies and cantilevers are where it pushes out past the columns. <strong>Openings:</strong> a box with an X through it is a hole in the slab (shafts, stairs, ducts). <strong>Steps:</strong> a change in slab level, marked with the two top-of-slab elevations or a step symbol, common at balconies, terraces and parkade ramps. <strong>Thickness:</strong> a note or tag on the plan giving slab depth, with thickened areas (drop panels at columns, thicker bands) outlined. A plan crowded with openings, steps and thickness changes is a hard floor to build and to design.</p>
+      </div>
+    </section>
+
+    <section id="grids">
+      <p class="kicker">The coordinates</p>
+      <h2>Grids: how everyone finds things</h2>
+      <p class="lede">Gridlines are the street address system of a building. Every column, wall and detail is located from them, on every consultant's drawings.</p>
+      <ul class="plain">
+        <li><strong>Letters one way, numbers the other.</strong> Usually lettered gridlines run one direction and numbered ones the other, each with a bubble at the end. "Column at C-4" is where gridline C crosses gridline 4.</li>
+        <li><strong>The architect's grid is the grid.</strong> Structural drawings use the same lines and names. EGBC's Part 3 guideline expects floor levels, column spacing, wall locations and offsets to be coordinated with the architectural drawings.</li>
+        <li><strong>Half grids</strong> (C.5, or 4.1) are added where something sits between main lines. Lots of them on a plan can mean the layout above and below doesn't line up.</li>
+        <li><strong>Spacing tells you the span.</strong> The dimensions between gridlines are the column spacing: the distance the slab has to span, and the number that has to work for both suites and parking stalls.</li>
+      </ul>
+    </section>
+
+    <section id="schedules">
+      <p class="kicker">The lists</p>
+      <h2>Schedules and reinforcing callouts</h2>
+      <p class="lede">A schedule is a list that saves drawing the same thing a hundred times. The plan gives each element a short tag, and the schedule says what the tag means.</p>
+      <ul class="plain">
+        <li><strong>Column schedule:</strong> each column type (size, concrete strength, vertical bars and ties) listed against the floors it runs through. KOR groups columns by size (PC1, PC2 and so on) instead of tagging each one, and puts the schedule on the plan itself for shorter buildings or complicated levels.</li>
+        <li><strong>Wall schedule:</strong> the same idea for shear walls and core walls: thickness, strength and reinforcing, floor by floor.</li>
+        <li><strong>Beam schedule:</strong> beam tags with size and top and bottom reinforcing.</li>
+        <li><strong>Other tags you'll see:</strong> footings (F1, F2), and on KOR's flat-slab towers, studrails (SR1, SR2): rows of steel studs around a column that stop the slab punching through.</li>
+      </ul>
+      <p><strong>Reinforcing callouts in plain words.</strong> Canadian bar sizes are named by approximate diameter in millimetres: 10M, 15M, 20M, 25M, 30M, 35M. A callout gives size, then spacing:</p>
+      <ul class="plain">
+        <li><strong>"15M @ 300":</strong> 15M bars, spaced 300 mm apart.</li>
+        <li><strong>"15M @ 18":</strong> the same bar at 18 inches. KOR drawings use imperial spacing too; KOR's own minutes give "15M at 18 inches full length" as an example for cantilevered slab top bars.</li>
+        <li><strong>Top / bottom, each way (EW), each face (EF):</strong> where the bars sit. Slabs need bars near the top over supports and near the bottom mid-span.</li>
+        <li><strong>A count instead of a spacing</strong> ("4-25M") means that many bars, as in a beam or a column.</li>
+      </ul>
+      <div class="box box--screen">
+        <p class="box__label">Why KOR froze its schedules</p>
+        <p>In 2022, schedules that updated themselves in Revit changed a column's concrete strength from 50 MPa to 35 MPa and turned 35M vertical bars into 15M, and back-checks could miss it because nobody had marked it up. KOR changed its template so concrete strengths are fixed values. The point for you: schedules are where small text carries big consequences.</p>
+      </div>
+    </section>
+
+    <section id="status">
+      <p class="kicker">Is this current?</p>
+      <h2>Title block, issues and revisions</h2>
+      <p class="lede">The title block is the strip along the right edge or bottom of every sheet. It answers the questions that matter most in a meeting: whose drawing, what project, how current, and is it real.</p>
+      <ul class="plain">
+        <li><strong>What it holds:</strong> the firm, the project name and address, the sheet title and number, the project number, scale, who drew and checked it, the issue list, and the engineer's seal.</li>
+        <li><strong>The seal:</strong> EGBC places the seal in the title block or lower right corner of each drawing. A sealed drawing carries the engineer's seal, signature and date, and the firm's Permit to Practice number. KOR's BC number is 1000378. On Alberta jobs KOR shows its APEGA permit number (13755) as text in the title block.</li>
+        <li><strong>The issue list:</strong> a small table of dated issues, newest at the top or bottom. Common labels: <strong>Issued for Review</strong> or <strong>for Coordination</strong>, <strong>Issued for Building Permit</strong> (EGBC allows these to be marked Not for Construction), <strong>Issued for Tender</strong>, and <strong>Issued for Construction</strong>, the set a contractor builds from.</li>
+        <li><strong>Revisions:</strong> a change after issue gets a number or letter in the issue list, a <strong>revision cloud</strong> (the scalloped bubble drawn around what changed) and a small triangle with the revision number beside it. EGBC's authentication standard says a revised sealed document shows the revision in the title block, identifies the changes, and is re-sealed and dated.</li>
+      </ul>
+      <div class="box box--tip">
+        <p class="box__label">✓ Read the status before the content</p>
+        <p>A set issued for review at schematic design and a set issued for construction look alike from across the table. One is an idea; the other is a commitment, and EGBC requires an independent review of the structural design before it is issued for construction (some authorities want it before permit). The most recent date in the issue list tells you where the project is, and whether the structural engineer is already fixed.</p>
+      </div>
+    </section>
+
+    <section id="arch">
+      <p class="kicker">The other set</p>
+      <h2>Reading the architect's plan for structure</h2>
+      <p class="lede">At a first meeting you will often get only the architect's drawings. They already tell you most of what the structure will be.</p>
+      <ul class="plain">
+        <li><strong>The core:</strong> elevators and stairs, grouped together. Its size and position decide how the tower resists earthquakes. Off-centre or split cores are harder.</li>
+        <li><strong>Columns:</strong> the small solid squares or rectangles, usually on the grid. Count them; look for an even rhythm. Flip between floors: does each column land on one below?</li>
+        <li><strong>Stacking walls:</strong> in wood frame and concrete mid-rise, the walls between suites often carry the building. Overlay two floor plans (or hold sheets to the window) and see whether they line up.</li>
+        <li><strong>The parkade plan:</strong> stalls and drive aisles want long clear spans; suites above want columns in walls. Where the tower's columns fall in the middle of a drive aisle, someone is going to need a transfer.</li>
+        <li><strong>Sections and elevations:</strong> storeys, floor-to-floor heights and the height limit. Podiums and setbacks are where the structure changes.</li>
+      </ul>
+      <div class="box box--screen">
+        <p class="box__label">How KOR marks up an architect's plan</p>
+        <p>KOR engineers review architectural drawings in Bluebeam and mark the structure in burgundy: the slab edge as a thin outline, walls (cores, stair shafts, shear walls) as heavy closed shapes, columns as small filled rectangles. If you are handed a marked-up PDF from a KOR engineer, burgundy is the structure.</p>
+      </div>
+    </section>
+
+    <section id="routine">
+      <p class="kicker">Five minutes</p>
+      <h2>The five-minute routine</h2>
+      <ol>
+        <li><strong>Title block and issue list (30 seconds).</strong> Whose set, which issue, what date. Is there a structural engineer named, and who is it?</li>
+        <li><strong>Drawing list (30 seconds).</strong> How many sheets, which disciplines. A set with only A sheets is early; a full S series means a structural engineer is already on.</li>
+        <li><strong>Building section (1 minute).</strong> Storeys above and below grade, podium, floor-to-floor height.</li>
+        <li><strong>Parkade plan, then a typical floor (2 minutes).</strong> Find the core and the grid on both. Do the columns line up? Any obvious transfer?</li>
+        <li><strong>General notes, if structural (1 minute).</strong> Code, materials, the geotechnical report reference. On a KOR set, the loads table is on S1.01.</li>
+      </ol>
+      <div class="box box--auto">
+        <p class="box__label">When a developer hands you a set at a first meeting</p>
+        <p>Look for four things, and ask about the ones you can't see. <strong>Stage</strong>: what the issue block says. <strong>Who is already on</strong>: consultant names in the title blocks. <strong>The tower-to-parkade fit</strong>: whether the grid survives the trip down. <strong>The geotechnical report</strong>: referenced in the notes or not. Each gap is a reason for the next meeting.</p>
+      </div>
+    </section>
+
+    <section id="words">
+      <p class="kicker">Vocabulary</p>
+      <h2>Words to use</h2>
+      <ul class="plain">
+        <li><strong>Set:</strong> the full bundle of sheets issued together.</li>
+        <li><strong>General notes:</strong> the code, loads and materials the design is based on.</li>
+        <li><strong>Typical floor:</strong> one plan standing in for a run of identical floors.</li>
+        <li><strong>Grid / gridline:</strong> the lettered and numbered lines everything is located from.</li>
+        <li><strong>Callout / bubble:</strong> the circle that points to a section or detail on another sheet.</li>
+        <li><strong>Schedule:</strong> a list explaining the tags on a plan (columns, walls, beams, footings).</li>
+        <li><strong>Revision cloud:</strong> the scalloped outline around something that changed.</li>
+        <li><strong>IFP / IFC:</strong> issued for permit / issued for construction.</li>
+        <li><strong>Title block:</strong> the strip with the firm, project, sheet number, issues and seal.</li>
+        <li><strong>Shop drawings:</strong> a fabricator's or specialty engineer's drawings of their part, reviewed by the structural engineer for general conformance.</li>
+      </ul>
+    </section>
+
+    <section id="talk">
+      <p class="kicker">In the room</p>
+      <h2>What to ask, and what not to say</h2>
+      <p><strong>Five questions to ask with a set open on the table.</strong></p>
+      <ol>
+        <li>Which issue is this, and what's the next milestone: permit, tender or construction?</li>
+        <li>Is a structural engineer already on, or are these architectural only?</li>
+        <li>Is the core fixed, or still moving?</li>
+        <li>Does the parkade grid line up with the tower, or has that not been tested yet?</li>
+        <li>Is there a geotechnical report we can see?</li>
+      </ol>
+      <div class="box box--dont">
+        <p class="box__label">✕ Don't</p>
+        <p>Don't read a size, a bar or a thickness off a sheet and comment on it ("that slab looks thin", "those columns look big"). You can't tell from the drawing what drove it, and it may be another firm's work in front of their client. Don't mark up a set someone hands you. Say what you noticed as a question, and bring an engineer to answer it.</p>
+      </div>
+    </section>
+
+    <section id="check">
+      <p class="kicker">Two minutes</p>
+      <h2>Check yourself</h2>
+      <dl class="qa">
+        <dt>1. A circle on a plan reads "3" over "S5.02". What is it?</dt><dd>A reference: drawing 3 is on sheet S5.02. Go there to see the section or detail.</dd>
+        <dt>2. What does "15M @ 300 T&amp;B EW" mean?</dt><dd>15M bars, 300 mm apart, top and bottom, each way.</dd>
+        <dt>3. Where on a sheet do you find whether a set is current?</dt><dd>The title block's issue list: the latest issue, its date and any revision numbers.</dd>
+        <dt>4. On an architect's parkade plan, what are you looking for?</dt><dd>The core and the columns, and whether the tower's columns above land on the same grid, or fall in drive aisles and stalls (a transfer).</dd>
+        <dt>5. A set is marked Issued for Building Permit. Can it be built from?</dt><dd>Not as such. Permit drawings can be marked Not for Construction; the contractor builds from the Issued for Construction set.</dd>
+      </dl>
+      <div class="box box--auto">
+        <p class="box__label">Sources, and the review this still needs</p>
+        <p>KOR department meeting minutes on drafting standards (sheet numbering, column schedules, studrails, Revit schedules, slab reinforcing); KOR's office procedures (permit numbers, shop drawing review); KOR's specification templates; KOR's markup conventions; EGBC's Professional Practice Guidelines for Part 3 buildings and tall concrete, the five- and six-storey wood frame bulletin, the Permit to Practice manual and the Standard for the Authentication of Documents. Sheet series beyond those named vary by firm and by project. A KOR engineer reads each lesson before it is used with a client.</p>
+      </div>
+    </section>
+  </main>
+</div>
+</body></html>

@@ -1,0 +1,482 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fees</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head><body>
+<style>
+  .kicker { break-after: avoid; }
+  .qa dt { font-weight: 600; margin-top: .7rem; }
+  .qa dd { margin: .2rem 0 0 1rem; }
+  @media print { body { font-size: 10.8pt; } .box, .qa dt, .qa dd { break-inside: avoid; } }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Structural engineering for the people who sell it · Lesson 5 of 8</p>
+    <h1>Fees: how they're built, and why we win or lose</h1>
+    <p class="hero__lede">A structural fee is a <strong>promise of effort, phase by phase</strong>, priced against the cost of the structure. You will never set one. But you will be in the room when a developer says "that's high", and you need to know what the number is made of, what the industry says is reasonable, and what KOR's own record says about which fees we win.</p>
+    <div class="hero__meta">
+      <span>15-minute read</span>
+      <span>How fees are built · KOR's record</span>
+      <span>What to say when they say "too high"</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#methods">Three ways to charge</a></li>
+      <li><a href="#acec">The industry benchmark: ACEC-BC</a></li>
+      <li><a href="#client">Who the client is</a></li>
+      <li><a href="#phases">Phases, field reviews and extras</a></li>
+      <li><a href="#proposal">The proposal itself</a></li>
+      <li><a href="#record">KOR's record: what we win</a></li>
+      <li><a href="#words">Words to use</a></li>
+      <li><a href="#talk">What to ask, what not to say</a></li>
+      <li><a href="#check">Check yourself</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="methods">
+      <p class="kicker">The basics</p>
+      <h2>Three ways to charge</h2>
+      <p class="lede">Every structural fee is one of three things, or a mix of them. Knowing which one a client is looking at tells you what they are really comparing.</p>
+      <ul class="plain">
+        <li><strong>Percentage of construction cost:</strong> the fee is a percentage of what the structure costs to build. It is the industry's benchmark method for the main design work. Its weakness is that the contract must say exactly which costs count as "construction cost"; if it doesn't, the argument comes later.</li>
+        <li><strong>Fixed fee (lump sum):</strong> one number for a defined scope. ACEC-BC says it suits a project whose scope and schedule are defined well enough to estimate the effort, and that it gives the client cost certainty. It is usually built from time estimates or from the percentage method. KOR's standard proposal is a fixed fee, split into phases.</li>
+        <li><strong>Hourly (time basis):</strong> billed against a published rate schedule. ACEC-BC recommends it when the scope cannot be defined, or when the consultant doesn't control the time needed. It is also how additional services are normally paid.</li>
+      </ul>
+      <div class="box box--screen">
+        <p class="box__label">KOR's hourly rates (effective May 1, 2025, CAD)</p>
+        <p>Managing Principal $275 · Principal $250 · Associate Principal $225 · Structural Engineer (P.Eng.) $200 · designers, EITs, technologists and construction field reviewers $175. For comparison, KOR's schedule effective October 1, 2020 topped out at $250 per hour for managing principals and senior engineers. Rates exist so extras can be priced; they are not how a building fee is usually quoted.</p>
+      </div>
+    </section>
+
+    <section id="acec">
+      <p class="kicker">The benchmark</p>
+      <h2>The industry benchmark: ACEC-BC Budget Guidelines</h2>
+      <p class="lede">ACEC-BC (the association of consulting engineering firms in BC) publishes Budget Guidelines, Document 2: Buildings. The current edition is November 2022. It sets out fees it considers normally appropriate for the level of service EGBC's practice guidelines require, and it is meant to help owners set budgets. The figures are <strong>minimums</strong>, not a price list.</p>
+      <p><strong>The percentage applies to the structure, not the whole building.</strong> The structural cost base includes: preloading, ground improvement, shoring, excavation, backfill and underpinning; foundations and piling; concrete with rebar and formwork; structural steel and deck; structural timber, including glulam, mass timber and engineered wood; masonry; light gauge steel; precast; and the supports for architectural, mechanical and electrical items that the engineer must design or check. A developer who quotes our fee as a percentage of total project cost is comparing apples with the orchard.</p>
+      <p><strong>2022 minimum structural fees, market multiple housing</strong> (percent of structural construction cost):</p>
+      <ul class="plain">
+        <li><strong>Duplex or townhouse on slab on grade:</strong> 5.5%</li>
+        <li><strong>Low-rise, 1–4 storeys over a concrete garage:</strong> 5.0%</li>
+        <li><strong>Mid-rise, 5–6 storeys, non-combustible:</strong> 4.5%</li>
+        <li><strong>High-rise, 7–15 storeys:</strong> 4.0%</li>
+        <li><strong>High-rise, over 15 storeys:</strong> 3.5%</li>
+      </ul>
+      <p>The guideline allows unit repetition to reduce the design part for townhouses and low-rise. For general new buildings it grades by complexity and size; for buildings over 5,000 m² the minimum runs from 4.0% (simple) to 7.0% (specialized). Tenant improvements, restoration and seismic upgrades are priced on time or lump sum, not as a percentage.</p>
+      <div class="box box--tip">
+        <p class="box__label">✓ Why the percentage falls as the building grows</p>
+        <p>A 30-storey tower repeats the same floor many times. The structure costs far more, but the design effort doesn't grow in proportion. So the percentage falls even as the dollar fee rises. That is why a tall tower can carry a large fee at a low percentage.</p>
+      </div>
+    </section>
+
+    <section id="client">
+      <p class="kicker">Who pays</p>
+      <h2>Who the client is: owner or architect</h2>
+      <ul class="plain">
+        <li><strong>Architect as prime:</strong> the usual set-up. The owner hires the architect, and the architect hires structural, mechanical and electrical as subconsultants. The ACEC-BC percentages are written for exactly this case.</li>
+        <li><strong>Owner direct:</strong> many developers hire structural themselves. The fee is the same work, but the relationship, the contract and who signs the change orders all move to the owner.</li>
+        <li><strong>Engineer as prime:</strong> when the structural engineer leads the whole team, ACEC-BC says time basis should be used instead of the percentage.</li>
+      </ul>
+      <p>This matters in the room because the person you are talking to may not be the person who pays. An architect can champion KOR and still lose the argument with the developer's development manager over the number.</p>
+    </section>
+
+    <section id="phases">
+      <p class="kicker">How the fee is spent</p>
+      <h2>Phases, field reviews and extras</h2>
+      <p class="lede">A fee is not one lump of work. It is billed as the design moves through stages, and the stage split tells the client when the effort falls.</p>
+      <ul class="plain">
+        <li><strong>ACEC-BC's minimum split</strong> for a percentage fee: schematic design 15%, design development 15%, contract documents 40%, tender 5%, construction-related services 25%.</li>
+        <li><strong>KOR's standard Canadian proposal</strong> has four phases: schematic design to the development permit (DP) application; design development to the building permit (BP) application; working drawings to issued-for-construction (IFC); and construction administration with a stated number of field reviews.</li>
+        <li><strong>Early-weighted work:</strong> the joint guidelines for encapsulated mass timber say fees should give a greater share to the early design stages, because that is where the coordination happens. The same logic applies whenever the hard decisions move earlier.</li>
+      </ul>
+      <p><strong>Construction-phase fees.</strong> During construction KOR reviews shop drawings and makes <strong>field reviews</strong>: site visits by the engineer, or someone under their supervision, to check that what is built matches the design. KOR's template states how many reviews are included; extras are billed per visit. In KOR's 2025–2026 template that is $350 per visit for up to two hours, then hourly. An alternative term fixes the construction fee regardless of the actual number of visits.</p>
+      <p><strong>Additional services and change orders.</strong> Work outside the proposal scope is billed on top of the fixed fee, at hourly rates. KOR's change form prices a change either on hourly rates with a maximum upset amount, or as a fixed fee, and it needs the owner's signed authorization. KOR tells clients it has no hidden fees: extras are billed only after the owner approves them by purchase order or change order. The exceptions are wasted site visits, such as a same-day cancellation or a site that isn't ready, which are billed hourly.</p>
+      <div class="box box--dont">
+        <p class="box__label">✕ Don't promise a scope change is "covered"</p>
+        <p>When an architect mentions a redesign, a new tower or an added parking level, don't say "that's in our fee". Whether it is in scope is the project principal's call, made against the proposal wording.</p>
+      </div>
+    </section>
+
+    <section id="proposal">
+      <p class="kicker">The document</p>
+      <h2>The proposal itself</h2>
+      <ul class="plain">
+        <li><strong>The proposal confirms, it doesn't explore.</strong> The books on professional services pricing agree that a proposal should write down what has already been discussed. <em>Pricing Creativity</em> (Blair Enns) puts it bluntly: tell the client what the price will be before you write the proposal.</li>
+        <li><strong>Talk about the design, not the price.</strong> <em>The Trusted Advisor Fieldbook</em> says rates and margins are almost never the real problem; misunderstandings about scope are. Negotiating on total price alone makes the client think you were hiding something.</li>
+        <li><strong>Follow up by phone.</strong> <em>Million Dollar Consulting Proposals</em> (Alan Weiss) says to follow up by phone, not email, at the agreed time. The <em>Marketing Handbook for the Design &amp; Construction</em> professions says to contact the prospect after submitting, confirm your interest, ask if anything more is needed and find out when the decision will be made.</li>
+        <li><strong>Losing some on price is normal.</strong> Blair Enns: if a firm is not occasionally losing work on price, it is not charging enough; if it needs to win on price, it is not seen as the expert.</li>
+        <li><strong>Count consistently.</strong> The <em>Shipley Associates Proposal Guide</em> says to track every proposal as won, lost, no-bid, cancelled, withdrawn, pending or unknown, define the win rate once, and stick to it.</li>
+      </ul>
+    </section>
+
+    <section id="record">
+      <p class="kicker">Our own numbers</p>
+      <h2>KOR's record: what we win</h2>
+      <p class="lede">KOR's win/loss record was built from the pursuit trackers on the Management share: 701 pursuits, 2020–2026. Two numbers sum it up. <strong>When a client decides, KOR wins 72% of the time.</strong> But a lot of proposals never get a decision.</p>
+      <ul class="plain">
+        <li><strong>Decided:</strong> 281 won, 109 lost. That is the 72%.</li>
+        <li><strong>Undecided:</strong> 266 more proposals were never answered or closed out.</li>
+        <li><strong>Conversion:</strong> counting everything sent, KOR converts 43%.</li>
+        <li><strong>Size:</strong> the median proposed fee was $90k on wins and $115k on losses and not-won.</li>
+      </ul>
+      <p><strong>Decided win rate by fee band.</strong> The bigger the fee, the more often KOR loses:</p>
+      <ul class="plain">
+        <li><strong>$10–25k:</strong> 94%</li>
+        <li><strong>$25–50k:</strong> 88%</li>
+        <li><strong>$50–100k:</strong> 76%</li>
+        <li><strong>$100–250k:</strong> 69%</li>
+        <li><strong>$250k and up:</strong> 58%</li>
+      </ul>
+      <ul class="plain">
+        <li><strong>Who we lose to:</strong> Glotman Simpson is the competitor named most often in losses, 6 times. 5 of the 6 losses to Glotman Simpson were fees of $250k or more.</li>
+        <li><strong>Why we lose, as recorded:</strong> mostly "awarded to another firm", and a few "fee too high". The tracker rarely says why the other firm won.</li>
+        <li><strong>The inner circle:</strong> Westland, Northland, Cressey, Domus, Kerkhoff and Polygon nearly always hire KOR when they send us work.</li>
+        <li><strong>Where proposals mostly go nowhere:</strong> NSDA, Wesgroup, Strand, Porte and Starlight. KOR prices their work, and most of it is never awarded to us or never closed.</li>
+      </ul>
+      <div class="box box--auto">
+        <p class="box__label">Read this as a pattern, not a cause</p>
+        <p>These are correlations. A large fee doesn't lose <em>because</em> it is large. Large jobs may draw more competitors, longer procurement and more people with a vote; the record can't separate those. The record shows where KOR wins; it doesn't prove why. And "awarded to another firm" tells us nothing about whether price, relationship or timing decided it.</p>
+      </div>
+      <div class="box box--tip">
+        <p class="box__label">✓ Three things the record says to do</p>
+        <p><strong>Close out every fee.</strong> Call at 30 days; have an answer, won or lost, by 90. 266 open proposals are 266 conversations we never finished, and each one is a free chance to learn why. <strong>Raise the go/no-go bar at $250k and up.</strong> That is where we win least and where the strongest competitor lives, so it is where a pursuit should prove it is worth the effort. <strong>Protect the inner circle.</strong> The six clients who nearly always hire KOR are worth more attention than a new name who mostly doesn't answer.</p>
+      </div>
+    </section>
+
+    <section id="words">
+      <p class="kicker">Vocabulary</p>
+      <h2>Words to use</h2>
+      <ul class="plain">
+        <li><strong>Construction cost (structural):</strong> the cost of the structure itself, which is the base a structural percentage applies to.</li>
+        <li><strong>Fixed fee / lump sum:</strong> one number for a defined scope.</li>
+        <li><strong>Time basis:</strong> hourly, against a rate schedule.</li>
+        <li><strong>Prime consultant:</strong> the firm holding the owner's contract, usually the architect.</li>
+        <li><strong>Subconsultant:</strong> a firm hired by the prime; structural usually is.</li>
+        <li><strong>DP / BP / IFC:</strong> development permit, building permit, issued for construction: the milestones KOR's phases end on.</li>
+        <li><strong>Construction administration (CA):</strong> shop drawing review and field reviews during construction.</li>
+        <li><strong>Field review:</strong> a site visit to check the work matches the design.</li>
+        <li><strong>Additional services:</strong> work outside the proposal scope, billed on top.</li>
+        <li><strong>Upset amount:</strong> the maximum an hourly change can cost without new approval.</li>
+        <li><strong>Go/no-go:</strong> the decision whether to pursue at all.</li>
+      </ul>
+    </section>
+
+    <section id="talk">
+      <p class="kicker">In the room</p>
+      <h2>What to ask, and what not to say</h2>
+      <p><strong>Five questions that show you understand the fee</strong> and take the conversation to the work, not the price.</p>
+      <ol>
+        <li>Who will hold our contract, you or the architect?</li>
+        <li>When you say the fee is high, high against what: another proposal, a budget line, or a percentage of total cost?</li>
+        <li>Is the other proposal for the same scope: same phases, same number of field reviews?</li>
+        <li>What's still moving in the design, and how do you want changes handled?</li>
+        <li>When will you decide, and may I call you then?</li>
+      </ol>
+      <div class="box box--dont">
+        <p class="box__label">✕ Don't</p>
+        <p>Don't quote a fee, a percentage or a discount, and don't agree that a fee is too high. The right answer is "Let me take that back to [principal] and come back to you this week." That keeps the price with the person who owns it, and it gets you another call.</p>
+      </div>
+    </section>
+
+    <section id="check">
+      <p class="kicker">Two minutes</p>
+      <h2>Check yourself</h2>
+      <dl class="qa">
+        <dt>1. What does an ACEC-BC structural percentage apply to?</dt><dd>The cost of the structure: earthwork, shoring, foundations, concrete, steel, timber, masonry, precast and supports for other trades. Not the total project cost.</dd>
+        <dt>2. Why is the minimum percentage lower for a tower over 15 storeys than for a townhouse?</dt><dd>Repetition. The structure costs much more, but the design effort doesn't grow in proportion. So the percentage falls while the dollar fee rises.</dd>
+        <dt>3. How is work outside the proposal scope paid?</dt><dd>On top of the fixed fee, usually hourly with an upset amount, and only after the owner signs a change order or purchase order.</dd>
+        <dt>4. KOR wins 72% of decided proposals. Why does it convert only 43%?</dt><dd>266 proposals were never answered or closed out, so they never count as wins.</dd>
+        <dt>5. Where does KOR's decided win rate drop lowest, and what does the record suggest?</dt><dd>Fees of $250k and up, at 58%, which is also where most losses to Glotman Simpson fall. It suggests a higher go/no-go bar there. That is a correlation, not a proven cause.</dd>
+      </dl>
+      <div class="box box--auto">
+        <p class="box__label">Sources, and the review this still needs</p>
+        <p>ACEC-BC Budget Guidelines for Engineering Services, Document 2: Buildings (November 2022); KOR's fee proposal templates, terms and rate schedules (rates effective May 1, 2025 and October 1, 2020); KOR's contract change form and field review procedures; the joint professional practice guidelines for encapsulated mass timber; KOR's win/loss record from the Management share pursuit trackers, 2020–2026; and <em>Pricing Creativity</em>, <em>The Win Without Pitching Manifesto</em>, <em>The Trusted Advisor Fieldbook</em>, <em>Million Dollar Consulting Proposals</em>, the <em>Marketing Handbook for the Design &amp; Construction</em> professions and the <em>Shipley Associates Proposal Guide</em>. A KOR principal reads this lesson before it is used with a client.</p>
+      </div>
+    </section>
+  </main>
+</div>
+</body></html>

@@ -1,0 +1,524 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Talking to clients</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head><body>
+<style>
+  .kicker { break-after: avoid; }
+  .qa dt { font-weight: 600; margin-top: .7rem; }
+  .qa dd { margin: .2rem 0 0 1rem; }
+  @media print { body { font-size: 10.8pt; } .box, .qa dt, .qa dd { break-inside: avoid; } }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Structural engineering for the people who sell it · Lesson 7 of 8</p>
+    <h1>Talking to architects, developers and contractors</h1>
+    <p class="hero__lede">Three kinds of people hire a structural engineer, and each of them is afraid of something different. The first meeting is not a pitch. You <strong>ask about their project until they tell you what worries them</strong>, then bring an engineer back to help with it. This lesson covers how to do that with each of the three.</p>
+    <div class="hero__meta">
+      <span>15-minute read</span>
+      <span>Architect · developer · contractor</span>
+      <span>Questions, follow-up, fees</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#who">Who actually hires us</a></li>
+      <li><a href="#audiences">Three audiences, three fears</a></li>
+      <li><a href="#stance">Advisor, not pitcher</a></li>
+      <li><a href="#questions">Asking good questions</a></li>
+      <li><a href="#meetings">First meeting, second meeting, follow-up</a></li>
+      <li><a href="#openings">Three sample openings</a></li>
+      <li><a href="#fee">"Your fee is too high"</a></li>
+      <li><a href="#circle">The inner circle and referrals</a></li>
+      <li><a href="#words">Words to use</a></li>
+      <li><a href="#talk">What to ask, what not to say</a></li>
+      <li><a href="#check">Check yourself</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="who">
+      <p class="kicker">The contract</p>
+      <h2>Who actually hires us</h2>
+      <p class="lede">EGBC's guideline for structural services on Part 3 buildings names three possible clients for the Structural Engineer of Record: the <strong>owner</strong>, the <strong>coordinating registered professional</strong> (usually the architect), or a <strong>design-build contractor</strong>. KOR's own office procedures say the same.</p>
+      <ul class="plain">
+        <li><strong>The architect</strong> is KOR's usual client. KOR mostly works as the architect's structural sub, and often gets the job before any RFP exists. This is where most of KOR's work comes from.</li>
+        <li><strong>The developer</strong> pays for everything, and on many projects picks the team or approves the architect's choice. Developers are KOR's references: the proposal reference list names firms such as Cressey, Intracorp, Polygon, Bosa, Onni and Westbank.</li>
+        <li><strong>The design-build contractor</strong> holds the contract when it carries both design and construction. In that case, as EGBC's geotechnical guideline notes, the engineers usually have no contract with the owner at all. They are subconsultants to the builder.</li>
+      </ul>
+      <div class="box box--tip">
+        <p class="box__label">✓ Why this matters in the room</p>
+        <p>Before every meeting, work out who would sign KOR's contract on this project, and who has a say without signing anything. Often they are different people. The architect may hold the contract while the developer's preference decides who gets it.</p>
+      </div>
+    </section>
+
+    <section id="audiences">
+      <p class="kicker">Know the person</p>
+      <h2>Three audiences, three fears</h2>
+
+      <h3>Architects</h3>
+      <ul class="plain">
+        <li><strong>What they care about:</strong> the design surviving. That means the massing, the open ground floor, the unit plans and the floor-to-floor height they promised the developer.</li>
+        <li><strong>What they fear:</strong> a structural engineer who says "no" late. Transfers that eat the budget, walls that don't fit the units, and a redesign after the developer has already seen the scheme.</li>
+        <li><strong>What a structural engineer means to them:</strong> the person who makes the design buildable, or the person who breaks it. KOR's own introductions describe the approach as shaping the structure around the architectural, mechanical and electrical elements instead of making them work around the structure. That is the sentence an architect wants to hear.</li>
+        <li><strong>How they choose:</strong> mostly on trust and past experience. The question is who they have worked with and who makes their life easier. Formally, EGBC and ACEC-BC recommend qualifications-based selection, where the firm is chosen on competence first and the fee is negotiated after.</li>
+      </ul>
+
+      <h3>Developers</h3>
+      <ul class="plain">
+        <li><strong>What they care about:</strong> cost, schedule and how many units fit, and in particular the sellable floor area and how many storeys fit under the height limit.</li>
+        <li><strong>What they fear:</strong> surprises. Costs that jump between concept and tender, a permit that slips, a consultant team that misses their dates. A real-estate finance text in the library notes that a land developer's option period depends on consultants committing to the developer's timetable. Missing it can cost the option and every fee already spent.</li>
+        <li><strong>What a structural engineer means to them:</strong> a large share of hard cost decided early. The early decisions from Lesson 1 (core, grid, slab thickness, wood or concrete) are where structure changes the pro forma.</li>
+        <li><strong>How they choose:</strong> the inner-circle developers usually hire whoever they trusted last time. A developer with land and no team yet is the rare case where KOR can be on the team before the architect is chosen.</li>
+      </ul>
+
+      <h3>Contractors</h3>
+      <ul class="plain">
+        <li><strong>What they care about:</strong> drawings they can build quickly, a price that holds and an engineer who answers questions on site without holding up the pour.</li>
+        <li><strong>What they fear:</strong> a design that looks cheap on paper and is slow to build, slow answers, and change orders they can't recover.</li>
+        <li><strong>What a structural engineer means to them:</strong> on design-build work, a partner whose design they will be held to. Under design-build the contractor carries design responsibility to the owner, and KOR's procedures say the design-build contractor takes on the coordinating professional's role toward the design team.</li>
+        <li><strong>How they choose:</strong> constructability, speed of response and price. The <em>Marketing Handbook for Design &amp; Construction</em> notes that contractor-led design-build teams lean toward construction over design and suit cost-driven projects. Design-build also needs a high level of trust and communication inside the team.</li>
+      </ul>
+      <div class="box box--screen">
+        <p class="box__label">Design-build and P3: the timing is different</p>
+        <p>On a design-build-finance-maintain (P3) procurement, KOR's own BD notes say the structural engineer is a sub chosen while the shortlisted consortia form their teams. That leaves roughly four to six weeks before award to get on a team. Know which contractors are shortlisted, and call them during that window.</p>
+      </div>
+    </section>
+
+    <section id="stance">
+      <p class="kicker">The stance</p>
+      <h2>Advisor, not pitcher</h2>
+      <p class="lede">The business books behind this course agree on one point: <strong>talk about the client's project, not about KOR.</strong></p>
+      <ul class="plain">
+        <li><strong>Maister</strong> (<em>Managing the Professional Service Firm</em>): talk about the client's situation, not the firm's accomplishments, and treat a prospect as if they were already a client. Be useful from the first meeting.</li>
+        <li><strong>Maister, Green and Galford</strong> (<em>The Trusted Advisor</em>): trust has four parts. <strong>Credibility</strong> (what you say), <strong>reliability</strong> (what you do), <strong>intimacy</strong> (whether they feel safe telling you things) and <strong>self-orientation</strong> (whether you seem focused on yourself). The first three add trust. Self-orientation divides it. A pitch is self-orientation at its most visible.</li>
+        <li><strong>Enns</strong> (<em>Win Without Pitching</em>): diagnose fully before you prescribe. Gather what you need in early meetings, but don't hand over the diagnosis or the solution before you are hired. For KOR this means offering the conversation with an engineer, not the answer.</li>
+        <li><strong>The sales-engineer pattern:</strong> <em>The Trusted Advisor Sales Engineer</em> describes the usual split. The salesperson finds the lead and builds the relationship, then brings in the technical person to show how the problem gets solved. That is your role and the engineer's role.</li>
+      </ul>
+      <div class="box box--dont">
+        <p class="box__label">✕ Don't</p>
+        <p>Don't open with a slide deck, the firm's history or a project list. Several of the sales books give the same rule: a first meeting is never a presentation. If you're asked to present, turn it into a conversation by asking questions first.</p>
+      </div>
+    </section>
+
+    <section id="questions">
+      <p class="kicker">The method</p>
+      <h2>Asking good questions: SPIN, adapted to structure</h2>
+      <p class="lede">Rackham's SPIN research (<em>SPIN Selling</em>, <em>Major Account Sales Strategy</em>) sorts the questions that win large sales into four kinds. He found that <strong>Implication</strong> questions, which ask what a problem leads to, are the ones most strongly linked to success when a buyer is still working out what they need. That is exactly the stage KOR wants to be in.</p>
+      <ul class="plain">
+        <li><strong>Situation:</strong> the facts. "How many storeys? Wood or concrete? Is there parking below? Who's on the team so far?" Ask only what you couldn't find out before the meeting.</li>
+        <li><strong>Problem:</strong> where it hurts. "Does the tower grid work with the parking? Is the height limit tight? Is there a geotechnical report yet?"</li>
+        <li><strong>Implication:</strong> what the problem will cost. "If the grid doesn't line up, does that mean a transfer level? What would that do to the budget, or to the schedule?" "If the shear walls don't stack in the six-storey scheme, what happens to the unit plans?"</li>
+        <li><strong>Need-payoff:</strong> get them to say the benefit out loud. Rackham notes these are generic and reusable: "How would that help?" "Would it be useful if an engineer looked at the grid before you fix it?"</li>
+      </ul>
+      <p>Rackham also stresses that SPIN is not a script. If the client opens with a clear need ("we need to get rid of the transfer"), go straight to need-payoff. Voss (<em>Never Split the Difference</em>) adds one technique: phrase questions with <strong>what</strong> and <strong>how</strong> instead of yes/no. "How does this look to you?" beats "Do you like this?". "What's driving the schedule?" beats "Is the schedule tight?". Name what you hear before you ask for anything ("It sounds like the parkade is the worry").</p>
+      <div class="box box--tip">
+        <p class="box__label">✓ The structural problems worth listening for</p>
+        <p>Transfers (Lesson 1), a height limit with no room to spare, soft ground, a wood scheme over four storeys where the walls don't stack, and a schedule that depends on the permit. KOR tells clients that the Building Code prohibits shear-wall transfers in wood-frame buildings over four storeys, so shear walls have to be built into the unit plans and massing at schematic design. When an architect describes a five- or six-storey wood scheme, that is your opening.</p>
+      </div>
+    </section>
+
+    <section id="meetings">
+      <p class="kicker">The sequence</p>
+      <h2>First meeting, second meeting, follow-up</h2>
+      <h3>The first meeting</h3>
+      <ul class="plain">
+        <li><strong>Prepare lightly:</strong> look at their website and recent projects, check who they've worked with, and look up what is public about the site. Do most of the research in the meeting, by asking. Lencioni's <em>Getting Naked</em> makes the same point.</li>
+        <li><strong>Listen more than you talk:</strong> <em>The Trusted Advisor Fieldbook</em> says to state your point of view crisply and then spend most of the time listening with curiosity. You've listened well when they turn the conversation back to you.</li>
+        <li><strong>What to offer:</strong> something small and useful that needs an engineer. Good options are an <strong>early concept review</strong> of the grid and core, a <strong>constructability</strong> look at the scheme, or a cost idea such as <strong>designing out a transfer</strong> or <strong>stacking the shear walls</strong> in a wood scheme. KOR's fee templates already allow preliminary design to be billed hourly, capped at the schematic-design fixed fee and folded into that fee if the structure doesn't change much. So an early look doesn't have to be free to be easy to say yes to.</li>
+        <li><strong>End with a date:</strong> Harding's <em>Rain Making</em> says that rainmakers end each conversation with an agreed next step, and test the urgency, for example "given what's at stake, can we afford to wait more than two weeks?"</li>
+      </ul>
+      <h3>The second meeting: bring the engineer</h3>
+      <ul class="plain">
+        <li><strong>Pick the right engineer</strong> for the building type: a tower person for a tower, a wood person for a six-storey wood scheme.</li>
+        <li><strong>Brief them first:</strong> who's in the room, what problem the client named, and which question you promised an answer to.</li>
+        <li><strong>Let the engineer lead</strong> on the technical side. You run the meeting, keep it on the client's problem and close with the next step.</li>
+      </ul>
+      <h3>Follow-up</h3>
+      <ul class="plain">
+        <li><strong>Same week:</strong> a short note that repeats back what you heard and confirms the next step. Repeating it back is reflective listening, which <em>The Trusted Advisor</em> lists as a sign of low self-orientation.</li>
+        <li><strong>Keep going:</strong> Ferrazzi (<em>Never Eat Alone</em>): follow up, then follow up again. The <em>Marketing Handbook</em> quotes rainmakers who found that a relationship takes one to three years to turn into work. A slow start is normal and is no reason to stop.</li>
+        <li><strong>Each follow-up brings something:</strong> a relevant KOR project, a code change, or a question about the stage they're at. "Just checking in" doesn't count.</li>
+      </ul>
+    </section>
+
+    <section id="openings">
+      <p class="kicker">In your own words</p>
+      <h2>Three sample openings</h2>
+      <div class="box box--screen">
+        <p class="box__label">1 · An architect at concept</p>
+        <p>"Thanks for making time. I'm not here to show you slides. I'd rather hear about the project. Where are you with the massing? Is the core settled? … You mentioned the parking grid is different from the tower above. If that turns into a transfer level, what would it do to the budget you've given the client? … Would it help if one of our engineers sat down with you for an hour on the grid before it's fixed? That's the cheapest time to sort it out."</p>
+      </div>
+      <div class="box box--screen">
+        <p class="box__label">2 · A developer with land and no team yet</p>
+        <p>"Congratulations on the site. What are you hoping to build there, and what does the timeline look like? … What would have to be true for the numbers to work? … Who are you thinking of for the architect? … A lot of the structure cost gets locked in by decisions in the first few weeks, like wood or concrete, where the core goes and whether the parking lines up. Would it be useful to have an engineer in the room when you and the architect make those calls?"</p>
+      </div>
+      <div class="box box--screen">
+        <p class="box__label">3 · A contractor on a design-build</p>
+        <p>"How are you putting the team together for this one, and when do you need the structural sub confirmed? … What's driving the price, and where do you think the risk is? … What has gone wrong with engineers on past design-builds? … We'd want to design something your crews can build quickly, not something that only looks cheap on paper. How would you like us to work with your estimator before the price goes in?"</p>
+      </div>
+      <p>Each one asks about the situation first, finds a problem, gets the client to say what it would cost, and offers an engineer as the next step. None of them gives an answer.</p>
+    </section>
+
+    <section id="fee">
+      <p class="kicker">The objection</p>
+      <h2>"Your fee is too high"</h2>
+      <p class="lede">Baker (<em>Implementing Value Pricing</em>) argues that a client who says the price is too high usually means they don't yet see the value. So the response is to find out more, not to discount.</p>
+      <ul class="plain">
+        <li><strong>Ask first:</strong> Weiss (<em>Million Dollar Consulting</em>) says to ask why the client feels that way and what would satisfy them, instead of defending each line item. "Too high compared with what? Another proposal, the budget, or last time?"</li>
+        <li><strong>Trade scope, not price:</strong> if the fee has to come down, take out scope of matching value, such as field reviews or phases, rather than cutting the number for the same work. Weiss makes this point in both of his books in the library.</li>
+        <li><strong>Separate price from cost:</strong> the fee is a small number. The cost of a transfer that never got designed out, or a storey that didn't fit, is a big one. Bring the conversation back to that.</li>
+        <li><strong>Competence first:</strong> the <em>Marketing Handbook</em> says that within a reasonable range, cost should play a fairly small part in choosing a consultant, and selection should never be a contest of price alone. This is the same principle as the qualifications-based selection EGBC recommends.</li>
+        <li><strong>Leave the number to the engineer:</strong> you can open the conversation, but the principal on the proposal decides any change to scope or fee.</li>
+      </ul>
+      <div class="box box--dont">
+        <p class="box__label">✕ Don't</p>
+        <p>Don't offer a discount in the room, and don't criticise a competitor's fee. A quick cut tells the client the first number wasn't real.</p>
+      </div>
+    </section>
+
+    <section id="circle">
+      <p class="kicker">Where the work comes from</p>
+      <h2>The inner circle and referrals</h2>
+      <p class="lede">Some clients nearly always hire KOR once KOR proposes: <strong>Westland, Northland, Cressey, Domus, Kerkhoff and Polygon</strong>. They are worth more than any cold lead. The job with them is to stay close enough to be asked to propose every time.</p>
+      <ul class="plain">
+        <li><strong>Repeat work is the business:</strong> <em>The Trusted Advisor</em> notes that trusting relationships bring repeat work from the same client and new work through their referrals. <em>Clients for Life</em> calls this attitudinal loyalty: clients who remember the job, call back and recommend you.</li>
+        <li><strong>Hear about projects early:</strong> ask inner-circle clients what's coming next, not only what's live. A site under option is a project KOR can join before the architect is chosen.</li>
+        <li><strong>Follow people when they move:</strong> Harding (<em>Rain Making</em>) describes a rainmaker who followed one contact through five companies over twenty years. When a project manager at an inner-circle developer moves to a new firm, that new firm is a warm lead.</li>
+        <li><strong>Ask for referrals rarely and well:</strong> <em>The Trusted Advisor Fieldbook</em> advises asking only a couple of times over a good relationship, choosing carefully who to ask, researching the names, and giving the client concrete things to say about you.</li>
+      </ul>
+    </section>
+
+    <section id="words">
+      <p class="kicker">Vocabulary</p>
+      <h2>Words to use</h2>
+      <ul class="plain">
+        <li><strong>Coordinating registered professional (CRP):</strong> the professional, usually the architect, who coordinates the design team and is often KOR's client.</li>
+        <li><strong>Prime consultant:</strong> the firm that holds the owner's contract and hires the subconsultants.</li>
+        <li><strong>Design-build:</strong> one contract for both design and construction. The engineers work for the builder, not the owner.</li>
+        <li><strong>P3 / DBFM:</strong> design-build-finance-maintain. A consortium bids, and the structural engineer is a sub inside it.</li>
+        <li><strong>QBS (qualifications-based selection):</strong> choose the firm on competence, then agree the fee. EGBC and ACEC-BC recommend it.</li>
+        <li><strong>Constructability:</strong> how easily and quickly a design can actually be built.</li>
+        <li><strong>Concept / schematic design:</strong> the earliest design stages, when structural decisions are cheapest to change.</li>
+        <li><strong>Pro forma:</strong> the developer's spreadsheet of costs and revenue that decides whether the project goes ahead.</li>
+      </ul>
+    </section>
+
+    <section id="talk">
+      <p class="kicker">In the room</p>
+      <h2>What to ask, and what not to say</h2>
+      <p><strong>Five questions that work with any of the three.</strong> Each is open, and each is about their project.</p>
+      <ol>
+        <li>What's the biggest risk on this project right now?</li>
+        <li>What has to be true for the numbers to work?</li>
+        <li>What's already fixed, and what's still open: core, grid, wood or concrete?</li>
+        <li>What went wrong with structure on your last project like this?</li>
+        <li>How would you like us to work with you before anything is decided?</li>
+      </ol>
+      <div class="box box--dont">
+        <p class="box__label">✕ Don't</p>
+        <p>Don't pitch, and don't give sizes, costs or a diagnosis. Don't promise a fee, a saving or a date. Don't leave without a next step that has a date on it. When a question needs an engineer, say so: "Good question. Let me get [engineer] in front of you this week." That answer also gets you the second meeting.</p>
+      </div>
+    </section>
+
+    <section id="check">
+      <p class="kicker">Two minutes</p>
+      <h2>Check yourself</h2>
+      <dl class="qa">
+        <dt>1. Who can be the Structural Engineer of Record's client?</dt><dd>The owner, the coordinating registered professional (usually the architect), or a design-build contractor.</dd>
+        <dt>2. What does an architect fear most from a structural engineer?</dt><dd>A late "no": transfers, walls that don't fit the units, or a redesign after the client has seen the scheme.</dd>
+        <dt>3. Which SPIN question is most linked to winning, and what does it sound like here?</dt><dd>The Implication question. "If the grid doesn't line up, what does a transfer level do to your budget and schedule?"</dd>
+        <dt>4. A client says the fee is too high. What are your first two moves?</dt><dd>Ask what they're comparing it with and what would satisfy them. If it must come down, take out scope of matching value rather than cutting the price.</dd>
+        <dt>5. What do you offer at the end of a first meeting?</dt><dd>A small, useful next step with an engineer, such as an early concept review of the grid and core, with a date agreed.</dd>
+      </dl>
+      <div class="box box--auto">
+        <p class="box__label">Sources, and the review this still needs</p>
+        <p>EGBC's Professional Practice Guidelines for Part 3 structural and geotechnical services; KOR's office procedures, company introductions, fee templates and BD notes; Rackham, <em>SPIN Selling</em> and <em>Major Account Sales Strategy</em>; Maister, Green and Galford, <em>The Trusted Advisor</em>, and its Fieldbook; Maister, <em>Managing the Professional Service Firm</em>; Enns, <em>Win Without Pitching</em>; Voss, <em>Never Split the Difference</em>; Harding, <em>Rain Making</em>; the <em>Marketing Handbook for the Design &amp; Construction Professional</em>; Baker, <em>Implementing Value Pricing</em>; Weiss, <em>Million Dollar Consulting</em>. A KOR principal should check the inner-circle list and the fee guidance, and a KOR engineer reads each lesson before it is used with a client.</p>
+      </div>
+    </section>
+  </main>
+</div>
+</body></html>

@@ -1,0 +1,481 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What KOR delivers</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head><body>
+<style>
+  .kicker { break-after: avoid; }
+  .qa dt { font-weight: 600; margin-top: .7rem; }
+  .qa dd { margin: .2rem 0 0 1rem; }
+  @media print { body { font-size: 10.8pt; } .box, .qa dt, .qa dd { break-inside: avoid; } }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Structural engineering for the people who sell it · Lesson 4 of 8</p>
+    <h1>What KOR actually delivers, from sketch to occupancy</h1>
+    <p class="hero__lede">A client sees a drawing set and a signature. Behind them sit years of work: a design that gets the structure into the building, a permit set the engineer <strong>seals</strong>, review of what the trades build from it, and site visits until the engineer can sign that the finished building <strong>substantially conforms</strong>. This lesson walks the job from start to finish, and shows where fee disputes come from.</p>
+    <div class="hero__meta">
+      <span>15-minute read</span>
+      <span>Stages · signatures · site</span>
+      <span>Where fee disputes start</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#stages">The stages, and what KOR does in each</a></li>
+      <li><a href="#package">What's in the package</a></li>
+      <li><a href="#loa">Letters of Assurance: what the signature means</a></li>
+      <li><a href="#others">Who else signs: SER and supporting engineers</a></li>
+      <li><a href="#review">A second pair of eyes: independent review</a></li>
+      <li><a href="#site">During construction</a></li>
+      <li><a href="#scope">Scope, extras and fee disputes</a></li>
+      <li><a href="#words">Words to use</a></li>
+      <li><a href="#talk">What to ask, what not to say</a></li>
+      <li><a href="#check">Check yourself</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="stages">
+      <p class="kicker">The timeline</p>
+      <h2>The stages, and what KOR does in each</h2>
+      <p class="lede">EGBC's guideline for structural services on Part 3 buildings (the larger buildings KOR works on) lists the basic services in order: conceptual design, design development, permitting, contract documents, tendering, and construction, including review of submittals and field reviews. Each stage asks something different of the engineer.</p>
+      <ul class="plain">
+        <li><strong>Concept and schematic design:</strong> choosing the system: core, grid, slab, wood or concrete, the Lesson 1 decisions, made while they are cheap. KOR commits a project engineer and a senior partner from the first concepts to the end of construction. Once a scheme is chosen, KOR does a risk assessment and a senior engineer from outside the team reviews the concept.</li>
+        <li><strong>Design development:</strong> the heavy lifting. The building is modelled and analysed, members are sized, and the structure is coordinated with the architect and the mechanical and electrical engineers. On one 2021 KOR fixed fee, design development to building permit carried $47,000 of a $63,000 design fee; schematic design to development permit was $6,000.</li>
+        <li><strong>Building permit:</strong> the engineer seals the structural drawings submitted for permit after checking that they substantially comply with the building code. EGBC requires a permit set to be marked <em>Issued for Permit Purposes Only</em>, and the engineer may also mark it Not for Construction.</li>
+        <li><strong>Contract documents (issued for construction):</strong> the drawings and specifications the contractor builds from. These are the documents that get the final independent review (below).</li>
+        <li><strong>Tender:</strong> documents bidders will rely on must be sealed and marked <em>For Tender Only</em>. Depending on the contract, the engineer answers bidders' questions and issues addenda; one client's scope on a 2018 project also asked the structural engineer to prequalify contractors and write a tender recommendation.</li>
+        <li><strong>Construction:</strong> shop drawing review, answers to contractor questions (RFIs), site instructions, field reviews, and finally the letter that lets the building be occupied.</li>
+      </ul>
+      <div class="box box--screen">
+        <p class="box__label">Why the permit date matters to a developer</p>
+        <p>In BC a developer can start presales at third reading of the rezoning, but must then get a building permit within about twelve months. The permit drawing set, structural included, has to be produced in that window to keep the presales alive. That is often the real deadline behind a client's urgency.</p>
+      </div>
+    </section>
+
+    <section id="package">
+      <p class="kicker">The deliverables</p>
+      <h2>What's in the package</h2>
+      <ul class="plain">
+        <li><strong>Drawings:</strong> plans, sections and details of every structural element, sealed by the engineer. They are the legal record of the design.</li>
+        <li><strong>Specifications:</strong> the written rules for materials and workmanship. KOR keeps templates for formwork, reinforcement, cast-in-place concrete, testing, structural steel, metal decking, light steel framing and glulam.</li>
+        <li><strong>Calculations:</strong> dated, legible, kept in the project file with the input and output of any computer analysis. The client rarely sees them; they are what the firm defends its design with.</li>
+        <li><strong>The structural model:</strong> a computer model of the whole building used to analyse it for gravity, wind and earthquake. KOR uses ETABS and PERFORM3D for 3D seismic analysis, RAM Concept and SAFE for slab design, and Revit and AutoCAD for drawings.</li>
+      </ul>
+    </section>
+
+    <section id="loa">
+      <p class="kicker">The signatures</p>
+      <h2>Letters of Assurance: what the signature means</h2>
+      <p class="lede">Letters of Assurance are mandatory legal documents under the BC Building Code (and the Vancouver Building By-law in Vancouver). They name the professionals responsible for each part of the building and record what each one promises. Construction cannot start without the full set.</p>
+      <ul class="plain">
+        <li><strong>Schedule A:</strong> names the Coordinating Registered Professional, the one responsible for coordinating the design and field reviews of all the professionals on the project.</li>
+        <li><strong>Schedule B (at building permit):</strong> one per discipline. The structural engineer confirms the design substantially complies with the code (construction safety excepted) and <strong>commits to field review</strong> the items listed on it. It is a promise about the design and a promise to come to site.</li>
+        <li><strong>Schedule C-B (at the end):</strong> "Assurance of Professional Field Review and Compliance". Filed after completion and before occupancy, it says the engineer has done the field reviews and, based on them, the finished work substantially complies in all material respects with the code and the permit drawings.</li>
+        <li><strong>No conditions, no gaps:</strong> authorities should reject letters marked interim or partial, or that list deficiencies, and letters must not be issued for any portion that has code deficiencies. In Alberta the same letters are Schedules A-2, B-2 and C-2; KOR's standard scope includes them on both sides of the border.</li>
+      </ul>
+      <div class="box box--dont">
+        <p class="box__label">✕ Letters are not leverage</p>
+        <p>EGBC says an engineer must not withhold sealing a completed document to force payment or settle a contract dispute, and calls it unprofessional. Letters of Assurance must not be used for any purpose other than the one they were written for. If you come across older contract wording that ties letters to payment, don't quote it to a client; that practice is under review.</p>
+      </div>
+    </section>
+
+    <section id="others">
+      <p class="kicker">Who answers for what</p>
+      <h2>Who else signs: the SER and supporting engineers</h2>
+      <p class="lede">KOR is usually the <strong>Structural Engineer of Record (SER)</strong>: responsible for the structural integrity of the primary structure and, on Schedule B, for every structural item. But not every piece is designed by KOR.</p>
+      <ul class="plain">
+        <li><strong>Supporting Registered Professionals</strong> (often called specialty engineers) design specific components. Common examples: guardrails, trusses, cladding and glazing, seismic restraint of mechanical and electrical equipment, and prefabricated systems. They can be hired by the owner, the SER, the contractor or a sub-trade.</li>
+        <li><strong>PT tendons:</strong> on post-tensioned slabs, a specialty engineer working for the contractor usually lays out the tendons and anchors. The SER still reviews that work and takes overall responsibility for it on the Schedule B.</li>
+        <li><strong>How they report:</strong> each supporting engineer seals their own drawings, agrees their scope with the SER, field reviews their own elements and gives the SER sealed Schedules <strong>S-B</strong> and <strong>S-C</strong>. The SER relies on those to sign its own letters.</li>
+        <li><strong>The trap:</strong> KOR's own procedures warn that if a specialty shop drawing arrives without the specialty engineer's seal, the SER may become responsible for the design shown on it. That is why KOR's drawings and specifications state which elements need a specialty engineer.</li>
+      </ul>
+    </section>
+
+    <section id="review">
+      <p class="kicker">Checking the checker</p>
+      <h2>A second pair of eyes: independent review</h2>
+      <p>EGBC requires a documented <strong>independent review</strong> of the structural design before documents are issued for construction, by a qualified engineer who was not involved in the design. It shows on the Schedule B as item 2.5.</p>
+      <ul class="plain">
+        <li><strong>Type 1 and Type 2:</strong> a Type 1 reviewer may work at the same firm; a Type 2 reviewer may not. On tall concrete, the SER decides which by a risk assessment after concept; EGBC recommends Type 2 for irregular or uncommon buildings, such as several towers on a shared podium. "Tall" is about context, not storeys: a ten-storey building among low-rise neighbours can count.</li>
+        <li><strong>Peer review for advanced analysis:</strong> where the design uses non-linear dynamic analysis (a detailed computer simulation of how the building moves in an earthquake), the SER must write a Basis of Design document and have a peer review completed before issue for construction. In the US, KOR prices performance-based design and peer review as an option that applies only if the owner chooses a solution that needs it.</li>
+      </ul>
+      <div class="box box--tip">
+        <p class="box__label">✓ Selling it</p>
+        <p>KOR's method has drawings independently reviewed by another team member before they are issued for construction, after tender feedback is in. That is a fair answer to "how do I know the design is right?"</p>
+      </div>
+    </section>
+
+    <section id="site">
+      <p class="kicker">On site</p>
+      <h2>During construction</h2>
+      <p class="lede">KOR's standard scope includes the field reviews the code requires, structural shop drawing review, review of testing agency reports, RFI responses and Structural Site Instructions.</p>
+      <ul class="plain">
+        <li><strong>Shop drawings:</strong> the trades' own drawings (rebar, steel, PT, precast) showing exactly how they will build it. The engineer reviews them for general conformance with the design, not to check dimensions, quantities or construction safety, and confirms specialty items carry the specialty engineer's seal.</li>
+        <li><strong>Field reviews:</strong> site visits, by the engineer or someone under their direct supervision, to judge whether the work substantially complies in all material respects with the design. They can include the fabrication shop. Contractors ask for one by noon the day before; KOR uploads each report the same day, listing observations and deficiencies, to the contractor and the prime consultant, and to the owner when the owner hired KOR directly.</li>
+        <li><strong>How many:</strong> EGBC is clear that the timing and number are the engineer's call, set by the risk, complexity and the contractor's experience. An engineer may estimate the number for a fee, but may not agree in a contract to cap it in advance.</li>
+        <li><strong>Temporary works belong to the contractor:</strong> formwork, shoring, reshoring and falsework are designed by an engineer the contractor hires. KOR's formwork specification says so in terms. The contractor is responsible for means, methods, sequence and site safety.</li>
+      </ul>
+      <div class="box box--dont">
+        <p class="box__label">✕ Field review is not inspection</p>
+        <p>A field review is not supervision of construction, not a site safety inspection, and not a guarantee that every deficiency will be found. The contractor supervises the work. The engineer reports what does not conform; it does not tell the contractor how to fix it. One exception: if the engineer sees a safety hazard, it must tell whoever controls the site, and if people are in imminent danger, act to stop the work. Never describe KOR as "inspecting" or "supervising" the build.</p>
+      </div>
+      <div class="box box--screen">
+        <p class="box__label">KOR's fee terms, and the rule that wins</p>
+        <p>KOR's current fixed-fee template usually states a number of field reviews with extra visits billed per visit. EGBC allows an estimate but not a limit on the engineer's discretion, so that wording is under review. Say "the fee assumes about N reviews; the engineer decides what the job needs" — never "you get N reviews".</p>
+      </div>
+    </section>
+
+    <section id="scope">
+      <p class="kicker">Why it matters in BD</p>
+      <h2>Scope, extras and fee disputes</h2>
+      <p class="lede">Almost every fee argument starts with a scope that was never written down clearly. EGBC's guidelines say scope, basic and additional services, fees and payment terms should be agreed before work starts.</p>
+      <ul class="plain">
+        <li><strong>Basic services</strong> are everything above, including checking, independent review and field review. ACEC-BC's fee guideline says these quality steps are part of the fee, not extras.</li>
+        <li><strong>Additional services</strong> are work caused by changes after the agreement: changes to scope, size or design. KOR's templates list revisions after design acceptance, record drawings, site work outside the base building and alternate-bid documents; KOR's procedures add review of the contractor's temporary works, continuous field review and re-review of improper submittals.</li>
+        <li><strong>The classic one:</strong> the architect moves the program. KOR prices that as a fixed additional fee for coordination, new column locations, slab redesign, re-analysis of the core and drawing revisions.</li>
+        <li><strong>How KOR documents it:</strong> additional services only with the client's written authorization, recorded in an addendum or contract change form the client signs, priced as a fixed fee or hourly to a maximum.</li>
+        <li><strong>A low fee doesn't lower the bar:</strong> EGBC says an insufficient fee does not justify services below its guidelines. Cutting the fee means cutting scope, not care.</li>
+      </ul>
+      <div class="box box--tip">
+        <p class="box__label">✓ The value story in one breath</p>
+        <p>"We get the structure into your building at the stage when it's cheap to change, we get you a permit set on your presale timeline, we stand behind it with our seal, and we're on site until we can sign you into occupancy."</p>
+      </div>
+    </section>
+
+    <section id="words">
+      <p class="kicker">Vocabulary</p>
+      <h2>Words to use</h2>
+      <ul class="plain">
+        <li><strong>IFP / IFT / IFC:</strong> issued for permit, for tender, for construction. Three stamps on the same set, each a different promise.</li>
+        <li><strong>Schedule B / C-B:</strong> the structural letter at permit (design and a commitment to field review) and at completion (field reviews done, the work conforms).</li>
+        <li><strong>SER:</strong> Structural Engineer of Record; KOR on most of its projects.</li>
+        <li><strong>Supporting Registered Professional / specialty engineer:</strong> designs one component and reports to the SER on Schedules S-B and S-C.</li>
+        <li><strong>Shop drawings:</strong> the trades' drawings, reviewed for general conformance.</li>
+        <li><strong>Field review:</strong> the engineer's site visit. Not "inspection".</li>
+        <li><strong>RFI / SSI:</strong> request for information from the contractor; Structural Site Instruction from KOR.</li>
+        <li><strong>Independent review:</strong> a documented check by an engineer who did not do the design. Type 1 same firm, Type 2 another firm.</li>
+        <li><strong>Temporary works:</strong> formwork, shoring, reshoring. The contractor's engineer.</li>
+        <li><strong>Additional services:</strong> work outside the agreed scope, done on a signed change.</li>
+      </ul>
+    </section>
+
+    <section id="talk">
+      <p class="kicker">In the room</p>
+      <h2>What to ask, and what not to say</h2>
+      <p><strong>Five questions before a fee goes out.</strong> Each pins down scope, which is what prevents the argument later.</p>
+      <ol>
+        <li>When do you need the permit set? Are you presold, or about to be?</li>
+        <li>How is the job being delivered: tendered, construction management, design-build?</li>
+        <li>Who is hiring the specialty engineers: PT, precast, guards, cladding?</li>
+        <li>Is the design settled, or is the program still moving?</li>
+        <li>Do you want us through construction, and is it one phase or several?</li>
+      </ol>
+      <div class="box box--dont">
+        <p class="box__label">✕ Don't</p>
+        <p>Don't say KOR "inspects", "supervises" or "guarantees" the work. Don't promise a fixed number of site visits, or a letter "once the invoices are paid". Don't offer to "just stamp" someone else's drawings: an engineer may seal only work done by them or under their direct supervision, and EGBC bars charging a fee for sealing alone.</p>
+      </div>
+    </section>
+
+    <section id="check">
+      <p class="kicker">Two minutes</p>
+      <h2>Check yourself</h2>
+      <dl class="qa">
+        <dt>1. What does a structural engineer promise on Schedule B?</dt><dd>That the design substantially complies with the code, and that it will field review the work.</dd>
+        <dt>2. And on Schedule C-B?</dt><dd>That the field reviews are done and, based on them, the finished structure substantially complies with the code and the permit drawings. It is needed before occupancy.</dd>
+        <dt>3. A contractor says "your engineer missed that crack on site." What's the answer?</dt><dd>Field review is not supervision or a guarantee that every deficiency is found; the contractor supervises the work and is responsible for building to the documents.</dd>
+        <dt>4. Who designs the shoring and formwork?</dt><dd>An engineer hired by the contractor. The contractor owns temporary works, means, methods and site safety.</dd>
+        <dt>5. The architect moves the core after design is accepted. What happens to the fee?</dt><dd>It is an additional service: priced, written up and signed by the client before the work is done.</dd>
+      </dl>
+      <div class="box box--auto">
+        <p class="box__label">Sources, and the review this still needs</p>
+        <p>EGBC's Guide to the Letters of Assurance; Professional Practice Guidelines for Part 3 structural services, tall concrete buildings, temporary structures, supporting registered professionals and peer review; EGBC's quality management standards for field reviews, independent review and authentication of documents; the Permit to Practice manual; ACEC-BC budget guidelines; KOR's field review and administration procedures, specification templates and fee proposal templates. KOR's fee terms on field reviews and letters are being reviewed against EGBC's current standards. A KOR engineer reads each lesson before it is used with a client.</p>
+      </div>
+    </section>
+  </main>
+</div>
+</body></html>
