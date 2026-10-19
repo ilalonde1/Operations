@@ -186,7 +186,7 @@
                                                     <ItemsControl.ItemTemplate><DataTemplate>
                                                         <Expander Margin="0,3" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" Padding="6,3">
                                                             <Expander.Header>
-                                                                <TextBlock TextWrapping="Wrap"><Run Text="{Binding KindText, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="{Binding Subject, Mode=OneWay}"/><Run Text="   to " Foreground="#5A6876"/><Run Text="{Binding ToText, Mode=OneWay}" Foreground="#5A6876"/><Run Text="   " /><Run Text="{Binding WhenText, Mode=OneWay}" Foreground="#5A6876"/></TextBlock>
+                                                                <TextBlock TextWrapping="Wrap"><Run Text="{Binding KindText, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="{Binding Subject, Mode=OneWay}"/><Run Text="   to " Foreground="#5A6876"/><Run Text="{Binding ToText, Mode=OneWay}" Foreground="#5A6876"/><Run Text="   " /><Run Text="{Binding WhenText, Mode=OneWay}" Foreground="#5A6876"/><Run Text="{Binding RollupText, Mode=OneWay}" Foreground="#5A6876"/><Run Text="{Binding OpenedText, Mode=OneWay}" Foreground="#1F6B3A" FontWeight="SemiBold"/></TextBlock>
                                                             </Expander.Header>
                                                             <StackPanel Margin="0,6,0,4">
                                                                 <TextBox Text="{Binding Body, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Padding="10,8" MaxHeight="320"

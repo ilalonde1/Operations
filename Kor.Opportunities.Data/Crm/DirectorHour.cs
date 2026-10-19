@@ -74,6 +74,30 @@ public sealed record HourDraft(string To, string Subject, string Body)
 
     [JsonIgnore] public bool IsInvite => !string.IsNullOrWhiteSpace(When);
 
+    /// <summary>A pursuit owner's weekly roll-up: it carries the touchstones it covers.</summary>
+    [JsonIgnore] public bool IsRollup => Touchstones is { Count: > 0 };
+
+    /// <summary>The distinct pursuits a roll-up covers (one key per pursuit, but counted by engagement to be sure).</summary>
+    [JsonIgnore] public int RollupPursuits => (Touchstones ?? Array.Empty<string>())
+        .Select(k => TouchstoneKey.TryParse(k, out var key) ? key.EngagementId : 0).Where(id => id > 0).Distinct().Count();
+
+    /// <summary>Who a roll-up is for, from its "Hi Omar," opening; the address when the opening is missing.</summary>
+    [JsonIgnore] public string RollupName
+    {
+        get
+        {
+            var first = Body.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.Length > 0) ?? "";
+            return first.StartsWith("Hi ", StringComparison.Ordinal) && first.EndsWith(',') && first.Length is > 4 and < 40
+                ? first[3..^1].Trim() : To;
+        }
+    }
+
+    /// <summary>A roll-up's numbered asks ("1. URGENT · Kamloops woodframe (Mission Group)"): one line each, for a glance.</summary>
+    [JsonIgnore] public IReadOnlyList<string> RollupHeadlines => Body.Split('\n')
+        .Select(line => line.Trim())
+        .Where(line => line.Length > 2 && char.IsDigit(line[0]) && System.Text.RegularExpressions.Regex.IsMatch(line, @"^[0-9]{1,2}\. "))
+        .ToArray();
+
     [JsonIgnore] public DateTimeOffset? Start => DateTimeOffset.TryParse(When, System.Globalization.CultureInfo.InvariantCulture,
         System.Globalization.DateTimeStyles.None, out var at) ? at : null;
 }
@@ -187,6 +211,8 @@ public static class DirectorHourFile
                     if (d.Touchstones is { Count: > 0 } keys)
                     {
                         if (d.IsInvite) errors.Add($"{at}: invite '{d.Subject}' cannot carry touchstones; only an owner's roll-up does.");
+                        else if (d.RollupHeadlines.Count != d.RollupPursuits)
+                            errors.Add($"{at}: roll-up '{d.Subject}' covers {d.RollupPursuits} pursuits but numbers {d.RollupHeadlines.Count} items; write one \"<n>. \" block per pursuit covered.");
                         foreach (var key in keys.Where(k => !TouchstoneKey.TryParse(k, out _)))
                             errors.Add($"{at}: draft '{d.Subject}' touchstone '{key}' must be engagement:touchstone:yyyy-MM-dd as printed in the facts.");
                     }
@@ -320,6 +346,7 @@ public static class DirectorHourEmail
             for (var i = 0; i < m.Drafts.Count; i++)
             {
                 var d = m.Drafts[i];
+                if (d.IsRollup) { RenderRollup(d, sb, hourId is { } rh ? KorReportLinks.Draft(rh, m.Rank, i + 1) : null); continue; }
                 sb.Append("<div style=\"border:1px solid #dbe2e9;border-radius:4px;margin:8px 0\"><div style=\"background:#f7f9fb;padding:6px 10px;font-size:13px\">")
                   .Append(d.IsInvite ? "Invite · " : "").Append("To ").Append(E(d.To)).Append(" · <b>").Append(E(d.Subject)).Append("</b>");
                 if (d.IsInvite && d.Start is { } start)
@@ -359,6 +386,32 @@ public static class DirectorHourEmail
             sb.Append("</div>");
         }
 
+    }
+
+    /// <summary>
+    /// An owner's roll-up, folded to one glance: who, how many pursuits, its numbered asks (urgent ones in red) and one button.
+    /// The full message is read in Outlook, where Ian forwards it; five full bodies would bury the rest of the hour.
+    /// </summary>
+    private static void RenderRollup(HourDraft d, StringBuilder sb, string? link)
+    {
+        var count = d.RollupPursuits;
+        sb.Append("<div style=\"border:1px solid #dbe2e9;border-left:4px solid #2e4a62;border-radius:4px;margin:8px 0;padding:8px 12px\">")
+          .Append("<div style=\"font-size:14px\"><b>Roll-up to ").Append(E(d.RollupName)).Append("</b> <span style=\"color:#5a6876\">· ")
+          .Append(count.ToString(CultureInfo.InvariantCulture)).Append(count == 1 ? " pursuit" : " pursuits").Append(" · ").Append(E(d.Subject)).Append("</span></div>");
+        var headlines = d.RollupHeadlines;
+        if (headlines.Count > 0)
+        {
+            sb.Append("<ol style=\"margin:6px 0;padding-left:0;list-style:none;font-size:13px\">");
+            foreach (var h in headlines)
+                sb.Append("<li style=\"margin:1px 0;color:").Append(h.Contains("URGENT", StringComparison.Ordinal) ? "#b3261e" : "#17212c").Append("\">")
+                  .Append(E(h)).Append("</li>");
+            sb.Append("</ol>");
+        }
+        if (link is not null)
+            sb.Append("<a href=\"").Append(E(link)).Append("\" style=\"display:inline-block;margin-top:4px;padding:5px 12px;background:#2e4a62;color:#ffffff;")
+              .Append("border-radius:4px;text-decoration:none;font-weight:600;font-size:13px\">Review and forward in Outlook</a>")
+              .Append("<span style=\"color:#5a6876;font-size:12px;margin-left:10px\">Opening it marks these pursuits covered for this week.</span>");
+        sb.Append("</div>");
     }
 
     /// <summary>"Tue 20 Oct, 10:00–10:15" in the invite's own offset, as written.</summary>

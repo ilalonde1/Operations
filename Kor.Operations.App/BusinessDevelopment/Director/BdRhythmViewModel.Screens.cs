@@ -12,17 +12,37 @@ using Serilog;
 
 namespace Kor.Operations.App.BusinessDevelopment.Director;
 
-/// <summary>A drafted message on a move, with its recipients said briefly when there are many.</summary>
-public sealed record HourDraftView(HourDraft Draft)
+/// <summary>
+/// A drafted message on a move, with its recipients said briefly when there are many. An owner's roll-up says whose it is and
+/// how many pursuits it covers, and shows once it has been opened (its touchstones are recorded then).
+/// </summary>
+public sealed class HourDraftView : ObservableObject
 {
+    private bool _covered;
+
+    public HourDraftView(HourDraft draft) => Draft = draft;
+
+    public HourDraft Draft { get; }
     public string To => Draft.To;
     public string Subject => Draft.Subject;
     public string Body => Draft.Body;
-    public string KindText => Draft.IsInvite ? "Invite: " : "Draft: ";
-    public string OutlookLabel => Draft.IsInvite ? "Invite in Outlook" : "Draft in Outlook";
+    public bool IsRollup => Draft.IsRollup;
+    public string KindText => Draft.IsInvite ? "Invite: " : Draft.IsRollup ? $"Roll-up to {Draft.RollupName}: " : "Draft: ";
+    public string OutlookLabel => Draft.IsInvite ? "Invite in Outlook" : Draft.IsRollup ? "Review and forward in Outlook" : "Draft in Outlook";
     public string OutlookTip => Draft.IsInvite
         ? "Opens the meeting invite in Outlook with its people and time, unsent. You send it."
-        : "Opens a new message in Outlook for you to review and send. Nothing is sent from here.";
+        : Draft.IsRollup
+            ? $"Opens this roll-up in Outlook, addressed to {Draft.To}, unsent. Opening it marks its {CountText} covered for this week, so the next roll-up moves on."
+            : "Opens a new message in Outlook for you to review and send. Nothing is sent from here.";
+    public string CountText => Draft.RollupPursuits == 1 ? "1 pursuit" : $"{Draft.RollupPursuits} pursuits";
+    /// <summary>"8 pursuits · not opened yet" before it is opened; "8 pursuits" and a green "✓ Opened, covered this week" after.</summary>
+    public string RollupText => !Draft.IsRollup ? "" : "   " + CountText + (_covered ? "" : " · not opened yet");
+    public string OpenedText => Draft.IsRollup && _covered ? "   ✓ Opened, covered this week" : "";
+    public bool IsCovered
+    {
+        get => _covered;
+        set { if (SetField(ref _covered, value)) { OnPropertyChanged(nameof(RollupText)); OnPropertyChanged(nameof(OpenedText)); } }
+    }
     public string? WhenText => Draft.IsInvite && Draft.Start is { } start ? DirectorHourEmail.InviteTimeText(start, Draft.Minutes ?? 0) : null;
     public string ToText
     {
@@ -153,6 +173,21 @@ public sealed partial class BdRhythmViewModel
         foreach (var move in Moves) move.SetCards(cards);
     }
 
+    private HashSet<string> _coveredTouchstones = new(StringComparer.Ordinal);
+
+    /// <summary>Touchstone keys already recorded as drafted: a roll-up whose keys are all here shows as opened.</summary>
+    public void SetCoveredTouchstones(IEnumerable<string> keys)
+    {
+        _coveredTouchstones = new HashSet<string>(keys, StringComparer.Ordinal);
+        ApplyCovered();
+    }
+
+    private void ApplyCovered()
+    {
+        foreach (var draft in Moves.SelectMany(m => m.Drafts).Where(d => d.IsRollup))
+            draft.IsCovered = draft.Draft.Touchstones!.All(_coveredTouchstones.Contains);
+    }
+
     // ---- Today ----
     public ObservableCollection<HourMoveView> Moves { get; } = new();
     public ObservableCollection<HourSectionView> HourSections { get; } = new();
@@ -255,6 +290,7 @@ public sealed partial class BdRhythmViewModel
                     HourSections.Add(new HourSectionView(section.Role, section.Title, section.Plan,
                         section.Moves.Select(m => Moves.Single(v => v.Rank == m.Rank)).ToArray(), section.Decisions));
             else HourSections.Add(new HourSectionView("", "", hour.Plan, Moves.ToArray(), Array.Empty<string>()));
+            ApplyCovered();
         }
         BuildScreens();
     }

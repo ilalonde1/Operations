@@ -131,7 +131,7 @@ public sealed class PursuitTouchstoneTests
 
         Assert.Equal("Pursuit touchstones (1 of 2 owners owe a roll-up today)", fact.Name);
         Assert.Contains(fact.Lines, l => l.StartsWith("ROLL-UP Islam Shabana <ishabana@korstructural.com>: 10 of 10 live pursuits have a touchstone due", StringComparison.Ordinal)
-            && l.EndsWith("Showing 8 of 10.", StringComparison.Ordinal));
+            && l.EndsWith("Showing 8 of 10. Subject: \"Your pursuits this week: 8 to move\".", StringComparison.Ordinal));
         Assert.Equal(8, fact.Lines.Count(l => l.Contains(" · Rule 8 · pursuit #", StringComparison.Ordinal)));
         // Quietest first: pursuit 110 (40 days), and its key is printed so the draft can carry it.
         var first = fact.Lines.First(l => l.Contains(" · Rule 8 · pursuit #", StringComparison.Ordinal));
@@ -163,16 +163,40 @@ public sealed class PursuitTouchstoneTests
         Assert.Equal("312:8:2026-09-06", key.ToString());
         Assert.False(TouchstoneKey.TryParse("312:8:06-09-2026", out _));
 
-        var ok = ParseWith(new HourDraft("ishabana@korstructural.com", "Your pursuits this week: 1 to act on", "Body")
-            { Touchstones = new[] { "312:8:2026-09-06" } });
+        var ok = ParseWith(new HourDraft("ishabana@korstructural.com", "Your pursuits this week: 1 to move",
+            "Hi Islam,\n\n1. Arcadis IBI Group (Arcadis IBI Group)\nDo: Call.\nBy: Fri 23 Oct\nWhy: Quiet.\n\nIan") { Touchstones = new[] { "312:8:2026-09-06" } });
         Assert.Empty(ok.Errors);
-        Assert.Equal(new[] { "312:8:2026-09-06" }, Assert.Single(ok.Content!.Sections![0].Moves[0].Drafts).Touchstones);
+        var draft = Assert.Single(ok.Content!.Sections![0].Moves[0].Drafts);
+        Assert.Equal(new[] { "312:8:2026-09-06" }, draft.Touchstones);
+        Assert.Equal(new[] { "1. Arcadis IBI Group (Arcadis IBI Group)" }, draft.RollupHeadlines);
 
         var bad = ParseWith(new HourDraft("ishabana@korstructural.com", "Roll-up", "Body") { Touchstones = new[] { "pursuit 312" } });
         Assert.Contains(bad.Errors, e => e.Contains("touchstone 'pursuit 312'", StringComparison.Ordinal));
+        // Two pursuits covered, one numbered block: the email's glance would hide one, so the import refuses it.
+        var short1 = ParseWith(new HourDraft("ishabana@korstructural.com", "Roll-up", "1. One\nDo: x")
+            { Touchstones = new[] { "312:8:2026-09-06", "313:8:2026-09-06" } });
+        Assert.Contains(short1.Errors, e => e.Contains("covers 2 pursuits but numbers 1 items", StringComparison.Ordinal));
         var invite = ParseWith(HourDraft.Invite("omara@korstructural.com", "Quickie", "Agenda", Now.AddDays(1), 15)
             with { Touchstones = new[] { "312:8:2026-09-06" } });
         Assert.Contains(invite.Errors, e => e.Contains("cannot carry touchstones", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Each_item_says_when_it_is_due_back_and_the_subject_says_how_heavy_the_week_is()
+    {
+        // Monday 19 Oct: urgent = two working days (Wed 21); otherwise the Friday after that (Fri 23); a tender closing on
+        // Tue 20 pulls its submission check back to the day before, Mon 19.
+        var urgent = PursuitTouchstones.Compute(Rules, new[] { Pursuit(1) with { NextActionDueUtc = DaysAgo(1) } }, Array.Empty<TouchstoneDraftRow>(), Now, Pacific).Single();
+        var soft = PursuitTouchstones.Compute(Rules, new[] { Pursuit(2, touchedDaysAgo: 30) }, Array.Empty<TouchstoneDraftRow>(), Now, Pacific).Single();
+        Assert.Equal(new DateOnly(2026, 10, 21), MorningTouchstones.DueBy(urgent, Now, Pacific));
+        Assert.Equal(new DateOnly(2026, 10, 23), MorningTouchstones.DueBy(soft, Now, Pacific));
+        var tender = Pursuit(3, opportunity: 12, openedDaysAgo: 30) with { DeadlineUtc = new DateTimeOffset(2026, 10, 20, 21, 0, 0, TimeSpan.Zero) };
+        var review = PursuitTouchstones.Compute(Rules, new[] { tender }, Array.Empty<TouchstoneDraftRow>(), Now, Pacific).Single();
+        Assert.Equal(new DateOnly(2026, 10, 19), MorningTouchstones.DueBy(review, Now, Pacific));
+
+        Assert.Equal("Your pursuits this week: 1 urgent, 1 to move", MorningTouchstones.Subject(new[] { urgent, soft }));
+        Assert.Equal("Your pursuits this week: 1 to move", MorningTouchstones.Subject(new[] { soft }));
+        Assert.Equal("Your pursuits this week: 1 urgent", MorningTouchstones.Subject(new[] { urgent }));
     }
 
     private static (DirectorHourContent? Content, System.Collections.Generic.IReadOnlyList<string> Errors) ParseWith(params HourDraft[] drafts)

@@ -101,7 +101,11 @@ public partial class BdDirectorWindow : Window
         try
         {
             var director = _vm.LoadAsync(_lifetime.Token);
-            if (_rhythm is not null) await _rhythm.LoadAsync(_lifetime.Token).ConfigureAwait(true);
+            if (_rhythm is not null)
+            {
+                await _rhythm.LoadAsync(_lifetime.Token).ConfigureAwait(true);
+                await LoadCoveredTouchstonesAsync().ConfigureAwait(true);
+            }
             if (_doctrine is not null) await _doctrine.LoadAsync(_lifetime.Token).ConfigureAwait(true);
             await director.ConfigureAwait(true);
         }
@@ -479,12 +483,29 @@ public partial class BdDirectorWindow : Window
         if (keys.Count == 0) return;
         try
         {
-            var added = await AppServices.Get<IPursuitTouchstoneStore>().RecordDraftedAsync(keys, CurrentActor(), _lifetime.Token).ConfigureAwait(true);
-            if (_rhythm is not null) SetRhythmStatus($"Recorded {added} of {keys.Count} pursuit touchstones as drafted.");
+            await AppServices.Get<IPursuitTouchstoneStore>().RecordDraftedAsync(keys, CurrentActor(), _lifetime.Token).ConfigureAwait(true);
+            await LoadCoveredTouchstonesAsync().ConfigureAwait(true);
+            if (_rhythm is not null) SetRhythmStatus($"Roll-up to {draft.To} opened in Outlook; its {draft.RollupPursuits} pursuits are covered for this week.");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log.Warning(ex, "Recording {Count} touchstones for {Subject} failed.", keys.Count, draft.Subject);
+            if (_rhythm is not null) SetRhythmStatus("The roll-up opened, but its pursuits could not be marked covered; next week's roll-up may repeat them.");
+        }
+    }
+
+    /// <summary>Shows which of today's roll-ups have been opened. A failure only leaves them unmarked.</summary>
+    private async Task LoadCoveredTouchstonesAsync()
+    {
+        if (_rhythm is null || !_rhythm.Moves.Any(m => m.Drafts.Any(d => d.IsRollup))) return;
+        try
+        {
+            var drafted = await AppServices.Get<IPursuitTouchstoneStore>().ListDraftsAsync(_lifetime.Token).ConfigureAwait(true);
+            _rhythm.SetCoveredTouchstones(drafted.Select(d => d.Key.ToString()));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Warning(ex, "Reading the recorded pursuit touchstones failed.");
         }
     }
 

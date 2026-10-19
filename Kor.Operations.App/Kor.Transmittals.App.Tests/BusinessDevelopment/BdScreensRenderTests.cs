@@ -516,7 +516,13 @@ public sealed class BdScreensRenderTests
             { "rank": 1, "title": "Send the recap", "minutes": 15, "whyNow": ["Promised at the close of the call."],
               "cards": [5, 7],
               "principle": { "quote": "Illustrative quote.", "cite": "Illustrative book, ch. 1" },
-              "drafts": [ { "to": "Ian", "subject": "Recap", "body": "Illustrative draft body." } ],
+              "drafts": [ { "to": "Ian", "subject": "Recap", "body": "Illustrative draft body." },
+                { "to": "omar@korstructural.com", "subject": "Your pursuits this week: 1 urgent, 2 to move",
+                  "body": "Hi Omar,\n\n3 of your pursuits need you this week; the first 1 is urgent.\n\n1. URGENT · Example tower (Example Developments)\nDo: Call Pat Example and ask whether the rezoning hearing moved.\nBy: Wed 21 Oct\nWhy: Your next step was due on 30 Sep.\n\n2. Example midrise (Example Homes)\nDo: Send the Example Homes team the Langford Central sheet.\nBy: Fri 23 Oct\nWhy: Never touched since May; KOR has done 4 jobs for them.\n\n3. Example Architects\nDo: Ask for 20 minutes on their Kelowna studio's pipeline.\nBy: Fri 23 Oct\nWhy: They opened a Kelowna studio in May.\n\nReply with one line per number: done, moved to <date>, or dropped and why.\nIan",
+                  "touchstones": ["501:9:2026-09-30", "502:7:2026-05-30", "503:8:2026-09-01"] },
+                { "to": "jim@korstructural.com", "subject": "Your pursuits this week: 1 to move",
+                  "body": "Hi Jim,\n\n1 of your pursuits needs you this week.\n\n1. Example school (Example District)\nDo: Ask for the debrief.\nBy: Fri 23 Oct\nWhy: Submitted six weeks ago with no decision.\n\nReply with one line per number: done, moved to <date>, or dropped and why.\nIan",
+                  "touchstones": ["601:6:2026-09-04"] } ],
               "steps": ["Read it once", "Send it to yourself first"],
               "links": [ { "label": "Open the actions", "kind": "director", "id": 2 } ] },
             { "rank": 2, "title": "Call Example Client", "minutes": 20, "whyNow": ["Illustrative reason."],
@@ -560,6 +566,14 @@ public sealed class BdScreensRenderTests
         var rhythm = new BdRhythmViewModel(store.Object, () => now);
         rhythm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
         Assert.True(rhythm.HasHour, "EXPECTED the illustrative hour to parse; ACTUAL: " + rhythm.HourMessage);
+        // Jim's roll-up has been opened; Omar's has not.
+        rhythm.SetCoveredTouchstones(new[] { "601:6:2026-09-04" });
+        var rollups = rhythm.Moves[0].Drafts.Where(d => d.IsRollup).ToArray();
+        Assert.Equal(new[] { "   3 pursuits · not opened yet", "   1 pursuit" }, rollups.Select(d => d.RollupText));
+        Assert.Equal(new[] { "", "   ✓ Opened, covered this week" }, rollups.Select(d => d.OpenedText));
+        Assert.Equal(new[] { "Roll-up to Omar: ", "Roll-up to Jim: " }, rollups.Select(d => d.KindText));
+        File.WriteAllText(Path.Combine(dir, "director-email.html"), "<!doctype html><meta charset=\"utf-8\"><title>Email</title>"
+            + DirectorHourEmail.Render(rhythm.Hour!, 1));
         Assert.Equal(2, rhythm.Actions.Count); // Open filter: the closed action is not shown
         Assert.Equal(2, rhythm.Meetings.Count);
         Assert.Equal(3, rhythm.References.Count);
