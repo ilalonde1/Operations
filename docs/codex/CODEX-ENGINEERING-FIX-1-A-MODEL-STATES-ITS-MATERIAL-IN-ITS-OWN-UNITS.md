@@ -1,4 +1,13 @@
-# Engineering fix 1 of 7: a model states its material in its own units
+# Engineering fix 1: a model states its material in its own units
+
+> Re-reviewed 2026-10-19 after the hold, and it stands:
+>
+> - No branch, stash or uncommitted change already does it.
+> - Nothing outside `E2kShellBuilder` reads `FC`, `E`, `WEIGHTPERVOLUME` or the default material's name: 0 matches in
+>   Core, CLI, App and tests.
+> - The one existing shell test builds in inches, which this brief keeps byte-identical.
+>
+> Run only after Claude has recorded the baseline (step 0 of the plan).
 
 Bounded brief for Codex. Source edits and gates only. **Do NOT run `dotnet build` or `dotnet test`**: your test runner
 hangs here, and Claude verifies on the dev box after you finish. Apply the edit, read your own diff back, write the

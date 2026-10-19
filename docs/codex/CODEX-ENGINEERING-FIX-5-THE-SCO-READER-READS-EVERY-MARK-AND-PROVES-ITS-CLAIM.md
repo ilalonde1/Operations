@@ -1,5 +1,8 @@
 # Engineering fix 5 of 7: the S-Concrete reader reads every mark, writes back what it read, and proves its claim
 
+> ⛔ **WITHDRAWN 2026-10-19 — DO NOT RUN.** Superseded by the plan of 2026-10-19, which reissues this fix in its
+> place in the order, against the baseline taken first. Kept as a record.
+
 Bounded brief for Codex. Source edits and gates only. **Do NOT run `dotnet build` or `dotnet test`**: Claude runs the
 gates on the dev box against the real files. Apply, read your own diff back, write the response, stop. No git
 operations beyond your own edits.

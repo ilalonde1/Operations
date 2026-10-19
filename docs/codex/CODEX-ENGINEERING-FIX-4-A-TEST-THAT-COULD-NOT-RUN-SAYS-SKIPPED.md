@@ -1,5 +1,8 @@
 # Engineering fix 4 of 7: a test that could not run says SKIPPED, not PASSED
 
+> ⛔ **WITHDRAWN 2026-10-19 — DO NOT RUN.** Superseded by the plan of 2026-10-19, which reissues this fix in its
+> place in the order, against the baseline taken first. Kept as a record.
+
 Bounded brief for Codex. Source edits only. **Do NOT run `dotnet build`, `dotnet restore` or `dotnet test`**: Claude
 restores, builds and runs both suites on the dev box. Apply, read your own diff back, write the response, stop. No git
 operations beyond your own edits.

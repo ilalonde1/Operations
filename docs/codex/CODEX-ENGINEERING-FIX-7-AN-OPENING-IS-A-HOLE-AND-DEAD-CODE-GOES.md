@@ -1,5 +1,9 @@
 # Engineering fix 7 of 7: in PdfToSafe an "Opening" becomes a hole, and dead code goes
 
+> ⛔ **WITHDRAWN 2026-10-19 — DO NOT RUN.** Dropping an Opening-typed shape is a deliberate fix of 2026-04-16
+> (928d8f07: before it they exported as slabs). Whether it should cut a hole instead is Ian's decision, not a defect.
+> Superseded by the plan of 2026-10-19. Kept as a record.
+
 Bounded brief for Codex. Source edits and gates only. **Do NOT run `dotnet build` or `dotnet test`**: Claude verifies
 on the dev box. Apply, read your own diff back, write the response, stop. No git operations beyond your own edits
 (deleting the three files below is an edit; use your normal file delete, not `git rm`).

@@ -1,5 +1,10 @@
 # Engineering fix 3 of 7: the app and the publish do what they say
 
+> ⛔ **WITHDRAWN 2026-10-19 — DO NOT RUN.** Item 5 would have reinstated the "Sheets read" tab, which was removed on
+> purpose on 2026-08-07 (84eb76b1: "60 rows nobody reads in a spreadsheet"). Item 6 extended Ian's "never overwrite"
+> rule to the publisher without asking him; explainer withdrawal is deliberate (`PublishExplainers`).
+> Superseded by the plan of 2026-10-19. Kept as a record.
+
 Bounded brief for Codex. Source edits and gates only. **Do NOT run `dotnet build` or `dotnet test`**: Claude verifies on
 the dev box. Apply, read your own diff back, write the response, stop. No git operations beyond your own edits.
 

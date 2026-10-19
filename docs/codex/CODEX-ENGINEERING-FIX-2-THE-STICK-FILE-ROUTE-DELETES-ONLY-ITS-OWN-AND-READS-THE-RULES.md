@@ -1,5 +1,10 @@
 # Engineering fix 2 of 7: the stick-file route deletes only its own files and reads the same rules everywhere
 
+> ⛔ **WITHDRAWN 2026-10-19 — DO NOT RUN.** The re-review found its central fix wrong. `corpus-analyze` relies on `Build`
+> wiping its folder: `set.csv`, `sheets.csv`, `manifest.txt` and the yardstick results live there, and a partial
+> delete would leave a previous run's results behind. The guard belongs in the `stickfile` verb. Its items 4-6 are
+> latent: the `dxf.schedule` rows equal the compiled defaults. Superseded by the plan of 2026-10-19. Kept as a record.
+
 Bounded brief for Codex. Source edits and gates only. **Do NOT run `dotnet build` or `dotnet test`**: your test runner
 hangs here, and Claude verifies on the dev box. Apply, read your own diff back, write the response, stop. No git
 operations beyond your own edits.

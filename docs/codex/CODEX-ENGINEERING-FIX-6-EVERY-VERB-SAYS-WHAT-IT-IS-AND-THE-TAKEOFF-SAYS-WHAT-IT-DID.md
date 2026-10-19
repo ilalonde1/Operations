@@ -1,5 +1,8 @@
 # Engineering fix 6 of 7: every verb says what it is, and the takeoff says what it did
 
+> ⛔ **WITHDRAWN 2026-10-19 — DO NOT RUN.** Its `wallconcrete` item is a probe of the wall-schedule pricing path
+> retired 2026-06-29. Superseded by the plan of 2026-10-19. Kept as a record.
+
 Bounded brief for Codex. Source edits and gates only. **Do NOT run `dotnet build` or `dotnet test`**: Claude verifies
 on the dev box. Apply, read your own diff back, write the response, stop. No git operations beyond your own edits.
 
