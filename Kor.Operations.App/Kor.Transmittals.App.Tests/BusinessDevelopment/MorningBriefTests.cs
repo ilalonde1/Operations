@@ -175,7 +175,8 @@ public sealed class MorningBriefTests
         var prompt = MorningPromptComposer.Compose(facts, Day);
         foreach (var expected in new[] { "## BD", "## COO", "## IT", "#5 BD principle", "#101 Operating principle", "1 of 27", "0 of unknown",
             "Nothing goes to anyone else", "Never call an API", "BdKnowledgeIngest claims search", "BdKnowledgeIngest hour import <file> --by \"<session>\"",
-            "Could not read: Deltek AR", "Could not read: IT facts", "2026-10-16", "draft.to is Ian" })
+            "Could not read: Deltek AR", "Could not read: IT facts", "2026-10-16", "draft.to is Ian",
+            "open UNSENT in Ian's Outlook and only Ian sends them", "never go in a draft to anyone but Ian", "each PREPARE line", "\"cadenceId\": 3" })
             Assert.Contains(expected, prompt, StringComparison.Ordinal);
     }
 

@@ -55,7 +55,19 @@ public sealed record HourMove(
 public sealed record HourPrinciple(string Quote, string Cite);
 
 /// <summary>A message drafted for Ian to copy and send himself. Nothing is sent by the platform.</summary>
-public sealed record HourDraft(string To, string Subject, string Body);
+public sealed record HourDraft(string To, string Subject, string Body)
+{
+    /// <summary>When set, the draft is a meeting invite starting then (ISO 8601 with offset); Minutes is its length.</summary>
+    public string? When { get; init; }
+    public int? Minutes { get; init; }
+    /// <summary>The recurring meeting the invite is for (migration 369). Opening the invite plans that occurrence.</summary>
+    public int? CadenceId { get; init; }
+
+    [JsonIgnore] public bool IsInvite => !string.IsNullOrWhiteSpace(When);
+
+    [JsonIgnore] public DateTimeOffset? Start => DateTimeOffset.TryParse(When, System.Globalization.CultureInfo.InvariantCulture,
+        System.Globalization.DateTimeStyles.None, out var at) ? at : null;
+}
 
 /// <summary>A button into an existing KOR Operations screen. Kind: org, opp, pursuit, mpi, person or director.</summary>
 public sealed record HourLink(string Label, string Kind, long Id)
@@ -157,7 +169,13 @@ public static class DirectorHourFile
                 if (m.WhyNow is null || m.WhyNow.Count == 0 || m.WhyNow.Any(string.IsNullOrWhiteSpace)) errors.Add($"{at}: whyNow needs at least one line.");
                 if (m.Principle is { } p && (string.IsNullOrWhiteSpace(p.Quote) || string.IsNullOrWhiteSpace(p.Cite))) errors.Add($"{at}: a principle needs a quote and a cite.");
                 foreach (var d in m.Drafts ?? Array.Empty<HourDraft>())
+                {
                     if (string.IsNullOrWhiteSpace(d.To) || string.IsNullOrWhiteSpace(d.Subject) || string.IsNullOrWhiteSpace(d.Body)) errors.Add($"{at}: every draft needs to, subject and body.");
+                    if (d.IsInvite && (d.Start is null || !d.When!.Contains('T'))) errors.Add($"{at}: invite '{d.Subject}' needs when as an ISO date and time with offset, e.g. 2026-10-20T10:00:00-07:00.");
+                    if (d.IsInvite && d.Minutes is not (>= 5 and <= 240)) errors.Add($"{at}: invite '{d.Subject}' needs minutes from 5 to 240.");
+                    if (!d.IsInvite && (d.Minutes is not null || d.CadenceId is not null)) errors.Add($"{at}: draft '{d.Subject}' has minutes or cadenceId but no when; only an invite carries them.");
+                    if (d.CadenceId is <= 0) errors.Add($"{at}: draft '{d.Subject}' has an invalid cadenceId.");
+                }
                 foreach (var l in m.Links ?? Array.Empty<HourLink>())
                 {
                     if (string.IsNullOrWhiteSpace(l.Label)) errors.Add($"{at}: every link needs a label.");
@@ -284,10 +302,19 @@ public static class DirectorHourEmail
             if (m.Principle is { } p)
                 sb.Append("<blockquote style=\"margin:8px 0;padding:8px 12px;border-left:3px solid #2e4a62;background:#e6edf3\">")
                   .Append(E(p.Quote)).Append("<br><span style=\"color:#5a6876;font-size:13px\">").Append(E(p.Cite)).Append("</span></blockquote>");
-            foreach (var d in m.Drafts)
-                sb.Append("<div style=\"border:1px solid #dbe2e9;border-radius:4px;margin:8px 0\"><div style=\"background:#f7f9fb;padding:6px 10px;font-size:13px\">To ")
-                  .Append(E(d.To)).Append(" · <b>").Append(E(d.Subject)).Append("</b></div><div style=\"padding:8px 10px;white-space:pre-wrap\">")
-                  .Append(E(d.Body)).Append("</div></div>");
+            for (var i = 0; i < m.Drafts.Count; i++)
+            {
+                var d = m.Drafts[i];
+                sb.Append("<div style=\"border:1px solid #dbe2e9;border-radius:4px;margin:8px 0\"><div style=\"background:#f7f9fb;padding:6px 10px;font-size:13px\">")
+                  .Append(d.IsInvite ? "Invite · " : "").Append("To ").Append(E(d.To)).Append(" · <b>").Append(E(d.Subject)).Append("</b>");
+                if (d.IsInvite && d.Start is { } start)
+                    sb.Append(" · ").Append(E(InviteTimeText(start, d.Minutes ?? 0)));
+                // An Outlook draft (a message, or an unsent invite) that Ian reviews and sends himself.
+                if (hourId is { } hid)
+                    sb.Append(" · <a href=\"").Append(E(KorReportLinks.Draft(hid, m.Rank, i + 1))).Append("\" style=\"color:#2e4a62;font-weight:600\">")
+                      .Append(d.IsInvite ? "Open the invite in Outlook" : "Open as an Outlook draft").Append("</a>");
+                sb.Append("</div><div style=\"padding:8px 10px;white-space:pre-wrap\">").Append(E(d.Body)).Append("</div></div>");
+            }
             if (m.Steps.Count > 0)
             {
                 sb.Append("<ol style=\"margin:8px 0;padding-left:20px\">");
@@ -318,6 +345,10 @@ public static class DirectorHourEmail
         }
 
     }
+
+    /// <summary>"Tue 20 Oct, 10:00–10:15" in the invite's own offset, as written.</summary>
+    public static string InviteTimeText(DateTimeOffset start, int minutes) =>
+        start.ToString("ddd d MMM, HH:mm", CultureInfo.InvariantCulture) + "–" + start.AddMinutes(minutes).ToString("HH:mm", CultureInfo.InvariantCulture);
 
     private static void List(string heading, IReadOnlyList<string> items, StringBuilder sb)
     {

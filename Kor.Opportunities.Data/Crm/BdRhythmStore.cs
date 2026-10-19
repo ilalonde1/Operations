@@ -23,7 +23,11 @@ public sealed record BdActionDraft(string OwnerKey, string Action, string? WhyNo
 
 /// <summary>A BD meeting: an all-hands, a one-to-one with a regional lead, or other.</summary>
 public sealed record BdMeetingRow(long Id, string Kind, string Title, string? WithStaffKey, string? WithName,
-    DateTimeOffset ScheduledForUtc, int DurationMinutes, string Status, string? Attendees, string? Agenda, string? Recap, string? RecordRef);
+    DateTimeOffset ScheduledForUtc, int DurationMinutes, string Status, string? Attendees, string? Agenda, string? Recap, string? RecordRef)
+{
+    /// <summary>The recurring meeting this one belongs to (migration 369), or null.</summary>
+    public int? CadenceId { get; init; }
+}
 
 /// <summary>A reference contact KOR has given out, and when it was last checked.</summary>
 public sealed record BdReferenceRow(long Id, string Application, string Project, string Role, string? Company, string? ContactName,
@@ -73,6 +77,8 @@ public interface IBdRhythmStore
     Task<bool> RecordReferenceCallAsync(long id, string outcome, string? contactName, string? notes, string by, CancellationToken ct);
     /// <summary>The newest import of the prepared hour for that date and kind, or null.</summary>
     Task<DirectorHourRow?> GetHourAsync(string kind, DateOnly forDate, CancellationToken ct);
+    /// <summary>One imported hour by its id (the id a kor://move or kor://draft link carries), or null.</summary>
+    Task<DirectorHourRow?> GetHourByIdAsync(long id, CancellationToken ct);
     Task<long> ImportHourAsync(string kind, DateOnly forDate, string contentJson, string writtenBy, string importedBy, CancellationToken ct);
     Task MarkHourEmailedAsync(long id, CancellationToken ct);
     /// <summary>The BD team (migration 361): role and region per person, in the order the People screen shows them.</summary>
@@ -81,6 +87,11 @@ public interface IBdRhythmStore
     Task<IReadOnlyList<HourMoveResult>> ListMoveResultsAsync(long hourId, CancellationToken ct);
     /// <summary>Records Done, NotToday or NotDoing for one move; a second answer replaces the first.</summary>
     Task RecordMoveResultAsync(long hourId, int rank, string result, string? note, string by, CancellationToken ct);
+    /// <summary>The active recurring meetings of both seats (migration 369), in their sort order.</summary>
+    Task<IReadOnlyList<MeetingCadenceRow>> ListCadencesAsync(CancellationToken ct);
+    /// <summary>Plans one occurrence of a recurring meeting, with its kind, title, people and length taken from the cadence.
+    /// Returns the new meeting's id, or 0 when no active cadence has that id.</summary>
+    Task<long> PlanCadenceMeetingAsync(int cadenceId, DateTimeOffset scheduledForUtc, string? agenda, string by, CancellationToken ct);
 }
 
 public sealed class SqlBdRhythmStore : IBdRhythmStore
@@ -138,12 +149,43 @@ WHERE Id = @id AND Status = N'Open';", cmd =>
     }
 
     public Task<IReadOnlyList<BdMeetingRow>> ListMeetingsAsync(CancellationToken ct) => ReadAsync(@"
-SELECT m.Id, m.Kind, m.Title, m.WithStaffKey, s.DisplayName, m.ScheduledForUtc, m.DurationMinutes, m.Status, m.Attendees, m.Agenda, m.Recap, m.RecordRef
+SELECT m.Id, m.Kind, m.Title, m.WithStaffKey, s.DisplayName, m.ScheduledForUtc, m.DurationMinutes, m.Status, m.Attendees, m.Agenda, m.Recap, m.RecordRef,
+       m.CadenceId
 FROM opportunities.BdMeeting m
 LEFT JOIN opportunities.BdStaff s ON s.StaffKey = m.WithStaffKey COLLATE SQL_Latin1_General_CP1_CI_AS
 ORDER BY m.ScheduledForUtc DESC, m.Id DESC;", _ => { },
         r => new BdMeetingRow(r.GetInt64(0), r.GetString(1), r.GetString(2), Text(r, 3), Text(r, 4), r.GetDateTimeOffset(5),
-            r.GetInt32(6), r.GetString(7), Text(r, 8), Text(r, 9), Text(r, 10), Text(r, 11)), ct);
+            r.GetInt32(6), r.GetString(7), Text(r, 8), Text(r, 9), Text(r, 10), Text(r, 11))
+        { CadenceId = r.IsDBNull(12) ? null : r.GetInt32(12) }, ct);
+
+    public Task<IReadOnlyList<MeetingCadenceRow>> ListCadencesAsync(CancellationToken ct) => ReadAsync(@"
+SELECT c.Id, c.Seat, c.Cadence, c.MeetingKind, c.Title, c.WithStaffKey, c.Attendees, c.DurationMinutes, c.EveryDays,
+       c.PreferredWeekday, c.PreferredLocalTime, c.FirstOnOrAfter
+FROM opportunities.MeetingCadence c WHERE c.IsActive = 1 ORDER BY c.SortOrder, c.Id;", _ => { },
+        r => new MeetingCadenceRow(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4), Text(r, 5),
+            r.GetString(6).Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), r.GetInt32(7), r.GetInt32(8),
+            r.GetInt32(9), TimeOnly.FromTimeSpan(r.GetTimeSpan(10)), r.IsDBNull(11) ? null : DateOnly.FromDateTime(r.GetDateTime(11))), ct);
+
+    public Task<long> PlanCadenceMeetingAsync(int cadenceId, DateTimeOffset scheduledForUtc, string? agenda, string by, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(by)) throw new ArgumentException("Say who planned the meeting.", nameof(by));
+        // The attendee names come from BdStaff so the stored meeting reads like the ones planned by hand.
+        return ScalarAsync(@"
+INSERT INTO opportunities.BdMeeting (Kind, Title, WithStaffKey, ScheduledForUtc, DurationMinutes, Attendees, Agenda, CreatedBy, CadenceId)
+OUTPUT INSERTED.Id
+SELECT c.MeetingKind, c.Title, c.WithStaffKey, @at, c.DurationMinutes,
+       N'Ian Lalonde, ' + COALESCE(STUFF((SELECT N', ' + COALESCE(s.DisplayName, v.value)
+              FROM STRING_SPLIT(c.Attendees, N';') v
+              LEFT JOIN opportunities.BdStaff s ON s.StaffKey = LTRIM(RTRIM(v.value)) COLLATE SQL_Latin1_General_CP1_CI_AS
+              FOR XML PATH(''), TYPE).value('.', 'nvarchar(max)'), 1, 2, N''), N''),
+       @agenda, @by, c.Id
+FROM opportunities.MeetingCadence c WHERE c.Id = @cadence AND c.IsActive = 1;", cmd =>
+        {
+            cmd.Parameters.Add("@cadence", SqlDbType.Int).Value = cadenceId;
+            cmd.Parameters.Add("@at", SqlDbType.DateTimeOffset).Value = scheduledForUtc;
+            AddMax(cmd, "@agenda", agenda); AddText(cmd, "@by", 150, by);
+        }, ct);
+    }
 
     public Task<long> PlanMeetingAsync(string kind, string title, string? withStaffKey, DateTimeOffset scheduledForUtc, int durationMinutes,
         string? attendees, string? agenda, string by, CancellationToken ct)
@@ -207,6 +249,16 @@ FROM opportunities.DirectorHour WHERE Kind = @kind AND ForDate = @date ORDER BY 
             AddText(cmd, "@kind", 20, kind); cmd.Parameters.Add("@date", SqlDbType.Date).Value = forDate.ToDateTime(TimeOnly.MinValue);
         }, r => new DirectorHourRow(r.GetInt64(0), DateOnly.FromDateTime(r.GetDateTime(1)), r.GetString(2), r.GetString(3),
             r.GetString(4), r.GetString(5), r.GetDateTimeOffset(6), When(r, 7)), ct).ConfigureAwait(false);
+        return rows.Count == 0 ? null : rows[0];
+    }
+
+    public async Task<DirectorHourRow?> GetHourByIdAsync(long id, CancellationToken ct)
+    {
+        var rows = await ReadAsync(@"
+SELECT Id, ForDate, Kind, ContentJson, WrittenBy, ImportedBy, ImportedAtUtc, EmailedAtUtc
+FROM opportunities.DirectorHour WHERE Id = @id;", cmd => cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id,
+            r => new DirectorHourRow(r.GetInt64(0), DateOnly.FromDateTime(r.GetDateTime(1)), r.GetString(2), r.GetString(3),
+                r.GetString(4), r.GetString(5), r.GetDateTimeOffset(6), When(r, 7)), ct).ConfigureAwait(false);
         return rows.Count == 0 ? null : rows[0];
     }
 

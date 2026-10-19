@@ -18,6 +18,12 @@ public sealed record HourDraftView(HourDraft Draft)
     public string To => Draft.To;
     public string Subject => Draft.Subject;
     public string Body => Draft.Body;
+    public string KindText => Draft.IsInvite ? "Invite: " : "Draft: ";
+    public string OutlookLabel => Draft.IsInvite ? "Invite in Outlook" : "Draft in Outlook";
+    public string OutlookTip => Draft.IsInvite
+        ? "Opens the meeting invite in Outlook with its people and time, unsent. You send it."
+        : "Opens a new message in Outlook for you to review and send. Nothing is sent from here.";
+    public string? WhenText => Draft.IsInvite && Draft.Start is { } start ? DirectorHourEmail.InviteTimeText(start, Draft.Minutes ?? 0) : null;
     public string ToText
     {
         get

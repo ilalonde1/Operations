@@ -34,7 +34,7 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         var it = new List<MorningFact>();
         var (odbc, financials) = DeltekOptions(configuration);
         await GatherBdAsync(bd, date, now, ct);
-        await GatherCooAsync(coo, odbc, financials, date, ct);
+        await GatherCooAsync(coo, odbc, financials, date, now, ct);
         await GatherItAsync(it, now, ct);
         using var embedder = new KnowledgeEmbedder();
         using var knowledge = new MorningKnowledgeReader(() => new SqlKnowledgeStore(Connection(BdConnection)), embedder);
@@ -80,6 +80,8 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             var rows = await new SqlBdRhythmStore(Connection(BdConnection)).ListActionsAsync(ct);
             return ActionFacts(rows, now);
         }, ct);
+        // The combined BD-and-operations quickies (JM, Jim) are listed here, once.
+        await ReadAsync(facts, "BD meetings", () => MeetingFactsAsync("BD meetings", seat => seat is "BD" or "Both", now, ct), ct);
         await ReadAsync(facts, "Last hour's move results", async () =>
         {
             await using var con = await OpenAsync(BdConnection, ct);
@@ -163,8 +165,19 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         || action.OwnerKey.Equals("ian", StringComparison.OrdinalIgnoreCase)
         || action.OwnerName.Equals("Ian Lalonde", StringComparison.OrdinalIgnoreCase);
 
-    private static async Task GatherCooAsync(List<MorningFact> facts, DeltekOdbcOptions odbc, FinancialsOptions financialsOptions, DateOnly date, CancellationToken ct)
+    private static async Task<IReadOnlyList<MorningFact>> MeetingFactsAsync(string name, Func<string, bool> seat, DateTimeOffset now, CancellationToken ct)
     {
+        var store = new SqlBdRhythmStore(Connection(BdConnection));
+        var zone = MeetingsDue.Pacific();
+        var due = MeetingsDue.Compute(await store.ListCadencesAsync(ct), await store.ListMeetingsAsync(ct), now, zone)
+            .Where(d => seat(d.Cadence.Seat)).ToList();
+        return new[] { MorningMeetings.Facts(name, due, await store.ListActionsAsync(ct), now, zone) };
+    }
+
+    private static async Task GatherCooAsync(List<MorningFact> facts, DeltekOdbcOptions odbc, FinancialsOptions financialsOptions, DateOnly date,
+        DateTimeOffset now, CancellationToken ct)
+    {
+        await ReadAsync(facts, "Operations meetings", () => MeetingFactsAsync("Operations meetings", seat => seat == "COO", now, ct), ct);
         await ReadAsync(facts, "Executive Summary", async () =>
         {
             var financials = new FinancialsService(odbc, financialsOptions);

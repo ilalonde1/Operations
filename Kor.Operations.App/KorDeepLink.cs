@@ -38,6 +38,17 @@ namespace Kor.Operations
                 return;
             }
 
+            // A draft from the 6 a.m. email: open it in Outlook, unsent. An invite also plans its meeting.
+            if (KorReportLinks.TryParseDraft(url, out var draftHour, out var draftRank, out var draftNumber))
+            {
+                var director = Application.Current?.Windows
+                                   .OfType<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorWindow>()
+                                   .FirstOrDefault(w => w.IsVisible)
+                               ?? AppServices.Get<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorWindow>();
+                await director.OpenDraftFromLinkAsync(draftHour, draftRank, draftNumber).ConfigureAwait(true);
+                return;
+            }
+
             if (!KorReportLinks.TryParse(url, out var kind, out var id))
             {
                 return;

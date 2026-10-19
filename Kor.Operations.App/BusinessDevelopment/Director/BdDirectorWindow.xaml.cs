@@ -396,10 +396,73 @@ public partial class BdDirectorWindow : Window
             SetRhythmStatus("Copied the draft to the clipboard.");
     }
 
-    private void DraftInOutlook_Click(object sender, RoutedEventArgs e)
+    private async void DraftInOutlook_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement { Tag: HourDraft draft }) OpenMailDraft(draft.To, draft.Subject, draft.Body);
+        if (sender is FrameworkElement { Tag: HourDraft draft }) await OpenOutlookDraftAsync(draft).ConfigureAwait(true);
     }
+
+    /// <summary>A draft opened from the 6 a.m. email (kor://draft/{hour}/{rank}/{n}).</summary>
+    public async Task OpenDraftFromLinkAsync(long hourId, int rank, int number)
+    {
+        HourDraft? draft = null;
+        try
+        {
+            var row = await AppServices.Get<IBdRhythmStore>().GetHourByIdAsync(hourId, _lifetime.Token).ConfigureAwait(true);
+            var content = row is null ? null : DirectorHourFile.Parse(row.ContentJson).Content;
+            var move = content is null ? null : DirectorHourFile.AllMoves(content).FirstOrDefault(m => m.Rank == rank);
+            draft = move is not null && number <= move.Drafts.Count ? move.Drafts[number - 1] : null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Warning(ex, "Reading draft {Number} of move {Rank}, hour {HourId}, failed.", number, rank, hourId);
+        }
+        if (draft is null)
+        {
+            MessageBox.Show(this, "That draft could not be found. Open Today and use the draft there.", "Draft in Outlook",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        await OpenOutlookDraftAsync(draft).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Opens the draft in Outlook, unsent: a message, or an invite with its attendees and time. An invite for a recurring
+    /// meeting also plans that occurrence (once), so the cadence knows it is booked. Nothing is sent from KOR Operations.
+    /// </summary>
+    private async Task OpenOutlookDraftAsync(HourDraft draft)
+    {
+        try
+        {
+            await Task.Run(() => OutlookDraft.Open(draft), _lifetime.Token).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Warning(ex, "Outlook could not open the draft {Subject}.", draft.Subject);
+            if (!draft.IsInvite) { OpenMailDraft(draft.To, draft.Subject, draft.Body); return; }
+            TrySetClipboard($"Invite: {draft.Subject}\r\nTo: {draft.To}\r\nWhen: {draft.When} ({draft.Minutes} min)\r\n\r\n{draft.Body}");
+            MessageBox.Show(this, "Outlook could not open the invite, so it is on your clipboard.", "Invite in Outlook",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (draft is not { IsInvite: true, CadenceId: { } cadence, Start: { } start }) return;
+        try
+        {
+            var store = AppServices.Get<IBdRhythmStore>();
+            var meetings = await store.ListMeetingsAsync(_lifetime.Token).ConfigureAwait(true);
+            if (meetings.Any(m => m.CadenceId == cadence && m.Status == "Planned" && m.ScheduledForUtc == start)) return;
+            await store.PlanCadenceMeetingAsync(cadence, start, draft.Body, CurrentActor(), _lifetime.Token).ConfigureAwait(true);
+            if (_rhythm is not null) await _rhythm.LoadMeetingsAsync(_lifetime.Token).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Warning(ex, "Planning cadence {Cadence} at {Start} failed.", cadence, start);
+        }
+    }
+
+    private string CurrentActor() => _actor.Length > 0 ? _actor : new[] { global::Kor.Operations.OperationsApp.SignedInUserUpn,
+            AppServices.Get<UserOptions>().UserUpnOverride, Environment.UserName }
+        .First(value => !string.IsNullOrWhiteSpace(value))!.Trim();
 
     /// <summary>
     /// Opens a new message in the default mail program for Ian to review and send. Nothing is sent from KOR Operations.

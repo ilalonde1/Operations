@@ -49,6 +49,32 @@ public static class KorReportLinks
         return true;
     }
 
+    public const string DraftKind = "draft";
+
+    /// <summary>
+    /// Opens draft n (1-based) of one move of an imported hour as an Outlook draft — a message, or a meeting invite when the
+    /// draft has a time: kor://draft/{hourId}/{rank}/{n}. Nothing is sent; Ian sends from Outlook.
+    /// </summary>
+    public static string Draft(long hourId, int rank, int number) =>
+        $"kor://{DraftKind}/{hourId.ToString(CultureInfo.InvariantCulture)}/{rank.ToString(CultureInfo.InvariantCulture)}/{number.ToString(CultureInfo.InvariantCulture)}";
+
+    /// <summary>Parses a draft link. Anything malformed returns false.</summary>
+    public static bool TryParseDraft(string? uri, out long hourId, out int rank, out int number)
+    {
+        hourId = 0; rank = 0; number = 0;
+        if (string.IsNullOrEmpty(uri) || !uri.StartsWith("kor://", StringComparison.OrdinalIgnoreCase)
+            || !Uri.TryCreate(uri, UriKind.Absolute, out var parsed) || !string.Equals(parsed.Host, DraftKind, StringComparison.OrdinalIgnoreCase))
+            return false;
+        var parts = parsed.AbsolutePath.Trim('/').Split('/');
+        if (parts.Length != 3
+            || !long.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var h) || h <= 0
+            || !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var r) || r is < 1 or > 12
+            || !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out var n) || n is < 1 or > 20)
+            return false;
+        (hourId, rank, number) = (h, r, n);
+        return true;
+    }
+
     /// <summary>The BD Director's views, by the id a kor://director/{id} link carries.</summary>
     public const long DirectorToday = 1, DirectorActions = 2, DirectorMeetings = 3, DirectorReferences = 4;
 

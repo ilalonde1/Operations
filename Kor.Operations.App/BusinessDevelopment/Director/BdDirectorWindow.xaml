@@ -186,15 +186,15 @@
                                                     <ItemsControl.ItemTemplate><DataTemplate>
                                                         <Expander Margin="0,3" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" Padding="6,3">
                                                             <Expander.Header>
-                                                                <TextBlock TextWrapping="Wrap"><Run Text="Draft: " FontWeight="SemiBold"/><Run Text="{Binding Subject, Mode=OneWay}"/><Run Text="   to " Foreground="#5A6876"/><Run Text="{Binding ToText, Mode=OneWay}" Foreground="#5A6876"/></TextBlock>
+                                                                <TextBlock TextWrapping="Wrap"><Run Text="{Binding KindText, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="{Binding Subject, Mode=OneWay}"/><Run Text="   to " Foreground="#5A6876"/><Run Text="{Binding ToText, Mode=OneWay}" Foreground="#5A6876"/><Run Text="   " /><Run Text="{Binding WhenText, Mode=OneWay}" Foreground="#5A6876"/></TextBlock>
                                                             </Expander.Header>
                                                             <StackPanel Margin="0,6,0,4">
                                                                 <TextBox Text="{Binding Body, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Padding="10,8" MaxHeight="320"
                                                                          VerticalScrollBarVisibility="Auto"/>
                                                                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                                                                     <Button Content="Copy" Click="CopyDraft_Click" Tag="{Binding Draft}" Padding="12,4" Margin="0,0,8,0"/>
-                                                                    <Button Content="Draft in Outlook" Click="DraftInOutlook_Click" Tag="{Binding Draft}" Padding="12,4"
-                                                                            ToolTip="Opens a new message in Outlook for you to review and send. Nothing is sent from here."/>
+                                                                    <Button Content="{Binding OutlookLabel}" Click="DraftInOutlook_Click" Tag="{Binding Draft}" Padding="12,4"
+                                                                            ToolTip="{Binding OutlookTip}"/>
                                                                 </StackPanel>
                                                             </StackPanel>
                                                         </Expander>
