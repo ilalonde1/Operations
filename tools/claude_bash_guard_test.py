@@ -11,7 +11,7 @@ import sys
 GUARD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "claude_bash_guard.py")
 
 
-def verdict(command, session_id=None, timeout=None, description=None):
+def verdict(command, session_id=None, timeout=None, description=None, env=None):
     tool_input = {"command": command}
     if timeout is not None:
         tool_input["timeout"] = timeout
@@ -19,7 +19,8 @@ def verdict(command, session_id=None, timeout=None, description=None):
         tool_input["description"] = description
     payload = json.dumps({"tool_name": "Bash", "session_id": session_id or f"guard-test-{os.getpid()}",
                           "tool_input": tool_input})
-    out = subprocess.run([sys.executable, GUARD], input=payload, capture_output=True, text=True, timeout=30).stdout
+    out = subprocess.run([sys.executable, GUARD], input=payload, capture_output=True, text=True, timeout=30,
+                         env={**os.environ, **(env or {})}).stdout
     if not out.strip():
         return "allow"
     return json.loads(out)["hookSpecificOutput"]["permissionDecision"]
@@ -117,6 +118,23 @@ def other_repo_cases():
          + [(c, "ours") for c in no if not g.OTHER_REPO.search(c)] + [(c, "FAIL ours") for c in no if g.OTHER_REPO.search(c)]
 
 
+def preflight_cases():
+    """Rule 8: a slow Core run is denied when an input is missing; the fast filter never needs inputs; the
+    unfiltered App EngineeringTools suite is denied (it hangs headless), filtered it runs."""
+    import tempfile as _t
+    empty = _t.mkdtemp()
+    core = 'dotnet test "Kor.Operations.EngineeringTools.Core.Tests/Kor.Operations.EngineeringTools.Core.Tests.csproj"'
+    app = 'dotnet test "Kor.Operations.App/EngineeringTools.Tests/Kor.Operations.EngineeringTools.Tests.csproj"'
+    probes = [
+        ("full Core run, mirror empty",        core,                                        {"KOR_GUARD_STICKFILES": empty}, "deny"),
+        ("SixSets filter, mirror empty",       core + " --filter FullyQualifiedName~SixSets", {"KOR_GUARD_STICKFILES": empty}, "deny"),
+        ("fast filter, mirror empty",          core + ' --filter "Speed!=Slow"',             {"KOR_GUARD_STICKFILES": empty}, "allow"),
+        ("App engineering suite, unfiltered",  app,                                         None,                            "deny"),
+        ("App engineering suite, filtered",    app + ' --filter "FullyQualifiedName~PdfToSafe"', None,                       "allow"),
+    ]
+    return [(label, expected, verdict(cmd, env=env)) for label, cmd, env, expected in probes]
+
+
 def main():
     failed = 0
     for command, expected in other_repo_cases():
@@ -129,7 +147,7 @@ def main():
         if got != expected:
             failed += 1
         print(f"{mark} {expected:5} {got:5} | {command[:90]}")
-    rate = sql_rate_cases() + duration_cases()
+    rate = sql_rate_cases() + duration_cases() + preflight_cases()
     for label, expected, got in rate:
         mark = "ok  " if got == expected else "FAIL"
         if got != expected:

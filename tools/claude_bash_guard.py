@@ -131,6 +131,41 @@ SQLCMD_QUERY_TIMEOUT = re.compile(r'(?<!\S)-t\s*\d+')
 LONG_TIMEOUT_MS = 120_000
 DURATION_FIRST = re.compile(r"(?i)^\s*~?\s*\d+\s*(?:s|sec|secs|seconds|m|min|mins|minutes|h|hr|hours)\b")
 
+# 8. A SLOW RUN WHOSE INPUTS ARE NOT THERE. On 2026-10-19 three runs were wasted in one afternoon on inputs a
+#    second's check would have shown missing: the five stick-file PDFs gone from the local mirror (empty since
+#    10-07), then a sixth source moved on the share - the six-set gate ran 7 m 22 s and refused. Ian: "STOP DOING
+#    ANYTHING WITHOUT FUCKING CHECKING. THAT'S A CARDINAL FUCKING RULE."
+#    CHECKS: a `dotnet test` of the Core test project that is not filtered to the fast set (Speed!=Slow) is denied
+#    unless every \\Kor-fs01 source SixSetsBuildAsBankedTests names exists and the stick-file mirror holds its five
+#    PDFs. The unfiltered App EngineeringTools.Tests suite is denied outright: it hangs headless (297 s, 10-19).
+#    DOES NOT CATCH: a source that exists but is a different file (the gate's own hash check does that); inputs of
+#    other slow tests (LiveProjects share paths); a run started from inside the test project's folder with no
+#    project path in the command.
+CORE_TESTS = re.compile(r"dotnet\s+test\b[^\n|;&]*EngineeringTools\.Core\.Tests")
+FAST_ONLY = re.compile(r"Speed!=Slow")
+ENGINEERING_APP_TESTS = re.compile(r"dotnet\s+test\b[^\n|;&]*(?:EngineeringTools\.Tests\.csproj|App[\\/]EngineeringTools\.Tests)")
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SIX_SETS = os.path.join(REPO, "Kor.Operations.EngineeringTools.Core.Tests", "Intake", "SixSetsBuildAsBankedTests.cs")
+STICK_JOBS = ("31130-01", "31138-01", "31168-01", "31065-01", "31202-01")
+
+
+def missing_slow_inputs():
+    """Every input the slow gates read that is not where they will look - empty when all are there."""
+    missing = []
+    try:
+        text = open(SIX_SETS, encoding="utf-8").read()
+        for path in re.findall(r'@"(\\\\Kor-fs01[^"]+\.pdf)"', text):
+            if not os.path.exists(path):
+                missing.append(path)
+    except OSError:
+        missing.append(SIX_SETS)
+    mirror = os.environ.get("KOR_GUARD_STICKFILES") or os.path.join(
+        os.environ.get("LOCALAPPDATA", ""), "Temp", "kor-drawings", "stickfiles")
+    for job in STICK_JOBS:
+        if not os.path.exists(os.path.join(mirror, job + ".pdf")):
+            missing.append(os.path.join(mirror, job + ".pdf"))
+    return missing
+
 
 
 def testhost_running():
@@ -192,6 +227,17 @@ def main():
              "touches one area (it ran twice on 2026-10-13, 7 minutes, for BdReports alone). Run the "
              "classes you changed: --filter \"FullyQualifiedName~<Namespace or class>\". The one "
              "deliberate full run, before a publish, is prefixed FULL_SUITE=1.")
+
+    if ENGINEERING_APP_TESTS.search(cmd) and not FILTERED.search(cmd):
+        deny("The unfiltered App EngineeringTools.Tests suite hangs headless (297 s on 2026-10-19, testhost alive, no "
+             "progress). Run it filtered: --filter \"FullyQualifiedName~PdfToSafe\" --blame-hang-timeout 120s.")
+
+    if CORE_TESTS.search(cmd) and not FAST_ONLY.search(cmd):
+        missing = missing_slow_inputs()
+        if missing:
+            deny("A slow Core test run whose inputs are not there - it would run for minutes and then refuse. "
+                 "Missing:\n  " + "\n  ".join(missing) + "\nFind where each went, mend the path in "
+                 "SixSetsBuildAsBankedTests.cs or restore the mirror, then run. (Rule 8, 2026-10-19.)")
 
     if RAW_SQLCMD_CALL.search(cmd) and not SQLCMD_QUERY_TIMEOUT.search(cmd):
         deny("sqlcmd without a query timeout: its default is 0, which waits forever, and three calls hung "
