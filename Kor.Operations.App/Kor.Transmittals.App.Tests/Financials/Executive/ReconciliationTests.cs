@@ -115,4 +115,36 @@ public sealed class ReconciliationTests
         Assert.Equal(deltek.CashCombinedCadEquivalent.ToString("C0", CultureInfo.CurrentCulture), kpi.ValueText);
         ExecutiveSummaryTestSupport.AssertClose(deltek.CashCombinedCadEquivalent, rowSum);
     }
+
+    [Fact]
+    public void ArTrendPayerRows_OnlyTheScopedProjects()
+    {
+        // 18 Oct 2026: the all-active AR trend listed inactive 31103-01 ($502k) as its top payer.
+        var rows = new[]
+        {
+            new AppFin.ArProjectOutstandingRow("P001", "Active", "PM", 1_000, 1_000, 0, 0, 0, null),
+            new AppFin.ArProjectOutstandingRow("P002", "Active", "PM", 250, 250, 0, 0, 0, null),
+            new AppFin.ArProjectOutstandingRow("P999", "Inactive", "PM", 502_450, 0, 0, 0, 502_450, null)
+        };
+        var payers = new Dictionary<string, string> { ["P001"] = "Client A" };
+
+        var scoped = AppFin.ExecutiveSummaryDeltekLoader.ScopedArPayerRows(rows, new[] { "P001", "P002" }, payers);
+
+        Assert.Equal(new[] { "P001", "P002" }, scoped.Select(r => r.Wbs1).ToArray());
+        Assert.Equal("Client A", scoped[0].PayerName);
+        Assert.Equal("P002", scoped[1].PayerName);
+        ExecutiveSummaryTestSupport.AssertClose(1_250, scoped.Sum(r => r.Amount));
+        Assert.Empty(AppFin.ExecutiveSummaryDeltekLoader.ScopedArPayerRows(rows, Array.Empty<string>(), payers));
+    }
+
+    [Fact]
+    public void ArTrend_NamesTheClosedMonthItEndsOn()
+    {
+        var deltek = SyntheticDeltekData.Default() with { SeriesLatestPeriod = "202609" };
+
+        var trend = ExecutiveSummaryTestSupport.Trend(ExecutiveSummaryTestSupport.Build(deltek: deltek), "AR Outstanding (Recent Months)");
+
+        var month = new DateTime(2026, 9, 1).ToString("MMM yyyy", CultureInfo.CurrentCulture);
+        Assert.StartsWith($"Balance at end of {month}, the last closed month.", trend.StatusMessage);
+    }
 }

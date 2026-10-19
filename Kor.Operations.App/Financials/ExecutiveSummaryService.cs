@@ -951,9 +951,12 @@ namespace Kor.Operations.Financials
                     .ThenBy(r => r.PayerName, StringComparer.OrdinalIgnoreCase)
                     .ToList();
                 var topAr = payerRows.Take(3).Select(r => $"{r.PayerName} ({r.ArOutstandingAmount:C0})").ToList();
-                var status = topAr.Count == 0
+                var asOf = string.IsNullOrWhiteSpace(deltek.SeriesLatestPeriod)
                     ? "Period-end AR from PRSummaryMain."
-                    : "Top AR payers: " + string.Join("; ", topAr);
+                    : $"Balance at end of {PrSummaryPeriod.Label(deltek.SeriesLatestPeriod)}, the last closed month.";
+                var status = topAr.Count == 0
+                    ? asOf
+                    : asOf + " Top AR payers: " + string.Join("; ", topAr);
                 return new ExecutiveTrend("AR Outstanding (Recent Months)", latest.ToString("C0"), status, deltek.ArSeries, payerRows, Scope: ScopeKind.Scoped);
             }, "Deltek/ODBC PRSummaryMain"));
 

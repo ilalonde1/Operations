@@ -985,19 +985,7 @@ public sealed class MetricDetailVm : ObservableObject
         _trendPayerGrid.NextPage();
     }
 
-    private static string FormatPeriod(string period)
-    {
-        if (string.IsNullOrWhiteSpace(period)) return string.Empty;
-        var p = period.Trim();
-        if (p.Length == 6 &&
-            int.TryParse(p.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture, out var y) &&
-            int.TryParse(p.Substring(4, 2), NumberStyles.None, CultureInfo.InvariantCulture, out var m) &&
-            m >= 1 && m <= 12)
-        {
-            return new DateTime(y, m, 1).ToString("MMM yyyy", CultureInfo.CurrentCulture);
-        }
-        return p;
-    }
+    private static string FormatPeriod(string period) => PrSummaryPeriod.Label(period);
 
     private static IEnumerable<string> SplitBullets(string raw)
     {

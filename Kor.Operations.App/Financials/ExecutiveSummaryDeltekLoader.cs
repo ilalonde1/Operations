@@ -82,7 +82,9 @@ public sealed record ExecutiveSummaryDeltekData(
     int GlPnlFromPeriod = 0,
     int GlPnlToPeriod = 0,
     int? GlPnlMaxPostedPeriod = null,
-    bool GlPnlDataLoaded = false);
+    bool GlPnlDataLoaded = false,
+    // The period of the series' last point: the last CLOSED period, so the open month's activity is not in it.
+    string SeriesLatestPeriod = "");
 
 public sealed record TrendPayerAmountRow(
     string Wbs1,
@@ -313,19 +315,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         IReadOnlyList<TrendPayerAmountRow> arPayerRows;
         try
         {
-            arPayerRows = ar.ProjectRows
-                .Where(r => Math.Abs(r.Total) > AnalyticsThresholds.RoundingDollarFloor)
-                .Select(r =>
-                {
-                    var key = (r.Wbs1 ?? string.Empty).Trim();
-                    revenue.PayerByWbs.TryGetValue(key, out var payer);
-                    payer = string.IsNullOrWhiteSpace(payer) ? key : payer.Trim();
-                    return new TrendPayerAmountRow(key, payer, r.Total);
-                })
-                .OrderByDescending(r => r.Amount)
-                .ThenBy(r => r.PayerName, StringComparer.OrdinalIgnoreCase)
-                .Take(250)
-                .ToList();
+            arPayerRows = ScopedArPayerRows(ar.ProjectRows, scopedWbs1, revenue.PayerByWbs);
         }
         catch (Exception ex)
         {
@@ -367,7 +357,35 @@ public sealed class ExecutiveSummaryDeltekLoader
             GlPnlFromPeriod: glPnl.FromPeriod,
             GlPnlToPeriod: glPnl.ToPeriod,
             GlPnlMaxPostedPeriod: glPnl.MaxPostedPeriod,
-            GlPnlDataLoaded: glPnl.DataLoaded);
+            GlPnlDataLoaded: glPnl.DataLoaded,
+            SeriesLatestPeriod: revenue.Series.Periods.Count == 0 ? "" : revenue.Series.Periods[^1].Period);
+    }
+
+    /// <summary>
+    /// The AR trend's payer rows, limited to the projects its headline sums. Before 18 Oct 2026 they were firmwide, so
+    /// "all active projects" listed inactive 31103-01 ($502k, last invoiced Feb 2024) as its top payer. Firmwide AR,
+    /// inactive projects included, stays on the AR Outstanding tile and its drilldown.
+    /// </summary>
+    internal static IReadOnlyList<TrendPayerAmountRow> ScopedArPayerRows(
+        IEnumerable<ArProjectOutstandingRow> projectRows,
+        IReadOnlyCollection<string> scopedWbs1,
+        IReadOnlyDictionary<string, string> payerByWbs)
+    {
+        var wbs1Set = new HashSet<string>(scopedWbs1, StringComparer.OrdinalIgnoreCase);
+        return projectRows
+            .Where(r => wbs1Set.Contains((r.Wbs1 ?? string.Empty).Trim()))
+            .Where(r => Math.Abs(r.Total) > AnalyticsThresholds.RoundingDollarFloor)
+            .Select(r =>
+            {
+                var key = (r.Wbs1 ?? string.Empty).Trim();
+                payerByWbs.TryGetValue(key, out var payer);
+                payer = string.IsNullOrWhiteSpace(payer) ? key : payer.Trim();
+                return new TrendPayerAmountRow(key, payer, r.Total);
+            })
+            .OrderByDescending(r => r.Amount)
+            .ThenBy(r => r.PayerName, StringComparer.OrdinalIgnoreCase)
+            .Take(250)
+            .ToList();
     }
 }
 

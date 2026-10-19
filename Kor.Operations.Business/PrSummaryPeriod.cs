@@ -11,5 +11,20 @@ namespace Kor.Operations.Financials
         // The same WBS1 rules as the Financials snapshot (FinancialsService project query).
         public static string MaxPostedPeriodSql(string catalog) => $@"SELECT MAX(Period) FROM [{catalog}].dbo.PRSummaryMain
 WHERE WBS1 NOT LIKE '[A-Z]%' AND WBS1 NOT LIKE '9[A-Z]%' AND WBS1 NOT LIKE '99%';";
+
+        /// <summary>"202609" → "Sep 2026"; anything else comes back trimmed, unchanged.</summary>
+        public static string Label(string? period)
+        {
+            if (string.IsNullOrWhiteSpace(period)) return string.Empty;
+            var p = period.Trim();
+            if (p.Length == 6 &&
+                int.TryParse(p.Substring(0, 4), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var y) &&
+                int.TryParse(p.Substring(4, 2), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var m) &&
+                m >= 1 && m <= 12)
+            {
+                return new System.DateTime(y, m, 1).ToString("MMM yyyy", System.Globalization.CultureInfo.CurrentCulture);
+            }
+            return p;
+        }
     }
 }
