@@ -1,0 +1,123 @@
+"""Generate migration 368 (tracker pursuits -> opportunities.CrmEngagements) and its dry-run twin from winloss-records.csv.
+
+Selection (Ian approved step 1 on 2026-10-18; limits from the coordinator):
+  - tracker pursuits only, DECIDED only: Won, Won (Deltek), Lost, and inferred Not won (written as Lost with the inference
+    in OutcomeReason). Open / Pending / Conflict are NOT imported (live pipeline must not change).
+  - pursuits already linked to a migration-268 win (crm_id set) are left untouched.
+  - pursuits that plausibly duplicate ANY of the 177 migration-268 wins are held out (crm_held_ids.json, crm_dupguard.py):
+    Won rows on a shared distinctive title word within 120 days or an equal fee within 30 days; Lost/not-won rows on a
+    shared title word within 120 days.
+  - rows with no date at all are skipped (OpenedAtUtc is NOT NULL).
+Org: companies.csv (tools/BdTrackingImport) exact sheet name first, else EXACT DisplayName with exactly one non-retired match,
+resolved IN SQL at apply time; otherwise NULL (BuyerCanonicalOrgId is nullable). Never LIKE; never creates orgs.
+No owner / engineer fields are written (OwnerStaffId NULL, no PM in Notes).
+Usage: python gen_crm_import.py <work dir> <out migration .sql> <out dryrun .sql>"""
+import csv, json, os, re, sys
+work, out_sql, out_dry = sys.argv[1], sys.argv[2], sys.argv[3]
+repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+P = {p['pursuit_id']: p for p in csv.DictReader(open(os.path.join(work, 'winloss-records.csv'), encoding='utf-8-sig'))}
+sel_ids = json.load(open(os.path.join(work, 'crm_selected_ids.json')))
+held = set(json.load(open(os.path.join(work, 'crm_held_ids.json'))))
+comp = {}
+for r in csv.DictReader(open(os.path.join(repo, 'tools', 'BdTrackingImport', 'companies.csv'), encoding='utf-8-sig')):
+    if r.get('canonicalOrgId', '').strip().isdigit(): comp[r['sheetName'].strip().lower()] = int(r['canonicalOrgId'])
+INFER = 'No Deltek job after 180 days (inferred 2026-10-18)'
+
+def q(s, n=None):
+    s = (s or '').replace('\r', ' ').replace('\n', ' ').strip()
+    if n: s = s[:n]
+    return "N'" + s.replace("'", "''") + "'"
+def qd(s): return "'" + s[:10] + "'" if s else 'NULL'
+
+rows = []
+for pid in sel_ids:
+    if pid in held: continue
+    p = P[pid]
+    key = p['sample_path'].split('Fee Proposal Tracking.xlsx!')[1]
+    o = p['outcome']
+    stage, wl = (6, 1) if o.startswith('Won') else (7, 2)
+    if o == 'Not won (no Deltek job)': reason = INFER
+    elif o == 'Won (Deltek)': reason = f"Deltek job {p['deltek_p5']} opened after the proposal (inferred 2026-10-18)"
+    elif o == 'Lost': reason = p['reason'] or 'Recorded lost on M: (tracker or Rejected folder)'
+    else: reason = ''
+    opened = p['first_date'] or p['accepted'] or p['due']
+    closed = p['accepted'] if o == 'Won' else (p['deltek_created'] if o == 'Won (Deltek)' else '')
+    fee = p['fee_proposed'] or ''
+    cur = p['currency'] or 'CAD'
+    notes = ' | '.join(x for x in [p['project'], p['city'], ('architect: ' + p['architect']) if p['architect'] else '',
+                                   f"M: Fee Proposal Tracking.xlsx {key}", f"fee in {cur}" if fee else ''] if x)
+    hint = comp.get(p['client'].strip().lower())
+    rows.append('(' + ', '.join([q(key), str(stage), str(wl), fee if fee else 'NULL', qd(opened), qd(closed), q(p['client'], 300),
+                                str(hint) if hint else 'NULL', q(notes, 3800), q(reason, 1900) if reason else 'NULL']) + ')')
+
+load = ["SET QUOTED_IDENTIFIER ON;", "SET ANSI_NULLS ON;", "SET NOCOUNT ON;", "",
+        "IF OBJECT_ID('tempdb..#m') IS NOT NULL DROP TABLE #m;",
+        "CREATE TABLE #m (SourceKey NVARCHAR(200) NOT NULL PRIMARY KEY, Stage INT NOT NULL, WonLost INT NOT NULL, Fee DECIMAL(18,2) NULL,",
+        "  OpenedOn DATE NOT NULL, ClosedOn DATE NULL, Client NVARCHAR(300) NOT NULL, OrgHint BIGINT NULL, Notes NVARCHAR(MAX) NOT NULL,",
+        "  Reason NVARCHAR(2000) NULL, OrgId BIGINT NULL);"]
+for i in range(0, len(rows), 400):
+    load.append("INSERT INTO #m (SourceKey, Stage, WonLost, Fee, OpenedOn, ClosedOn, Client, OrgHint, Notes, Reason) VALUES")
+    load.append(',\n'.join(rows[i:i + 400]) + ';')
+load += ["",
+         "-- Org: companies.csv id if that org exists and is not retired; else EXACT DisplayName with exactly one non-retired match.",
+         "UPDATE m SET OrgId = o.Id FROM #m m JOIN opportunities.CanonicalOrg o ON o.Id = m.OrgHint AND o.RetiredAtUtc IS NULL;",
+         "UPDATE m SET OrgId = x.Id FROM #m m CROSS APPLY (SELECT MIN(o.Id) AS Id, COUNT(*) AS N FROM opportunities.CanonicalOrg o",
+         "    WHERE o.DisplayName = m.Client AND o.RetiredAtUtc IS NULL) x WHERE m.OrgId IS NULL AND x.N = 1;"]
+header = f"""/*
+    Kor.OpportunitiesDb migration 368.
+
+    Win/loss history from M:\\Project Opportunities\\Fee Proposal Tracking.xlsx (2020-2026) into the CRM, as closed
+    engagements. Approved by Ian 2026-10-18 (step 1 of docs/KOR-Management-Win-Loss-2026-10-18.md). Generated by
+    tools/ManagementShare/gen_crm_import.py from the reconciled win/loss record.
+
+    Scope: decided tracker pursuits only - Won (Stage 6, WonLostOutcome 1) and Lost (Stage 7, WonLostOutcome 2). A pursuit
+    left "Submitted for Approval" with no Deltek job 180+ days later is written as Lost with
+    OutcomeReason = '{INFER}', so the inference stays visible. Open, Pending and Conflict pursuits are NOT imported (the live
+    pipeline is unchanged), nor pursuits already present as a migration-268 Deltek.CustomProposal win, nor pursuits that
+    plausibly duplicate one (held out for review). {len(rows)} rows. No stage-history rows (268 wrote none). OwnerStaffId NULL.
+
+    Org: tools/BdTrackingImport/companies.csv id, else EXACT DisplayName with one non-retired match; otherwise NULL.
+    No CanonicalOrg rows are created.
+
+    Idempotent: keyed on (ExternalSource, ExternalSourceKey) = ('M.FeeProposalTracking', '<sheet>!row<n>'), guarded by NOT EXISTS
+    and backed by UX_CrmEngagements_ExternalKey (migration 267). Reversible:
+        DELETE FROM opportunities.CrmEngagements WHERE ExternalSource = N'M.FeeProposalTracking';
+*/
+"""
+insert = """
+INSERT INTO opportunities.CrmEngagements
+(
+    OpportunityId, Stage, OwnerStaffId, ProposedFee,
+    OpenedAtUtc, ClosedAtUtc, OutcomeNotes,
+    CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy,
+    BuyerCanonicalOrgId, WonLostOutcome, OutcomeReason,
+    ExternalSource, ExternalSourceKey, Notes
+)
+SELECT
+    NULL, m.Stage, NULL, m.Fee,
+    CAST(m.OpenedOn AS DATETIMEOFFSET), CAST(m.ClosedOn AS DATETIMEOFFSET),
+    N'Backfilled from M: Fee Proposal Tracking.xlsx (historical outcome, migration 368).',
+    SYSDATETIMEOFFSET(), N'migration-368-feetracker', SYSDATETIMEOFFSET(), N'migration-368-feetracker',
+    m.OrgId, m.WonLost, m.Reason,
+    N'M.FeeProposalTracking', m.SourceKey, LEFT(m.Notes, 4000)
+FROM #m m
+WHERE NOT EXISTS (
+    SELECT 1 FROM opportunities.CrmEngagements e
+    WHERE e.ExternalSource = N'M.FeeProposalTracking' AND e.ExternalSourceKey = m.SourceKey);
+
+PRINT 'Migration 368 complete.';
+GO
+"""
+dry = """
+SELECT 'rows' AS k, COUNT(*) AS n FROM #m
+UNION ALL SELECT 'stage ' + CAST(Stage AS varchar(3)) + CASE WHEN Reason LIKE N'No Deltek job%' THEN ' (inferred not won)' ELSE '' END, COUNT(*) FROM #m GROUP BY Stage, CASE WHEN Reason LIKE N'No Deltek job%' THEN ' (inferred not won)' ELSE '' END
+UNION ALL SELECT 'org resolved', COUNT(*) FROM #m WHERE OrgId IS NOT NULL
+UNION ALL SELECT 'org resolved via companies.csv', COUNT(*) FROM #m WHERE OrgId IS NOT NULL AND OrgId = OrgHint
+UNION ALL SELECT 'would insert (not already present)', COUNT(*) FROM #m m WHERE NOT EXISTS (SELECT 1 FROM opportunities.CrmEngagements e WHERE e.ExternalSource = N'M.FeeProposalTracking' AND e.ExternalSourceKey = m.SourceKey)
+UNION ALL SELECT 'live pipeline now (stages 1-5)', COUNT(*) FROM opportunities.CrmEngagements WHERE Stage BETWEEN 1 AND 5;
+SELECT DISTINCT TOP 400 Client AS unresolved_client FROM #m WHERE OrgId IS NULL ORDER BY Client;
+"""
+body = '\n'.join(load)
+open(out_sql, 'w', encoding='utf-8', newline='\r\n').write(header + body + '\n' + insert)
+open(out_dry, 'w', encoding='utf-8').write(body + '\n' + dry)
+print(f'{len(rows)} rows written; held out {len(held)}; selected {len(sel_ids)}')
