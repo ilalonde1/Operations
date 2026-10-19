@@ -269,6 +269,8 @@ public static class DrawingIntake
             pathFates = RemapToPopulation(thinnedFates, thinnedKept, fullKept, content.Paths.Count, full.Paths.Count);
             if (!request.MarkupOnly)
                 geometry.GridAxes.AddRange(grid.Axes.Select(a => new GridAxis(a.Name, a.Vertical, a.At * scaleFactor)));
+            if (request.MarkupOnly)
+                geometry.TextAnnotations.AddRange(MarkupText.ExtractMarkupTextAnnotations(page, scaleFactor));
         }
         // a dimension string is typed text with a value; between grid axes it is the drawing's own
         // check on the scale (brief 27, 2026-09-08)

@@ -147,6 +147,8 @@ public sealed class DrawingIntakeTests
     {
         using var doc = PdfDocument.Open(Pdf(polygon: true));
         var expected = PdfPlanReader.Read(doc, 96, 1, PdfIntakeOptions.Default, markupOnly);
+        if (markupOnly)
+            expected.TextAnnotations.AddRange(MarkupText.ExtractMarkupTextAnnotations(doc.GetPage(1), 96 * PdfToSafeConstants.PointsToMm));
         var sheet = DrawingIntake.ReadSheet(doc, 1, new(96, PdfIntakeOptions.Default, markupOnly), DocumentFacts.From(doc));
         TheLedgerChangesNothingButTheLedgerTests.AssertGeometryEqual(expected, sheet.Geometry);
         Assert.Contains(sheet.Content.Paths, p => p.IsAnnotation);

@@ -14,19 +14,19 @@
 //
 // The scale is OFFERED, never assumed: with no --scale this reports what the sheet itself states
 // and stops, because a wrong denominator renders identically and is wrong by a constant.
-// Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers] [--rules-db <conn>]
+// Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers | --layer-by-colour] [--rules-db <conn>]
 internal static class PdfTakeoffVerb
 {
     public static bool Matches(string[] args) => args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIgnoreCase);
 
     public static int Run(string[] args)
     {
-        if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers] [--rules-db <conn>]"); return 1; }
+        if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers | --layer-by-colour] [--rules-db <conn>]"); return 1; }
         string ptPdf = args[1], ptOut = args[2];
         if (!File.Exists(ptPdf)) { Console.Error.WriteLine($"PDF not found '{ptPdf}'."); return 2; }
 
         int ptFirst = 1, ptLast = 1, ptScale = 0;
-        bool ptMarkup = false, ptKor = false;
+        bool ptMarkup = false, ptKor = false, ptLayerByColour = false;
         string? ptRulesDb = null;
         for (int i = 3; i < args.Length; i++)
         {
@@ -39,6 +39,7 @@ internal static class PdfTakeoffVerb
             // Name the layers the way the Revit bridge does, so dxf-to-etabs reads this file with no
             // per-source options and a PDF-derived plan stops being a special case.
             else if (a.Equals("--kor-layers", StringComparison.OrdinalIgnoreCase)) ptKor = true;
+            else if (a.Equals("--layer-by-colour", StringComparison.OrdinalIgnoreCase)) ptLayerByColour = true;
             else if (a.Equals("--page", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
             { int.TryParse(args[++i], out ptFirst); ptLast = ptFirst; }
             else if (a.Equals("--scale", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
@@ -49,6 +50,11 @@ internal static class PdfTakeoffVerb
                 if (span.Length >= 1) int.TryParse(span[0], out ptFirst);
                 ptLast = span.Length >= 2 && int.TryParse(span[1], out int pl) ? pl : ptFirst;
             }
+        }
+        if (ptLayerByColour && ptKor)
+        {
+            Console.Error.WriteLine("--layer-by-colour cannot be combined with --kor-layers.");
+            return 1;
         }
         if (ptFirst < 1) ptFirst = 1;
         if (ptLast < ptFirst) ptLast = ptFirst;
@@ -77,6 +83,7 @@ internal static class PdfTakeoffVerb
         // THE ROUTE IS ONE CALL IN CORE (PdfOnlyBuild.WriteSheets, 2026-09-11): the verb prints what it
         // always printed, and the six-set test and the corpus analyzer build a set the same way.
         var ptResult = PdfOnlyBuild.WriteSheets(ptPdf, ptOut, ptFirst, ptLast, ptScale, ptMarkup, ptKor, ptOptions,
+            layerByColour: ptLayerByColour,
             onSheet: s =>
             {
                 if (s.Failure is not null) { Console.WriteLine($"{s.Page,4}   FAILED  {s.Failure}"); return; }

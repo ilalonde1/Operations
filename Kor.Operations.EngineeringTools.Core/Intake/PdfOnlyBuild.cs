@@ -120,7 +120,7 @@ public static class PdfOnlyBuild
     public static SheetsResult WriteSheets(
         string pdf, string outDxf, int first, int last, int scale, bool markup, bool korLayers,
         PdfIntakeOptions options, Action<SheetOutcome>? onSheet = null, Action<IReadOnlyList<AssemblySchedule.Assembly>>? onAssemblies = null,
-        bool writeDxf = true)
+        bool writeDxf = true, bool layerByColour = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pdf);
         ArgumentNullException.ThrowIfNull(options);
@@ -169,7 +169,8 @@ public static class PdfOnlyBuild
             // A DXF PLAN IS WRITTEN FROM A PLAN SHEET. The classifier runs on every page and the record
             // keeps what it found; a section's cut-wall poché or a detail's outline is not a storey and
             // does not go to the model. S3.01 on 31168 yielded 36 "walls" before this (brief 17).
-            if (record.SheetType != "plan")
+            // Ian's decision, 2026-10-19: export the user's markup page whatever its sheet type.
+            if (record.SheetType != "plan" && !markup)
             {
                 notPlan++;
                 var other = new SheetOutcome(p, record.SheetNumber, record.SheetType, title, record.Level, record.ScaleNote, record.ScaleDenominator,
@@ -211,7 +212,7 @@ public static class PdfOnlyBuild
                         var pg = part.Geometry;
                         if (pg.Slabs.Count + pg.Columns.Count + pg.Walls.Count + pg.Lines.Count == 0) continue;
                         // the view is exported once, into memory; the file is the same lines, written where a DXF is wanted
-                        var lines = DxfExporter.ExportLines(pg, korLayers: korLayers);
+                        var lines = DxfExporter.ExportLines(pg, layerByColour: layerByColour, korLayers: korLayers);
                         if (lines.Count == 0) continue;
                         string viewName = names.Claim(part.FileName, p);
                         views.Add(new DxfSheet(viewName, lines));
@@ -223,7 +224,7 @@ public static class PdfOnlyBuild
                 else
                 {
                     string dxf = Path.GetFullPath(outDxf);
-                    var lines = DxfExporter.ExportLines(geo, korLayers: korLayers);
+                    var lines = DxfExporter.ExportLines(geo, layerByColour: layerByColour, korLayers: korLayers);
                     if (lines.Count > 0)
                     {
                         string viewName = names.Claim(Path.GetFileName(dxf), p);

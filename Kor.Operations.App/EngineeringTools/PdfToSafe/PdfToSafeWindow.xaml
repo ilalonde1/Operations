@@ -315,6 +315,8 @@
                                     <Button x:Name="ExportF2kButton" Content="Export SAFE (.f2k)" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="30" FontSize="11" Click="ExportF2k_Click" IsEnabled="False"/>
                                     <Button x:Name="ExportE2kButton" Content="Export ETABS (.e2k)" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="30" FontSize="11" Margin="0,4,0,0" Click="ExportE2k_Click" IsEnabled="False"/>
                                     <Button x:Name="ExportDxfButton" Content="Export DXF" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="30" FontSize="11" Margin="0,4,0,0" Click="ExportDxf_Click" IsEnabled="False"/>
+                                    <CheckBox Content="Layers by markup colour" FontSize="11" Margin="0,6,0,0"
+                                              IsChecked="{Binding DxfLayerByColour, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                 </StackPanel>
                             </Expander>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">

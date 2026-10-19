@@ -60,6 +60,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         public bool AutoExportAfterClassify { get; set; } = false;
 
+        /// <summary>Export DXF layers by the source markup colours.</summary>
+        public bool DefaultDxfLayerByColour { get; set; } = false;
+
         /// <summary>
         /// Occupancy preset that drives the default LIVE load applied to each
         /// new slab colour row. "Residential" → 1.92 kPa (NBC residential

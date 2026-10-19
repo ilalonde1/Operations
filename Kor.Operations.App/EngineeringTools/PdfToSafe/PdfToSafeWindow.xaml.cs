@@ -1466,6 +1466,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         private readonly FirmDefaults _firmDefaults = FirmDefaults.Load();
 
+        public bool DxfLayerByColour
+        {
+            get => _firmDefaults.DefaultDxfLayerByColour;
+            set
+            {
+                if (_firmDefaults.DefaultDxfLayerByColour == value) return;
+                _firmDefaults.DefaultDxfLayerByColour = value;
+                _firmDefaults.Save();
+            }
+        }
+
         /// <summary>
         /// Current export settings. Initialised from <see cref="_firmDefaults"/>
         /// and mutated in place by the AI's set_export_settings tool handler so
@@ -2273,6 +2284,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 ShowLoading("Exporting DXF...");
                 var colorSettings = BuildSlabColorSettings();
+                bool layerByColour = _firmDefaults.DefaultDxfLayerByColour;
                 var reclassified = PdfGeometryExtractor.ReclassifyByColor(
                     _extractedGeometry, colorSettings,
                     _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
@@ -2293,7 +2305,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         _excl.Lines.Count > 0 ? _excl.Lines : null,
                         _excl.Columns.Count > 0 ? _excl.Columns : null,
                         _excl.Colors.Count > 0 ? _excl.Colors : null,
-                        layerByColour: false,
+                        layerByColour: layerByColour,
                         colorSettings: colorSettings);
                 }).ConfigureAwait(true);
                 SetStatus(BuildExportStatus(outputPath, validation), "#E8F5E9", "#2E7D32");
