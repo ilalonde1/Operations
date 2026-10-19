@@ -195,7 +195,16 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
                     existingTrend: null, existingUtilRows: utilRows, ct: ct, trendScope: PortfolioSnapshotScope.AllActive)
                 : await exec.GetExecutiveSummaryAsync(forceRefresh: true, existingSnapshot: snap,
                     existingTrend: Array.Empty<PortfolioTrendPoint>(), existingUtilRows: utilRows, ct: ct);
-            return ExecutiveFacts(result, snap.Rows.Count, trendNote);
+            return ExecutiveFacts(result, snap.Rows.Count, trendNote).Append(MorningPeople.PmWorkload(utilRows)).ToArray();
+        }, ct);
+        await ReadAsync(facts, "Billed $ per person, trailing 12 months", async () =>
+        {
+            // The Compensation screen's own service; its productivity scores live in KorTransmittals.
+            var transmittals = OptionalConnection("KOR_FILESYNC_KORTRANSMITTALSDB")
+                ?? throw new InvalidOperationException("KOR_FILESYNC_KORTRANSMITTALSDB unset.");
+            var compensation = await new Kor.Operations.Compensation.CompensationService(odbc, new CompensationOptions(),
+                new DatabaseOptions { KorTransmittalsDb = transmittals }, financialsOptions).LoadAsync(ct);
+            return new[] { MorningPeople.Billed(compensation.Rows) };
         }, ct);
         // Weekly completeness only selects the employee outlier week; the engine's
         // Utilization KPI above is printed unchanged.
@@ -374,7 +383,10 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
                 } },
         };
         if (lastComplete is { } last)
+        {
             facts.AddRange(EmployeeFacts(rows, last));
+            facts.Add(MorningPeople.BillableHours(rows, last));
+        }
         else
             facts.Add(new MorningFact("People, last complete week", Array.Empty<string>(), 0, null,
                 "No complete week with a prior-week baseline is available."));
