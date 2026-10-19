@@ -46,8 +46,10 @@ public sealed class SixSetsBuildAsBankedTests
     public static readonly IReadOnlyList<Banked> Sets =
     [
         new("31130-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31130-01 (Uplands Area 6 Lot 12 West Vancouver)\05 Stickfile\06 Old Structural Stickfiles\31130-01 UPLANDS LOT 12 2026-05-20 Stick file.pdf", 96),
-        new("31138-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31138-01 (2170 W 1st Ave Vancouver BC)\05 Stickfile\31138-01 2026-09-01_2170 W 1st Ave_Str Set.pdf", 96),
-        new("31065-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31065-01 (5350 5430 Heather Street Vancouver)\05 Stickfile\31065-01 - 2026-07-08 - 5380-Heather Street - Stickfile (up to SSI-04)-OAP.pdf", 100),
+        // 31138's and 31065's moved into "06 Old Structural Stickfiles" by 2026-10-19, same names; the mirror's copies
+        // hash-match the files there (18,037,770 and 17,258,641 bytes)
+        new("31138-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31138-01 (2170 W 1st Ave Vancouver BC)\05 Stickfile\06 Old Structural Stickfiles\31138-01 2026-09-01_2170 W 1st Ave_Str Set.pdf", 96),
+        new("31065-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31065-01 (5350 5430 Heather Street Vancouver)\05 Stickfile\06 Old Structural Stickfiles\31065-01 - 2026-07-08 - 5380-Heather Street - Stickfile (up to SSI-04)-OAP.pdf", 100),
         // moved into "06 Old Structural Stickfiles" on 2026-09-21 with the rest of 31202's StickSets, where 31130's
         // and 31168's already live; the file is the same one, 21,606,315 bytes, and EverySourceIsWhereThisFileSaysItIs
         // is what noticed - the gate had been green on the mirror's copy while the share no longer had it here
