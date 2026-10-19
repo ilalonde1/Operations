@@ -55,7 +55,7 @@ public sealed class SixSetsBuildAsBankedTests
         // is what noticed - the gate had been green on the mirror's copy while the share no longer had it here
         new("31202-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31202-01 (1650 N Hotel Circle San Diego)\05 Stickfile\06 Old Structural Stickfiles\31202-01 2026-09-04 Hotel Circle North StickSet  - FULL SET.pdf", 96),
         new("31168-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\05 Stickfile\06 Old Structural Stickfiles\31168-01 - 2026-04-21- YMCA Langara - Stickfile.pdf", 96),
-        new("31170-01-arch", @"\\Kor-fs01\Projects\Projects\03 Residential\31170-01 (2005-2045 West 49 Ave Vancouer)\05 Stickfile\01 Architectural\260723_W49th_75% BP Draft.pdf", 96),
+        new("31170-01-arch", @"\\Kor-fs01\Projects\Projects\03 Residential\31170-01 (2005-2045 West 49 Ave Vancouer)\05 Stickfile\01 Architectural\Obsolete\260723_W49th_75% BP Draft.pdf", 96),   // moved into Obsolete by 2026-10-19, same name, 30,084,812 bytes
     ];
 
     private readonly ITestOutputHelper _out;
