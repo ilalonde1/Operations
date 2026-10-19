@@ -1,90 +1,96 @@
-# Engineering fix 1: a model states its material in its own units
+# Engineering fix 1: an inch is an inch in every unit — the shell, the storey reader, and the test that proves it
 
-> ⏸ **HOLD 2026-10-19 — DO NOT RUN YET.** This is one instance of a wider class: inch-only constants in code that
-> also handles millimetre and feet models. A second instance is `E2kDocument.ReadStories` (`maxPlausibleStoreyHeight
-> = 480`, "believable" 60-480). Under CLAUDE.md rule 11, the differential harness that finds every instance comes
-> first. This brief will be revised to use `E2kDocument.LengthUnitInInches()` (one unit table, not a second one), and
-> its gate 5 corrected: `ReadStories` does not return Base.
-
-**Budget.** This brief is about 6 KB, and the only file you open is 11 KB. Everything else you need is quoted below.
+**Budget.** This brief is about 7 KB, and it names three files: 11 KB, 11 KB, and six line ranges of a third.
 
 **Rules for this run:**
-- Do **not** open any other file. Do not search the repo or run git commands.
+- Open nothing else. Do not search the repo or run git.
 - Do **not** run `dotnet build`, `restore` or `test`; Claude verifies on the dev box.
-- Reasoning: **low**.
+- Reasoning: **medium**.
 - Write the response, then stop.
 
-**Response:** `docs/codex/CODEX-ENGINEERING-FIX-1-A-MODEL-STATES-ITS-MATERIAL-IN-ITS-OWN-UNITS-RESPONSE.md`, under 30 lines.
+**Response:** `docs/codex/CODEX-ENGINEERING-FIX-1-A-MODEL-STATES-ITS-MATERIAL-IN-ITS-OWN-UNITS-RESPONSE.md`, under 40 lines.
 
-## The defect (measured 2026-10-19)
+## The fault, one class, measured 2026-10-19
 
-`Kor.Operations.EngineeringTools.Core/Dxf/E2kShellBuilder.cs` writes the model shell when no reference model is given.
-Every PDF stick file takes that route, and it passes `unitName = "mm"`.
+Rules in this code are stated in inches. A model counts in its own unit, which `CONTROLS UNITS` declares and
+`E2kDocument.LengthUnitInInches()` (line ~1999) converts. The PDF route writes **millimetre** models, and KOR's
+reference models include 159 in **feet** and 29 in millimetres. Wherever an inch literal is compared with a model-unit
+value without scaling, it is wrong outside inch models.
 
-- Line 111 declares `UNITS "LB" "<unitName>" "F"`.
-- Lines 151-153 write a 4000 psi concrete as pound-inch numbers, whatever unit was declared:
-  - `WEIGHTPERVOLUME 0.08680555` (lb/in³)
-  - `E 3604996.5` (lb/in²)
-  - `FC 4000` (lb/in²)
-- Lines 133-134 default the lowest storey's height to `120`, which is inches.
+`AModelIsTheSameInInchesAndMillimetresTests` already guards the composer's own constants this way. It does not
+compare materials, `ReadStories`, or feet.
 
-ETABS reads every value in the declared units. A model ETABS wrote itself (30783-01, `UNITS "KIP" "IN"`) stores the
-same concrete as:
+**Instances to fix:**
 
-    MATERIAL  "4000Psi"    TYPE "Concrete"    WEIGHTPERVOLUME 8.680556E-05
-    MATERIAL  "4000Psi"    SYMTYPE "Isotropic"  E 3604.997  U 0.2  A 5.50000004295725E-06
-    MATERIAL  "4000Psi"    FC 4
+| # | Where | Literal | What it is |
+|---|---|---|---|
+| 1 | `E2kShellBuilder.cs` 151-153 | `WEIGHTPERVOLUME 0.08680555`, `E 3604996.5`, `FC 4000` | a 4000 psi mix in lb-in, written under any declared unit |
+| 2 | `E2kShellBuilder.cs` 133-134 | `120` | default lowest-storey height, in inches |
+| 3 | `E2kDocument.cs` 165, 211 (`ReadStories`) | `480.0`, `60` | the plausible storey-height band, in inches |
+| 4 | `E2kDocument.cs` 279 (`NearestFloorBelow`, static) | `12.0` | duplicate-floor tolerance |
+| 5 | `E2kDocument.cs` 455, 458 | `480.0`, `60` | the same band, in a second method |
+| 6 | `E2kDocument.cs` 665 | `12.0` | storeys within a foot are one level |
+| 7 | `E2kDocument.cs` 1125, 1130 (`SameFloorTolerance`) | `12.0` (three times) | gap and floor tolerance |
+| 8 | `E2kDocument.cs` 1217, 1238 | `36.0` | reach of `WithinOrNear` |
 
-So a millimetre shell tells ETABS that f'c is 4000 lb/mm², about 27,600 MPa.
+Ground truth for #1: a model ETABS wrote itself (30783-01, `UNITS "KIP" "IN"`) stores the same mix as `FC 4`,
+`E 3604.997`, `WEIGHTPERVOLUME 8.680556E-05`. Every value is in the declared units.
 
-Nothing else in the solution reads these numbers (searched: 0 matches outside this file).
+## The fix
 
-## The fix, in `E2kShellBuilder.cs` only
+1. **One unit table.** Move the `switch` inside `LengthUnitInInches()` into
+   `public static double? InchesPerUnit(string unitName)` on `E2kDocument`. `LengthUnitInInches()` calls it, with the
+   same five names and unchanged behaviour.
+2. **The shell** calls `E2kDocument.InchesPerUnit(unitName)`, and throws `ArgumentException` naming the unit when it
+   is null. With k = inches per unit:
+   - `E` and `FC` are psi × k².
+   - `WEIGHTPERVOLUME` is lb/in³ × k³.
+   - `U`, `A` and `GRADE` are unchanged.
+   - Format: `ToString("G9", CultureInfo.InvariantCulture)`.
+   - The 120 default becomes `120 / k`, formatted with the file's `Trim()`.
+   - Rewrite the comment at 141-147 to say the values are in the declared unit, citing 30783-01.
+3. **`E2kDocument` #3-#8:** multiply each literal by `inch`, the length of one inch in model units:
+   `1.0 / (LengthUnitInInches() ?? 1.0)`. Static helpers (`FloorUnder`, `NearestFloorBelow`) take `inch` as a new
+   parameter from their instance caller. In an inch model `inch == 1`, so inch models behave byte-identically.
+4. **Do not change any other literal.** If another literal in the ranges below looks like an unscaled inch length,
+   list it in the response with its line, and leave it.
 
-1. **Add a private helper** returning inches per declared unit, matched case-insensitively:
-   `IN` 1, `FT` 12, `MM` 1/25.4, `CM` 1/2.54, `M` 1/0.0254.
-   Any other name throws `ArgumentException`, and the message names the unit and the five accepted.
-2. **Write the material numbers in the declared unit.** With k = inches per unit, and force staying `LB`:
-   - `E` and `FC` = psi value × k²
-   - `WEIGHTPERVOLUME` = lb/in³ value × k³
-   - `U` and `A` are unchanged.
-   - `GRADE "f'c 4000 psi"` is a label and is unchanged.
+## The test: extend the existing one
 
-   Format with `ToString("G9", CultureInfo.InvariantCulture)`. For `in` the three lines must stay byte-identical to
-   today.
-3. **The default lowest-storey height is 120 inches expressed in the declared unit**, in both places on lines 133-134,
-   formatted with the file's existing `Trim(double)` helper (line 197).
-4. **Rewrite the comment at lines 141-147** to say the mix is written in the file's declared units, citing the
-   30783-01 lines above.
+The file is `Kor.Operations.EngineeringTools.Core.Tests/AModelIsTheSameInInchesAndMillimetresTests.cs`. Read it whole;
+do not create a parallel test.
 
-Nothing else in the file changes.
+- **A feet arm.** Add `var feet = Compose(root, "ft", 1.0 / 12.0, 2, "ft");` (DXF `$INSUNITS` 2 is feet, already
+  supported). Assert it equals `inches` on every property the millimetre arm is already checked on.
+- **Materials.** In `Compose`, read `FC`, `E` and `WEIGHTPERVOLUME` from `doc.LinesOf("MATERIAL PROPERTIES")`, and
+  convert them to psi and lb/in³ with `doc.LengthUnitInInches()`. All three arms equal 4000, 3604996.5 and 0.08680555
+  within 1e-6 relative.
+- **Storeys.** In `Compose`, take `doc.ReadStories()`. It returns `StoryLevel(string Name, double Elevation,
+  double ElevationBelow)` and does not include Base. Convert `Elevation` and `ElevationBelow` to inches. All three arms
+  agree, per storey name, to 1e-4 in.
+- **Two small facts:**
+  - `InchesPerUnit("yd")` is null.
+  - `E2kShellBuilder.FromLevels(E2kShellBuilder.ParseLevels(["L1, 0", "L2, 144"]), "in")` writes exactly these three
+    lines:
+    - `  MATERIAL  "KOR-DEFAULT-CONCRETE"  TYPE "Concrete"  GRADE "f'c 4000 psi"  WEIGHTPERVOLUME 0.08680555`
+    - `  MATERIAL  "KOR-DEFAULT-CONCRETE"  SYMTYPE "Isotropic"  E 3604996.5  U 0.2  A 5.5E-06`
+    - `  MATERIAL  "KOR-DEFAULT-CONCRETE"  FC 4000`
+- **The remarks block.** Update WHAT THIS COVERS to add materials, storey elevations and floor-below, and feet. Keep
+  WHAT IT DOES NOT, and add: "#4-#8 are exercised only as far as this small two-storey plan reaches them".
 
-## Gates, in a NEW file
+## Read
 
-Create `Kor.Operations.EngineeringTools.Core.Tests/TheShellStatesItsConcreteInItsOwnUnitsTests.cs`.
-
-- **Header:** `using System.Globalization; using Kor.Operations.EngineeringTools.Dxf; using Xunit;`
-  and `namespace Kor.Operations.EngineeringTools.Core.Tests;`
-- **API you need, quoted so you do not open the files:**
-  - `E2kShellBuilder.ParseLevels(IEnumerable<string> lines)` takes lines such as `"L1, 0"`, `"L2, 144"` and returns
-    `IReadOnlyList<BuildingLevel>`.
-  - `E2kShellBuilder.FromLevels(IReadOnlyList<BuildingLevel> levels, string unitName = "in")` returns `E2kDocument`.
-  - `doc.LinesOf("MATERIAL PROPERTIES")` returns that section's lines.
-  - `doc.ReadStories()` returns storeys with `.Name` and `.Elevation`.
-- **The gates:**
-  1. `TheConcreteIsStatedInTheDeclaredUnit`: a `[Theory]` over `in`, `ft`, `mm`, `cm` and `m`. Read the FC, E and
-     WEIGHTPERVOLUME numbers back from the lines, convert them to psi and lb/in³, and assert 4000, 3604996.5 and
-     0.08680555 within 1e-6 relative.
-  2. `AnInchShellIsUnchanged`: the three MATERIAL lines equal these exactly:
-     - `  MATERIAL  "KOR-DEFAULT-CONCRETE"  TYPE "Concrete"  GRADE "f'c 4000 psi"  WEIGHTPERVOLUME 0.08680555`
-     - `  MATERIAL  "KOR-DEFAULT-CONCRETE"  SYMTYPE "Isotropic"  E 3604996.5  U 0.2  A 5.5E-06`
-     - `  MATERIAL  "KOR-DEFAULT-CONCRETE"  FC 4000`
-  3. `AMillimetreShellStatesSixPointTwo`: for `mm`, FC parses to 4000 / 645.16 within 1e-4.
-  4. `AnUnknownUnitIsRefused`: `"yd"` throws `ArgumentException`, and the message contains `yd`.
-  5. `TheDefaultBaseIsTenFeetInAnyUnit`: one level `"L1, 0"` in `mm` puts the storey `Base` at elevation −3048 within
-     0.01.
+- `Kor.Operations.EngineeringTools.Core/Dxf/E2kShellBuilder.cs` (whole)
+- `Kor.Operations.EngineeringTools.Core.Tests/AModelIsTheSameInInchesAndMillimetresTests.cs` (whole)
+- `Kor.Operations.EngineeringTools.Core/Dxf/E2kDocument.cs`, these lines only:
+  - 155-300
+  - 440-470
+  - 655-670
+  - 1105-1135
+  - 1200-1245
+  - 1990-2020
 
 ## Do not touch
 
-Any other source or test file. The six models in `Baselines/` will change in their MATERIAL lines. **Do not re-bank
-them**: Claude re-banks them with a diff proving nothing else moved.
+Any other file. The six models in `Baselines/` will change: their materials, and anything the storey literals
+affected. **Do not re-bank them.** Claude rebuilds them and diffs every change against this brief.
