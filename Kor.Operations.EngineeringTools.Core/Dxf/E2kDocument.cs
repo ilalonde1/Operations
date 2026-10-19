@@ -157,12 +157,13 @@ public sealed class E2kDocument
     /// </summary>
     public IReadOnlyList<StoryLevel> ReadStories()
     {
+        double inch = 1.0 / (LengthUnitInInches() ?? 1.0);
         var parsed = new List<(string Name, double Height)>();
 
         double baseElevation = 0;
 
         // No real storey is taller than this; see FloorUnder for why a cap is needed at all.
-        const double maxPlausibleStoreyHeight = 480.0;
+        double maxPlausibleStoreyHeight = 480.0 * inch;
 
         foreach (string raw in LinesOf("STORIES"))
         {
@@ -208,12 +209,12 @@ public sealed class E2kDocument
         }
 
         // A typical storey in this building, used where a storey's own height cannot be believed.
-        var believable = stack.Select(s => s.Height).Where(h => h >= 60 && h <= maxPlausibleStoreyHeight).OrderBy(h => h).ToList();
+        var believable = stack.Select(s => s.Height).Where(h => h >= 60 * inch && h <= maxPlausibleStoreyHeight).OrderBy(h => h).ToList();
         double typical = believable.Count > 0 ? believable[believable.Count / 2] : maxPlausibleStoreyHeight;
 
         var result = new List<StoryLevel>();
         for (int i = 0; i < stack.Count; i++)
-            result.Add(new StoryLevel(stack[i].Name, stack[i].Elevation, FloorUnder(stack, i, maxPlausibleStoreyHeight, typical)));
+            result.Add(new StoryLevel(stack[i].Name, stack[i].Elevation, FloorUnder(stack, i, maxPlausibleStoreyHeight, typical, inch)));
 
         result.Reverse();
         return result;
@@ -234,7 +235,7 @@ public sealed class E2kDocument
     /// separate a real storey from a duplicate-floor sliver; only the name can.
     /// </summary>
     private static double FloorUnder(
-        IReadOnlyList<(string Name, double Elevation, double Height)> stack, int index, double maxHeight, double typicalHeight)
+        IReadOnlyList<(string Name, double Elevation, double Height)> stack, int index, double maxHeight, double typicalHeight, double inch)
     {
         var (name, top, height) = stack[index];
         string tag = BuildingTagOf(name);
@@ -250,10 +251,10 @@ public sealed class E2kDocument
                 if (BuildingTagOf(stack[i].Name) == tag)
                     return top - stack[i].Elevation <= maxHeight
                         ? stack[i].Elevation
-                        : NearestFloorBelow(stack, index, top, maxHeight);
+                        : NearestFloorBelow(stack, index, top, maxHeight, inch);
         }
 
-        double floor = NearestFloorBelow(stack, index, top, maxHeight);
+        double floor = NearestFloorBelow(stack, index, top, maxHeight, inch);
         if (!double.IsNaN(floor)) return floor;
 
         // Nothing below: the base storey. ETABS parks a model's base far under the structure and
@@ -274,9 +275,9 @@ public sealed class E2kDocument
     /// height made tower C's lowest walls half a foot tall. NaN when there is nothing below.
     /// </summary>
     private static double NearestFloorBelow(
-        IReadOnlyList<(string Name, double Elevation, double Height)> stack, int index, double top, double maxHeight)
+        IReadOnlyList<(string Name, double Elevation, double Height)> stack, int index, double top, double maxHeight, double inch)
     {
-        const double duplicateFloorTolerance = 12.0;
+        double duplicateFloorTolerance = 12.0 * inch;
         for (int i = index - 1; i >= 0; i--)
             if (top - stack[i].Elevation > duplicateFloorTolerance)
                 return Math.Max(stack[i].Elevation, top - maxHeight);
@@ -452,10 +453,11 @@ public sealed class E2kDocument
             }
         }
 
-        const double maxPlausibleStoreyHeight = 480.0;
+        double inch = 1.0 / (LengthUnitInInches() ?? 1.0);
+        double maxPlausibleStoreyHeight = 480.0 * inch;
         if (lowestAt < 0 || baseAt < 0 || lowestHeight <= maxPlausibleStoreyHeight) return false;
 
-        var believable = heights.Where(v => v >= 60 && v <= maxPlausibleStoreyHeight).OrderBy(v => v).ToList();
+        var believable = heights.Where(v => v >= 60 * inch && v <= maxPlausibleStoreyHeight).OrderBy(v => v).ToList();
         double typical = believable.Count > 0 ? believable[believable.Count / 2] : maxPlausibleStoreyHeight;
 
         string Number(double v) => v.ToString("0.####", CultureInfo.InvariantCulture);
@@ -658,11 +660,12 @@ public sealed class E2kDocument
             .OrderBy(s => s.Elevation)
             .ToList();
 
+        double inch = 1.0 / (LengthUnitInInches() ?? 1.0);
         var renames = new List<(string From, string To)>();
         for (int i = 0; i < sharedBase.Count; i++)
         {
             var group = new List<StoryLevel> { sharedBase[i] };
-            while (i + 1 < sharedBase.Count && sharedBase[i + 1].Elevation - group[0].Elevation <= 12.0)
+            while (i + 1 < sharedBase.Count && sharedBase[i + 1].Elevation - group[0].Elevation <= 12.0 * inch)
                 group.Add(sharedBase[++i]);
 
             string bare = group[0].Name[2..];
@@ -1115,6 +1118,7 @@ public sealed class E2kDocument
     /// </summary>
     public double SameFloorTolerance()
     {
+        double inch = 1.0 / (LengthUnitInInches() ?? 1.0);
         var gaps = new List<double>();
 
         foreach (var stack in ReadStories()
@@ -1122,12 +1126,12 @@ public sealed class E2kDocument
                      .Select(g => g.Select(s => s.Elevation).OrderBy(e => e).ToList()))
         {
             for (int i = 1; i < stack.Count; i++)
-                if (stack[i] - stack[i - 1] > 12.0)
+                if (stack[i] - stack[i - 1] > 12.0 * inch)
                     gaps.Add(stack[i] - stack[i - 1]);
         }
 
         gaps.Sort();
-        return gaps.Count == 0 ? 12.0 : Math.Max(12.0, gaps[gaps.Count / 2] / 2.0);
+        return gaps.Count == 0 ? 12.0 * inch : Math.Max(12.0 * inch, gaps[gaps.Count / 2] / 2.0);
     }
 
     /// <summary>
@@ -1210,11 +1214,12 @@ public sealed class E2kDocument
         // other and are still two buildings in the air: tower B's plate is not held up by tower A's
         // columns two hundred feet away. The shared ground floor is the opposite case — one slab
         // over both stacks — and only position tells them apart.
+        double inch = 1.0 / (LengthUnitInInches() ?? 1.0);
         bool AnyUnder(string plate, IReadOnlyList<(string Obj, string Storey)> members) =>
             planOf.TryGetValue(plate, out var outline)
             && outline.Count >= 3
             && members.Any(m => planOf.TryGetValue(m.Obj, out var pts)
-                                && pts.Any(p => WithinOrNear(p, outline, 36.0)));
+                                && pts.Any(p => WithinOrNear(p, outline, 36.0 * inch)));
 
         var noMembers = new List<(string, string)>();
         var unsupported = new List<string>();
@@ -1235,7 +1240,7 @@ public sealed class E2kDocument
             planOf.TryGetValue(member, out var pts)
             && above.Any(p => planOf.TryGetValue(p.Obj, out var outline)
                               && outline.Count >= 3
-                              && pts.Any(q => WithinOrNear(q, outline, 36.0)));
+                              && pts.Any(q => WithinOrNear(q, outline, 36.0 * inch)));
 
         static bool IsMezzanineStorey(string storey)
             => storey.Contains("MEZZ", StringComparison.OrdinalIgnoreCase);
@@ -2003,18 +2008,22 @@ public sealed class E2kDocument
             var m = Regex.Match(raw.Trim(), @"^UNITS\s+""[^""]*""\s+""([^""]+)""", RegexOptions.IgnoreCase);
             if (!m.Success) continue;
 
-            return m.Groups[1].Value.ToUpperInvariant() switch
-            {
-                "IN" => 1.0,
-                "FT" => 12.0,
-                "MM" => 1.0 / 25.4,
-                "CM" => 1.0 / 2.54,
-                "M"  => 1000.0 / 25.4,
-                _    => null,
-            };
+            return InchesPerUnit(m.Groups[1].Value);
         }
         return null;
     }
+
+    /// <summary>Inches per named length unit, or null when the unit is unsupported.</summary>
+    public static double? InchesPerUnit(string unitName)
+        => unitName.ToUpperInvariant() switch
+        {
+            "IN" => 1.0,
+            "FT" => 12.0,
+            "MM" => 1.0 / 25.4,
+            "CM" => 1.0 / 2.54,
+            "M"  => 1000.0 / 25.4,
+            _    => null,
+        };
 
     /// <summary>
     /// The largest joint offset each panel carries — for a spandrel, its depth. A joint is a plan

@@ -92,6 +92,9 @@ public static class E2kShellBuilder
         if (levels.Count == 0)
             throw new InvalidOperationException("A model needs at least one level.");
 
+        double k = E2kDocument.InchesPerUnit(unitName)
+            ?? throw new ArgumentException($"Unsupported length unit '{unitName}'.", nameof(unitName));
+
         var ordered = levels.OrderBy(l => l.Elevation).ToList();
 
         // The base sits at the lowest level, not below it. Inventing a gap underneath puts the
@@ -107,7 +110,7 @@ public static class E2kShellBuilder
             "$ CONTROLS",
             // Force, LENGTH and temperature. ETABS writes three and reads three; a two-entry line
             // is the first thing a real import rejects, and it is why the first model built from
-            // this shell would not open. Pounds and inches, which is what both reference models use.
+            // this shell would not open. Pounds and the requested length unit.
             $"  UNITS  \"LB\"  \"{unitName.ToUpperInvariant()}\"  \"F\"",
             string.Empty,
             "$ STORIES - IN SEQUENCE FROM TOP",
@@ -130,8 +133,8 @@ public static class E2kShellBuilder
         // storey's members that far and is the failure NormaliseBaseStorey exists for; real enough
         // that the storey is a storey.
         double lowestHeight = ordered.Count > 1
-            ? ordered.Zip(ordered.Skip(1), (a, b) => b.Elevation - a.Elevation).Where(h => h > 0).DefaultIfEmpty(120).Min()
-            : 120;
+            ? ordered.Zip(ordered.Skip(1), (a, b) => b.Elevation - a.Elevation).Where(h => h > 0).DefaultIfEmpty(120 / k).Min()
+            : 120 / k;
 
         lines.Add($"  STORY \"{ordered[0].Name}\"  HEIGHT {Trim(lowestHeight)}");
         lines.Add($"  STORY \"Base\"  ELEV {Trim(baseElevation - lowestHeight)}");
@@ -142,16 +145,17 @@ public static class E2kShellBuilder
         // The first shell wrote MATERIAL ... TYPE "Concrete" and stopped, which is enough for this
         // tool to find a concrete material and nowhere near enough for ETABS to build one: no
         // weight, no modulus, no strength. The model generated from it was rejected on import with
-        // nothing to show for it. These are the numbers a 4,000 psi mix carries in both reference
-        // models, in pounds and inches: 150 pcf as 0.08680555 lb/in3, E from the code expression,
-        // Poisson 0.2, and the thermal coefficient concrete is given.
+        // nothing to show for it. Each value is in the declared force and length units: ETABS's
+        // 30783-01 export in KIP/IN writes FC 4, E 3604.997 and WEIGHTPERVOLUME 8.680556E-05.
+        // Here force is LB: convert the 4,000 psi mix's stress by k squared and its
+        // 0.08680555 lb/in3 weight by k cubed. Poisson 0.2 and the thermal coefficient stay fixed.
         //
         // It is a default and says so in its name. An engineer changes the mix; she should not have
         // to invent one because the file would not open.
         lines.Add("$ MATERIAL PROPERTIES");
-        lines.Add($"  MATERIAL  \"{DefaultConcrete}\"  TYPE \"Concrete\"  GRADE \"f'c 4000 psi\"  WEIGHTPERVOLUME 0.08680555");
-        lines.Add($"  MATERIAL  \"{DefaultConcrete}\"  SYMTYPE \"Isotropic\"  E 3604996.5  U 0.2  A 5.5E-06");
-        lines.Add($"  MATERIAL  \"{DefaultConcrete}\"  FC 4000");
+        lines.Add($"  MATERIAL  \"{DefaultConcrete}\"  TYPE \"Concrete\"  GRADE \"f'c 4000 psi\"  WEIGHTPERVOLUME {(0.08680555 * k * k * k).ToString("G9", CultureInfo.InvariantCulture)}");
+        lines.Add($"  MATERIAL  \"{DefaultConcrete}\"  SYMTYPE \"Isotropic\"  E {(3604996.5 * k * k).ToString("G9", CultureInfo.InvariantCulture)}  U 0.2  A 5.5E-06");
+        lines.Add($"  MATERIAL  \"{DefaultConcrete}\"  FC {(4000 * k * k).ToString("G9", CultureInfo.InvariantCulture)}");
         lines.Add(string.Empty);
 
         // Every section the composer writes into, EMPTY, in the order ETABS itself writes them.

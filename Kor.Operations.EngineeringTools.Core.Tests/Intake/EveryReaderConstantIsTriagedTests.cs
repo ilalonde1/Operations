@@ -127,7 +127,6 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["GridAlignment.cs:NameReachHeights"] = Convention("dxf.grid-name-reach-heights — a grid name sits within this many heights of the line's end (DXF side)"),
         ["GridAlignment.cs:NameReachFloor"] = Convention("dxf.grid-name-reach-floor"),
         ["ModelQuestionnaire.cs:MinConcreteThickness"] = Convention("dxf.min-concrete-thickness — 6 in (DXF side)"),
-        ["E2kDocument.cs:maxPlausibleStoreyHeight"] = Convention("dxf.max-plausible-storey-height — 480 in (DXF side)"),
 
         // ---- tolerances: slack against drafting and precision, code by design ----
         ["DimensionStrings.cs:AgreeMm"] = Tolerance("an inch of drafting"),
@@ -220,7 +219,6 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["DxfPlanReader.cs:ArcChordTolerance"] = Tolerance("an arc as segments"),
         ["DxfToEtabsService.cs:StandDownReachInches"] = Tolerance("a hand's width from a partition's footprint"),
         ["DxfToEtabsService.cs:FarFromOrigin"] = Tolerance("a coordinate that is a survey coordinate"),
-        ["E2kDocument.cs:duplicateFloorTolerance"] = Tolerance("two floors at one elevation"),
         ["E2kGeometryComposer.cs:Thin"] = Tolerance("floating point"),
         ["LoopGeometry.cs:Slack"] = Tolerance("floating point: the T-touch"),
         ["MatchLineSheetJoin.cs:DefaultTolerance"] = Tolerance("two match lines that are one seam"),

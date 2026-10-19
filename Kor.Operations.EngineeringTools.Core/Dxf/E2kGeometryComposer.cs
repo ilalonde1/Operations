@@ -428,6 +428,10 @@ public static class E2kGeometryComposer
         // 2 mm apart, stood twice on every storey both covered, and a 4 in wall came out KOR-W101.5
         // (yardstick, 2026-09-12). AModelIsTheSameInInchesAndMillimetresTests is the differential.
         double inch = options.ModelUnitInInches > 0 ? 1.0 / options.ModelUnitInInches : 1.0;
+        int extra = options.ModelUnitInInches > 1
+            ? (int)Math.Ceiling(Math.Log10(options.ModelUnitInInches)) : 0;
+        string trimFormat = "0." + new string('#', 3 + extra);
+        string coordinateFormat = "0." + new string('#', 4 + extra);
 
         string material = doc.FindConcreteMaterial(options.MaterialContains)
             ?? throw new InvalidOperationException("The reference model defines no concrete material to build sections from.");
@@ -650,7 +654,7 @@ public static class E2kGeometryComposer
 
             string? found = doc.FindShellProperty("Wall", thickness);
             if (found is not null) reusedSections.Add(found);
-            else newWallProps[thickness] = found = $"KOR-W{Trim(thickness)}{wallGrade}";
+            else newWallProps[thickness] = found = $"KOR-W{Trim(thickness, trimFormat)}{wallGrade}";
 
             wallProps[thickness] = found;
             return found;
@@ -724,8 +728,8 @@ public static class E2kGeometryComposer
             pointOrder[name] = pointOrder.Count;
 
             pointLines.Add(Math.Abs(zOffset) < 1e-9
-                ? $"  POINT \"{name}\"  {F(x)} {F(y)}"
-                : $"  POINT \"{name}\"  {F(x)} {F(y)} {F(zOffset)}");
+                ? $"  POINT \"{name}\"  {F(x, coordinateFormat)} {F(y, coordinateFormat)}"
+                : $"  POINT \"{name}\"  {F(x, coordinateFormat)} {F(y, coordinateFormat)} {F(zOffset, coordinateFormat)}");
             return name;
         }
 
@@ -1098,11 +1102,11 @@ public static class E2kGeometryComposer
                 if (column.IsRound)
                 {
                     if (!roundProps.TryGetValue(d, out sectionName))
-                        roundProps[d] = sectionName = $"KOR-D{Trim(d)}";
+                        roundProps[d] = sectionName = $"KOR-D{Trim(d, trimFormat)}";
                 }
                 else if (!frameProps.TryGetValue((w, d), out sectionName))
                 {
-                    sectionName = $"KOR-C{Trim(w)}x{Trim(d)}";
+                    sectionName = $"KOR-C{Trim(w, trimFormat)}x{Trim(d, trimFormat)}";
                     frameProps[(w, d)] = sectionName;
                 }
 
@@ -1133,7 +1137,7 @@ public static class E2kGeometryComposer
 
                 CoversOwn(colStory.Name, column.Center.X + options.OffsetX, column.Center.Y + options.OffsetY);
                 lineAssigns.Add(
-                    $"  LINEASSIGN  \"{name}\"  \"{colStory.Name}\"  SECTION \"{sectionName}\"  ANG {Trim(angle)} MINNUMSTA 3 " +
+                    $"  LINEASSIGN  \"{name}\"  \"{colStory.Name}\"  SECTION \"{sectionName}\"  ANG {Trim(angle, trimFormat)} MINNUMSTA 3 " +
                     "AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
             }
 
@@ -1353,7 +1357,7 @@ public static class E2kGeometryComposer
                 {
                     propName = doc.FindShellProperty("Slab", thickness);
                     if (propName is not null) reusedSections.Add(propName);
-                    else newSlabProps[thickness] = propName = $"KOR-S{Trim(thickness)}{slabGrade}";
+                    else newSlabProps[thickness] = propName = $"KOR-S{Trim(thickness, trimFormat)}{slabGrade}";
                     slabProps[thickness] = propName;
                 }
 
@@ -1522,13 +1526,13 @@ public static class E2kGeometryComposer
         }
 
         var wallPropLines = newWallProps.Select(kv =>
-            $"  SHELLPROP  \"{kv.Value}\"  PROPTYPE  \"Wall\"  MATERIAL \"{wallMaterial}\"  MODELINGTYPE \"ShellThin\"  WALLTHICKNESS {Trim(kv.Key)}").ToList();
+            $"  SHELLPROP  \"{kv.Value}\"  PROPTYPE  \"Wall\"  MATERIAL \"{wallMaterial}\"  MODELINGTYPE \"ShellThin\"  WALLTHICKNESS {Trim(kv.Key, trimFormat)}").ToList();
         var slabPropLines = newSlabProps.Select(kv =>
-            $"  SHELLPROP  \"{kv.Value}\"  PROPTYPE  \"Slab\"  MATERIAL \"{slabMaterial}\"  MODELINGTYPE \"ShellThin\"  SLABTYPE \"Slab\"  SLABTHICKNESS {Trim(kv.Key)}").ToList();
+            $"  SHELLPROP  \"{kv.Value}\"  PROPTYPE  \"Slab\"  MATERIAL \"{slabMaterial}\"  MODELINGTYPE \"ShellThin\"  SLABTYPE \"Slab\"  SLABTHICKNESS {Trim(kv.Key, trimFormat)}").ToList();
         var framePropLines = frameProps.Select(kv =>
-            $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{columnMaterial}\"  SHAPE \"Concrete Rectangular\"  D {Trim(kv.Key.D)} B {Trim(kv.Key.W)}")
+            $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{columnMaterial}\"  SHAPE \"Concrete Rectangular\"  D {Trim(kv.Key.D, trimFormat)} B {Trim(kv.Key.W, trimFormat)}")
             .Concat(roundProps.Select(kv =>
-                $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{columnMaterial}\"  SHAPE \"Concrete Circle\"  D {Trim(kv.Key)}"))
+                $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{columnMaterial}\"  SHAPE \"Concrete Circle\"  D {Trim(kv.Key, trimFormat)}"))
             .ToList();
 
         // When the operator asks for it, copy a plate to a storey whose own drawing has no closed
@@ -2071,6 +2075,6 @@ public static class E2kGeometryComposer
         private bool Near(double ax, double ay, double bx, double by)
             => LoopGeometry.Within(Math.Sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by)), _within);
     }
-    private static string Trim(double value) => value.ToString("0.###", Inv);
-    private static string F(double value) => value.ToString("0.####", Inv);
+    private static string Trim(double value, string format) => value.ToString(format, Inv);
+    private static string F(double value, string format) => value.ToString(format, Inv);
 }
