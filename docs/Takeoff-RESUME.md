@@ -1,5 +1,16 @@
 # Takeoff — AUTHORITATIVE RESUME (read this FIRST after any compaction)
 
+> ⚠ **STALE since 2026-08-20. Read it as history, not state.** Checked against the code on 2026-10-19:
+>
+> - The verb lives in `TakeoffCli/Verbs/VectorTakeoffVerb.cs`.
+> - Reliability IS wired (`PlanEstimatePipeline.cs:82`).
+> - Core has 1,380 test methods, not 221.
+> - The `pdftoppm` step is obsolete because the CLI renders its own pages.
+> - Next steps 1-4 and 6 are done.
+>
+> The binding document is `Takeoff-Doctrine.md`. The newest recorded 31065 run is −7.0% overall,
+> with columns +135%: `docs/audit-2026-08/modules/09-engineering-tools.md`.
+
 > If you are resuming this work: read THIS file + `Takeoff-Scorecard.md` + `Takeoff-Vector-Rebuild.md`
 > before doing anything. Everything below is SETTLED. **Do NOT re-derive, re-prove, or relitigate it.**
 > The repeated failure mode is wasting a session re-discovering decisions already made here.

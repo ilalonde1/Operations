@@ -24,7 +24,8 @@ Evidence: `31065-before.png` / `31065-after.png`, rendered from
 ---
 
 **Knob:** `KOR_STEP148_ON=1` turns it ON (it is off by default).
-**Setting:** `dxf.infer-missing-floors` (bool), answerable per job.
+**Setting:** `dxf.infer-missing-floors` was PLANNED, never created. It appears 0 times in code
+(checked 2026-10-19). The only switch is the environment variable above.
 
 **Target set:** **32 of the 297 corpus sets** carry at least one storey with no floor — **130
 unfloored storeys**, of which **112 had no drawing placed on them at all**. Four sets hold 85 of
@@ -86,6 +87,10 @@ Otherwise NOTHING will ever build."*
 Two arms on the sets with her model, same denominator:
 
     takeoff corpus-gate --bisect KOR_STEP148_OFF
+
+⚠ As written this does not run (checked 2026-10-19). Step 148 was never banked, so no `KOR_STEP148_OFF`
+knob exists and the gate's bisect list does not include it. Its two arms are a build with and without
+`KOR_STEP148_ON=1`.
 
 1. Her plate area we reproduce — must rise, and the sets in §1 are where.
 2. `plates_beyond_sqft` — plate whose centroid lies outside the box of her columns on that storey.

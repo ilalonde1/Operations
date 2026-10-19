@@ -99,7 +99,8 @@ last night placed those sheets by **column registration on their own rebar** —
 the mechanism that moved 31130-01 by 69 metres. The win and the regression are the same mechanism.
 You cannot keep one and drop the other by subtraction, which is why three patches failed.
 
-⛔ **Both attempts are in `git stash`** (`stash@{0}` structural, `stash@{1}` the working-but-shifting
+⛔ **Both attempts are in `git stash`** (find them by message, not by index: the indices shift as stashes are added.
+On 2026-10-19 they were `stash@{3}` structural and `stash@{4}` the working-but-shifting
 one). Neither is on develop. Five attempts on one symptom is well past rule 10's trigger.
 
 **What would actually unblock it** — and this is the question for the audit, not another patch:
