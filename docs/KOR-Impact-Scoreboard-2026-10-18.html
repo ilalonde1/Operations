@@ -1,0 +1,391 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impact scoreboard</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head><body>
+<style>
+  .kicker { break-after: avoid; }
+  .num { text-align: right; white-space: nowrap; }
+  @media print { body { font-size: 10.6pt; } tr { break-inside: avoid; } }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Impact scoreboard · Baseline 18 October 2026</p>
+    <h1>Where the money stands today</h1>
+    <p class="hero__lede">The numbers your results will be judged against, read from Deltek and the CRM on the day you took this on. From tomorrow the morning brief records them <strong>every day</strong>; each month shows <strong>what changed in dollars</strong>.</p>
+    <div class="hero__meta">
+      <span>Owed to KOR $2.22M</span>
+      <span>Over 90 days $1.42M</span>
+      <span>DSO 159 days</span>
+      <span>30 days off DSO ≈ $419k cash</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#baseline">The baseline</a></li>
+      <li><a href="#year">The last twelve months</a></li>
+      <li><a href="#targets">Targets to March 2027</a></li>
+      <li><a href="#how">How each number is measured</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="baseline">
+      <p class="kicker">Start here</p>
+      <h2>The baseline</h2>
+      <p class="lede">Eleven numbers, each one something you can move. They are recorded every morning from 19 October; the change from these values is your record.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Measure</th><th class="num">18 Oct 2026</th><th>What moves it</th></tr></thead>
+        <tbody>
+          <tr><td>Owed to KOR (AR)</td><td class="num">$2,224,993</td><td>Collections calls, earlier invoicing</td></tr>
+          <tr><td>Owed over 60 days</td><td class="num">$1,562,177</td><td>70% of AR. A weekly chase list by partner</td></tr>
+          <tr><td>Owed over 90 days</td><td class="num">$1,417,771</td><td>64% of AR. Stop work at 90 days unpaid?</td></tr>
+          <tr><td>Owed on projects outside the active list</td><td class="num">$808,429</td><td>31103-01 alone is $502k, last invoiced Feb 2024</td></tr>
+          <tr><td>Days to collect (DSO)</td><td class="num">159 days</td><td>Everything above</td></tr>
+          <tr><td>Critical projects</td><td class="num">72 of 812</td><td>Change orders on the worst ten</td></tr>
+          <tr><td>Projects over hours budget</td><td class="num">272 of 812</td><td>Fee recovery, scope control</td></tr>
+          <tr><td>Pursuits won, CRM total</td><td class="num">305 · $43.4M fees</td><td>Closing out open fees, the inner-circle clients</td></tr>
+          <tr><td>Pursuits lost, CRM total</td><td class="num">327</td><td>Knowing why: the close-out calls</td></tr>
+          <tr><td>BD actions closed</td><td class="num">0 of 31</td><td>The quickies and the monthly</td></tr>
+          <tr><td>Meetings held</td><td class="num">1</td><td>The cadence: 2 monthlies, 6 quickies every two weeks</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="year">
+      <p class="kicker">The "before" line</p>
+      <h2>The last twelve months</h2>
+      <p class="lede">Collections have already been running ahead of invoicing: AR fell from <strong>$2.99M in March</strong> to <strong>$2.41M at the end of September</strong>, and $2.22M today. The worry is the other column: invoicing fell from <strong>$622k a year ago</strong> to <strong>$289k in September</strong>, the lowest month of the year. AR is shrinking partly because less is being billed.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Month</th><th class="num">Invoiced</th><th class="num">Collected</th><th class="num">AR at month end</th><th class="num">DSO</th></tr></thead>
+        <tbody>
+          <tr><td>Oct 2025</td><td class="num">$621,837</td><td class="num">$516,711</td><td class="num">$2,912,939</td><td class="num">185</td></tr>
+          <tr><td>Nov 2025</td><td class="num">$481,651</td><td class="num">$455,674</td><td class="num">$2,956,529</td><td class="num">191</td></tr>
+          <tr><td>Dec 2025</td><td class="num">$395,613</td><td class="num">$403,294</td><td class="num">$2,962,401</td><td class="num">194</td></tr>
+          <tr><td>Jan 2026</td><td class="num">$519,251</td><td class="num">$543,429</td><td class="num">$2,961,610</td><td class="num">191</td></tr>
+          <tr><td>Feb 2026</td><td class="num">$464,264</td><td class="num">$511,770</td><td class="num">$2,935,552</td><td class="num">190</td></tr>
+          <tr><td>Mar 2026</td><td class="num">$458,517</td><td class="num">$424,260</td><td class="num">$2,988,642</td><td class="num">193</td></tr>
+          <tr><td>Apr 2026</td><td class="num">$365,985</td><td class="num">$518,259</td><td class="num">$2,852,109</td><td class="num">185</td></tr>
+          <tr><td>May 2026</td><td class="num">$312,613</td><td class="num">$536,013</td><td class="num">$2,643,661</td><td class="num">176</td></tr>
+          <tr><td>Jun 2026</td><td class="num">$416,812</td><td class="num">$388,208</td><td class="num">$2,690,690</td><td class="num">181</td></tr>
+          <tr><td>Jul 2026</td><td class="num">$382,175</td><td class="num">$467,406</td><td class="num">$2,621,772</td><td class="num">181</td></tr>
+          <tr><td>Aug 2026</td><td class="num">$393,931</td><td class="num">$569,248</td><td class="num">$2,463,726</td><td class="num">170</td></tr>
+          <tr><td>Sep 2026</td><td class="num">$289,348</td><td class="num">$357,985</td><td class="num">$2,407,446</td><td class="num">172</td></tr>
+        </tbody>
+      </table></div>
+      <div class="box box--dont">
+        <p class="box__label">✕ Do not subtract the columns</p>
+        <p>Collected is cash received and includes GST; invoiced is fee revenue without it. Each column is right on its own, but the difference between them is not a profit or a loss.</p>
+      </div>
+    </section>
+
+    <section id="targets">
+      <p class="kicker">Proposed · you decide</p>
+      <h2>Targets to 31 March 2027</h2>
+      <p>The firm invoiced <strong>$5.10M</strong> in the last twelve months, about <strong>$14,000 a day</strong>. Every day taken off DSO is that much cash in the bank instead of in clients' hands.</p>
+      <ul class="plain">
+        <li><strong>DSO from 159 to 120 days.</strong> 39 days × $14,000 ≈ <strong>$545,000 of cash</strong>, without billing a dollar more.</li>
+        <li><strong>Over 90 days from $1.42M to under $700k.</strong> A partner owns each invoice over 90 days and reports at the quickie.</li>
+        <li><strong>31103-01's $502k settled one way or the other</strong>: collected, settled, or written off with JM's decision recorded.</li>
+        <li><strong>Invoicing back above $400k a month.</strong> September's $289k is the number that matters most for next year.</li>
+        <li><strong>Every fee older than 90 days closed</strong>: won, or who won and why.</li>
+        <li><strong>The cadence kept:</strong> 2 monthlies and 6 quickies every two weeks, and the action list moving (closed &gt; opened).</li>
+      </ul>
+    </section>
+
+    <section id="how">
+      <p class="kicker">So nobody can argue with it</p>
+      <h2>How each number is measured</h2>
+      <ul class="plain">
+        <li><strong>Invoiced and collected:</strong> Deltek LedgerAR. Invoiced = invoice lines on the revenue accounts (the ones the Financials screen's DSO uses); collected = cash receipts applied to the AR account. US jobs converted at 1.36. Check: September's $289,348 matches the Financials engine's own billing figure exactly.</li>
+        <li><strong>AR at month end:</strong> today's AR walked back through each month's change on the AR account. <strong>DSO</strong> = AR ÷ twelve months' invoicing × 365, the Financials screen's formula. Today's 159 days is that screen's figure.</li>
+        <li><strong>Aging, critical and over-budget projects:</strong> the Financials engine's own drilldowns, recorded once a day.</li>
+        <li><strong>CRM wins and losses:</strong> running totals, so a month's change is that month's decisions. Older wins and losses carry no close date, so there is no reliable BD history before today.</li>
+      </ul>
+    </section>
+  </main>
+</div>
+</body></html>

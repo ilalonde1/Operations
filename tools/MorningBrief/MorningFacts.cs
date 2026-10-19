@@ -165,6 +165,43 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         || action.OwnerKey.Equals("ian", StringComparison.OrdinalIgnoreCase)
         || action.OwnerName.Equals("Ian Lalonde", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Records today's scoreboard readings (the composer's only write besides the portfolio point) and returns the scoreboard.
+    /// A failure is reported in the fact, never thrown, so the Executive Summary facts still print.
+    /// </summary>
+    private static async Task<MorningFact> ImpactFactAsync(DeltekOdbcOptions odbc, FinancialsOptions financialsOptions,
+        ExecutiveSummaryResult result, UtilizationRow[] utilRows, DateOnly date, CancellationToken ct)
+    {
+        var notes = new List<string>();
+        IReadOnlyList<ImpactMonth> months = Array.Empty<ImpactMonth>();
+        IReadOnlyList<ImpactReading> readings = Array.Empty<ImpactReading>();
+        var arRows = result.Kpis.FirstOrDefault(k => k.Title == "AR Outstanding")?.ArOutstandingRows ?? Array.Empty<KpiArOutstandingRow>();
+        try
+        {
+            var lastClosed = ImpactHistory.LastClosedPeriod(date.ToDateTime(TimeOnly.MinValue));
+            var ledger = await ImpactHistory.LoadAsync(odbc, ImpactHistory.PeriodMonthsBefore(lastClosed, 23), ct);
+            months = ImpactHistory.Build(ledger, OrgFx.ParseUsdToCadRate(financialsOptions.BilledUsdToCadRate), arRows.Sum(r => r.Total), lastClosed);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            notes.Add($"Deltek history not read ({ex.GetType().Name}).");
+        }
+        try
+        {
+            var store = new SqlImpactStore(Connection(BdConnection));
+            var today = MorningImpact.EngineReadings(arRows, utilRows);
+            if (arRows.Count == 0) { today.Remove("ArTotal"); today.Remove("ArOver60"); today.Remove("ArOver90"); today.Remove("ArInactive"); notes.Add("AR rows unavailable; AR readings not recorded today."); }
+            foreach (var (k, v) in await store.ReadBdTotalsAsync(ct)) today[k] = v;
+            await store.RecordAsync(date, today, ct);
+            readings = await store.ListAsync(MorningImpact.Baseline, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            notes.Add($"Scoreboard readings not recorded or read ({ex.GetType().Name}).");
+        }
+        return MorningImpact.Fact(months, readings, notes.Count == 0 ? null : string.Join(" ", notes));
+    }
+
     private static async Task<IReadOnlyList<MorningFact>> MeetingFactsAsync(string name, Func<string, bool> seat, DateTimeOffset now, CancellationToken ct)
     {
         var store = new SqlBdRhythmStore(Connection(BdConnection));
@@ -208,7 +245,8 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
                     existingTrend: null, existingUtilRows: utilRows, ct: ct, trendScope: PortfolioSnapshotScope.AllActive)
                 : await exec.GetExecutiveSummaryAsync(forceRefresh: true, existingSnapshot: snap,
                     existingTrend: Array.Empty<PortfolioTrendPoint>(), existingUtilRows: utilRows, ct: ct);
-            return ExecutiveFacts(result, snap.Rows.Count, trendNote).Append(MorningPeople.PmWorkload(utilRows)).ToArray();
+            var impact = await ImpactFactAsync(odbc, financialsOptions, result, utilRows, date, ct);
+            return ExecutiveFacts(result, snap.Rows.Count, trendNote).Append(MorningPeople.PmWorkload(utilRows)).Append(impact).ToArray();
         }, ct);
         await ReadAsync(facts, "Billed $ per person, trailing 12 months", async () =>
         {
