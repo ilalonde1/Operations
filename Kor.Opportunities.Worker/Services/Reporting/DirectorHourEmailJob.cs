@@ -106,7 +106,7 @@ public sealed class DirectorHourEmailJob : IJob
             var (content, errors) = DirectorHourFile.Parse(hour.ContentJson);
             mails.Add(content is null
                 ? new Outgoing($"{(hour.Kind == "Morning" ? "Your morning" : "The BD hour")} for {day} could not be read", Note("The imported hour did not validate: " + string.Join(" ", errors)), null)
-                : new Outgoing(DirectorHourEmail.Subject(content), DirectorHourEmail.Render(content), hour.Id));
+                : new Outgoing(DirectorHourEmail.Subject(content), DirectorHourEmail.Render(content, hour.Id), hour.Id));
         }
 
         if (now.DayOfWeek == DayOfWeek.Monday && mondayActions.Count > 0 && BdLeadLists.Group(mondayActions).Count > 0)

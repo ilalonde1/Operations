@@ -218,7 +218,9 @@ public static class DirectorHourEmail
     public static string Subject(DirectorHourContent c) =>
         $"{(c.Kind == "Morning" ? "Your morning" : c.Title)} · about {DirectorHourFile.TotalMinutes(c)} minutes";
 
-    public static string Render(DirectorHourContent c)
+    /// <param name="hourId">The stored hour's id. When given, every move carries Done / Not today / Not doing links that
+    /// record the answer in KOR Operations (kor://move), so the hour can be marked from the email itself.</param>
+    public static string Render(DirectorHourContent c, long? hourId = null)
     {
         var sb = new StringBuilder();
         sb.Append("<div style=\"font-family:Segoe UI,Arial,sans-serif;font-size:15px;line-height:1.5;color:#17212c;max-width:760px\">");
@@ -239,11 +241,11 @@ public static class DirectorHourEmail
                 sb.Append("<h2 style=\"font-size:21px;margin:24px 0 8px\">").Append(E(section.Role)).Append("</h2>");
                 sb.Append("<p><b>").Append(E(section.Title)).Append("</b></p>");
                 RenderPlan(section.Plan, sb);
-                RenderMoves(section.Moves, sb);
+                RenderMoves(section.Moves, sb, hourId);
                 List("Decisions waiting on you", section.Decisions, sb);
             }
         }
-        else RenderMoves(c.Moves, sb);
+        else RenderMoves(c.Moves, sb, hourId);
 
         List("Decisions waiting on you", c.Decisions, sb);
         List("Meetings", c.Meetings, sb);
@@ -268,7 +270,7 @@ public static class DirectorHourEmail
 
     }
 
-    private static void RenderMoves(IReadOnlyList<HourMove> moves, StringBuilder sb)
+    private static void RenderMoves(IReadOnlyList<HourMove> moves, StringBuilder sb, long? hourId)
     {
         sb.Append("<h2 style=\"font-size:17px;margin:22px 0 8px\">Today's moves</h2>");
         foreach (var m in moves)
@@ -299,6 +301,16 @@ public static class DirectorHourEmail
                 foreach (var l in m.Links)
                     if (l.Url is { } url)
                         sb.Append("<a href=\"").Append(E(url)).Append("\" style=\"color:#2e4a62;margin-right:14px\">").Append(E(l.Label)).Append("</a>");
+                sb.Append("</p>");
+            }
+
+            // The answer feeds each cited card's record, which weights its ranking tomorrow.
+            if (hourId is { } id)
+            {
+                sb.Append("<p style=\"margin:10px 0 0;padding-top:8px;border-top:1px solid #dbe2e9;font-size:13px;color:#5a6876\">Mark it: ");
+                foreach (var (result, label, colour) in new[] { ("Done", "Done", "#1f6b3a"), ("NotToday", "Not today", "#8a5a00"), ("NotDoing", "Not doing", "#b3261e") })
+                    sb.Append("<a href=\"").Append(E(KorReportLinks.Move(id, m.Rank, result))).Append("\" style=\"color:").Append(colour)
+                      .Append(";font-weight:600;margin-right:16px\">").Append(label).Append("</a>");
                 sb.Append("</p>");
             }
 

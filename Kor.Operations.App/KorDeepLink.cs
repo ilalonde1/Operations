@@ -20,6 +20,24 @@ namespace Kor.Operations
     {
         public static async Task OpenAsync(string url)
         {
+            // A move answered from the 6 a.m. email: show the Director, then record (it asks why for a skip).
+            if (KorReportLinks.TryParseMove(url, out var hourId, out var rank, out var result))
+            {
+                var director = Application.Current?.Windows
+                                   .OfType<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorWindow>()
+                                   .FirstOrDefault(w => w.IsVisible)
+                               ?? AppServices.Get<Kor.Operations.App.BusinessDevelopment.Director.BdDirectorWindow>();
+                director.Show();
+                if (director.WindowState == WindowState.Minimized)
+                {
+                    director.WindowState = WindowState.Normal;
+                }
+
+                director.Activate();
+                await director.RecordMoveFromLinkAsync(hourId, rank, result).ConfigureAwait(true);
+                return;
+            }
+
             if (!KorReportLinks.TryParse(url, out var kind, out var id))
             {
                 return;

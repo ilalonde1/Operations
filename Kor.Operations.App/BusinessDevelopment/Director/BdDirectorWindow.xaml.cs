@@ -128,8 +128,51 @@ public partial class BdDirectorWindow : Window
     private async void MoveResult_Click(object sender, RoutedEventArgs e)
     {
         if (_rhythm is null || sender is not FrameworkElement { Tag: string result, DataContext: HourMoveView move }) return;
-        await RhythmActionAsync(ct => _rhythm.RecordMoveAsync(move, result, _actor, ct)).ConfigureAwait(true);
+        if (!AskMoveReason(this, result, move.Rank, out var note)) return;
+        await RhythmActionAsync(ct => _rhythm.RecordMoveAsync(move, result, _actor, ct, note)).ConfigureAwait(true);
         if (_doctrine is not null) await _doctrine.LoadAsync(_lifetime.Token).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Not today and Not doing ask why, in one optional line: the reason reaches the cited cards' records and the weekly
+    /// synthesis, where Ian's stated practice outranks the books. Done asks nothing. False when Ian cancels.
+    /// </summary>
+    internal static bool AskMoveReason(Window owner, string result, int rank, out string? note)
+    {
+        note = null;
+        if (result is not ("NotToday" or "NotDoing")) return true;
+        var dialog = new NoteDialog(result == "NotDoing" ? "Not doing" : "Not today",
+            $"Move {rank}: why? One line is enough. It teaches the brief what you skip and why (optional).", 500, singleLine: true)
+            { Owner = owner };
+        if (dialog.ShowDialog() != true) return false;
+        note = dialog.Note;
+        return true;
+    }
+
+    /// <summary>
+    /// A move answered from the 6 a.m. email (kor://move/{hour}/{rank}/{result}): ask why when it is skipped, record it as
+    /// the signed-in user, then show Today with the answer in place.
+    /// </summary>
+    public async Task RecordMoveFromLinkAsync(long hourId, int rank, string result)
+    {
+        if (!AskMoveReason(this, result, rank, out var note)) return;
+        var actor = _actor.Length > 0 ? _actor : new[] { global::Kor.Operations.OperationsApp.SignedInUserUpn,
+                AppServices.Get<UserOptions>().UserUpnOverride, Environment.UserName }
+            .First(value => !string.IsNullOrWhiteSpace(value))!.Trim();
+        try
+        {
+            await AppServices.Get<IBdRhythmStore>().RecordMoveResultAsync(hourId, rank, result,
+                string.IsNullOrWhiteSpace(note) ? null : note.Trim(), actor, _lifetime.Token).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Warning(ex, "Recording move {Rank} of hour {HourId} from a link failed.", rank, hourId);
+            MessageBox.Show(this, "That answer could not be recorded. Open Today and mark it there.", "BD Director",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        ShowView(Kor.Opportunities.Data.BdReports.Generators.KorReportLinks.DirectorToday);
+        if (_initialized) await ReloadAsync().ConfigureAwait(true);
     }
 
     /// <summary>A ticked action on Today or People closes as Done, with a one-line result; cancelling leaves it open.</summary>

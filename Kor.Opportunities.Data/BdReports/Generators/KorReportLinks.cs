@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Globalization;
+using System.Linq;
 
 namespace Kor.Opportunities.Data.BdReports.Generators;
 
@@ -20,6 +21,33 @@ public static class KorReportLinks
     public const string OpportunityKind = "opp";
     public const string PursuitKind = "pursuit";
     public const string DirectorKind = "director";
+    public const string MoveKind = "move";
+    private static readonly string[] MoveResults = { "Done", "NotToday", "NotDoing" };
+
+    /// <summary>
+    /// Records what Ian did with one move of an imported hour, from the 6 a.m. email: kor://move/{hourId}/{rank}/{result}.
+    /// Path segments, not a query string, so the address survives the shell's protocol handler intact.
+    /// </summary>
+    public static string Move(long hourId, int rank, string result) =>
+        $"kor://{MoveKind}/{hourId.ToString(CultureInfo.InvariantCulture)}/{rank.ToString(CultureInfo.InvariantCulture)}/{result}";
+
+    /// <summary>Parses a move link. Defensive like <see cref="TryParse"/>: anything malformed returns false.</summary>
+    public static bool TryParseMove(string? uri, out long hourId, out int rank, out string result)
+    {
+        hourId = 0; rank = 0; result = string.Empty;
+        if (string.IsNullOrEmpty(uri) || !uri.StartsWith("kor://", StringComparison.OrdinalIgnoreCase)
+            || !Uri.TryCreate(uri, UriKind.Absolute, out var parsed) || !string.Equals(parsed.Host, MoveKind, StringComparison.OrdinalIgnoreCase))
+            return false;
+        var parts = parsed.AbsolutePath.Trim('/').Split('/');
+        if (parts.Length != 3
+            || !long.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var h) || h <= 0
+            || !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var r) || r is < 1 or > 12)
+            return false;
+        var match = MoveResults.FirstOrDefault(m => string.Equals(m, parts[2], StringComparison.OrdinalIgnoreCase));
+        if (match is null) return false;
+        (hourId, rank, result) = (h, r, match);
+        return true;
+    }
 
     /// <summary>The BD Director's views, by the id a kor://director/{id} link carries.</summary>
     public const long DirectorToday = 1, DirectorActions = 2, DirectorMeetings = 3, DirectorReferences = 4;

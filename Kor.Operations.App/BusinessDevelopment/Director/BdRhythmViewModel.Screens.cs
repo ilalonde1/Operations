@@ -254,11 +254,11 @@ public sealed partial class BdRhythmViewModel
     }
 
     /// <summary>Records what Ian did with a move. The card folds away; a second answer replaces the first.</summary>
-    public async Task RecordMoveAsync(HourMoveView move, string result, string actor, CancellationToken ct)
+    public async Task RecordMoveAsync(HourMoveView move, string result, string actor, CancellationToken ct, string? note = null)
     {
         ArgumentNullException.ThrowIfNull(move);
         if (_hourId is not { } id) { Status = "This hour was not imported, so nothing can be recorded against it."; return; }
-        await _store.RecordMoveResultAsync(id, move.Rank, result, null, actor, ct).ConfigureAwait(true);
+        await _store.RecordMoveResultAsync(id, move.Rank, result, string.IsNullOrWhiteSpace(note) ? null : note.Trim(), actor, ct).ConfigureAwait(true);
         move.Result = result;
         Status = $"Move {move.Rank}: {move.SideText.ToLowerInvariant()}.";
         RaiseToday();
