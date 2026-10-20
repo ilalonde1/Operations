@@ -1,0 +1,462 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KOR Operating Plan</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head><body>
+<style>
+  .kicker { break-after: avoid; }
+  .num { text-align: right; white-space: nowrap; }
+  .src { font-size: .86em; color: var(--ink-soft); }
+  .strip { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; margin: .8rem 0 1.2rem; font-family: var(--mono); font-size: .78rem; }
+  .strip span { background: var(--slate-deep); color: #fff; padding: .3rem .6rem; border-radius: 6px; }
+  .strip span.bd { background: var(--accent); }
+  .strip i { color: var(--ink-faint); font-style: normal; }
+  .stages { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+  .stage { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: .8rem 1rem; box-shadow: var(--shadow); }
+  .stage h3 { margin: 0 0 .35rem; font-size: 1.02rem; display: flex; gap: .5rem; align-items: center; }
+  .stage h3 b { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent); border-radius: 5px; padding: .1rem .4rem; }
+  .stage.ops h3 b { background: var(--slate); }
+  .stage dl { margin: 0; display: grid; grid-template-columns: 5.6rem 1fr; gap: .2rem .6rem; font-size: .88rem; }
+  .stage dt { font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); padding-top: .18rem; }
+  .stage dd { margin: 0; }
+  .stage dd.gap { color: var(--crit); }
+  .breaks { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: .8rem 0 1rem; }
+  .brk { background: var(--crit-bg); border-left: 4px solid var(--crit); border-radius: 8px; padding: .7rem .9rem; }
+  .brk b { display: block; font-size: 1.15rem; }
+  .brk span { font-size: .86rem; color: var(--ink-soft); }
+  .rhythm td:first-child { font-weight: 600; white-space: nowrap; }
+  .trace { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; margin: .8rem 0; }
+  .trace div { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 8px; padding: .6rem .7rem; font-size: .86rem; }
+  .trace div b { display: block; font-family: var(--mono); font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); margin-bottom: .2rem; }
+  @media (max-width: 760px) { .stages, .breaks, .trace { grid-template-columns: 1fr; } }
+  @media print {
+    body { font-size: 8.4pt; line-height: 1.42; }
+    .toc { display: none !important; }
+    .hero__lede { max-width: none; }
+    main { padding-top: 2mm; }
+    section { padding: .45rem 0 !important; margin: 0 !important; border: 0 !important; }
+    h2 { font-size: 1.15rem !important; margin: .1rem 0 .4rem !important; }
+    .kicker { margin: 0 !important; }
+    .stages { grid-template-columns: 1fr 1fr !important; gap: .5rem; }
+    .breaks { grid-template-columns: repeat(3, 1fr) !important; gap: .5rem; }
+    .trace { grid-template-columns: repeat(4, 1fr) !important; }
+    .stage, .brk, .trace div { break-inside: avoid; box-shadow: none; }
+    .stage { padding: .45rem .65rem; }
+    .stage dl { font-size: .8rem; grid-template-columns: 4.4rem 1fr; gap: .1rem .5rem; line-height: 1.35; }
+    .stage h3 { margin-bottom: .2rem; }
+    .breaks { margin: .4rem 0 .5rem; }
+    .brk b { font-size: 1rem; }
+    .brk span { font-size: .8rem; line-height: 1.35; display: block; }
+    .table-wrap, .box { max-width: none !important; }
+    th, td { padding: .3rem .45rem !important; }
+    table { font-size: .86rem !important; }
+    ul.plain li { margin: .15rem 0 !important; }
+    .box { margin: .5rem 0 !important; padding: .6rem .8rem !important; }
+  }
+</style>
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Operating plan · Part 2 of 3 · Draft 19 October 2026</p>
+    <h1>The whole process</h1>
+    <p class="hero__lede">From the first sign of a project to cash in the bank: eight stages, who owns each one, how it is measured today, what the system does for it, and <strong>where the chain breaks</strong>.</p>
+    <div class="hero__meta">
+      <span>0 of 110 pursuits carry a fee</span>
+      <span>266 proposals never closed</span>
+      <span>174 days to collect</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">The plan</p>
+    <ol>
+      <li><a href="#breaks">Where the chain breaks</a></li>
+      <li><a href="#stages">The eight stages</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="breaks">
+      <p class="kicker">One chain, two halves</p>
+      <h2>Signal to cash</h2>
+      <div class="strip">
+        <span class="bd">1 Signal</span><i>→</i><span class="bd">2 Pursuit</span><i>→</i><span class="bd">3 Proposal</span><i>→</i><span class="bd">4 Decision</span><i>→</i><span class="bd">5 Won or lost</span><i>→</i><span>6 Delivery</span><i>→</i><span>7 Invoice</span><i>→</i><span>8 Cash</span>
+      </div>
+      <p>Orange is business development, slate is Operations. The BD half decides <strong>how much work comes in</strong>; the Operations half decides <strong>how much of it becomes cash</strong>. Part 1's goals sit on this chain: invoicing back above $400k a month needs the left half, $760k of cash from faster collection needs the right.</p>
+      <h2>Where it breaks today</h2>
+      <div class="breaks">
+        <div class="brk"><b>Pursuit → Proposal</b><span>None of the 110 live pursuits carries a fee estimate, and 61 have not been touched in 14 days or more, so nobody can say what the pipeline is worth.</span></div>
+        <div class="brk"><b>Proposal → Decision</b><span>266 proposals since 2020 were sent and never closed. Win rate is 72% when a client decides, 43% of everything sent.</span></div>
+        <div class="brk"><b>Invoice → Cash</b><span>174 days to collect. $1.41M is over 90 days, $805k of it on projects no longer active.</span></div>
+      </div>
+    </section>
+
+    <section id="stages">
+      <p class="kicker">Owner · measure · what the system does</p>
+      <h2>The eight stages</h2>
+      <div class="stages">
+        <div class="stage">
+          <h3><b>1</b>Signal</h3>
+          <dl>
+            <dt>What</dt><dd>Permits, rezonings, tenders and news about the people KOR works with.</dd>
+            <dt>Owner</dt><dd>The radar finds; the regional lead picks.</dd>
+            <dt>Today</dt><dd>1,731 new in 30 days, from 128 of 140 sources. Only you see them so far.</dd>
+            <dt>System</dt><dd>Nightly ingestion, the relevance gate, client dossiers in the Director.</dd>
+            <dt>Next step</dt><dd class="gap">Release the app to the leads (the pilot for Omar, Islam and Jim, promised on 9 October), so each lead sees the signals in their region and makes the good ones pursuits.</dd>
+          </dl>
+        </div>
+        <div class="stage">
+          <h3><b>2</b>Pursuit</h3>
+          <dl>
+            <dt>What</dt><dd>A named project or client with an owner and a next step.</dd>
+            <dt>Owner</dt><dd>Regional lead: Omar Vancouver, Islam Alberta, Conor Okanagan, Rory Island, Jim US; JM.</dd>
+            <dt>Today</dt><dd>110 live; 0 carry a fee; 61 untouched for 14 days or more.</dd>
+            <dt>System</dt><dd>The CRM, and a weekly roll-up per owner: first touch by day 7, keep warm every 21 days, next step when due.</dd>
+            <dt>Weak point</dt><dd class="gap">Calls and meetings are rarely logged, so most items read "first touch".</dd>
+          </dl>
+        </div>
+        <div class="stage">
+          <h3><b>3</b>Proposal</h3>
+          <dl>
+            <dt>What</dt><dd>Go or no-go, then the fee proposal (filed in Project Opportunities\Pending).</dd>
+            <dt>Owner</dt><dd>The lead, with the engineer who will run the job.</dd>
+            <dt>Today</dt><dd>None of the 110 live pursuits is a tender, so no go/no-go is on record.</dd>
+            <dt>System</dt><dd>For tenders: go/no-go 2 days after it opens, draft review a week before the deadline, submission check 2 days before.</dd>
+            <dt>Weak point</dt><dd class="gap">Questions deadlines and addenda are not captured, so the system cannot warn on them.</dd>
+          </dl>
+        </div>
+        <div class="stage">
+          <h3><b>4</b>Decision</h3>
+          <dl>
+            <dt>What</dt><dd>Chasing the client until they decide.</dd>
+            <dt>Owner</dt><dd>The lead.</dd>
+            <dt>Today</dt><dd>43% of sent proposals won; 266 never closed. Leduc was closed as a no-bid on 16 October because its submission was never recorded.</dd>
+            <dt>System</dt><dd>Follow-up at 14 days, chase the decision at 45, both in the owner's roll-up.</dd>
+            <dt>Weak point</dt><dd class="gap">The win/loss review found no standing close-out step before this month.</dd>
+          </dl>
+        </div>
+        <div class="stage">
+          <h3><b>5</b>Won or lost</h3>
+          <dl>
+            <dt>What</dt><dd>Won: hand the job to delivery. Lost: who won, and why.</dd>
+            <dt>Owner</dt><dd>The lead, handing to the project manager.</dd>
+            <dt>Today</dt><dd>Of 291 lost or unanswered proposals with a comment, fewer than 30 say why.</dd>
+            <dt>System</dt><dd>Hand-off and loss-reason asks within 30 days, in the roll-up.</dd>
+            <dt>Weak point</dt><dd class="gap">Loss reasons are what Part 1's "how KOR wins" should learn from, and they are mostly missing.</dd>
+          </dl>
+        </div>
+        <div class="stage ops">
+          <h3><b>6</b>Delivery</h3>
+          <dl>
+            <dt>What</dt><dd>Designing the job inside its fee.</dd>
+            <dt>Owner</dt><dd>The project manager (12 PMs, 814 active projects); JM and Jim in the COO seat.</dd>
+            <dt>Today</dt><dd>272 over their hours budget; 72 critical; utilization 70.8%.</dd>
+            <dt>System</dt><dd>The Financials engine, the COO monthly, the COO moves in your morning hour.</dd>
+            <dt>Weak point</dt><dd class="gap">Proposed: an extra-service letter before a project passes its hours budget, tracked as a step, not found afterwards.</dd>
+          </dl>
+        </div>
+        <div class="stage ops">
+          <h3><b>7</b>Invoice</h3>
+          <dl>
+            <dt>What</dt><dd>Billing what has been earned, on time.</dd>
+            <dt>Owner</dt><dd>The project manager.</dd>
+            <dt>Today</dt><dd>$367k a month, April to September; 94 projects bill slower than they burn hours.</dd>
+            <dt>System</dt><dd>The billing-lag list from the Financials engine, in the morning brief.</dd>
+            <dt>Weak point</dt><dd class="gap">Proposed: the billing-lag list is reviewed at each PM's quickie, not only read by you.</dd>
+          </dl>
+        </div>
+        <div class="stage ops">
+          <h3><b>8</b>Cash</h3>
+          <dl>
+            <dt>What</dt><dd>Collecting what has been billed.</dd>
+            <dt>Owner</dt><dd>Proposed: a named partner for every invoice over 90 days.</dd>
+            <dt>Today</dt><dd>174 days to collect; $2.26M owed; $1.41M over 90 days.</dd>
+            <dt>System</dt><dd>The scoreboard records it every morning; the COO monthly pre-read lists the largest.</dd>
+            <dt>Weak point</dt><dd class="gap">The collections module is barely built, so chasing is by hand.</dd>
+          </dl>
+        </div>
+      </div>
+      <p class="src">Sources: CRM and ingestion counts read 19 October 2026 (opportunities.Opportunities, CrmEngagements, OpportunitySources); docs/KOR-Management-Win-Loss-2026-10-18.md; the morning brief of 19 October (Financials engine); the pursuit touchstone rules (migration 371).</p>
+    </section>
+  </main>
+</div>
+</body></html>
