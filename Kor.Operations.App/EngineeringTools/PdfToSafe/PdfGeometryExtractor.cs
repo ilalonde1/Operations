@@ -78,7 +78,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var result = PdfPlanReader.Read(doc, scaleDenominator, pageNumber, annotationsOnly,
                 slabMinDiagonalMm, lineMinLengthMm, excludeGridLines);
             var page = doc.GetPage(pageNumber);
-            result.TextAnnotations = PdfGeometryParser.ExtractMarkupTextAnnotations(page, scale);
+            result.TextAnnotations = PdfGeometryParser.ExtractMarkupTextAnnotations(doc, page, scale);
 
             return result;
         }

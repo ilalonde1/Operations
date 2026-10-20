@@ -21,7 +21,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         double Y,
         double LeftX,
         double BottomY,
-        double HeightMm)
+        double HeightMm,
+        double RotationDeg = 0.0,
+        bool HiddenOnSheet = false,
+        double FitWidthMm = 0.0)
     {
         public TextAnnotation(string text, double x, double y)
             : this(text, x, y, x, y, 0.0)

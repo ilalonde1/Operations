@@ -43,7 +43,7 @@ public static class DrawingIntake
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(request.Options);
         ArgumentNullException.ThrowIfNull(facts);
-        return ReadPage(doc.GetPage(page), request, facts, pdfSha256);
+        return ReadPage(doc, doc.GetPage(page), request, facts, pdfSha256);
     }
 
     /// <summary>
@@ -52,27 +52,7 @@ public static class DrawingIntake
     /// two different scales, in which case the sheet has said nothing usable and null is returned.
     /// </summary>
     internal static int? StatedScaleDenominator(VectorPageReader.PageContent full)
-    {
-        string? note = null;
-        try { note = SheetScaleReader.FromPage(full); } catch { }
-        if (note is null)
-        {
-            bool conflict = false;
-            try { conflict = SheetScaleReader.StatesConflictingScales(full); } catch { }
-            if (!conflict)
-            {
-                var fields = TitleBlockFields.Read(full);
-                note = SheetScaleReader.RatioOf(fields.TryGetValue("SCALE", out var sf) ? sf : null);
-            }
-        }
-        if (note is null) return null;
-        // metres per point at 72 dpi → the denominator: 1 pt is 25.4/72 mm on paper
-        double? metresPerPoint = PlanGeometry.MetresPerPixel(note, 72);
-        if (metresPerPoint is not > 0) return null;
-        double denominator = metresPerPoint.Value * 1000.0 / PdfToSafeConstants.PointsToMm;
-        int rounded = (int)Math.Round(denominator);
-        return rounded >= 1 && rounded <= 5000 ? rounded : null;
-    }
+        => SheetScaleReader.StatedDenominator(full);
 
     /// <summary>The smallest column any schedule of the sheet or the set declares, as an area in mm², or null where nothing is declared.</summary>
     private static double? SmallestDeclaredArea(IReadOnlyList<ColumnScheduleRow> own, IReadOnlyList<ColumnScheduleRow>? set)
@@ -104,7 +84,7 @@ public static class DrawingIntake
         return flags;
     }
 
-    private static SheetRecord ReadPage(Page page, IntakeRequest request, DocumentFacts facts, string? pdfSha256)
+    private static SheetRecord ReadPage(PdfDocument doc, Page page, IntakeRequest request, DocumentFacts facts, string? pdfSha256)
     {
         int pageNumber = page.Number;
         var options = request.Options;
@@ -270,7 +250,7 @@ public static class DrawingIntake
             if (!request.MarkupOnly)
                 geometry.GridAxes.AddRange(grid.Axes.Select(a => new GridAxis(a.Name, a.Vertical, a.At * scaleFactor)));
             if (request.MarkupOnly)
-                geometry.TextAnnotations.AddRange(MarkupText.ExtractMarkupTextAnnotations(page, scaleFactor));
+                geometry.TextAnnotations.AddRange(MarkupText.ExtractMarkupTextAnnotations(doc, page, scaleFactor));
         }
         // a dimension string is typed text with a value; between grid axes it is the drawing's own
         // check on the scale (brief 27, 2026-09-08)

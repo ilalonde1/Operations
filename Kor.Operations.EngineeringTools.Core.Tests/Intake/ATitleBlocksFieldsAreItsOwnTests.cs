@@ -17,6 +17,38 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// </summary>
 public class ATitleBlocksFieldsAreItsOwnTests
 {
+    [Fact]
+    public void AScaleSetUnderItsLabelIsTheScale()
+    {
+        const string scale = "1/8\" = 1'-0\"";
+        var words = Line("DO NOT SCALE THE DRAWINGS.", 3160, 2300, 8.1)
+            .Concat(Line("SCALE", 3160, 200, 8.1))
+            .Concat(Line(scale, 3160, 183, 8.1));
+        var page = Page(3456, 2592, words);
+
+        Assert.Equal(scale, TitleBlockFields.Read(page)["SCALE"]);
+        Assert.Equal(96, SheetScaleReader.StatedDenominator(page));
+    }
+
+    [Fact]
+    public void AWordInASentenceIsNotAFieldLabel()
+    {
+        var page = Page(3456, 2592, Line("DO NOT SCALE THE DRAWINGS.", 3160, 2300, 8.1));
+
+        Assert.DoesNotContain("SCALE", TitleBlockFields.Read(page).Keys);
+    }
+
+    [Theory]
+    [InlineData("DRAWN BY: AB  CHK'D BY: CD")]
+    [InlineData("DRAWN BY : AB  CHK'D BY : CD")]
+    public void AMidLineLabelWithItsColonIsStillALabel(string line)
+    {
+        var fields = TitleBlockFields.Read(Page(3456, 2592, Line(line, 3160, 200, 8.1)));
+
+        Assert.Equal("AB", fields["DRAWN BY"]);
+        Assert.Equal("CD", fields["CHK'D BY"]);
+    }
+
     /// <summary>
     /// 30878-02 p35. WHAT THIS COVERS: PROJ. # and DRAWING NUMBER end the roof title;
     /// the brief's companion office labels also bound a field. WHAT IT DOES NOT: reproduce

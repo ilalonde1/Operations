@@ -252,6 +252,7 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["ModelRender.cs:pad"] = Rule("the render's padding"),
         ["ModelRender.cs:head"] = Rule("the render's header height"),
         ["PdfToSafeConstants.cs:PointsToMm"] = Rule("a unit: 72 points to the inch"),
+        ["MarkupText.cs:HelveticaCapHeight"] = Rule("a font fact: Helvetica's AFM CapHeight 718 per 1000 em"),
         ["PublishDiscovery.cs:SearchDepth"] = Rule("how deep under the model folder a set may sit"),
 
         // ---- another product's settings sharing PdfToSafeConstants.cs (the SAFE/WPF side; plan §7) ----

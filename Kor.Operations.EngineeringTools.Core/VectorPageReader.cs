@@ -491,6 +491,33 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return true;
         }
 
+        /// <summary>An appearance stream's bytes, inflated when it is Flate-encoded — the only filter
+        /// Bluebeam writes on markup appearances. Shared with <c>MarkupText</c>.</summary>
+        internal static byte[] DecodeStream(StreamToken stream)
+        {
+            byte[] rawData = stream.Data.ToArray();
+            string? filterName = null;
+            if (stream.StreamDictionary.Data.TryGetValue("Filter", out var filterToken))
+            {
+                filterName = filterToken switch
+                {
+                    NameToken n => n.Data,
+                    ArrayToken a => a.Data.OfType<NameToken>().FirstOrDefault()?.Data,
+                    _ => null
+                };
+            }
+
+            if (!string.Equals(filterName, "FlateDecode", StringComparison.OrdinalIgnoreCase))
+                return rawData;
+
+            using var ms = new MemoryStream(rawData);
+            ms.ReadByte(); ms.ReadByte();
+            using var ds = new DeflateStream(ms, CompressionMode.Decompress);
+            using var result = new MemoryStream();
+            ds.CopyTo(result);
+            return result.ToArray();
+        }
+
         private static List<(double X, double Y)> ReadAppearanceGeometry(DictionaryToken dict)
         {
             var pts = new List<(double X, double Y)>();
@@ -507,32 +534,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 if (streamDict.Data.TryGetValue("BBox", out var bboxToken) && bboxToken is ArrayToken bboxArr)
                     bbox = bboxArr.Data.OfType<NumericToken>().Select(n => (double)n.Data).ToArray();
 
-                byte[] rawData = stream.Data.ToArray();
-                string? filterName = null;
-                if (streamDict.Data.TryGetValue("Filter", out var filterToken))
-                {
-                    filterName = filterToken switch
-                    {
-                        NameToken n => n.Data,
-                        ArrayToken a => a.Data.OfType<NameToken>().FirstOrDefault()?.Data,
-                        _ => null
-                    };
-                }
-
-                byte[] decoded;
-                if (string.Equals(filterName, "FlateDecode", StringComparison.OrdinalIgnoreCase))
-                {
-                    using var ms = new MemoryStream(rawData);
-                    ms.ReadByte(); ms.ReadByte();
-                    using var ds = new DeflateStream(ms, CompressionMode.Decompress);
-                    using var result = new MemoryStream();
-                    ds.CopyTo(result);
-                    decoded = result.ToArray();
-                }
-                else
-                {
-                    decoded = rawData;
-                }
+                byte[] decoded = DecodeStream(stream);
 
                 string content = System.Text.Encoding.ASCII.GetString(decoded);
 

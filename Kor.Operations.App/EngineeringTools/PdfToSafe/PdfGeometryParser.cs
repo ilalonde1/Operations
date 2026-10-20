@@ -48,9 +48,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             try
             {
                 var page = VectorPageReader.ReadPage(filePath, pageNumber);
-                string? titleNote = SheetScaleReader.FromPage(page);
-                if (DenominatorFromScaleNote(titleNote) is int titleDenominator)
+                if (SheetScaleReader.StatedDenominator(page) is int titleDenominator)
                 {
+                    var fields = Kor.Operations.EngineeringTools.Intake.TitleBlockFields.Read(page);
+                    string? titleNote = fields.TryGetValue("SCALE", out var fieldNote)
+                        ? fieldNote : SheetScaleReader.FromPage(page);
                     return new PdfScaleDetection(
                         PdfScaleSource.TitleBlock,
                         titleDenominator,
@@ -133,8 +135,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return result;
         }
 
-        public static List<TextAnnotation> ExtractMarkupTextAnnotations(Page page, double scale)
-            => MarkupText.ExtractMarkupTextAnnotations(page, scale);
+        public static List<TextAnnotation> ExtractMarkupTextAnnotations(UglyToad.PdfPig.PdfDocument document, Page page, double scale)
+            => MarkupText.ExtractMarkupTextAnnotations(document, page, scale);
 
         public static Dictionary<(byte R, byte G, byte B), double> ExtractThicknessHints(
             string filePath,

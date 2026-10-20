@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Kor.Operations.EngineeringTools.Intake;
+using Kor.Operations.EngineeringTools.PdfToSafe;
 
 namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 {
@@ -63,6 +65,33 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         {
             var (values, _) = Candidates(page);
             return values.Count > 1 && Conflicting(values);
+        }
+
+        /// <summary>
+        /// The sheet's stated scale denominator, from its scale note or labelled SCALE field.
+        /// Conflicting title-block scales prevent the field fallback; absent or unusable scales return null.
+        /// </summary>
+        public static int? StatedDenominator(VectorPageReader.PageContent? page)
+        {
+            string? note = null;
+            try { note = FromPage(page); } catch { }
+            if (note is null)
+            {
+                bool conflict = false;
+                try { conflict = StatesConflictingScales(page); } catch { }
+                if (!conflict)
+                {
+                    var fields = TitleBlockFields.Read(page);
+                    note = RatioOf(fields.TryGetValue("SCALE", out var sf) ? sf : null);
+                }
+            }
+            if (note is null) return null;
+            // metres per point at 72 dpi → the denominator: 1 pt is 25.4/72 mm on paper
+            double? metresPerPoint = PlanGeometry.MetresPerPixel(note, 72);
+            if (metresPerPoint is not > 0) return null;
+            double denominator = metresPerPoint.Value * 1000.0 / PdfToSafeConstants.PointsToMm;
+            int rounded = (int)Math.Round(denominator);
+            return rounded >= 1 && rounded <= 5000 ? rounded : null;
         }
 
         private static bool Conflicting(List<double> values) => values.Any(v => Math.Abs(v - values[0]) / values[0] > 0.01);

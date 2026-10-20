@@ -122,7 +122,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 PdfToSafeConstants.DefaultSlabMinDiagonalMm,
                 PdfToSafeConstants.DefaultLineMinLengthMm,
                 excludeGridLines: false);
-            result.TextAnnotations = PdfGeometryParser.ExtractMarkupTextAnnotations(page, scale);
+            result.TextAnnotations = PdfGeometryParser.ExtractMarkupTextAnnotations(doc, page, scale);
 
             sw.WriteLine("=== CLASSIFIED GEOMETRY ===");
             sw.WriteLine($"  Slabs: {result.Slabs.Count}");

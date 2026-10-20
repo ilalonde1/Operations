@@ -17,8 +17,10 @@ namespace Kor.Operations.EngineeringTools.Intake;
 /// which on 31138 was the architect's name, then the sheet number, then "Location:". Reading the
 /// field under the label the drafter wrote is not a heuristic.
 ///
-/// WHAT IT COVERS: the labels below, matched as a whole token or two anywhere in a line in the
-/// right fifth of the page, with the trailing colon ignored; a value beside the label on its line,
+/// WHAT IT COVERS: the labels below, matched as a whole token or two at line start, or later in the
+/// line when a column gap (two text heights) separates it, another label precedes it, or a colon
+/// follows it — a label inside a sentence is words, not a field — in the right fifth of the page;
+/// a value beside the label on its line,
 /// else the lines under it until the next label. Every value is the joined text of its lines.
 /// WHAT IT DOES NOT: blocks without these labels (31065's pdfFactory set, 31202's San Diego block)
 /// yield an empty dictionary and the callers fall back to what they did before; a label whose value
@@ -82,7 +84,7 @@ public static class TitleBlockFields
 
         var lines = ReadingLines(tokens);
 
-        // Label instances: at any position in a line, one or two tokens spelling a label — or a run of single
+        // Label instances: one or two tokens spelling a label — or a run of single
         // letters spelling one. A LETTER-SPACED LABEL IS A LABEL (intake step 86, 2026-09-16): 30980's block sets
         // its labels one letter per token, "S H E E T  T I T L E", "D R A W I N G  N O.", "P R O J E C T", and
         // matched token by token none of them was a label, so the empty title box under SHEET TITLE was never seen
@@ -100,6 +102,18 @@ public static class TitleBlockFields
                 string? hit = Labels.FirstOrDefault(x => Clean(x) == two);
                 int span = 2;
                 if (hit is null) { hit = Labels.FirstOrDefault(x => Clean(x) == one); span = 1; }
+                // A mid-line label needs a column gap (two token heights), a preceding label, or its colon.
+                // A105's "DO NOT SCALE THE DRAWINGS." has only word spaces; 30878's
+                // "PROJ. #  30878-02  DRAWING NUMBER" puts DRAWING NUMBER in a new column.
+                // Line-start labels and letter-spaced runs below are unchanged.
+                if (hit is not null && i > 0)
+                {
+                    bool columnGap = l[i].MinX - l[i - 1].MaxX >= 2.0 * Math.Max(l[i - 1].Height, l[i].Height);
+                    bool afterLabel = labels.Any(lab => lab.Line == li && lab.To == i - 1);
+                    bool hasColon = l[i + span - 1].Text.TrimEnd().EndsWith(":", StringComparison.Ordinal)
+                        || (i + span < l.Count && l[i + span].Text.Trim() == ":");
+                    if (!columnGap && !afterLabel && !hasColon) continue;
+                }
                 if (hit is null && one.Length == 1 && char.IsLetter(one[0]))
                 {
                     // the letters of a letter-spaced label stand within two heights of each other (30980: 9.3 pt apart

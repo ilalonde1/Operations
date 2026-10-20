@@ -275,13 +275,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (pts.Count >= 3) xFootings.Add(pts);
             }
 
-            var xText = new List<(string Text, double X, double Y, double HeightMm)>();
+            var xText = new List<(string Text, double X, double Y, double HeightMm, double RotationDeg, bool Hidden, double FitWidthMm)>();
             foreach (var annotation in geometry.TextAnnotations)
             {
                 string clean = TextForDxf(annotation.Text);
                 double px = annotation.LeftX - cx, py = annotation.BottomY - cy;
                 if (clean.Length > 0 && Ok(px, py))
-                    xText.Add((clean, px, py, annotation.HeightMm));
+                    xText.Add((clean, px, py, annotation.HeightMm, annotation.RotationDeg, annotation.HiddenOnSheet, annotation.FitWidthMm));
             }
 
             double bMinX = double.MaxValue, bMinY = double.MaxValue;
@@ -318,6 +318,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             G(0, "ENDSEC");
 
             G(0, "SECTION"); G(2, "TABLES");
+            // A105's markup opened on an empty origin: AutoCAD opens on *ACTIVE, not $EXTMIN/$EXTMAX.
+            // Frame the existing extents without moving the drawing or changing its page origin.
+            G(0, "TABLE"); G(2, "VPORT"); G(70, "1");
+            G(0, "VPORT"); G(2, "*ACTIVE"); G(70, "0");
+            Num(10, 0.0); Num(20, 0.0);
+            Num(11, 1.0); Num(21, 1.0);
+            Num(12, (bMinX + bMaxX) / 2.0); Num(22, (bMinY + bMaxY) / 2.0);
+            Num(13, 0.0); Num(23, 0.0); Num(14, 1.0); Num(24, 1.0); Num(15, 0.0); Num(25, 0.0);
+            Num(16, 0.0); Num(26, 0.0); Num(36, 1.0);
+            Num(17, 0.0); Num(27, 0.0); Num(37, 0.0);
+            Num(40, 1.1 * Math.Max(bMaxY - bMinY, (bMaxX - bMinX) / 1.6));
+            Num(41, 1.6);
+            Num(42, 50.0); Num(43, 0.0); Num(44, 0.0); Num(50, 0.0); Num(51, 0.0);
+            G(71, "0"); G(72, "100"); G(73, "1"); G(74, "3"); G(75, "0"); G(76, "0"); G(77, "0"); G(78, "0");
+            G(0, "ENDTAB");
             G(0, "TABLE"); G(2, "LTYPE"); G(70, "1");
             G(0, "LTYPE"); G(2, "CONTINUOUS"); G(70, "0"); G(3, "Solid line"); G(72, "65"); G(73, "0"); G(40, "0.0");
             G(0, "ENDTAB");
@@ -460,8 +475,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 for (int i = 0; i < xWallColours.Count; i++) Note(xWallColours[i], xWallMarkup[i]);
             }
 
-            bool hasText = xText.Count > 0;
+            bool hasText = xText.Any(t => !t.Hidden);
             string textLayer = layerByColour ? "PDF-TEXT" : "TEXT";
+            // A markup note the sheet does not draw (Bluebeam keeps it in the popup) is kept, on a layer
+            // that opens switched off, so the DXF looks like the sheet and the note is one click away.
+            bool hasHiddenNotes = xText.Any(t => t.Hidden);
+            const string hiddenNotesLayer = "MARKUP-NOTES";
             // the named grid axes, one LINE and two TEXTs each, on a layer the ETABS side recognises
             // as a grid by name (GridAlignment.LooksLikeAGridLayer); never mapped to a KOR layer
             bool hasGrid = geometry.GridAxes.Count > 0;
@@ -472,7 +491,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // recognises by the word MATCH (MatchLineSheetJoin.DefaultLayerPatterns)
             bool hasMatch = geometry.MatchLines.Count > 0;
             string matchLayer = korLayers ? "KOR_MATCHLINE" : "MATCHLINE";
-            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + (hasText ? 1 : 0) + (hasGrid ? 1 : 0) + (hasFootings ? 1 : 0) + (hasMatch ? 1 : 0);
+            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + (hasText ? 1 : 0) + (hasHiddenNotes ? 1 : 0) + (hasGrid ? 1 : 0) + (hasFootings ? 1 : 0) + (hasMatch ? 1 : 0);
 
             G(0, "TABLE"); G(2, "LAYER"); G(70, layerCount.ToString(ic));
             void WL(string n, int c) { G(0, "LAYER"); G(2, n); G(70, "0"); G(62, c.ToString()); G(6, "CONTINUOUS"); }
@@ -492,6 +511,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
             if (hasText) WL(textLayer, 7);
+            if (hasHiddenNotes) WL(hiddenNotesLayer, -7);   // R12: a negative colour is a layer turned off
             if (hasGrid) WL(gridLayer, 8);
             // declared like the entities are written (audit F6: FOOTING polylines had no table entry)
             if (hasFootings) WL(footingLayer, NearestAci(black));
@@ -587,17 +607,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     false);
             }
 
-            void WriteText(string text, double x, double y, double heightMm)
+            void WriteText(string text, double x, double y, double heightMm, double rotationDeg, string layer, double fitWidthMm)
             {
-                G(0, "TEXT"); G(8, textLayer);
+                G(0, "TEXT"); G(8, layer);
                 G(62, "7");
                 Num(10, x); Num(20, y); Num(30, 0);
                 Num(40, heightMm > 0 ? heightMm : 250.0);
                 G(1, text);
+                if (Math.Abs(rotationDeg) > 1e-6) Num(50, rotationDeg);
+                if (fitWidthMm > 0)
+                {
+                    // Fit (72 = 5): CAD stretches or squeezes the text to run from 10/20 to 11/21, so its
+                    // own font cannot make the label longer than the sheet set it.
+                    double rad = rotationDeg * Math.PI / 180.0;
+                    G(72, "5");
+                    Num(11, x + fitWidthMm * Math.Cos(rad)); Num(21, y + fitWidthMm * Math.Sin(rad)); Num(31, 0);
+                }
             }
 
-            foreach (var (text, x, y, heightMm) in xText)
-                WriteText(text, x, y, heightMm);
+            foreach (var (text, x, y, heightMm, rotationDeg, hidden, fitWidthMm) in xText)
+                WriteText(text, x, y, heightMm, rotationDeg, hidden ? hiddenNotesLayer : textLayer, fitWidthMm);
 
             // Each named axis is a line across the drawn extent, recentred with everything else, with
             // its name at both ends — what a drafter draws, and what DxfToEtabsService aligns by.
