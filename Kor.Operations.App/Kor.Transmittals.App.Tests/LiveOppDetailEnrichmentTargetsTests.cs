@@ -19,10 +19,9 @@ public sealed class LiveOppDetailEnrichmentTargetsTests
     }
 
     [Fact]
-    public void Closed_and_dismissed_postings_are_not_read()
+    public void Closed_postings_and_ones_already_read_are_not_read()
     {
         Assert.Contains("(o.SubmissionDeadlineUtc IS NULL OR o.SubmissionDeadlineUtc > SYSDATETIMEOFFSET())", Sql);
-        Assert.Contains("o.DismissedAtUtc IS NULL", Sql);
         Assert.Contains("o.DetailEnrichedAtUtc IS NULL", Sql);
     }
 }

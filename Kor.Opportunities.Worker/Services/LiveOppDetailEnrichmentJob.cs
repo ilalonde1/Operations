@@ -144,7 +144,8 @@ internal sealed class LiveOppDetailEnrichmentJob : IJob
     ///      documents and contact are what the bid team needs. New-only (Status IN (0,1)) left Banff Centre unread.
     ///   2. A posting whose deadline has passed is not read: the batch was spent on closed tenders, soonest-closing first.
     ///   3. Then soonest-closing first, as before; an opportunity with no deadline (development applications) sorts with them.
-    /// Dismissed opportunities are never read.
+    /// This is NOT the actionable pool (it includes owned opportunities on purpose), so it does not filter dismissal: doctrine
+    /// D11 keeps that predicate in vw_ActionableOpportunities, and reading a dismissed posting's detail does no harm.
     /// </summary>
     internal const string TargetsSql = @"
 SELECT TOP (@batch) o.Id, o.OpportunityKey, o.Name, obs.Url
@@ -156,7 +157,6 @@ CROSS APPLY (
     ORDER BY x.IsActive DESC, x.IngestedAtUtc DESC
 ) obs
 WHERE o.Status IN (0, 1, 4)
-  AND o.DismissedAtUtc IS NULL
   AND o.DetailEnrichedAtUtc IS NULL
   AND (o.SubmissionDeadlineUtc IS NULL OR o.SubmissionDeadlineUtc > SYSDATETIMEOFFSET())
   AND obs.Url LIKE @host
