@@ -65,6 +65,19 @@ public sealed class AlbertaPurchasingScraperTests : IAsyncLifetime
         Assert.Empty(IngestionRunDiagnostics.Drain());
     }
 
+    [Fact]
+    public async Task LiveCards_TakeTheBuyerAndSummaryFromTheCard_NotTheSourceName()
+    {
+        var rows = await ScrapeAsync(Fixture());
+        Assert.Equal("Infrastructure", rows[0].Buyer);
+        Assert.Equal("Alberta Electric System Operator", rows[1].Buyer);
+        Assert.All(rows, r => Assert.False(string.IsNullOrWhiteSpace(r.Description)));
+
+        // A card without the organisation line falls back to the source-level buyer, never to nothing.
+        var bare = await ScrapeAsync(Fixture().Replace("class=\"fg-text\"", "class=\"gone\""));
+        Assert.All(bare, r => Assert.Equal("APC_Test", r.Buyer));
+    }
+
     [Theory]
     [InlineData("missing-field")]
     [InlineData("bad-date")]

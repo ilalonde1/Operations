@@ -258,12 +258,18 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
             }
 
             var linkText = NormalizeText(await link.InnerTextAsync().ConfigureAwait(false));
+            // Each card names its contracting organisation and carries the posting's summary; the source-level buyer
+            // ("Government of Alberta (APC)") is only the fallback when a card does not.
+            var card = await link.QuerySelectorAsync("xpath=ancestor::apc-opportunity-search-result[1]").ConfigureAwait(false);
+            // The organisation is the element whose class is exactly "fg-text"; the posting-type header above it also
+            // carries fg-text among its classes, so ".fg-text" would read "Open & Competitive Opportunity".
+            var cardBuyer = await CardTextAsync(card, "[class='fg-text']").ConfigureAwait(false);
             result.Add(new OpportunityCandidate
             {
                 Title = linkText,
-                Buyer = buyer,
+                Buyer = cardBuyer ?? buyer,
                 Url = url,
-                Description = null,
+                Description = await CardTextAsync(card, ".search-result__description").ConfigureAwait(false),
                 PostedDateUtc = null,
                 SubmissionDeadlineUtc = await FindDeadlineAsync(link).ConfigureAwait(false),
                 ExternalReference = externalReference,
@@ -273,6 +279,23 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
         }
 
         return result;
+    }
+
+    private static async Task<string?> CardTextAsync(IElementHandle? card, string selector)
+    {
+        if (card is null)
+        {
+            return null;
+        }
+
+        var element = await card.QuerySelectorAsync(selector).ConfigureAwait(false);
+        if (element is null)
+        {
+            return null;
+        }
+
+        var text = NormalizeText(await element.InnerTextAsync().ConfigureAwait(false));
+        return string.IsNullOrWhiteSpace(text) ? null : text;
     }
 
     private static string? ParseExternalReference(string? href)
