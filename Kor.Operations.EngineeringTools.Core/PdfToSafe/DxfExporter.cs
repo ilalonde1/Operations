@@ -11,6 +11,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
     public static class DxfExporter
     {
+        /// <summary>The layer an opening the page read found is carried on into a markup-only read (step 168): the
+        /// classifier cuts each closed ring on it in whatever floor holds it.</summary>
+        public const string CarriedOpeningLayer = "KOR_C_OPENING-CARRIED";
+        /// <summary>The layer a carried opening the page's words call a void (OPEN TO BELOW) goes on (step 168): the composer
+        /// cuts it with a column standing in it - the words, not an X round the column, said it is open.</summary>
+        public const string CarriedVoidLayer = "KOR_C_OPENING-VOID";
+
         /// <summary>
         /// The layers this exporter writes for what is NOT a member: linework left as lines (BEAM),
         /// the named axes (GRID), match lines, wall-type tags and partition footprints. Geometry on
@@ -18,7 +25,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         public static readonly IReadOnlySet<string> NonMemberLayers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "BEAM", "GRID", "KOR_MATCHLINE", "KOR_WALLTYPE", "KOR_PARTITION", "TEXT",
+            "BEAM", "GRID", "KOR_MATCHLINE", "KOR_WALLTYPE", "KOR_PARTITION", "TEXT", CarriedOpeningLayer, CarriedVoidLayer,
         };
 
         // Encoding.GetEncoding(1252) in Export needs the code-page provider, which .NET does not
@@ -90,11 +97,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             bool layerByColour = false,
             IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
             bool korLayers = false,
-            PlanClassificationOptions? classification = null)
+            PlanClassificationOptions? classification = null,
+            IReadOnlyDictionary<(byte R, byte G, byte B), string>? markupElementTypes = null)
         {
             var lines = new List<string>();
             using var sw = new LineWriter(lines);
-            Export(geometry, sw, excludedSlabs, excludedLines, excludedColumns, excludedColors, layerByColour, colorSettings, korLayers, classification);
+            Export(geometry, sw, excludedSlabs, excludedLines, excludedColumns, excludedColors, layerByColour, colorSettings, korLayers, classification, markupElementTypes);
             return lines;
         }
 
@@ -117,7 +125,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             bool layerByColour,
             IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings,
             bool korLayers,
-            PlanClassificationOptions? classification)
+            PlanClassificationOptions? classification,
+            IReadOnlyDictionary<(byte R, byte G, byte B), string>? markupElementTypes = null)
         {
             double totalWeight = 0.0, sumX = 0.0, sumY = 0.0;
             foreach (var pts in geometry.Slabs)
@@ -274,6 +283,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var pts = FilterPts(Ctr(footing.Outline.ToList()));
                 if (pts.Count >= 3) xFootings.Add(pts);
             }
+            // the page read's openings carried into a markup-only read (step 168), on a layer of their own
+            var xCarried = new List<List<(double X, double Y)>>();
+            foreach (var o in geometry.CarriedOpenings)
+            {
+                var pts = FilterPts(Ctr(o));
+                if (pts.Count >= 3) xCarried.Add(pts);
+            }
+            var xVoids = new List<List<(double X, double Y)>>();
+            foreach (var o in geometry.CarriedVoids)
+            {
+                var pts = FilterPts(Ctr(o));
+                if (pts.Count >= 3) xVoids.Add(pts);
+            }
 
             var xText = new List<(string Text, double X, double Y, double HeightMm, double RotationDeg, bool Hidden, double FitWidthMm)>();
             foreach (var annotation in geometry.TextAnnotations)
@@ -428,6 +450,38 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return markup ? name + "-MARKUP" : name;
             }
 
+            // THE ENGINEER'S INK DECLARES WHAT IT IS (step 152, 2026-10-19). A markup's colour is the engineer's statement of
+            // what the member is; on a dropped-in PDF nobody sets the window's per-colour type, so the declaration comes from
+            // dxf.pdf.markup-structure-colours. Markup only: a page line of the same colour is the drawing's.
+            //
+            // A DECLARATION ENDING IN "?" IS AN ASSUMPTION (2026-10-19): 143 E 3rd's L1 carries yellow bands round its perimeter
+            // and down its core, and nothing - not the sheet, not 205 of the engineer's own marked-up files (87 yellow shapes,
+            // 85 of them highlight boxes) - says what yellow is. Read as walls, on a layer whose name says ASSUMED, so the
+            // report's own layer line ("...-WALL-MARKUP-ASSUMED -> walls") states the guess where the engineer reads it.
+            //
+            // A DECLARATION "<TYPE>-BELOW" IS STRUCTURE ARRIVING FROM THE STOREY BELOW (2026-10-19): the engineer's form of the
+            // rule "dashed is below and carries the slab, solid is above" (StructuralPlanClassifier, FromBelow). 143 E 3rd marks
+            // in yellow the columns and walls that come up to a level and stop there - L36's typical-floor columns under the
+            // set-back terrace, L1's parkade walls, the roof's double-height columns - and in burgundy what stands on the level.
+            // Written on a "-BELOW" layer, which the composer keeps on the plan's own storey instead of raising it.
+            static string BaseType(string declared) => declared.TrimEnd('?') is var t && t.EndsWith("-BELOW", StringComparison.Ordinal) ? t[..^"-BELOW".Length] : declared.TrimEnd('?');
+            string? Declared((byte R, byte G, byte B) colour, bool markup)
+                => markup && Environment.GetEnvironmentVariable("KOR_STEP152_OFF") != "1"
+                   && markupElementTypes is not null && markupElementTypes.TryGetValue(colour, out string? declared)
+                   && BaseType(declared) is "SLAB" or "BEAM" or "COLUMN" or "WALL"
+                    ? declared
+                    : null;
+            string MarkupOrStructuralBaseLayer(string fallback, (byte R, byte G, byte B) colour, bool markup)
+                => Declared(colour, markup) is { } d ? BaseType(d) : StructuralBaseLayer(fallback, colour);
+            static string DeclaredSuffix(string declared)
+                => (declared.TrimEnd('?').EndsWith("-BELOW", StringComparison.Ordinal) && Environment.GetEnvironmentVariable("KOR_STEP165_OFF") != "1" ? "-BELOW" : "")
+                   + (declared.EndsWith('?') ? "-ASSUMED" : "");
+            string StructuralOrAssumedLayer(string fallback, (byte R, byte G, byte B) colour, bool markup)
+            {
+                string layer = StructuralLayer(MarkupOrStructuralBaseLayer(fallback, colour, markup), markup);
+                return Declared(colour, markup) is { } d ? layer + DeclaredSuffix(d) : layer;
+            }
+
             string StructuralBaseLayer(string fallback, (byte R, byte G, byte B) colour)
             {
                 if (colorSettings is null || !colorSettings.TryGetValue(colour, out var settings))
@@ -491,7 +545,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // recognises by the word MATCH (MatchLineSheetJoin.DefaultLayerPatterns)
             bool hasMatch = geometry.MatchLines.Count > 0;
             string matchLayer = korLayers ? "KOR_MATCHLINE" : "MATCHLINE";
-            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + (hasText ? 1 : 0) + (hasHiddenNotes ? 1 : 0) + (hasGrid ? 1 : 0) + (hasFootings ? 1 : 0) + (hasMatch ? 1 : 0);
+            // an assumed declaration's layers, declared like the others (the table and the entities name layers alike)
+            var declaredSuffixes = !layerByColour && Environment.GetEnvironmentVariable("KOR_STEP152_OFF") != "1" && markupElementTypes is not null
+                ? markupElementTypes.Values.Select(DeclaredSuffix).Where(s => s.Length > 0).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToList()
+                : new List<string>();
+            bool hasCarried = xCarried.Count > 0, hasVoids = xVoids.Count > 0;
+            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + 4 * declaredSuffixes.Count +(hasText ? 1 : 0) + (hasHiddenNotes ? 1 : 0) + (hasGrid ? 1 : 0) + (hasFootings ? 1 : 0) + (hasMatch ? 1 : 0) + (hasCarried ? 1 : 0) + (hasVoids ? 1 : 0);
 
             G(0, "TABLE"); G(2, "LAYER"); G(70, layerCount.ToString(ic));
             void WL(string n, int c) { G(0, "LAYER"); G(2, n); G(70, "0"); G(62, c.ToString()); G(6, "CONTINUOUS"); }
@@ -508,6 +567,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     WL(StructuralLayer(kind, markup: false), aci);
                     WL(StructuralLayer(kind, markup: true), aci);
+                    foreach (string suffix in declaredSuffixes) WL(StructuralLayer(kind, markup: true) + suffix, aci);
                 }
             }
             if (hasText) WL(textLayer, 7);
@@ -516,6 +576,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // declared like the entities are written (audit F6: FOOTING polylines had no table entry)
             if (hasFootings) WL(footingLayer, NearestAci(black));
             if (hasMatch) WL(matchLayer, 6);
+            if (hasCarried) WL(CarriedOpeningLayer, 6);
+            if (hasVoids) WL(CarriedVoidLayer, 6);
             G(0, "ENDTAB");
             G(0, "ENDSEC");
 
@@ -548,7 +610,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 WritePolyline(
                     layerByColour
                         ? ColourLayer(xSlabColours[i], xSlabMarkup[i])
-                        : StructuralLayer(StructuralBaseLayer("SLAB", xSlabColours[i]), xSlabMarkup[i]),
+                        : StructuralOrAssumedLayer("SLAB", xSlabColours[i], xSlabMarkup[i]),
                     NearestAci(xSlabColours[i]),
                     xSlabs[i],
                     true);
@@ -559,7 +621,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         ? "KOR_PARTITION"                                     // a stud or gypsum wall the plan tagged: not structure, not read by the model
                         : layerByColour
                             ? ColourLayer(xWallColours[i], xWallMarkup[i])
-                            : StructuralLayer(StructuralBaseLayer("WALL", xWallColours[i]), xWallMarkup[i]),
+                            : StructuralOrAssumedLayer("WALL", xWallColours[i], xWallMarkup[i]),
                     NearestAci(xWallColours[i]),
                     xWalls[i],
                     true);
@@ -573,6 +635,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             foreach (var footing in xFootings)
                 WritePolyline(footingLayer, NearestAci(black), footing, true);
+            foreach (var opening in xCarried)
+                WritePolyline(CarriedOpeningLayer, 6, opening, true);
+            foreach (var opening in xVoids)
+                WritePolyline(CarriedVoidLayer, 6, opening, true);
 
             // Columns: footprint rectangles from the parallel xColumnSizes list.
             for (int i = 0; i < xColumns.Count; i++)
@@ -588,7 +654,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 WritePolyline(
                     layerByColour
                         ? ColourLayer(xColumnColours[i], xColumnMarkup[i])
-                        : StructuralLayer(StructuralBaseLayer("COLUMN", xColumnColours[i]), xColumnMarkup[i]),
+                        : StructuralOrAssumedLayer("COLUMN", xColumnColours[i], xColumnMarkup[i]),
                     NearestAci(xColumnColours[i]),
                     rect,
                     true);
@@ -597,9 +663,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // Lines: WALL or BEAM layer from the parallel xLineIsWall list.
             for (int i = 0; i < xLines.Count; i++)
             {
-                string structuralLayer = StructuralLayer(
-                    StructuralBaseLayer(xLineIsWall[i] ? "WALL" : "BEAM", xLineColours[i]),
-                    xLineMarkup[i]);
+                string structuralLayer = StructuralOrAssumedLayer(xLineIsWall[i] ? "WALL" : "BEAM", xLineColours[i], xLineMarkup[i]);
                 WritePolyline(
                     layerByColour ? ColourLayer(xLineColours[i], xLineMarkup[i]) : structuralLayer,
                     NearestAci(xLineColours[i]),

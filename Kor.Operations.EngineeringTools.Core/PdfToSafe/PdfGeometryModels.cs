@@ -154,6 +154,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<FootingOutline> Footings { get; } = new();
         // Each slab: ordered list of (X,Y) in mm, ready for a closed polyline
         public List<List<(double X, double Y)>> Slabs { get; } = new();
+        /// <summary>The shaft and stair-well openings the slab pass wrote into <see cref="Slabs"/> (steps 104, 105), kept by
+        /// name so a markup-only read of the same page can take them across (step 160).</summary>
+        public List<List<(double X, double Y)>> OpeningRegions { get; } = new();
+        /// <summary>The page read's openings carried into a markup-only read (step 160): written on their own layer
+        /// (DxfExporter.CarriedOpeningLayer) so the classifier cuts them in whatever floor holds them - as slab edges a
+        /// big one was cleared as a parkade's interior (step 168).</summary>
+        public List<List<(double X, double Y)>> CarriedOpenings { get; } = new();
+        /// <summary>The opening regions the page's own words call a void - OPEN TO BELOW (step 164); the same instances as in
+        /// <see cref="OpeningRegions"/>. A column may stand in one: the words, not an X round a column, said it is open.</summary>
+        public List<List<(double X, double Y)>> VoidRegions { get; } = new();
+        /// <summary>The carried openings that are voids by their words (step 168), on their own layer.</summary>
+        public List<List<(double X, double Y)>> CarriedVoids { get; } = new();
         /// <summary>
         /// The stair flights on the sheet (intake step 105): each a run of five or more paper-filled tread rectangles of one
         /// size stacked at their own depth - 31202 draws a tread as a 1,187 x 280 mm paper fill, eight to a flight. The box

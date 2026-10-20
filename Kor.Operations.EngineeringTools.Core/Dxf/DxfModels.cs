@@ -276,6 +276,10 @@ public sealed class PlanGeometrySet
     /// <summary>Rings fully inside a slab ring — shafts, stair openings.</summary>
     public List<PlanLoop> Openings { get; } = new();
 
+    /// <summary>Rings too small for a floor that stood inside none when the slab edges were read (step 163): a floor taken
+    /// later from the perimeter walls cuts the ones inside it.</summary>
+    public List<PlanLoop> LooseRings { get; } = new();
+
     /// <summary>Doorways found between wall ends, each of which wants a header over it.</summary>
     public List<WallOpening> WallOpenings { get; } = new();
 

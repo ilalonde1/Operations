@@ -31,6 +31,31 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         /// <summary>
+        /// How many corners of a closed outline turn more than 30 degrees. A repeated closing point and
+        /// zero-length edges are skipped, so a shape's corners are counted once however it was drawn.
+        /// </summary>
+        internal static int SharpCorners(IReadOnlyList<(double X, double Y)> pts)
+        {
+            var ring = new List<(double X, double Y)>();
+            foreach (var p in pts)
+                if (ring.Count == 0 || Math.Abs(p.X - ring[^1].X) + Math.Abs(p.Y - ring[^1].Y) > 1e-6) ring.Add(p);
+            if (ring.Count > 1 && Math.Abs(ring[0].X - ring[^1].X) + Math.Abs(ring[0].Y - ring[^1].Y) <= 1e-6) ring.RemoveAt(ring.Count - 1);
+            if (ring.Count < 3) return ring.Count;
+
+            int sharp = 0;
+            for (int i = 0; i < ring.Count; i++)
+            {
+                var a = ring[(i + ring.Count - 1) % ring.Count];
+                var b = ring[i];
+                var c = ring[(i + 1) % ring.Count];
+                double inAngle = Math.Atan2(b.Y - a.Y, b.X - a.X), outAngle = Math.Atan2(c.Y - b.Y, c.X - b.X);
+                double turn = Math.Abs(Math.IEEERemainder(outAngle - inAngle, 2 * Math.PI));
+                if (turn > Math.PI / 6) sharp++;
+            }
+            return sharp;
+        }
+
+        /// <summary>
         /// Half an inch of slack on the wall limits, the DXF side's own allowance: a wall drawn at
         /// exactly 4" or exactly 48" measures a hair under after the export's arithmetic, and a
         /// limit is a statement about walls, not about floating point.
@@ -480,7 +505,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         // symbol's triangle - the bearing-wall symbol on a small job's plan, an arrowhead, a hatch -
                         // and 01389's main floor plan read 139 "columns" from them (every one three points; the three
                         // harness plans measured read 180 columns, every one four). A curve is many points and stays.
-                        if (!sub.IsAnnotation && pts.Count < 4)
+                        //
+                        // CORNERS, NOT POINTS (2026-10-19). An architect's section marker draws its arrowhead with the
+                        // third side following the bubble: five points, three corners. 143 E 3rd's A105 read twenty of
+                        // them as columns on every typical floor. A sharp corner turns more than 30 degrees: a
+                        // rectangle has four, a round column none, an L six - so three is a triangle however its sides
+                        // are drawn, and nothing a column is drawn as.
+                        // Step 149; KOR_STEP149_OFF=1 restores the point count alone.
+                        if (!sub.IsAnnotation && (pts.Count < 4
+                            || (Environment.GetEnvironmentVariable("KOR_STEP149_OFF") != "1" && SharpCorners(pts) == 3)))
                         {
                             result.Arrowheads.Add(((pts.Min(p => p.X) + pts.Max(p => p.X)) / 2, (pts.Min(p => p.Y) + pts.Max(p => p.Y)) / 2, Math.Max(bboxW, bboxH)));
                             Fate(PathReason.FilledTriangle);
@@ -2251,6 +2284,45 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     gapEdges.Add(new DxfSegment("DOOR", new DxfPoint(p0.X + uy * t, p0.Y - ux * t), new DxfPoint(p1.X + uy * t, p1.Y - ux * t)));
                 }
             var stairWells = new List<PlanLoop>();
+            var stairBoxes = new List<List<(double X, double Y)>>();
+            // A STAIR'S BOX GROWN TO ITS WALLS (step 160): the flights' box is the treads, not the shaft - 143 E 3rd's stair A
+            // reads 58 sq ft of flights in a 222 sq ft enclosure. Each side moves out to the nearest wall FACE - an outline edge
+            // square to the plan, parallel to the side, overlapping half of it - within one flight's width; a side with no such face stays where
+            // the flights end. Faces, not wall boxes: an engineer's core is one polygon round the whole stair, and its box holds
+            // the flights rather than standing beside them.
+            List<(double X, double Y)> BoxToItsWalls(double x0, double y0, double x1, double y1)
+            {
+                // within one flight's width: where one flight of two is read, its enclosure is at most the other flight beyond
+                // it (the stair's own size was tried and shrank L1's stair B to 1.1 m - a box of one flight cannot reach its walls)
+                const double square = 10;
+                double reach = TreadMaxWidthMm;
+                double bx0 = x0, by0 = y0, bx1 = x1, by1 = y1;
+                // the walls the page read, and the engineer's filled markup: his core is one polygon, read on this page as a
+                // fill, not a wall - the composer decomposes it later (WallOutlineDecomposer)
+                var outlines = result.Walls.Select(w => w.Outline)
+                    .Concat(result.Slabs.Where((s, i) => i < result.SlabIsAnnotation.Count && result.SlabIsAnnotation[i]));
+                foreach (var outline in outlines)
+                    for (int e = 0; e < outline.Count; e++)
+                    {
+                        var a = outline[e]; var b = outline[(e + 1) % outline.Count];
+                        if (Math.Abs(a.X - b.X) <= square)
+                        {
+                            double ex = (a.X + b.X) / 2;
+                            if (Math.Min(Math.Max(a.Y, b.Y), y1) - Math.Max(Math.Min(a.Y, b.Y), y0) < (y1 - y0) / 2) continue;
+                            if (ex <= x0 && x0 - ex <= reach && (bx0 == x0 || ex > bx0)) bx0 = ex;
+                            if (ex >= x1 && ex - x1 <= reach && (bx1 == x1 || ex < bx1)) bx1 = ex;
+                        }
+                        else if (Math.Abs(a.Y - b.Y) <= square)
+                        {
+                            double ey = (a.Y + b.Y) / 2;
+                            if (Math.Min(Math.Max(a.X, b.X), x1) - Math.Max(Math.Min(a.X, b.X), x0) < (x1 - x0) / 2) continue;
+                            if (ey <= y0 && y0 - ey <= reach && (by0 == y0 || ey > by0)) by0 = ey;
+                            if (ey >= y1 && ey - y1 <= reach && (by1 == y1 || ey < by1)) by1 = ey;
+                        }
+                    }
+                FaceTrace?.Invoke($"slab pass: stair box ({x0 / 304.8:0.0}-{x1 / 304.8:0.0}, {y0 / 304.8:0.0}-{y1 / 304.8:0.0}) ft grown to its walls ({bx0 / 304.8:0.0}-{bx1 / 304.8:0.0}, {by0 / 304.8:0.0}-{by1 / 304.8:0.0}) ft");
+                return new List<(double X, double Y)> { (bx0, by0), (bx1, by0), (bx1, by1), (bx0, by1) };
+            }
             if (result.StairFlights.Count > 0 && arranged.Count >= 3)
             {
                 try
@@ -2280,8 +2352,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         // (the stringer between them, a break line), in two cells that make one well
                         var centres = stair.Select(f => new DxfPoint((f.X0 + f.X1) / 2, (f.Y0 + f.Y1) / 2)).ToList();
                         var cells = new HashSet<int>(Enumerable.Range(0, planarForWells.Faces.Count).Where(i => centres.Any(p => LoopGeometry.PointInPolygon(p, planarForWells.Faces[i].Outer.Points))));
-                        if (cells.Count == 0) continue;
                         double boxArea = (stair.Max(f => f.X1) - stair.Min(f => f.X0)) * (stair.Max(f => f.Y1) - stair.Min(f => f.Y0));
+                        // no cell holds a flight (143 E 3rd's stair A on A105: its flights read, its cell never closed): the
+                        // stair is still a hole, at least its flights' box (step 160) - the same fallback as a well that is refused
+                        // a "stair" no stair could be (31 of a deck's hatch strokes read as a 111 ft flight on 143 E 3rd's L36) is
+                        // not boxed: the lobby limit a well is held to holds its box too
+                        bool aStairCouldBe = boxArea <= 60 * 1e6;
+                        if (cells.Count == 0)
+                        {
+                            if (aStairCouldBe) stairBoxes.Add(BoxToItsWalls(stair.Min(f => f.X0), stair.Min(f => f.Y0), stair.Max(f => f.X1), stair.Max(f => f.Y1)));
+                            continue;
+                        }
                         // THE LANDING BETWEEN THE FLIGHTS IS THE WELL'S (step 105d, 2026-09-16 22:35): a break line drawn across a
                         // stair as a zig-zag of short strokes closes once step 110 keeps its pieces, and the cell between two
                         // flights - the landing, no flight's centre in it - fell out of the well (31065's L7-L17 wells 2.4 x 7.1 m
@@ -2297,18 +2378,75 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         }
                         var rings = planarForWells.RecoverSurfaces(_ => false, (i, _) => cells.Contains(i)).Slabs.Select(s => s.Outer).ToList();
                         FaceTrace?.Invoke($"slab pass: stair at ({centres.Average(p => p.X) / 304.8:0},{centres.Average(p => p.Y) / 304.8:0}) ft: {stair.Count} flight(s), box {boxArea / 92903.04:0} sq ft, {cells.Count} of {planarForWells.Faces.Count} cell(s) hold a flight (arranged {arranged.Count} + wall edges {wallEdges.Count()} + door edges {doorEdges.Count()}), ring(s) sq ft: {string.Join(" ", rings.Select(r => $"{Math.Abs(r.Area) / 92903.04:0}"))}");
+                        int wellsBefore = stairWells.Count;
                         foreach (var ring in rings)
                         {
                             double wellArea = Math.Abs(ring.Area);
                             if (wellArea > 4 * boxArea || wellArea > 60 * 1e6) continue;   // an open stair in a lobby: the lobby is not the well
                             stairWells.Add(ring);
                         }
+                        // a stair whose well no cell gives is at least the box its flights stand in (step 160: carried to a
+                        // markup-only read only, never written as this page's own opening) - 143 E 3rd's stair A
+                        if (stairWells.Count == wellsBefore && aStairCouldBe)
+                            stairBoxes.Add(BoxToItsWalls(sx0, sy0, sx1, sy1));
                     }
                 }
                 catch (InvalidOperationException) { /* the arrangement refused: no wells this sheet, the trace says so through the slab pass */ }
             }
             FaceTrace?.Invoke($"slab pass: {stairWells.Count} stair well(s) (step 105; sq ft at centre ft): " +
                               string.Join(" ", stairWells.Select(w => $"{Math.Abs(w.Area) / 92903.04:0} ({w.Points.Average(p => p.X) / 304.8:0},{w.Points.Average(p => p.Y) / 304.8:0})")));
+            // EVERY SHAFT AND WELL THE PAGE FOUND, whatever plate it lies in (step 160): a markup-only read of the page takes
+            // these across, and the engineer's floor - not this page's patchwork of room fills - decides which are holes in it.
+            // 143 E 3rd's A105: the freight lift's X and stair B's well straddle the room fills' edges and were never written.
+            foreach (var x in xMarks) result.OpeningRegions.Add(x.Region.Select(p => (p.X, p.Y)).ToList());
+            foreach (var w in stairWells) result.OpeningRegions.Add(w.Points.Select(p => (p.X, p.Y)).ToList());
+            result.OpeningRegions.AddRange(stairBoxes);
+            // A CELL THAT SAYS OPEN TO BELOW IS A VOID, HOWEVER ITS X IS DRAWN (step 164, 2026-10-19). Step 106 takes a void from
+            // a big X with the words inside it; 143 E 3rd's B1 draws its two voids' X's DASHED - 5-8 pt strokes, some under the
+            // 200 mm line minimum - so no X forms and B1 was floored over its loading bay. The words decide, as they do in step
+            // 106: the smallest closed cell of the arrangement holding OPEN with BELOW beside it (within three word heights) is
+            // the void. OPEN and BELOW both, never OPEN alone - OPEN TO ABOVE is the floor this plan stands on. Written as an
+            // opening region only (a markup-only read takes it across, step 160), so the page's own read is unchanged.
+            if (Environment.GetEnvironmentVariable("KOR_STEP164_OFF") != "1" && arranged.Count >= 3)
+            {
+                // the reader may hold a phrase as one word ("OPEN TO BELOW") or as three: match its tokens either way
+                static bool Has((string Text, double X, double Y) w, string token) => w.Text
+                    .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+                    .Any(t => t.TrimEnd('.', ',', ':').Equals(token, StringComparison.OrdinalIgnoreCase));
+                var opens = result.PageWords.Where(w => Has(w, "OPEN")).ToList();
+                var belows = result.PageWords.Where(w => Has(w, "BELOW")).ToList();
+                var said = opens.Where(o => belows.Any(b => Math.Abs(b.X - o.X) <= 1500 && Math.Abs(b.Y - o.Y) <= 1500)).ToList();
+                FaceTrace?.Invoke($"slab pass: OPEN TO BELOW (step 164): {opens.Count} OPEN, {belows.Count} BELOW, {said.Count} together, of {result.PageWords.Count} page words" +
+                                  $" [containing OPEN: {string.Join(" | ", result.PageWords.Where(w => w.Text.Contains("OPEN", StringComparison.OrdinalIgnoreCase)).Take(6).Select(w => w.Text))}]");
+                if (said.Count > 0)
+                    try
+                    {
+                        // the ROOM the words sit in: the X's own strokes run corner to corner across it, and traced with them
+                        // the cell was a zigzag through B1's stair (looked at, 2026-10-20). A room is bounded by walls and room
+                        // lines, square to the plan; a stroke more than 2 degrees off both axes is the X, not a boundary.
+                        static bool Square(DxfSegment s)
+                        {
+                            double dx = Math.Abs(s.End.X - s.Start.X), dy = Math.Abs(s.End.Y - s.Start.Y), len = Math.Sqrt(dx * dx + dy * dy);
+                            return len < 1e-9 || Math.Min(dx, dy) / len <= 0.035;
+                        }
+                        var planar = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged.Concat(wallEdges).Concat(doorEdges).Concat(gapEdges).Where(Square));
+                        foreach (var o in said)
+                        {
+                            var at = new DxfPoint(o.X, o.Y);
+                            var cell = planar.Faces.Select(f => f.Outer)
+                                .Where(l => Math.Abs(l.Area) >= 2 * 1e6 && Math.Abs(l.Area) <= 300 * 1e6 && LoopGeometry.PointInPolygon(at, l.Points))
+                                .OrderBy(l => Math.Abs(l.Area)).FirstOrDefault();
+                            FaceTrace?.Invoke($"slab pass: OPEN TO BELOW at ({o.X / 304.8:0},{o.Y / 304.8:0}) ft: " + (cell is null ? "no closed cell holds it" : $"its cell {Math.Abs(cell.Area) / 92903.04:0} sq ft is a void"));
+                            if (cell is not null && !result.OpeningRegions.Any(r => r.Count == cell.Points.Count && r.Zip(cell.Points).All(z => Math.Abs(z.First.X - z.Second.X) < 1 && Math.Abs(z.First.Y - z.Second.Y) < 1)))
+                            {
+                                var voidRegion = cell.Points.Select(p => (p.X, p.Y)).ToList();
+                                result.OpeningRegions.Add(voidRegion);
+                                result.VoidRegions.Add(voidRegion);
+                            }
+                        }
+                    }
+                    catch (InvalidOperationException) { /* the arrangement refused: no voids by words this sheet */ }
+            }
 
             double NearestColumnFootprintFt(DxfPoint p) => result.Columns.Count == 0 ? -1
                 : result.Columns.Select((c, k) => (c, half: (k < result.ColumnSizes.Count ? Math.Max(result.ColumnSizes[k].WidthMm, result.ColumnSizes[k].DepthMm) : 400.0) / 2))

@@ -31,6 +31,9 @@ namespace Kor.Operations.EngineeringTools.Intake;
 /// </remarks>
 public static class StoreysFromPlans
 {
+    /// <summary>The storey a plan of a roof above the main roof names (step 158).</summary>
+    public const string UpperRoofStorey = "UPPER ROOF";
+
     /// <summary>A storey in the merged ladder: where it came from says whether its elevation was stated or assumed.</summary>
     /// <param name="Spaced">
     /// Set where this storey's elevation was not the assumed height above the one below but an even share of the
@@ -75,6 +78,7 @@ public static class StoreysFromPlans
         var roofOfBuilding = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         var elevatorRoofOfBuilding = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);   // above the building's roof (the second audit's B6)
         var highestOfBuilding = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        bool higherRoof = false;   // an untagged plan of a roof above the main roof (step 158)
         foreach (var file in names)
         {
             var sheet = PlanSheetNaming.Parse(file, vocabulary);
@@ -85,6 +89,7 @@ public static class StoreysFromPlans
             if (sheet.IsRoof && sheet.Levels.Count == 0 && sheet.ParkadeLevels.Count == 0)
             {
                 if (sheet.BuildingTags.Count == 0) roof = true;
+                if (sheet.BuildingTags.Count == 0 && sheet.IsElevatorRoof) higherRoof = true;
                 else foreach (string tag in sheet.BuildingTags) (sheet.IsElevatorRoof ? elevatorRoofOfBuilding : roofOfBuilding).Add(tag);
             }
             if (sheet.IsTopFloor && sheet.Levels.Count == 0 && sheet.ParkadeLevels.Count == 0) topFloor = true;
@@ -124,7 +129,12 @@ public static class StoreysFromPlans
         // among them by elevation, and 31130 came out P3 P2 L2 ... L20 L0/P1 L1 (2026-09-11).
         var order = chain is null ? new List<string>() : chain.Levels.OrderBy(l => l.ElevationMm).Select(l => l.Name).ToList();
         var toAdd = new List<string>();
-        foreach (int p in parkade.Reverse()) if (!covered.Contains($"P{p}")) toAdd.Add($"P{p}");
+        // a parkade level is covered under ANY parkade word (dxf.parkade-words: P and B) - "the plan and the storey meet on
+        // the number" (step 88). 143 E 3rd's elevations name B1 and B2, its plans LEVEL B1 and LEVEL B2; checking P alone
+        // added P1 and P2 beneath them and modelled the two-level parkade four times (2026-10-20).
+        var parkadeWords = Environment.GetEnvironmentVariable("KOR_STEP166_OFF") == "1" ? ["P"] : vocabulary.ParkadeWords;
+        foreach (int p in parkade.Reverse())
+            if (!parkadeWords.Any(w => covered.Contains($"{w}{p}"))) toAdd.Add($"P{p}");
         foreach (int n in numbered) if (!covered.Contains($"L{n}")) toAdd.Add($"L{n}");
         if (roof && !covered.Contains("ROOF") && !ladderReachesAboveThePlans) toAdd.Add("ROOF");
         foreach (var name in toAdd)
@@ -134,6 +144,18 @@ public static class StoreysFromPlans
             for (int i = 0; i < order.Count; i++)
                 if (RankOf(order[i]) is { } r && r.CompareTo(rank) < 0) at = i + 1;
             order.Insert(at, name);
+        }
+        // A ROOF ABOVE THE ROOF IS ITS OWN STOREY WHERE THE SET DRAWS ONE (step 158, 2026-10-19). Until now an untagged
+        // elevator roof shared ROOF - "the overrun as its own storey is a rule for the sets that draw one, not yet measured"
+        // (below). 143 E 3rd draws one: the engineer's "Upper roof plan" beside the roof plan, four columns and an outline
+        // over the core. It is the storey directly above ROOF; no elevation states it, so its height is the set's typical
+        // storey and the levels file says ASSUMED, as for every plan-only storey.
+        if (higherRoof && Environment.GetEnvironmentVariable("KOR_STEP158_OFF") != "1"
+            && !order.Any(o => ModelYardstick.Building(o) is not null)
+            && !covered.Contains(UpperRoofStorey) && !order.Contains(UpperRoofStorey, StringComparer.OrdinalIgnoreCase))
+        {
+            int roofAt = order.FindLastIndex(o => Stripped(o).Contains("ROOF", StringComparison.OrdinalIgnoreCase));
+            if (roofAt >= 0) order.Insert(roofAt + 1, UpperRoofStorey);
         }
         // each tagged roof after its building's highest level, unless the chain already reaches above that building's plans
         // an elevator roof above the building's roof (B6: two storeys, not one)

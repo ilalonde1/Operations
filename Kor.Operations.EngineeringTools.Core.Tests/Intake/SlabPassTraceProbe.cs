@@ -35,7 +35,15 @@ public sealed class SlabPassTraceProbe
         // issue (the mirror's copy, no share walk) at the options' fallback scale, as the analyzer builds it (20:10)
         var banked = SixSetsBuildAsBankedTests.Sets.FirstOrDefault(s => s.Job.Equals(job, StringComparison.OrdinalIgnoreCase));
         string sharePath; int scale;
-        if (banked is not null) { sharePath = banked.SharePath; scale = banked.Scale; }
+        // KOR_SLAB_TRACE_PDF=<local pdf> with KOR_SLAB_TRACE_SCALE=96 traces a drawing that is neither banked nor in the
+        // corpus - a dropped-in PDF (143 E 3rd, 2026-10-20). A local path only: nothing here walks the share.
+        string? localPdf = Environment.GetEnvironmentVariable("KOR_SLAB_TRACE_PDF");
+        if (!string.IsNullOrWhiteSpace(localPdf))
+        {
+            sharePath = localPdf;
+            scale = int.Parse(Environment.GetEnvironmentVariable("KOR_SLAB_TRACE_SCALE") ?? "96", System.Globalization.CultureInfo.InvariantCulture);
+        }
+        else if (banked is not null) { sharePath = banked.SharePath; scale = banked.Scale; }
         else
         {
             var census = StickFileCorpus.CensusCached(PublishDiscovery.ProjectsRoot, new List<string>(), TimeSpan.FromDays(30), false);
@@ -44,7 +52,7 @@ public sealed class SlabPassTraceProbe
             scale = options.FallbackScale;
         }
         var set = (Job: job!, SharePath: sharePath, Scale: scale);
-        string pdf = DrawingMirror.SingleFile(set.SharePath);
+        string pdf = string.IsNullOrWhiteSpace(localPdf) ? DrawingMirror.SingleFile(set.SharePath) : localPdf;
         string work = Path.Combine(AppContext.BaseDirectory, "TestResults", "slab-trace", set.Job);
 
         var lines = new List<string>();

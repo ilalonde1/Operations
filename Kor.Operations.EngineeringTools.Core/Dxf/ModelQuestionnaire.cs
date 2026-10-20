@@ -622,7 +622,9 @@ public static class ModelQuestionnaire
         // S2.07 (level 6), and level 5 is the only one between them that no drawing claims" — because
         // she can check that sentence in seconds against a drawing she knows, and cannot check a
         // bare "we think this is level 5" at all.
-        if (Flag("ASSUMED, NOT READ") is { } assumed)
+        // case-sensitive: the level flag says it in capitals; "Slab thickness is ASSUMED, not read" matched it ignoring case
+        // and became this row on 143 E 3rd (2026-10-20) - a thickness note asked as "which level is this drawing"
+        if (report.Summary.Flags.FirstOrDefault(f => f.Contains("ASSUMED, NOT READ", StringComparison.Ordinal)) is { } assumed)
         {
             string working = assumed[(assumed.IndexOf("in one line:", StringComparison.Ordinal) is var k && k >= 0
                 ? k + "in one line:".Length

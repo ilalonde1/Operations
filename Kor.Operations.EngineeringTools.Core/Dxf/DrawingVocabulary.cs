@@ -68,6 +68,14 @@ public sealed record DrawingVocabulary
         new[] { "ELEVATOR ROOF", "ELEV ROOF" };
 
     /// <summary>
+    /// A roof above the main roof, named as one (step 158, 2026-10-19): 143 E 3rd's engineer drew an "Upper roof plan"
+    /// beside the roof plan. Read like an elevator roof - the higher of two roof storeys. `dxf.pdf.upper-roof-words`;
+    /// its own key because the `dxf.elevator-roof-words` row replaces its compiled list.
+    /// </summary>
+    public IReadOnlyList<string> UpperRoofWords { get; init; } =
+        new[] { "UPPER ROOF" };
+
+    /// <summary>
     /// A STOREY MAY BE NAMED BY A WORD (intake step 47, 2026-09-13). KOR's small jobs name their plans
     /// "MAIN FLOOR PLAN SHOWING 2ND FLOOR FRAMING OVER", "UPPER FLOOR PLAN", "BASEMENT FLOOR PLAN",
     /// "LOFT PLAN" — no LEVEL, no number — and 68 of the corpus's 86 sets without a model had plans
@@ -215,7 +223,8 @@ public sealed record DrawingVocabulary
     /// <summary>Whether a drawing title carries a sheet number, and so is an issued drawing.</summary>
     public bool IsIssuedSheetName(string name)
         => !string.IsNullOrWhiteSpace(SheetNumberPattern) && Of(SheetNumberPattern).IsMatch(name);
-    public bool IsElevatorRoofName(string name) => Mentions(name, ElevatorRoofWords);
+    public bool IsElevatorRoofName(string name) => Mentions(name, ElevatorRoofWords)
+        || (System.Environment.GetEnvironmentVariable("KOR_STEP158_OFF") != "1" && Mentions(name, UpperRoofWords));
 
     // ------------------------------------------------------------------------------------------
     // The patterns, built once PER PATTERN and never held on the record.

@@ -31,6 +31,27 @@ var maxChars = Opt("--max-chars", 400_000);
 var maxBytes = Opt("--max-bytes", 60_000_000);
 var w1252 = Encoding.GetEncoding(1252);
 var ok = 0; var failed = 0;
+// --annotations: PDFs only, one line per file listing every markup - page, type, subject, interior and stroke colour
+// (RGB 0-1), its words and its size in points - in place of the text. Added 2026-10-19 to measure what an engineer's
+// markup colours mean across the markup corpus (a yellow band on 143 E 3rd's L1), on the server, never over the VPN.
+var annotationsMode = args.Contains("--annotations");
+if (annotationsMode)
+{
+    using var aout = new StreamWriter(args[2], false, new UTF8Encoding(false)) { AutoFlush = true };   // progress is visible from the share
+    foreach (var rel in manifest)
+    {
+        var rel2 = rel.Trim().TrimStart('\\');
+        string status = "ok"; object[] annots = Array.Empty<object>();
+        try { annots = Annotations(Path.Combine(root, rel2)); }
+        catch (Exception ex) { status = "error:" + ex.GetType().Name; failed++; }
+        if (status == "ok") ok++;
+        aout.WriteLine(JsonSerializer.Serialize(new { path = rel2, status, annots }));
+    }
+    aout.Flush();
+    File.WriteAllText(args[2] + ".done", $"done {DateTime.Now:s} entries={manifest.Length} ok={ok} errors={failed}\r\n");
+    Console.WriteLine($"{ok} of {manifest.Length} ok, {failed} errors");
+    return 0;
+}
 using (var output = new StreamWriter(args[2], false, new UTF8Encoding(false)))
 {
     foreach (var rel in manifest)
@@ -80,6 +101,37 @@ int Opt(string name, int dflt)
 {
     var i = Array.IndexOf(args, name);
     return i >= 0 && i + 1 < args.Length && int.TryParse(args[i + 1], out var v) ? v : dflt;
+}
+
+static object[] Annotations(string path)
+{
+    using var doc = PdfDocument.Open(path);
+    var list = new List<object>();
+    int n = 0;
+    foreach (var page in doc.GetPages())
+    {
+        n++;
+        foreach (var a in page.GetAnnotations())
+        {
+            var d = a.AnnotationDictionary.Data;
+            double[]? Colour(string key) => d.TryGetValue(key, out var t) && t is UglyToad.PdfPig.Tokens.ArrayToken arr
+                ? arr.Data.OfType<UglyToad.PdfPig.Tokens.NumericToken>().Select(x => Math.Round(x.Double, 3)).ToArray() : null;
+            string? Text(string key) => d.TryGetValue(key, out var t) && t is UglyToad.PdfPig.Tokens.StringToken s ? s.Data
+                : d.TryGetValue(key, out var h) && h is UglyToad.PdfPig.Tokens.HexToken x ? x.Data : null;
+            list.Add(new
+            {
+                page = n,
+                type = a.Type.ToString(),
+                subject = Text("Subj"),
+                fill = Colour("IC"),
+                stroke = Colour("C"),
+                text = a.Content is { Length: > 0 } c ? (c.Length > 300 ? c[..300] : c) : null,
+                w = Math.Round(a.Rectangle.Width, 1),
+                h = Math.Round(a.Rectangle.Height, 1),
+            });
+        }
+    }
+    return list.ToArray();
 }
 
 static (string, int) Pdf(string path)

@@ -253,6 +253,8 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["ModelRender.cs:head"] = Rule("the render's header height"),
         ["PdfToSafeConstants.cs:PointsToMm"] = Rule("a unit: 72 points to the inch"),
         ["MarkupText.cs:HelveticaCapHeight"] = Rule("a font fact: Helvetica's AFM CapHeight 718 per 1000 em"),
+        ["GeometryFilterService.cs:square"] = Rule("a drawing tolerance: an outline edge within 10 mm of square to the plan is square (the page is read to the 0.1 mm)"),
+        ["PdfOnlyBuild.cs:MinStructureInk"] =Convention("step 153 - fewer than four marks in structure ink are a note on the architect's drawing, not a marked-up plan; no row yet (143 E 3rd's A105 carries 19)"),
         ["PublishDiscovery.cs:SearchDepth"] = Rule("how deep under the model folder a set may sit"),
 
         // ---- another product's settings sharing PdfToSafeConstants.cs (the SAFE/WPF side; plan §7) ----

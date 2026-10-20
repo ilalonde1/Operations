@@ -592,10 +592,11 @@ public static class E2kGeometryComposer
         // column's joint is the joint of any column already placed within an inch of it. A building has
         // no two columns an inch apart; ShippedModelInvariants refuses a model with a pair.
         var columnJoints = new List<(string Name, double X, double Y)>();
-        (string Name, double X, double Y)? ColumnJointNear(double x, double y)
+        (string Name, double X, double Y)? ColumnJointNear(double x, double y, double reach = 0)
         {
+            double within = Math.Max(inch, reach);
             foreach (var j in columnJoints)
-                if (LoopGeometry.Within(Math.Sqrt((j.X - x) * (j.X - x) + (j.Y - y) * (j.Y - y)), inch))
+                if (LoopGeometry.Within(Math.Sqrt((j.X - x) * (j.X - x) + (j.Y - y) * (j.Y - y)), within))
                     return j;
             return null;
         }
@@ -616,6 +617,8 @@ public static class E2kGeometryComposer
         var placedSpandrels = new PlacedMembers(inch);
         // The openings cut in each storey's floor, so a borrowed floor arrives with its holes.
         var openingsByStorey = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        // each written opening's box, by storey, for the shaft that runs through (step 167)
+        var openingBoxes = new Dictionary<string, List<(string Name, double X0, double Y0, double X1, double Y1)>>(StringComparer.OrdinalIgnoreCase);
 
         var pinchedPlates = new List<(string Storey, string Sheet, double GapInches, double AtXft, double AtYft)>();
 
@@ -974,6 +977,64 @@ public static class E2kGeometryComposer
             return null;
         }
 
+        // A ROOF OVER THE ROOF CARRIES ONLY WHAT STANDS UNDER IT (step 159, 2026-10-19). A member drawn on a plan rises to
+        // the storey above - the engineer's rule, measured. The storey above a roof plan used to be none; step 158 gave
+        // 143 E 3rd an UPPER ROOF over part of its roof, and the roof plan's six tower columns rose to it, standing outside
+        // its plate with nothing to carry. A member rising to UPPER ROOF where no UPPER ROOF floor lies over it (within a
+        // metre of its edge) stays on its own storey; the four the engineer drew under the upper roof still rise.
+        var upperRoofPlates = Environment.GetEnvironmentVariable("KOR_STEP159_OFF") == "1"
+            ? new List<List<DxfPoint>>()
+            : placements.Where(p => string.Equals(p.Story.Name, Intake.StoreysFromPlans.UpperRoofStorey, StringComparison.OrdinalIgnoreCase))
+                .SelectMany(p => p.Geometry.Slabs)
+                .Select(l => l.Points.Select(q => new DxfPoint(q.X + options.OffsetX, q.Y + options.OffsetY)).ToList())
+                .Where(l => l.Count >= 3).ToList();
+        bool UnderUpperRoof(double x, double y) => upperRoofPlates.Any(l => LoopGeometry.PointInPolygon(new DxfPoint(x, y), l)
+            || Enumerable.Range(0, l.Count).Any(i => DistanceToEdge(new DxfPoint(x, y), l[i], l[(i + 1) % l.Count]) <= 1000.0 / 25.4 / Math.Max(1e-9, options.ModelUnitInInches)));
+        static double DistanceToEdge(DxfPoint p, DxfPoint a, DxfPoint b)
+        {
+            double dx = b.X - a.X, dy = b.Y - a.Y, len2 = dx * dx + dy * dy;
+            double t = len2 < 1e-12 ? 0 : Math.Clamp(((p.X - a.X) * dx + (p.Y - a.Y) * dy) / len2, 0, 1);
+            return Math.Sqrt(Math.Pow(p.X - (a.X + t * dx), 2) + Math.Pow(p.Y - (a.Y + t * dy), 2));
+        }
+        // THE ENGINEER'S "BELOW" (step 165, 2026-10-19): a member on a layer the PDF intake names "-BELOW" is his markup of
+        // structure arriving from the storey below and stopping at this level - the same rule as a column read from dashed
+        // linework (FromBelow): "dashed is below and carries the slab, solid is above". It does not rise.
+        static bool ArrivesFromBelow(string layer) => layer.Contains("-BELOW", StringComparison.OrdinalIgnoreCase)
+            && Environment.GetEnvironmentVariable("KOR_STEP165_OFF") != "1";
+        // A "BELOW" MEMBER ALREADY STANDING IS THAT MEMBER DRAWN AGAIN (step 165): the engineer's yellow on L1 is highlighter
+        // over the B1 core and the parkade wall, which B1's own plan already raises to L1; read twice they were one 44" wall.
+        // A below wall overlapping (parallel within 5 degrees, axes within the two half-thicknesses, along half its length)
+        // a wall WRITTEN on its storey, or a below column within the larger side of one written, is dropped. Judged against
+        // what was written, never a prediction of it: the below members are written in a second phase, after every other
+        // wall and column (phase 0 is the order and the result there were before). Where nothing stands - L2's lane walls,
+        // which only L2's yellow draws - it is the member and is kept.
+        var writtenWalls = new List<(string Story, double X1, double Y1, double X2, double Y2, double T)>();
+        var writtenCols = new List<(string Story, double X, double Y, double Size)>();
+        var droppedBelow = new SortedDictionary<string, int>(StringComparer.Ordinal);   // storey -> members read once
+        bool AlreadyStands(string storey, double x1, double y1, double x2, double y2, double t)
+        {
+            double len = Math.Sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+            if (len < 1e-9) return false;
+            double ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+            // the walls along it TOGETHER: a wall written in pieces (L2's 30" spine, four panels) covers it as one
+            return writtenWalls.Sum(r =>
+            {
+                double rl = Math.Sqrt((r.X2 - r.X1) * (r.X2 - r.X1) + (r.Y2 - r.Y1) * (r.Y2 - r.Y1));
+                if (r.Story != storey || rl < 1e-9) return 0;
+                if (Math.Abs(ux * (r.X2 - r.X1) / rl + uy * (r.Y2 - r.Y1) / rl) < 0.9962) return 0;
+                double across = Math.Abs((r.X1 - x1) * -uy + (r.Y1 - y1) * ux);
+                if (across > (t + r.T) / 2) return 0;
+                double s0 = (r.X1 - x1) * ux + (r.Y1 - y1) * uy, s1 = (r.X2 - x1) * ux + (r.Y2 - y1) * uy;
+                return Math.Max(0, Math.Min(Math.Max(s0, s1), len) - Math.Max(Math.Min(s0, s1), 0));
+            }) >= len / 2;
+        }
+        StoryLevel RiseUnlessNothingOver(StoryLevel rising, StoryLevel own, double x, double y)
+            => upperRoofPlates.Count > 0
+               && string.Equals(rising.Name, Intake.StoreysFromPlans.UpperRoofStorey, StringComparison.OrdinalIgnoreCase)
+               && !UnderUpperRoof(x, y) ? own : rising;
+
+        // phase 1 carries only the members arriving from below (step 165); with none, it writes nothing
+        foreach (int phase in new[] { 0, 1 })
         foreach (var placement in placements)
         {
             // Where the sheet was placed: slabs and openings belong here.
@@ -984,14 +1045,19 @@ public static class E2kGeometryComposer
 
             foreach (var wall in placement.Geometry.Walls)
             {
+                bool below = ArrivesFromBelow(wall.Layer);
+                if (below != (phase == 1)) continue;
                 double thickness = SnapHalfInch(wall.Thickness, inch);
                 double x1 = wall.Start.X + options.OffsetX, y1 = wall.Start.Y + options.OffsetY;
                 double x2 = wall.End.X + options.OffsetX, y2 = wall.End.Y + options.OffsetY;
+                if (below && AlreadyStands(slabStory.Name, x1, y1, x2, y2, thickness)) { droppedBelow[slabStory.Name] = droppedBelow.GetValueOrDefault(slabStory.Name) + 1; continue; }
 
                 // Same panel from two overlapping sheets must not be modelled twice — its ends within an inch of
                 // one already placed (PlacedMembers) — tested against the storeys it will actually be assigned
                 // to, not the one it was placed on.
-                var wallStoreys = FreeStoreysFor(story, Place.Between(x1, y1, x2, y2), placedWalls);
+                // a wall on a "-BELOW" layer arrives from the storey below and stops here (step 165): it is the sheet's own storey's
+                var wallStory = ArrivesFromBelow(wall.Layer) ? slabStory : RiseUnlessNothingOver(story, slabStory, (x1 + x2) / 2, (y1 + y2) / 2);
+                var wallStoreys = FreeStoreysFor(wallStory, Place.Between(x1, y1, x2, y2), placedWalls);
                 if (wallStoreys.Count == 0) continue;
 
                 // A wall the engineer has already modelled runs along the same line: compare the
@@ -1009,7 +1075,7 @@ public static class E2kGeometryComposer
                 // Six inches stays the floor, so a thin wall is no less protected than before.
                 double sameWall = Math.Max(options.AlreadyModelledTolerance, thickness / 2.0);
                 var mid = new DxfPoint((x1 + x2) / 2.0, (y1 + y2) / 2.0);
-                if (existingWalls.TryGetValue(story.Name, out var alreadyWalls) &&
+                if (existingWalls.TryGetValue(wallStory.Name, out var alreadyWalls) &&
                     alreadyWalls.Any(w => DistanceToSegment(mid, w.A, w.B) <= sameWall))
                 {
                     skippedWalls++;
@@ -1060,25 +1126,43 @@ public static class E2kGeometryComposer
                     Covers(on, wall.End.X + options.OffsetX, wall.End.Y + options.OffsetY);
                 }
 
-                CoversOwn(story.Name, wall.Start.X + options.OffsetX, wall.Start.Y + options.OffsetY);
-                CoversOwn(story.Name, wall.End.X + options.OffsetX, wall.End.Y + options.OffsetY);
+                CoversOwn(wallStory.Name, wall.Start.X + options.OffsetX, wall.Start.Y + options.OffsetY);
+                CoversOwn(wallStory.Name, wall.End.X + options.OffsetX, wall.End.Y + options.OffsetY);
 
                 string pier = options.AssignPierLabels ? $"  PIER  \"{PierFor(x1, y1, x2, y2)}\"" : string.Empty;
                 areaAssigns.Add(
-                    $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{propName}\"{pier}  OBJMESHTYPE \"DEFAULT\"  " +
+                    $"  AREAASSIGN  \"{name}\"  \"{wallStory.Name}\"  SECTION \"{propName}\"{pier}  OBJMESHTYPE \"DEFAULT\"  " +
                     "ADDRESTRAINT \"Yes\"  CARDINALPOINT \"MIDDLE\"");
+                if (phase == 0) writtenWalls.Add((wallStory.Name, x1, y1, x2, y2, thickness));   // a below member gives way only to one that is not
             }
 
             foreach (var column in placement.Geometry.Columns)
             {
+                bool belowColumn = ArrivesFromBelow(column.Layer);
+                if (belowColumn != (phase == 1)) continue;
+                if (belowColumn && writtenCols.Any(r => r.Story == slabStory.Name
+                        && Math.Sqrt(Math.Pow(r.X - (column.Center.X + options.OffsetX), 2) + Math.Pow(r.Y - (column.Center.Y + options.OffsetY), 2)) <= Math.Max(r.Size, Math.Max(column.Width, column.Depth))))
+                { droppedBelow[slabStory.Name] = droppedBelow.GetValueOrDefault(slabStory.Name) + 1; continue; }
                 // A column read from dashed linework is already the storey below's structure
                 // holding this slab up, so it belongs to the sheet's own storey and does not rise.
-                var colStory = column.FromBelow ? slabStory : story;
-
                 double w = SnapInch(column.Width, inch), d = SnapInch(column.Depth, inch);
                 double x = column.Center.X + options.OffsetX, y = column.Center.Y + options.OffsetY;
+                var colStory = column.FromBelow || ArrivesFromBelow(column.Layer) ? slabStory : RiseUnlessNothingOver(story, slabStory, x, y);
                 // a column within an inch of one already placed stands at that one's joint, and is keyed by it
-                if (ColumnJointNear(x, y) is { } sameColumn) { x = sameColumn.X; y = sameColumn.Y; }
+                // - and, step 162 (2026-10-19), within its own larger side: two columns whose footprints overlap are one
+                // column drawn twice. 143 E 3rd's L37 carried pairs 231 and 295 mm apart - the tower's 14 x 36 risen from
+                // L36's plan, and the roof plan's 18 x 18 at the same place. Half the 18" side (229 mm) missed both; two
+                // columns whose centres are closer than the larger one's side stand inside each other, and no building has that.
+                // ON ITS OWN STOREY ONLY: a column offset from the one below it (a transfer, a step in the grid) is two columns,
+                // and the first cut snapped across storeys - 126 to 207 columns moved 0.3-0.7 m on each of the six banked sets.
+                if (ColumnJointNear(x, y) is { } sameJoint) { x = sameJoint.X; y = sameJoint.Y; }
+                else if (Environment.GetEnvironmentVariable("KOR_STEP162_OFF") != "1")
+                {
+                    double cx = x, cy = y, reach = Math.Max(w, d);
+                    var overlapping = writtenCols.Where(r => r.Story == colStory.Name && Math.Sqrt((r.X - cx) * (r.X - cx) + (r.Y - cy) * (r.Y - cy)) <= Math.Max(reach, r.Size))
+                        .OrderBy(r => (r.X - cx) * (r.X - cx) + (r.Y - cy) * (r.Y - cy)).ToList();
+                    if (overlapping.Count > 0) { x = overlapping[0].X; y = overlapping[0].Y; }
+                }
 
                 // One column per place per storey, within an inch (PlacedMembers) — tested against the storeys
                 // it will actually be assigned to. Sheets overlap, and duplicates double the stiffness at that point.
@@ -1139,7 +1223,11 @@ public static class E2kGeometryComposer
                 lineAssigns.Add(
                     $"  LINEASSIGN  \"{name}\"  \"{colStory.Name}\"  SECTION \"{sectionName}\"  ANG {Trim(angle, trimFormat)} MINNUMSTA 3 " +
                     "AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
+                if (phase == 0) writtenCols.Add((colStory.Name, x, y, Math.Max(w, d)));
             }
+
+            // phase 1 is the members arriving from below and nothing else: the headers, slabs and openings were written in phase 0
+            if (phase == 1) continue;
 
             // Headers over the doorways in a wall run. The engineer asked for these directly —
             // "there are no headers" — and told us how they are modelled: "we don't model them as
@@ -1443,9 +1531,14 @@ public static class E2kGeometryComposer
                     var c0 = opening.Centroid();
                     double reach = 300 / 25.4 * inch;
                     var shifted = opening.Points.Select(p => new DxfPoint(p.X + options.OffsetX, p.Y + options.OffsetY)).ToList();
-                    if (placedColumns.AnyInside(slabStory.Name, shifted) || placedColumns.AnyWithin(slabStory.Name, c0.X + options.OffsetX, c0.Y + options.OffsetY, reach))
+                    // EXCEPT A VOID ITS OWN WORDS NAME (step 168, 2026-10-20): OPEN TO BELOW is the drafter saying the floor is
+                    // open, and a column standing in it rises through the double height - 143 E 3rd's B1, one column in a
+                    // 1,017 sq ft void. The 98.6% this rule measured are X-boxes and rings, which never reach this layer.
+                    bool aVoidByItsWords = opening.Layer.Equals(PdfToSafe.DxfExporter.CarriedVoidLayer, StringComparison.OrdinalIgnoreCase)
+                        && Environment.GetEnvironmentVariable("KOR_STEP168_OFF") != "1";
+                    if (!aVoidByItsWords && (placedColumns.AnyInside(slabStory.Name, shifted) || placedColumns.AnyWithin(slabStory.Name, c0.X + options.OffsetX, c0.Y + options.OffsetY, reach)))
                     {
-                        flags.Add($"{placement.SourceSheet}: an opening of {opening.Area / 144:N0} sq ft on {slabStory.Name} was NOT cut - a column stands in it; an X or a ring round a column marks the column (a footing, a drop, a bay), not a hole");
+                        flags.Add($"{placement.SourceSheet}: an opening of {opening.Area / (144 * inch * inch):N0} sq ft on {slabStory.Name} was NOT cut - a column stands in it; an X or a ring round a column marks the column (a footing, a drop, a bay), not a hole");
                         skippedOpenings++;
                         continue;
                     }
@@ -1478,6 +1571,23 @@ public static class E2kGeometryComposer
                 // opening away. Four-point openings survived by luck; every six-point one did not.
                 // Found by importing a model, which is the only thing that could have found it.
                 var ordered = LoopGeometry.RemoveSpurs(InPerimeterOrder(opening.Points));
+                // A CONCAVE OPENING KEEPS ITS DRAWN ORDER (2026-10-20). Sorting by angle round the centre walks a convex outline
+                // and scrambles a concave one into a star of the same points - 143 E 3rd's B1 void, an L-shaped room, came out
+                // zigzagging through the stair. Where the sorted outline's area differs from the drawn ring's (by more than a
+                // hundredth), the drawn order - already a ring, from the arrangement - is the shape, if it does not cross itself.
+                if (Environment.GetEnvironmentVariable("KOR_STEP168_OFF") != "1")
+                {
+                    var drawn = LoopGeometry.RemoveSpurs(opening.Points.ToList());
+                    static double Shoelace(IReadOnlyList<DxfPoint> r)
+                    {
+                        double a = 0;
+                        for (int k = 0; k < r.Count; k++) a += r[k].X * r[(k + 1) % r.Count].Y - r[(k + 1) % r.Count].X * r[k].Y;
+                        return Math.Abs(a) / 2;
+                    }
+                    double drawnArea = Shoelace(drawn), sortedArea = Shoelace(ordered);
+                    if (drawn.Count >= 3 && drawnArea > 0 && Math.Abs(sortedArea - drawnArea) > 0.01 * drawnArea && !SelfIntersects(drawn))
+                        ordered = drawn;
+                }
                 var names = ordered
                     .Select(p => PointAt(p.X + options.OffsetX, p.Y + options.OffsetY))
                     .Distinct()
@@ -1512,6 +1622,10 @@ public static class E2kGeometryComposer
                 if (!openingsByStorey.TryGetValue(slabStory.Name, out var cut))
                     openingsByStorey[slabStory.Name] = cut = new List<string>();
                 cut.Add(name);
+                if (!openingBoxes.TryGetValue(slabStory.Name, out var boxes))
+                    openingBoxes[slabStory.Name] = boxes = new();
+                boxes.Add((name, ordered.Min(p => p.X) + options.OffsetX, ordered.Min(p => p.Y) + options.OffsetY,
+                                 ordered.Max(p => p.X) + options.OffsetX, ordered.Max(p => p.Y) + options.OffsetY));
             }
 
             // One complaint per sheet, however many storeys that sheet builds. A sheet covering a
@@ -1721,6 +1835,37 @@ public static class E2kGeometryComposer
                     "closed slab outline — so check their edges before relying on them.");
         }
 
+        // A SHAFT CUT ABOVE AND BELOW RUNS THROUGH (step 167, 2026-10-20). 143 E 3rd's stair A is cut on L35 and on L37, and
+        // L36 between them drew its treads dashed, so no flight was read and L36 floored the stair over. A storey with a floor
+        // that has no opening where the storeys directly below and above it both cut one (their boxes overlapping half the
+        // smaller) takes that opening - the same object, assigned here too, as a borrowed floor takes its donor's holes.
+        // ASSUMED, and listed by storey. What it does NOT do: a storey with no floor, a hole cut on one side only, or any hole
+        // a storey already has there.
+        if (Environment.GetEnvironmentVariable("KOR_STEP167_OFF") != "1")
+        {
+            static double Overlap((string Name, double X0, double Y0, double X1, double Y1) a, (string Name, double X0, double Y0, double X1, double Y1) b)
+                => Math.Max(0, Math.Min(a.X1, b.X1) - Math.Max(a.X0, b.X0)) * Math.Max(0, Math.Min(a.Y1, b.Y1) - Math.Max(a.Y0, b.Y0));
+            static double Area((string Name, double X0, double Y0, double X1, double Y1) a) => (a.X1 - a.X0) * (a.Y1 - a.Y0);
+            var throughAdded = new List<string>();
+            for (int i = 1; i + 1 < allStories.Count; i++)
+            {
+                string below = allStories[i - 1].Name, here = allStories[i].Name, above = allStories[i + 1].Name;
+                if (!storeysWithPlates.Contains(here)) continue;
+                if (!openingBoxes.TryGetValue(below, out var under) || !openingBoxes.TryGetValue(above, out var over)) continue;
+                openingBoxes.TryGetValue(here, out var own);
+                foreach (var b in under)
+                {
+                    if (!over.Any(a => Overlap(a, b) >= 0.5 * Math.Min(Area(a), Area(b)))) continue;
+                    if (own is not null && own.Any(o => Overlap(o, b) >= 0.5 * Math.Min(Area(o), Area(b)))) continue;
+                    areaAssigns.Add($"  AREAASSIGN  \"{b.Name}\"  \"{here}\"  OPENING \"Yes\"");
+                    throughAdded.Add($"{here} ({b.Name})");
+                }
+            }
+            if (throughAdded.Count > 0)
+                flags.Add($"ASSUMED: {throughAdded.Count} opening(s) cut on the storeys above and below at the same place were cut through the " +
+                          "storey between, whose drawing did not cut them (a stair drawn dashed, a shaft not marked): " + string.Join(", ", throughAdded) + ".");
+        }
+
         // A storey can hold a floor and still have most of its structure standing under open air.
         // "Has a plate" is the only question asked until now, and 31168 answers it yes on LEVEL 2
         // -- whose plate reaches 96 ft of a 206 ft spread of walls and columns, because only the
@@ -1853,6 +1998,10 @@ public static class E2kGeometryComposer
         if (slabPropLines.Count > 0) doc.Append("SLAB PROPERTIES", slabPropLines);
         if (framePropLines.Count > 0) doc.Append("FRAME SECTIONS", framePropLines);
 
+        if (droppedBelow.Count > 0)
+            flags.Add($"{droppedBelow.Values.Sum()} member(s) the engineer marks as arriving from the storey below (his yellow, read as BELOW - ASSUMED) " +
+                      "stand where a member is already written on that storey, and were read once: " +
+                      string.Join(", ", droppedBelow.Select(d => $"{d.Key} {d.Value}")) + ".");
         if (skippedWalls > 0 || skippedColumns > 0)
             flags.Add($"{skippedWalls} wall(s) and {skippedColumns} column(s) were already modelled at those " +
                       "locations and were not added again.");

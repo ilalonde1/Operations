@@ -527,8 +527,25 @@ public static class GridAlignment
         }
         if (fits.Count == 0) { why = "the fullest bin holds no pair"; return null; }
         var best = fits.OrderByDescending(f => f.Support).First();
-        if (best.Support < LeastConvincingByColumns || best.Support * 2 < sheet.Count)
-        { why = $"the displacement most share, ({best.Shift.X:0}, {best.Shift.Y:0}), has {best.Support} of {sheet.Count} members standing over placed ones - a fit takes {LeastConvincingByColumns} and at least half"; return null; }
+        // HALF OF WHAT COULD STAND OVER THEM, NOT HALF OF THE SHEET (step 155, 2026-10-19). "At least half" was written
+        // for a top plan, every member of which stands over the tower. A parkade under a tower is the other shape:
+        // 143 E 3rd's B1 and B2 span the site, their retaining walls and ramps stand under nothing, and the core alone
+        // can never be half - so the parkade stayed where its page put it, 31 m off the building. Half is now asked
+        // of the sheet's members that land inside the placed members' extent at that shift; for a plan no bigger than
+        // what is placed, that is every member, as before.
+        int couldStand = sheet.Count;
+        if (Environment.GetEnvironmentVariable("KOR_STEP155_OFF") != "1")
+        {
+            double minX = placed.Min(q => q.X) - bin, maxX = placed.Max(q => q.X) + bin;
+            double minY = placed.Min(q => q.Y) - bin, maxY = placed.Max(q => q.Y) + bin;
+            couldStand = sheet.Count(p =>
+            {
+                double x = p.X * scale + best.Shift.X, y = p.Y * scale + best.Shift.Y;
+                return x >= minX && x <= maxX && y >= minY && y <= maxY;
+            });
+        }
+        if (best.Support < LeastConvincingByColumns || best.Support * 2 < couldStand)
+        { why = $"the displacement most share, ({best.Shift.X:0}, {best.Shift.Y:0}), has {best.Support} of {couldStand} members that could stand over placed ones ({sheet.Count} on the sheet) standing over them - a fit takes {LeastConvincingByColumns} and at least half"; return null; }
         var rival = fits.Where(f => f.Shift != best.Shift && f.Support == best.Support).ToList();
         if (rival.Count > 0)
         { why = $"two places fit alike: ({best.Shift.X:0}, {best.Shift.Y:0}) and ({rival[0].Shift.X:0}, {rival[0].Shift.Y:0}) each stand {best.Support} of {sheet.Count} members over placed ones - not placed"; return null; }

@@ -24,7 +24,7 @@ namespace Kor.Operations.EngineeringTools.Intake;
 public static class SheetViews
 {
     /// <summary>A plan view's title and where it is written, in page points.</summary>
-    public sealed record View(string Title, double MinXPts, double MaxXPts, double YPts)
+    public sealed record View(string Title, double MinXPts, double MaxXPts, double YPts, bool Drafted = false)
     {
         public double CentreXPts => (MinXPts + MaxXPts) / 2;
     }
@@ -95,13 +95,26 @@ public static class SheetViews
             joined[line] = above.Text + " " + line.Text;
             consumed.Add(above);
         }
+        // A VIEW TITLED BY ITS STOREY ALONE (2026-10-19). An architect's view is titled "LEVEL 36" and "LEVEL 37" — no
+        // PLAN — over its number bubble's underline, with the view's scale directly under the line: Revit's view title.
+        // 143 E 3rd titles all eleven views this way, so its five two-plan sheets were one view each and both plans
+        // landed on both storeys. Step 90's storey-alone rule says what such a title names; the scale under the line
+        // says it is a view's title and not a schedule's heading ("LEVEL 1 PARKING", underlined, at the top of A102).
+        bool ScaleStatedUnder(TextLine line, (double X0, double X1, double Y) under) =>
+            lines.Any(o => !o.Equals(line) && o.MinY < under.Y && o.MinY >= under.Y - 2.5 * line.Height
+                           && Math.Min(o.MaxX, under.X1) - Math.Max(o.MinX, under.X0) > 0
+                           && SheetScaleReader.RatioOf(o.Text) is not null);
         foreach (var line in lines)
         {
             if (line.CentreX / page.WidthPts >= TitleRegionMinFx || consumed.Contains(line)) continue;
             string text = joined.TryGetValue(line, out var two) ? two : line.Text;
-            if (!NamesAPlan(text)) continue;
+            // Step 150; KOR_STEP150_OFF=1 restores "a view's title says PLAN".
+            bool storeyAlone = !NamesAPlan(text) && NamesAStoreyAlone(text)
+                && Environment.GetEnvironmentVariable("KOR_STEP150_OFF") != "1";
+            if (!NamesAPlan(text) && !storeyAlone) continue;
             var under = UnderlineOf(line);
             if (under.X1 <= under.X0) continue;
+            if (storeyAlone && !ScaleStatedUnder(line, under)) continue;
             var view = new View(text, Math.Min(under.X0, line.MinX), Math.Max(under.X1, line.MaxX), under.Y);
             // the same title twice a point apart is one title drawn with a double stroke
             if (views.Any(v => v.Title == view.Title && Math.Abs(v.YPts - view.YPts) <= line.Height && Math.Abs(v.CentreXPts - view.CentreXPts) <= line.Height)) continue;
@@ -245,6 +258,10 @@ public static class SheetViews
             for (int k = 0; k < views.Count; k++)
             {
                 if (views[k].YPts >= y) continue;
+                // A TITLE THE ENGINEER WROTE OWNS ONLY WHAT IS ACROSS FROM IT (step 156): his text box sits higher than
+                // the printed titles, so by drop alone it took the roof plan's right-hand columns on 143 E 3rd's A107 and
+                // dragged his sketch 33 m off. It reaches its own width again to either side, and no further.
+                if (views[k].Drafted && Beyond(views[k], x) > views[k].MaxXPts - views[k].MinXPts) continue;
                 double d = (y - views[k].YPts) + Beyond(views[k], x);
                 if (d < bestD) { bestD = d; best = k; }
             }
@@ -300,6 +317,11 @@ public static class SheetViews
                 g.SlabIsAnnotation.Add(i < geometry.SlabIsAnnotation.Count && geometry.SlabIsAnnotation[i]);
             }
             g.FirstEdgeSlab = Enumerable.Range(0, Math.Min(geometry.FirstEdgeSlab, geometry.Slabs.Count)).Count(i => slabOwner[i] == k);
+            // the carried openings (step 168) go with the view whose drawing holds their centre, as a slab does
+            foreach (var o in geometry.CarriedOpenings)
+                if (Owner(o.Average(p => p.X), o.Average(p => p.Y)) == k) g.CarriedOpenings.Add(o);
+            foreach (var o in geometry.CarriedVoids)
+                if (Owner(o.Average(p => p.X), o.Average(p => p.Y)) == k) g.CarriedVoids.Add(o);
 
             for (int i = 0; i < geometry.Columns.Count; i++)
             {
@@ -384,9 +406,29 @@ public static class SheetViews
     {
         ArgumentNullException.ThrowIfNull(record);
         string sheetName = SheetDxfName.For(record, fallbackStem);
-        var views = WithTheSheetsBuilding(Titles(record.Content), sheetName);
         double mmPerPt = record.ScaleDenominator.GetValueOrDefault() * PdfToSafeConstants.PointsToMm;
+        var views = WithTheSheetsBuilding(Titles(record.Content).Concat(MarkupTitles(record.Geometry, mmPerPt))
+            .OrderBy(v => v.MinXPts).ToList(), sheetName);
         return Split(record.Geometry, views, mmPerPt, record.SheetNumber, record.TitleBlock, fallbackStem, sheetName);
+    }
+
+    /// <summary>
+    /// AN ENGINEER'S TEXT BOX THAT NAMES A PLAN TITLES THE SKETCH ABOVE IT (step 156, 2026-10-19). On 143 E 3rd's A107
+    /// Omar drew a second plan beside the roof plan - its outline and four columns - and wrote "Upper roof plan" under
+    /// it in a text box. Read as part of the roof plan it put four columns 33 m off the building. A markup label the
+    /// sheet draws (not a popup note) whose words name a plan is a view title like a printed one; what it titles is
+    /// decided by the same rule as any view, the title nearest below. ASSUMED, and said so: the drawing states no level
+    /// for it - which storey it is comes from its words and the ladder, and its height from the typical storey.
+    /// </summary>
+    public static IReadOnlyList<View> MarkupTitles(ExtractedGeometry geometry, double mmPerPt)
+    {
+        ArgumentNullException.ThrowIfNull(geometry);
+        if (mmPerPt <= 0 || Environment.GetEnvironmentVariable("KOR_STEP156_OFF") == "1") return Array.Empty<View>();
+        return geometry.TextAnnotations
+            .Where(t => !t.HiddenOnSheet && Math.Abs(t.RotationDeg) < 1.0 && NamesAPlan(t.Text))
+            .Select(t => new View(t.Text.Trim().ToUpperInvariant(), t.LeftX / mmPerPt,
+                (t.LeftX + (t.FitWidthMm > 0 ? t.FitWidthMm : 2.0 * (t.X - t.LeftX))) / mmPerPt, t.BottomY / mmPerPt, Drafted: true))
+            .ToList();
     }
 
     /// <summary>

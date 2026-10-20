@@ -225,6 +225,9 @@ internal static class FateFixture
         (new RawSubpath([(74000.499, 30000), (74600.499, 30000), (74600.499, 30600)], true, (0, 0, 0), true, false, 0.5, false), PathReason.BecameColumnByShape),
         (new RawSubpath([(74000.501, 30000), (74600.501, 30600), (74000.501, 30600)], true, (0, 0, 0), true, false, 0.5, false), PathReason.BecameColumnByShape),
         (new RawSubpath([(74000.499, 30000), (74600.499, 30000), (74300, 29700)], true, (0, 0, 0), true, false, 0.5, false), PathReason.FilledTriangle),
+        // a section marker's arrowhead whose third side follows its bubble (143 E 3rd A105, 2026-10-19): five points,
+        // three corners - still a symbol's triangle; twenty of them were columns on every typical floor
+        (new RawSubpath([(80000, 30000), (80409, 30409), (80409, 30157.5), (80261.1, 30139.2), (80121.9, 30085.7)], true, (0x32, 0x32, 0x32), true, false, 0.5, false), PathReason.FilledTriangle),
         // a spot-elevation target's two filled quadrants, corner to corner (step 49)
         (Rect(229, 229, 66000, 30000) with { Color = (0, 0, 0) }, PathReason.SymbolQuadrant),
         (Rect(229, 229, 66229, 30229) with { Color = (0, 0, 0) }, PathReason.SymbolQuadrant),

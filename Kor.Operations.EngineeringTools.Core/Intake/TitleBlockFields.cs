@@ -284,13 +284,13 @@ public static class TitleBlockFields
     }
 
     /// <summary>The first instance of a label wins; a block drawn twice (fake bold) repeats its labels. True when this one was kept.</summary>
-    /// <summary>A token that can be part of a field's value: it has a letter or a digit in it. ":" and "-" alone are the form's own marks.</summary>
-    private static bool IsValueToken(string text) => text.Trim().Any(char.IsLetterOrDigit);
-
     private static bool Set(Dictionary<string, string> fields, string label, string value)
     {
         if (fields.ContainsKey(label)) return false;
         fields[label] = value;
         return true;
     }
+
+    /// <summary>A token that can be part of a field's value: it has a letter or a digit in it. ":" and "-" alone are the form's own marks.</summary>
+    private static bool IsValueToken(string text) => text.Trim().Any(char.IsLetterOrDigit);
 }

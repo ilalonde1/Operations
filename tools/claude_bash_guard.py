@@ -11,6 +11,7 @@ reads as "allowed" and protects nothing.
 stdin  : the PreToolUse payload
 stdout : nothing (allow), or a permissionDecision of "deny"
 """
+import hashlib
 import json
 import os
 import re
@@ -149,14 +150,25 @@ SIX_SETS = os.path.join(REPO, "Kor.Operations.EngineeringTools.Core.Tests", "Int
 STICK_JOBS = ("31130-01", "31138-01", "31168-01", "31065-01", "31202-01")
 
 
+def mirror_copy_of(remote):
+    """DrawingMirror.LocalCopyOf: %TEMP%\\kor-drawings\\<SHA1(lower(dir))[:16] hex>\\<file name>. No share access."""
+    directory, name = remote.rsplit("\\", 1)
+    key = hashlib.sha1(directory.lower().encode("utf-8")).hexdigest().upper()[:16]
+    root = os.environ.get("KOR_GUARD_MIRROR_ROOT") or os.path.join(tempfile.gettempdir(), "kor-drawings")
+    return os.path.join(root, key, name)
+
+
 def missing_slow_inputs():
     """Every input the slow gates read that is not where they will look - empty when all are there."""
     missing = []
+    # the gate's LOCAL mirror copies (DrawingMirror.LocalCopyOf), never the share: 2026-10-19 this check itself
+    # statted six files across the VPN before every run
     try:
         text = open(SIX_SETS, encoding="utf-8").read()
         for path in re.findall(r'@"(\\\\Kor-fs01[^"]+\.pdf)"', text):
-            if not os.path.exists(path):
-                missing.append(path)
+            local = mirror_copy_of(path)
+            if not os.path.exists(local):
+                missing.append(local)
     except OSError:
         missing.append(SIX_SETS)
     mirror = os.environ.get("KOR_GUARD_STICKFILES") or os.path.join(

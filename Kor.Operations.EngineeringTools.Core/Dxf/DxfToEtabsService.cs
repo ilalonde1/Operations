@@ -300,6 +300,7 @@ public static class DxfToEtabsService
         "dxf.mezzanine-words",
         "dxf.foundation-words",
         "dxf.elevator-roof-words",
+        "dxf.pdf.upper-roof-words",
         "dxf.structural-plan-words",
         "dxf.min-wall-thickness",
         "dxf.max-wall-thickness",
@@ -393,6 +394,7 @@ public static class DxfToEtabsService
         "dxf.mezzanine-words",
         "dxf.foundation-words",
         "dxf.elevator-roof-words",
+        "dxf.pdf.upper-roof-words",
         "dxf.structural-plan-words",
     ];
 
@@ -424,6 +426,7 @@ public static class DxfToEtabsService
             ["dxf.mezzanine-words"] = v.MezzanineWords,
             ["dxf.foundation-words"] = v.FoundationWords,
             ["dxf.elevator-roof-words"] = v.ElevatorRoofWords,
+            ["dxf.pdf.upper-roof-words"] = v.UpperRoofWords,
             ["dxf.floor-words"] = v.FloorWords,
             ["dxf.basement-words"] = v.BasementWords,
             ["dxf.top-floor-words"] = v.TopFloorWords,
@@ -580,6 +583,7 @@ public static class DxfToEtabsService
             MezzanineWords = settings.ListOr("dxf.mezzanine-words", vocabulary.MezzanineWords),
             FoundationWords = settings.ListOr("dxf.foundation-words", vocabulary.FoundationWords),
             ElevatorRoofWords = settings.ListOr("dxf.elevator-roof-words", vocabulary.ElevatorRoofWords),
+            UpperRoofWords = settings.ListOr("dxf.pdf.upper-roof-words", vocabulary.UpperRoofWords),
             FloorWords = settings.ListOr("dxf.floor-words", vocabulary.FloorWords),
             BasementWords = settings.ListOr("dxf.basement-words", vocabulary.BasementWords),
             TopFloorWords = settings.ListOr("dxf.top-floor-words", vocabulary.TopFloorWords),
@@ -1367,7 +1371,16 @@ public static class DxfToEtabsService
         // wall outlines the placed sheets already put in the model - a tower's columns and its core stack,
         // and the displacement most of the sheet's members share with them is its frame. A sheet placed this
         // way lends its members to the next. 31168's LEVEL 35 PLAN - BLDG A: two columns, five walls.
-        if (request.Offset is null && alignedByName.Count > 0)
+        // A SET WITH NO GRID AT ALL STANDS ON ITS TYPICAL FLOOR (2026-10-19). An architect's set names no axis - 143 E 3rd
+        // has no grid bubble on any of its eleven sheets - so nothing above placed a sheet, the registration below never
+        // ran, and every plan stayed where it sat on its own page: the roof 35 m from the tower, a two-plan sheet's left
+        // view beside its right. The plan that places the most storeys stands in its own frame (the typical floor: A105,
+        // twenty-nine), then the most members, then the name, so a tie is the same every run; every other plan is set
+        // where its columns and walls stand over it - the same registration a gridded set gives a sheet naming no axis.
+        // Step 151; KOR_STEP151_OFF=1 leaves a gridless set on its pages, as before.
+        bool noSheetNamesAnAxis = request.Offset is null && alignedByName.Count == 0 && referenceGrids.Count == 0
+            && Environment.GetEnvironmentVariable("KOR_STEP151_OFF") != "1";
+        if (request.Offset is null && (alignedByName.Count > 0 || noSheetNamesAnAxis))
         {
             // the points that stack, read the way the model is made from them: a column's centre and a wall's
             // axis ends - the joints the composer writes, so an instrument reading the model back (grid-names)
@@ -1380,6 +1393,17 @@ public static class DxfToEtabsService
             var membersOf = new Dictionary<string, IReadOnlyList<DxfPoint>>(StringComparer.OrdinalIgnoreCase);
             IReadOnlyList<DxfPoint> MembersOf(string f) => membersOf.TryGetValue(f, out var m) ? m
                 : membersOf[f] = StructuralPlanClassifier.MemberPoints(segmentsOf[f], inDrawingUnit);
+            if (noSheetNamesAnAxis)
+            {
+                string? anchor = files.Where(f => storeysOfSheet[f].Count > 0 && MembersOf(f).Count >= GridAlignment.LeastConvincingByColumns)
+                    .OrderByDescending(f => storeysOfSheet[f].Count)
+                    .ThenByDescending(f => MembersOf(f).Count)
+                    .ThenBy(f => f, StringComparer.OrdinalIgnoreCase)
+                    .FirstOrDefault();
+                if (anchor is not null)
+                    alignedByName[anchor] = new GridAlignment.Fit(new AnnotationOverlay.Frame(0, 0, 0), 0, 0,
+                        $"the set names no grid: the plan placing the most storeys ({storeysOfSheet[anchor].Count}) stands in its own frame and the others are set on its members");
+            }
             var candidates = files.Where(f => !alignedByName.ContainsKey(f) && MembersOf(f).Count >= GridAlignment.LeastConvincingByColumns).ToList();
             var byColumns = new List<string>();
             for (bool placedMore = candidates.Count > 0; placedMore;)
@@ -1399,15 +1423,48 @@ public static class DxfToEtabsService
                         .SelectMany(kv => MembersOf(kv.Key).Select(p => kv.Value.Frame.Apply(new DxfPoint(p.X * scale, p.Y * scale))))
                         .ToList();
                 }
+                // A VIEW STANDS FIRST ON ITS OWN SHEET'S OTHER VIEW (step 157, 2026-10-19). Two views of one sheet are one
+                // building at one scale by one hand: 143 E 3rd's A107 carries the roof plan and, beside it, Omar's sketch
+                // of the upper roof - the roof's columns again, 25 m along the page. Against every placed sheet it found
+                // a coincidence 33 m off the building; against its sibling it fits exactly. So a view whose sibling is
+                // placed is tried on the sibling's members first, and a view whose sibling is not placed yet waits a
+                // pass for it; failing the sibling, every placed sheet, as before.
+                bool siblingsFirst = Environment.GetEnvironmentVariable("KOR_STEP157_OFF") != "1";
+                static string? SheetOf(string file)
+                {
+                    var m = System.Text.RegularExpressions.Regex.Match(Path.GetFileName(file), @"^(.+?)_\d+_");
+                    return m.Success ? m.Groups[1].Value : null;
+                }
+                var siblingsOf = files.ToDictionary(f => f, f => files.Where(g => !string.Equals(g, f, StringComparison.OrdinalIgnoreCase)
+                    && SheetOf(g) is { } s && string.Equals(s, SheetOf(f), StringComparison.OrdinalIgnoreCase)).ToList(), StringComparer.OrdinalIgnoreCase);
+                bool waited = false;
                 foreach (string f in candidates.Where(f => !alignedByName.ContainsKey(f)).ToList())
                 {
-                    if (GridAlignment.SolveByColumns(MembersOf(f), PlacedFor(f), scale) is { } fit)
+                    GridAlignment.Fit? fit = null;
+                    if (siblingsFirst && siblingsOf[f].Count > 0)
+                    {
+                        var placedSiblings = siblingsOf[f].Where(alignedByName.ContainsKey).ToList();
+                        if (placedSiblings.Count == 0) { waited = true; continue; }
+                        fit = GridAlignment.SolveByColumns(MembersOf(f),
+                            placedSiblings.SelectMany(s => MembersOf(s).Select(p => alignedByName[s].Frame.Apply(new DxfPoint(p.X * scale, p.Y * scale)))).ToList(), scale);
+                    }
+                    fit ??= GridAlignment.SolveByColumns(MembersOf(f), PlacedFor(f), scale);
+                    if (fit is not null)
                     {
                         alignedByName[f] = fit;
                         byColumns.Add(Path.GetFileName(f));
                         placedMore = true;
                     }
                 }
+                // a pass that placed nothing while views waited on siblings that never came: those views try every placed sheet
+                if (!placedMore && waited)
+                    foreach (string f in candidates.Where(f => !alignedByName.ContainsKey(f)).ToList())
+                        if (GridAlignment.SolveByColumns(MembersOf(f), PlacedFor(f), scale) is { } fit)
+                        {
+                            alignedByName[f] = fit;
+                            byColumns.Add(Path.GetFileName(f));
+                            placedMore = true;
+                        }
             }
             if (byColumns.Count > 0)
                 warnings.Add($"{byColumns.Count} sheet(s) named no axis the model names and were set where their columns and walls stand over members already placed: {string.Join(", ", byColumns)}");

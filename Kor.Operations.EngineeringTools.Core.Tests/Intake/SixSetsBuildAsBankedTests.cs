@@ -75,18 +75,20 @@ public sealed class SixSetsBuildAsBankedTests
     /// A stale mirror is a fine thing to BUILD from — it is what makes the gate reproducible — but it must not be
     /// the reason nobody notices the drawings moved.
     ///
-    /// WHAT THIS COVERS: that each declared path resolves on the share today. WHAT IT DOES NOT: whether the file
-    /// there is the same file it was (the baselines say that, byte for byte); whether a NEWER issue exists beside
-    /// it, which is the census's job and not this gate's.
+    /// LOCAL ONLY (2026-10-19). This asked the share whether each path still resolved, on every run, across the VPN;
+    /// the gate now reads only the local mirror and never touches the share. Whether the share still holds each file
+    /// is the census's question, asked on the LAN, not every test run's.
+    ///
+    /// WHAT THIS COVERS: that each declared source has its local mirror copy. WHAT IT DOES NOT: whether the share
+    /// still has it, or holds a newer issue beside it; whether the copy is the file it was (the baselines say that).
     /// </summary>
     [Fact]
-    public void EverySourceIsWhereThisFileSaysItIs()
+    public void EverySourceIsMirroredLocally()
     {
-        Assert.True(LiveProjects.ShareReachable, "the projects share is not reachable; this gate cannot check its sources");
-        var missing = Sets.Where(s => !File.Exists(s.SharePath)).ToList();
-        foreach (var s in Sets) _out.WriteLine($"{(File.Exists(s.SharePath) ? "ok     " : "MISSING")} {s.Job,-14} {s.SharePath}");
+        var missing = Sets.Where(s => !File.Exists(DrawingMirror.LocalCopyOf(s.SharePath))).ToList();
+        foreach (var s in Sets) _out.WriteLine($"{(File.Exists(DrawingMirror.LocalCopyOf(s.SharePath)) ? "ok     " : "MISSING")} {s.Job,-14} {DrawingMirror.LocalCopyOf(s.SharePath)}");
         Assert.True(missing.Count == 0,
-            "The gate names sources the share does not have. Find where each went and mend the path here - the mirror will keep the gate green while the drawings move out from under it:\n  "
+            "The gate's sources are not mirrored locally. Copy each ONCE, on the LAN, with DrawingMirror.SingleFile - the gate never reads the share:\n  "
             + string.Join("\n  ", missing.Select(s => $"{s.Job}: {s.SharePath}")));
     }
 
@@ -95,7 +97,6 @@ public sealed class SixSetsBuildAsBankedTests
     {
         string? conn = Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable);
         Assert.False(string.IsNullOrWhiteSpace(conn), $"{RuleSettings.ConnectionEnvironmentVariable} is not set; the route reads its rules from KorStandards and never skips.");
-        Assert.True(LiveProjects.ShareReachable, "the projects share is not reachable; the six sources are mirrored from it");
 
         // THE BASELINE IS THE ONE IN THE SOURCE TREE, not the build's copy of it. A `--no-build` run after re-banking
         // compared against the bin's stale copy and said "moved" for a set that was byte-identical to the file just
@@ -120,8 +121,8 @@ public sealed class SixSetsBuildAsBankedTests
             var set = Sets[i];
             try
             {
-                string pdf = DrawingMirror.SingleFile(set.SharePath);
-                Assert.True(File.Exists(pdf), $"{set.Job}: not mirrored from {set.SharePath}");
+                string pdf = DrawingMirror.LocalCopyOf(set.SharePath);
+                Assert.True(File.Exists(pdf), $"{set.Job}: no local mirror copy of {set.SharePath} - the gate never reads the share");
                 string work = Path.Combine(results, set.Job);
                 var inputs = SixSetReadCache.Inputs(pdf, set.Scale, readerHash);
                 var cached = SixSetReadCache.Read(work, inputs, out string reason);

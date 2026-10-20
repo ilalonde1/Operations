@@ -87,9 +87,49 @@ public static class WallOutlineDecomposer
         var deferred = new List<(int I, int J, DxfPoint Start, DxfPoint End, double Thickness)>();
 
         for (int i = 0; i < edges.Count; i++)
-        {
-            if (used[i]) continue;
+            if (!used[i]) TryPair(i, reusing: false);
 
+        // A near-square piece that RUNS INTO one of the panels above is the limb of a corner, and
+        // dropping it is what turned tower B's north corners into one fat wall across the top:
+        // each corner is an L, a 67x28 north wall with a 36-thick leg turned down beside it, and
+        // the leg measures 42x36 — aspect 1.17, just under the sliver rule. The whole L then
+        // resolved as a single 42-thick panel, which is thicker than anything drawn there, and
+        // the doorway below the leg went with it. "Still have that problem with the north corner
+        // walls for tower B."
+        //
+        // A genuine leftover sliver touches nothing, because the faces that would have joined it
+        // to a wall were consumed with that wall. So joining is what separates the two.
+        foreach (var (i, j, start, end, thickness) in deferred)
+        {
+            if (used[i] || used[j]) continue;
+            if (!walls.Any(w => LoopGeometry.SegmentsMeet(start, end, w.Start, w.End, 1.0))) continue;
+
+            walls.Add(new WallAxis(start, end, thickness, loop.Layer));
+            used[i] = true;
+            used[j] = true;
+        }
+
+        // A LONG FACE IS THE PARTNER OF EVERY SHORT FACE ALONG IT (step 154, 2026-10-19). One face, one partner was
+        // the rule above, and it is wrong wherever one face of a wall runs unbroken and the other is broken by the
+        // walls that meet it: 143 E 3rd's core draws its outer left face as ONE 26.8 m line and its inner face in four
+        // pieces (5.0, 11.25, 2.7, 4.8 m) between the stairs and the spine. The outer face paired with the 11.25 m
+        // piece - the spine - and was used, and the other three pieces had no partner left: the core lost its left
+        // wall beside both stairs. After every pass above, a face left over may pair with a face already used, by
+        // every test above, where no wall read so far already runs along that band.
+        if (Environment.GetEnvironmentVariable("KOR_STEP154_OFF") != "1")
+        {
+            int drawnEdges = loop.ClosedExactly ? edges.Count : edges.Count - 1;
+            for (int i = 0; i < drawnEdges; i++)
+                if (!used[i]) TryPair(i, reusing: true);
+        }
+
+        // the closing edge of an open chain (last point back to the first) is not drawn; only drawn edges are left over
+        int drawn = loop.ClosedExactly ? n : n - 1;
+        unused = Enumerable.Range(0, drawn).Where(e => !used[e]).Select(e => edges[e]).ToList();
+        return walls;
+
+        void TryPair(int i, bool reusing)
+        {
             var (ai, bi) = edges[i];
             double lengthI = ai.DistanceTo(bi);
 
@@ -100,7 +140,7 @@ public static class WallOutlineDecomposer
             // measure — it carries them at 9, 12, 15, 23 and 27 inches, all with pier labels — so
             // the floor belongs with the other face-scale threshold, not with the wall-vs-column
             // rule. Whether a short element is a column is decided later, and on connection.
-            if (!LoopGeometry.Within(options.MinPanelOverlap, lengthI)) continue;    // to the micron: a 12" face meets a 12" floor in every frame
+            if (!LoopGeometry.Within(options.MinPanelOverlap, lengthI)) return;    // to the micron: a 12" face meets a 12" floor in every frame
 
             double ux = (bi.X - ai.X) / lengthI, uy = (bi.Y - ai.Y) / lengthI;
             double nx = -uy, ny = ux;
@@ -110,7 +150,7 @@ public static class WallOutlineDecomposer
 
             for (int j = 0; j < edges.Count; j++)
             {
-                if (j == i || used[j]) continue;
+                if (j == i || (used[j] && !reusing)) continue;
 
                 var (aj, bj) = edges[j];
                 double lengthJ = aj.DistanceTo(bj);
@@ -188,7 +228,7 @@ public static class WallOutlineDecomposer
                 }
             }
 
-            if (bestJ < 0) continue;
+            if (bestJ < 0) return;
 
             // How long the panel is, is how far its MATERIAL runs — not how far its two faces
             // happen to overlap.
@@ -214,11 +254,12 @@ public static class WallOutlineDecomposer
                 // Nearly square, so it is either a leftover sliver or a limb of a bigger shape.
                 // Which one cannot be told from its own proportions — held over and decided below,
                 // on whether it joins anything.
+                if (reusing) return;   // a near-square leftover is a sliver's business, decided above
                 deferred.Add((i, bestJ,
                     new DxfPoint(ai.X + ux * bestT0 + nx * half0, ai.Y + uy * bestT0 + ny * half0),
                     new DxfPoint(ai.X + ux * bestT1 + nx * half0, ai.Y + uy * bestT1 + ny * half0),
                     bestDistance));
-                continue;
+                return;
             }
 
             double half = bestDistance / 2.0 * bestSide;
@@ -227,42 +268,40 @@ public static class WallOutlineDecomposer
 
             // no wall stands inside a wall: the band between these faces holds a wall already read, so it is
             // the void between two walls (an open chain's polygon is the closing gap's fiction)
-            if (!loop.ClosedExactly && standing is not null && AWallStandsInside(start, end, bestDistance, standing)) continue;
+            if (!loop.ClosedExactly && standing is not null && AWallStandsInside(start, end, bestDistance, standing)) return;
+
+            // the second pass pairs with a face already used, so the wall may be one already read: refused where a
+            // wall of this outline already runs along the band (parallel, its axis within half a thickness, overlapping)
+            if (reusing && walls.Any(w => RunsAlong(w, start, end, bestDistance))) return;
 
             walls.Add(new WallAxis(start, end, bestDistance, loop.Layer));
             used[i] = true;
-            used[bestJ] = true;
+            if (!reusing) used[bestJ] = true;   // a used face stays available to the other short faces along it
 
             // Consume the short faces that cap this wall's ends. Left unused they pair with
             // each other and produce a sliver as wide as the wall is thick, which is what
             // forced the aspect rule to be strict enough to also reject real piers.
             ConsumeEndFaces(edges, used, ai, ux, uy, nx, ny, bestT0, bestT1, bestDistance * bestSide);
         }
+    }
 
-        // A near-square piece that RUNS INTO one of the panels above is the limb of a corner, and
-        // dropping it is what turned tower B's north corners into one fat wall across the top:
-        // each corner is an L, a 67x28 north wall with a 36-thick leg turned down beside it, and
-        // the leg measures 42x36 — aspect 1.17, just under the sliver rule. The whole L then
-        // resolved as a single 42-thick panel, which is thicker than anything drawn there, and
-        // the doorway below the leg went with it. "Still have that problem with the north corner
-        // walls for tower B."
-        //
-        // A genuine leftover sliver touches nothing, because the faces that would have joined it
-        // to a wall were consumed with that wall. So joining is what separates the two.
-        foreach (var (i, j, start, end, thickness) in deferred)
-        {
-            if (used[i] || used[j]) continue;
-            if (!walls.Any(w => LoopGeometry.SegmentsMeet(start, end, w.Start, w.End, 1.0))) continue;
-
-            walls.Add(new WallAxis(start, end, thickness, loop.Layer));
-            used[i] = true;
-            used[j] = true;
-        }
-
-        // the closing edge of an open chain (last point back to the first) is not drawn; only drawn edges are left over
-        int drawn = loop.ClosedExactly ? n : n - 1;
-        unused = Enumerable.Range(0, drawn).Where(e => !used[e]).Select(e => edges[e]).ToList();
-        return walls;
+    /// <summary>
+    /// Whether wall <paramref name="w"/> already runs along the band of a candidate from <paramref name="start"/> to
+    /// <paramref name="end"/> (step 154): parallel to it, its axis within half the thicker of the two from the
+    /// candidate's, and overlapping it along its length by more than a millimetre's worth of rounding.
+    /// </summary>
+    private static bool RunsAlong(WallAxis w, DxfPoint start, DxfPoint end, double thickness)
+    {
+        double len = start.DistanceTo(end), wl = w.Start.DistanceTo(w.End);
+        if (len < 1e-9 || wl < 1e-9) return false;
+        double ux = (end.X - start.X) / len, uy = (end.Y - start.Y) / len;
+        double vx = (w.End.X - w.Start.X) / wl, vy = (w.End.Y - w.Start.Y) / wl;
+        if (Math.Abs(ux * vx + uy * vy) < ParallelDot) return false;
+        double off = Math.Abs(((w.Start.X + w.End.X) / 2 - start.X) * -uy + ((w.Start.Y + w.End.Y) / 2 - start.Y) * ux);
+        if (off > Math.Max(thickness, w.Thickness) / 2.0) return false;
+        double t0 = (w.Start.X - start.X) * ux + (w.Start.Y - start.Y) * uy, t1 = (w.End.X - start.X) * ux + (w.End.Y - start.Y) * uy;
+        if (t0 > t1) (t0, t1) = (t1, t0);
+        return Math.Min(len, t1) - Math.Max(0, t0) > 1e-3 * Math.Max(1.0, len);
     }
 
     /// <summary>

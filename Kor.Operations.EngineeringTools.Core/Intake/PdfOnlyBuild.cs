@@ -48,6 +48,17 @@ public static class PdfOnlyBuild
 
         /// <summary>Views written under a name with their page appended because another page already took the name.</summary>
         public IReadOnlyList<string> RenamedViews { get; init; } = [];
+
+        /// <summary>
+        /// Markup fills read as slabs in a colour dxf.pdf.markup-structure-colours does not declare, as "#RRGGBB" -> shapes.
+        /// THE CHECK FOR ONE CLASS (2026-10-19): an undeclared filled markup falls through to a slab edge, and inside a floor it
+        /// is cut as a hole. 143 E 3rd found it twice in one evening - blue beam bands on L2 and L36, pale-yellow corridor
+        /// headers on L36 - each a hole in the model and silent in the report. Covers: every markup fill on a written plan,
+        /// by colour. Does NOT cover: which of them became a hole (the composer's "check it is a hole" lines say that), an
+        /// undeclared markup LINE, or a declared colour that declares the wrong thing - a fill whose colour is declared WALL
+        /// but is a highlight is not listed here.
+        /// </summary>
+        public IReadOnlyDictionary<string, int> UndeclaredMarkupFills { get; init; } = new Dictionary<string, int>();
     }
 
     /// <summary>
@@ -65,6 +76,24 @@ public static class PdfOnlyBuild
     ///
     /// So the reason is assembled from the counts the intake already has and never printed.
     /// </summary>
+    /// <summary>Fewer marks than this in structure ink is a note, not a marked-up plan (step 153): a column a
+    /// ring and two arrows is a comment on the architect's drawing, not a statement of the structure.</summary>
+    internal const int MinStructureInk = 4;
+
+    /// <summary>How many of a page's shapes are markup in a declared structure colour (step 153).</summary>
+    internal static int StructureInkOn(ExtractedGeometry g, IReadOnlyDictionary<(byte R, byte G, byte B), string> declared)
+    {
+        // a beam declaration keeps a band out of the slab; beams are not modelled, so it is not the page's structure
+        declared = declared.Where(d => !d.Value.StartsWith("BEAM", StringComparison.Ordinal)).ToDictionary(d => d.Key, d => d.Value);
+        if (declared.Count == 0) return 0;
+        int n = 0;
+        for (int i = 0; i < g.Slabs.Count; i++) if (i < g.SlabIsAnnotation.Count && g.SlabIsAnnotation[i] && declared.ContainsKey(g.SlabColors[i])) n++;
+        for (int i = 0; i < g.Columns.Count; i++) if (i < g.ColumnIsAnnotation.Count && g.ColumnIsAnnotation[i] && declared.ContainsKey(g.ColumnColors[i])) n++;
+        for (int i = 0; i < g.Walls.Count; i++) if (i < g.WallIsAnnotation.Count && g.WallIsAnnotation[i] && declared.ContainsKey(g.WallColors[i])) n++;
+        for (int i = 0; i < g.Lines.Count; i++) if (i < g.LineIsAnnotation.Count && g.LineIsAnnotation[i] && declared.ContainsKey(g.LineColors[i])) n++;
+        return n;
+    }
+
     internal static string NoPlanSheetReason(SheetsResult sheets)
     {
         var all = sheets.Sheets;
@@ -152,6 +181,7 @@ public static class PdfOnlyBuild
         var names = new UniqueViewNames();   // a view's name is unique within the set; the second of a name carries its page
         int written = 0, empty = 0, notPlan = 0, failed = 0;
         int typed = 0, partitions = 0, untagged = 0, tags = 0, notWalls = 0, dimensionStrings = 0, patternCells = 0, tendonAnchors = 0, symbolQuadrants = 0;
+        var undeclaredFills = new SortedDictionary<string, int>(StringComparer.Ordinal);
         for (int p = first; p <= last; p++)
         {
             SheetRecord record;
@@ -164,8 +194,51 @@ public static class PdfOnlyBuild
                 continue;
             }
 
+            // A PLAN THE ENGINEER HAS MARKED UP IS READ FOR HIS MARKUP (step 153, 2026-10-19). Where a page carries his
+            // structure ink - the colours dxf.pdf.markup-structure-colours declares - his markup is the structure and the
+            // architect's drawing is what it was drawn over: 143 E 3rd's A105 read the architect's unit partitions as walls
+            // and her room fills as eleven openings while his core, cross-walls and columns sat on top. Read markup-only,
+            // the one mode the markup DXF already uses. A page with no structure ink is read as before.
+            if (!markup && Environment.GetEnvironmentVariable("KOR_STEP153_OFF") != "1"
+                && StructureInkOn(record.Geometry, options.MarkupElementTypes()) >= MinStructureInk)
+            {
+                var wholePage = record.Geometry;
+                try { record = DrawingIntake.ReadSheet(doc, p, request with { MarkupOnly = true }, facts, pdfSha256); }
+                catch { }
+                // THE SHAFTS COME WITH IT (step 160, 2026-10-19). The engineer marks walls, columns and the floor; the shafts
+                // and stair wells are the architect's - her X across each lift, her flights in each stair - and markup-only
+                // dropped them, so 143 E 3rd's model floored over every lift and stair. The openings the whole-page read
+                // found (steps 104, 105) are written into the markup read as the same opening loops; nothing else of hers is.
+                if (!ReferenceEquals(wholePage, record.Geometry) && Environment.GetEnvironmentVariable("KOR_STEP160_OFF") != "1")
+                    foreach (var region in wholePage.OpeningRegions)
+                    {
+                        // ON THEIR OWN LAYER (step 168, 2026-10-20): written as slab rings, B1's 1,017 sq ft OPEN TO BELOW cell
+                        // was large enough to be read as a floor and cleared as the parkade's interior (step 78). An opening
+                        // the page found is an opening; the classifier cuts it in whatever floor holds it.
+                        if (Environment.GetEnvironmentVariable("KOR_STEP168_OFF") == "1")
+                        {
+                            record.Geometry.Slabs.Add(region.ToList());
+                            record.Geometry.SlabColors.Add(((byte)0, (byte)0, (byte)0));
+                            record.Geometry.SlabIsAnnotation.Add(false);
+                        }
+                        else if (wholePage.VoidRegions.Contains(region)) record.Geometry.CarriedVoids.Add(region.ToList());
+                        else record.Geometry.CarriedOpenings.Add(region.ToList());
+                        record.Geometry.OpeningRegions.Add(region.ToList());
+                    }
+            }
+
             var geo = record.Geometry;
             string? title = record.BookmarkTitle;
+            if (record.SheetType == "plan" || markup)
+            {
+                var declaredColours = options.MarkupElementTypes();
+                for (int i = 0; i < geo.Slabs.Count; i++)
+                    if (i < geo.SlabIsAnnotation.Count && geo.SlabIsAnnotation[i] && !declaredColours.ContainsKey(geo.SlabColors[i]))
+                    {
+                        string key = $"#{geo.SlabColors[i].R:X2}{geo.SlabColors[i].G:X2}{geo.SlabColors[i].B:X2}";
+                        undeclaredFills[key] = undeclaredFills.GetValueOrDefault(key) + 1;
+                    }
+            }
             // A DXF PLAN IS WRITTEN FROM A PLAN SHEET. The classifier runs on every page and the record
             // keeps what it found; a section's cut-wall poché or a detail's outline is not a storey and
             // does not go to the model. S3.01 on 31168 yielded 36 "walls" before this (brief 17).
@@ -212,7 +285,8 @@ public static class PdfOnlyBuild
                         var pg = part.Geometry;
                         if (pg.Slabs.Count + pg.Columns.Count + pg.Walls.Count + pg.Lines.Count == 0) continue;
                         // the view is exported once, into memory; the file is the same lines, written where a DXF is wanted
-                        var lines = DxfExporter.ExportLines(pg, layerByColour: layerByColour, korLayers: korLayers);
+                        var lines = DxfExporter.ExportLines(pg, layerByColour: layerByColour, korLayers: korLayers,
+                            markupElementTypes: options.MarkupElementTypes());
                         if (lines.Count == 0) continue;
                         string viewName = names.Claim(part.FileName, p);
                         views.Add(new DxfSheet(viewName, lines));
@@ -224,7 +298,8 @@ public static class PdfOnlyBuild
                 else
                 {
                     string dxf = Path.GetFullPath(outDxf);
-                    var lines = DxfExporter.ExportLines(geo, layerByColour: layerByColour, korLayers: korLayers);
+                    var lines = DxfExporter.ExportLines(geo, layerByColour: layerByColour, korLayers: korLayers,
+                        markupElementTypes: options.MarkupElementTypes());
                     if (lines.Count > 0)
                     {
                         string viewName = names.Claim(Path.GetFileName(dxf), p);
@@ -259,7 +334,7 @@ public static class PdfOnlyBuild
             sheets.Add(outcome); onSheet?.Invoke(outcome);
         }
 
-        return new SheetsResult(sheets, assemblies, written, empty, notPlan, failed, dimensionStrings, patternCells, tags, typed, partitions, notWalls, untagged, tendonAnchors, symbolQuadrants) { Views = views, RenamedViews = names.Renamed };
+        return new SheetsResult(sheets, assemblies, written, empty, notPlan, failed, dimensionStrings, patternCells, tags, typed, partitions, notWalls, untagged, tendonAnchors, symbolQuadrants) { Views = views, RenamedViews = names.Renamed, UndeclaredMarkupFills = undeclaredFills };
     }
 
     /// <summary>
@@ -420,6 +495,9 @@ public static class PdfOnlyBuild
             }
             // the composer's report beside the model, as dxf-to-etabs prints it: the WHY for every count in the ledger
             var report = new List<string> { "Storeys       : " + StoreysFromPlans.Summary(ladder) };
+            if (sheets.UndeclaredMarkupFills.Count > 0)
+                report.Add("Markup fills  : " + string.Join(", ", sheets.UndeclaredMarkupFills.Select(f => $"{f.Key} x{f.Value}")) +
+                           " - colours dxf.pdf.markup-structure-colours does not name, read as floors or their edges; one inside a floor is cut as a hole. Name each colour or check each hole.");
             if (model is not null)
             {
                 report.Add($"Sheets read   : {model.SheetsRead}   placed: {model.SheetsPlaced}   set on the grid by name: {model.SheetsSetOnGridByName.Count}");

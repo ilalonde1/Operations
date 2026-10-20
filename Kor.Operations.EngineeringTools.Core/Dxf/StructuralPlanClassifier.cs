@@ -708,6 +708,11 @@ public static class StructuralPlanClassifier
     {
         options ??= new PlanClassificationOptions();
         var all = segments as IReadOnlyList<DxfSegment> ?? segments.ToList();
+        // the page read's openings, carried into a markup-only read (step 168): out of every other reading, cut at the end
+        static bool IsCarried(DxfSegment s) => s.Layer.Equals(PdfToSafe.DxfExporter.CarriedOpeningLayer, StringComparison.OrdinalIgnoreCase)
+                                              || s.Layer.Equals(PdfToSafe.DxfExporter.CarriedVoidLayer, StringComparison.OrdinalIgnoreCase);
+        var carried = all.Where(IsCarried).ToList();
+        if (carried.Count > 0) all = all.Where(s => !IsCarried(s)).ToList();
         segments = all;
 
         // The line this sheet was cut on, if it was. A slab edge that runs off the page at a match
@@ -1786,7 +1791,35 @@ public static class StructuralPlanClassifier
                 }
                 else
                 {
+                    // A FLOOR TAKEN FROM THE WALLS STAYS WITHIN THE WALLS (step 161, 2026-10-19). The traced ring of 143 E 3rd's
+                    // B1 and B2 ran along the top face and out to x 70.1 m and straight back - a spike 5 m past every wall the
+                    // floor was taken from, which is the parkade sticking out of the tower in ETABS. A vertex beyond the walls'
+                    // own extent (a wall's thickness of slack) is the trace's, not the building's, and is dropped.
+                    if (Environment.GetEnvironmentVariable("KOR_STEP161_OFF") != "1" && result.Walls.Count > 0)
+                    {
+                        double slack = result.Walls.Max(w => w.Thickness);
+                        double minX = result.Walls.Min(w => Math.Min(w.Start.X, w.End.X)) - slack, maxX = result.Walls.Max(w => Math.Max(w.Start.X, w.End.X)) + slack;
+                        double minY = result.Walls.Min(w => Math.Min(w.Start.Y, w.End.Y)) - slack, maxY = result.Walls.Max(w => Math.Max(w.Start.Y, w.End.Y)) + slack;
+                        var kept = enclosed.Points.Where(p => p.X >= minX && p.X <= maxX && p.Y >= minY && p.Y <= maxY).ToList();
+                        if (kept.Count >= 3 && kept.Count < enclosed.Points.Count)
+                            enclosed = new PlanLoop(enclosed.Layer, kept, true);
+                    }
                     result.Slabs.Add(enclosed);
+                    // A FLOOR TAKEN FROM THE WALLS KEEPS THE HOLES INSIDE IT (step 163, 2026-10-19). The shafts and wells are
+                    // read before this floor exists, stand inside no floor then, and were dropped as linework: 143 E 3rd's L1
+                    // came out with its five lifts and both stairs floored over. A ring that was "on its own" only because the
+                    // floor had not been found yet, and lies inside the floor now, is cut like any opening - and said so.
+                    if (Environment.GetEnvironmentVariable("KOR_STEP163_OFF") != "1")
+                        foreach (var ring in result.LooseRings)
+                        {
+                            if (ring.Area >= enclosed.Area / 2 || !ring.Points.All(p => LoopGeometry.PointInPolygon(p, enclosed.Points))) continue;
+                            var c = ring.Centroid();   // the same ring read twice (two passes) is one hole
+                            if (result.Openings.Any(o => Math.Abs(o.Area - ring.Area) <= ring.Area * 0.05 && Math.Abs(o.Centroid().X - c.X) <= 50 && Math.Abs(o.Centroid().Y - c.Y) <= 50)) continue;
+                            result.Openings.Add(ring);
+                            result.Flags.Add(
+                                $"{ring.Layer}: an opening of {options.SqFt(ring.Area)} sq ft cut from the floor of {options.SqFt(enclosed.Area)} " +
+                                "sq ft the perimeter walls give — it stood inside no floor until that one was taken; check it is a hole.");
+                        }
                     result.Flags.Add(!string.IsNullOrEmpty(panelNote) ? panelNote :
                         $"No slab edge on this drawing would close, so the floor is taken from the inside face of " +
                         $"the perimeter wall — {options.SqFt(enclosed.Area)} sq ft, one outline, one thickness. It is an " +
@@ -2065,6 +2098,30 @@ public static class StructuralPlanClassifier
         {
             var built = new PlanLoopBuilder(options.JoinTolerance, options.JoinTolerance, options.JoinTolerance).Build(partitionSegments);
             result.Partitions.AddRange(built.Loops);
+        }
+
+        // AN OPENING THE PAGE FOUND IS CUT IN WHATEVER FLOOR HOLDS IT (step 168, 2026-10-20). Carried as slab rings, 143 E
+        // 3rd's B1 OPEN TO BELOW cell (1,017 sq ft) was big enough to be read as a floor and was cleared as the parkade's
+        // interior (step 78); its smaller shafts were saved only by step 163. On their own layer they are judged once, after
+        // every floor - slab edge, perimeter wall or recovery - is final: its centre in a floor, under half of it, and not
+        // already cut there.
+        if (carried.Count > 0)
+        {
+            // each layer on its own, so a ring keeps the layer that says what it is (a void's words, or a shaft's mark)
+            var rings = carried.GroupBy(s => s.Layer, StringComparer.OrdinalIgnoreCase)
+                .SelectMany(g => new PlanLoopBuilder(options.JoinTolerance, options.JoinTolerance, options.JoinTolerance).Build(g).Loops).ToList();
+            foreach (var ring in rings)
+            {
+                // its centre in the floor: a stair well or a void runs to the floor's edge (stair B on L2-L4, B1's void along its
+                // wall), and "every vertex inside" refused a vertex lying ON the edge - three stairs lost in the first cut
+                var c = ring.Centroid();
+                var floor = result.Slabs.FirstOrDefault(s => ring.Area < s.Area / 2 && LoopGeometry.PointInPolygon(c, s.Points));
+                if (floor is null) continue;
+                if (result.Openings.Any(o => LoopGeometry.PointInPolygon(c, o.Points) || LoopGeometry.PointInPolygon(o.Centroid(), ring.Points))) continue;
+                result.Openings.Add(ring);
+                result.Flags.Add($"{ring.Layer}: an opening of {options.SqFt(ring.Area)} sq ft the page marks (a shaft's X, a stair, OPEN TO BELOW) " +
+                                 $"cut from a floor of {options.SqFt(floor.Area)} sq ft.");
+            }
         }
 
         return result;
@@ -3093,6 +3150,7 @@ public static class StructuralPlanClassifier
 
         // A ring too small to be a floor and not inside one is linework, not structure. Modelling
         // it puts a scrap of slab in mid-air with nothing under it.
+        result.LooseRings.AddRange(slabs.Where(s => s.Area < options.MinPlateArea));
         foreach (var scrap in slabs.Where(s => s.Area < options.MinPlateArea))
             result.Flags.Add(
                 $"{scrap.Layer}: closed ring of {options.SqFt(scrap.Area, "0")} sq ft on its own — too small for a " +

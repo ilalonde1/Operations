@@ -1315,11 +1315,13 @@ public class E2kDocumentTests
     [Fact]
     public void TwoReadingsOfAColumnMoreThanAnInchApartDiagonallyAreTwoColumns()
     {
+        // Half-inch footprints: this pins the INCH (PlacedMembers' metric), so the columns must be too small to overlap. Two
+        // footprints that overlap are one column by step 162, a separate rule - pinned in OverlappingColumnFootprintsAreOneColumn.
         static PlanGeometrySet Plan(double x, double y)
         {
             var g = new PlanGeometrySet();
             g.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(120, 0), 12, "JBP_V-WALL"));   // something for the storey to stand on
-            g.Columns.Add(new ColumnFootprint(new DxfPoint(x, y), 24, 24, "JBP_V_COL"));
+            g.Columns.Add(new ColumnFootprint(new DxfPoint(x, y), 0.5, 0.5, "JBP_V_COL"));
             return g;
         }
         // a fresh document each time: composing writes the members into it
@@ -1334,6 +1336,34 @@ public class E2kDocumentTests
         Assert.Equal(2, ColumnsOf(50.75, 50.75));
         Assert.Equal(2, ColumnsOf(51.01, 50));
         Assert.Equal(1, ColumnsOf(50.35, 50.35));
+    }
+
+    /// <summary>
+    /// Step 162 (2026-10-19): two column footprints whose centres are closer than the larger one's side stand inside each
+    /// other - one column drawn twice (143 E 3rd's L37: the tower's 14 x 36 risen from L36's plan and the roof plan's
+    /// 18 x 18, 231 and 295 mm apart). WHAT THIS COVERS: two 24" readings 1.06" and 23" apart are one; 25" apart, two.
+    /// WHAT IT DOES NOT: columns on different storeys, or the inch metric itself (the test above).
+    /// </summary>
+    [Fact]
+    public void OverlappingColumnFootprintsAreOneColumn()
+    {
+        static PlanGeometrySet Plan(double x, double y)
+        {
+            var g = new PlanGeometrySet();
+            g.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(120, 0), 12, "JBP_V-WALL"));
+            g.Columns.Add(new ColumnFootprint(new DxfPoint(x, y), 24, 24, "JBP_V_COL"));
+            return g;
+        }
+        static int ColumnsOf(double x2, double y2)
+        {
+            var doc = E2kDocument.Parse(Reference);
+            var story = doc.ReadStories().Single(s => s.Name == "LEVEL 3");
+            return E2kGeometryComposer.Compose(doc, new[] { new StoryPlacement(story, Plan(50, 50), "a.dxf"), new StoryPlacement(story, Plan(x2, y2), "b.dxf") }).Columns;
+        }
+
+        Assert.Equal(1, ColumnsOf(50.75, 50.75));
+        Assert.Equal(1, ColumnsOf(73, 50));
+        Assert.Equal(2, ColumnsOf(75, 50));
     }
 
     /// <summary>

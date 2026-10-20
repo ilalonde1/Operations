@@ -65,6 +65,46 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public IReadOnlyList<string> VoidWords { get; init; } = DefaultVoidWords;
         /// <summary>The words inside a big X that make it a slab, whatever else it says (step 106): 9" SLAB on 31202's ROOF - dxf.pdf.slab-words (migration 097), else the compiled defaults.</summary>
         public IReadOnlyList<string> SlabWords { get; init; } = DefaultSlabWords;
+        /// <summary>What an engineer's markup colour declares a member to be, as RRGGBB=TYPE (step 152): burgundy is KOR's
+        /// structure ink - dxf.pdf.markup-structure-colours, else the compiled default. Markup only: page linework of the
+        /// same colour is the drawing's, not a declaration.</summary>
+        public IReadOnlyList<string> MarkupStructureColours { get; init; } = DefaultMarkupStructureColours;
+        /// <summary>KOR's structure ink (step 152): #800000, the burgundy every engineer marks walls and columns in (143 E 3rd's
+        /// A105: nine wall regions and ten columns, all #800000; its floor measurement #004000, its dimensions #F00000). WALL,
+        /// so a region reaches the composer as a wall outline and a column-sized one becomes a column by the composer's rule.</summary>
+        /// <para>FFFF00=WALL? - ASSUMED (the trailing ?), 2026-10-19: 143 E 3rd's L1 draws yellow bands round its perimeter and
+        /// down its core, no floor; rendered and looked at, they are the ground floor's walls. Nothing states it - 205 of the
+        /// engineer's marked-up files hold 87 yellow shapes, 85 of them highlight boxes - so it is written on an -ASSUMED
+        /// layer and the report says so.</para>
+        /// <para>0080C0=BEAM? - ASSUMED, 2026-10-19: 143 E 3rd draws three blue-filled, red-dashed bands with a width dimension
+        /// on them - two 8'-0" across L2 (one with three columns standing in it), one 4'-0" between two columns on L36. Read
+        /// as slab edges they were cut as holes (387 and 267 sq ft on L2, 117 on L36). Looked at, they are beam bands. Beams
+        /// are not modelled (LayerLedger: a depth would be invented), so the declaration keeps them out of the slab and on a
+        /// layer that says BEAM and ASSUMED. 205 of the engineer's marked-up files hold no blue fill: this job's own ink.</para>
+        /// <para>FFFF80=BEAM? - ASSUMED, 2026-10-19: the pale yellow, four shapes on 143 E 3rd's L36, each where a yellow wall
+        /// line crosses the corridor - the line carried over the doorway, a header, not a hole (they were cut as two).</para>
+        /// <para>FFFF00=WALL-BELOW? (step 165, 2026-10-19): the yellow is structure arriving from the storey below and stopping
+        /// at this level, not standing on it. Looked at sheet by sheet: L36's yellow columns sit on the typical floor's and
+        /// nothing is over them (L37 and the roof step back 1.5 m); L36's burgundy columns are exactly the six that continue
+        /// to the roof; the roof's yellow are those same double-height columns arriving; L1's yellow perimeter is the parkade
+        /// wall, its burgundy spine the wall going up. Read as WALL and raised by the member-rises rule, they stood four columns
+        /// on L37 with nothing to carry and doubled L1's wall.</para>
+        public static readonly IReadOnlyList<string> DefaultMarkupStructureColours = ["800000=WALL", "FFFF00=WALL-BELOW?", "0080C0=BEAM?", "FFFF80=BEAM?"];
+
+        /// <summary>The colour declarations as a lookup the DXF writer reads; an entry that does not parse is skipped.</summary>
+        public IReadOnlyDictionary<(byte R, byte G, byte B), string> MarkupElementTypes()
+        {
+            var map = new Dictionary<(byte R, byte G, byte B), string>();
+            foreach (string entry in MarkupStructureColours)
+            {
+                var parts = entry.Split('=', 2, StringSplitOptions.TrimEntries);
+                if (parts.Length != 2 || parts[0].Length != 6 || !int.TryParse(parts[0], System.Globalization.NumberStyles.HexNumber, null, out int rgb)) continue;
+                // quantized as the reader quantizes a markup's colour (top four bits a channel): FFFF00 is read as F0F000
+                map[((byte)((rgb >> 16) & 0xF0), (byte)((rgb >> 8) & 0xF0), (byte)(rgb & 0xF0))] = parts[1].ToUpperInvariant();
+            }
+            return map;
+        }
+
         /// <summary>A void's words (step 106): OPEN TO BELOW, OPENING, VOID, ATRIUM. The row dxf.pdf.void-words extends these; whole words, any case.</summary>
         public static readonly IReadOnlyList<string> DefaultVoidWords = ["OPEN", "OPENING", "VOID", "ATRIUM"];
         /// <summary>A slab's words (step 106): SLAB. The row dxf.pdf.slab-words extends these.</summary>
@@ -259,6 +299,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 YardstickStoreyQualifierWords = Extended($"{Prefix}.yardstick-storey-qualifier-words", options.YardstickStoreyQualifierWords),
                 VoidWords = Extended($"{Prefix}.void-words", options.VoidWords),
                 SlabWords = Extended($"{Prefix}.slab-words", options.SlabWords),
+                MarkupStructureColours = Extended($"{Prefix}.markup-structure-colours", options.MarkupStructureColours),
             };
 
             IReadOnlyList<string> Extended(string key, IReadOnlyList<string> defaults)

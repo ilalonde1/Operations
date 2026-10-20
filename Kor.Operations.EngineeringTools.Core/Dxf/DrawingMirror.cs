@@ -143,6 +143,14 @@ public static class DrawingMirror
         return true;
     }
 
+    /// <summary>
+    /// Where <see cref="SingleFile"/> keeps its copy of <paramref name="remoteFile"/>, named without touching the
+    /// share: no existence check, no size or date compare. For a gate that must run without the VPN (Ian,
+    /// 2026-10-19: every full suite was statting six files across it).
+    /// </summary>
+    public static string LocalCopyOf(string remoteFile)
+        => Path.Combine(Path.Combine(Root, Key(Path.GetDirectoryName(remoteFile) ?? remoteFile)), Path.GetFileName(remoteFile));
+
     private static string Key(string path)
     {
         byte[] hash = System.Security.Cryptography.SHA1.HashData(
