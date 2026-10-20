@@ -347,7 +347,10 @@ internal static class KnowledgeCli
     private static async Task<int> PursuitFilesAddAsync(Arguments args, string connection, CancellationToken ct)
     {
         var engagementId = long.Parse(args.Positionals[3], CultureInfo.InvariantCulture);
-        var folder = Path.GetFullPath(args.Positionals[4]);
+        // A single file is stored on its own; a folder stores its top-level files. No staging copies needed either way.
+        var source = Path.GetFullPath(args.Positionals[4]);
+        var single = File.Exists(source);
+        var folder = single ? Path.GetDirectoryName(source)! : source;
         var by = args.Value("--by")!;
         var engagements = new SqlCrmEngagementStore(connection);
         var files = new SqlPursuitFileStore(connection);
@@ -356,7 +359,7 @@ internal static class KnowledgeCli
         var added = 0;
         var skipped = 0;
         PursuitFile? submitted = existing.FirstOrDefault(f => f.Id == pursuit.SubmittedFileId);
-        foreach (var path in Directory.EnumerateFiles(folder).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
+        foreach (var path in (single ? new[] { source } : Directory.EnumerateFiles(folder)).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
         {
             var name = Path.GetFileName(path);
             var size = new FileInfo(path).Length;
@@ -681,7 +684,7 @@ internal static class KnowledgeCli
         BdKnowledgeIngest hour render <hour.json> --to <file.html>
         BdKnowledgeIngest hour verify <yyyy-MM-dd> --kind Morning [--after <ISO timestamp>]
         BdKnowledgeIngest pursuit checklist import <engagementId> <file.json> --by <name> [--replace]
-        BdKnowledgeIngest pursuit files add <engagementId> <folder> --by <name> [--submitted <file name>]
+        BdKnowledgeIngest pursuit files add <engagementId> <file or folder> --by <name> [--submitted <file name>]
         BdKnowledgeIngest doctrine list [--role BD|Operations|IT]
         BdKnowledgeIngest doctrine show <id> [--role BD|Operations|IT]
         BdKnowledgeIngest doctrine similar <report.json> [--role BD|Operations|IT] [--exclude-run <id>]
