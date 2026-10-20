@@ -201,7 +201,7 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             var today = MorningImpact.EngineReadings(arRows, utilRows);
             if (arRows.Count == 0) { today.Remove("ArTotal"); today.Remove("ArOver60"); today.Remove("ArOver90"); today.Remove("ArInactive"); notes.Add("AR rows unavailable; AR readings not recorded today."); }
             foreach (var (k, v) in await store.ReadBdTotalsAsync(ct)) today[k] = v;
-            foreach (var (k, v) in MorningImpact.PlanReadings(result, utilRows.Length, months, AlertCount(result, "Billing Lagging Burn"))) today[k] = v;
+            foreach (var (k, v) in MorningImpact.PlanReadings(result, utilRows, months, AlertCount(result, "Billing Lagging Burn"))) today[k] = v;
             await store.RecordAsync(date, today, ct);
             readings = await store.ListAsync(MorningImpact.Baseline, ct);
         }

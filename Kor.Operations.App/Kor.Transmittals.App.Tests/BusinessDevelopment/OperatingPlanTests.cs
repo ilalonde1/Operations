@@ -28,7 +28,7 @@ public sealed class OperatingPlanTests
 
     private static OperatingPlanModel Model() => new(
         Enumerable.Range(1, 9).Select(n => Stage(n, n <= 5 ? "BD" : n == 9 ? "IT" : "Ops",
-            n == 2 ? "{PursuitsLive} live; {PursuitsWithFee} carry a fee." : n == 8 ? "{ArOver90} over 90 days; {Dso} days." : "Today {0}")).ToList(),
+            n == 2 ? "{PursuitsLive} live; {PursuitsWithFee} carry a fee." : n == 8 ? "{ArOver90} over 90 days; {Dso} days." : "Today.")).ToList(),
         new[]
         {
             new PlanGoalRow(1, "BD", 2, "Every live pursuit has a fee estimate", "PursuitsWithFee", 0, null, "every live pursuit ({PursuitsLive})",
@@ -145,22 +145,66 @@ public sealed class OperatingPlanTests
         var months = Enumerable.Range(1, 12).Select(i => new Kor.Operations.Financials.ImpactMonth(202500 + i, i <= 6 ? 490_000 : 367_000, 0, 0, i == 12 ? 174 : 180)).ToList();
         static Kor.Operations.Financials.ExecutiveSummaryResult Result(params Kor.Operations.Financials.ExecutiveKpi[] kpis) =>
             new(Now, kpis.ToList(), new List<Kor.Operations.Financials.ExecutiveTrend>(), new List<Kor.Operations.Financials.ExecutiveAlert>());
-        var readings = MorningImpact.PlanReadings(Result(), 814, months, 94);
-        Assert.Equal(814, readings["ActiveProjects"]);
+        var none = Array.Empty<Kor.Operations.Financials.UtilizationRow>();
+        var readings = MorningImpact.PlanReadings(Result(), none, months, 94);
+        Assert.Equal(0, readings["ActiveProjects"]);
         Assert.Equal(94, readings["BillingLagProjects"]);
-        Assert.Equal(174, readings["Dso"]);
         Assert.Equal(367_000, readings["InvoicedMonthAvg6"]);
         Assert.Equal(490_000, readings["InvoicedMonthAvgPrior6"]);
-        Assert.False(readings.ContainsKey("Utilization")); // no Utilization KPI in the result: not recorded, never zero
-        Assert.Equal(70.8, MorningImpact.PlanReadings(Result(new Kor.Operations.Financials.ExecutiveKpi("Utilization", "70.8%", "", "")), 814, months, 94)["Utilization"]);
-        Assert.False(MorningImpact.PlanReadings(Result(), 814, months.Take(5).ToList(), null).ContainsKey("InvoicedMonthAvg6"));
-        Assert.False(readings.ContainsKey("OverBudgetHours")); // no over-budget KPI: not recorded
+        Assert.False(MorningImpact.PlanReadings(Result(), none, months.Take(5).ToList(), null).ContainsKey("InvoicedMonthAvg6"));
+        Assert.DoesNotContain(readings.Keys, k => k.StartsWith(MorningImpact.ExecPrefix)); // no KPI supplied: nothing recorded
+        Assert.False(readings.ContainsKey("LosingProjectsLoss")); // no costed project: not recorded, never zero
+
+        // Every numeric KPI headline is taken as the engine printed it; a sentence is not a reading.
+        var kpis = MorningImpact.PlanReadings(Result(
+            new Kor.Operations.Financials.ExecutiveKpi("Days Sales Outstanding", "160 days", "", ""),
+            new Kor.Operations.Financials.ExecutiveKpi("Net Multiplier", "2.49", "", ""),
+            new Kor.Operations.Financials.ExecutiveKpi("Net Income (T12mo)", "$504,065", "", ""),
+            new Kor.Operations.Financials.ExecutiveKpi("Utilization", "70.8%", "", ""),
+            new Kor.Operations.Financials.ExecutiveKpi("Cash Position", "($22,799)", "", ""),
+            new Kor.Operations.Financials.ExecutiveKpi("WIP (Firmwide)", "Data unavailable", "", "")), none, months, null);
+        Assert.Equal(160, kpis["Exec.DaysSalesOutstanding"]);
+        Assert.Equal(2.49, kpis["Exec.NetMultiplier"]);
+        Assert.Equal(504_065, kpis["Exec.NetIncomeT12mo"]);
+        Assert.Equal(70.8, kpis["Exec.Utilization"]);
+        Assert.Equal(-22_799, kpis["Exec.CashPosition"]);
+        Assert.False(kpis.ContainsKey("Exec.WIPFirmwide"));
 
         // Hours past budget: the KPI's own rows, positive overruns only, no rate applied.
         static Kor.Operations.Financials.KpiProjectDrilldownRow Over(double hours) => new("30001-01", "P", "PM", hours, 1.5, 0.9, 0.9, false);
         var withOver = MorningImpact.PlanReadings(Result(new Kor.Operations.Financials.ExecutiveKpi("Projects Over Budget", "3", "", "",
-            ProjectDrilldownRows: new[] { Over(1466.35), Over(1420.77), Over(-5) })), 814, months, 94);
+            ProjectDrilldownRows: new[] { Over(1466.35), Over(1420.77), Over(-5) })), none, months, 94);
         Assert.Equal(2887.12, withOver["OverBudgetHours"], 2);
-        Assert.Equal("2,887 hours", PlanMetrics.Format(PlanUnit.Hours, withOver["OverBudgetHours"]));
+
+        // Money lost: the engine's own ProfitDollars (fee billed - labour - subs - labour x overhead), losing projects only.
+        static Kor.Operations.Financials.UtilizationRow Project(double billed, double labour) => Kor.Operations.Financials.UtilizationRow.FromProject(
+            new Kor.Operations.Financials.FinancialsProjectRow { Wbs1 = "3000" + billed, FeeBilled = billed, EngLaborCost = labour, OverheadRate = 1.0 });
+        var costed = MorningImpact.PlanReadings(Result(), new[] { Project(100_000, 20_000), Project(50_000, 40_000), Project(10_000, 0) }, months, null);
+        Assert.Equal(1, costed["LosingProjects"]);            // 50k billed - 40k labour - 40k overhead = -30k; the unlaboured one is not costed
+        Assert.Equal(30_000, costed["LosingProjectsLoss"]);
+        Assert.Equal(1, costed["ProjectsBelowMultiplier2"]);  // 50k / 40k = 1.25
+        Assert.Equal(0, costed["LosingDoneProjects"]);        // no PercentBilled set: in progress, not money given away
+        static Kor.Operations.Financials.UtilizationRow Done(double billed, double labour) => Kor.Operations.Financials.UtilizationRow.FromProject(
+            new Kor.Operations.Financials.FinancialsProjectRow { Wbs1 = "3100" + billed, Fee = billed, FeeBilled = billed, EngLaborCost = labour, OverheadRate = 1.0 });
+        var finished = MorningImpact.PlanReadings(Result(), new[] { Done(50_000, 40_000), Project(50_000, 40_000) }, months, null);
+        Assert.Equal(2, finished["LosingProjects"]);
+        Assert.Equal(1, finished["LosingDoneProjects"]);      // fully billed and still losing: given away
+        Assert.Equal(30_000, finished["LosingDoneProjectsLoss"]);
+    }
+
+    /// <summary>
+    /// The plan reads firm figures from the Financials engine; it never keeps its own version of one. Checks the metric catalog
+    /// and the composer's plan readings by name. Does NOT catch a re-derivation under a new, innocent-looking name.
+    /// </summary>
+    [Fact]
+    public void The_plan_never_carries_its_own_version_of_a_figure_the_financials_engine_produces()
+    {
+        var engineOwned = new[] { "Dso", "DaysSalesOutstanding", "Utilization", "NetMultiplier", "LaborMargin", "NetIncome", "CashPosition", "Liquidity", "Backlog", "Wip" };
+        Assert.DoesNotContain(PlanMetrics.All, m => engineOwned.Any(e => m.Key.StartsWith(e, StringComparison.OrdinalIgnoreCase)));
+        var source = File.ReadAllText(Path.Combine(BdDirectorBuildersRegressionTests.RepoRoot(), "tools", "MorningBrief", "MorningImpact.cs"));
+        var body = source[source.IndexOf("public static Dictionary<string, double> PlanReadings", StringComparison.Ordinal)..];
+        body = body[..body.IndexOf("public static MorningFact Fact(", StringComparison.Ordinal)];
+        Assert.DoesNotContain(".Dso", body);
+        Assert.DoesNotContain("ValueText.Trim", body); // KPI values go through TryParseKpiValue only
     }
 }

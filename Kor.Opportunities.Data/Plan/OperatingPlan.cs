@@ -32,7 +32,7 @@ public sealed record OperatingPlanModel(IReadOnlyList<PlanStageRow> Stages, IRea
 /// <summary>Radar counts: signals first seen in the last 30 days, and enabled of all sources.</summary>
 public sealed record PlanRadar(int Signals30d, int SourcesLive, int SourcesTotal);
 
-public enum PlanUnit { Count, Money, Days, Percent, Hours }
+public enum PlanUnit { Count, Money, Days, Percent, Hours, Ratio }
 
 /// <summary>One metric the plan can read: how it prints, and which way is better.</summary>
 public sealed record PlanMetric(string Key, string Label, PlanUnit Unit, bool LowerIsBetter);
@@ -62,10 +62,26 @@ public static class PlanMetrics
         new PlanMetric("ActionsOpen", "Open actions", PlanUnit.Count, true),
         new PlanMetric("ActionsClosedTotal", "Actions closed", PlanUnit.Count, false),
         new PlanMetric("MeetingsHeldTotal", "Meetings held", PlanUnit.Count, false),
-        new PlanMetric("Dso", "Days to collect", PlanUnit.Days, true),
+        // The Financials engine's own Executive Summary KPIs, recorded as-is by the composer (MorningImpact.ExecKey).
+        new PlanMetric("Exec.CashPosition", "Cash position", PlanUnit.Money, false),
+        new PlanMetric("Exec.LiquidityCashAR", "Liquidity (cash + AR)", PlanUnit.Money, false),
+        new PlanMetric("Exec.AROutstanding", "AR outstanding", PlanUnit.Money, true),
+        new PlanMetric("Exec.AR60Days", "AR over 60 days", PlanUnit.Money, true),
+        new PlanMetric("Exec.Backlog", "Backlog", PlanUnit.Money, false),
+        new PlanMetric("Exec.BillingsToDate", "Billings to date", PlanUnit.Money, false),
+        new PlanMetric("Exec.NetMultiplier", "Net multiplier", PlanUnit.Ratio, false),
+        new PlanMetric("Exec.LaborMarginT12mo", "Labour margin, 12 months", PlanUnit.Money, false),
+        new PlanMetric("Exec.NetIncomeT12mo", "Net income, 12 months", PlanUnit.Money, false),
+        new PlanMetric("Exec.DaysSalesOutstanding", "Days to collect (DSO)", PlanUnit.Days, true),
+        new PlanMetric("Exec.Utilization", "Utilization", PlanUnit.Percent, false),
+        // The engine's per-project ProfitDollars and multiplier, summed over active projects with booked labour.
+        new PlanMetric("LosingProjects", "Active projects losing money", PlanUnit.Count, true),
+        new PlanMetric("LosingProjectsLoss", "Lost on losing projects, after overhead", PlanUnit.Money, true),
+        new PlanMetric("ProjectsBelowMultiplier2", "Projects below a 2.0 multiplier", PlanUnit.Count, true),
+        new PlanMetric("LosingDoneProjects", "Losing projects 90%+ billed", PlanUnit.Count, true),
+        new PlanMetric("LosingDoneProjectsLoss", "Lost on losing projects 90%+ billed, after overhead", PlanUnit.Money, true),
         new PlanMetric("InvoicedMonthAvg6", "Invoiced a month, last six months", PlanUnit.Money, false),
         new PlanMetric("InvoicedMonthAvgPrior6", "Invoiced a month, the six before", PlanUnit.Money, false),
-        new PlanMetric("Utilization", "Utilization", PlanUnit.Percent, false),
         new PlanMetric("BillingLagProjects", "Projects billing slower than they burn", PlanUnit.Count, true),
         new PlanMetric("OverBudgetHours", "Hours past budget on over-budget projects", PlanUnit.Hours, true),
         new PlanMetric("ItCriticalGroups", "Critical IT issue groups", PlanUnit.Count, true),
@@ -93,6 +109,7 @@ public static class PlanMetrics
             : "$" + Math.Round(v).ToString("N0", CultureInfo.InvariantCulture),
         PlanUnit.Percent => v.ToString("0.0", CultureInfo.InvariantCulture) + "%",
         PlanUnit.Hours => Math.Round(v).ToString("N0", CultureInfo.InvariantCulture) + " hours",
+        PlanUnit.Ratio => v.ToString("0.00", CultureInfo.InvariantCulture),
         _ => Math.Round(v).ToString("N0", CultureInfo.InvariantCulture),
     };
 }
@@ -101,7 +118,7 @@ public static class PlanMetrics
 public sealed class PlanReadings
 {
     public const string Dash = "—";
-    private static readonly Regex Token = new(@"\{([A-Za-z0-9]+)\}", RegexOptions.Compiled);
+    private static readonly Regex Token = new(@"\{([A-Za-z][A-Za-z0-9.]*)\}", RegexOptions.Compiled);
     private readonly Dictionary<string, PlanReading> _values;
 
     public PlanReadings(IReadOnlyDictionary<string, PlanReading> values) =>

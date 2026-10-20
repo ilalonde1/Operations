@@ -46,25 +46,61 @@ public static class MorningImpact
         };
     }
 
+    /// <summary>The prefix of a reading taken as-is from an Executive Summary KPI: "Exec." + the title's letters and digits.</summary>
+    public const string ExecPrefix = "Exec.";
+
+    /// <summary>"Net Income (T12mo)" → "Exec.NetIncomeT12mo"; "AR > 60 Days" → "Exec.AR60Days".</summary>
+    public static string ExecKey(string title) => ExecPrefix + new string(title.Where(char.IsLetterOrDigit).ToArray());
+
     /// <summary>
-    /// The operating plan's other daily readings (migration 372), from figures the composer already holds: active projects,
-    /// firmwide utilization (the Utilization KPI's value), projects billing slower than they burn (the alert's rows), the last
-    /// closed month's DSO, and average monthly invoicing over the last six closed months and the six before. A reading the
-    /// engine did not supply is left out, never recorded as zero.
+    /// A KPI's headline as the engine printed it, as a number: "$3,086,200" → 3086200, "2.49" → 2.49, "160 days" → 160,
+    /// "70.8%" → 70.8, "($12,000)" or "−$12,000" → -12000. Anything else ("Data unavailable", a sentence) is not a reading.
     /// </summary>
-    public static Dictionary<string, double> PlanReadings(ExecutiveSummaryResult result, int activeProjects, IReadOnlyList<ImpactMonth> months,
-        int? billingLag)
+    public static bool TryParseKpiValue(string? text, out double value)
     {
-        var readings = new Dictionary<string, double>(StringComparer.Ordinal) { ["ActiveProjects"] = activeProjects };
-        var utilization = result.Kpis.FirstOrDefault(k => k.Title == "Utilization")?.ValueText;
-        if (utilization is not null && double.TryParse(utilization.Trim().TrimEnd('%'), NumberStyles.Float, CultureInfo.InvariantCulture, out var u))
-            readings["Utilization"] = u;
+        value = 0;
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        var t = text.Trim();
+        var negative = t.StartsWith('(') && t.EndsWith(')') || t.StartsWith('-') || t.StartsWith('−');
+        t = t.Trim('(', ')', '-', '−', ' ').Replace("$", "").Replace(",", "").Replace("%", "");
+        if (t.EndsWith(" days", StringComparison.OrdinalIgnoreCase)) t = t[..^5];
+        if (!double.TryParse(t.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out value)) return false;
+        if (negative) value = -value;
+        return true;
+    }
+
+    /// <summary>
+    /// The operating plan's daily readings (migration 372). The Financials engine is the source of every firm figure: each
+    /// Executive Summary KPI whose headline is a number is recorded as-is under ExecKey(title) (cash, AR, DSO, net multiplier,
+    /// labour margin, net income, utilization…), and the money lost on losing projects is the engine's own per-project
+    /// ProfitDollars (fee billed less direct labour, subconsultants and allocated overhead), summed over active projects that
+    /// have booked labour. Nothing here re-derives a figure the engine produces. Also: active projects, projects billing slower
+    /// than they burn (the alert's rows), hours past budget (the KPI's rows), and average monthly invoicing over the last six
+    /// closed months and the six before (ImpactHistory, the scoreboard's own Deltek history). A reading the engine did not
+    /// supply is left out, never recorded as zero.
+    /// </summary>
+    public static Dictionary<string, double> PlanReadings(ExecutiveSummaryResult result, IReadOnlyCollection<UtilizationRow> active,
+        IReadOnlyList<ImpactMonth> months, int? billingLag)
+    {
+        var readings = new Dictionary<string, double>(StringComparer.Ordinal) { ["ActiveProjects"] = active.Count };
+        foreach (var kpi in result.Kpis)
+            if (TryParseKpiValue(kpi.ValueText, out var v)) readings[ExecKey(kpi.Title)] = v;
         if (billingLag is { } lag) readings["BillingLagProjects"] = lag;
-        // Hours given away: every over-budget project's hours past its budget, from the KPI's own rows. No rate is applied;
-        // the engine supplies none it vouches for (Net Multiplier and Labor Margin read "data unavailable").
         if (result.Kpis.FirstOrDefault(k => k.Title == "Projects Over Budget")?.ProjectDrilldownRows is { } over)
             readings["OverBudgetHours"] = over.Where(p => p.OverByHours > 0).Sum(p => p.OverByHours);
-        if (months.LastOrDefault(m => m.Dso > 0) is { } closed) readings["Dso"] = closed.Dso;
+        var costed = active.Select(u => u.Project).Where(p => p.TotalDirectLaborCost > 0).ToList();
+        if (costed.Count > 0)
+        {
+            var losing = costed.Where(p => p.ProfitDollars < 0).ToList();
+            readings["LosingProjects"] = losing.Count;
+            readings["LosingProjectsLoss"] = -losing.Sum(p => p.ProfitDollars);
+            readings["ProjectsBelowMultiplier2"] = costed.Count(p => p.MultiplierTier == "Critical");
+            // Billing to date lags labour on a job in progress, so it reads as losing until it bills. Projects with 90% or
+            // more of their fee billed (posted or not) are essentially done: their loss is money actually given away.
+            var done = losing.Where(p => p.PercentBilledWithUnposted >= 0.9).ToList();
+            readings["LosingDoneProjects"] = done.Count;
+            readings["LosingDoneProjectsLoss"] = -done.Sum(p => p.ProfitDollars);
+        }
         var year = months.TakeLast(12).ToList();
         if (year.Count == 12)
         {

@@ -167,8 +167,11 @@ public static class OperatingPlanHtml
         sb.Append("<p class=\"lede\">Where KOR should play, how it wins, what Operations must fix and what IT must hold. Every choice is a recommendation until you and the partners decide it.</p>");
         sb.Append("<div class=\"facts\">")
           .Append(Fact(readings.Show("InvoicedMonthAvg6") + " / month", "invoiced over the last six months, against " + readings.Show("InvoicedMonthAvgPrior6") + " the six before."))
-          .Append(Fact("43%", "of proposals sent since 2020 were won: 72% of decided ones, but 266 were never closed out."))
-          .Append(Fact(readings.Show("ArOver90"), "owed over 90 days, of " + readings.Show("ArTotal") + " owed in all; " + readings.Show("Dso") + " days to collect."))
+          .Append(Fact(readings.Show("Exec.NetIncomeT12mo"), "net income over 12 months, on " + readings.Show("Exec.LaborMarginT12mo")
+              + " labour margin; net multiplier " + readings.Show("Exec.NetMultiplier") + "; " + readings.Show("LosingDoneProjectsLoss")
+              + " given away on " + readings.Show("LosingDoneProjects") + " finished projects."))
+          .Append(Fact(readings.Show("ArOver90"), "owed over 90 days, of " + readings.Show("ArTotal") + " owed in all; "
+              + readings.Show("Exec.DaysSalesOutstanding") + " days to collect."))
           .Append(Fact(readings.Show("PursuitsWithFee") + " of " + readings.Show("PursuitsLive"), "live pursuits carry a fee estimate, so that is what the pipeline can be valued on."))
           .Append("</div><div class=\"cols\">");
         Column(sb, plan, readings, "BD", "Business development", "Win more of the right work, earlier", new[] { ("WhereToPlay", "Where to play"), ("HowWeWin", "How KOR wins") });
