@@ -26,8 +26,12 @@ internal static class SerilogBootstrap
                 rollingInterval: RollingInterval.Day,
                 outputTemplate:
                     "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}",
-                retainedFileCountLimit: 30,
-                fileSizeLimitBytes: 10L * 1024 * 1024)
+                // Roll to opportunities-yyyyMMdd_001.log at the cap instead of stopping: without it every day's log went silent
+                // once it reached 10 MB (18:49 on 2026-10-19, 8 of 8 days checked), blind through the nightly award imports.
+                // The count limit now counts those extra files too, so it is raised to keep about a month.
+                retainedFileCountLimit: 90,
+                fileSizeLimitBytes: 10L * 1024 * 1024,
+                rollOnFileSizeLimit: true)
             .CreateLogger();
     }
 }
