@@ -464,7 +464,7 @@ public sealed class MorningKnowledgeTests
         Assert.Contains("watchConnection is not null ? \"KOR_NETWORKOPS_WATCHDB\" : \"KOR_NETWORKOPS_DB\"", source, StringComparison.Ordinal);
         Assert.Contains("connection variable {rows.ConnectionVariable}", source, StringComparison.Ordinal);
         var statements = Regex.Matches(source, "NetworkRowsAsync\\(\"\"\"(?<sql>.*?)\"\"\"", RegexOptions.Singleline);
-        Assert.Equal(3, statements.Count);
+        Assert.Equal(4, statements.Count); // findings, plan readings (migration 372), changes, actions
         foreach (System.Text.RegularExpressions.Match statement in statements)
         {
             var sql = statement.Groups["sql"].Value.Trim();

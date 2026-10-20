@@ -234,7 +234,7 @@ public sealed class BdDoctrineRegressionTests
         Assert.Contains("\"--token\", \"--role\", \"--focus\", \"--exclude-run\", \"--after\" }", cli, StringComparison.Ordinal);
         Assert.Contains("\"--replace\", \"--checked\" }", cli, StringComparison.Ordinal);
         Assert.Contains("\"doctrine\" => new[] { \"--role\", \"--exclude-run\" },", cli, StringComparison.Ordinal);
-        Assert.Contains("or \"doctrine\" or \"prompt\"))", cli, StringComparison.Ordinal);
+        Assert.Contains("or \"doctrine\" or \"prompt\" or \"plan\"))", cli, StringComparison.Ordinal);
     }
 
     [Fact]

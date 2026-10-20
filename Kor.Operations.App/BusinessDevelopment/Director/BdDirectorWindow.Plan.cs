@@ -22,15 +22,8 @@ public partial class BdDirectorWindow
 {
     private bool _planReady;
     private bool _planBusy;
-    private bool _planShown;
 
-    private async void Tabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        // SelectionChanged bubbles up from every list inside the tabs; only the tab strip itself counts.
-        if (!ReferenceEquals(e.OriginalSource, Tabs) || !ReferenceEquals(Tabs.SelectedItem, PlanTab) || _planShown) return;
-        await LoadPlanAsync().ConfigureAwait(true);
-    }
-
+    /// <summary>Called from ReloadAsync (window load and Refresh) without waiting on it, so a slow plan never holds the window.</summary>
     private async Task LoadPlanAsync()
     {
         if (_planBusy) return;
@@ -51,7 +44,6 @@ public partial class BdDirectorWindow
                 (from, ct) => AppServices.Get<SqlImpactStore>().ListAsync(from, ct), AppServices.Get<IBdRhythmStore>(),
                 DateTimeOffset.Now, _lifetime.Token).ConfigureAwait(true);
             PlanView.NavigateToString(html);
-            _planShown = true;
             PlanStatus.Visibility = Visibility.Collapsed;
         }
         catch (OperationCanceledException) { /* Window closed. */ }

@@ -102,14 +102,7 @@
                 </TextBlock>
             </StackPanel>
         </DockPanel>
-        <TabControl x:Name="Tabs" Grid.Row="1" SelectionChanged="Tabs_SelectionChanged">
-        <!-- The operating plan (migration 372): one HTML page drawn by OperatingPlanPage; Print plan prints this same page. -->
-        <TabItem Header="Plan" x:Name="PlanTab">
-            <Grid>
-                <wv2:WebView2 x:Name="PlanView"/>
-                <TextBlock x:Name="PlanStatus" Margin="16" Foreground="#5A6876" TextWrapping="Wrap" Text="Opening the plan…"/>
-            </Grid>
-        </TabItem>
+        <TabControl x:Name="Tabs" Grid.Row="1">
         <TabItem Header="Today" x:Name="TodayTab">
             <Grid Margin="12">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
@@ -1171,6 +1164,14 @@
             </DockPanel>
         </TabItem>
         </TabControl>
+        </TabItem>
+        <!-- The operating plan (migration 372): one HTML page drawn by OperatingPlanPage; Print plan prints this same page.
+             It loads with the window and on Refresh, never on tab change, like every other screen here. -->
+        <TabItem Header="Plan" x:Name="PlanTab">
+            <Grid>
+                <wv2:WebView2 x:Name="PlanView"/>
+                <TextBlock x:Name="PlanStatus" Margin="16" Foreground="#5A6876" TextWrapping="Wrap" Text="Opening the plan…"/>
+            </Grid>
         </TabItem>
         </TabControl>
         <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="{StaticResource Text.Secondary}"/>

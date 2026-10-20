@@ -334,11 +334,13 @@ ul.plain{padding-left:18px} ul.plain li{margin:4px 0}
 .cover .eyebrow{font-family:Consolas,monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#FFB59F;margin:0 0 6px} .cover h1{font-size:28px;color:#fff} .cover .lede{color:#D4E0EA;margin:6px 0 0}
 @media print{
  @page{size:letter;margin:11mm 11mm}
- body{padding:0;font-size:9pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ body{padding:0;font-size:8.5pt;line-height:1.35;-webkit-print-color-adjust:exact;print-color-adjust:exact}
  .screen{display:none!important} .print{display:block}
  .view{display:block!important;break-before:page} #v-map{break-before:auto}
- .mapwrap{display:block} .panels{border:0;padding:0;position:static;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
- .panel{display:block!important;border:1px solid var(--line);border-radius:8px;padding:8px 10px;break-inside:avoid}
+ .mapwrap{display:block} .panels{border:0;padding:0;position:static;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+ .panel{display:block!important;border:1px solid var(--line);border-radius:8px;padding:6px 8px;break-inside:avoid;font-size:7.6pt}
+ .panel h3{font-size:10.5pt} .panel .sec{margin:6px 0 2px;font-size:6.8pt} .panel .item{margin:2px 0;font-size:7.6pt} .panel .item .w{display:none}
+ .panel .chain{padding:3px 6px;font-size:7.6pt} .src{margin-top:8px}
  .node.sel{border:1px solid var(--line);box-shadow:none;padding:8px 10px}
  .facts{grid-template-columns:repeat(4,1fr)} .cols{grid-template-columns:repeat(3,1fr)} .col,.pillar,.fact,tr{break-inside:avoid}
 }";

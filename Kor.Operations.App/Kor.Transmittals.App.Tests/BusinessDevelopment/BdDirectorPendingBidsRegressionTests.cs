@@ -45,7 +45,7 @@ public sealed class BdDirectorPendingBidsRegressionTests
     {
         var xaml = Source(Director + "BdDirectorWindow.xaml");
         var tabs = XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "TabItem").ToArray();
-        Assert.Equal(new[] { "Today", "People", "Pursuits", "Doctrine", "Data", "Actions", "Meetings", "References", "The number", "By person", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" },
+        Assert.Equal(new[] { "Today", "People", "Pursuits", "Doctrine", "Data", "Actions", "Meetings", "References", "The number", "By person", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day", "Plan" },
             tabs.Select(t => (string?)t.Attribute("Header")));
         Assert.Equal("Bids in flight: each pursuit that came from an RFP, who holds it, when it is due, and whether it went in. Pursuits without an RFP behind them are relationship work and stay on People and Accounts.", BdDirectorViewModel.PendingBidsCaption);
         Assert.Contains("{x:Static director:BdDirectorViewModel.PendingBidsCaption}", xaml, StringComparison.Ordinal);
