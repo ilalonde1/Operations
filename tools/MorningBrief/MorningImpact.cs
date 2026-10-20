@@ -100,6 +100,18 @@ public static class MorningImpact
             var done = losing.Where(p => p.PercentBilledWithUnposted >= 0.9).ToList();
             readings["LosingDoneProjects"] = done.Count;
             readings["LosingDoneProjectsLoss"] = -done.Sum(p => p.ProfitDollars);
+            // The same money by fee type, from the engine's own split of TotalFee into the contract Fee and HourlyRevenue (T&M
+            // extras): a fixed-fee loss is a fee or scope problem, an hourly loss is a rate or write-off problem.
+            foreach (var g in done.GroupBy(FeeType))
+            {
+                readings["LosingDone" + g.Key] = g.Count();
+                readings["LosingDone" + g.Key + "Loss"] = -g.Sum(p => p.ProfitDollars);
+            }
+            foreach (var type in FeeTypes.Where(t => !readings.ContainsKey("LosingDone" + t)))
+            {
+                readings["LosingDone" + type] = 0;
+                readings["LosingDone" + type + "Loss"] = 0;
+            }
         }
         var year = months.TakeLast(12).ToList();
         if (year.Count == 12)
@@ -108,6 +120,16 @@ public static class MorningImpact
             readings["InvoicedMonthAvgPrior6"] = year.Take(6).Average(m => m.Invoiced);
         }
         return readings;
+    }
+
+    static readonly string[] FeeTypes = ["FixedFee", "Hourly", "Mixed"];
+
+    /// <summary>A project's fee type from the engine's split: contract fee only, hourly revenue only, or both.</summary>
+    public static string FeeType(FinancialsProjectRow p)
+    {
+        var fixedFee = Math.Abs(p.Fee) > AnalyticsThresholds.RoundingDollarFloor;
+        var hourly = Math.Abs(p.HourlyRevenue) > AnalyticsThresholds.RoundingDollarFloor;
+        return fixedFee && hourly ? "Mixed" : hourly ? "Hourly" : "FixedFee";
     }
 
     public static MorningFact Fact(IReadOnlyList<ImpactMonth> months, IReadOnlyList<ImpactReading> readings, string? note = null)

@@ -190,6 +190,21 @@ public sealed class OperatingPlanTests
         Assert.Equal(2, finished["LosingProjects"]);
         Assert.Equal(1, finished["LosingDoneProjects"]);      // fully billed and still losing: given away
         Assert.Equal(30_000, finished["LosingDoneProjectsLoss"]);
+        Assert.Equal(1, finished["LosingDoneFixedFee"]);      // contract fee, no hourly revenue
+        Assert.Equal(30_000, finished["LosingDoneFixedFeeLoss"]);
+        Assert.Equal(0, finished["LosingDoneHourly"]);        // a type with no losers reads zero, so the plan shows 0 not a dash
+        Assert.Equal(0, finished["LosingDoneMixedLoss"]);
+
+        // Fee type is the engine's split of TotalFee: contract Fee, HourlyRevenue (T&M extras), or both.
+        static Kor.Operations.Financials.UtilizationRow Billed(double fee, double hourly) => Kor.Operations.Financials.UtilizationRow.FromProject(
+            new Kor.Operations.Financials.FinancialsProjectRow { Wbs1 = "32" + fee + hourly, Fee = fee, HourlyRevenue = hourly, FeeBilled = fee + hourly, EngLaborCost = 60_000, OverheadRate = 1.0 });
+        var byType = MorningImpact.PlanReadings(Result(), new[] { Billed(0, 50_000), Billed(40_000, 10_000), Billed(30_000, 0) }, months, null);
+        Assert.Equal(1, byType["LosingDoneHourly"]);
+        Assert.Equal(70_000, byType["LosingDoneHourlyLoss"]);  // 50k - 60k - 60k
+        Assert.Equal(1, byType["LosingDoneMixed"]);
+        Assert.Equal(70_000, byType["LosingDoneMixedLoss"]);
+        Assert.Equal(90_000, byType["LosingDoneFixedFeeLoss"]); // 30k - 120k
+        Assert.Equal(byType["LosingDoneProjectsLoss"], byType["LosingDoneHourlyLoss"] + byType["LosingDoneMixedLoss"] + byType["LosingDoneFixedFeeLoss"]);
     }
 
     [Fact]
