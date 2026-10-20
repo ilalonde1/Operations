@@ -216,7 +216,31 @@ public static class OperatingPlanHtml
             sb.Append("<tr><td><b>").Append(E(r.Name)).Append("</b></td><td>").Append(E(readings.Fill(r.WhoWhen))).Append("</td><td>")
               .Append(E(readings.Fill(r.WhatHappens))).Append("</td><td>").Append(E(readings.Fill(r.Moves))).Append("</td><td>")
               .Append(StageSpan(r.StageFrom, r.StageTo)).Append("</td></tr>");
-        sb.Append("</tbody></table><div class=\"box\"><p class=\"sec\">The scoreboard is the thread</p><p>The scoreboard records the money and pipeline numbers every morning. The daily hour reads it, each monthly meets with its change, and the quarterly review judges the plan by it. A task that moves none of its numbers should not be in the rhythm.</p></div></section>");
+        sb.Append("</tbody></table><div class=\"box\"><p class=\"sec\">The scoreboard is the thread</p><p>The scoreboard records the money and pipeline numbers every morning. The daily hour reads it, each monthly meets with its change, and the quarterly review judges the plan by it. A task that moves none of its numbers should not be in the rhythm.</p></div>");
+        LeadsBlock(sb, plan, readings);
+        sb.Append("</section>");
+    }
+
+    /// <summary>How the regional leads get help: what every lead gets, what Ian asks of them, one card per lead.</summary>
+    private static void LeadsBlock(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings)
+    {
+        var gets = plan.Points.Where(p => p.Section == "LeadGets").ToList();
+        var asks = plan.Points.Where(p => p.Section == "LeadAsk").ToList();
+        var leads = plan.Points.Where(p => p.Section == "Lead").ToList();
+        if (gets.Count + asks.Count + leads.Count == 0) return;
+        sb.Append("<div class=\"leadsec\"><h2>How the regional leads get help</h2>")
+          .Append("<p class=\"lede\">The regional leads win the work. The platform, and Ian, clear everything else out of their way.</p><div class=\"cols two\">");
+        foreach (var (title, list) in new[] { ("What every lead gets", gets), ("What Ian asks of every lead", asks) })
+        {
+            if (list.Count == 0) continue;
+            sb.Append("<div class=\"col\"><h3>").Append(E(title)).Append("</h3><ul>");
+            foreach (var p in list) sb.Append("<li><b>").Append(E(readings.Fill(p.Title))).Append("</b> ").Append(E(readings.Fill(p.Detail))).Append("</li>");
+            sb.Append("</ul></div>");
+        }
+        sb.Append("</div><div class=\"leads\">");
+        foreach (var p in leads)
+            sb.Append("<div class=\"lead\"><b>").Append(E(p.Title)).Append("</b><span>").Append(E(readings.Fill(p.Detail))).Append("</span></div>");
+        sb.Append("</div></div>");
     }
 
     private static void PlatformView(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings)
@@ -328,6 +352,8 @@ table{border-collapse:collapse;width:100%;font-size:12px;margin-top:14px} th{tex
 h4{margin:10px 0 3px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);font-family:Consolas,monospace;font-weight:400}
 .col ul{margin:2px 0;padding-left:16px} .col li{margin:3px 0}
 ul.plain{padding-left:18px} ul.plain li{margin:4px 0}
+.leadsec{margin-top:16px} .cols.two{grid-template-columns:1fr 1fr}
+.leads{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px} .lead{border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:8px;padding:7px 9px;font-size:12px;break-inside:avoid} .lead b{display:block;margin-bottom:2px} .lead span{color:var(--soft)}
 .box{border-left:3px solid var(--slate2);background:#F4F2F0;border-radius:8px;padding:8px 12px;margin-top:12px} .box p{margin:2px 0}
 .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:6px 0 12px} .steps div{border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:8px;padding:7px 9px;font-size:12px} .steps b{display:block;font-family:Consolas,monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink)}
 .pillars{display:grid;grid-template-columns:1fr 1fr;gap:10px} .pillar{border:1px solid var(--line);border-radius:8px;padding:9px 12px} .pillar h3{margin:0 0 5px}
@@ -345,6 +371,7 @@ ul.plain{padding-left:18px} ul.plain li{margin:4px 0}
  .panel h3{font-size:10.5pt} .panel .sec{margin:6px 0 2px;font-size:6.8pt} .panel .item{margin:2px 0;font-size:7.6pt} .panel .item .w{display:none}
  .panel .chain{padding:3px 6px;font-size:7.6pt} .src{margin-top:8px}
  .node.sel{border:1px solid var(--line);box-shadow:none;padding:8px 10px}
- .facts{grid-template-columns:repeat(4,1fr)} .cols{grid-template-columns:repeat(3,1fr)} .col,.pillar,.fact,tr{break-inside:avoid}
+ .facts{grid-template-columns:repeat(4,1fr)} .cols{grid-template-columns:repeat(3,1fr)} .cols.two{grid-template-columns:1fr 1fr} .col,.pillar,.fact,tr{break-inside:avoid}
+ .leadsec{break-before:page} .lead{font-size:8pt}
 }";
 }

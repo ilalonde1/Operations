@@ -72,7 +72,7 @@ BEGIN
         Id INT NOT NULL CONSTRAINT PK_PlanPoint PRIMARY KEY CLUSTERED,
         Pillar NVARCHAR(10) NOT NULL CONSTRAINT CK_PlanPoint_Pillar CHECK (Pillar IN (N'BD', N'Ops', N'IT', N'All')),
         Section NVARCHAR(30) NOT NULL CONSTRAINT CK_PlanPoint_Section
-            CHECK (Section IN (N'WhereToPlay', N'HowWeWin', N'WhereItHurts', N'Priorities', N'Decide')),
+            CHECK (Section IN (N'WhereToPlay', N'HowWeWin', N'WhereItHurts', N'Priorities', N'Decide', N'LeadGets', N'LeadAsk', N'Lead')),
         Title NVARCHAR(200) NOT NULL,
         Detail NVARCHAR(800) NOT NULL,
         SortOrder INT NOT NULL
@@ -198,6 +198,17 @@ WHEN NOT MATCHED THEN INSERT (Id, Pillar, StageNo, Title, Metric, BaselineValue,
     VALUES (s.Id, s.Pillar, s.StageNo, s.Title, s.Metric, s.BaselineValue, s.TargetValue, s.TargetText, '2027-03-31', s.SortOrder);
 GO
 
+-- 20 October: the regional leads' section (what every lead gets, what Ian asks of them, one line per lead) joins the
+-- sections a point may belong to. The table already exists live, so its check is widened in place.
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_PlanPoint_Section'
+           AND definition NOT LIKE N'%LeadGets%')
+BEGIN
+    ALTER TABLE opportunities.PlanPoint DROP CONSTRAINT CK_PlanPoint_Section;
+    ALTER TABLE opportunities.PlanPoint ADD CONSTRAINT CK_PlanPoint_Section
+        CHECK (Section IN (N'WhereToPlay', N'HowWeWin', N'WhereItHurts', N'Priorities', N'Decide', N'LeadGets', N'LeadAsk', N'Lead'));
+END
+GO
+
 MERGE opportunities.PlanPoint AS t
 USING (VALUES
     (1, N'BD', N'WhereToPlay', N'Grow the developers who already choose KOR.', N'Westland, Northland, Cressey, Domus, Kerkhoff and Polygon: 40 won, 1 lost since 2020. Each gets a named partner and a standing check-in, not a proposal-by-proposal relationship.', 10),
@@ -221,7 +232,23 @@ USING (VALUES
     (18, N'All', N'Decide', N'The goals and their numbers.', N'The figures are starting points from KOR''s record, not commitments, until you decide them.', 180),
     (19, N'All', N'Decide', N'Which repeat developers each partner owns,', N'and who qualifies the low-converting clients.', 190),
     (20, N'All', N'Decide', N'The money on inactive projects.', N'{ArInactive} today; 31103-01 alone is $502k, last invoiced February 2024.', 200),
-    (21, N'All', N'Decide', N'Whether the US gets more than Jim''s time.', N'One person sells the US.', 210)
+    (21, N'All', N'Decide', N'Whether the US gets more than Jim''s time.', N'One person sells the US.', 210),
+    (30, N'BD', N'LeadGets', N'Their region''s opportunities, ready.', N'New tenders, permits, rezonings and client news for their region, ranked, in the app.', 300),
+    (31, N'BD', N'LeadGets', N'A weekly roll-up.', N'Numbered asks for their pursuits; they answer each in one line.', 310),
+    (32, N'BD', N'LeadGets', N'The right prompt at the right time.', N'First touch, follow-up after a proposal, chase for a decision, record the outcome.', 320),
+    (33, N'BD', N'LeadGets', N'Tender documents and the competition.', N'The bid documents pulled into the pursuit automatically, with the list of firms also interested.', 330),
+    (34, N'BD', N'LeadGets', N'Proposal support.', N'The requirements checklist from the RFP, the rate schedule, the org chart and past-project write-ups, prepared for them.', 340),
+    (35, N'BD', N'LeadGets', N'Ian''s backing.', N'Fast go/no-go and fee decisions, and a 15-minute check-in every two weeks.', 350),
+    (40, N'BD', N'LeadAsk', N'Every pursuit has a next step and a date.', N'If nothing is happening, say so and drop it.', 400),
+    (41, N'BD', N'LeadAsk', N'Answer the roll-up.', N'One line per item: done, moved, or dropped and why.', 410),
+    (42, N'BD', N'LeadAsk', N'Go/no-go before the fee.', N'Especially for clients who rarely say yes.', 420),
+    (43, N'BD', N'LeadAsk', N'Close every proposal.', N'An outcome, and when lost, who won and why.', 430),
+    (44, N'BD', N'LeadAsk', N'Hand won work over cleanly.', N'Fee and scope agreed with the project manager before work starts.', 440),
+    (50, N'BD', N'Lead', N'Omar · Vancouver', N'Metro Vancouver and South of Fraser, KOR''s base, and the repeat developers who already choose KOR.', 500),
+    (51, N'BD', N'Lead', N'Islam · Alberta', N'Public and institutional work across Alberta, much of it tendered on the Alberta Purchasing Connection, and the developers in Calgary and Edmonton.', 510),
+    (52, N'BD', N'Lead', N'Conor · Okanagan', N'Kelowna and the Okanagan: developers, municipalities and institutions.', 520),
+    (53, N'BD', N'Lead', N'Rory · Vancouver Island', N'Victoria, Nanaimo and the Island: developers, BC Housing projects and the municipalities.', 530),
+    (54, N'BD', N'Lead', N'Jim · United States', N'KOR''s growth market: the US pursuits and the architects who bring KOR in.', 540)
 ) AS s (Id, Pillar, Section, Title, Detail, SortOrder)
 ON t.Id = s.Id
 WHEN MATCHED THEN UPDATE SET Pillar = s.Pillar, Section = s.Section, Title = s.Title, Detail = s.Detail, SortOrder = s.SortOrder
