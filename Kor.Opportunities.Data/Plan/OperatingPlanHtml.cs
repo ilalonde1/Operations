@@ -258,7 +258,7 @@ public static class OperatingPlanHtml
     private static void PlatformView(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings)
     {
         sb.Append("<section class=\"view\" id=\"v-platform\"><h2>The platform</h2>");
-        sb.Append("<p class=\"lede\">The tools being built so a firm of about sixty runs like a Fortune 500 company. The system watches, prepares and drafts; people decide and act.</p>");
+        sb.Append("<p class=\"lede\">The tools that let a firm of about sixty run like a Fortune 500 company. The system watches, prepares and drafts; people decide and act.</p>");
         sb.Append("<div class=\"steps\"><div><b>Watch</b>Every source, every night: tenders, permits, Deltek, the CRM, every PC and server.</div>")
           .Append("<div><b>Prepare</b>Ranked, with the evidence and KOR's own record behind each item.</div>")
           .Append("<div><b>Draft</b>The email, the agenda, the roll-up, ready to send.</div>")
