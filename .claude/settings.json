@@ -137,6 +137,18 @@
         ]
       }
     ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_absence_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Checking any claim that something is missing carries its proof"
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
