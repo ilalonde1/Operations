@@ -159,7 +159,7 @@ USING (VALUES
         N'The scoreboard records it every morning; the COO monthly pre-read lists the largest.',
         N'The collections module is barely built, so chasing is by hand.',
         N'Broken'),
-    (9, N'IT', N'NetworkOps', N'You.',
+    (9, N'IT', N'NetworkOps', N'Ian.',
         N'Every PC and server healthy, patched and backed up, underneath every stage.',
         N'{ItCriticalGroups} critical issue groups, {ItWarningGroups} warnings; {ItUpdatesDue} machines with security updates due.',
         N'NetworkOps: health of every PC and server, rack, UPS and firewall monitoring, updates, remote fixes.',
@@ -233,12 +233,12 @@ USING (VALUES
     (19, N'All', N'Decide', N'Which repeat developers each partner owns,', N'and who qualifies the low-converting clients.', 190),
     (20, N'All', N'Decide', N'The money on inactive projects.', N'{ArInactive} today; 31103-01 alone is $502k, last invoiced February 2024.', 200),
     (21, N'All', N'Decide', N'Whether the US gets more than Jim''s time.', N'One person sells the US.', 210),
-    (30, N'BD', N'LeadGets', N'Their region''s opportunities, ready.', N'New tenders, permits, rezonings and client news for their region, ranked, in the app.', 300),
-    (31, N'BD', N'LeadGets', N'A weekly roll-up.', N'Numbered asks for their pursuits; they answer each in one line.', 310),
-    (32, N'BD', N'LeadGets', N'The right prompt at the right time.', N'First touch, follow-up after a proposal, chase for a decision, record the outcome.', 320),
-    (33, N'BD', N'LeadGets', N'Tender documents and the competition.', N'The bid documents pulled into the pursuit automatically, with the list of firms also interested.', 330),
-    (34, N'BD', N'LeadGets', N'Proposal support.', N'The requirements checklist from the RFP, the rate schedule, the org chart and past-project write-ups, prepared for them.', 340),
-    (35, N'BD', N'LeadGets', N'Ian''s backing.', N'Fast go/no-go and fee decisions, and a 15-minute check-in every two weeks.', 350),
+    (30, N'BD', N'LeadGets', N'Their region''s opportunities, ready.', N'Pilot. New tenders, permits, rezonings and client news for their region, ranked, in the app; first to Omar, Islam and Jim.', 300),
+    (31, N'BD', N'LeadGets', N'A weekly roll-up.', N'Live. Numbered asks for their pursuits, forwarded by Ian; they answer each in one line.', 310),
+    (32, N'BD', N'LeadGets', N'The right prompt at the right time.', N'Live. In the roll-up: first touch, follow-up after a proposal, chase for a decision, record the outcome.', 320),
+    (33, N'BD', N'LeadGets', N'Tender documents and the competition.', N'Coming. Document lists are read for BC Bid and APC tenders, with the interested firms on APC; downloading the files into the pursuit is being built.', 330),
+    (34, N'BD', N'LeadGets', N'Proposal support.', N'Live. The requirements checklist from the RFP, the rate schedule and the org chart, first used on Leduc.', 340),
+    (35, N'BD', N'LeadGets', N'Ian''s backing.', N'Starting. Fast go/no-go and fee decisions, and a 15-minute check-in every two weeks.', 350),
     (40, N'BD', N'LeadAsk', N'Every pursuit has a next step and a date.', N'If nothing is happening, say so and drop it.', 400),
     (41, N'BD', N'LeadAsk', N'Answer the roll-up.', N'One line per item: done, moved, or dropped and why.', 410),
     (42, N'BD', N'LeadAsk', N'Go/no-go before the fee.', N'Especially for clients who rarely say yes.', 420),
@@ -258,14 +258,14 @@ GO
 
 MERGE opportunities.PlanRhythm AS t
 USING (VALUES
-    (1, N'Daily hour', N'You. Email at 6:05 on weekdays; the same hour in the Director.', N'Ranked BD, COO and IT moves, drafts ready to send, the roll-ups due to forward.', N'All of them: it is where the plan becomes today''s work.', 1, 9, 10),
-    (2, N'Pursuit roll-ups', N'You forward; each pursuit owner replies. Every 7 days, sooner when something is urgent.', N'Numbered asks (Do, By, Why). One line back per item: done, moved, or dropped and why.', N'Every pursuit has a next step; no proposal past 60 days without an outcome.', 2, 5, 20),
-    (3, N'Monday lists', N'You, to each lead, with Monday''s email.', N'Each lead''s open actions from the meetings, as drafts.', N'Actions closed faster than they open ({ActionsOpen} open today).', 2, 5, 30),
-    (4, N'Quickie, regional lead', N'You with Omar, Islam, Conor, Rory. 15 min every two weeks; first is Omar, Tue 20 Oct, 10:00.', N'Their roll-up replies, their top three pursuits, one ask.', N'A fee estimate on every pursuit; submitted-to-won toward 50%.', 1, 5, 40),
-    (5, N'Quickie, BD + COO', N'You with JM and Jim. 20 min every two weeks, from the week of 26 Oct.', N'Their pursuits, then their projects over budget and invoices over 90 days.', N'Invoicing above $400k a month; over 90 days under $700k.', 2, 8, 50),
+    (1, N'Daily hour', N'Ian. Email at 6:05 on weekdays; the same hour in the Director.', N'Ranked BD, COO and IT moves, drafts ready to send, the roll-ups due to forward.', N'All of them: it is where the plan becomes today''s work.', 1, 9, 10),
+    (2, N'Pursuit roll-ups', N'Ian forwards; each pursuit owner replies. Every 7 days, sooner when something is urgent.', N'Numbered asks (Do, By, Why). One line back per item: done, moved, or dropped and why.', N'Every pursuit has a next step; no proposal past 60 days without an outcome.', 2, 5, 20),
+    (3, N'Monday lists', N'Ian, to each lead, with Monday''s email.', N'Each lead''s open actions from the meetings, as drafts.', N'Actions closed faster than they open ({ActionsOpen} open today).', 2, 5, 30),
+    (4, N'Quickie, regional lead', N'Ian with Omar, Islam, Conor, Rory. 15 min every two weeks; first is Omar, Tue 20 Oct, 10:00.', N'Their roll-up replies, their top three pursuits, one ask.', N'A fee estimate on every pursuit; submitted-to-won toward 50%.', 1, 5, 40),
+    (5, N'Quickie, BD + COO', N'Ian with JM and Jim. 20 min every two weeks, from the week of 26 Oct.', N'Their pursuits, then their projects over budget and invoices over 90 days.', N'Invoicing above $400k a month; over 90 days under $700k.', 2, 8, 50),
     (6, N'BD monthly', N'Leads and JM. 27 min; first Fri 13 Nov, 2:00.', N'What closed, what is late by owner, one topic (first: closing out every fee).', N'Close every proposal; submitted-to-won.', 2, 5, 60),
     (7, N'COO monthly', N'JM and Jim. 27 min; first Thu 29 Oct, 9:00.', N'Cash and collections, projects losing hours, timesheets, three decisions.', N'Days to collect down to 120; inactive money decided; over-budget down.', 6, 8, 70),
-    (8, N'Quarterly review', N'You and the partners. Proposed: first in January 2027.', N'The plan against the scoreboard: goals hit or missed, where to play, what to change.', N'Keeps the plan true.', 1, 9, 80)
+    (8, N'Quarterly review', N'Ian and the partners. Proposed: first in January 2027.', N'The plan against the scoreboard: goals hit or missed, where to play, what to change.', N'Keeps the plan true.', 1, 9, 80)
 ) AS s (Id, Name, WhoWhen, WhatHappens, Moves, StageFrom, StageTo, SortOrder)
 ON t.Id = s.Id
 WHEN MATCHED THEN UPDATE SET Name = s.Name, WhoWhen = s.WhoWhen, WhatHappens = s.WhatHappens, Moves = s.Moves,

@@ -21,7 +21,7 @@ public static class OperatingPlanPage
 
     public static async Task<string> BuildAsync(IOperatingPlanStore plan, IPursuitTouchstoneStore touchstones,
         Func<DateOnly, CancellationToken, Task<IReadOnlyList<ImpactReading>>> scoreboard, IBdRhythmStore rhythm,
-        DateTimeOffset now, CancellationToken ct)
+        DateTimeOffset now, CancellationToken ct, bool summaryOnly = false)
     {
         var zone = MeetingsDue.Pacific();
         var model = await plan.LoadAsync(ct).ConfigureAwait(false);
@@ -34,14 +34,15 @@ public static class OperatingPlanPage
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, zone).Date);
         var hourRow = await rhythm.GetHourAsync("Morning", today, ct).ConfigureAwait(false);
         var hour = hourRow is null ? null : DirectorHourFile.Parse(hourRow.ContentJson).Content;
-        return Draw(model, readings, pursuits, radar, asks, hour, now);
+        return Draw(model, readings, pursuits, radar, asks, hour, now, summaryOnly);
     }
 
     /// <summary>The pure half: everything gathered, the page drawn. Tests and the render harness call this directly.</summary>
     public static string Draw(OperatingPlanModel model, IReadOnlyList<ImpactReading> scoreboard, IReadOnlyList<PursuitState> pursuits,
-        PlanRadar? radar, IReadOnlyList<TouchstoneDue> asks, DirectorHourContent? hour, DateTimeOffset now)
+        PlanRadar? radar, IReadOnlyList<TouchstoneDue> asks, DirectorHourContent? hour, DateTimeOffset now, bool summaryOnly = false)
     {
         var readings = PlanReadings.From(scoreboard, pursuits, radar, asks.Count, now);
-        return OperatingPlanHtml.Render(model, readings, PlanItems.From(asks, hour, model.Goals.ToDictionary(g => g.Id, g => g.StageNo)), now);
+        return OperatingPlanHtml.Render(model, readings, PlanItems.From(asks, hour, model.Goals.ToDictionary(g => g.Id, g => g.StageNo)), now,
+            summaryOnly);
     }
 }

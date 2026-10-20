@@ -17,7 +17,8 @@
 // hour render <hour.json> --to <file.html>  the email exactly as it would be sent, for checking; sends nothing
 // hour verify <yyyy-MM-dd> --kind Morning [--after <ISO timestamp>]  read and validate the stored hour; nonzero if absent or stale
 // rhythm render --to <folder>               agendas and Monday-list drafts from the live action register; sends nothing
-// plan render --to <file.html>              the operating plan exactly as the Director's Plan tab draws it, live readings
+// plan render --to <file.html> [--summary]  the operating plan exactly as the Director's Plan tab draws it, live readings
+//                                           (--summary: the one-page summary its Print summary prints)
 // --db <connection string>   default: env KOR_OPPORTUNITIES_OPPORTUNITIESDB
 // --dry reads/chunks only, without a database connection or embedding call.
 
@@ -341,7 +342,8 @@ internal static class KnowledgeCli
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
         var impact = new SqlImpactStore(connection);
         var html = await Kor.Opportunities.Data.Plan.OperatingPlanPage.BuildAsync(new Kor.Opportunities.Data.Plan.SqlOperatingPlanStore(connection),
-            new SqlPursuitTouchstoneStore(connection), impact.ListAsync, new SqlBdRhythmStore(connection), DateTimeOffset.Now, ct);
+            new SqlPursuitTouchstoneStore(connection), impact.ListAsync, new SqlBdRhythmStore(connection), DateTimeOffset.Now, ct,
+            summaryOnly: args.Flag("--summary"));
         await File.WriteAllTextAsync(file, html, ct);
         Console.WriteLine($"Plan written to {file} ({html.Length} characters).");
         return 0;
@@ -626,7 +628,7 @@ internal static class KnowledgeCli
 
     private sealed class Arguments
     {
-        private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help", "--replace", "--checked" };
+        private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help", "--replace", "--checked", "--summary" };
         private static readonly HashSet<string> Values = new(StringComparer.Ordinal)
             { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--week", "--token", "--role", "--focus", "--exclude-run", "--after" };
         private readonly Dictionary<string, string?> _options = new(StringComparer.Ordinal);
@@ -757,7 +759,8 @@ internal static class KnowledgeCli
                 "pursuit" => new[] { "--by", "--replace" },
                 "hour" => Positionals[1].Equals("verify", StringComparison.OrdinalIgnoreCase)
                     ? new[] { "--kind", "--after" } : new[] { "--by", "--to" },
-                "rhythm" or "plan" => new[] { "--to" },
+                "rhythm" => new[] { "--to" },
+                "plan" => new[] { "--to", "--summary" },
                 "doctrine" => new[] { "--role", "--exclude-run" },
                 "prompt" => promptAction == "synthesis" ? new[] { "--by", "--focus", "--role" } : new[] { "--token", "--checked" },
                 "claims" => claimAction switch { "import" => new[] { "--force", "--by" }, "relate" => new[] { "--by" }, "search" => new[] { "--take" }, _ => Array.Empty<string>() },

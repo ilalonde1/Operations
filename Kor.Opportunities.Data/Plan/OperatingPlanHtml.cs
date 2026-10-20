@@ -18,17 +18,21 @@ namespace Kor.Opportunities.Data.Plan;
 public static class OperatingPlanHtml
 {
     public const string PrintLink = "kor://plan/print";
+    public const string PrintSummaryLink = "kor://plan/print-summary";
     public const string DecidePrefix = "kor://plan/decide/";
     public const int ItemsPerStage = 6;
     public const int PrintedItems = 3;
 
-    public static string Render(OperatingPlanModel plan, PlanReadings readings, IReadOnlyList<PlanItem> items, DateTimeOffset now)
+    /// <param name="summaryOnly">True prints only the one-page summary (the CLI's --summary); the app sets the same body class
+    /// for Print summary on the page it already shows.</param>
+    public static string Render(OperatingPlanModel plan, PlanReadings readings, IReadOnlyList<PlanItem> items, DateTimeOffset now,
+        bool summaryOnly = false)
     {
         var sb = new StringBuilder(64 * 1024);
         var decided = plan.Goals.Count(g => g.Status == "Decided");
         var asOf = readings.ScoreboardAsOf;
         sb.Append("<!doctype html><html><head><meta charset=\"utf-8\"><title>KOR Operating Plan</title><style>").Append(Css).Append("</style></head>");
-        sb.Append("<body data-view=\"map\">");
+        sb.Append("<body data-view=\"").Append(summaryOnly ? "summary\" class=\"sum" : "map").Append("\">");
 
         // Toolbar: screen only.
         sb.Append("<header class=\"bar screen\"><div><h1>Operating plan</h1><p class=\"meta\">Live · ")
@@ -37,9 +41,10 @@ public static class OperatingPlanHtml
           .Append(" · <b>").Append(plan.Goals.Count).Append(" goals</b>: ").Append(decided).Append(" decided by you, ")
           .Append(plan.Goals.Count - decided).Append(" recommended</p></div>")
           .Append("<nav class=\"seg\">")
-          .Append(Seg("map", "Process map", true)).Append(Seg("strategy", "Strategy", false))
+          .Append(Seg("summary", "Summary", false)).Append(Seg("map", "Process map", true)).Append(Seg("strategy", "Strategy", false))
           .Append(Seg("rhythm", "Rhythm", false)).Append(Seg("platform", "Platform", false))
-          .Append("</nav><a class=\"btn dark\" href=\"").Append(PrintLink).Append("\">Print plan (PDF)</a></header>");
+          .Append("</nav><a class=\"btn\" href=\"").Append(PrintSummaryLink).Append("\">Print summary (1 page)</a>")
+          .Append("<a class=\"btn dark\" href=\"").Append(PrintLink).Append("\">Print plan (PDF)</a></header>");
 
         // Print cover: print only.
         sb.Append("<header class=\"cover print\"><p class=\"eyebrow\">KOR Structural · Operating plan · ")
@@ -48,6 +53,7 @@ public static class OperatingPlanHtml
           .Append("Live: every number below was read from Deltek, the CRM and NetworkOps when this was printed. ")
           .Append(decided).Append(" of ").Append(plan.Goals.Count).Append(" goals decided; the rest are recommendations.</p></header>");
 
+        SummaryView(sb, plan, readings, now);
         MapView(sb, plan, readings, items);
         StrategyView(sb, plan, readings);
         RhythmView(sb, plan, readings);
@@ -234,7 +240,11 @@ public static class OperatingPlanHtml
         {
             if (list.Count == 0) continue;
             sb.Append("<div class=\"col\"><h3>").Append(E(title)).Append("</h3><ul>");
-            foreach (var p in list) sb.Append("<li><b>").Append(E(readings.Fill(p.Title))).Append("</b> ").Append(E(readings.Fill(p.Detail))).Append("</li>");
+            foreach (var p in list)
+            {
+                var (state, detail) = Readiness(readings.Fill(p.Detail));
+                sb.Append("<li><b>").Append(E(readings.Fill(p.Title))).Append("</b> ").Append(Badge(state)).Append(E(detail)).Append("</li>");
+            }
             sb.Append("</ul></div>");
         }
         sb.Append("</div><div class=\"leads\">");
@@ -259,6 +269,76 @@ public static class OperatingPlanHtml
               .Append("<dt>Next</dt><dd class=\"weak\">").Append(E(readings.Fill(p.NextText))).Append("</dd></dl></div>");
         sb.Append("</div></section>");
     }
+
+    /// <summary>
+    /// The one-page summary: the process in one strip, what the leads get and what is asked of them (each marked Live, Pilot,
+    /// Coming or Starting), the meetings one line each, the goals and the partners' decisions as titles. Shown on screen as the
+    /// Summary view; printed alone by Print summary (body class "sum"), and left out of the full printed plan.
+    /// </summary>
+    private static void SummaryView(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings, DateTimeOffset now)
+    {
+        sb.Append("<section class=\"view\" id=\"v-summary\"><div class=\"sumhead\"><p class=\"eyebrow\">KOR Structural · Operating plan · summary · ")
+          .Append(E(Day(DateOnly.FromDateTime(now.Date)))).Append("</p><h2>How we run BD, Operations and IT</h2>")
+          .Append("<p>One plan from the first signal of a project to the cash in the bank. The system watches, prepares and drafts; people decide and act. ")
+          .Append("The regional leads sell; the platform does the chasing.</p></div>");
+
+        sb.Append("<p class=\"sec\">Signal to cash: who owns each step</p><div class=\"strip\">");
+        foreach (var s in plan.Stages)
+            sb.Append("<div class=\"").Append(s.Pillar == "BD" ? "bd" : "ops").Append("\"><span class=\"n\">").Append(Stage(s.No)).Append("</span><b>")
+              .Append(E(s.Name)).Append("</b><span>").Append(E(Short(s.Owner))).Append("</span></div>");
+        sb.Append("</div>");
+
+        var gets = plan.Points.Where(p => p.Section == "LeadGets").ToList();
+        var asks = plan.Points.Where(p => p.Section == "LeadAsk").ToList();
+        sb.Append("<div class=\"sum2\"><div><p class=\"sec\">What every regional lead gets</p><ul>");
+        foreach (var p in gets) sb.Append("<li>").Append(Badge(Readiness(readings.Fill(p.Detail)).State)).Append(E(readings.Fill(p.Title).TrimEnd('.'))).Append("</li>");
+        sb.Append("</ul></div><div><p class=\"sec\">What Ian asks of every lead</p><ul>");
+        foreach (var p in asks) sb.Append("<li>").Append(E(readings.Fill(p.Title).TrimEnd('.'))).Append("</li>");
+        sb.Append("</ul><p class=\"sec\">The leads</p><p class=\"leadline\">")
+          .Append(string.Join(" · ", plan.Points.Where(p => p.Section == "Lead").Select(p => E(p.Title))))
+          .Append("</p></div></div>");
+
+        sb.Append("<p class=\"sec\">How it is managed</p><table class=\"sumr\"><tbody>");
+        foreach (var r in plan.Rhythm)
+            sb.Append("<tr><td><b>").Append(E(r.Name)).Append("</b></td><td>").Append(E(readings.Fill(r.WhoWhen))).Append("</td><td>")
+              .Append(E(readings.Fill(r.WhatHappens))).Append("</td></tr>");
+        sb.Append("</tbody></table>");
+
+        sb.Append("<div class=\"sum3\">");
+        foreach (var (pillar, label) in new[] { ("BD", "Business development"), ("Ops", "Operations"), ("IT", "IT") })
+        {
+            var goals = plan.Goals.Where(g => g.Pillar == pillar && g.Status != "Retired").ToList();
+            if (goals.Count == 0) continue;
+            sb.Append("<div><p class=\"sec\">Goals · ").Append(E(label)).Append("</p><ul>");
+            foreach (var g in goals) sb.Append("<li>").Append(E(g.Title)).Append("</li>");
+            sb.Append("</ul></div>");
+        }
+        sb.Append("</div><p class=\"sec\">What the partners decide</p><p class=\"leadline\">")
+          .Append(string.Join(" · ", plan.Points.Where(p => p.Section == "Decide").Select(p => E(readings.Fill(p.Title).TrimEnd('.', ',')))))
+          .Append("</p><p class=\"muted\">Goals are recommendations until decided. Figures are being confirmed with finance. The full plan is in the BD Director's Plan tab.</p></section>");
+    }
+
+    /// <summary>A plan point's detail may open with its readiness: "Live.", "Pilot.", "Coming." or "Starting.".</summary>
+    public static (string? State, string Detail) Readiness(string detail)
+    {
+        foreach (var state in new[] { "Live", "Pilot", "Coming", "Starting" })
+            if (detail.StartsWith(state + ". ", StringComparison.Ordinal)) return (state, detail[(state.Length + 2)..]);
+        return (null, detail);
+    }
+
+    private static string Badge(string? state) =>
+        state is null ? "" : "<span class=\"rd " + state.ToLowerInvariant() + "\">" + E(state) + "</span> ";
+
+    /// <summary>The first clause of a sentence: up to the first semicolon or full stop, for the one-line summary.</summary>
+    private static string Short(string text)
+    {
+        var cut = text.IndexOfAny(new[] { ';', '.' });
+        return (cut > 0 ? text[..cut] : text).Trim();
+    }
+
+    /// <summary>The file name Print summary offers.</summary>
+    public static string SummaryPdfFileName(DateTimeOffset now) =>
+        "KOR-Operating-Plan-Summary-" + now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + ".pdf";
 
     /// <summary>The file name Print plan offers: KOR-Operating-Plan-yyyy-MM-dd.pdf, dated the day it was printed.</summary>
     public static string PdfFileName(DateTimeOffset now) =>
@@ -321,7 +401,13 @@ h1{font-size:22px;margin:0;font-weight:600} h2{font-size:20px;margin:4px 0 6px;f
 .seg a.on{background:var(--slate);color:#fff;border-color:var(--slate)}
 .btn{border:1px solid var(--line);padding:5px 12px;font-size:12px;color:var(--ink);background:#fff} .btn.dark{background:var(--slate);color:#fff;border-color:var(--slate)}
 .print{display:none}
-.view{display:none} body[data-view=map] #v-map,body[data-view=strategy] #v-strategy,body[data-view=rhythm] #v-rhythm,body[data-view=platform] #v-platform{display:block}
+.view{display:none} body[data-view=map] #v-map,body[data-view=strategy] #v-strategy,body[data-view=rhythm] #v-rhythm,body[data-view=platform] #v-platform,body[data-view=summary] #v-summary{display:block}
+.rd{font-size:10px;border-radius:9px;padding:0 6px;margin-right:2px;white-space:nowrap;font-weight:600} .rd.live{background:#E7F3EB;color:#1E7D3A} .rd.pilot{background:#E6EEF8;color:#2f5f9e} .rd.coming{background:#FBF1DE;color:#8a5d0d} .rd.starting{background:#EEF1F4;color:#3F5364}
+#v-summary{max-width:64rem} .sumhead{border-left:4px solid var(--accent);padding:2px 0 2px 12px;margin-bottom:6px} .sumhead .eyebrow{font-family:Consolas,monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink);margin:0} .sumhead h2{margin:2px 0 3px} .sumhead p{margin:0;color:var(--soft)}
+.strip{display:grid;grid-template-columns:repeat(9,1fr);gap:5px} .strip div{border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:11px;line-height:1.3} .strip b{display:block;font-size:12px} .strip span:not(.n){color:var(--soft)} .strip .n{font-family:Consolas,monospace;font-size:9px;color:#fff;background:var(--accent);border-radius:3px;padding:0 4px} .strip .ops .n{background:var(--slate2)}
+.sum2{display:grid;grid-template-columns:1fr 1fr;gap:14px} .sum2 ul,.sum3 ul{margin:0;padding-left:16px} .sum2 li,.sum3 li{margin:2px 0}
+.sum3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px} .leadline{margin:0}
+table.sumr{margin-top:2px} table.sumr td{padding:3px 6px}
 .mapwrap{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;align-items:start}
 .lane{font-family:Consolas,monospace;font-size:10.5px;letter-spacing:.12em;color:var(--faint);margin:8px 0 6px;text-transform:uppercase}
 .row{display:flex;align-items:stretch} .row .node{flex:1;min-width:0} .arrow{width:22px;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:15px}
@@ -373,5 +459,12 @@ ul.plain{padding-left:18px} ul.plain li{margin:4px 0}
  .node.sel{border:1px solid var(--line);box-shadow:none;padding:8px 10px}
  .facts{grid-template-columns:repeat(4,1fr)} .cols{grid-template-columns:repeat(3,1fr)} .cols.two{grid-template-columns:1fr 1fr} .col,.pillar,.fact,tr{break-inside:avoid}
  .leadsec{break-before:page} .lead{font-size:8pt}
+ #v-summary{display:none!important}
+ body.sum .view,body.sum header.cover,body.sum footer.src{display:none!important}
+ body.sum #v-summary{display:block!important;break-before:auto;max-width:none;font-size:8.6pt}
+ body.sum .strip div{font-size:7.4pt;padding:3px 5px} body.sum .strip b{font-size:8.4pt} body.sum .sec{margin:7px 0 2px}
+ body.sum .strip span:not(.n){display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+ body.sum .sum2 li,body.sum .sum3 li{margin:1px 0} body.sum table.sumr td{padding:2px 6px}
+ body.sum table.sumr{font-size:8pt} body.sum .rd{font-size:6.8pt}
 }";
 }

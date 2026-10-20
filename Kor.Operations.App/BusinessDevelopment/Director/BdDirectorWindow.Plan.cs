@@ -80,7 +80,9 @@ public partial class BdDirectorWindow
         try
         {
             if (string.Equals(uri.TrimEnd('/'), OperatingPlanHtml.PrintLink, StringComparison.OrdinalIgnoreCase))
-                await PrintPlanAsync().ConfigureAwait(true);
+                await PrintPlanAsync(summary: false).ConfigureAwait(true);
+            else if (string.Equals(uri.TrimEnd('/'), OperatingPlanHtml.PrintSummaryLink, StringComparison.OrdinalIgnoreCase))
+                await PrintPlanAsync(summary: true).ConfigureAwait(true);
             else if (OperatingPlanHtml.TryParseDecide(uri, out var goalId))
                 await DecideGoalAsync(goalId).ConfigureAwait(true);
             else
@@ -93,13 +95,17 @@ public partial class BdDirectorWindow
         }
     }
 
-    /// <summary>Prints exactly what the tab shows; the page's print layout runs all four views and every stage card.</summary>
-    private async Task PrintPlanAsync()
+    /// <summary>
+    /// Prints the page the tab shows. The full plan runs all four views and every stage card; the summary is the same page with
+    /// the body class "sum", which leaves only the one-page summary in print, and is removed again afterwards.
+    /// </summary>
+    private async Task PrintPlanAsync(bool summary)
     {
         if (!_planReady || PlanView.CoreWebView2 is null) return;
+        var now = DateTimeOffset.Now;
         var dlg = new Microsoft.Win32.SaveFileDialog
         {
-            FileName = OperatingPlanHtml.PdfFileName(DateTimeOffset.Now),
+            FileName = summary ? OperatingPlanHtml.SummaryPdfFileName(now) : OperatingPlanHtml.PdfFileName(now),
             Filter = "PDF (*.pdf)|*.pdf",
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
         };
@@ -107,8 +113,15 @@ public partial class BdDirectorWindow
         var settings = PlanView.CoreWebView2.Environment.CreatePrintSettings();
         settings.ShouldPrintBackgrounds = true;
         settings.ShouldPrintHeaderAndFooter = false;
-        var ok = await PlanView.CoreWebView2.PrintToPdfAsync(dlg.FileName, settings).ConfigureAwait(true);
-        SetRhythmStatus(ok ? "Saved the plan as " + Path.GetFileName(dlg.FileName) + "." : "The plan PDF could not be saved.");
+        if (summary) await PlanView.CoreWebView2.ExecuteScriptAsync("document.body.classList.add('sum')").ConfigureAwait(true);
+        bool ok;
+        try { ok = await PlanView.CoreWebView2.PrintToPdfAsync(dlg.FileName, settings).ConfigureAwait(true); }
+        finally
+        {
+            if (summary) await PlanView.CoreWebView2.ExecuteScriptAsync("document.body.classList.remove('sum')").ConfigureAwait(true);
+        }
+        var what = summary ? "the plan summary" : "the plan";
+        SetRhythmStatus(ok ? "Saved " + what + " as " + Path.GetFileName(dlg.FileName) + "." : "The " + (summary ? "summary" : "plan") + " PDF could not be saved.");
     }
 
     /// <summary>Turns a recommended goal into a decided one, as written; the plan records who and when.</summary>
