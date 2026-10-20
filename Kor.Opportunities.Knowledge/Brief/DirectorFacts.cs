@@ -32,7 +32,7 @@ public sealed class DirectorFacts(IBdDirectorStore director, IBdDirectorLedgerSt
                 var funnel = await director.GetFunnelAsync(ct);
                 block.Add("Stage | median days");
                 foreach (var age in funnel.MedianDaysInStage) block.Add(age.Key, age.Value);
-                block.Add("Undecided without deadline", funnel.UndecidedNoDeadline, "lost", funnel.LostTotal, "named competitor", funnel.LostWithCompetitor, "reason recorded", funnel.LostWithReason);
+                block.Add("Undecided tenders without deadline", funnel.UndecidedNoDeadline, "lost", funnel.LostTotal, "named competitor", funnel.LostWithCompetitor, "reason recorded", funnel.LostWithReason);
                 block.Add("Overdue undecided pursuit | buyer | owner | deadline UTC");
                 foreach (var p in funnel.UndecidedPastDeadline) block.Add(p.EngagementId, p.ProjectName, p.Buyer, p.OwnerKey, p.Deadline);
                 block.Add("Recent decisions | expected | outcome");

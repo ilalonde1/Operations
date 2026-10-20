@@ -333,7 +333,7 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
                 ? "No live pursuit has been decided yet."
                 : $"Won {snapshot.Won} · Lost {snapshot.Lost} · win rate {snapshot.WinRate.ToString("P0", CultureInfo.CurrentCulture)} on decided live pursuits · {snapshot.BackfillWins} Deltek wins kept separate";
             LostDetails = $"Of the lost: {funnel.LostWithCompetitor} name the competitor, {funnel.LostWithReason} give a reason.";
-            DeadlineCaption = $"Submitted or pending, deadline more than 30 days gone, no outcome recorded. {funnel.UndecidedNoDeadline} more have no deadline on file.";
+            DeadlineCaption = $"Submitted or pending, deadline more than 30 days gone, no outcome recorded. {funnel.UndecidedNoDeadline} tender pursuits have no deadline on file; relationship pursuits have none by design and run on their next action.";
             Undecided.Clear();
             foreach (var row in funnel.UndecidedPastDeadline)
             {

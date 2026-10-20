@@ -101,7 +101,7 @@ public sealed class BdDirectorRegressionTests
             "LostToCanonicalOrgId IS NOT NULL", "OutcomeReason IS NOT NULL",
             "PERCENTILE_CONT(0.5)", "h.EngagementId = e.Id AND h.Stage = e.Stage",
             "COALESCE(h.StageSinceUtc, e.OpenedAtUtc)", "o.SubmissionDeadlineUtc < DATEADD(day, -30, @now)",
-            "e.Stage IN (1, 3) AND o.SubmissionDeadlineUtc IS NULL",
+            "e.Stage IN (1, 3) AND e.OpportunityId IS NOT NULL AND o.SubmissionDeadlineUtc IS NULL",
         }) Contains(sql, clause);
         Assert.False(Regex.IsMatch(sql, @"\b(INSERT|UPDATE|DELETE|MERGE)\b", RegexOptions.IgnoreCase),
             "EXPECTED SELECT-only Director store; ACTUAL write keyword present");

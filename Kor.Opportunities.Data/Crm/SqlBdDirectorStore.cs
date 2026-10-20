@@ -159,7 +159,7 @@ ORDER BY o.SubmissionDeadlineUtc, e.Id;
 SELECT COUNT(*) AS UndecidedNoDeadline
 FROM opportunities.CrmEngagements e
 LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
-WHERE e.Stage IN (1, 3) AND o.SubmissionDeadlineUtc IS NULL;
+WHERE e.Stage IN (1, 3) AND e.OpportunityId IS NOT NULL AND o.SubmissionDeadlineUtc IS NULL;
 
 SELECT COUNT(CASE WHEN LostToCanonicalOrgId IS NOT NULL THEN 1 END) AS LostWithCompetitor,
        COUNT(CASE WHEN OutcomeReason IS NOT NULL THEN 1 END) AS LostWithReason,
