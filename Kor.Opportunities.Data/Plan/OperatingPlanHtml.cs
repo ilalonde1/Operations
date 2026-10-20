@@ -26,7 +26,7 @@ public static class OperatingPlanHtml
     /// <param name="summaryOnly">True prints only the one-page summary (the CLI's --summary); the app sets the same body class
     /// for Print summary on the page it already shows.</param>
     public static string Render(OperatingPlanModel plan, PlanReadings readings, IReadOnlyList<PlanItem> items, DateTimeOffset now,
-        bool summaryOnly = false)
+        bool summaryOnly = false, PlanExample? example = null)
     {
         var sb = new StringBuilder(64 * 1024);
         var decided = plan.Goals.Count(g => g.Status == "Decided");
@@ -53,8 +53,8 @@ public static class OperatingPlanHtml
           .Append("Live: every number below was read from Deltek, the CRM and NetworkOps when this was printed. ")
           .Append(decided).Append(" of ").Append(plan.Goals.Count).Append(" goals decided; the rest are recommendations.</p></header>");
 
-        SummaryView(sb, plan, readings, now);
-        MapView(sb, plan, readings, items);
+        SummaryView(sb, plan, readings, now, example);
+        MapView(sb, plan, readings, items, example);
         StrategyView(sb, plan, readings);
         RhythmView(sb, plan, readings);
         PlatformView(sb, plan, readings);
@@ -67,7 +67,8 @@ public static class OperatingPlanHtml
         return sb.ToString();
     }
 
-    private static void MapView(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings, IReadOnlyList<PlanItem> items)
+    private static void MapView(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings, IReadOnlyList<PlanItem> items,
+        PlanExample? example)
     {
         sb.Append("<section class=\"view\" id=\"v-map\"><h2 class=\"print\">The whole process: signal to cash</h2>");
         sb.Append("<div class=\"mapwrap\"><div class=\"map\">");
@@ -75,6 +76,7 @@ public static class OperatingPlanHtml
         sb.Append("<div class=\"turn\">↓</div>");
         Lane(sb, "Operations · how much of it becomes cash", plan, readings, items, new[] { 8, 7, 6, 5 }, "←");
         Lane(sb, "IT · underneath every stage", plan, readings, items, new[] { 9 }, "");
+        ExampleBlock(sb, plan, example, compact: false);
         GoalTable(sb, plan, readings);
         sb.Append("</div><aside class=\"panels\">");
         foreach (var s in plan.Stages) Panel(sb, s, plan, readings, items);
@@ -275,7 +277,60 @@ public static class OperatingPlanHtml
     /// Coming or Starting), the meetings one line each, the goals and the partners' decisions as titles. Shown on screen as the
     /// Summary view; printed alone by Print summary (body class "sum"), and left out of the full printed plan.
     /// </summary>
-    private static void SummaryView(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings, DateTimeOffset now)
+    /// <summary>
+    /// The worked example: one real pursuit through the steps, read live (PlanExample), each step saying what happened and
+    /// when. Nothing is shown when the plan names no example or the pursuit cannot be read.
+    /// </summary>
+    private static void ExampleBlock(StringBuilder sb, OperatingPlanModel plan, PlanExample? x, bool compact)
+    {
+        if (x is null) return;
+        var label = plan.Points.FirstOrDefault(p => p.Section == "Example")?.Title ?? x.Title;
+        var outcome = x.Stage switch { 6 => "Won.", 7 => "Lost.", _ => "Waiting for the client's decision." };
+        var checks = x.Met + x.NotMet + x.NotApplicable + x.Open;
+        var steps = new List<(string Step, string What)>
+        {
+            ("Spot it", $"{x.Title}, posted by {x.Buyer}" + (x.Portal is null ? "" : $" on {x.Portal}") + (x.Found is { } f ? $", found {Day(f)}." : ".")),
+            ("Follow it up", $"Owned by {x.Owner}."),
+            ("Write the proposal", $"{x.Files} files kept with it, the RFP and its addenda among them; a checklist of {checks} requirements quoted from the RFP"
+                + (x.Deadline is { } d ? $"; due {Day(d)}." : ".")),
+            ("Submitted", x.SubmittedAt is { } s
+                ? $"{Day(s)} at {Time(s)}" + (x.SubmittedFile is null ? "" : $": {x.SubmittedFile}") + (x.Fee is { } fee ? $"; fee {fee.ToString("$#,0", CultureInfo.InvariantCulture)}." : ".")
+                : "Not yet."),
+            ("Checked", checks == 0 ? "No checklist yet."
+                : $"Against the RFP's own list: {x.Met} met, {x.NotMet} not met" + (x.NotApplicable > 0 ? $", {x.NotApplicable} not applicable" : "")
+                  + (x.Open > 0 ? $", {x.Open} still to check" : "") + ". The gaps are the fix list for the next bid."),
+            ("Get an answer", outcome),
+        };
+        if (compact)
+        {
+            // The one-page summary: the same steps in a few words each (the title is in the heading).
+            var brief = new (string Step, string What)[]
+            {
+                ("Spot it", $"Posted by {x.Buyer}" + (x.Portal is null ? "" : $" on {x.Portal}") + (x.Found is { } f2 ? $", {Day(f2)}." : ".")),
+                ("Follow it up", $"Owned by {x.Owner}."),
+                ("Write the proposal", $"{x.Files} files kept; {checks} requirements from the RFP" + (x.Deadline is { } d2 ? $"; due {Day(d2)}." : ".")),
+                ("Submitted", x.SubmittedAt is { } s2 ? $"{Day(s2)}, {Time(s2)}; proposal stored" + (x.Fee is { } fee2 ? $"; fee {fee2.ToString("$#,0", CultureInfo.InvariantCulture)}." : ".") : "Not yet."),
+                ("Checked", checks == 0 ? "No checklist yet." : $"{x.Met} met, {x.NotMet} not met: the fix list for the next bid."),
+                ("Get an answer", outcome),
+            };
+            sb.Append("<p class=\"sec\">A real example, end to end: ").Append(E(label)).Append(" (pursuit #").Append(x.EngagementId)
+              .Append(")</p><div class=\"exstrip\">");
+            foreach (var (step, what) in brief) sb.Append("<div><b>").Append(E(step)).Append("</b><span>").Append(E(what)).Append("</span></div>");
+            sb.Append("</div>");
+            return;
+        }
+        sb.Append("<div class=\"example\"><p class=\"lane\">A real example, end to end · ").Append(E(label)).Append(" · pursuit #")
+          .Append(x.EngagementId).Append("</p><ol>");
+        foreach (var (step, what) in steps) sb.Append("<li><b>").Append(E(step)).Append("</b> ").Append(E(what)).Append("</li>");
+        sb.Append("</ol><p class=\"muted\">Read live from the pursuit in the CRM; every file and checklist line is on it in the app.</p></div>");
+    }
+
+    /// <summary>The clock time as recorded, in the offset it was recorded with (a buyer's own time zone for a submission).</summary>
+    private static string Time(DateTimeOffset at) => at.ToString("h:mm tt", CultureInfo.InvariantCulture);
+
+    private static string Day(DateTimeOffset at) => Day(DateOnly.FromDateTime(at.DateTime));
+
+    private static void SummaryView(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings, DateTimeOffset now, PlanExample? example)
     {
         sb.Append("<section class=\"view\" id=\"v-summary\"><div class=\"sumhead\"><p class=\"eyebrow\">KOR Structural · Operating plan · summary · ")
           .Append(E(Day(DateOnly.FromDateTime(now.Date)))).Append("</p><h2>How KOR finds, wins and delivers work</h2>")
@@ -287,6 +342,7 @@ public static class OperatingPlanHtml
             sb.Append("<div class=\"").Append(s.Pillar == "BD" ? "bd" : "ops").Append("\"><span class=\"n\">").Append(Stage(s.No)).Append("</span><b>")
               .Append(E(s.Name)).Append("</b><span>").Append(E(Short(s.Owner))).Append("</span></div>");
         sb.Append("</div>");
+        ExampleBlock(sb, plan, example, compact: true);
 
         var gets = plan.Points.Where(p => p.Section == "LeadGets").ToList();
         var asks = plan.Points.Where(p => p.Section == "LeadAsk").ToList();
@@ -315,8 +371,8 @@ public static class OperatingPlanHtml
         }
         sb.Append("</div><p class=\"sec\">What the partners decide</p><p class=\"leadline\">")
           .Append(string.Join(" · ", plan.Points.Where(p => p.Section == "Decide").Select(p => E(readings.Fill(p.Title).TrimEnd('.', ',')))))
-          .Append("</p><p class=\"muted\">The goals are proposals until the partners agree them, and the figures are being checked with finance. ")
-          .Append("The full plan is in the KOR Operations app (BD Director, Plan tab).</p></section>");
+          .Append("</p><p class=\"muted\">Goals are proposals until the partners agree them; figures are being checked with finance. ")
+          .Append("Full plan: KOR Operations app, BD Director, Plan tab.</p></section>");
     }
 
     /// <summary>A plan point's detail may open with its readiness: "Live.", "Pilot.", "Coming." or "Starting.".</summary>
@@ -414,6 +470,8 @@ h1{font-size:22px;margin:0;font-weight:600} h2{font-size:20px;margin:4px 0 6px;f
 .strip{display:grid;grid-template-columns:repeat(9,1fr);gap:5px} .strip div{border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:11px;line-height:1.3} .strip b{display:block;font-size:12px} .strip span:not(.n){color:var(--soft)} .strip .n{font-family:Consolas,monospace;font-size:9px;color:#fff;background:var(--accent);border-radius:3px;padding:0 4px} .strip .ops .n{background:var(--slate2)}
 .sum2{display:grid;grid-template-columns:1fr 1fr;gap:14px} .sum2 ul,.sum3 ul{margin:0;padding-left:16px} .sum2 li,.sum3 li{margin:2px 0}
 .sum3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px} .leadline{margin:0}
+.example{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:6px 12px;margin-top:12px} .example ol{margin:2px 0 4px;padding-left:20px} .example li{margin:3px 0}
+.exstrip{display:grid;grid-template-columns:repeat(6,1fr);gap:5px} .exstrip div{border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:6px;padding:4px 6px;font-size:11px;line-height:1.3} .exstrip b{display:block;font-size:11.5px} .exstrip span{color:var(--soft)}
 table.sumr{margin-top:2px} table.sumr td{padding:3px 6px}
 .mapwrap{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;align-items:start}
 .lane{font-family:Consolas,monospace;font-size:10.5px;letter-spacing:.12em;color:var(--faint);margin:8px 0 6px;text-transform:uppercase}
@@ -468,10 +526,11 @@ ul.plain{padding-left:18px} ul.plain li{margin:4px 0}
  .leadsec{break-before:page} .lead{font-size:8pt}
  #v-summary{display:none!important}
  body.sum .view,body.sum header.cover,body.sum footer.src{display:none!important}
- body.sum #v-summary{display:block!important;break-before:auto;max-width:none;font-size:8.6pt}
+ body.sum #v-summary{display:block!important;break-before:auto;max-width:none;font-size:8.2pt}
  body.sum .strip div{font-size:7.4pt;padding:3px 5px} body.sum .strip b{font-size:8.4pt} body.sum .sec{margin:7px 0 2px}
  body.sum .strip span:not(.n){display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
- body.sum .sum2 li,body.sum .sum3 li{margin:1px 0} body.sum table.sumr td{padding:2px 6px}
+ body.sum .sum2 li,body.sum .sum3 li{margin:1px 0} body.sum table.sumr td{padding:1px 6px}
+ body.sum .exstrip div{font-size:6.9pt;padding:3px 5px} body.sum .exstrip b{font-size:7.6pt} .example{break-inside:avoid;font-size:8pt}
  body.sum table.sumr{font-size:8pt} body.sum .rd{font-size:6.8pt}
 }";
 }

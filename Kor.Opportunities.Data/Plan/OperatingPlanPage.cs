@@ -34,15 +34,19 @@ public static class OperatingPlanPage
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, zone).Date);
         var hourRow = await rhythm.GetHourAsync("Morning", today, ct).ConfigureAwait(false);
         var hour = hourRow is null ? null : DirectorHourFile.Parse(hourRow.ContentJson).Content;
-        return Draw(model, readings, pursuits, radar, asks, hour, now, summaryOnly);
+        // The worked example is the pursuit the plan names in its "Example" point, read live.
+        var exampleId = model.Points.FirstOrDefault(p => p.Section == "Example")?.Detail;
+        var example = long.TryParse(exampleId, out var id) && id > 0 ? await plan.ReadExampleAsync(id, ct).ConfigureAwait(false) : null;
+        return Draw(model, readings, pursuits, radar, asks, hour, now, summaryOnly, example);
     }
 
     /// <summary>The pure half: everything gathered, the page drawn. Tests and the render harness call this directly.</summary>
     public static string Draw(OperatingPlanModel model, IReadOnlyList<ImpactReading> scoreboard, IReadOnlyList<PursuitState> pursuits,
-        PlanRadar? radar, IReadOnlyList<TouchstoneDue> asks, DirectorHourContent? hour, DateTimeOffset now, bool summaryOnly = false)
+        PlanRadar? radar, IReadOnlyList<TouchstoneDue> asks, DirectorHourContent? hour, DateTimeOffset now, bool summaryOnly = false,
+        PlanExample? example = null)
     {
         var readings = PlanReadings.From(scoreboard, pursuits, radar, asks.Count, now);
         return OperatingPlanHtml.Render(model, readings, PlanItems.From(asks, hour, model.Goals.ToDictionary(g => g.Id, g => g.StageNo)), now,
-            summaryOnly);
+            summaryOnly, example);
     }
 }

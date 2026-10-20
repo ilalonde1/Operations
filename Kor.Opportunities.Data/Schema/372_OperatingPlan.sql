@@ -72,7 +72,7 @@ BEGIN
         Id INT NOT NULL CONSTRAINT PK_PlanPoint PRIMARY KEY CLUSTERED,
         Pillar NVARCHAR(10) NOT NULL CONSTRAINT CK_PlanPoint_Pillar CHECK (Pillar IN (N'BD', N'Ops', N'IT', N'All')),
         Section NVARCHAR(30) NOT NULL CONSTRAINT CK_PlanPoint_Section
-            CHECK (Section IN (N'WhereToPlay', N'HowWeWin', N'WhereItHurts', N'Priorities', N'Decide', N'LeadGets', N'LeadAsk', N'Lead')),
+            CHECK (Section IN (N'WhereToPlay', N'HowWeWin', N'WhereItHurts', N'Priorities', N'Decide', N'LeadGets', N'LeadAsk', N'Lead', N'Example')),
         Title NVARCHAR(200) NOT NULL,
         Detail NVARCHAR(800) NOT NULL,
         SortOrder INT NOT NULL
@@ -200,12 +200,13 @@ GO
 
 -- 20 October: the regional leads' section (what every lead gets, what Ian asks of them, one line per lead) joins the
 -- sections a point may belong to. The table already exists live, so its check is widened in place.
+-- Same day: section "Example" names the pursuit shown end to end as the plan's worked example (Detail = its pursuit id).
 IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_PlanPoint_Section'
-           AND definition NOT LIKE N'%LeadGets%')
+           AND definition NOT LIKE N'%Example%')
 BEGIN
     ALTER TABLE opportunities.PlanPoint DROP CONSTRAINT CK_PlanPoint_Section;
     ALTER TABLE opportunities.PlanPoint ADD CONSTRAINT CK_PlanPoint_Section
-        CHECK (Section IN (N'WhereToPlay', N'HowWeWin', N'WhereItHurts', N'Priorities', N'Decide', N'LeadGets', N'LeadAsk', N'Lead'));
+        CHECK (Section IN (N'WhereToPlay', N'HowWeWin', N'WhereItHurts', N'Priorities', N'Decide', N'LeadGets', N'LeadAsk', N'Lead', N'Example'));
 END
 GO
 
@@ -248,7 +249,8 @@ USING (VALUES
     (51, N'BD', N'Lead', N'Islam · Alberta', N'Public and institutional work across Alberta, much of it tendered on the Alberta Purchasing Connection, and the developers in Calgary and Edmonton.', 510),
     (52, N'BD', N'Lead', N'Conor · Okanagan', N'Kelowna and the Okanagan: developers, municipalities and institutions.', 520),
     (53, N'BD', N'Lead', N'Rory · Vancouver Island', N'Victoria, Nanaimo and the Island: developers, BC Housing projects and the municipalities.', 530),
-    (54, N'BD', N'Lead', N'Jim · United States', N'KOR''s growth market: the US pursuits and the architects who bring KOR in.', 540)
+    (54, N'BD', N'Lead', N'Jim · United States', N'KOR''s growth market: the US pursuits and the architects who bring KOR in.', 540),
+    (60, N'All', N'Example', N'Leduc West Campus Recreation Centre, structural consultant', N'1112', 600)
 ) AS s (Id, Pillar, Section, Title, Detail, SortOrder)
 ON t.Id = s.Id
 WHEN MATCHED THEN UPDATE SET Pillar = s.Pillar, Section = s.Section, Title = s.Title, Detail = s.Detail, SortOrder = s.SortOrder

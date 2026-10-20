@@ -29,6 +29,15 @@ public sealed record PlanPillarRow(string Key, string Title, string Fortune500, 
 public sealed record OperatingPlanModel(IReadOnlyList<PlanStageRow> Stages, IReadOnlyList<PlanGoalRow> Goals,
     IReadOnlyList<PlanPointRow> Points, IReadOnlyList<PlanRhythmRow> Rhythm, IReadOnlyList<PlanPillarRow> Pillars);
 
+/// <summary>
+/// One real pursuit shown end to end as the plan's worked example (the plan point in section "Example" names it). Read live
+/// from the CRM, so the example moves on by itself when the pursuit does: the posting, the owner, the files stored, the
+/// checklist result, the submission and the outcome.
+/// </summary>
+public sealed record PlanExample(long EngagementId, string Title, string Buyer, string? Portal, DateTimeOffset? Found,
+    DateTimeOffset? Deadline, string Owner, int Stage, decimal? Fee, DateTimeOffset? SubmittedAt, string? SubmittedFile,
+    int Files, int Met, int NotMet, int NotApplicable, int Open);
+
 /// <summary>Radar counts: signals first seen in the last 30 days, and enabled of all sources.</summary>
 public sealed record PlanRadar(int Signals30d, int SourcesLive, int SourcesTotal);
 
@@ -265,6 +274,9 @@ public interface IOperatingPlanStore
 
     /// <summary>Marks a goal Decided by this person now, optionally with a new target. Returns false when the goal is missing.</summary>
     Task<bool> DecideGoalAsync(int goalId, double? target, string decidedBy, CancellationToken ct);
+
+    /// <summary>The plan's worked example, read live; null when the pursuit is gone.</summary>
+    Task<PlanExample?> ReadExampleAsync(long engagementId, CancellationToken ct);
 }
 
 public sealed class SqlOperatingPlanStore : IOperatingPlanStore
@@ -325,6 +337,51 @@ WHERE Id = @id AND Status <> N'Retired';", con) { CommandTimeout = 30 };
         cmd.Parameters.AddWithValue("@target", (object?)target ?? DBNull.Value);
         return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) == 1;
     }
+
+    public async Task<PlanExample?> ReadExampleAsync(long engagementId, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        // The portal is the source of the opportunity's first observation; the submission time is the pursuit's entry into
+        // Submitted (stage 3), the same anchor the roll-ups use. BdStaff.StaffKey carries an explicit collation.
+        await using var cmd = new SqlCommand(@"
+SELECT e.Id, COALESCE(NULLIF(LTRIM(RTRIM(o.Name)), N''), e.PotentialProjects, N''), COALESCE(co.DisplayName, o.BuyerName, N''),
+       src.Name, o.CreatedAtUtc, o.SubmissionDeadlineUtc, COALESCE(s.DisplayName, e.OwnerStaffId, N''), e.Stage, e.ProposedFee,
+       sh.SubmittedUtc, e.SubmittedFileName,
+       (SELECT COUNT(*) FROM opportunities.OpportunityFiles f WHERE f.EngagementId = e.Id),
+       (SELECT COUNT(*) FROM opportunities.PursuitRequirement r WHERE r.EngagementId = e.Id AND r.Status = N'Met'),
+       (SELECT COUNT(*) FROM opportunities.PursuitRequirement r WHERE r.EngagementId = e.Id AND r.Status = N'NotMet'),
+       (SELECT COUNT(*) FROM opportunities.PursuitRequirement r WHERE r.EngagementId = e.Id AND r.Status = N'NotApplicable'),
+       (SELECT COUNT(*) FROM opportunities.PursuitRequirement r WHERE r.EngagementId = e.Id AND r.Status = N'Open')
+FROM opportunities.CrmEngagements e
+LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+LEFT JOIN opportunities.CanonicalOrg co ON co.Id = COALESCE(e.BuyerCanonicalOrgId, o.BuyerCanonicalOrgId)
+LEFT JOIN opportunities.BdStaff s ON s.StaffKey = e.OwnerStaffId COLLATE SQL_Latin1_General_CP1_CI_AS
+OUTER APPLY (SELECT TOP (1) os.Name FROM opportunities.OpportunityObservations ob
+             JOIN opportunities.OpportunitySources os ON os.Id = ob.OpportunitySourceId
+             WHERE ob.OpportunityId = o.Id ORDER BY ob.IngestedAtUtc, ob.Id) src
+OUTER APPLY (SELECT MAX(h.EnteredAtUtc) AS SubmittedUtc FROM opportunities.CrmEngagementStageHistory h
+             WHERE h.EngagementId = e.Id AND h.Stage = 3) sh
+WHERE e.Id = @id;", con) { CommandTimeout = 30 };
+        cmd.Parameters.AddWithValue("@id", engagementId);
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+        DateTimeOffset? At(int i) => r.IsDBNull(i) ? null : r.GetDateTimeOffset(i);
+        return new PlanExample(r.GetInt64(0), r.GetString(1), r.GetString(2), Portal(r.IsDBNull(3) ? null : r.GetString(3)), At(4), At(5),
+            r.GetString(6), r.GetInt32(7), r.IsDBNull(8) ? null : r.GetDecimal(8), At(9), r.IsDBNull(10) ? null : r.GetString(10),
+            r.GetInt32(11), r.GetInt32(12), r.GetInt32(13), r.GetInt32(14), r.GetInt32(15));
+    }
+
+    /// <summary>The portal a source name belongs to, in words a reader knows.</summary>
+    public static string? Portal(string? sourceName) => sourceName switch
+    {
+        null => null,
+        _ when sourceName.StartsWith("BidsTenders", StringComparison.OrdinalIgnoreCase) => "Bids&Tenders",
+        _ when sourceName.StartsWith("APC", StringComparison.OrdinalIgnoreCase) => "Alberta Purchasing Connection",
+        _ when sourceName.StartsWith("BcBid", StringComparison.OrdinalIgnoreCase) => "BC Bid",
+        _ when sourceName.StartsWith("Bonfire", StringComparison.OrdinalIgnoreCase) => "Bonfire",
+        _ => sourceName,
+    };
 
     private static async Task<IReadOnlyList<T>> ReadAsync<T>(SqlConnection con, string sql, Func<SqlDataReader, T> map, CancellationToken ct)
     {

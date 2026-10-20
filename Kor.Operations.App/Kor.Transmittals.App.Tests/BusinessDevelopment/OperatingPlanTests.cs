@@ -116,6 +116,31 @@ public sealed class OperatingPlanTests
     private static HourMove Move(string title) => new(1, title, 10, new[] { "why" }, null, Array.Empty<HourDraft>(), Array.Empty<string>(), Array.Empty<HourLink>());
 
     [Fact]
+    public void The_worked_example_walks_one_real_pursuit_through_every_step_in_the_plan_and_the_summary()
+    {
+        var model = Model() with { Points = Model().Points.Append(new PlanPointRow(60, "All", "Example", "Leduc West Campus", "1112")).ToList() };
+        var leduc = new PlanExample(1112, "IPD Team Project Partner", "City of Leduc", "Bids&Tenders", new DateTimeOffset(2026, 9, 17, 15, 0, 0, TimeSpan.FromHours(-6)),
+            new DateTimeOffset(2026, 10, 15, 14, 0, 0, TimeSpan.FromHours(-6)), "Islam Shabana", 3, 375_800m,
+            new DateTimeOffset(2026, 10, 15, 13, 49, 46, TimeSpan.FromHours(-6)), "Proposal.pdf", 13, 18, 8, 1, 0);
+        var full = OperatingPlanPage.Draw(model, Scoreboard, Array.Empty<PursuitState>(), null, Array.Empty<TouchstoneDue>(), null, Now, example: leduc);
+        var summary = OperatingPlanPage.Draw(model, Scoreboard, Array.Empty<PursuitState>(), null, Array.Empty<TouchstoneDue>(), null, Now, summaryOnly: true, example: leduc);
+        foreach (var html in new[] { full, summary })
+        {
+            Assert.Contains("A real example, end to end", html);
+            foreach (var step in new[] { "Spot it", "Follow it up", "Write the proposal", "Submitted", "Checked", "Get an answer" }) Assert.Contains($"<b>{step}</b>", html);
+            Assert.Contains("Islam Shabana", html);
+            Assert.Contains("1:49 PM", html);   // the buyer's own clock, as recorded
+            Assert.Contains("$375,800", html);
+            Assert.Contains("18 met, 8 not met", html);
+            Assert.Contains("Waiting for the client&#39;s decision.", html);
+        }
+        // No example named, or the pursuit unreadable: nothing is drawn.
+        Assert.DoesNotContain("A real example", OperatingPlanPage.Draw(model, Scoreboard, Array.Empty<PursuitState>(), null, Array.Empty<TouchstoneDue>(), null, Now));
+        Assert.Equal("Bids&Tenders", SqlOperatingPlanStore.Portal("BidsTenders_Leduc"));
+        Assert.Equal("Alberta Purchasing Connection", SqlOperatingPlanStore.Portal("APC_AllBuyers"));
+    }
+
+    [Fact]
     public void The_one_page_carries_every_stage_goal_and_view_with_the_links_the_app_routes()
     {
         var html = OperatingPlanPage.Draw(Model(), Scoreboard, new[] { Pursuit(1, 80_000m, 3) }, new PlanRadar(1731, 128, 140),
