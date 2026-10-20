@@ -697,7 +697,7 @@ internal static class KnowledgeCli
     {
         private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help", "--replace", "--checked", "--summary" };
         private static readonly HashSet<string> Values = new(StringComparer.Ordinal)
-            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--week", "--token", "--role", "--focus", "--exclude-run", "--after" };
+            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--submitted", "--week", "--token", "--role", "--focus", "--exclude-run", "--after" };
         private readonly Dictionary<string, string?> _options = new(StringComparer.Ordinal);
         internal List<string> Positionals { get; } = new();
         internal string? Value(string name) => _options.GetValueOrDefault(name);
