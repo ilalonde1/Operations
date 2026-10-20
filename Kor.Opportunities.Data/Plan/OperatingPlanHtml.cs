@@ -278,11 +278,11 @@ public static class OperatingPlanHtml
     private static void SummaryView(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings, DateTimeOffset now)
     {
         sb.Append("<section class=\"view\" id=\"v-summary\"><div class=\"sumhead\"><p class=\"eyebrow\">KOR Structural · Operating plan · summary · ")
-          .Append(E(Day(DateOnly.FromDateTime(now.Date)))).Append("</p><h2>How we run BD, Operations and IT</h2>")
-          .Append("<p>One plan from the first signal of a project to the cash in the bank. The system watches, prepares and drafts; people decide and act. ")
-          .Append("The regional leads sell; the platform does the chasing.</p></div>");
+          .Append(E(Day(DateOnly.FromDateTime(now.Date)))).Append("</p><h2>How KOR finds, wins and delivers work</h2>")
+          .Append("<p>One plan, from first hearing about a project to getting paid for it. The software does the watching, the reminding and the paperwork; ")
+          .Append("people make the decisions and talk to clients. The regional leads spend their time with clients; the follow-ups come to them ready.</p></div>");
 
-        sb.Append("<p class=\"sec\">Signal to cash: who owns each step</p><div class=\"strip\">");
+        sb.Append("<p class=\"sec\">From first lead to getting paid: who looks after each step</p><div class=\"strip\">");
         foreach (var s in plan.Stages)
             sb.Append("<div class=\"").Append(s.Pillar == "BD" ? "bd" : "ops").Append("\"><span class=\"n\">").Append(Stage(s.No)).Append("</span><b>")
               .Append(E(s.Name)).Append("</b><span>").Append(E(Short(s.Owner))).Append("</span></div>");
@@ -298,24 +298,25 @@ public static class OperatingPlanHtml
           .Append(string.Join(" · ", plan.Points.Where(p => p.Section == "Lead").Select(p => E(p.Title))))
           .Append("</p></div></div>");
 
-        sb.Append("<p class=\"sec\">How it is managed</p><table class=\"sumr\"><tbody>");
+        sb.Append("<p class=\"sec\">How we keep it on track</p><table class=\"sumr\"><tbody>");
         foreach (var r in plan.Rhythm)
             sb.Append("<tr><td><b>").Append(E(r.Name)).Append("</b></td><td>").Append(E(readings.Fill(r.WhoWhen))).Append("</td><td>")
               .Append(E(readings.Fill(r.WhatHappens))).Append("</td></tr>");
         sb.Append("</tbody></table>");
 
         sb.Append("<div class=\"sum3\">");
-        foreach (var (pillar, label) in new[] { ("BD", "Business development"), ("Ops", "Operations"), ("IT", "IT") })
+        foreach (var (pillar, label) in new[] { ("BD", "winning work"), ("Ops", "running projects and getting paid"), ("IT", "computers and IT") })
         {
             var goals = plan.Goals.Where(g => g.Pillar == pillar && g.Status != "Retired").ToList();
             if (goals.Count == 0) continue;
-            sb.Append("<div><p class=\"sec\">Goals · ").Append(E(label)).Append("</p><ul>");
+            sb.Append("<div><p class=\"sec\">Goals: ").Append(E(label)).Append("</p><ul>");
             foreach (var g in goals) sb.Append("<li>").Append(E(g.Title)).Append("</li>");
             sb.Append("</ul></div>");
         }
         sb.Append("</div><p class=\"sec\">What the partners decide</p><p class=\"leadline\">")
           .Append(string.Join(" · ", plan.Points.Where(p => p.Section == "Decide").Select(p => E(readings.Fill(p.Title).TrimEnd('.', ',')))))
-          .Append("</p><p class=\"muted\">Goals are recommendations until decided. Figures are being confirmed with finance. The full plan is in the BD Director's Plan tab.</p></section>");
+          .Append("</p><p class=\"muted\">The goals are proposals until the partners agree them, and the figures are being checked with finance. ")
+          .Append("The full plan is in the KOR Operations app (BD Director, Plan tab).</p></section>");
     }
 
     /// <summary>A plan point's detail may open with its readiness: "Live.", "Pilot.", "Coming." or "Starting.".</summary>
@@ -327,7 +328,13 @@ public static class OperatingPlanHtml
     }
 
     private static string Badge(string? state) =>
-        state is null ? "" : "<span class=\"rd " + state.ToLowerInvariant() + "\">" + E(state) + "</span> ";
+        state is null ? "" : "<span class=\"rd " + state.ToLowerInvariant() + "\">" + E(state switch
+        {
+            "Live" => "Working now",
+            "Pilot" => "Being tested",
+            "Coming" => "Being built",
+            _ => state,
+        }) + "</span> ";
 
     /// <summary>The first clause of a sentence: up to the first semicolon or full stop, for the one-line summary.</summary>
     private static string Short(string text)
