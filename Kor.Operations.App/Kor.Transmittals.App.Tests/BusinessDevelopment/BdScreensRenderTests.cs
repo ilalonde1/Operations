@@ -83,6 +83,7 @@ public sealed class BdScreensRenderTests
                 written += RenderPursuits(dir);
                 written += RenderPursuitHealth(dir);
                 written += RenderDirector(dir);
+                written += RenderReplyDialog(dir);
                 written += RenderMyDay(dir);
                 written += RenderBuilders(dir);
                 BdDirectorPendingBidsRegressionTests.VerifySubmissionDialogs();
@@ -961,6 +962,25 @@ public sealed class BdScreensRenderTests
 
     /// <summary>A UserControl as the workspace hosts it: under an AdornerLayer (a Window has one, a bare
     /// control does not), with the placeholders drawn, which otherwise wait for a Loaded that never fires.</summary>
+    /// <summary>Record reply on a roll-up, with an owner's answer pasted in: the preview names every pursuit, problems in red.</summary>
+    private static int RenderReplyDialog(string dir)
+    {
+        var draft = new Kor.Opportunities.Data.Crm.HourDraft("omara@korstructural.com", "Your pursuits this week", "Hi Omar,")
+        { Touchstones = new[] { "312:9:2026-09-30", "401:7:2026-05-30", "455:5:2026-10-01" } };
+        var titles = new Dictionary<long, string> { [312] = "Example tower (Example Developments)", [401] = "Example rental (Example Homes)", [455] = "Example hotel" };
+        var dialog = new Kor.Operations.App.BusinessDevelopment.Director.ReplyDialog("Omar",
+            Kor.Opportunities.Data.Crm.RollupReply.Items(draft), titles, new DateOnly(2026, 10, 20));
+        ((System.Windows.Controls.TextBox)dialog.FindName("ReplyBox")).Text = "Thanks Ian,\n1. done, called Pat\n2. moved to Fri 30 Oct\n3. maybe later";
+        var preview = ((System.Windows.Controls.TextBlock)dialog.FindName("PreviewText")).Text;
+        Assert.Contains("1. Example tower (Example Developments): done; its due next step is cleared; logged.", preview);
+        Assert.Contains("2. Example rental (Example Homes): next step moved to Fri 30 Oct; logged.", preview);
+        Assert.Contains("not understood", ((System.Windows.Controls.TextBlock)dialog.FindName("ProblemText")).Text);
+        Assert.True(((System.Windows.Controls.Button)dialog.FindName("SaveButton")).IsEnabled);
+        var content = (FrameworkElement)dialog.Content;
+        dialog.Content = null;
+        return RenderView(content, new Size(640, 520), Path.Combine(dir, "director-reply-dialog.png"));
+    }
+
     private static int RenderView(FrameworkElement view, Size size, string path)
     {
         var host = new AdornerDecorator { Child = view };

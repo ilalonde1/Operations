@@ -196,6 +196,9 @@
                                                                     <Button Content="Copy" Click="CopyDraft_Click" Tag="{Binding Draft}" Padding="12,4" Margin="0,0,8,0"/>
                                                                     <Button Content="{Binding OutlookLabel}" Click="DraftInOutlook_Click" Tag="{Binding Draft}" Padding="12,4"
                                                                             ToolTip="{Binding OutlookTip}"/>
+                                                                    <Button Content="Record reply" Click="RecordReply_Click" Tag="{Binding Draft}" Padding="12,4" Margin="8,0,0,0"
+                                                                            Visibility="{Binding IsRollup, Converter={StaticResource BoolVisibility}}"
+                                                                            ToolTip="Paste the owner's answer: each numbered line updates its pursuit, after you confirm."/>
                                                                 </StackPanel>
                                                             </StackPanel>
                                                         </Expander>
