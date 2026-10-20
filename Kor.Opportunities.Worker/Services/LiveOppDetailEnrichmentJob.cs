@@ -137,9 +137,16 @@ internal sealed class LiveOppDetailEnrichmentJob : IJob
         context.Result = summary;
     }
 
-    private static async Task<IReadOnlyList<Target>> LoadTargetsAsync(string db, string hostLike, int batch, CancellationToken ct)
-    {
-        const string sql = @"
+    /// <summary>
+    /// Which opportunities each run reads. Three rules, all from 2026-10-20 when the APC reader went live and read 1 of 37
+    /// live postings in its first run while skipping the one KOR had grabbed:
+    ///   1. A grabbed opportunity (status Pursuing, or any opportunity with a CRM pursuit) is read too, and FIRST: its
+    ///      documents and contact are what the bid team needs. New-only (Status IN (0,1)) left Banff Centre unread.
+    ///   2. A posting whose deadline has passed is not read: the batch was spent on closed tenders, soonest-closing first.
+    ///   3. Then soonest-closing first, as before; an opportunity with no deadline (development applications) sorts with them.
+    /// Dismissed opportunities are never read.
+    /// </summary>
+    internal const string TargetsSql = @"
 SELECT TOP (@batch) o.Id, o.OpportunityKey, o.Name, obs.Url
 FROM opportunities.Opportunities o
 CROSS APPLY (
@@ -148,14 +155,19 @@ CROSS APPLY (
     WHERE x.OpportunityId = o.Id AND x.Url IS NOT NULL
     ORDER BY x.IsActive DESC, x.IngestedAtUtc DESC
 ) obs
-WHERE o.Status IN (0,1)
+WHERE o.Status IN (0, 1, 4)
+  AND o.DismissedAtUtc IS NULL
   AND o.DetailEnrichedAtUtc IS NULL
+  AND (o.SubmissionDeadlineUtc IS NULL OR o.SubmissionDeadlineUtc > SYSDATETIMEOFFSET())
   AND obs.Url LIKE @host
-ORDER BY o.SubmissionDeadlineUtc ASC;";   // soonest-closing first
+ORDER BY CASE WHEN o.Status = 4 OR EXISTS (SELECT 1 FROM opportunities.CrmEngagements e WHERE e.OpportunityId = o.Id) THEN 0 ELSE 1 END,
+         o.SubmissionDeadlineUtc ASC;";
 
+    private static async Task<IReadOnlyList<Target>> LoadTargetsAsync(string db, string hostLike, int batch, CancellationToken ct)
+    {
         await using var con = new SqlConnection(db);
         await con.OpenAsync(ct).ConfigureAwait(false);
-        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
+        await using var cmd = new SqlCommand(TargetsSql, con) { CommandTimeout = 30 };
         cmd.Parameters.Add("@batch", SqlDbType.Int).Value = batch;
         cmd.Parameters.Add("@host", SqlDbType.NVarChar, 200).Value = hostLike;
         var list = new List<Target>();
