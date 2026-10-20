@@ -84,6 +84,8 @@ internal static class KnowledgeCli
             if (verb == "prompt" && options.Positionals[1].Equals("synthesis", StringComparison.OrdinalIgnoreCase))
                 return await PromptSynthesisAsync(options, store!, new SqlBdDoctrineStore(connection!), ct);
             if (verb == "prompt") return await PromptReportAsync(options, new SqlBdDoctrineStore(connection!), ct);
+            if (verb == "pursuit" && options.Positionals[1].Equals("files", StringComparison.OrdinalIgnoreCase))
+                return await PursuitFilesAddAsync(options, connection!, ct);
             if (verb == "pursuit")
             {
                 var json = await File.ReadAllTextAsync(options.Positionals[4], ct);
@@ -334,6 +336,67 @@ internal static class KnowledgeCli
         Console.WriteLine(to);
         return 0;
     }
+
+    /// <summary>
+    /// Stores every file at the top level of a folder against a pursuit, through the same file store the Director's Mark
+    /// submitted dialog uses (the bytes go into opportunities.OpportunityFiles). Run it where the files are on the local
+    /// network (APP01 for the file server), never across the VPN. Word lock files are skipped, and so is a file already
+    /// attached with the same name and size, so it is safe to run again. --submitted names the file that is the submitted
+    /// proposal: the pursuit's SubmittedFileId and SubmittedFileName then point at it, as the dialog sets them.
+    /// </summary>
+    private static async Task<int> PursuitFilesAddAsync(Arguments args, string connection, CancellationToken ct)
+    {
+        var engagementId = long.Parse(args.Positionals[3], CultureInfo.InvariantCulture);
+        var folder = Path.GetFullPath(args.Positionals[4]);
+        var by = args.Value("--by")!;
+        var engagements = new SqlCrmEngagementStore(connection);
+        var files = new SqlPursuitFileStore(connection);
+        var pursuit = await engagements.GetByIdAsync(engagementId, ct) ?? throw new ArgumentException($"Pursuit {engagementId} does not exist.");
+        var existing = await files.ListByEngagementAsync(engagementId, ct);
+        var added = 0;
+        var skipped = 0;
+        PursuitFile? submitted = existing.FirstOrDefault(f => f.Id == pursuit.SubmittedFileId);
+        foreach (var path in Directory.EnumerateFiles(folder).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
+        {
+            var name = Path.GetFileName(path);
+            var size = new FileInfo(path).Length;
+            if (name.StartsWith("~$", StringComparison.Ordinal)) { skipped++; continue; }
+            var already = existing.FirstOrDefault(f => string.Equals(f.FileName, name, StringComparison.OrdinalIgnoreCase) && f.SizeBytes == size);
+            PursuitFile stored;
+            if (already is not null) { stored = already; skipped++; }
+            else
+            {
+                SqlPursuitFileStore.ValidateLength(size);
+                await using var content = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+                stored = await files.AddAsync(engagementId, pursuit.OpportunityId, name, content, size, ContentType(name), by, ct);
+                added++;
+                Console.WriteLine($"  stored {name} ({size:N0} bytes)");
+            }
+            if (args.Value("--submitted") is { } s && string.Equals(s, name, StringComparison.OrdinalIgnoreCase)) submitted = stored;
+        }
+        if (args.Value("--submitted") is { } wanted)
+        {
+            if (submitted is null || !string.Equals(submitted.FileName, wanted, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"--submitted {wanted} is not a file in {folder}.");
+            await engagements.UpdateAsync(pursuit with { SubmittedFileId = submitted.Id, SubmittedFileName = submitted.FileName }, by, ct);
+            Console.WriteLine($"  marked {submitted.FileName} as the submitted proposal");
+        }
+        Console.WriteLine($"Pursuit {engagementId}: {added} stored, {skipped} skipped (already attached or lock files), from {folder}.");
+        return 0;
+    }
+
+    private static string ContentType(string name) => Path.GetExtension(name).ToLowerInvariant() switch
+    {
+        ".pdf" => "application/pdf",
+        ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".zip" => "application/zip",
+        ".png" => "image/png",
+        ".svg" => "image/svg+xml",
+        ".json" => "application/json",
+        ".vsdx" => "application/vnd.ms-visio.drawing",
+        _ => "application/octet-stream",
+    };
 
     /// <summary>The operating plan, drawn by the same OperatingPlanPage call the Director's Plan tab makes.</summary>
     private static async Task<int> PlanRenderAsync(Arguments args, string connection, CancellationToken ct)
@@ -618,6 +681,7 @@ internal static class KnowledgeCli
         BdKnowledgeIngest hour render <hour.json> --to <file.html>
         BdKnowledgeIngest hour verify <yyyy-MM-dd> --kind Morning [--after <ISO timestamp>]
         BdKnowledgeIngest pursuit checklist import <engagementId> <file.json> --by <name> [--replace]
+        BdKnowledgeIngest pursuit files add <engagementId> <folder> --by <name> [--submitted <file name>]
         BdKnowledgeIngest doctrine list [--role BD|Operations|IT]
         BdKnowledgeIngest doctrine show <id> [--role BD|Operations|IT]
         BdKnowledgeIngest doctrine similar <report.json> [--role BD|Operations|IT] [--exclude-run <id>]
@@ -679,9 +743,10 @@ internal static class KnowledgeCli
             if (Positionals.Count != expected) throw new ArgumentException($"Wrong number of arguments for {verb}; use --help.");
             if (verb == "pursuit")
             {
-                if (!Positionals[1].Equals("checklist", StringComparison.OrdinalIgnoreCase)
-                    || !Positionals[2].Equals("import", StringComparison.OrdinalIgnoreCase))
-                    throw new ArgumentException("Use pursuit checklist import <engagementId> <file.json> --by <name> [--replace].");
+                var files = Positionals[1].Equals("files", StringComparison.OrdinalIgnoreCase) && Positionals[2].Equals("add", StringComparison.OrdinalIgnoreCase);
+                if (!files && (!Positionals[1].Equals("checklist", StringComparison.OrdinalIgnoreCase)
+                    || !Positionals[2].Equals("import", StringComparison.OrdinalIgnoreCase)))
+                    throw new ArgumentException("Use pursuit checklist import <engagementId> <file.json> --by <name> [--replace], or pursuit files add <engagementId> <folder> --by <name> [--submitted <file name>].");
                 if (!long.TryParse(Positionals[3], NumberStyles.None, CultureInfo.InvariantCulture, out var engagementId))
                     throw new ArgumentException("A positive pursuit ID is required.");
                 PursuitRequirementValidation.Identity(engagementId, Value("--by") ?? "");
@@ -756,7 +821,7 @@ internal static class KnowledgeCli
                 "embed" => new[] { "--source" },
                 "search" => new[] { "--take", "--per-source" },
                 "export" => new[] { "--to" },
-                "pursuit" => new[] { "--by", "--replace" },
+                "pursuit" => Positionals[1].Equals("files", StringComparison.OrdinalIgnoreCase) ? new[] { "--by", "--submitted" } : new[] { "--by", "--replace" },
                 "hour" => Positionals[1].Equals("verify", StringComparison.OrdinalIgnoreCase)
                     ? new[] { "--kind", "--after" } : new[] { "--by", "--to" },
                 "rhythm" => new[] { "--to" },

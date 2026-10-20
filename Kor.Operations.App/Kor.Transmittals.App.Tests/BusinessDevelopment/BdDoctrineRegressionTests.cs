@@ -232,7 +232,7 @@ public sealed class BdDoctrineRegressionTests
         var cli = Source("tools/BdKnowledgeIngest/Program.cs");
         Assert.Contains("\"prompt\" => promptAction == \"synthesis\" ? new[] { \"--by\", \"--focus\", \"--role\" } : new[] { \"--token\", \"--checked\" },", cli, StringComparison.Ordinal);
         Assert.Contains("\"--token\", \"--role\", \"--focus\", \"--exclude-run\", \"--after\" }", cli, StringComparison.Ordinal);
-        Assert.Contains("\"--replace\", \"--checked\" }", cli, StringComparison.Ordinal);
+        Assert.Contains("\"--replace\", \"--checked\", \"--summary\" }", cli, StringComparison.Ordinal);
         Assert.Contains("\"doctrine\" => new[] { \"--role\", \"--exclude-run\" },", cli, StringComparison.Ordinal);
         Assert.Contains("or \"doctrine\" or \"prompt\" or \"plan\"))", cli, StringComparison.Ordinal);
     }
