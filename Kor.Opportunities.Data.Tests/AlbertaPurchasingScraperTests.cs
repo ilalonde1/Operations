@@ -66,6 +66,40 @@ public sealed class AlbertaPurchasingScraperTests : IAsyncLifetime
     }
 
     [Fact]
+    public void SearchApi_GivesEveryOpenPostingWithItsBuyer_InTheCardScrapesForms()
+    {
+        const string json = """
+        { "totalCount": 1630, "values": [
+          { "referenceNumber": "AB-2026-06968", "shortTitle": "Structural and Civil Engineering – Professional Services Agreement",
+            "contractingOrganization": "Banff Centre", "projectDescription": "We are inviting qualified vendors.",
+            "postDateTime": "2026-10-19T14:55:27.326637", "closeDateTime": "2026-11-05T14:00:00" },
+          { "referenceNumber": "AB-2026-07010", "shortTitle": "Radio network", "contractingOrganization": "",
+            "closeDateTime": "2026-01-15T16:00:00" },
+          { "shortTitle": "No reference" } ] }
+        """;
+        var (rows, total) = AlbertaPurchasingScraper.ParseSearchPage(json, new Uri("https://purchasing.alberta.ca/search"), "APC_Test");
+        Assert.Equal(1630, total);
+        Assert.Equal(2, rows.Count); // a row without a reference is dropped
+        var banff = rows[0];
+        Assert.Equal("AB-2026-06968", banff.ExternalReference);
+        Assert.Equal("https://purchasing.alberta.ca/posting/AB-2026-06968", banff.Url);
+        Assert.Equal("Banff Centre", banff.Buyer);
+        Assert.Equal("Structural and Civil Engineering – Professional Services Agreement|/posting/AB-2026-06968", banff.RawJson); // same as the card scrape
+        Assert.Equal(DateTimeOffset.Parse("2026-11-05T21:00:00Z"), banff.SubmissionDeadlineUtc); // 2:00 pm MST
+        Assert.Equal(DateTimeOffset.Parse("2026-01-15T23:00:00Z"), rows[1].SubmissionDeadlineUtc); // winter: MST, -7
+        Assert.Equal("APC_Test", rows[1].Buyer);                                                      // no organisation: the source fallback
+        var none = AlbertaPurchasingScraper.SearchBody(new Dictionary<string, string>());
+        Assert.Contains("\"statuses\":[{\"value\":\"OPEN\",\"selected\":true}]", none);
+        Assert.Contains("\"organizations\":[]", none);
+        Assert.Contains("\"opportunityTypes\":[{\"value\":\"OPEN-COMPETITIVE\",\"selected\":true},{\"value\":\"UNDER-THRESHOLD\",\"selected\":true}]", none); // tenders, not notices
+        var calgary = AlbertaPurchasingScraper.SearchBody(new Dictionary<string, string> { ["organizations"] = "City of Calgary's \"Ops\"", ["categories"] = "CNST" });
+        Assert.Contains("\"organizations\":[{\"value\":\"City of Calgary\\u0027s \\u0022Ops\\u0022\",\"selected\":true}]", calgary); // escaped, never broken
+        Assert.Contains("\"categories\":[{\"value\":\"CNST\",\"selected\":true}]", calgary);
+        Assert.Equal(new[] { ("Banff Centre", 3), ("City of Calgary", 126) },
+            AlbertaPurchasingScraper.ParseFacet("""{"facets":{"ContractingOrganization":[{"count":3,"value":"Banff Centre"},{"count":126,"value":"City of Calgary"},{"count":0,"value":"Gone"}]}}""", "ContractingOrganization"));
+    }
+
+    [Fact]
     public async Task LiveCards_TakeTheBuyerAndSummaryFromTheCard_NotTheSourceName()
     {
         var rows = await ScrapeAsync(Fixture());

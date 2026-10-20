@@ -90,6 +90,18 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
             Timeout = PageWaitTimeoutMs,
         }).ConfigureAwait(false);
 
+        // Primary path (2026-10-20): APC's own search API, called from inside the page so it rides the page's origin and
+        // Cloudflare clearance. The card scrape below saw only the first page of 10 (the page-size control became a web
+        // component it could not drive): 10 of 1,630 open postings per run. The API returns every OPEN posting with its
+        // contracting organisation. The card scrape stays as the fallback if the API call fails.
+        var fromApi = await ReadSearchApiAsync(page, new Uri(source.BaseUrl), buyer,
+            ResolveInt(sourceConfig, "apc.maxApiCalls", DefaultMaxApiCalls), ct).ConfigureAwait(false);
+        if (fromApi is not null)
+        {
+            ReportMissingDeadlines(fromApi);
+            return fromApi;
+        }
+
         if (!await WaitForPostingsAsync(page).ConfigureAwait(false))
         {
             await TryWriteNoRowsDiagnosticAsync(page, ct).ConfigureAwait(false);
@@ -139,6 +151,12 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
             await TryWriteNoRowsDiagnosticAsync(page, ct).ConfigureAwait(false);
         }
 
+        ReportMissingDeadlines(candidates);
+        return candidates;
+    }
+
+    private void ReportMissingDeadlines(List<OpportunityCandidate> candidates)
+    {
         var missingDeadlines = candidates.FindAll(c => c.SubmissionDeadlineUtc is null);
         if (missingDeadlines.Count > 0)
         {
@@ -154,8 +172,210 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
                 $"APC closing date missing for {missingDeadlines.Count}/{candidates.Count} posting(s); " +
                 $"sample references: {string.Join(", ", missingDeadlines.Take(5).Select(c => c.ExternalReference))}");
         }
+    }
 
-        return candidates;
+    private const int DefaultMaxApiCalls = 600;  // 2026-10-20: 1,631 open postings took about 200 calls
+    private const int ApiPageSize = 100;
+
+    /// <summary>
+    /// The facets APC's search returns and the filter each one drives, in the order a query is split. APC serves only the first
+    /// 100 results of any anonymous query (an offset past 100 returns nothing; measured 2026-10-20), so a query over 100 is split
+    /// by its own facet counts until every slice holds 100 or fewer. Organisation alone split the 473 open tenders into 150
+    /// slices whose counts summed exactly to the total, the largest 46; category and solicitation type are there if one grows.
+    /// </summary>
+    private static readonly (string Facet, string Filter)[] SplitBy =
+    {
+        ("ContractingOrganization", "organizations"),
+        ("CategoryCode", "categories"),
+        ("SolicitationTypeCode", "solicitationTypes"),
+    };
+
+    /// <summary>
+    /// The opportunity types that are tenders. 2026-10-20: 1,631 OPEN postings, of which 473 are these; the rest are notices
+    /// (Notice of Award, Advance Contract Award Notice, informational), which carry no closing date and cannot be bid.
+    /// </summary>
+    private static readonly string[] TenderTypes = { "OPEN-COMPETITIVE", "UNDER-THRESHOLD" };
+
+    /// <summary>
+    /// Every OPEN posting from APC's search API. Returns null when the first call fails (the caller falls back to the card
+    /// scrape). Fewer postings collected than APC's own total is a run warning, never silent.
+    /// </summary>
+    private async Task<List<OpportunityCandidate>?> ReadSearchApiAsync(IPage page, Uri baseUri, string fallbackBuyer, int maxCalls,
+        CancellationToken ct)
+    {
+        var all = new List<OpportunityCandidate>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var calls = 0;
+        var truncated = 0;
+
+        async Task<(List<OpportunityCandidate> Rows, int Total, string Json)?> Query(IReadOnlyDictionary<string, string> filters)
+        {
+            if (++calls > maxCalls) return null;
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                var response = await page.EvaluateAsync<string>(@"async (b) => {
+                    const r = await fetch('/api/opportunity/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: b });
+                    return r.status + '|' + await r.text(); }", SearchBody(filters)).ConfigureAwait(false);
+                var bar = response.IndexOf('|');
+                if (bar < 0 || !response.StartsWith("200", StringComparison.Ordinal))
+                {
+                    _logger.LogWarning("APC search API returned {Status} for {Filters}.", bar < 0 ? response : response[..bar], string.Join(", ", filters.Values));
+                    return null;
+                }
+
+                var json = response[(bar + 1)..];
+                var (rows, total) = ParseSearchPage(json, baseUri, fallbackBuyer);
+                return (rows, total, json);
+            }
+            catch (Exception ex) when (ex is PlaywrightException or System.Text.Json.JsonException)
+            {
+                _logger.LogWarning(ex, "APC search API call failed for {Filters}.", string.Join(", ", filters.Values));
+                return null;
+            }
+        }
+
+        async Task Collect(Dictionary<string, string> filters, int depth, (List<OpportunityCandidate> Rows, int Total, string Json) result)
+        {
+            if (result.Total <= ApiPageSize || depth >= SplitBy.Length)
+            {
+                if (result.Total > ApiPageSize) truncated += result.Total - result.Rows.Count;
+                foreach (var row in result.Rows)
+                {
+                    if (seen.Add(row.ExternalReference!)) all.Add(row);
+                }
+                return;
+            }
+
+            var (facet, filter) = SplitBy[depth];
+            foreach (var (value, _) in ParseFacet(result.Json, facet))
+            {
+                var narrower = new Dictionary<string, string>(filters) { [filter] = value };
+                if (await Query(narrower).ConfigureAwait(false) is { } slice) await Collect(narrower, depth + 1, slice).ConfigureAwait(false);
+            }
+        }
+
+        var top = await Query(new Dictionary<string, string>()).ConfigureAwait(false);
+        if (top is null) return null;
+        await Collect(new Dictionary<string, string>(), 0, top.Value).ConfigureAwait(false);
+
+        _logger.LogInformation("APC search API: {Collected} of {Total} open postings in {Calls} calls.", all.Count, top.Value.Total, calls);
+        if (all.Count < top.Value.Total)
+        {
+            IngestionRunDiagnostics.AddWarning($"APC search collected {all.Count} of {top.Value.Total} open postings in {calls} calls"
+                + (truncated > 0 ? $" ({truncated} past a slice of 100 that could not be split further)" : "")
+                + (calls > maxCalls ? $"; call cap {maxCalls} reached, raise apc.maxApiCalls" : "") + ".");
+        }
+        return all;
+    }
+
+    /// <summary>The search request for OPEN postings under the given filters (filter name to one selected value), newest first.</summary>
+    internal static string SearchBody(IReadOnlyDictionary<string, string> filters)
+    {
+        using var stream = new MemoryStream();
+        using (var w = new System.Text.Json.Utf8JsonWriter(stream))
+        {
+            w.WriteStartObject();
+            w.WriteString("query", "");
+            w.WriteNumber("limit", ApiPageSize);
+            w.WriteNumber("offset", 0);
+            w.WriteStartObject("filter");
+            w.WriteString("solicitationNumber", "");
+            foreach (var list in new[] { "categories", "statuses", "agreementTypes", "solicitationTypes", "opportunityTypes", "deliveryRegions" })
+            {
+                w.WriteStartArray(list);
+                // Open tenders only: notices (award notices, ACANs) are not biddable and are what pushed slices past 100.
+                var values = list == "statuses" ? new[] { "OPEN" }
+                    : filters.TryGetValue(list, out var v) ? new[] { v }
+                    : list == "opportunityTypes" ? TenderTypes
+                    : Array.Empty<string>();
+                foreach (var value in values) { w.WriteStartObject(); w.WriteString("value", value); w.WriteBoolean("selected", true); w.WriteEndObject(); }
+                w.WriteEndArray();
+            }
+            w.WriteString("deliveryRegion", "");
+            w.WriteStartArray("organizations");
+            if (filters.TryGetValue("organizations", out var org)) { w.WriteStartObject(); w.WriteString("value", org); w.WriteBoolean("selected", true); w.WriteEndObject(); }
+            w.WriteEndArray();
+            w.WriteStartArray("unspsc"); w.WriteEndArray();
+            w.WriteString("postDateRange", "$$custom");
+            w.WriteString("closeDateRange", "$$custom");
+            w.WriteBoolean("onlyBookmarked", false);
+            w.WriteBoolean("onlyInterestExpressed", false);
+            w.WriteEndObject();
+            w.WriteStartArray("sortOptions");
+            w.WriteStartObject(); w.WriteString("field", "PostDateTime"); w.WriteString("direction", "Desc"); w.WriteEndObject();
+            w.WriteEndArray();
+            w.WriteEndObject();
+        }
+        return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    /// <summary>Pure: one facet's values and counts from a search response.</summary>
+    internal static List<(string Value, int Count)> ParseFacet(string json, string facet)
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var list = new List<(string, int)>();
+        if (doc.RootElement.TryGetProperty("facets", out var facets) && facets.TryGetProperty(facet, out var values)
+            && values.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            foreach (var e in values.EnumerateArray())
+            {
+                if (e.TryGetProperty("value", out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String && !string.IsNullOrEmpty(v.GetString())
+                    && e.TryGetProperty("count", out var c) && c.TryGetInt32(out var n) && n > 0)
+                    list.Add((v.GetString()!, n));
+            }
+        }
+        return list;
+    }
+
+    /// <summary>
+    /// Pure: one search-API page to candidates. Title, URL and RawJson keep the card scrape's exact forms (short title,
+    /// /posting/{reference}, "title|/posting/{reference}") so a posting already ingested is the same posting, not a new one.
+    /// Times are Alberta wall-clock without an offset.
+    /// </summary>
+    internal static (List<OpportunityCandidate> Rows, int Total) ParseSearchPage(string json, Uri baseUri, string fallbackBuyer)
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var total = root.TryGetProperty("totalCount", out var t) && t.TryGetInt32(out var n) ? n : 0;
+        var rows = new List<OpportunityCandidate>();
+        if (!root.TryGetProperty("values", out var values) || values.ValueKind != System.Text.Json.JsonValueKind.Array) return (rows, total);
+        foreach (var v in values.EnumerateArray())
+        {
+            var reference = Str(v, "referenceNumber");
+            if (string.IsNullOrWhiteSpace(reference)) continue;
+            var href = "/posting/" + reference;
+            var title = NormalizeText(Str(v, "shortTitle") ?? Str(v, "title") ?? reference);
+            var buyer = NormalizeText(Str(v, "contractingOrganization") ?? "");
+            rows.Add(new OpportunityCandidate
+            {
+                Title = title,
+                Buyer = string.IsNullOrWhiteSpace(buyer) ? fallbackBuyer : buyer,
+                Url = new Uri(baseUri, href).AbsoluteUri,
+                Description = Str(v, "projectDescription") is { } desc && !string.IsNullOrWhiteSpace(desc) ? NormalizeText(desc) : null,
+                PostedDateUtc = AlbertaToUtc(Str(v, "postDateTime")),
+                SubmissionDeadlineUtc = AlbertaToUtc(Str(v, "closeDateTime")),
+                ExternalReference = reference,
+                RawJson = $"{title}|{href}",
+                ProjectProvince = "AB",
+            });
+        }
+        return (rows, total);
+
+        static string? Str(System.Text.Json.JsonElement e, string name) =>
+            e.TryGetProperty(name, out var p) && p.ValueKind == System.Text.Json.JsonValueKind.String ? p.GetString() : null;
+    }
+
+    private static DateTimeOffset? AlbertaToUtc(string? local)
+    {
+        if (AlbertaTimeZone is null
+            || !DateTime.TryParse(local, CultureInfo.InvariantCulture, DateTimeStyles.None, out var wall)
+            || AlbertaTimeZone.IsInvalidTime(wall) || AlbertaTimeZone.IsAmbiguousTime(wall))
+        {
+            return null;
+        }
+
+        return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(wall, DateTimeKind.Unspecified), AlbertaTimeZone));
     }
 
     private static string ResolveBuyer(
