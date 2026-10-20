@@ -514,7 +514,7 @@ public sealed class BdScreensRenderTests
           ],
           "callout": "Illustrative callout: the quiet months are for relationships.",
           "moves": [
-            { "rank": 1, "title": "Send the recap", "minutes": 15, "whyNow": ["Promised at the close of the call."],
+            { "rank": 1, "title": "Send the recap", "minutes": 15, "whyNow": ["Promised at the close of the call."], "goals": [2],
               "cards": [5, 7],
               "principle": { "quote": "Illustrative quote.", "cite": "Illustrative book, ch. 1" },
               "drafts": [ { "to": "Ian", "subject": "Recap", "body": "Illustrative draft body." },
@@ -566,6 +566,7 @@ public sealed class BdScreensRenderTests
         });
         var rhythm = new BdRhythmViewModel(store.Object, () => now);
         rhythm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
+        rhythm.SetPlanGoals(new Dictionary<int, string> { [2] = "No live pursuit untouched for 14 days or more" });
         Assert.True(rhythm.HasHour, "EXPECTED the illustrative hour to parse; ACTUAL: " + rhythm.HourMessage);
         // Jim's roll-up has been opened; Omar's has not.
         rhythm.SetCoveredTouchstones(new[] { "601:6:2026-09-04" });
@@ -653,6 +654,8 @@ public sealed class BdScreensRenderTests
             if (i == 0)
             {
                 Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content), b => b.Text == "Your BD hour, Friday 16 October");
+                Assert.Contains(VisualChildren<System.Windows.Controls.TextBlock>(content),
+                    b => b.Text == "Serves: No live pursuit untouched for 14 days or more" && b.Visibility == Visibility.Visible);
                 Assert.Contains(VisualChildren<System.Windows.Controls.Button>(content), b => Equals(b.Content, "Open the actions"));
                 // Only move 1 carries a principle; move 2's quote box must not draw empty.
                 var quotes = VisualChildren<System.Windows.Controls.Border>(content)

@@ -194,7 +194,7 @@ public sealed class PlanReadings
 /// <summary>One concrete thing under a stage today: a roll-up ask or a morning move.</summary>
 public sealed record PlanItem(int StageNo, string Title, string Detail, bool Urgent, string? Link);
 
-/// <summary>Maps today's detail onto the stages: touchstone asks onto 2-5, the hour's COO moves onto 6-8 and IT moves onto 9.</summary>
+/// <summary>Maps today's detail onto the stages: touchstone asks onto 2-5 by their anchor, each morning move onto the stage of every goal it names (an hour written before goals: COO moves onto 6, IT moves onto 9).</summary>
 public static class PlanItems
 {
     /// <summary>The stage a touchstone serves, from its anchor.</summary>
@@ -207,7 +207,8 @@ public static class PlanItems
         _ => 2,
     };
 
-    public static IReadOnlyList<PlanItem> From(IReadOnlyList<TouchstoneDue> due, DirectorHourContent? hour)
+    public static IReadOnlyList<PlanItem> From(IReadOnlyList<TouchstoneDue> due, DirectorHourContent? hour,
+        IReadOnlyDictionary<int, int>? goalStages = null)
     {
         var items = new List<PlanItem>();
         foreach (var d in due.OrderByDescending(d => d.IsUrgent).ThenBy(d => d.DueFrom))
@@ -225,10 +226,16 @@ public static class PlanItems
 
         foreach (var s in hour?.Sections ?? Array.Empty<HourSection>())
         {
-            var stage = s.Role.ToUpperInvariant() switch { "COO" => 6, "IT" => 9, _ => 0 };
-            if (stage == 0) continue;
+            var roleStage = s.Role.ToUpperInvariant() switch { "COO" => 6, "IT" => 9, _ => 0 };
             foreach (var m in s.Moves)
-                items.Add(new PlanItem(stage, m.Title, m.WhyNow.FirstOrDefault() ?? "", false, null));
+            {
+                // A move sits on the stage of each goal it names; an hour written before goals falls back to its role.
+                var stages = goalStages is null ? new List<int>()
+                    : m.Goals.Where(goalStages.ContainsKey).Select(id => goalStages[id]).Distinct().ToList();
+                if (stages.Count == 0 && roleStage != 0) stages.Add(roleStage);
+                foreach (var stage in stages)
+                    items.Add(new PlanItem(stage, m.Title, m.WhyNow.FirstOrDefault() ?? "", false, null));
+            }
         }
 
         return items;

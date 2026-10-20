@@ -75,6 +75,17 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             }
             return PursuitFacts(rows, now);
         }, ct);
+        // The operating plan (migration 372): the goals every move must name, with the readings the Plan tab shows.
+        await ReadAsync(facts, "Operating plan goals", async () =>
+        {
+            var connection = Connection(BdConnection);
+            var plan = new Kor.Opportunities.Data.Plan.SqlOperatingPlanStore(connection);
+            var model = await plan.LoadAsync(ct);
+            var readings = Kor.Opportunities.Data.Plan.PlanReadings.From(
+                await new SqlImpactStore(connection).ListAsync(Kor.Opportunities.Data.Plan.OperatingPlanPage.ScoreboardBaseline, ct),
+                await new SqlPursuitTouchstoneStore(connection).ListPursuitsAsync(30, ct), await plan.ReadRadarAsync(ct), 0, now);
+            return new[] { MorningPlan.Fact(model, readings) };
+        }, ct);
         await ReadAsync(facts, "Pursuit touchstones", async () =>
         {
             var store = new SqlPursuitTouchstoneStore(Connection(BdConnection));

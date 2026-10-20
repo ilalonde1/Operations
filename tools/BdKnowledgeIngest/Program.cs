@@ -75,7 +75,8 @@ internal static class KnowledgeCli
             if (verb == "brief") return await BriefAsync(options, store!, connection!, ct);
             if (verb == "hour" && options.Positionals[1].Equals("verify", StringComparison.OrdinalIgnoreCase))
                 return await HourVerifyAsync(options, new SqlBdRhythmStore(connection!), ct);
-            if (verb == "hour") return await HourImportAsync(options, new SqlBdRhythmStore(connection!), new SqlBdDoctrineStore(connection!), ct);
+            if (verb == "hour") return await HourImportAsync(options, new SqlBdRhythmStore(connection!), new SqlBdDoctrineStore(connection!),
+                new Kor.Opportunities.Data.Plan.SqlOperatingPlanStore(connection!), ct);
             if (verb == "rhythm") return await RhythmRenderAsync(options, new SqlBdRhythmStore(connection!), ct);
             if (verb == "plan") return await PlanRenderAsync(options, connection!, ct);
             if (verb == "doctrine") return await DoctrineAsync(options, new SqlBdDoctrineStore(connection!), ct);
@@ -257,7 +258,8 @@ internal static class KnowledgeCli
         return ok == ids.Length ? 0 : 1;
     }
 
-    private static async Task<int> HourImportAsync(Arguments args, IBdRhythmStore rhythm, IBdDoctrineStore doctrine, CancellationToken ct)
+    private static async Task<int> HourImportAsync(Arguments args, IBdRhythmStore rhythm, IBdDoctrineStore doctrine,
+        Kor.Opportunities.Data.Plan.IOperatingPlanStore plan, CancellationToken ct)
     {
         var json = await File.ReadAllTextAsync(args.Positionals[2], ct);
         var (content, errors) = DirectorHourFile.Parse(json);
@@ -278,6 +280,19 @@ internal static class KnowledgeCli
             foreach (var error in cardErrors) Console.Error.WriteLine("  " + error);
             Console.Error.WriteLine("Not imported: the hour cites cards that are not accepted for its role.");
             return 1;
+        }
+
+        // The morning hour serves the operating plan (migration 372): every move names a live goal, or the hour is refused.
+        if (content.Kind == "Morning")
+        {
+            var live = (await plan.LoadAsync(ct)).Goals.Select(g => g.Id).ToHashSet();
+            var goalErrors = DirectorHourFile.ValidateGoals(content, live);
+            if (goalErrors.Count > 0)
+            {
+                foreach (var error in goalErrors) Console.Error.WriteLine("  " + error);
+                Console.Error.WriteLine("Not imported: every move must name the operating-plan goal it advances.");
+                return 1;
+            }
         }
 
         var forDate = DateOnly.ParseExact(content.ForDate, "yyyy-MM-dd", CultureInfo.InvariantCulture);

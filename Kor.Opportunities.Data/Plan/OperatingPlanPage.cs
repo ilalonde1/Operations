@@ -42,6 +42,6 @@ public static class OperatingPlanPage
         PlanRadar? radar, IReadOnlyList<TouchstoneDue> asks, DirectorHourContent? hour, DateTimeOffset now)
     {
         var readings = PlanReadings.From(scoreboard, pursuits, radar, asks.Count, now);
-        return OperatingPlanHtml.Render(model, readings, PlanItems.From(asks, hour), now);
+        return OperatingPlanHtml.Render(model, readings, PlanItems.From(asks, hour, model.Goals.ToDictionary(g => g.Id, g => g.StageNo)), now);
     }
 }

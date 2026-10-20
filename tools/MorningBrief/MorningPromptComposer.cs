@@ -17,6 +17,7 @@ public static class MorningPromptComposer
         sb.AppendLine("## Your task and rules");
         sb.AppendLine("Write one Morning hour JSON file beside this prompt. It must have a BD section, a COO section and an IT section, each with 1–4 moves, ranked by consequence today. Every move needs why-now facts from this prompt. Keep the combined time near 60 minutes; do not create busywork to fill a quota. If a source is down, identifying or repairing that specific gap is a legitimate move; invent no figures.");
         sb.AppendLine("Move ranks must be unique across the whole hour and consecutive 1..n, even across sections. Put no moves at the top level. Each section has its own plan and decisions.");
+        sb.AppendLine("Every move serves the operating plan: give it \"goals\": [ids], the one or two printed operating-plan goals it advances (BD, COO and IT alike). Use only the printed goal ids. A move that advances no goal does not belong in Ian's hour; the import refuses a move without goals.");
         sb.AppendLine("BD moves may cite only accepted BD cards below; COO moves may cite only accepted Operations cards below; IT moves may cite only accepted IT cards below. Cite applicable cards by numeric id, never make up a card. Read a card in full with `BdKnowledgeIngest doctrine show <id> --role BD`, `--role Operations` or `--role IT` before citing it.");
         sb.AppendLine("Matched cards and claims are candidates found by meaning, not endorsements. Other accepted cards of the role may still be cited. A contested line means the books disagree: say which side applies to the move and why. Refinements preserve their direction: refined by adds detail to a matched claim; refines points to the broader claim it qualifies.");
         sb.AppendLine("You may quote a book only after reading the passage with `BdKnowledgeIngest claims search \"<question>\"`. Give the actual book and location in principle.cite. Do not invent quotations. Flags are evidence for review, not verdicts.");
@@ -41,13 +42,13 @@ public static class MorningPromptComposer
           "lede": "The consequence that matters today", "plan": [], "moves": [], "decisions": [], "meetings": [],
           "sections": [
             { "role": "BD", "title": "A useful BD judgement", "plan": [], "decisions": [], "moves": [
-              { "rank": 1, "title": "One concrete move", "minutes": 20, "whyNow": ["A supplied fact"], "cards": [], "drafts": [], "steps": [], "links": [] }
+              { "rank": 1, "title": "One concrete move", "minutes": 20, "whyNow": ["A supplied fact"], "goals": [1], "cards": [], "drafts": [], "steps": [], "links": [] }
             ] },
             { "role": "COO", "title": "A useful operating judgement", "plan": [], "decisions": [], "moves": [
-              { "rank": 2, "title": "One concrete move", "minutes": 20, "whyNow": ["A supplied fact"], "cards": [], "drafts": [], "steps": [], "links": [] }
+              { "rank": 2, "title": "One concrete move", "minutes": 20, "whyNow": ["A supplied fact"], "goals": [1], "cards": [], "drafts": [], "steps": [], "links": [] }
             ] },
             { "role": "IT", "title": "A useful IT judgement", "plan": [], "decisions": [], "moves": [
-              { "rank": 3, "title": "One concrete move", "minutes": 20, "whyNow": ["A supplied fact"], "cards": [], "drafts": [], "steps": [], "links": [] }
+              { "rank": 3, "title": "One concrete move", "minutes": 20, "whyNow": ["A supplied fact"], "goals": [1], "cards": [], "drafts": [], "steps": [], "links": [] }
             ] }
           ],
           "sources": "These snapshots and the passages actually read", "notCovered": "Explicit gaps"

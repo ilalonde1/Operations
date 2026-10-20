@@ -162,6 +162,8 @@
                                                         <TextBlock TextWrapping="Wrap" Margin="0,1"><Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock>
                                                     </DataTemplate></ItemsControl.ItemTemplate>
                                                 </ItemsControl>
+                                                <TextBlock Text="{Binding GoalsText}" TextWrapping="Wrap" Margin="0,6,0,0" Foreground="#C6360F" FontWeight="SemiBold"
+                                                           Visibility="{Binding GoalsText, Converter={StaticResource TextVisible}}"/>
                                                 <Border Background="#E6EDF3" BorderBrush="#2E4A62" BorderThickness="3,0,0,0" Padding="10,6" Margin="0,8,0,0"
                                                         Visibility="{Binding Principle.Quote, Converter={StaticResource TextVisible}, FallbackValue=Collapsed}">
                                                     <StackPanel>

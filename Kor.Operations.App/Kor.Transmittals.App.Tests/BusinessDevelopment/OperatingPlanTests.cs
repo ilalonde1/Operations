@@ -192,6 +192,39 @@ public sealed class OperatingPlanTests
         Assert.Equal(30_000, finished["LosingDoneProjectsLoss"]);
     }
 
+    [Fact]
+    public void Every_morning_move_names_a_live_goal_and_lands_on_that_goals_stage()
+    {
+        static HourMove Move(int rank, params int[] goals) =>
+            new(rank, "Move " + rank, 15, new[] { "why" }, null, Array.Empty<HourDraft>(), Array.Empty<string>(), Array.Empty<HourLink>()) { Goals = goals };
+        static DirectorHourContent Hour(params HourSection[] sections) => new("2026-10-20", "Morning", "t", null, Array.Empty<HourPlanLine>(), null,
+            Array.Empty<HourMove>(), Array.Empty<string>(), Array.Empty<string>(), null, null) { Sections = sections };
+        var good = Hour(new HourSection("BD", "b", Array.Empty<HourPlanLine>(), new[] { Move(1, 1) }, Array.Empty<string>()),
+            new HourSection("COO", "c", Array.Empty<HourPlanLine>(), new[] { Move(2, 7, 14) }, Array.Empty<string>()));
+        Assert.Empty(DirectorHourFile.ValidateGoals(good, new[] { 1, 7, 14 }));
+
+        var bad = Hour(new HourSection("BD", "b", Array.Empty<HourPlanLine>(), new[] { Move(1) }, Array.Empty<string>()),
+            new HourSection("IT", "i", Array.Empty<HourPlanLine>(), new[] { Move(2, 99) }, Array.Empty<string>()));
+        Assert.Equal(new[] { "move 1: name the plan goal it advances (\"goals\": [id]).", "move 2: goal 99 is not a live goal of the plan." },
+            DirectorHourFile.ValidateGoals(bad, new[] { 1, 7, 14 }));
+
+        // Parse refuses a malformed list; an hour written before goals (no field) still reads.
+        Assert.Contains(DirectorHourFile.Parse("""{"forDate":"2026-10-20","kind":"BD","title":"t","plan":[],"moves":[{"rank":1,"title":"m","minutes":15,"whyNow":["w"],"goals":[3,3],"cards":[],"drafts":[],"steps":[],"links":[]}],"decisions":[],"meetings":[]}""").Errors,
+            e => e.Contains("goals must contain positive, unique goal ids"));
+        Assert.DoesNotContain(DirectorHourFile.Parse("""{"forDate":"2026-10-20","kind":"BD","title":"t","plan":[],"moves":[{"rank":1,"title":"m","minutes":15,"whyNow":["w"],"cards":[],"drafts":[],"steps":[],"links":[]}],"decisions":[],"meetings":[]}""").Errors,
+            e => e.Contains("goals"));
+
+        // On the Plan tab a move sits on its goal's stage: BD move for goal 1 on stage 2, COO move for goals 7 and 14 on stages 8 and 6.
+        var items = PlanItems.From(Array.Empty<TouchstoneDue>(), good, new Dictionary<int, int> { [1] = 2, [7] = 8, [14] = 6 });
+        Assert.Equal(new[] { (2, "Move 1"), (8, "Move 2"), (6, "Move 2") }, items.Select(i => (i.StageNo, i.Title)).ToArray());
+
+        // The composer prints each goal with its id, stage and readings for the morning session.
+        var fact = MorningPlan.Fact(Model(), PlanReadings.From(Scoreboard, new[] { Pursuit(1, 80_000m, 3) }, null, 0, Now));
+        Assert.Contains(fact.Lines, l => l.StartsWith("goal 7 · Ops · stage Stage 8: Owed over 90 days under $700k — now $1.41M, baseline $1.42M, target $700k by 31 Mar 2027; decided."));
+        var prompt = File.ReadAllText(Path.Combine(BdDirectorBuildersRegressionTests.RepoRoot(), "tools", "MorningBrief", "MorningPromptComposer.cs"));
+        Assert.Contains("give it \\\"goals\\\": [ids]", prompt);
+    }
+
     /// <summary>
     /// The plan reads firm figures from the Financials engine; it never keeps its own version of one. Checks the metric catalog
     /// and the composer's plan readings by name. Does NOT catch a re-derivation under a new, innocent-looking name.

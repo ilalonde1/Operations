@@ -49,6 +49,10 @@ public sealed record HourMove(
     IReadOnlyList<HourLink> Links)
 {
     public IReadOnlyList<long> Cards { get; init; } = Array.Empty<long>();
+
+    /// <summary>The operating-plan goals this move advances (opportunities.PlanGoal ids, migration 372). Empty only on hours
+    /// written before goals existed; the import refuses a new hour whose moves name none (DirectorHourFile.ValidateGoals).</summary>
+    public IReadOnlyList<int> Goals { get; init; } = Array.Empty<int>();
 }
 
 /// <summary>A passage from the books, quoted with its source.</summary>
@@ -197,6 +201,8 @@ public static class DirectorHourFile
                 var at = $"move {m.Rank}";
                 if (m.Cards is null || m.Cards.Any(id => id <= 0) || m.Cards.Distinct().Count() != m.Cards.Count)
                     errors.Add($"{at}: cards must contain positive, unique card ids.");
+                if (m.Goals is null || m.Goals.Any(id => id <= 0) || m.Goals.Distinct().Count() != m.Goals.Count)
+                    errors.Add($"{at}: goals must contain positive, unique goal ids.");
                 if (string.IsNullOrWhiteSpace(m.Title)) errors.Add($"{at}: title is required.");
                 if (m.Minutes is < 5 or > 90) errors.Add($"{at}: minutes must be 5 to 90.");
                 if (m.WhyNow is null || m.WhyNow.Count == 0 || m.WhyNow.Any(string.IsNullOrWhiteSpace)) errors.Add($"{at}: whyNow needs at least one line.");
@@ -251,6 +257,21 @@ public static class DirectorHourFile
         : c.Moves ?? Array.Empty<HourMove>();
 
     public static int TotalMinutes(DirectorHourContent c) => AllMoves(c).Sum(m => m.Minutes);
+
+    /// <summary>
+    /// Import gate for the operating plan: every move names at least one goal, and every goal it names is a live goal of the
+    /// plan (not retired). This is what makes the day trace back to the plan: a move that advances no goal is refused.
+    /// </summary>
+    public static IReadOnlyList<string> ValidateGoals(DirectorHourContent content, IReadOnlyCollection<int> liveGoals)
+    {
+        var errors = new List<string>();
+        foreach (var m in AllMoves(content).Where(m => m is not null))
+        {
+            if (m.Goals is null || m.Goals.Count == 0) errors.Add($"move {m.Rank}: name the plan goal it advances (\"goals\": [id]).");
+            else errors.AddRange(m.Goals.Where(id => !liveGoals.Contains(id)).Select(id => $"move {m.Rank}: goal {id} is not a live goal of the plan."));
+        }
+        return errors;
+    }
 
     /// <summary>Import gate: a citation must be an accepted card for this hour's role.</summary>
     public static IReadOnlyList<string> ValidateCards(DirectorHourContent content, IReadOnlyList<DoctrineCardRow> cards)

@@ -93,6 +93,17 @@ public sealed class HourMoveView : ObservableObject
                 Cards.Add(new HourDoctrineCard(card));
     }
 
+    private string _goalsText = "";
+
+    /// <summary>"Serves: Days to collect down to 120" — the operating-plan goals this move advances (migration 372).</summary>
+    public string GoalsText { get => _goalsText; private set => SetField(ref _goalsText, value); }
+
+    public void SetGoals(IReadOnlyDictionary<int, string> goals)
+    {
+        var names = Move.Goals.Select(id => goals.TryGetValue(id, out var title) ? title : "goal " + id).ToList();
+        GoalsText = names.Count == 0 ? "" : "Serves: " + string.Join(" · ", names);
+    }
+
     public string? Result
     {
         get => _result;
@@ -171,6 +182,15 @@ public sealed partial class BdRhythmViewModel
     {
         _doctrineCards = cards;
         foreach (var move in Moves) move.SetCards(cards);
+    }
+
+    private IReadOnlyDictionary<int, string> _planGoals = new Dictionary<int, string>();
+
+    /// <summary>The operating plan's goal titles by id, so each move can say which goals it serves.</summary>
+    public void SetPlanGoals(IReadOnlyDictionary<int, string> goals)
+    {
+        _planGoals = goals;
+        foreach (var move in Moves) move.SetGoals(goals);
     }
 
     private HashSet<string> _coveredTouchstones = new(StringComparer.Ordinal);
@@ -283,6 +303,7 @@ public sealed partial class BdRhythmViewModel
             {
                 var view = new HourMoveView(m, _moveResults.TryGetValue(m.Rank, out var r) ? r : null);
                 view.SetCards(_doctrineCards);
+                view.SetGoals(_planGoals);
                 Moves.Add(view);
             }
             if (hour.Kind == "Morning")

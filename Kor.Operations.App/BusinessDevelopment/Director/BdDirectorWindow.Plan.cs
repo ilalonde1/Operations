@@ -40,6 +40,10 @@ public partial class BdDirectorWindow
                 _planReady = true;
             }
 
+            // Today's moves name the goals they serve; give the Today screen the goal titles first.
+            var goals = (await AppServices.Get<IOperatingPlanStore>().LoadAsync(_lifetime.Token).ConfigureAwait(true)).Goals;
+            _rhythm?.SetPlanGoals(goals.ToDictionary(g => g.Id, g => g.Title));
+
             var html = await OperatingPlanPage.BuildAsync(AppServices.Get<IOperatingPlanStore>(), AppServices.Get<IPursuitTouchstoneStore>(),
                 (from, ct) => AppServices.Get<SqlImpactStore>().ListAsync(from, ct), AppServices.Get<IBdRhythmStore>(),
                 DateTimeOffset.Now, _lifetime.Token).ConfigureAwait(true);
