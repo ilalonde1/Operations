@@ -17,6 +17,7 @@
 // hour render <hour.json> --to <file.html>  the email exactly as it would be sent, for checking; sends nothing
 // hour verify <yyyy-MM-dd> --kind Morning [--after <ISO timestamp>]  read and validate the stored hour; nonzero if absent or stale
 // rhythm render --to <folder>               agendas and Monday-list drafts from the live action register; sends nothing
+// plan render --to <file.html>              the operating plan exactly as the Director's Plan tab draws it, live readings
 // --db <connection string>   default: env KOR_OPPORTUNITIES_OPPORTUNITIESDB
 // --dry reads/chunks only, without a database connection or embedding call.
 
@@ -49,7 +50,7 @@ internal static class KnowledgeCli
             var options = Arguments.Parse(args);
             if (options.Flag("--help")) { Usage(); return 0; }
             var verb = options.Positionals.FirstOrDefault()?.ToLowerInvariant();
-            if (verb is not ("ingest" or "embed" or "search" or "list" or "export" or "claims" or "brief" or "pursuit" or "hour" or "rhythm" or "doctrine" or "prompt")) { Usage(); return 2; }
+            if (verb is not ("ingest" or "embed" or "search" or "list" or "export" or "claims" or "brief" or "pursuit" or "hour" or "rhythm" or "doctrine" or "prompt" or "plan")) { Usage(); return 2; }
             options.ValidateFor(verb);
             var ct = cancellation.Token;
             if (verb == "hour" && options.Positionals[1].Equals("render", StringComparison.OrdinalIgnoreCase))
@@ -76,6 +77,7 @@ internal static class KnowledgeCli
                 return await HourVerifyAsync(options, new SqlBdRhythmStore(connection!), ct);
             if (verb == "hour") return await HourImportAsync(options, new SqlBdRhythmStore(connection!), new SqlBdDoctrineStore(connection!), ct);
             if (verb == "rhythm") return await RhythmRenderAsync(options, new SqlBdRhythmStore(connection!), ct);
+            if (verb == "plan") return await PlanRenderAsync(options, connection!, ct);
             if (verb == "doctrine") return await DoctrineAsync(options, new SqlBdDoctrineStore(connection!), ct);
             if (verb == "prompt" && options.Positionals[1].Equals("synthesis", StringComparison.OrdinalIgnoreCase))
                 return await PromptSynthesisAsync(options, store!, new SqlBdDoctrineStore(connection!), ct);
@@ -314,6 +316,19 @@ internal static class KnowledgeCli
             + "</title>" + DirectorHourEmail.Render(content), ct);
         Console.WriteLine("Subject: " + DirectorHourEmail.Subject(content));
         Console.WriteLine(to);
+        return 0;
+    }
+
+    /// <summary>The operating plan, drawn by the same OperatingPlanPage call the Director's Plan tab makes.</summary>
+    private static async Task<int> PlanRenderAsync(Arguments args, string connection, CancellationToken ct)
+    {
+        var file = Path.GetFullPath(args.Value("--to")!);
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        var impact = new SqlImpactStore(connection);
+        var html = await Kor.Opportunities.Data.Plan.OperatingPlanPage.BuildAsync(new Kor.Opportunities.Data.Plan.SqlOperatingPlanStore(connection),
+            new SqlPursuitTouchstoneStore(connection), impact.ListAsync, new SqlBdRhythmStore(connection), DateTimeOffset.Now, ct);
+        await File.WriteAllTextAsync(file, html, ct);
+        Console.WriteLine($"Plan written to {file} ({html.Length} characters).");
         return 0;
     }
 
@@ -642,7 +657,7 @@ internal static class KnowledgeCli
             var doctrineAction = verb == "doctrine" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
             var promptAction = verb == "prompt" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
             var expected = verb == "prompt" ? promptAction == "synthesis" ? 2 : 4 : verb == "doctrine" ? doctrineAction is "show" or "similar" ? 3 : 2
-                : verb == "pursuit" ? 5 : verb == "hour" ? 3 : verb == "rhythm" ? 2 : verb == "brief" ? briefAction == "import" ? 4 : 2
+                : verb == "pursuit" ? 5 : verb == "hour" ? 3 : verb is "rhythm" or "plan" ? 2 : verb == "brief" ? briefAction == "import" ? 4 : 2
                 : verb == "claims" ? claimAction == "embed" ? 2 : 3 : verb is "ingest" or "search" or "export" ? 2 : 1;
             if (Positionals.Count != expected) throw new ArgumentException($"Wrong number of arguments for {verb}; use --help.");
             if (verb == "pursuit")
@@ -674,6 +689,11 @@ internal static class KnowledgeCli
             {
                 if (!Positionals[1].Equals("render", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(Value("--to")))
                     throw new ArgumentException("Use rhythm render --to <folder>.");
+            }
+            if (verb == "plan")
+            {
+                if (!Positionals[1].Equals("render", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(Value("--to")))
+                    throw new ArgumentException("Use plan render --to <file.html>.");
             }
             if (verb == "doctrine")
             {
@@ -722,7 +742,7 @@ internal static class KnowledgeCli
                 "pursuit" => new[] { "--by", "--replace" },
                 "hour" => Positionals[1].Equals("verify", StringComparison.OrdinalIgnoreCase)
                     ? new[] { "--kind", "--after" } : new[] { "--by", "--to" },
-                "rhythm" => new[] { "--to" },
+                "rhythm" or "plan" => new[] { "--to" },
                 "doctrine" => new[] { "--role", "--exclude-run" },
                 "prompt" => promptAction == "synthesis" ? new[] { "--by", "--focus", "--role" } : new[] { "--token", "--checked" },
                 "claims" => claimAction switch { "import" => new[] { "--force", "--by" }, "relate" => new[] { "--by" }, "search" => new[] { "--take" }, _ => Array.Empty<string>() },

@@ -5,6 +5,7 @@
         xmlns:director="clr-namespace:Kor.Operations.App.BusinessDevelopment.Director"
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
         xmlns:opp="clr-namespace:Kor.Operations.App.Opportunities"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="BD Director" Width="1680" Height="980" MinWidth="1100" MinHeight="720"
         WindowStartupLocation="CenterOwner" Background="{StaticResource App.Background}">
     <Window.Resources>
@@ -101,7 +102,14 @@
                 </TextBlock>
             </StackPanel>
         </DockPanel>
-        <TabControl x:Name="Tabs" Grid.Row="1">
+        <TabControl x:Name="Tabs" Grid.Row="1" SelectionChanged="Tabs_SelectionChanged">
+        <!-- The operating plan (migration 372): one HTML page drawn by OperatingPlanPage; Print plan prints this same page. -->
+        <TabItem Header="Plan" x:Name="PlanTab">
+            <Grid>
+                <wv2:WebView2 x:Name="PlanView"/>
+                <TextBlock x:Name="PlanStatus" Margin="16" Foreground="#5A6876" TextWrapping="Wrap" Text="Opening the plan…"/>
+            </Grid>
+        </TabItem>
         <TabItem Header="Today" x:Name="TodayTab">
             <Grid Margin="12">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>

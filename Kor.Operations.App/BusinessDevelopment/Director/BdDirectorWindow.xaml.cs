@@ -108,6 +108,7 @@ public partial class BdDirectorWindow : Window
             }
             if (_doctrine is not null) await _doctrine.LoadAsync(_lifetime.Token).ConfigureAwait(true);
             await director.ConfigureAwait(true);
+            if (_planShown) await LoadPlanAsync().ConfigureAwait(true);
         }
         catch (OperationCanceledException) { /* Window closed. */ }
     }

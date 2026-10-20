@@ -46,6 +46,30 @@ public static class MorningImpact
         };
     }
 
+    /// <summary>
+    /// The operating plan's other daily readings (migration 372), from figures the composer already holds: active projects,
+    /// firmwide utilization (the Utilization KPI's value), projects billing slower than they burn (the alert's rows), the last
+    /// closed month's DSO, and average monthly invoicing over the last six closed months and the six before. A reading the
+    /// engine did not supply is left out, never recorded as zero.
+    /// </summary>
+    public static Dictionary<string, double> PlanReadings(ExecutiveSummaryResult result, int activeProjects, IReadOnlyList<ImpactMonth> months,
+        int? billingLag)
+    {
+        var readings = new Dictionary<string, double>(StringComparer.Ordinal) { ["ActiveProjects"] = activeProjects };
+        var utilization = result.Kpis.FirstOrDefault(k => k.Title == "Utilization")?.ValueText;
+        if (utilization is not null && double.TryParse(utilization.Trim().TrimEnd('%'), NumberStyles.Float, CultureInfo.InvariantCulture, out var u))
+            readings["Utilization"] = u;
+        if (billingLag is { } lag) readings["BillingLagProjects"] = lag;
+        if (months.LastOrDefault(m => m.Dso > 0) is { } closed) readings["Dso"] = closed.Dso;
+        var year = months.TakeLast(12).ToList();
+        if (year.Count == 12)
+        {
+            readings["InvoicedMonthAvg6"] = year.Skip(6).Average(m => m.Invoiced);
+            readings["InvoicedMonthAvgPrior6"] = year.Take(6).Average(m => m.Invoiced);
+        }
+        return readings;
+    }
+
     public static MorningFact Fact(IReadOnlyList<ImpactMonth> months, IReadOnlyList<ImpactReading> readings, string? note = null)
     {
         var lines = new List<string>();

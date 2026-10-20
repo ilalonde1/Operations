@@ -35,7 +35,7 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         var (odbc, financials) = DeltekOptions(configuration);
         await GatherBdAsync(bd, date, now, ct);
         await GatherCooAsync(coo, odbc, financials, date, now, ct);
-        await GatherItAsync(it, now, ct);
+        await GatherItAsync(it, date, now, ct);
         using var embedder = new KnowledgeEmbedder();
         using var knowledge = new MorningKnowledgeReader(() => new SqlKnowledgeStore(Connection(BdConnection)), embedder);
         bd.Add(await knowledge.MatchAsync(bd, "BD", ct));
@@ -201,6 +201,7 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             var today = MorningImpact.EngineReadings(arRows, utilRows);
             if (arRows.Count == 0) { today.Remove("ArTotal"); today.Remove("ArOver60"); today.Remove("ArOver90"); today.Remove("ArInactive"); notes.Add("AR rows unavailable; AR readings not recorded today."); }
             foreach (var (k, v) in await store.ReadBdTotalsAsync(ct)) today[k] = v;
+            foreach (var (k, v) in MorningImpact.PlanReadings(result, utilRows.Length, months, AlertCount(result, "Billing Lagging Burn"))) today[k] = v;
             await store.RecordAsync(date, today, ct);
             readings = await store.ListAsync(MorningImpact.Baseline, ct);
         }
@@ -369,6 +370,10 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
         _ => Array.Empty<object>(),
     };
 
+    /// <summary>How many rows an alert lists, or null when the engine did not return it.</summary>
+    private static int? AlertCount(ExecutiveSummaryResult result, string title) =>
+        result.Alerts.FirstOrDefault(a => a.Title == title) is { } alert ? AlertRows(alert).Count : null;
+
     private static IReadOnlyList<object> AlertRows(ExecutiveAlert alert) => alert switch
     {
         { ArInvoiceRows: { } rows } => rows,
@@ -494,8 +499,27 @@ public sealed record MorningFacts(DateTimeOffset CapturedAtUtc, IReadOnlyList<Mo
             + $"{reasons.Length} of {records.Count} carry Ian's reasons)", lines, lines.Length, lines.Length);
     }
 
-    private static async Task GatherItAsync(List<MorningFact> facts, DateTimeOffset now, CancellationToken ct)
+    private static async Task GatherItAsync(List<MorningFact> facts, DateOnly date, DateTimeOffset now, CancellationToken ct)
     {
+        // The operating plan's IT readings (migration 372), recorded with the scoreboard's: device groups with a critical or a
+        // warning finding open, and machines with security updates due. A failure is reported, never thrown.
+        await ReadAsync(facts, "NetworkOps plan readings", async () =>
+        {
+            var rows = await NetworkRowsAsync("""
+                SELECT COUNT(DISTINCT CASE WHEN f.Severity = 2 THEN f.DeviceId END),
+                       COUNT(DISTINCT CASE WHEN f.Severity = 1 THEN f.DeviceId END),
+                       COUNT(DISTINCT CASE WHEN f.RuleKey = N'updates-due' THEN f.DeviceId END)
+                FROM NetworkOps.Findings f JOIN NetworkOps.Devices d ON d.DeviceId = f.DeviceId
+                WHERE f.ClearedUtc IS NULL AND d.RetiredUtc IS NULL;
+                """, now, r => (Critical: r.GetInt32(0), Warning: r.GetInt32(1), Updates: r.GetInt32(2)), ct);
+            var it = rows.Lines.Single();
+            await new SqlImpactStore(Connection(BdConnection)).RecordAsync(date, new Dictionary<string, double>(StringComparer.Ordinal)
+            {
+                ["ItCriticalGroups"] = it.Critical, ["ItWarningGroups"] = it.Warning, ["ItUpdatesDue"] = it.Updates,
+            }, ct);
+            return new[] { new MorningFact("IT readings recorded for the operating plan",
+                new[] { $"Devices with a critical finding open: {it.Critical}; with a warning: {it.Warning}; with security updates due: {it.Updates}." }, 1, 1) };
+        }, ct);
         // SQL adapted from NetworkOpsStore.OpenFindingsOfRulesAsync and ChangesSinceAsync.
         // All active devices and all rules; no token, service reference or service endpoint.
         await ReadAsync(facts, "NetworkOps open findings", async () =>
