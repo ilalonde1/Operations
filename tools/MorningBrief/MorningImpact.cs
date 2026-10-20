@@ -60,6 +60,10 @@ public static class MorningImpact
         if (utilization is not null && double.TryParse(utilization.Trim().TrimEnd('%'), NumberStyles.Float, CultureInfo.InvariantCulture, out var u))
             readings["Utilization"] = u;
         if (billingLag is { } lag) readings["BillingLagProjects"] = lag;
+        // Hours given away: every over-budget project's hours past its budget, from the KPI's own rows. No rate is applied;
+        // the engine supplies none it vouches for (Net Multiplier and Labor Margin read "data unavailable").
+        if (result.Kpis.FirstOrDefault(k => k.Title == "Projects Over Budget")?.ProjectDrilldownRows is { } over)
+            readings["OverBudgetHours"] = over.Where(p => p.OverByHours > 0).Sum(p => p.OverByHours);
         if (months.LastOrDefault(m => m.Dso > 0) is { } closed) readings["Dso"] = closed.Dso;
         var year = months.TakeLast(12).ToList();
         if (year.Count == 12)

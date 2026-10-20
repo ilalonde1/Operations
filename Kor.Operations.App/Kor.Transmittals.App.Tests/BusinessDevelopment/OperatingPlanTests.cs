@@ -154,5 +154,13 @@ public sealed class OperatingPlanTests
         Assert.False(readings.ContainsKey("Utilization")); // no Utilization KPI in the result: not recorded, never zero
         Assert.Equal(70.8, MorningImpact.PlanReadings(Result(new Kor.Operations.Financials.ExecutiveKpi("Utilization", "70.8%", "", "")), 814, months, 94)["Utilization"]);
         Assert.False(MorningImpact.PlanReadings(Result(), 814, months.Take(5).ToList(), null).ContainsKey("InvoicedMonthAvg6"));
+        Assert.False(readings.ContainsKey("OverBudgetHours")); // no over-budget KPI: not recorded
+
+        // Hours past budget: the KPI's own rows, positive overruns only, no rate applied.
+        static Kor.Operations.Financials.KpiProjectDrilldownRow Over(double hours) => new("30001-01", "P", "PM", hours, 1.5, 0.9, 0.9, false);
+        var withOver = MorningImpact.PlanReadings(Result(new Kor.Operations.Financials.ExecutiveKpi("Projects Over Budget", "3", "", "",
+            ProjectDrilldownRows: new[] { Over(1466.35), Over(1420.77), Over(-5) })), 814, months, 94);
+        Assert.Equal(2887.12, withOver["OverBudgetHours"], 2);
+        Assert.Equal("2,887 hours", PlanMetrics.Format(PlanUnit.Hours, withOver["OverBudgetHours"]));
     }
 }

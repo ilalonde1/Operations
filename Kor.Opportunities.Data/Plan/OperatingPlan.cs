@@ -32,7 +32,7 @@ public sealed record OperatingPlanModel(IReadOnlyList<PlanStageRow> Stages, IRea
 /// <summary>Radar counts: signals first seen in the last 30 days, and enabled of all sources.</summary>
 public sealed record PlanRadar(int Signals30d, int SourcesLive, int SourcesTotal);
 
-public enum PlanUnit { Count, Money, Days, Percent }
+public enum PlanUnit { Count, Money, Days, Percent, Hours }
 
 /// <summary>One metric the plan can read: how it prints, and which way is better.</summary>
 public sealed record PlanMetric(string Key, string Label, PlanUnit Unit, bool LowerIsBetter);
@@ -67,6 +67,7 @@ public static class PlanMetrics
         new PlanMetric("InvoicedMonthAvgPrior6", "Invoiced a month, the six before", PlanUnit.Money, false),
         new PlanMetric("Utilization", "Utilization", PlanUnit.Percent, false),
         new PlanMetric("BillingLagProjects", "Projects billing slower than they burn", PlanUnit.Count, true),
+        new PlanMetric("OverBudgetHours", "Hours past budget on over-budget projects", PlanUnit.Hours, true),
         new PlanMetric("ItCriticalGroups", "Critical IT issue groups", PlanUnit.Count, true),
         new PlanMetric("ItWarningGroups", "IT warning groups", PlanUnit.Count, true),
         new PlanMetric("ItUpdatesDue", "Machines with security updates due", PlanUnit.Count, true),
@@ -91,6 +92,7 @@ public static class PlanMetrics
             : Math.Abs(v) >= 1_000 ? "$" + Math.Round(v / 1_000).ToString("N0", CultureInfo.InvariantCulture) + "k"
             : "$" + Math.Round(v).ToString("N0", CultureInfo.InvariantCulture),
         PlanUnit.Percent => v.ToString("0.0", CultureInfo.InvariantCulture) + "%",
+        PlanUnit.Hours => Math.Round(v).ToString("N0", CultureInfo.InvariantCulture) + " hours",
         _ => Math.Round(v).ToString("N0", CultureInfo.InvariantCulture),
     };
 }
