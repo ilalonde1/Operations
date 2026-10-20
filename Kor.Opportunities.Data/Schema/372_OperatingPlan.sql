@@ -237,7 +237,7 @@ USING (VALUES
     (30, N'BD', N'LeadGets', N'New opportunities in their region.', N'Pilot. New tenders, permits and client news for their region, best first, in the app; first to Omar, Islam and Jim.', 300),
     (31, N'BD', N'LeadGets', N'A short weekly to-do list.', N'Live. Who to call, what to send and by when, for each of their opportunities, sent by Ian; they reply one line per item.', 310),
     (32, N'BD', N'LeadGets', N'Reminders at the right time.', N'Live. In the weekly list: when to make first contact, when to follow up after sending a proposal, when to ask for a decision.', 320),
-    (33, N'BD', N'LeadGets', N'Bid documents, and who else is bidding.', N'Coming. The tender documents saved with the opportunity automatically, with the other firms interested; being built now.', 330),
+    (33, N'BD', N'LeadGets', N'Bid documents, and who else is bidding.', N'Live. The bid package of every Bids&Tenders tender we pursue is saved with the pursuit automatically, and checked daily for addenda until it closes; Alberta Purchasing Connection documents join as soon as the company sign-in is confirmed.', 330),
     (34, N'BD', N'LeadGets', N'Help writing proposals.', N'Live. A checklist of everything the client asked for, the rate sheet and the team chart, prepared for them; first used on Leduc.', 340),
     (35, N'BD', N'LeadGets', N'Ian''s backing.', N'Starting. A quick answer on whether to bid and on the fee, and a 15-minute check-in every two weeks.', 350),
     (40, N'BD', N'LeadAsk', N'Keep every opportunity moving.', N'Each one has a next step and a date. If it is dead, say so and drop it.', 400),
