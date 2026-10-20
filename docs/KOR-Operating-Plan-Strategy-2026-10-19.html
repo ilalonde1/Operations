@@ -1,0 +1,449 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KOR Operating Plan</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head><body>
+<style>
+  .kicker { break-after: avoid; }
+  .num { text-align: right; white-space: nowrap; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; }
+  .col { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem 1.3rem; box-shadow: var(--shadow); }
+  .col h3 { margin: .2rem 0 .6rem; font-size: 1.15rem; }
+  .col h4 { margin: 1rem 0 .3rem; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); font-family: var(--mono); }
+  .col ul { margin: .2rem 0 .4rem; padding-left: 1.1rem; }
+  .col li { margin: .25rem 0; }
+  .ev { display: block; font-size: .86em; color: var(--ink-soft); }
+  .rec { font-family: var(--mono); font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); margin: 0; }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem; margin: 1rem 0 1.4rem; }
+  .fact { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; padding: .7rem .9rem; }
+  .fact b { display: block; font-size: 1.35rem; line-height: 1.2; }
+  .fact span { font-size: .86rem; color: var(--ink-soft); }
+  .src { font-size: .86em; color: var(--ink-soft); }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } .facts { grid-template-columns: 1fr 1fr; } }
+  @media print {
+    body { font-size: 8.4pt; line-height: 1.42; }
+    .toc { display: none !important; }
+    .hero__lede { max-width: none; }
+    main { padding-top: 2mm; }
+    section { padding: .5rem 0 !important; margin: 0 !important; border: 0 !important; }
+    #strategy { break-before: page; }
+    h2 { font-size: 1.15rem !important; margin: .1rem 0 .4rem !important; }
+    .kicker { margin: 0 !important; }
+    .cols { grid-template-columns: 1fr 1fr !important; gap: .7rem; }
+    .facts { grid-template-columns: repeat(4, 1fr) !important; margin: .4rem 0 .6rem; gap: .5rem; }
+    .fact b { font-size: 1.05rem; }
+    .fact span { font-size: .8rem; line-height: 1.3; display: block; }
+    .col { padding: .6rem .8rem; }
+    .col h4 { margin: .5rem 0 .15rem; }
+    .col li { margin: .12rem 0; }
+    .col, .fact { break-inside: avoid; box-shadow: none; }
+    ul.plain li { margin: .15rem 0 !important; }
+  }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Operating plan · Part 1 of 3 · Draft 19 October 2026</p>
+    <h1>Strategy on a page</h1>
+    <p class="hero__lede">Where KOR should play, how it wins, and the few things Operations must fix. <strong>Every choice here is a recommendation</strong> for you and the partners to decide; every number comes from KOR's own record, with its source below.</p>
+    <div class="hero__meta">
+      <span>Invoicing down 25% in six months</span>
+      <span>Win 72% decided · 43% of submitted</span>
+      <span>Owed to KOR $2.26M</span>
+      <span>DSO 174 days</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">The plan</p>
+    <ol>
+      <li><a href="#situation">Where we stand</a></li>
+      <li><a href="#decide">What you decide</a></li>
+      <li><a href="#strategy">Strategy: BD and Operations</a></li>
+      <li><a href="#next">Parts 2 and 3</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="situation">
+      <p class="kicker">Where we stand</p>
+      <h2>Four numbers that set the agenda</h2>
+      <div class="facts">
+        <div class="fact"><b>$367k / month</b><span>invoiced Apr–Sep 2026, down from $490k Oct–Mar. The firm is billing a quarter less.</span></div>
+        <div class="fact"><b>43%</b><span>of submitted proposals won since 2020. 72% of decided ones, but 266 were never closed out.</span></div>
+        <div class="fact"><b>$1.41M</b><span>owed over 90 days, of $2.26M. Each 30 days off DSO frees about $423k.</span></div>
+        <div class="fact"><b>0 of 110</b><span>live pursuits carry a fee estimate, so the pipeline has no dollar value yet.</span></div>
+      </div>
+      <p>Read together: <strong>less work is coming in, what is won is slow to turn into cash, and the pipeline cannot yet say what is coming next.</strong> Jim and JM expect a quiet market until January and then a rush. The plan below uses the quiet months to fix the process, so the rush lands on a working system.</p>
+    </section>
+
+    <section id="decide">
+      <p class="kicker">Yours, not the system's</p>
+      <h2>What you and the partners decide</h2>
+      <ul class="plain">
+        <li><strong>The goals and their numbers.</strong> The figures above are starting points from KOR's record, not commitments.</li>
+        <li><strong>Which repeat developers each partner owns,</strong> and who qualifies the low-converting clients.</li>
+        <li><strong>The $805k on inactive projects.</strong> 31103-01 alone is $502k, last invoiced February 2024.</li>
+        <li><strong>Whether the US gets more than Jim's time.</strong> It holds 17 of the 110 live pursuits and one person sells it.</li>
+      </ul>
+      <div class="box box--tip">
+        <p class="box__label">How sure each number is</p>
+        <p>Win rates come from the 701-pursuit fee tracker, 2020–2026. "Never closed" means no Deltek job appeared within 180 days; that test found a job for 249 of 266 known wins and for 6 of 478 known losses. Sector win rates are left out because lost proposals carry no reliable sector. Money figures are the Financials engine's, read by this morning's brief.</p>
+      </div>
+      <p class="src">Sources: docs/KOR-Management-Win-Loss-2026-10-18.md (tracker win/loss, clients, regions, fee bands, loss reasons); the morning brief of 19 October 2026 (Financials engine: AR, aging, over budget, utilization, invoiced and collected by month, DSO; live pursuits from the CRM); docs/KOR-Impact-Scoreboard-2026-10-18 (targets); the 9 October BD meeting (market read and cadence).</p>
+    </section>
+
+    <section id="strategy">
+      <p class="kicker">Recommendation · you decide</p>
+      <h2>Strategy</h2>
+      <div class="cols">
+        <div class="col">
+          <p class="rec">Business development</p>
+          <h3>Win more of the right work, earlier</h3>
+
+          <h4>Where to play</h4>
+          <ul>
+            <li><strong>Grow the developers who already choose KOR.</strong> Westland, Northland, Cressey, Domus, Kerkhoff and Polygon: 40 won, 1 lost.<span class="ev">Each gets a named partner and a standing check-in, not a proposal-by-proposal relationship.</span></li>
+            <li><strong>Metro Vancouver and South of Fraser are the base.</strong> 220 of 281 wins since 2020; South of Fraser converts 81% of decided proposals.</li>
+            <li><strong>The US is the growth market.</strong> 22 wins at 65% decided, and 17 of 110 live pursuits, all Jim's.</li>
+            <li><strong>Qualify hard before writing a fee for the clients who rarely convert.</strong> NSDA, Wesgroup, Strand, Starlight and Porte: 12 won, 15 lost, 35 never decided.<span class="ev">A go/no-go before the proposal, not after.</span></li>
+          </ul>
+
+          <h4>How KOR wins</h4>
+          <ul>
+            <li><strong>Get in as the architect's engineer before the RFP.</strong> The structural engineer is usually chosen at the start of schematic design.</li>
+            <li><strong>Mid-size fees convert best.</strong> $25–100k wins 80% of decided; $250k and up wins 58%. Big bids are deliberate bets.</li>
+            <li><strong>Close every proposal.</strong> Follow up at 14 days, chase the decision at 45, and record who won and why. Glotman Simpson is the competitor named most often (6 of the stated losses).</li>
+            <li><strong>Spread the selling.</strong> One principal leads 345 of 701 pursuits (49%). Six owners now hold the 110 live pursuits.</li>
+          </ul>
+
+          <h4>Goals to 31 March 2027 · numbers yours to set</h4>
+          <ul>
+            <li>Every live pursuit has a fee estimate and an owner's next step (today 0 of 110 have a fee).</li>
+            <li>No proposal sits "submitted" past 60 days without an outcome.</li>
+            <li>Submitted-to-won from 43% toward 50%.</li>
+            <li>Invoicing back above $400k a month.</li>
+          </ul>
+        </div>
+
+        <div class="col">
+          <p class="rec">Operations</p>
+          <h3>Turn work into cash, and stop giving hours away</h3>
+
+          <h4>Where it hurts</h4>
+          <ul>
+            <li><strong>Cash.</strong> $2.26M owed, $1.41M of it over 90 days, and $805k on projects no longer on the active list.</li>
+            <li><strong>Overruns.</strong> 272 of 814 active projects are over their hours budget; 72 are critical; 94 are burning hours faster than they bill.</li>
+            <li><strong>Capacity.</strong> Utilization is 70.8%.</li>
+          </ul>
+
+          <h4>Priorities</h4>
+          <ul>
+            <li><strong>Collect.</strong> A partner owns every invoice over 90 days and reports at the quickie. Decide the $805k on inactive projects: collect, settle or write off.</li>
+            <li><strong>Charge for changes before the hours are spent.</strong> Extra-service letters on the worst ten over-budget projects first.</li>
+            <li><strong>Bill on time.</strong> Close the gap on the 94 projects where billing lags the hours.</li>
+            <li><strong>Fix the process before January.</strong> The rush should land on a working cadence, not a backlog.</li>
+          </ul>
+
+          <h4>Goals to 31 March 2027 · from the scoreboard</h4>
+          <ul>
+            <li>DSO from 174 to 120 days: about <strong>$760k of cash</strong> without billing a dollar more.</li>
+            <li>Owed over 90 days under $700k.</li>
+            <li>The $805k inactive AR decided, with the reason recorded.</li>
+            <li>Over-budget projects down from 272, the worst ten with change orders.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="next">
+      <p class="kicker">Coming next</p>
+      <h2>Parts 2 and 3</h2>
+      <ul class="plain">
+        <li><strong>Part 2, the whole process on one page:</strong> signal, pursuit, proposal, win, delivery, invoice, cash, with each stage's owner, its measure, and the part of the system that serves it.</li>
+        <li><strong>Part 3, the rhythm:</strong> the daily hour, the weekly roll-ups and the monthly meetings, each tied to a goal above, so every task traces back to this page.</li>
+      </ul>
+    </section>
+  </main>
+</div>
+</body></html>
