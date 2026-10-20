@@ -784,6 +784,11 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
                 sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.BidsAndTendersLiveDetailExtractor>());
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.ILiveOppDetailExtractor>(
                 sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.MerxDccLiveDetailExtractor>());
+            // APC postings: description, contact, questions deadline, submission method and the document list, from the
+            // public feed the posting page loads (no login; the files themselves need a signed-in supplier).
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.ApcLiveDetailExtractor>();
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.ILiveOppDetailExtractor>(
+                sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.ApcLiveDetailExtractor>());
             // Victoria's Tempest/Prospero development tracker — the detail page
             // behind every Victoria_DevelopmentApplications row. It carries the
             // APPLICATION CONTACT (the applicant's agent: the developer, their
