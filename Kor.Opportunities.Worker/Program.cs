@@ -1081,6 +1081,18 @@ builder.Services.AddQuartz(q =>
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
+  // 2026-10-20: bid packages of pursued Bids&Tenders tenders into the pursuit. Hourly at :27, so a grab is fetched within the
+  // hour; each pursuit at most daily after its first fetch (the job's own log).
+  var bidsAndTendersDocumentKey = new JobKey(nameof(Kor.Opportunities.Worker.Services.BidsAndTendersDocumentJob));
+  q.AddJob<Kor.Opportunities.Worker.Services.BidsAndTendersDocumentJob>(opts => opts.WithIdentity(bidsAndTendersDocumentKey));
+  q.AddTrigger(t =>
+  {
+      var cron = builder.Configuration["BidsAndTendersDocumentCronSchedule"] ?? "0 27 0/1 * * ?";
+      t.ForJob(bidsAndTendersDocumentKey)
+       .WithIdentity("BidsAndTendersDocumentTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
   // Round 61b: APC InterestedFirms continuous enrichment. Cadence: every hour
   // at :17 past so it never lines up with the list-scrape passes.
   var apcInterestEnrichmentKey = new JobKey(nameof(Kor.Opportunities.Worker.Services.ApcInterestEnrichmentJob));

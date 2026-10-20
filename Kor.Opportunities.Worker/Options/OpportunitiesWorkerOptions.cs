@@ -50,6 +50,15 @@ public sealed class OpportunitiesWorkerOptions
     /// and GraphEmailClientSecret. Future hardening: move to DPAPI or KeyVault.</summary>
     public string BcBidPassword { get; init; } = "";
 
+    /// <summary>The company's Bids&amp;Tenders vendor login, one account for every city's site (2026-10-20). Set via
+    /// KOR_OPPORTUNITIES_BIDSANDTENDERSEMAIL / KOR_OPPORTUNITIES_BIDSANDTENDERSPASSWORD on the host. Empty disables
+    /// BidsAndTendersDocumentJob.</summary>
+    public string BidsAndTendersEmail { get; init; } = "";
+
+    public string BidsAndTendersPassword { get; init; } = "";
+
+    public bool BidsAndTendersDocumentsEnabled { get; set; } = true;
+
     /// <summary>
     /// Rows of HistoricalOpportunities to enrich per scheduled job tick.
     /// Default 25. Each row takes ~5-7s (Playwright nav + extract + SQL write)
