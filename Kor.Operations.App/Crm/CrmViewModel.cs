@@ -322,7 +322,6 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             if (SetField(ref _analytics, value))
             {
                 OnPropertyChanged(nameof(AnalyticsHeadline));
-                OnPropertyChanged(nameof(AnalyticsBuyerTypeSummary));
                 OnPropertyChanged(nameof(HasAnalytics));
             }
         }
@@ -340,32 +339,15 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             var won = _analytics.Won;
             var lost = _analytics.Lost;
             var n = _analytics.TotalEngagements;
-            var rate = (won + lost) > 0 ? _analytics.WinRate.ToString("P0") : "— (none decided yet)";
+            // No win rate (Ian, 21 Oct 2026): most tracked pursuits were never closed won or lost, so any rate from these
+            // rows measures the record-keeping, not KOR. The counts stay; the percentage does not.
             var backfill = _analytics.BackfillWins > 0
-                ? $"  •  {_analytics.BackfillWins} earlier Deltek wins ({_analytics.BackfillWonFee.ToString("C0", CultureInfo.CurrentCulture)}) kept out of the rate"
+                ? $"  •  {_analytics.BackfillWins} earlier Deltek wins ({_analytics.BackfillWonFee.ToString("C0", CultureInfo.CurrentCulture)}) counted separately"
                 : string.Empty;
             var avgWonFee = _analytics.AvgWonProposedFee > 0
                 ? $"  •  avg won fee {_analytics.AvgWonProposedFee.ToString("C0", CultureInfo.CurrentCulture)}"
                 : string.Empty;
-            return $"{n} pursuit{(n == 1 ? "" : "s")}  •  won {won} / lost {lost} recorded here  •  win rate {rate}{avgWonFee}{backfill}";
-        }
-    }
-
-    /// <summary>Top 3 buyer types by win rate (with at least 1 resolved engagement).</summary>
-    public string AnalyticsBuyerTypeSummary
-    {
-        get
-        {
-            if (_analytics is null) return string.Empty;
-            // "Unknown" is the bucket for a pursuit with no linked RFP; a win rate for
-            // "Unknown" tells nobody anything (render harness, 2026-10-14: "Unknown 1/1 (100%)").
-            var rows = _analytics.ByBuyerType
-                .Where(b => b.Won + b.Lost > 0 && b.Bucket != "Unknown")
-                .OrderByDescending(b => b.WinRate)
-                .ThenByDescending(b => b.Won + b.Lost)
-                .Take(3)
-                .Select(b => $"{b.Bucket} {b.Won}/{b.Won + b.Lost} ({b.WinRate:P0})");
-            return string.Join("  •  ", rows);
+            return $"{n} pursuit{(n == 1 ? "" : "s")}  •  won {won} / lost {lost} recorded here{avgWonFee}{backfill}";
         }
     }
 
@@ -1161,25 +1143,14 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         sb.AppendLine();
         if (backfillWins > 0)
         {
-            sb.AppendLine($"NOTE: {backfillWins} of the Won engagements are a historical Deltek backfill (ExternalSource 'Deltek.CustomProposal') — flat history with no owner and no loss denominator. Never quote a win rate that blends them with live pursuits.");
+            sb.AppendLine($"NOTE: {backfillWins} of the Won engagements are a historical Deltek backfill (ExternalSource 'Deltek.CustomProposal') — flat history with no owner and no loss denominator.");
         }
 
-        sb.AppendLine((won + lost) > 0
-            ? $"Live win rate (won vs lost, backfill excluded): {won} / {won + lost} = {(double)won / (won + lost):P0}"
-            : "Live win rate: no live pursuit outcomes recorded yet.");
+        // Ian, 21 Oct 2026: never quote a win rate from these rows; most tracked pursuits were never closed won or lost.
+        sb.AppendLine($"Live pursuits recorded won: {won}; lost: {lost}. KOR's real win rate is not yet known: most tracked pursuits were never closed as won or lost, so never state or estimate a win rate from this data.");
 
         if (_analytics is { TotalEngagements: > 0 } a && (a.Won + a.Lost) > 0)
         {
-            var topBuyer = a.ByBuyerType
-                .Where(b => b.Won + b.Lost > 0)
-                .OrderByDescending(b => b.WinRate)
-                .ThenByDescending(b => b.Won + b.Lost)
-                .FirstOrDefault();
-            if (topBuyer is not null)
-            {
-                sb.AppendLine($"Best-performing buyer type: {topBuyer.Bucket} ({topBuyer.Won}/{topBuyer.Won + topBuyer.Lost} = {topBuyer.WinRate:P0}).");
-            }
-
             if (a.AvgPursuitDuration.HasValue)
             {
                 sb.AppendLine($"Avg time from open to outcome: {a.AvgPursuitDuration.Value.TotalDays:F0} day(s).");

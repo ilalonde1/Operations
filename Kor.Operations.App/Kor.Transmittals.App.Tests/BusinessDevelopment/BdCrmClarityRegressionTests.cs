@@ -162,15 +162,18 @@ public sealed class BdCrmClarityRegressionTests
         await vm.LoadAsync(CancellationToken.None);
         Assert.Equal(new[]
         {
-            "5 pursuits", "won 1 / lost 0 recorded here", "win rate " + 1d.ToString("P0", CultureInfo.CurrentCulture),
+            "5 pursuits", "won 1 / lost 0 recorded here",
             "avg won fee " + 41000m.ToString("C0", CultureInfo.CurrentCulture),
         }, vm.AnalyticsHeadline.Split("  •  "));
+        // Ian, 21 Oct 2026: tracker win rates are wrong (most pursuits never closed); none is shown.
+        Assert.DoesNotContain("rate", vm.AnalyticsHeadline, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("%", vm.AnalyticsHeadline, StringComparison.Ordinal);
         Assert.Equal("Loaded 5 pursuits.", vm.StatusMessage);
 
         rows.Add(new CrmEngagement { Id = 6, Stage = CrmEngagementStage.Won, ProposedFee = 90000m, ExternalSource = "Deltek.CustomProposal" });
         await vm.LoadAsync(CancellationToken.None);
         Assert.Contains("1 earlier Deltek wins", vm.AnalyticsHeadline);
-        Assert.Contains("kept out of the rate", vm.AnalyticsHeadline);
+        Assert.Contains("counted separately", vm.AnalyticsHeadline);
         Assert.Contains("won 1 / lost 0 recorded here", vm.AnalyticsHeadline);
         Assert.Contains("avg won fee " + 41000m.ToString("C0", CultureInfo.CurrentCulture), vm.AnalyticsHeadline);
         Assert.DoesNotContain("engagement", vm.AnalyticsHeadline, StringComparison.OrdinalIgnoreCase);
@@ -178,7 +181,7 @@ public sealed class BdCrmClarityRegressionTests
 
         rows.RemoveAll(e => e.Stage == CrmEngagementStage.Won);
         await vm.LoadAsync(CancellationToken.None);
-        Assert.Contains("— (none decided yet)", vm.AnalyticsHeadline);
+        Assert.Contains("won 0 / lost 0 recorded here", vm.AnalyticsHeadline);
         rows.RemoveRange(1, 3);
         await vm.LoadAsync(CancellationToken.None);
         Assert.StartsWith("1 pursuit  •", vm.AnalyticsHeadline);

@@ -56,18 +56,11 @@ public sealed class AttributionViewModel : ObservableObject, IAiContextProvider
     public string ActiveDisplay => _summary?.ActivePursuits.ToString(CultureInfo.CurrentCulture) ?? "—";
     public string SubmittedDisplay => _summary?.Submitted.ToString(CultureInfo.CurrentCulture) ?? "—";
 
-    /// <summary>Win rate, or an honest "no losses yet" when there is no denominator.</summary>
-    public string WinRateDisplay
-    {
-        get
-        {
-            if (_summary is null) return "—";
-            var decided = _summary.Wins + _summary.Lost;
-            if (decided == 0) return "—";
-            if (_summary.Lost == 0) return "100% (no losses recorded yet)";
-            return ((double)_summary.Wins / decided).ToString("P0", CultureInfo.CurrentCulture);
-        }
-    }
+    /// <summary>
+    /// Losses recorded. No win rate (Ian, 21 Oct 2026): most tracked pursuits were never closed won or lost, so a rate from
+    /// these rows measures the record-keeping, not KOR.
+    /// </summary>
+    public string LostDisplay => _summary?.Lost.ToString(CultureInfo.CurrentCulture) ?? "—";
 
     /// <summary>One-line note keeping the scorecard honest about what is/ isn't tracked yet.</summary>
     public string MaturityNote
@@ -78,7 +71,7 @@ public sealed class AttributionViewModel : ObservableObject, IAiContextProvider
             var unattributed = _summary.ByOwner.FirstOrDefault(o => o.Owner == "(unattributed)")?.Wins ?? 0;
             if (unattributed > 0 || _summary.Lost == 0)
             {
-                return "Owner and win-rate dimensions fill in as grabbed pursuits convert to wins — "
+                return "The owner breakdown fills in as grabbed pursuits convert to wins — "
                      + $"{unattributed} historical win(s) predate owner tracking.";
             }
             return string.Empty;
@@ -111,7 +104,7 @@ public sealed class AttributionViewModel : ObservableObject, IAiContextProvider
             foreach (var name in new[]
             {
                 nameof(HasSummary), nameof(WinsDisplay), nameof(WonFeeDisplay), nameof(ActiveDisplay),
-                nameof(SubmittedDisplay), nameof(WinRateDisplay), nameof(MaturityNote), nameof(HasMaturityNote),
+                nameof(SubmittedDisplay), nameof(LostDisplay), nameof(MaturityNote), nameof(HasMaturityNote),
             })
             {
                 OnPropertyChanged(name);

@@ -423,7 +423,7 @@ public sealed class BdDirectorRegressionTests
         await vm.LoadAsync(CancellationToken.None);
         Assert.True(vm.Live == 2 && vm.Stages.Sum(s => s.Pursuits) == 2,
             $"EXPECTED two live pursuits; ACTUAL {vm.Live}");
-        var expected = $"Won 1 · Lost 1 · win rate {0.5.ToString("P0", CultureInfo.CurrentCulture)} on decided live pursuits · 1 Deltek wins kept separate";
+        var expected = "Won 1 · Lost 1 on decided live pursuits · 1 Deltek wins kept separate";
         Assert.True(vm.Outcomes == expected, $"EXPECTED {expected}; ACTUAL {vm.Outcomes}");
         Assert.True(vm.Sources.Count == 1 && ReferenceEquals(source, vm.Sources[0]),
             "EXPECTED unchanged Scorecard source row; ACTUAL row missing or recomputed");

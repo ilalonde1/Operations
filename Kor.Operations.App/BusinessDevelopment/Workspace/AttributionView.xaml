@@ -64,8 +64,8 @@
             </Border>
             <Border Style="{StaticResource StatTile}" Margin="0">
                 <StackPanel>
-                    <TextBlock Text="{Binding WinRateDisplay}" Style="{StaticResource StatValue}" FontSize="16"/>
-                    <TextBlock Text="Win rate" Style="{StaticResource StatLabel}"/>
+                    <TextBlock Text="{Binding LostDisplay}" Style="{StaticResource StatValue}"/>
+                    <TextBlock Text="Lost (recorded)" Style="{StaticResource StatLabel}"/>
                 </StackPanel>
             </Border>
         </StackPanel>
