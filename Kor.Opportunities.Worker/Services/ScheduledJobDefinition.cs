@@ -52,6 +52,8 @@ internal static class ScheduledJobDefinitions
         new(nameof(ApcInterestEnrichmentJob), "ApcInterestEnrichmentCronSchedule", "0 17 0/1 * * ?", o => o.ApcInterestEnrichmentEnabled, "Enrichment"),
         // 2026-10-20: bid packages of pursued Bids&Tenders tenders, stored in the pursuit.
         new(nameof(BidsAndTendersDocumentJob), "BidsAndTendersDocumentCronSchedule", "0 27 0/1 * * ?", o => o.BidsAndTendersDocumentsEnabled, "Enrichment"),
+        // 2026-10-21: documents of pursued APC postings; every run also keeps the signed-in session alive.
+        new(nameof(ApcDocumentJob), "ApcDocumentCronSchedule", "0 3/10 * * * ?", o => o.ApcDocumentsEnabled, "Enrichment"),
         // 2026-10-20: nightly merge of one tender held under several feeds.
         new(nameof(OpportunityDedupJob), "OpportunityDedupCronSchedule", "0 10 3 * * ?", o => o.OpportunityDedupEnabled, "Cleanup"),
         // 2026-06-11: daily 6am BD system-status email to Ian.

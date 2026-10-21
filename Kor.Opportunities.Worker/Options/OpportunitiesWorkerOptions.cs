@@ -59,6 +59,10 @@ public sealed class OpportunitiesWorkerOptions
 
     public bool BidsAndTendersDocumentsEnabled { get; set; } = true;
 
+    /// <summary>2026-10-21: documents of pursued APC postings (ApcDocumentJob), on the session a person signed in to from the
+    /// app (opportunities.PortalSession). No row there = the job does nothing.</summary>
+    public bool ApcDocumentsEnabled { get; set; } = true;
+
     /// <summary>2026-10-20: nightly merge of one tender held under several feeds (OpportunityDedupJob).</summary>
     public bool OpportunityDedupEnabled { get; set; } = true;
 

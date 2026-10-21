@@ -363,6 +363,10 @@ public partial class CrmView : UserControl
         new BusinessDevelopment.Director.PursuitChecklistWindow(checklist) { Owner = Window.GetWindow(this) }.Show();
     }
 
+    /// <summary>2026-10-21: one person signs in to APC once; the Worker downloads pursued APC tenders' documents on it.</summary>
+    private void ApcSignIn_Click(object sender, RoutedEventArgs e) =>
+        new ApcSignInWindow(AppServices.Get<Kor.Opportunities.Data.Portals.SqlPortalSessionStore>(), ResolveActor()) { Owner = Window.GetWindow(this) }.Show();
+
     private void SetStageButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.ContextMenu is not null)

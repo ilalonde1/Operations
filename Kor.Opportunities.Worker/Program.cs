@@ -312,6 +312,14 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.IndustryEvents.IIndustryEve
 builder.Services.AddSingleton<Kor.Opportunities.Data.IndustryEvents.IIndustryEventCalendarParser,
     Kor.Opportunities.Data.IndustryEvents.IcalCalendarParser>();
 
+// 2026-10-21: APC signed-in downloads (ApcDocumentJob). A browser user agent: the site sits behind Cloudflare, which answered
+// a plain client with one on the day it was measured. Five minutes for a large drawing set from Azure blob storage.
+builder.Services.AddHttpClient(nameof(Kor.Opportunities.Worker.Services.ApcDocumentJob), c =>
+{
+    c.Timeout = TimeSpan.FromMinutes(5);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36");
+});
+
 builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.IndustryEvents.IndustryEventIngestService), c =>
 {
     c.Timeout = TimeSpan.FromSeconds(45);
@@ -1090,6 +1098,18 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["BidsAndTendersDocumentCronSchedule"] ?? "0 27 0/1 * * ?";
       t.ForJob(bidsAndTendersDocumentKey)
        .WithIdentity("BidsAndTendersDocumentTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  // 2026-10-21: documents of pursued APC postings. Every 10 minutes, because each run also renews the signed-in session and
+  // the sign-in server ends a session left idle; each pursuit at most daily after its first fetch (the job's own log).
+  var apcDocumentKey = new JobKey(nameof(Kor.Opportunities.Worker.Services.ApcDocumentJob));
+  q.AddJob<Kor.Opportunities.Worker.Services.ApcDocumentJob>(opts => opts.WithIdentity(apcDocumentKey));
+  q.AddTrigger(t =>
+  {
+      var cron = builder.Configuration["ApcDocumentCronSchedule"] ?? "0 3/10 * * * ?";
+      t.ForJob(apcDocumentKey)
+       .WithIdentity("ApcDocumentTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 

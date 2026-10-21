@@ -52,6 +52,9 @@
                                   ToolTip="Open the Fee Proposal Builder pre-named for this pursuit."/>
                         <MenuItem Header="Brochure…" Click="BuildBrochureButton_Click"
                                   ToolTip="Open the Sales Brochure Builder pre-named for this pursuit."/>
+                        <Separator/>
+                        <MenuItem Header="Sign in to APC…" Click="ApcSignIn_Click"
+                                  ToolTip="Sign in once with the company Alberta Purchasing Connection account, so the app can download the documents of pursued APC tenders."/>
                     </ContextMenu>
                 </Button.ContextMenu>
             </Button>

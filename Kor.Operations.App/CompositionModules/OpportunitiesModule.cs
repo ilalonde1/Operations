@@ -283,6 +283,8 @@ internal static class OpportunitiesModule
         // Pursuit attachments (Ian, 2026-07-08): DB index + LAN-share bytes.
         services.AddSingleton<IPursuitFileStore>(_ => new SqlPursuitFileStore(options.OpportunitiesDb));
         services.AddSingleton<IPursuitRequirementStore>(_ => new SqlPursuitRequirementStore(options.OpportunitiesDb));
+        // 2026-10-21: the APC session a person signs in to once (My Pursuits > More > Sign in to APC); the Worker keeps it alive.
+        services.AddSingleton(_ => new Kor.Opportunities.Data.Portals.SqlPortalSessionStore(options.OpportunitiesDb));
         services.AddSingleton<App.Brochures.BrochurePursuitLauncher>();
         services.AddSingleton<App.Crm.IPursuitFileStorage, App.Crm.DbPursuitFileStorage>();
         services.AddSingleton(_ => new App.Crm.LanPursuitFileStorage(
