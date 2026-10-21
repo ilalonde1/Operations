@@ -1,8 +1,10 @@
 #nullable enable
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using Kor.Operations.NetworkOps.Core.Learning;
 
 namespace Kor.Operations.App.NetworkOps;
 
@@ -103,6 +105,33 @@ public partial class NetworkOpsDeviceWindow : Window
     }
 
     private async void Wake_Click(object sender, RoutedEventArgs e) => await Run(_vm.WakeAsync).ConfigureAwait(true);
+
+    /// <summary>
+    /// 2026-10-20 (Ian: "We should have a restart button"): the restart-pc fix, reachable without first picking a finding.
+    /// A PC that is not answering cannot be restarted remotely -- KOR-302N was frozen with its switch port up and its agent
+    /// silent -- so that case says what to do instead of queuing a restart that can never arrive.
+    /// </summary>
+    private async void Restart_Click(object sender, RoutedEventArgs e)
+    {
+        var d = _vm.Device;
+        var heard = new[] { d.AgentLastContactUtc, d.LastReachableUtc }.Where(t => t.HasValue).Select(t => t!.Value).DefaultIfEmpty(DateTime.MinValue).Max();
+        if (!d.AgentConnected && DateTime.UtcNow - heard > TimeSpan.FromMinutes(15))
+        {
+            var since = heard == DateTime.MinValue ? "for a long time" : $"since {heard.ToLocalTime():ddd h:mm tt}";
+            MessageBox.Show(this,
+                $"{d.Name} is not answering ({since}), so a restart cannot reach it.\n\n" +
+                "If it is switched on but frozen, hold its power button for about 5 seconds, then press it again to start it.\n" +
+                "If it is switched off, use More > Wake it up.",
+                "Restart the PC", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var who = string.IsNullOrWhiteSpace(d.Presence) ? "" : $"\n\nAt the last check: {d.Presence}.";
+        if (MessageBox.Show(this, $"Restart {d.Name}? It restarts in 5 minutes with a warning on screen, so whoever is there can save their work.{who}",
+                "Restart the PC", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        var restart = new FixOption("restart-pc", "Restart the PC", "", Disruptive: true, ParamLabel: null, PrefilledParam: null, Clears: false);
+        await Run(async ct => await _vm.RunFixAsync(restart, null, confirmed: true, ct).ConfigureAwait(true)).ConfigureAwait(true);
+    }
 
     /// <summary>Web-RDP (a full-size session for a PC with no monitor, which shows 1024x768 otherwise) in the app's own clean
     /// viewer -- the same window as Connect, never the browser.</summary>

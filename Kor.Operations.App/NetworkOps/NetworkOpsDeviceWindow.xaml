@@ -90,11 +90,13 @@
                                 IsEnabled="{Binding CanCheck}" Click="CheckNow_Click"
                                 ToolTip="{Binding CheckButtonTip}"/>
                         <Button x:Name="MoreBtn" Content="More  ▾" Click="More_Click" Visibility="{Binding ShowsMore, Converter={StaticResource BoolToVis}}"
-                                ToolTip="Wake it, open it in Web-RDP, install remote control, install or remove the agent.">
+                                ToolTip="Wake it, restart it, open it in Web-RDP, install remote control, install or remove the agent.">
                             <Button.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem Header="Wake it up" Click="Wake_Click" IsEnabled="{Binding CanWake}" Visibility="{Binding ShowsWake, Converter={StaticResource BoolToVis}}"
                                               ToolTip="Sends a Wake-on-LAN magic packet from APP01 and waits (up to 6 minutes) for the PC to answer."/>
+                                    <MenuItem Header="Restart the PC…" Click="Restart_Click" IsEnabled="{Binding CanWake}" Visibility="{Binding ShowsWake, Converter={StaticResource BoolToVis}}"
+                                              ToolTip="Restarts it in 5 minutes with a warning on screen, so whoever is there can save their work. Needs the PC to be answering: a frozen PC needs its power button."/>
                                     <MenuItem Header="Open in Web-RDP…" Click="WebRdp_Click" IsEnabled="{Binding CanConnect}" Visibility="{Binding ShowsRemote, Converter={StaticResource BoolToVis}}"
                                               ToolTip="Opens this machine's page in KOR Remote; click Web-RDP there for a full-size, sharp session. Best for a PC with no monitor (it otherwise shows 1024x768)."/>
                                     <MenuItem Header="Install remote control" Click="InstallRemote_Click" IsEnabled="{Binding CanInstallRemote}" Visibility="{Binding CanInstallRemote, Converter={StaticResource BoolToVis}}"
