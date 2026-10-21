@@ -18,8 +18,12 @@ using Kor.Operations.Core.Services;
 using Kor.Operations.Graph;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
+using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Crm;
+using Kor.Opportunities.Data.Heartbeat;
+using Kor.Opportunities.Data.Ingestion;
 using Kor.Opportunities.Data.Knowledge;
+using Microsoft.Extensions.DependencyInjection;
 using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Data.Observations;
@@ -79,6 +83,7 @@ public sealed class BdScreensRenderTests
                 });
 
                 written += RenderDashboard(dir);
+                written += RenderRealTenders(dir);
                 written += RenderRfpWindows(dir);
                 written += RenderPursuits(dir);
                 written += RenderPursuitHealth(dir);
@@ -143,6 +148,49 @@ public sealed class BdScreensRenderTests
         File.WriteAllText(Path.Combine(dir, "org-chart-leduc.svg"), chart.Svg);
         File.WriteAllBytes(Path.Combine(dir, "org-chart-leduc.png"), chart.Png);
         return count;
+    }
+
+    // ---- the 581 real open tenders of 2026-10-20 (hand-labelled for KorBidFit), as a lead first sees them: the
+    // dashboard's Closing soon / New RFPs and the Opportunities > Bids tab. Titles are real; deadlines and dates are
+    // spread so every row is open. Asserts no road work reaches either screen. ----
+
+    private static int RenderRealTenders(string dir)
+    {
+        var path = Path.Combine(BdDirectorBuildersRegressionTests.RepoRoot(), "Kor.Opportunities.Data.Tests", "Fixtures", "KorBidFitLabels-2026-10-20.tsv");
+        var opps = File.ReadLines(path).Where(l => l.Length > 0 && !l.StartsWith('#')).Select(l => l.Split('\t'))
+            .Select((p, i) => new Opportunity
+            {
+                Id = long.Parse(p[0]), Name = p[2], BuyerName = "Buyer", ProjectProvince = "BC",
+                SubmissionDeadlineUtc = Now.AddDays(1 + i % 28), CreatedAtUtc = Now.AddMinutes(-i),
+            }).ToList();
+
+        var opportunities = new Mock<IOpportunityStore>();
+        opportunities.Setup(s => s.ListAsync(It.IsAny<CancellationToken>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>())).ReturnsAsync(opps);
+        var dashboard = new Mock<IBdDashboardStore>();
+        dashboard.Setup(s => s.GetPipelineFunnelAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Kor.Opportunities.Data.MajorProjects.PipelineFunnel(RadarCount: 1079, BidWindowCount: 173, OpenSeatCount: 27));
+        var dvm = new DashboardViewModel(opportunities.Object, dashboard.Object,
+            new IntelReadService("Server=none;Database=none"), new IntelPersistenceService("Server=none;Database=none"));
+        dvm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
+        Assert.DoesNotContain(dvm.LatestRfps, r => r.Name.Contains("Road Construction", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(dvm.Deadlines, r => r.Name.Contains("Watermain", StringComparison.OrdinalIgnoreCase));
+        var written = RenderView(new DashboardView(dvm, Mock.Of<IServiceProvider>()), new Size(1680, 980), Path.Combine(dir, "dashboard-real-tenders.png"));
+
+        var vm = new OpportunitiesViewModel(Mock.Of<IOpportunityStore>(), Mock.Of<IHeartbeatStore>(),
+            Mock.Of<IOpportunityScoringService>(), Mock.Of<IIngestionRunStore>(), Mock.Of<IIngestionTriggerStore>(),
+            Mock.Of<IOpportunitySourceStore>(), Mock.Of<IDeltekClientContextService>(),
+            Mock.Of<ICrmEngagementStore>(), Mock.Of<ICrmActivityStore>(), Mock.Of<ICrmContactStore>(),
+            Mock.Of<IOpportunityObservationStore>(), Mock.Of<IOpportunityInterestedFirmStore>(), Mock.Of<IPursuitGrabStore>());
+        foreach (var o in opps) vm.Opportunities.Add(new OpportunityRowView(o) { Kind = OpportunityKind.Bid });
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddSingleton(vm);
+        services.AddSingleton(sp => new OpportunitiesView(vm, sp));
+        services.AddSingleton(new Kor.Operations.App.Options.UserOptions { UserUpnOverride = "omara@korstructural.com" });
+        var hub = new OpportunitiesHubView(Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(services));
+        hub.ShowMode(allTenders: true);
+        Assert.DoesNotContain(vm.FilteredOpportunitiesView.Cast<OpportunityRowView>(), r => r.Model.Name.Contains("Road Construction", StringComparison.OrdinalIgnoreCase));
+        written += RenderView(hub, new Size(1680, 980), Path.Combine(dir, "bids-real-tenders.png"));
+        return written;
     }
 
     // ---- the dashboard: funnel, Closing soon, New RFPs, Priority Actions (collapsed) ----

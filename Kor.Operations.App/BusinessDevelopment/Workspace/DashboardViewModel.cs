@@ -286,7 +286,10 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
             // BdOpportunityDedup retiring a duplicate) stays in the cache for deep
             // links but is neither news nor closing. 2026-10-14: the top row of
             // "Closing soon" was a retired duplicate whose postings live on its twin.
-            var live = opps.Where(o => o.DismissedAtUtc is null).ToList();
+            // 2026-10-20: only work a structural firm bids on (KorBidFit) reaches the first screen; the prime flag alone let
+            // geotechnical, commissioning, electrical and construction-management tenders through. The rest stay in Bids
+            // behind "Show".
+            var live = opps.Where(o => o.DismissedAtUtc is null && Kor.Opportunities.Data.Ingestion.KorBidFit.IsKorWork(o.Name)).ToList();
 
             Replace(LatestRfps, live
                 .OrderByDescending(o => o.CreatedAtUtc)
@@ -305,7 +308,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
                 .Select(o => CreateDeadlineRow(o, now)));
             OnPropertyChanged(nameof(HasDeadlines));
 
-            StatusMessage = $"{live.Count:N0} open prime RFPs; {Deadlines.Count:N0} close in the next 30 days.";
+            StatusMessage = $"{live.Count:N0} open tenders for a structural firm; {Deadlines.Count:N0} close in the next 30 days.";
         }
         catch (OperationCanceledException)
         {

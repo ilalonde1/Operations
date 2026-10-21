@@ -56,7 +56,7 @@ public sealed class BdDashboardClarityRegressionTests
     public void Dashboard_ListsOnlyLiveRecords()
     {
         var vm = Source("Kor.Operations.App/BusinessDevelopment/Workspace/DashboardViewModel.cs");
-        Assert.Contains("var live = opps.Where(o => o.DismissedAtUtc is null).ToList();", vm);
+        Assert.Contains("var live = opps.Where(o => o.DismissedAtUtc is null && Kor.Opportunities.Data.Ingestion.KorBidFit.IsKorWork(o.Name)).ToList();", vm);
         Assert.Contains("Replace(LatestRfps, live", vm);
         Assert.Contains("Replace(Deadlines, live", vm);
         Assert.DoesNotContain("Replace(LatestRfps, opps", vm);
