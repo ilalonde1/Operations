@@ -106,7 +106,7 @@ public static class PursuitRfpReview
         sb.AppendLine("  \"reasons\": \"Why go, no-go or decide: one point per line, the deciding one first.\",");
         sb.AppendLine("  \"questions\": [ { \"question\": \"Can a structural firm propose with a civil sub-consultant?\", \"why\": \"Civil utilities are a minimum qualification; KOR does not do them.\", \"ref\": \"Appendix E A.3\" } ],");
         sb.AppendLine("  \"questionsDeadline\": \"Fri 23 Oct 2026, 2:00 pm MST\",");
-        sb.AppendLine("  \"questionsTo\": \"name@buyer.ca\",");
+        sb.AppendLine("  \"questionsTo\": \"name@buyer.ca\",          // the email address only; how questions must be sent goes in summary");
         sb.AppendLine("  \"filesRead\": \"Which files you read, and any you could not.\",");
         sb.AppendLine("  \"checklist\": [ { \"requirement\": \"Quoted requirement\", \"sourceRef\": \"s. 3.1.2\", \"checkKind\": \"Manual\", \"checkParameter\": null } ]");
         sb.AppendLine("}");

@@ -31,7 +31,9 @@ public partial class PursuitReviewWindow : Window
         InitializeComponent();
         _review = review;
         _project = project;
-        _sendTo = review.QuestionsTo ?? buyerEmail;
+        // questionsTo is meant to be an address; a session may write a sentence there (Leduc, run 17: "Through the bids&tenders
+        // 'Submit a Question' feature only…"), which must never land in an email's To line.
+        _sendTo = IsAddress(review.QuestionsTo) ? review.QuestionsTo!.Trim() : IsAddress(buyerEmail) ? buyerEmail!.Trim() : null;
         _openChecklist = openChecklist;
 
         Heading.Text = project;
@@ -61,6 +63,9 @@ public partial class PursuitReviewWindow : Window
         Summary.Text = review.Summary;
         Footnote.Text = string.Join("  ", new[] { review.FilesRead, review.ChecklistNote }.Where(t => !string.IsNullOrWhiteSpace(t)));
     }
+
+    internal static bool IsAddress(string? s) =>
+        s is { Length: > 3 } && !s.Trim().Contains(' ') && s.IndexOf('@') > 0 && s.IndexOf('@') == s.LastIndexOf('@');
 
     /// <summary>The reasons, one point per line, the deciding one first (as the review prompt asks for them).</summary>
     internal static System.Collections.Generic.List<string> ReasonLines(string reasons) =>
