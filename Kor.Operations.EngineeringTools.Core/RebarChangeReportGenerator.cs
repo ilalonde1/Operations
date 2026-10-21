@@ -263,6 +263,17 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                     : $"The rough total steel moved ~{Math.Abs(w.TotalDelta):0.0} t ({pct:+0.#;-0.#;0}%) - part of the budget change is real material; the rest is unit-rate / basis.",
             };
             foreach (var s in story) { row++; ws.Cell(row, 1).Value = s; }
+            // The markup's cover states the weighable lb; say here how it and the rough total relate, so the two
+            // documents never read as contradicting each other (31065: +15,965 lb against -4.8 t, 2026-10-21).
+            if (r.NetWeightLb != 0 || r.UnweighedChanges > 0)
+            {
+                row++;
+                ws.Cell(row, 1).Value =
+                    $"The changed call-outs that state a bar count and length weigh {r.NetWeightLb:+#,##0;-#,##0;0} lb net " +
+                    $"({r.NetWeightLb * 0.45359237 / 1000:+0.0;-0.0;0} t); {r.UnweighedChanges} more changed call-out(s) state no count or length " +
+                    "and are not in that figure. It is the part of the change that can be weighed exactly, not the whole - " +
+                    "the rough total above is the whole-building estimate.";
+            }
 
             row += 2;
             ws.Cell(row, 1).Value = "Weight is a high-level / order-of-magnitude takeoff (calibratable). Change detection is exact text comparison.";

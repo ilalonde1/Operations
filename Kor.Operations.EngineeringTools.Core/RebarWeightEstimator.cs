@@ -61,10 +61,15 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                     double mean = (ib + ia) / 2.0;
                     double rb = Math.Clamp(ib / mean, RatioFloor, RatioCeil);
                     double ra = Math.Clamp(ia / mean, RatioFloor, RatioCeil);
-                    db = std * rb;
-                    da = std * ra;
+                    // Whole kg/m³, as the workbook's editable density cells show it: the summary's tonnes are then the
+                    // sheet's own arithmetic. Unrounded, 31065's slab stood either side of 120 and the two pages
+                    // disagreed by 11 t (2026-10-21).
+                    db = Math.Round(std * rb);
+                    da = Math.Round(std * ra);
                     note = $"call-out intensity {ib:0.0}→{ia:0.0} kg/m² ⇒ density {db:0}→{da:0} kg/m³";
                 }
+                vb = Math.Round(vb, 1);
+                va = Math.Round(va, 1);
 
                 double tb = db * vb / 1000.0;
                 double ta = da * va / 1000.0;
