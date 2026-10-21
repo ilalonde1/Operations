@@ -13,7 +13,7 @@ namespace Kor.Operations.App.Crm;
 
 /// <summary>What the new owner is told, gathered once by whichever screen moved the pursuit.</summary>
 public sealed record PursuitAssignment(long EngagementId, long? BuyerOrgId, string Project, string? Buyer, DateTimeOffset? DeadlineUtc,
-    string ToOwner, string? ToDisplay, string ByUpn, string? Reason);
+    string ToOwner, string? ToDisplay, string ByUpn, string? Reason, string? FromOwner = null);
 
 /// <summary>
 /// Tells a person a pursuit is now theirs, the same way from every place an owner changes (BD Director Reassign and Assign,
@@ -40,6 +40,17 @@ public static class PursuitAssignmentNotice
             }
         }
         catch (Exception ex) { Log.Warning(ex, "Assignment notice: reading the RFP review failed for {EngagementId}", a.EngagementId); }
+
+        // The previous owner's review actions follow the pursuit, so the new owner's My day holds them and the old one's does not.
+        if (review is not null && reviews is not null && !string.IsNullOrWhiteSpace(a.FromOwner))
+        {
+            try { await reviews.MoveOwnerActionsAsync(a.EngagementId, a.FromOwner!, a.ToOwner, review.Actions, ct).ConfigureAwait(true); }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Assignment notice: moving the review actions failed for {EngagementId}", a.EngagementId);
+                problems.Append("The review's actions could not be moved to the new owner's My day. ");
+            }
+        }
 
         var name = string.IsNullOrWhiteSpace(a.ToDisplay) ? a.ToOwner : a.ToDisplay!;
         if (a.ToOwner.Contains('@'))

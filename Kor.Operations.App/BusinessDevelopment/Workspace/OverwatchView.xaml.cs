@@ -167,7 +167,7 @@ public partial class OverwatchView : UserControl
         var newOwner = string.IsNullOrWhiteSpace(toEmail) ? toDisplay : toEmail;
         var warning = await global::Kor.Operations.App.Crm.PursuitAssignmentNotice.SendAsync(
             new global::Kor.Operations.App.Crm.PursuitAssignment(row.EngagementId, null, row.ProjectName, row.Buyer, null,
-                newOwner, toDisplay, managerUpn, reason),
+                newOwner, toDisplay, managerUpn, reason, row.Row.OwnerStaffId),
             _graph, AppServices.Get<IBdDirectorLedgerStore>(), AppServices.GetOptional<SqlPursuitReviewStore>(), CancellationToken.None)
             .ConfigureAwait(true);
         if (warning is not null)

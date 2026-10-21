@@ -457,6 +457,31 @@ VALUES (@to, @e, @org, @ask, @why, 30, @due, @by);", con, tx);
         return (actions.Count, nextStepSet, owners);
     }
 
+    /// <summary>
+    /// When a pursuit changes hands, the open review asks that were the OWNER's (action owner "owner") follow it to the new
+    /// owner; Ian's own actions ("Ian") and anyone named stay where they are. Matched by the review's own action text, so a
+    /// person's hand-made asks are never moved. Returns how many moved.
+    /// </summary>
+    public async Task<int> MoveOwnerActionsAsync(long engagementId, string fromOwner, string toOwner, IReadOnlyList<RfpAction> actions, CancellationToken ct)
+    {
+        var mine = actions.Where(a => a.Owner.Equals("owner", StringComparison.OrdinalIgnoreCase))
+            .Select(a => a.Action.Length <= 500 ? a.Action : a.Action[..500]).Distinct().ToList();
+        if (mine.Count == 0 || string.Equals(fromOwner, toOwner, StringComparison.OrdinalIgnoreCase)) return 0;
+        await using var con = await OpenAsync(ct).ConfigureAwait(false);
+        var moved = 0;
+        foreach (var text in mine)
+        {
+            await using var cmd = new SqlCommand(@"UPDATE opportunities.BdAsk SET ToStaffKey = @to
+WHERE EngagementId = @e AND Status = N'Open' AND ToStaffKey = @from AND Ask = @ask AND AskedBy LIKE N'Claude (RFP review%';", con);
+            cmd.Parameters.Add("@e", SqlDbType.BigInt).Value = engagementId;
+            cmd.Parameters.Add("@from", SqlDbType.NVarChar, 150).Value = fromOwner;
+            cmd.Parameters.Add("@to", SqlDbType.NVarChar, 150).Value = toOwner;
+            cmd.Parameters.Add("@ask", SqlDbType.NVarChar, 500).Value = text;
+            moved += await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+        return moved;
+    }
+
     /// <summary>A due day is the end of that day in Alberta/BC working hours: 5 pm Mountain, so an action is not "overdue" at breakfast.</summary>
     private static DateTimeOffset DueAtEndOfDay(DateOnly due) => new(due.ToDateTime(new TimeOnly(17, 0)), TimeSpan.FromHours(-6));
 

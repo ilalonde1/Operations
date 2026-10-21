@@ -685,7 +685,7 @@ public partial class BdDirectorWindow : Window
                 var p = row.Pursuit;
                 var warning = await Kor.Operations.App.Crm.PursuitAssignmentNotice.SendAsync(
                     new Kor.Operations.App.Crm.PursuitAssignment(p.EngagementId, null, row.ProjectName, p.Buyer, null,
-                        dialog.TargetOwner, dialog.TargetDisplay, _actor, dialog.Reason),
+                        dialog.TargetOwner, dialog.TargetDisplay, _actor, dialog.Reason, p.OwnerStaffId),
                     AppServices.Get<Kor.Operations.Graph.IGraphFacade>(), AppServices.Get<IBdDirectorLedgerStore>(),
                     AppServices.GetOptional<SqlPursuitReviewStore>(), ct).ConfigureAwait(true);
                 if (warning is not null)

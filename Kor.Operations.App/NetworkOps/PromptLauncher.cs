@@ -45,10 +45,13 @@ public static class PromptLauncher
     public static void RunInClaude(string promptPath, string title)
     {
         var dir = Directory.Exists(PromptComposer.RepoPath) ? PromptComposer.RepoPath : Path.GetDirectoryName(promptPath)!;
-        var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
-        foreach (var a in new[] { "--title", title, "-d", dir, "cmd", "/c", "claude", "-p", $"Read {promptPath} and follow it.",
-                     "--dangerously-skip-permissions", "||", "pause" })
-            psi.ArgumentList.Add(a);
-        Process.Start(psi);
+        // -p prints nothing until it is done, so the tab says what it is doing (Ian, 21 Oct: "all I get is an empty window");
+        // --suppressApplicationTitle keeps "RFP review #N" on the tab instead of "claude". One raw command line, so cmd's
+        // echo prints the words without quote marks; no ';' anywhere (Windows Terminal splits its commands on it).
+        var arguments = $"--title \"{title}\" --suppressApplicationTitle -d \"{dir}\" cmd /c "
+            + $"echo {title}: Claude is reading the documents and writing the review back to the pursuit. "
+            + "& echo It shows nothing until it is done, usually a few minutes. This window closes itself when the review is saved. "
+            + $"& claude -p \"Read {promptPath} and follow it.\" --dangerously-skip-permissions || pause";
+        Process.Start(new ProcessStartInfo("wt.exe", arguments) { UseShellExecute = false });
     }
 }

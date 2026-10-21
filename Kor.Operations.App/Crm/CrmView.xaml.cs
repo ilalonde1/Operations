@@ -555,7 +555,7 @@ public partial class CrmView : UserControl
                     var row = _vm.Engagements.FirstOrDefault(r => r.Id == saved.Id);
                     var warning = await PursuitAssignmentNotice.SendAsync(
                         new PursuitAssignment(saved.Id, saved.BuyerCanonicalOrgId, row?.ProjectName ?? $"pursuit #{saved.Id}", row?.Buyer,
-                            row?.Opportunity?.SubmissionDeadlineUtc, newOwner!, null, ResolveActor(), "Changed in My Pursuits."),
+                            row?.Opportunity?.SubmissionDeadlineUtc, newOwner!, null, ResolveActor(), "Changed in My Pursuits.", original!.OwnerStaffId),
                         AppServices.Get<Kor.Operations.Graph.IGraphFacade>(), AppServices.Get<Kor.Opportunities.Data.Crm.IBdDirectorLedgerStore>(),
                         AppServices.GetOptional<Kor.Opportunities.Data.Crm.SqlPursuitReviewStore>(), CancellationToken.None).ConfigureAwait(true);
                     if (warning is not null)
