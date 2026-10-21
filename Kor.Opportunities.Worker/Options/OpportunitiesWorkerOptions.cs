@@ -59,6 +59,9 @@ public sealed class OpportunitiesWorkerOptions
 
     public bool BidsAndTendersDocumentsEnabled { get; set; } = true;
 
+    /// <summary>2026-10-20: nightly merge of one tender held under several feeds (OpportunityDedupJob).</summary>
+    public bool OpportunityDedupEnabled { get; set; } = true;
+
     /// <summary>
     /// Rows of HistoricalOpportunities to enrich per scheduled job tick.
     /// Default 25. Each row takes ~5-7s (Playwright nav + extract + SQL write)

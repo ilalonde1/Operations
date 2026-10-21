@@ -9,6 +9,9 @@
 // copy and the higher relevance score on the other. Measured 2026-09-28: 244
 // titles across 562 rows, about 7% of the active pipeline.
 //
+// 2026-10-20: the logic now lives in Kor.Opportunities.Data OpportunityDedup, shared with the Worker's nightly
+// OpportunityDedupJob; this tool is its command line (dry run, plan file, --pair).
+//
 // OpportunityDuplicateScorer already exists and is tested, so this reuses it
 // rather than growing a second matcher. That scorer guards MANUAL ENTRY in the
 // app and is never called from IngestionService; this tool is the batch side of
@@ -52,8 +55,6 @@ namespace Kor.BdOpportunityDedup;
 
 internal static class Program
 {
-    private const int CommandTimeoutSeconds = 180;
-
     private static async Task<int> Main(string[] args)
     {
         var commit = false;
@@ -100,7 +101,7 @@ internal static class Program
         await using var con = new SqlConnection(db);
         await con.OpenAsync().ConfigureAwait(false);
 
-        var rows = await LoadAsync(con).ConfigureAwait(false);
+        var rows = await OpportunityDedup.LoadAsync(con).ConfigureAwait(false);
         Console.WriteLine($"active opportunities considered: {rows.Count}");
 
         // --pair KEEP DROP (2026-10-20): a person has settled one held group, e.g. Leduc AB-2026-06617 carried by two
@@ -117,59 +118,19 @@ internal static class Program
             if (refusal is not null) { Console.Error.WriteLine($"--pair refused: {refusal}"); return 3; }
             Console.WriteLine($"PAIR: keep {keep!.OpportunityKey} <- drop {drop!.OpportunityKey}  {keep.Name}");
             if (!commit) { Console.WriteLine("Dry run. Re-run with --commit to apply."); return 0; }
-            var n = await MergeAsync(con, new Plan(keep, drop)).ConfigureAwait(false);
-            Console.WriteLine($"COMMITTED: {n} row(s) merged.");
-            return 0;
+            var error = await OpportunityDedup.MergeAsync(con, new OpportunityDedup.Plan(keep, drop), Actor).ConfigureAwait(false);
+            Console.WriteLine(error is null ? "COMMITTED: 1 row(s) merged." : $"merge FAILED: {error}");
+            return error is null ? 0 : 1;
         }
 
-        // A group is normally only considered when the SAME title arrives under SEVERAL
-        // sources — a second portal is the corroboration that this is one solicitation.
-        //
-        // --include-same-source (2026-10-08) also admits a single-source group, but only
-        // when every member shares ONE buyer and ONE non-null deadline date. BC Bid
-        // re-posts a solicitation under a fresh reference number, which looks identical
-        // to a genuine re-issue; the deadline is what separates them, because the point
-        // of re-issuing is to move it. Measured on the day: of 12 same-source groups with
-        // a live deadline, 11 shared a deadline and ONE did not — City of North Vancouver
-        // "Asphalt Pavement Crack Sealing Services", closing 2026-10-15 AND 2026-11-05.
-        // Those are two real procurements and this gate correctly leaves them alone.
-        static bool SameSourceIsSafe(IGrouping<string, Row> g)
-            => g.Select(r => r.BuyerName.Trim().ToLowerInvariant()).Distinct(StringComparer.Ordinal).Count() == 1
-               && g.All(r => r.DeadlineDate.HasValue)
-               && g.Select(r => r.DeadlineDate!.Value).Distinct().Count() == 1;
-
-        var groups = rows
-            .GroupBy(r => r.NormName, StringComparer.Ordinal)
-            .Where(g => g.Select(r => r.SourcePrefix).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1
-                        || (includeSameSource && g.Count() > 1 && SameSourceIsSafe(g)))
-            .ToList();
+        var outcome = OpportunityDedup.BuildPlan(rows, includeSameSource, minSimilarity);
         Console.WriteLine(includeSameSource
-            ? $"groups holding one title (several sources, or one source with a shared buyer+deadline): {groups.Count}"
-            : $"groups holding one title under several sources: {groups.Count}");
+            ? $"groups holding one title (several sources, or one source with a shared buyer+deadline): {outcome.GroupsConsidered}"
+            : $"groups holding one title under several sources: {outcome.GroupsConsidered}");
         Console.WriteLine();
 
-        var plans = new List<Plan>();
-        var held = new List<Held>();
-
-        foreach (var g in groups)
-        {
-            var members = g.ToList();
-
-            var reason = GateGroup(members, minSimilarity, out var survivor);
-            if (reason is not null)
-            {
-                held.Add(new Held(g.Key, members.Count, reason));
-                continue;
-            }
-
-            foreach (var loser in members.Where(m => m.Id != survivor!.Id))
-            {
-                plans.Add(new Plan(survivor!, loser));
-            }
-        }
-
-        Report(plans, held);
-        WritePlanFile(plans, held);
+        Report(outcome.Plans, outcome.Held);
+        WritePlanFile(outcome.Plans, outcome.Held);
 
         if (!commit)
         {
@@ -179,234 +140,21 @@ internal static class Program
         }
 
         var merged = 0;
-        foreach (var p in plans)
+        foreach (var p in outcome.Plans)
         {
-            merged += await MergeAsync(con, p).ConfigureAwait(false);
+            var error = await OpportunityDedup.MergeAsync(con, p, Actor).ConfigureAwait(false);
+            if (error is null) merged++;
+            else Console.Error.WriteLine($"  merge FAILED for {p.Loser.OpportunityKey}: {error}");
         }
 
         Console.WriteLine();
-        Console.WriteLine($"COMMITTED: {merged} row(s) merged into {plans.Select(p => p.Survivor.Id).Distinct().Count()} survivor(s).");
+        Console.WriteLine($"COMMITTED: {merged} row(s) merged into {outcome.Plans.Select(p => p.Survivor.Id).Distinct().Count()} survivor(s).");
         return 0;
     }
 
-    /// <summary>
-    /// Returns null when the group is safe to merge (and sets survivor), or the
-    /// reason it is being held.
-    /// </summary>
-    private static string? GateGroup(List<Row> members, double minSimilarity, out Row? survivor)
-    {
-        survivor = null;
+    private const string Actor = "BdOpportunityDedup";
 
-        if (members.Any(m => m.HasPursuit))
-        {
-            return "a pursuit (CrmEngagement) is linked";
-        }
-
-        if (members.Any(m => m.HasOwner))
-        {
-            return "an owner is assigned";
-        }
-
-        if (members.Any(m => m.HasHumanWork))
-        {
-            return "notes or a fee-proposal link exist";
-        }
-
-        if (members.Select(m => m.Status).Distinct().Count() > 1)
-        {
-            return "copies disagree on Status — one may be live and one dead";
-        }
-
-        // 2026-10-20: two different reference numbers on the SAME portal are two solicitations that share a title
-        // ("Notice to Vendors of upcoming procurement opportunities", BCBID-229472 / 232044 / 234181), never one RFP
-        // held twice. A portal's own engineering feed (BCBIDENG-) carries the same reference, so it is compared by number.
-        // A re-post of ONE solicitation under a fresh number (BC Bid does this) keeps its buyer and its deadline, so
-        // that pair is still allowed through, as --include-same-source always allowed.
-        var sharesBuyerAndDeadline = members.Select(m => m.BuyerName.Trim().ToLowerInvariant()).Distinct(StringComparer.Ordinal).Count() == 1
-            && members.All(m => m.DeadlineDate.HasValue) && members.Select(m => m.DeadlineDate!.Value).Distinct().Count() == 1;
-        var refs = members.Select(m => (Portal: PortalOf(m.SourcePrefix), Ref: RefOf(m.OpportunityKey))).ToList();
-        if (!sharesBuyerAndDeadline && refs.GroupBy(r => r.Portal, StringComparer.OrdinalIgnoreCase)
-                .Any(g => g.Select(r => r.Ref).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1))
-        {
-            return "same portal, different reference numbers — separate solicitations sharing a title";
-        }
-
-        // Survivor: highest relevance, then the one that actually carries a
-        // deadline, then the oldest row. A deadline is the field most often
-        // missing on one side and the one people act on.
-        var pick = members
-            .OrderByDescending(m => m.RelevanceScore ?? decimal.MinValue)
-            .ThenByDescending(m => m.HasDeadline)
-            .ThenBy(m => m.Id)
-            .First();
-        survivor = pick;
-
-        foreach (var other in members.Where(m => m.Id != pick.Id))
-        {
-            var sim = OpportunityDuplicateScorer.NameSimilarity(CoreTitle(pick.Name), CoreTitle(other.Name));
-            if (sim < minSimilarity)
-            {
-                return $"similarity {sim:0.00} below the {minSimilarity:0.00} floor";
-            }
-        }
-
-        return null;
-    }
-
-    // 2026-10-20: the title a person reads, without the decorations portals add. One tender arrives as
-    // "26-010 Building Condition Assessment and Feasibility Study – Building B" on one feed and without the number on
-    // another, or with CivicInfo's "(Vernon (City))" appended. Grouping and the similarity floor use this core.
-    private static readonly System.Text.RegularExpressions.Regex CityTail =
-        new(@"\s*\([^()]*\((city|district|town|village)\)\)\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-    private static readonly System.Text.RegularExpressions.Regex LeadingRef =
-        new(@"^\s*(rfp|rfq|rfb|itt|rft|nrfp|rfsq|rfpq|noi|tender)?\s*[#:]?\s*[a-z]{0,4}[-\s]?\d[\w./-]*\s*[-–:|]*\s*", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-    private static readonly System.Text.RegularExpressions.Regex NonWord = new(@"[^a-z0-9]+");
-
-    internal static string CoreTitle(string name)
-    {
-        var t = CityTail.Replace(name ?? "", "");
-        var stripped = LeadingRef.Replace(t, "");
-        if (stripped.Length >= 12) t = stripped;  // never strip a title down to almost nothing
-        return NonWord.Replace(t.ToLowerInvariant(), " ").Trim();
-    }
-
-    // BC Bid's engineering feed (BCBIDENG) is the same portal as BCBID: one reference number, two feeds.
-    private static string PortalOf(string sourcePrefix) =>
-        sourcePrefix.EndsWith("ENG", StringComparison.OrdinalIgnoreCase) ? sourcePrefix[..^3] : sourcePrefix;
-
-    private static string RefOf(string key) => key.IndexOf('-') is > 0 and var dash ? key[(dash + 1)..] : key;
-
-    private static async Task<int> MergeAsync(SqlConnection con, Plan p)
-    {
-        await using var tx = (SqlTransaction)await con.BeginTransactionAsync().ConfigureAwait(false);
-        try
-        {
-            // 1. Fill the survivor's gaps from the loser. COALESCE only — a value
-            //    already on the survivor is never overwritten.
-            await Exec(con, tx, @"
-UPDATE k SET
-    SubmissionDeadlineUtc = COALESCE(k.SubmissionDeadlineUtc, d.SubmissionDeadlineUtc),
-    ProjectCity           = COALESCE(k.ProjectCity,     d.ProjectCity),
-    ProjectProvince       = COALESCE(k.ProjectProvince, d.ProjectProvince),
-    EstimatedValue        = COALESCE(k.EstimatedValue,  d.EstimatedValue),
-    RfpReleaseDate        = COALESCE(k.RfpReleaseDate,  d.RfpReleaseDate),
-    ProjectAddress        = COALESCE(k.ProjectAddress,  d.ProjectAddress),
-    BuyerContactName      = COALESCE(k.BuyerContactName,  d.BuyerContactName),
-    BuyerContactEmail     = COALESCE(k.BuyerContactEmail, d.BuyerContactEmail),
-    BuyerContactPhone     = COALESCE(k.BuyerContactPhone, d.BuyerContactPhone),
-    UpdatedAtUtc          = SYSDATETIMEOFFSET(),
-    UpdatedBy             = N'BdOpportunityDedup'
-FROM opportunities.Opportunities k
-CROSS JOIN opportunities.Opportunities d
-WHERE k.Id = @keep AND d.Id = @drop;", p).ConfigureAwait(false);
-
-            // 2. Move everything that points at the loser.
-            //
-            // ⚠ THREE CHILD TABLES CARRY A UNIQUE INDEX ON (OpportunityId, X),
-            //   and two copies of one RFP routinely hold the SAME X — the same
-            //   document URL, the same interested firm. A blind repoint then
-            //   violates the index and the whole merge rolls back: 45 of 301 on
-            //   the first commit run, every one of them on
-            //   UX_Opp_Docs_Opp_Url. The colliding row on the loser is genuinely
-            //   redundant (identical URL, identical firm, already present on the
-            //   survivor), so it is deleted rather than carried across.
-            foreach (var (table, uniqueCol) in new[]
-                     {
-                         ("OpportunityDocuments", "DocumentUrl"),
-                         ("OpportunityInterestedFirms", "RawFirmName"),
-                         ("OpportunityFeeProposalLinks", "FeeProposalId"),
-                     })
-            {
-                await Exec(con, tx, $@"
-DELETE d FROM opportunities.{table} d
-WHERE d.OpportunityId = @drop
-  AND EXISTS (SELECT 1 FROM opportunities.{table} k
-              WHERE k.OpportunityId = @keep AND k.{uniqueCol} = d.{uniqueCol});", p).ConfigureAwait(false);
-            }
-
-            foreach (var t in new[]
-                     {
-                         "OpportunityObservations", "OpportunityDocuments", "OpportunityNotes",
-                         "OpportunityFiles", "OpportunityInterestedFirms", "OpportunityFeeProposalLinks",
-                     })
-            {
-                await Exec(con, tx,
-                    $"UPDATE opportunities.{t} SET OpportunityId = @keep WHERE OpportunityId = @drop;",
-                    p).ConfigureAwait(false);
-            }
-
-            // 3. Retire the loser. Dismissed, never deleted.
-            await Exec(con, tx, @"
-UPDATE opportunities.Opportunities
-SET DismissedAtUtc  = SYSDATETIMEOFFSET(),
-    DismissedBy     = N'BdOpportunityDedup',
-    DismissedReason = N'Duplicate of ' + @keepKey + N', the record kept. Its postings and history were merged there.',
-    OwnerStaffId    = NULL,
-    UpdatedAtUtc    = SYSDATETIMEOFFSET(),
-    UpdatedBy       = N'BdOpportunityDedup'
-WHERE Id = @drop;", p).ConfigureAwait(false);
-
-            await tx.CommitAsync().ConfigureAwait(false);
-            return 1;
-        }
-        catch (Exception ex)
-        {
-            await tx.RollbackAsync().ConfigureAwait(false);
-            Console.Error.WriteLine($"  merge FAILED for {p.Loser.OpportunityKey}: {ex.Message}");
-            return 0;
-        }
-    }
-
-    private static async Task Exec(SqlConnection con, SqlTransaction tx, string sql, Plan p)
-    {
-        await using var cmd = new SqlCommand(sql, con, tx) { CommandTimeout = CommandTimeoutSeconds };
-        cmd.Parameters.Add("@keep", SqlDbType.BigInt).Value = p.Survivor.Id;
-        cmd.Parameters.Add("@drop", SqlDbType.BigInt).Value = p.Loser.Id;
-        cmd.Parameters.Add("@keepKey", SqlDbType.NVarChar, 64).Value = p.Survivor.OpportunityKey;
-        await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-    }
-
-    private static async Task<List<Row>> LoadAsync(SqlConnection con)
-    {
-        const string Sql = @"
-SELECT o.Id, o.OpportunityKey, o.Name, ISNULL(o.BuyerName,'') AS BuyerName, o.Status,
-       o.RelevanceScore,
-       CASE WHEN o.SubmissionDeadlineUtc IS NULL THEN 0 ELSE 1 END AS HasDeadline,
-       CONVERT(date, o.SubmissionDeadlineUtc) AS DeadlineDate,
-       CASE WHEN o.OwnerStaffId IS NULL THEN 0 ELSE 1 END AS HasOwner,
-       CASE WHEN EXISTS (SELECT 1 FROM opportunities.CrmEngagements e WHERE e.OpportunityId = o.Id)
-            THEN 1 ELSE 0 END AS HasPursuit,
-       CASE WHEN EXISTS (SELECT 1 FROM opportunities.OpportunityNotes n WHERE n.OpportunityId = o.Id)
-              OR EXISTS (SELECT 1 FROM opportunities.OpportunityFeeProposalLinks f WHERE f.OpportunityId = o.Id)
-            THEN 1 ELSE 0 END AS HasHumanWork
-FROM opportunities.Opportunities o
-WHERE o.DismissedAtUtc IS NULL AND LEN(o.Name) > 25;";
-
-        var list = new List<Row>();
-        await using var cmd = new SqlCommand(Sql, con) { CommandTimeout = CommandTimeoutSeconds };
-        await using var r = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
-        while (await r.ReadAsync().ConfigureAwait(false))
-        {
-            var name = r.GetString(2);
-            // Ordinals: 0 Id, 1 Key, 2 Name, 3 Buyer, 4 Status, 5 Score, 6 HasDeadline,
-            // 7 DeadlineDate, 8 HasOwner, 9 HasPursuit, 10 HasHumanWork. DeadlineDate was
-            // inserted at 7 on 2026-10-08 and shifted the three flags after it.
-            list.Add(new Row(
-                r.GetInt64(0), r.GetString(1), name, r.GetString(3), r.GetInt32(4),
-                r.IsDBNull(5) ? null : r.GetDecimal(5),
-                r.GetInt32(6) == 1, r.GetInt32(8) == 1, r.GetInt32(9) == 1, r.GetInt32(10) == 1,
-                CoreTitle(name),
-                // The source is the key's text before its first dash ("BCBID-229472" -> "BCBID"). It was the first eight
-                // characters until 2026-10-20, which read BCBID-229472 and BCBID-232044 as two sources ("BCBID-22",
-                // "BCBID-23") and planned to merge three different BC Bid notices that share a generic title.
-                r.GetString(1).IndexOf('-') is > 0 and var dash ? r.GetString(1)[..dash] : r.GetString(1),
-                r.IsDBNull(7) ? null : r.GetDateTime(7)));
-        }
-
-        return list;
-    }
-
-    private static void Report(List<Plan> plans, List<Held> held)
+    private static void Report(IReadOnlyList<OpportunityDedup.Plan> plans, IReadOnlyList<OpportunityDedup.Held> held)
     {
         Console.WriteLine($"MERGE PLAN: {plans.Count} row(s) would be merged into "
                           + $"{plans.Select(p => p.Survivor.Id).Distinct().Count()} survivor(s).");
@@ -429,7 +177,7 @@ WHERE o.DismissedAtUtc IS NULL AND LEN(o.Name) > 25;";
         }
     }
 
-    private static void WritePlanFile(List<Plan> plans, List<Held> held)
+    private static void WritePlanFile(IReadOnlyList<OpportunityDedup.Plan> plans, IReadOnlyList<OpportunityDedup.Held> held)
     {
         var dir = ResolveOutputDirectory();
         Directory.CreateDirectory(dir);
@@ -479,13 +227,4 @@ WHERE o.DismissedAtUtc IS NULL AND LEN(o.Name) > 25;";
 
     private static string Trim(string s, int n)
         => s.Length <= n ? s : s[..n];
-
-    private sealed record Row(
-        long Id, string OpportunityKey, string Name, string BuyerName, int Status,
-        decimal? RelevanceScore, bool HasDeadline, bool HasOwner, bool HasPursuit, bool HasHumanWork,
-        string NormName, string SourcePrefix, DateTime? DeadlineDate);
-
-    private sealed record Plan(Row Survivor, Row Loser);
-
-    private sealed record Held(string NormName, int Members, string Reason);
 }

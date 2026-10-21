@@ -1093,6 +1093,18 @@ builder.Services.AddQuartz(q =>
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
+  // 2026-10-20: one tender held under several feeds merged nightly at 03:10, after the evening ingestion and before
+  // the morning brief, so the leads' lists show each tender once.
+  var opportunityDedupKey = new JobKey(nameof(Kor.Opportunities.Worker.Services.OpportunityDedupJob));
+  q.AddJob<Kor.Opportunities.Worker.Services.OpportunityDedupJob>(opts => opts.WithIdentity(opportunityDedupKey));
+  q.AddTrigger(t =>
+  {
+      var cron = builder.Configuration["OpportunityDedupCronSchedule"] ?? "0 10 3 * * ?";
+      t.ForJob(opportunityDedupKey)
+       .WithIdentity("OpportunityDedupTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
   // Round 61b: APC InterestedFirms continuous enrichment. Cadence: every hour
   // at :17 past so it never lines up with the list-scrape passes.
   var apcInterestEnrichmentKey = new JobKey(nameof(Kor.Opportunities.Worker.Services.ApcInterestEnrichmentJob));
