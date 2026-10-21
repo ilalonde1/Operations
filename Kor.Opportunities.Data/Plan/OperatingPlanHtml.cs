@@ -38,8 +38,7 @@ public static class OperatingPlanHtml
         sb.Append("<header class=\"bar screen\"><div><h1>Operating plan</h1><p class=\"meta\">Live · ")
           .Append(asOf is { } d ? "daily numbers of " + Day(d) : "no daily numbers yet")
           .Append(" · live opportunity counts at ").Append(E(now.ToString("HH:mm", CultureInfo.InvariantCulture)))
-          .Append(" · <b>").Append(plan.Goals.Count).Append(" goals</b>: ").Append(decided).Append(" decided by you, ")
-          .Append(plan.Goals.Count - decided).Append(" recommended</p></div>")
+          .Append(" · <b>").Append(plan.Goals.Count).Append(" goals</b>: ").Append(decided).Append(" agreed by the partners so far</p></div>")
           .Append("<nav class=\"seg\">")
           .Append(Seg("summary", "Summary", false)).Append(Seg("map", "Process map", true)).Append(Seg("strategy", "Strategy", false))
           .Append(Seg("rhythm", "Rhythm", false)).Append(Seg("platform", "Platform", false))
@@ -51,7 +50,7 @@ public static class OperatingPlanHtml
           .Append(E(Day(DateOnly.FromDateTime(now.Date)))).Append("</p><h1>The operating plan</h1><p class=\"lede\">")
           .Append("Run KOR <b>like a Fortune 500 company</b> in business development, financials, operations and IT, on tools built for it. ")
           .Append("Live: every number below was read from Deltek, the opportunity list and NetworkOps when this was printed. ")
-          .Append(decided).Append(" of ").Append(plan.Goals.Count).Append(" goals decided; the rest are recommendations.</p></header>");
+          .Append(decided).Append(" of ").Append(plan.Goals.Count).Append(" goals agreed by the partners so far; until then a goal is a proposal.</p></header>");
 
         SummaryView(sb, plan, readings, now, example);
         MapView(sb, plan, readings, items, example);
@@ -120,7 +119,7 @@ public static class OperatingPlanHtml
             sb.Append("<p class=\"sec\">The goals it serves</p>");
             foreach (var g in goals)
                 sb.Append("<div class=\"chain\"><b>").Append(E(g.Title)).Append("</b> · now ").Append(E(Now(g, readings)))
-                  .Append(", target ").Append(E(Target(g, readings))).Append(" · ").Append(E(g.Status.ToLowerInvariant())).Append("</div>");
+                  .Append(", target ").Append(E(Target(g, readings))).Append(E(AgreedTag(g))).Append("</div>");
         }
         var mine = items.Where(i => i.StageNo == s.No).ToList();
         sb.Append("<p class=\"sec\">").Append(s.No >= 6 ? "In today's hour" : "Due this week").Append(" · ").Append(mine.Count).Append("</p>");
@@ -151,7 +150,8 @@ public static class OperatingPlanHtml
 
     private static void GoalTable(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings)
     {
-        sb.Append("<table class=\"goals\"><thead><tr><th>Goal</th><th>Step</th><th>Where we started</th><th>Now</th><th>Target</th><th>Status</th></tr></thead><tbody>");
+        sb.Append("<p class=\"muted\">Proposed goals: each becomes a commitment once Ian and the partners agree it.</p>");
+        sb.Append("<table class=\"goals\"><thead><tr><th>Goal</th><th>Step</th><th>Where we started</th><th>Now</th><th>Target</th><th>Agreed?</th></tr></thead><tbody>");
         foreach (var g in plan.Goals)
         {
             var change = g.Metric is null ? null : readings.Change(g.Metric);
@@ -161,9 +161,9 @@ public static class OperatingPlanHtml
             if (change is { } c) sb.Append(" <span class=\"").Append(c.Better ? "up" : "dn").Append("\">").Append(E(c.Text)).Append("</span>");
             sb.Append("</td><td>").Append(E(Target(g, readings))).Append(" <span class=\"muted\">by ").Append(E(Day(g.DueDate))).Append("</span></td><td>");
             if (g.Status == "Decided")
-                sb.Append("<span class=\"st dec\">Decided</span>");
+                sb.Append("<span class=\"st dec\">Agreed").Append(g.DecidedAtUtc is { } at ? " " + E(Day(at)) : "").Append("</span>");
             else
-                sb.Append("<span class=\"st rec\">Recommended</span> <a class=\"screen decide\" href=\"").Append(DecidePrefix)
+                sb.Append("<span class=\"muted\">Not yet</span> <a class=\"screen decide\" href=\"").Append(DecidePrefix)
                   .Append(g.Id.ToString(CultureInfo.InvariantCulture)).Append("\">Decide</a>");
             sb.Append("</td></tr>");
         }
@@ -173,7 +173,7 @@ public static class OperatingPlanHtml
     private static void StrategyView(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings)
     {
         sb.Append("<section class=\"view\" id=\"v-strategy\"><h2>Strategy on a page</h2>");
-        sb.Append("<p class=\"lede\">Where KOR should play, how it wins, what Operations must fix and what IT must hold. Every choice is a recommendation until you and the partners decide it.</p>");
+        sb.Append("<p class=\"lede\">Where KOR should play, how it wins, what Operations must fix and what IT must hold. Every choice is a proposal until Ian and the partners agree it.</p>");
         sb.Append("<div class=\"facts\">")
           .Append(Fact(readings.Show("InvoicedMonthAvg6") + " / month", "invoiced over the last six months, against " + readings.Show("InvoicedMonthAvgPrior6") + " the six before."))
           .Append(Fact(readings.Show("Exec.NetIncomeT12mo"), "net income over 12 months, on " + readings.Show("Exec.LaborMarginT12mo")
@@ -209,8 +209,7 @@ public static class OperatingPlanHtml
         {
             sb.Append("<h4>Goals to ").Append(E(Day(goals.Max(g => g.DueDate)))).Append("</h4><ul>");
             foreach (var g in goals)
-                sb.Append("<li>").Append(E(g.Title)).Append(" <span class=\"muted\">· now ").Append(E(Now(g, readings))).Append(" · ")
-                  .Append(E(g.Status.ToLowerInvariant())).Append("</span></li>");
+                sb.Append("<li>").Append(E(g.Title)).Append(" <span class=\"muted\">· now ").Append(E(Now(g, readings))).Append(E(AgreedTag(g))).Append("</span></li>");
             sb.Append("</ul>");
         }
         sb.Append("</div>");
@@ -417,6 +416,9 @@ public static class OperatingPlanHtml
     }
 
     // ----- values -----
+
+    /// <summary>" · agreed" once the partners have agreed a goal; nothing before, since every goal starts as a proposal.</summary>
+    public static string AgreedTag(PlanGoalRow g) => g.Status == "Decided" ? " · agreed" : "";
 
     public static string Now(PlanGoalRow g, PlanReadings readings) => g.Metric is null ? PlanReadings.Dash : readings.Show(g.Metric);
 

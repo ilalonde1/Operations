@@ -229,7 +229,7 @@ USING (VALUES
     (15, N'Ops', N'Priorities', N'Fix the process before January.', N'The January rush should land on a working routine, not a backlog.', 150),
     (16, N'IT', N'Priorities', N'Patch on schedule.', N'Every machine on the month''s security updates; {ItUpdatesDue} have updates due today.', 160),
     (17, N'IT', N'Priorities', N'Own the tools, keep the cost line.', N'Because of NetworkOps, outside IT spend comes down to antivirus, Veeam backups, Office 365, connectivity and phones.', 170),
-    (18, N'All', N'Decide', N'The goals and their targets.', N'The figures are starting points from KOR''s record, not commitments, until you decide them.', 180),
+    (18, N'All', N'Decide', N'The goals and their targets.', N'The figures are starting points from KOR''s record, not commitments, until Ian and the partners agree them.', 180),
     (19, N'All', N'Decide', N'Which repeat clients each partner looks after,', N'and who decides whether to bid for clients who rarely hire us.', 190),
     (20, N'All', N'Decide', N'What to do with money owed on old, closed projects.', N'{ArInactive} owed today on projects no longer active.', 200),
     (21, N'All', N'Decide', N'Whether more than one person works on the US.', N'One person sells the US today.', 210),
