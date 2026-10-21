@@ -25,7 +25,8 @@
 
         <Popup x:Name="ResultsPopup"
                PlacementTarget="{Binding ElementName=SearchBox}"
-               Placement="Bottom"
+               Placement="Relative"
+               VerticalOffset="34"
                StaysOpen="False"
                AllowsTransparency="True"
                MinWidth="{Binding ActualWidth, ElementName=SearchBox}"

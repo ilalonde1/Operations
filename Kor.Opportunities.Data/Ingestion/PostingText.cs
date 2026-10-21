@@ -19,7 +19,11 @@ public static class PostingText
     private static readonly Regex Word = new(@"[A-Za-z][A-Za-z'’]*", RegexOptions.Compiled);
     private static readonly HashSet<string> Small = new(StringComparer.OrdinalIgnoreCase)
         { "a", "an", "and", "as", "at", "by", "for", "from", "in", "of", "on", "or", "the", "to", "with" };
-    private static readonly HashSet<string> Prefixes = new(StringComparer.OrdinalIgnoreCase) { "pre", "non", "sub", "co", "re", "new", "two", "all" };
+    private static readonly HashSet<string> Acronyms = new(StringComparer.Ordinal)
+        { "UBC", "SFU", "BCIT", "UNBC", "UVIC", "AHS", "ICU", "EMS", "RCMP", "YMCA", "LRT", "EV", "IT", "HR", "AI", "US", "USA",
+          "II", "III", "IV", "VI", "IPD", "CFB", "DND", "DCC", "PSPC", "APC", "APN", "MDB", "RFP", "RFQ", "RFI", "RFSQ", "RFPQ",
+          "NRFP", "ITT", "PQR", "BC", "AB", "ON", "SK", "MB", "NWT", "YT", "QC", "NS", "NB", "PEI", "NL", "CM", "GC", "QS",
+          "LAUSD", "HVAC", "ADA", "TI", "UASI", "NINT", "TTCC", "CSIP" };
 
     /// <summary>
     /// A tender title as a person would write it. Many portals post titles in capitals ("REQUEST FOR PROPOSALS (RFP) FOR
@@ -38,7 +42,11 @@ public static class PostingText
             var w = m.Value;
             var isFirst = first;
             first = false;
-            if (w.Length <= 3 && !Small.Contains(w) && !Prefixes.Contains(w)) return w;
+            if (!isFirst && Small.Contains(w)) return w.ToLowerInvariant();
+            if (w.Any(char.IsLower)) return w;
+            // An acronym stays: a known one, anything in brackets ("(CS TTCC)"), or a short word with no vowel (RFP, PQR).
+            var bracketed = m.Index > 0 && t[m.Index - 1] == '(' && m.Index + w.Length < t.Length && t[m.Index + w.Length] == ')';
+            if (Acronyms.Contains(w) || bracketed || (w.Length <= 4 && !w.Any(c => "AEIOUY".Contains(c)))) return w;
             if (!isFirst && Small.Contains(w)) return w.ToLowerInvariant();
             return char.ToUpperInvariant(w[0]) + w[1..].ToLowerInvariant();
         });

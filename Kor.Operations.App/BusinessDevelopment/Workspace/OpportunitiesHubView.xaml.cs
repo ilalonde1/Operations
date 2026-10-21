@@ -135,13 +135,13 @@ public partial class OpportunitiesHubView : UserControl
         ((ComboBoxItem)WorkSizeFilter.Items[2]).Content = bidsTab ? "Not structural work only" : "Smaller work only";
         var hiddenWord = bidsTab ? "not structural work (roads, utilities, supplies)" : "smaller";
         SmallWorkReveal.Content = WorkSizeFilter.SelectedIndex == 0
-            ? $"{smaller:N0} {(bidsTab ? "tenders" : "smaller items")} hidden · Show" : bidsTab ? "Hide tenders that are not structural work" : "Hide smaller items";
+            ? $"{smaller:N0} {(bidsTab ? "non-structural tenders" : "smaller items")} hidden · Show" : bidsTab ? "Hide tenders that are not structural work" : "Hide smaller items";
         SmallWorkCount.Text = $"{visible:N0} shown · {smaller:N0} classified {hiddenWord}";
         ModeHint.Text = _segment switch
         {
-            OpportunityHubSegment.Signals => "Applications / rezonings and other leads · newest filed first; unknown dates last",
-            OpportunityHubSegment.Bids => "Bids / RFPs and awards · upcoming deadlines first; expired and undated rows follow",
-            _ => "Your claimed opportunities · most recently touched first",
+            OpportunityHubSegment.Signals => "Permits, rezonings and new projects · newest first",
+            OpportunityHubSegment.Bids => "Tenders · soonest deadline first",
+            _ => "The ones you have grabbed",
         };
         var signals = _vm.Opportunities.Count(r => OpportunityHubSelection.Matches(r, OpportunityHubSegment.Signals, Actor));
         var bids = _vm.Opportunities.Count(r => OpportunityHubSelection.Matches(r, OpportunityHubSegment.Bids, Actor));

@@ -66,6 +66,9 @@ public sealed class OpportunityRowView
     }
 
     public string Name => Model.Name;
+
+    /// <summary>The title as shown in lists: a title posted in capitals reads in normal case (PostingText.DisplayTitle).</summary>
+    public string DisplayName => Kor.Opportunities.Data.Ingestion.PostingText.DisplayTitle(Model.Name);
     public string BuyerName => Model.BuyerName;
 
     /// <summary>Status text; a human "not for us" (migration 284) overrides the

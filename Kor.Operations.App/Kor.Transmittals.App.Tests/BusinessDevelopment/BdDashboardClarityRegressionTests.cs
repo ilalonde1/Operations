@@ -21,7 +21,7 @@ public sealed class BdDashboardClarityRegressionTests
 {
     // 2026-10-20: Closing soon + New RFPs became one list, "Tenders for KOR"; the tiles say what they count.
     private static readonly string[] DashboardKeeps = { "Tenders for KOR", "Priority Actions", "Structural engineer not chosen yet",
-        "Building projects out for bid", "Building projects coming up" };
+        "Out for bid", "Coming up" };
 
     private static readonly string[] DashboardLoses =
     {

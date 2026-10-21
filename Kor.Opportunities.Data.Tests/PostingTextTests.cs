@@ -22,6 +22,12 @@ public sealed class PostingTextTests
     [InlineData("PRE-QUALIFICATION REQUEST (“PQR”) 021771 For ARCHITECTURAL SERVICES Ministry of Infrastructure",
         "Pre-Qualification Request (“PQR”) 021771 for Architectural Services Ministry of Infrastructure")]
     [InlineData("Prime Consultant - SE02 Second-Floor Patio Renovation", "Prime Consultant - SE02 Second-Floor Patio Renovation")]
+    [InlineData("REQUEST FOR PROPOSALS (RFP) FOR ENGINEERING CONSULTANT SERVICES FOR EDMONTON – JOHN E BROWNLEE BUILDING – NORTH PARKING LOT",
+        "Request for Proposals (RFP) for Engineering Consultant Services for Edmonton – John E Brownlee Building – North Parking Lot")]
+    [InlineData("K173-00 ARCHITECTURAL (PRIME) CONSULTANT SERVICES: FRASER CANYON HOSPITAL LONG-TERM CARE BED INCREASE",
+        "K173-00 Architectural (PRIME) Consultant Services: Fraser Canyon Hospital Long-Term Care Bed Increase")]
+    [InlineData("MDB- CAMP SUSTAIN THEATRE TRAINING COORDINATION CENTRE (CS TTCC)", "MDB- Camp Sustain Theatre Training Coordination Centre (CS TTCC)")]
+    [InlineData("NEW UBC GYM FOR TWO SCHOOLS IN BC", "New UBC Gym for Two Schools in BC")]
     [InlineData("MDB - New CAT II Accommodations Buildings", "MDB - New CAT II Accommodations Buildings")]
     public void Capitalised_tender_titles_read_in_normal_case(string raw, string shown)
         => Assert.Equal(shown, PostingText.DisplayTitle(raw));

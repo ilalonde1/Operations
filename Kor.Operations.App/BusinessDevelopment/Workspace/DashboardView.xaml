@@ -105,8 +105,8 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="Structural engineer not chosen yet" Foreground="White" FontWeight="SemiBold" FontSize="15"/>
-                        <TextBlock Text="Building projects to call about now" Foreground="#FFE4DA" FontSize="12" Margin="0,2,0,0"/>
+                        <TextBlock Text="Structural engineer not chosen yet" Foreground="White" FontWeight="SemiBold" FontSize="15" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="Building projects to call about now" Foreground="#FFE4DA" FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                     <TextBlock Grid.Column="1"
                                Text="{Binding OpenSeatCountDisplay}"
@@ -128,8 +128,8 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="Building projects out for bid" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
-                        <TextBlock Text="In procurement or design" Foreground="#C8D2DE" FontSize="12" Margin="0,2,0,0"/>
+                        <TextBlock Text="Out for bid" Foreground="White" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="Building projects in procurement" Foreground="#C8D2DE" FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                     <TextBlock Grid.Column="1"
                                Text="{Binding BidWindowCountDisplay}"
@@ -151,8 +151,8 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="Building projects coming up" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
-                        <TextBlock Text="Years out; keep an eye on them" Foreground="#E0E2E4" FontSize="12" Margin="0,2,0,0"/>
+                        <TextBlock Text="Coming up" Foreground="White" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="Building projects years out" Foreground="#E0E2E4" FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                     <TextBlock Grid.Column="1"
                                Text="{Binding RadarCountDisplay}"

@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +30,27 @@ public partial class OpportunitiesView : UserControl
         _services = services ?? throw new ArgumentNullException(nameof(services));
         InitializeComponent();
         DataContext = _vm;
+        ApplyAdminTools(false);
     }
+
+    // 2026-10-20 "cleaner UI": a lead sees the title, buyer, dates and status; the record-keeping columns, filters and
+    // buttons come back with More > Show admin tools.
+    private static readonly HashSet<string> AdminColumns = new(StringComparer.Ordinal)
+        { "Kind", "Work size", "Tier", "Score", "Source", "Prime", "Discipline", "Value", "Owner", "Updated" };
+
+    private void ApplyAdminTools(bool show)
+    {
+        AdminActions.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        AdminFilters.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        AdminToolsMenuItem.IsChecked = show;
+        foreach (var column in OpportunitiesGrid.Columns.Where(c => c.Header is string h && AdminColumns.Contains(h)))
+            column.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        if (!_vm.HubSegment.HasValue)
+            foreach (var column in OpportunitiesGrid.Columns.Where(c => c.Header is "Filed / posted"))
+                column.Visibility = Visibility.Collapsed;
+    }
+
+    private void AdminTools_Click(object sender, RoutedEventArgs e) => ApplyAdminTools(AdminToolsMenuItem.IsChecked);
 
     private async void OpportunitiesView_Loaded(object sender, RoutedEventArgs e)
     {
@@ -41,7 +62,7 @@ public partial class OpportunitiesView : UserControl
         _initialized = true;
         // Keep the kind and time axis beside the title in the hub. The wider
         // registry's supporting columns remain available by scrolling.
-        var hubColumns = new[] { "Kind", "Work size", "Name", "Filed / posted", "Deadline", "Buyer", "Status", "Tier", "Source" };
+        var hubColumns = new[] { "Name", "Buyer", "Filed / posted", "Deadline", "Status", "Kind", "Work size", "Tier", "Source" };
         foreach (var column in OpportunitiesGrid.Columns.Where(c => c.Header is "Kind" or "Work size" or "Filed / posted"))
             column.Visibility = _vm.HubSegment.HasValue ? Visibility.Visible : Visibility.Collapsed;
         if (_vm.HubSegment.HasValue)
@@ -49,6 +70,7 @@ public partial class OpportunitiesView : UserControl
             for (var i = 0; i < hubColumns.Length; i++)
                 OpportunitiesGrid.Columns.Single(c => Equals(c.Header, hubColumns[i])).DisplayIndex = i;
         }
+        ApplyAdminTools(AdminToolsMenuItem.IsChecked);
         AppServices.Get<AppAiContextBuilder>().Register(_vm);
         await ReloadAsync().ConfigureAwait(true);
     }

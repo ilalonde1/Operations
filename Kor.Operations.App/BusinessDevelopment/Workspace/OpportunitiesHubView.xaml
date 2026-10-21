@@ -38,31 +38,29 @@
                             ToolTip="Opportunities you own, of any kind, most recently touched first."/>
                 </StackPanel>
             </Border>
+            <!-- 2026-10-20 "cleaner UI": one row. The tabs already say the kind, so the kind picker, the size picker and the
+                 count line are kept for the code but not shown; the hidden-items button is the one control that matters. -->
+            <CheckBox x:Name="ToGrabFilter" Content="Only ones nobody has grabbed" Margin="18,0,0,0" VerticalAlignment="Center"
+                      Checked="ToGrab_Changed" Unchecked="ToGrab_Changed"
+                      ToolTip="Available, unclaimed opportunities you can take on."/>
+            <WrapPanel x:Name="SmallWorkPanel" Margin="14,0,0,0" VerticalAlignment="Center">
+                <TextBlock x:Name="WorkSizeLabel" Visibility="Collapsed"/>
+                <ComboBox x:Name="WorkSizeFilter" Visibility="Collapsed" SelectedIndex="0" SelectionChanged="WorkSize_Changed">
+                    <ComboBoxItem Content="Smaller work collapsed"/>
+                    <ComboBoxItem Content="All work"/>
+                    <ComboBoxItem Content="Smaller work only"/>
+                </ComboBox>
+                <Button x:Name="SmallWorkReveal" Padding="12,5" Click="SmallWorkReveal_Click"/>
+                <TextBlock x:Name="SmallWorkCount" Visibility="Collapsed"/>
+            </WrapPanel>
             <TextBlock x:Name="ModeHint" VerticalAlignment="Center" Margin="14,0,0,0"
                        Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="12,0,0,10">
-            <TextBlock Text="Show:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <ComboBox x:Name="KindFilter" Width="220" SelectionChanged="KindFilter_Changed"/>
-            <CheckBox x:Name="ToGrabFilter" Content="To grab" Margin="16,0,0,0" VerticalAlignment="Center"
-                      Checked="ToGrab_Changed" Unchecked="ToGrab_Changed"
-                      ToolTip="Available, unclaimed opportunities you can take on."/>
-            <TextBlock x:Name="CountHint" Margin="16,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}"/>
+        <StackPanel Grid.Row="1" Visibility="Collapsed">
+            <ComboBox x:Name="KindFilter" SelectionChanged="KindFilter_Changed"/>
+            <TextBlock x:Name="CountHint"/>
         </StackPanel>
-        <WrapPanel Grid.Row="2" x:Name="SmallWorkPanel" Margin="12,0,12,10">
-            <TextBlock x:Name="WorkSizeLabel" Text="Work size:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <ComboBox x:Name="WorkSizeFilter" Width="205" SelectedIndex="0" SelectionChanged="WorkSize_Changed"
-                      ToolTip="Uses the shared application scope classification. Unassessed applications remain visible by default.">
-                <ComboBoxItem Content="Smaller work collapsed"/>
-                <ComboBoxItem Content="All work"/>
-                <ComboBoxItem Content="Smaller work only"/>
-            </ComboBox>
-            <Button x:Name="SmallWorkReveal" Margin="12,0,0,0" Padding="12,5" Click="SmallWorkReveal_Click"
-                    ToolTip="Some multi-unit proposals have ambiguous scope text. Reveal smaller items to review them."/>
-            <TextBlock x:Name="SmallWorkCount" Margin="12,0,0,0" VerticalAlignment="Center"
-                       Foreground="{StaticResource Text.Secondary}"/>
-        </WrapPanel>
         <ContentControl Grid.Row="3" x:Name="Host"/>
     </Grid>
 </UserControl>
