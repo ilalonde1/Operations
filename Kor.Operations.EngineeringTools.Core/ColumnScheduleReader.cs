@@ -41,8 +41,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
     /// ETABS wants the section, S-Concrete wants the strength and the bars, and a rebar takeoff
     /// wants all of it — and every one of them is on the sheet already.
     ///
-    /// There WAS a column-schedule reader: `takeoff sched-read column` calls
-    /// PlanVisionClient.ReadColumnScheduleJsonAsync on a downscaled PNG. That is an AI read of a
+    /// There WAS a column-schedule reader: `takeoff sched-read column` sent a downscaled PNG to the
+    /// vision API (removed 2026-10-20 with every API call in the CLI). That was an AI read of a
     /// picture of text this project can read exactly, for free, and the same way twice.
     ///
     /// ⭐ CELLS ARE IDENTIFIED BY WHAT THEY ARE, NOT BY WHERE THEY SIT. Two KOR jobs print the same

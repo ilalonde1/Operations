@@ -44,26 +44,16 @@ return 0;
 
 // Decodes a rasterized plan page (PNG) and crops a region into the pixel buffers the Core
 // PlanGeometry engine consumes. Crop box is [x0,x1) × [y0,y1), clamped to the image.
-// The CLI's concrete I/O for the Core engine: the Anthropic-backed vision calls and the ImageSharp
-// raster decode. The WPF app will register its own equivalents — the engine depends on neither.
+// The CLI's concrete I/O for the Core engine: no vision and the ImageSharp raster decode.
 
-sealed class CliPlanVision : IPlanVision
-{
-    public Task<string> SynthesizePageAsync(string pageJson, CancellationToken ct = default)
-        => PlanVisionClient.SynthesizePageAsync(pageJson);
-    public Task<string> LocatePlateAsync(string pageJson, byte[] downscaledPng, CancellationToken ct = default, string? feedback = null)
-        => PlanVisionClient.LocatePlateAsync(pageJson, downscaledPng, feedback);
-    public Task<string> ApportionThicknessAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn, CancellationToken ct = default, string? feedback = null)
-        => PlanVisionClient.ApportionThicknessJsonAsync(plateCropPng, thicknessesIn, feedback);
-}
-
-// --deterministic: no vision, no spend. Every method throws; the engine already treats a failed
-// vision call as an unresolved unknown (peer-estimated or residual, flagged) — so this yields the
-// honest free takeoff: everything the drawings give up deterministically, nothing invented.
+// No vision, no spend (the Anthropic-backed CliPlanVision was removed 2026-10-20, C1). Every method
+// throws; the engine already treats a failed vision call as an unresolved unknown (peer-estimated or
+// residual, flagged) — so this yields the honest takeoff: everything the drawings give up
+// deterministically, nothing invented.
 sealed class NoPlanVision : IPlanVision
 {
     private static Task<string> No() => Task.FromException<string>(
-        new InvalidOperationException("vision disabled (--deterministic)"));
+        new InvalidOperationException("vision is not used (no AI service is called)"));
     public Task<string> SynthesizePageAsync(string pageJson, CancellationToken ct = default) => No();
     public Task<string> LocatePlateAsync(string pageJson, byte[] downscaledPng, CancellationToken ct = default, string? feedback = null) => No();
     public Task<string> ApportionThicknessAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn, CancellationToken ct = default, string? feedback = null) => No();
@@ -170,50 +160,6 @@ static class PlanRaster
     }
 }
 
-// Pages config for `vision-estimate`: project metadata + the rasterized sheets to read.
-sealed class VisionPagesConfig
-{
-    public string? Project { get; set; }
-    public string? Name { get; set; }
-    public string? Issue { get; set; }
-    public string Profile { get; set; } = "BC-moderate";
-    public double Dpi { get; set; } = 110;
-    public string Scale { get; set; } = "1/8\"=1'-0\"";   // fallback if the title-block scale is illegible
-    public string? PngDir { get; set; }
-    public double StoreyHeightIn { get; set; }            // floor-to-floor height for wall/column concrete; 0 = unknown
-    public double SogThicknessIn { get; set; }            // slab-on-grade thickness when not legible on the footings sheet; 0 = leave unresolved
-    // Ordered building levels (top → bottom), e.g. ["LEVEL 46", … , "P7"]. When present, vertical
-    // concrete is priced from the wall/column SCHEDULES over these levels instead of plan poché pixels.
-    public List<string>? Levels { get; set; }
-    public Dictionary<string, double>? StoreyHeightInByLevel { get; set; }  // per-level overrides (inches); else StoreyHeightIn
-    public List<VisionPage> Pages { get; set; } = new();
-}
-
-sealed class VisionPage
-{
-    public string Png { get; set; } = "";
-    public double? Dpi { get; set; }
-    public double? StoreyHeightIn { get; set; }           // overrides config StoreyHeightIn for this sheet's level band
-}
-
-// A suspended-slab measurement held back until the whole building is read, so its floor count can be
-// reconciled across overlapping/duplicate sheets (BuildingRollup.AssignSlabFloors). Co-located wall and
-// column footprints ride along and inherit the slab's reconciled count, as do thickened zones (drop
-// panels / built-up transfer) detected on the same sheet, which are priced as their depth ABOVE the
-// nominal slab so the field slab is never double-counted. BoxX0..BoxY1 are full-sheet pixels of the
-// plate outline, used to attach a sheet's thickenings to the slab whose box contains them.
-sealed record PendingSlab(
-    string Level, string? Variant, double AreaSqFt, double ThicknessIn, double Confidence,
-    bool ScaleConfirmed, double WallSqFt, double ColSqFt, double StoreyIn,
-    int BoxX0, int BoxY0, int BoxX1, int BoxY1)
-{
-    public List<Thickening> Thickenings { get; } = new();
-}
-
-// A local slab thickening (drop panel / thickened band / built-up transfer zone): its area and the
-// concrete depth ADDED above the nominal slab. Priced as a DropPanel plate at the owning slab's count.
-sealed record Thickening(double AddedDepthIn, double AreaSqFt, double Confidence);
-
 // Building config for the `estimate` mode: project metadata + the per-plate map (which sheet, which
 // crop, how to measure it, the read thickness/height, and how many identical floors it covers).
 sealed class EstimateConfig
@@ -282,9 +228,6 @@ public static class TakeoffCliHelp
         new("sco-schedule", "takeoff sco-schedule <folder|file.SCO> [more...] <out.xlsx>", "Read a project's column demands out of its S-Concrete files."),
         new("e2k-ask", "takeoff e2k-ask <model.e2k | folder> [storeys|look|openings|sections|concrete] [storey]", "Ask a finished ETABS model about itself."),
         new("vector-takeoff", "takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale] [heightsJson] [--deterministic] [--fresh]", "Run the vector PDF quantity takeoff pipeline."),
-        new("vector-plate", "takeoff vector-plate <pdf> <page> <png>", "Ask the vision layer for one slab plate box."),
-        new("vector-zones", "takeoff vector-zones <pdf> <png> <page> <modalThk>", "Read thickened slab zones inside a plate."),
-        new("vector-synth", "takeoff vector-synth <pdf> <page>", "Synthesize a structured takeoff for one PDF page."),
         new("vector-digest", "takeoff vector-digest <pdf> <out.json> [firstPage] [lastPage]", "Write a drawing digest JSON from a PDF."),
         new("vector-sched", "takeoff vector-sched <pdf> <page>", "Probe slab schedule thickness cells on a page."),
         new("vector-dump", "takeoff vector-dump <pdf> <page>", "Dump vector text and paths from a PDF page."),
@@ -296,16 +239,12 @@ public static class TakeoffCliHelp
         new("vector-words", "takeoff vector-words <pdf> <page> [needle] | --band y0 y1 [x0 x1]", "Dump PDF words by font size and position; --band lists every word in a band with how many share its spot (a bubble drawn twice)."),
         new("vector-lines", "takeoff vector-lines <pdf> <page> [--region x0 y0 x1 y1] [--min-pt 20] [--scale 96] [--pens] [--long]", "GROUND TRUTH: every long axis-aligned run the page itself draws, grouped by the line it sits on, in points and drawing mm - is the drafter's line there, before a reader is blamed."),
         new("vector-find", "takeoff vector-find <pdf> WORD [WORD ...] [--pages a-b]", "Every distinct text line of a set that mentions a word (regex, case-insensitive), most repeated first, with its pages: what does the drawing CALL this?"),
-        new("vision-estimate", "takeoff vision-estimate <pages.json> <out.xlsx>", "Run the vision-assisted estimate pipeline."),
         new("estimate", "takeoff estimate <config.json> <out.xlsx>", "Run a configured raster takeoff estimate."),
         new("measure", "takeoff measure <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [gray]", "Measure one raster crop."),
         new("graycomp", "takeoff graycomp <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [lo] [hi]", "Inspect gray-fill connected components in a crop."),
         new("hatch", "takeoff hatch <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [densityPct] [minSqFt] [winR]", "Detect hatched footing regions in a crop."),
-        new("wallsched", "takeoff wallsched <png>", "Read a wall schedule from a raster sheet."),
-        new("wallplan", "takeoff wallplan <png>", "Read core wall key-plan mark lengths."),
         new("perim", "takeoff perim <png> [scale] [dpi]", "Measure a plate contour perimeter from a rendered page."),
         new("col-text", "takeoff col-text <pdf> <page>", "Read a column schedule deterministically from PDF text."),
-        new("sched-read", "takeoff sched-read <kind> <sheet.png>", "Run one vision schedule reader and print JSON."),
         new("sched-tokens", "takeoff sched-tokens <pdf> <page>", "Dump schedule keyword tokens from a page."),
         new("dedupe-probe", "takeoff dedupe-probe <pdf> <page> <needle>", "Inspect PDF word de-duplication for a token."),
         new("footings", "takeoff footings <pdf> [first] [last]", "Run deterministic footing schedule takeoff."),
@@ -328,7 +267,6 @@ public static class TakeoffCliHelp
         new("pdf-levels", "takeoff pdf-levels <stickfile.pdf> [levels.csv] [--plans <dxfDir>]", "The drawings' storeys as a levels file (level, elevation mm from the lowest stated level), read off the wall elevations — what dxf-to-etabs takes in place of a reference .e2k for a job nobody has modelled."),
         new("pdf-assemblies", "takeoff pdf-assemblies <set.pdf> [assemblies.csv]", "Every wall and floor type card on the set's schedule sheets, read whole: code, name, each layer, F.R.R., S.T.C., references, remarks — and the material and thickness the model takes from them."),
         new("storeys-check", "takeoff storeys-check <stickfile.pdf> <model.e2k>", "The drawings' storey heights (wall elevations) against the model's, pair by pair; the publish reports the same line when --stick-file is given."),
-        new("wallconcrete", "takeoff wallconcrete <keyplan.png> <schedule.png> <levels.json>", "Price core wall concrete from key plan and schedule."),
         new("single", "takeoff single <schedule.csv> <out.xlsx> [wbs] [name] [issue] [imperial]", "Generate an absolute takeoff workbook from one schedule CSV."),
         new("overlay", "takeoff overlay <before.pdf> <after.pdf> <out.pdf> [name] [beforeLabel] [afterLabel] [imperial]", "Generate visual rebar markup between two PDFs."),
         new("rebar", "takeoff rebar <before.pdf> <after.pdf> <out.xlsx> [name] [beforeLabel] [afterLabel]", "Generate a rebar change report between two PDFs."),

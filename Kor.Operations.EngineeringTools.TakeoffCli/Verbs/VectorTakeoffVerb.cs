@@ -1,4 +1,5 @@
-// The takeoff verb `vector-takeoff`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+// The takeoff verb `vector-takeoff`, split out of Program.cs (WP3, 2026-09-11). Since 2026-10-20 it calls no vision
+// (C1): what was --deterministic is the only mode, and the vision-only schedule reads are gone.
 // END-TO-END synthesis-led takeoff: classify each page, locate+measure slab plates, assemble via the
 // EXISTING pipeline -> xlsx + total vs QTO. Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last]
 internal static class VectorTakeoffVerb
@@ -9,17 +10,14 @@ internal static class VectorTakeoffVerb
 
     private static async Task<int> RunAsync(string[] args)
     {
-        // Spend controls. Vision answers are CACHED under <pngDir>/.vision-cache keyed by the exact
-        // request, so re-running a set replays them: $0 spent, byte-identical numbers. --fresh discards
-        // the stored answers (a deliberate new sample — this SPENDS); --deterministic makes no vision
-        // calls at all (unpriceable pieces become flags/residuals) — the free regression mode.
-        bool tkDeterministic = args.Any(a => a.Equals("--deterministic", StringComparison.OrdinalIgnoreCase));
-        bool tkFresh = args.Any(a => a.Equals("--fresh", StringComparison.OrdinalIgnoreCase));
+        // NO VISION (2026-10-20, Ian's decision C1: nothing calls the Anthropic API). This always runs what was the
+        // --deterministic mode: unpriceable pieces become flags/residuals, nothing invented, $0. The column and
+        // shear-wall schedule reads, which were vision only, are gone. --deterministic and --fresh are still
+        // accepted, and ignored, so existing command lines run.
         args = args.Where(a => !a.StartsWith("--", StringComparison.Ordinal)).ToArray();
 
-        if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale] [heightsJson] [--deterministic] [--fresh]"); return 1; }
+        if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale] [heightsJson]"); return 1; }
         if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
-        if (!tkDeterministic && string.IsNullOrWhiteSpace(PlanVisionClient.ApiKey)) { Console.Error.WriteLine("KOR_ANTHROPIC_KEY not set (or run with --deterministic)."); return 2; }
         int? tkFirst = args.Length >= 5 && int.TryParse(args[4], out var tf) ? tf : null;
         int? tkLast  = args.Length >= 6 && int.TryParse(args[5], out var tl) ? tl : null;
         // Optional scale note OVERRIDE (e.g. "1:100" metric, "1/8\"=1'-0\"" imperial). Absent → each sheet
@@ -61,15 +59,8 @@ internal static class VectorTakeoffVerb
         }
         catch (Exception ex) { Console.Error.WriteLine($"PDF render failed: {ex.Message}"); return 2; }
 
-        if (!tkDeterministic)
-        {
-            string tkCacheDir = Path.Combine(args[2], ".vision-cache");
-            if (tkFresh && Directory.Exists(tkCacheDir)) Directory.Delete(tkCacheDir, true);
-            PlanVisionClient.CacheDir = tkCacheDir;
-        }
-
         SlabTakeoffResult tkOut;
-        try { tkOut = await SlabTakeoffEngine.RunAsync(tkReq, tkDeterministic ? new NoPlanVision() : new CliPlanVision(), new CliPlanRaster()); }
+        try { tkOut = await SlabTakeoffEngine.RunAsync(tkReq, new NoPlanVision(), new CliPlanRaster()); }
         catch (PdfNotReadableException ex)
         {
             // The set is unreadable — say so plainly and abort BEFORE pretending a number. Distinct exit code 3.
@@ -128,127 +119,16 @@ internal static class VectorTakeoffVerb
             foreach (var rz in tkOut.Residual)
                 Console.WriteLine($"   [{rz.Kind}] {rz.Label,-16} {rz.Note}");
         }
-        // ── WHOLE-BUILDING: add COLUMN + WALL concrete from the schedule sheets ───────────────────────────
-        // Auto-detect each column-schedule and shear-wall-schedule sheet, read it (vision), and price via the
-        // existing ComputeColumn / ComputeWall. Columns: sizes filled down the deterministic level ladder.
-        // Walls: thickness bands × mark length from the key plan on the same sheet. BALLPARK for now — one
-        // column per mark and a typical storey height; per-mark COUNTS and real storey heights are the next
-        // increment. Flagged as such, never presented as final. Footings follow the same pattern.
+        // ── WHOLE-BUILDING: COLUMN + WALL concrete ─────────────────────────────────────────────────────────
+        // The column and shear-wall SCHEDULE reads were vision only and were removed with it (2026-10-20, C1),
+        // so colSched stays empty and the engine's gray-fill column and wall rows are the priced source on every
+        // floor; the composition below is unchanged and, with no schedule rows, changes nothing.
         try
         {
             var tkDig = DrawingDigestBuilder.Build(args[1], tkFirst, tkLast);
             double typicalStoreyIn = tkStoreyIn;   // typical fallback; per-level heights below when supplied
-            var schedHeights = SlabTakeoffEngine.NormalizeHeightMap(tkHeights);
-            double StoreyOf(string lvl) => SlabTakeoffEngine.ResolveStoreyHeightIn(lvl, schedHeights, tkStoreyIn).Inches;
-            double colCuYd = 0, wallCuYd = 0; int colSheets = 0, colMarks = 0, wallSheets = 0, wallMarks = 0;
-            // Per-sheet schedule column results, with the sheet's tower identity — the composition below
-            // makes the SCHEDULE the priced source for the floors it covers (validated closest to the
-            // model), with gray-fill only filling floors no schedule covers.
+            double wallCuYd = 0; int wallSheets = 0, wallMarks = 0;
             var colSched = new List<(int Page, string? Tower, ScheduleTakeoff.ScheduleResult Res)>();
-
-            // A single schedule/key-plan vision call is fragile: it occasionally returns empty or an outlier,
-            // and the wall total hangs on it — one empty response ZEROES a whole tower (31065 p53 read 0 cy one
-            // run, 1,053 the next). So each sheet is read N times and the MEDIAN priced result is taken: a lone
-            // empty/outlier read can no longer zero or swing the sheet. Reads that come back empty are dropped,
-            // not counted as zero. Spread (min..max) is printed so the remaining read-to-read variance is visible.
-            const int VisionReads = 3;
-
-            async Task<(ScheduleTakeoff.ScheduleResult res, int distinctMarks, double lo, double hi)?>
-                ReadColumnSheetAsync(byte[] png, List<string> ladder, List<double> storeys)
-            {
-                var got = new List<(ScheduleTakeoff.ScheduleResult res, int marks)>();
-                for (int i = 0; i < VisionReads; i++)
-                {
-                    // Each read salts the cache differently: the median WANTS independent samples, and a
-                    // replayed run then reproduces all N of them (median included) without spending.
-                    PlanVisionClient.CacheSalt = i;
-                    var counts = ScheduleConcreteReader.ColumnCounts(await PlanVisionClient.ReadColumnCountsJsonAsync(png));
-                    var cbands = ScheduleConcreteReader.ColumnBands(await PlanVisionClient.ReadColumnScheduleJsonAsync(png), ladder, counts);
-                    if (cbands.Count == 0) continue;
-                    var res = ScheduleTakeoff.ComputeColumn(ladder, storeys, cbands);
-                    if (res.TotalCuYd > 0) got.Add((res, counts.Count > 0 ? counts.Count : res.MarksPriced));
-                }
-                PlanVisionClient.CacheSalt = 0;
-                if (got.Count == 0) return null;
-                got = got.OrderBy(g => g.res.TotalCuYd).ToList();
-                var mid = got[got.Count / 2];
-                return (mid.res, mid.marks, got[0].res.TotalCuYd, got[^1].res.TotalCuYd);
-            }
-
-            async Task<(ScheduleTakeoff.ScheduleResult res, double lo, double hi)?>
-                ReadWallSheetAsync(byte[] png, List<string> ladder, List<double> storeys)
-            {
-                var got = new List<ScheduleTakeoff.ScheduleResult>();
-                for (int i = 0; i < VisionReads; i++)
-                {
-                    PlanVisionClient.CacheSalt = i;   // independent sample per read; all N replay from cache
-                    var wbands = ScheduleConcreteReader.WallBands(await PlanVisionClient.ReadWallScheduleJsonAsync(png));
-                    var wlen = ScheduleConcreteReader.WallLengthsByMark(await PlanVisionClient.ReadWallKeyPlanJsonAsync(png));
-                    if (wbands.Count == 0 || wlen.Count == 0) continue;
-                    var res = ScheduleTakeoff.ComputeWall(ladder, storeys, wlen, wbands);
-                    if (res.TotalCuYd > 0) got.Add(res);
-                }
-                PlanVisionClient.CacheSalt = 0;
-                if (got.Count == 0) return null;
-                got = got.OrderBy(r => r.TotalCuYd).ToList();
-                return (got[got.Count / 2], got[0].TotalCuYd, got[^1].TotalCuYd);
-            }
-
-            foreach (var pg in tkDig.Pages)
-            {
-                if (tkDeterministic) break;   // no vision: columns price from gray-fill alone; schedule reads skipped
-                string ppng = Path.Combine(args[2], $"p-{pg.Page:D2}.png");
-                if (!File.Exists(ppng)) continue;
-
-                // A schedule sheet is identified by its TITLE BLOCK, not a page-wide text scan: a general-notes
-                // sheet that mentions "shear wall schedule" in prose must not be read as one (31065 p3 read as
-                // 150 cy of phantom wall before this gate). HasScheduleTitle requires the phrase at title size
-                // on the right edge.
-                var page = VectorPageReader.ReadPage(args[1], pg.Page);
-                List<string> Ladder() => ScheduleGridReader.ReadLevelLadder(page)
-                                            .OrderByDescending(r => r.Y).Select(r => r.RawLabel).ToList();
-
-                // COLUMN schedule sheet
-                if (SheetTitleReader.HasScheduleTitle(page, "COLUMN"))
-                {
-                    var ladder = Ladder();
-                    if (ladder.Count >= 3)
-                    {
-                        var cpngB = PlanRaster.LoadDownscaledPng(ppng, 1600);
-                        var got = await ReadColumnSheetAsync(cpngB, ladder, ladder.Select(StoreyOf).ToList());
-                        if (got is { } c)
-                        {
-                            colCuYd += c.res.TotalCuYd; colSheets++; colMarks += c.res.MarksPriced;
-                            string despaced = string.Concat(string.Join(" ", pg.Lines).ToUpperInvariant().Where(ch => !char.IsWhiteSpace(ch)));
-                            string? tower = despaced.Contains("NORTHTOWER") ? "NORTH" : despaced.Contains("SOUTHTOWER") ? "SOUTH"
-                                          : despaced.Contains("EASTTOWER") ? "EAST" : despaced.Contains("WESTTOWER") ? "WEST" : null;
-                            colSched.Add((pg.Page, tower, c.res));
-                            string spread = c.hi > c.lo ? $" [{VisionReads} reads {c.lo:N0}..{c.hi:N0}]" : "";
-                            Console.WriteLine($"  column schedule p{pg.Page}{(tower is null ? "" : $" ({tower} tower)")}: {c.res.MarksPriced} columns ({c.distinctMarks} marks) over {ladder.Count} levels -> {c.res.TotalCuYd:N0} cy{spread}");
-                        }
-                        else Console.WriteLine($"  column schedule p{pg.Page}: vision returned nothing usable over {VisionReads} reads (skipped, not counted as 0)");
-                    }
-                }
-
-                // SHEAR-WALL schedule sheet (schedule + key plan live on the same sheet)
-                if (SheetTitleReader.HasScheduleTitle(page, "SHEAR"))
-                {
-                    var ladder = Ladder();
-                    if (ladder.Count >= 3)
-                    {
-                        var png = PlanRaster.LoadDownscaledPng(ppng, 1600);
-                        var got = await ReadWallSheetAsync(png, ladder, ladder.Select(StoreyOf).ToList());
-                        if (got is { } wv)
-                        {
-                            var wres = wv.res;
-                            wallCuYd += wres.TotalCuYd; wallSheets++; wallMarks += wres.MarksPriced;
-                            string spread = wv.hi > wv.lo ? $" [{VisionReads} reads {wv.lo:N0}..{wv.hi:N0}]" : "";
-                            Console.WriteLine($"  wall schedule p{pg.Page}: {wres.MarksPriced} marks priced ({wres.BandsApplied} bands) -> {wres.TotalCuYd:N0} cy{spread}");
-                        }
-                        else Console.WriteLine($"  wall schedule p{pg.Page}: vision returned nothing usable over {VisionReads} reads (skipped, not counted as 0)");
-                    }
-                }
-            }
 
             // ── SCHEDULE-FIRST COLUMNS ────────────────────────────────────────────────────────────────
             // The column SCHEDULE states every column's true size; the gray-fill footprint only infers it
@@ -559,11 +439,7 @@ internal static class VectorTakeoffVerb
         }
         catch (Exception ex) { Console.Error.WriteLine($"  (vertical cross-check skipped: {ex.Message})"); }
 
-        // SPEND TRACE — always say what this run cost and what it replayed, so a surprise invoice is
-        // impossible: fresh API calls are the only spend; cache replays and --deterministic are $0.
-        Console.WriteLine(tkDeterministic
-            ? "  vision: DISABLED (--deterministic) — 0 API calls, $0."
-            : $"  vision: {PlanVisionClient.CacheMisses} fresh API call(s) SPENT, {PlanVisionClient.CacheHits} replayed from cache ({Path.Combine(args[2], ".vision-cache")}).");
+        Console.WriteLine("  vision: none — this command calls no AI service.");
 
         // EXTENTS SIDECAR — the measured per-level slab plate areas, written beside the workbook so the
         // rebar change tool can price intensity changes (ΔAs × area) from OUR measurement instead of
