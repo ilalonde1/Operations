@@ -21,7 +21,7 @@ namespace Kor.Operations.Tests.Services;
 /// <c>AppAiContextBuilder...Register(</c> (push-context wiring) OR
 /// <c>: IAiContextProvider</c> (window/VM implements the interface). Both
 /// patterns are accepted because Crm/Financials use VM registration while
-/// PdfToSafe implements the interface on the window directly.
+/// StaffUtilizationWindow implements the interface on the window directly.
 /// </summary>
 public sealed class AiPanelContextProviderTests
 {
@@ -84,7 +84,7 @@ public sealed class AiPanelContextProviderTests
         Assert.True(gaps.Count == 0,
             "Window(s) host AiQueryPanel but never register an IAiContextProvider — AI will answer " +
             "without on-screen context. Fix by registering a provider (Crm/Financials pattern) or " +
-            "implementing IAiContextProvider on the window class (PdfToSafe pattern):\n  - " +
+            "implementing IAiContextProvider on the window class (StaffUtilizationWindow pattern):\n  - " +
             string.Join("\n  - ", gaps));
     }
 

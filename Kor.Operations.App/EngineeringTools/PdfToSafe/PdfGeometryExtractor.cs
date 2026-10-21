@@ -288,8 +288,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // hint — BeamSectionParser may still match a text callout).
                     AddLine(original.Slabs[i], color, null, isAnnotation);
                 }
-                else if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(type, "Ignore",  StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase))
+                {
+                    // AN OPENING CUTS A HOLE (2026-10-20): the shape is the hole, cut in whatever slab holds it.
+                    result.CarriedOpenings.Add(original.Slabs[i]);
+                }
+                else if (string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase))
                 {
                     // Explicitly suppressed — do not include in output.
                 }
@@ -305,6 +309,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // Collect slab-typed lines per color for chain assembly.
             var slabLinesByColor = new Dictionary<((byte R, byte G, byte B) Color, bool IsAnnotation),
                 List<List<(double X, double Y)>>>();
+            var openingLines = new List<List<(double X, double Y)>>();
 
             for (int i = 0; i < original.Lines.Count; i++)
             {
@@ -334,8 +339,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     }
                     list.Add(original.Lines[i]);
                 }
-                else if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(type, "Ignore",  StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Chained below into closed outlines, the same way slab-typed lines are.
+                    openingLines.Add(original.Lines[i]);
+                }
+                else if (string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase))
                 {
                     // Explicitly suppressed — do not include in output.
                 }
@@ -395,6 +404,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
 
+            // Opening-typed lines: an outline that closes, or an open run of three or more points (closed last to
+            // first, as a slab orphan is), is a hole. A two-point line cannot bound one and goes nowhere.
+            if (openingLines.Count > 0)
+            {
+                var (closedOpenings, openingOrphans) = ChainLinesIntoSlabs(openingLines);
+                foreach (var poly in closedOpenings) result.CarriedOpenings.Add(poly);
+                foreach (var seg in openingOrphans)
+                    if (seg.Count >= 3) result.CarriedOpenings.Add(seg);
+            }
+
             // ── Columns ──────────────────────────────────────────────
             for (int i = 0; i < original.Columns.Count; i++)
             {
@@ -402,8 +421,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ? original.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
                 bool isAnnotation = i < original.ColumnIsAnnotation.Count && original.ColumnIsAnnotation[i];
                 string colType = TypeFor(i, "column", color, "Column");
-                if (string.Equals(colType, "Opening", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(colType, "Ignore",  StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(colType, "Opening", StringComparison.OrdinalIgnoreCase))
+                {
+                    // A small filled shape typed Opening (a duct or a small shaft): the hole is its measured box,
+                    // square to the page - the column bucket keeps a centre and a size, not the outline's turn.
+                    var (cxCol, cyCol) = original.Columns[i];
+                    var (wCol, dCol) = i < original.ColumnSizes.Count ? original.ColumnSizes[i] : (0, 0);
+                    if (wCol > 0 && dCol > 0)
+                        result.CarriedOpenings.Add(new List<(double X, double Y)>
+                        {
+                            (cxCol - wCol / 2, cyCol - dCol / 2), (cxCol + wCol / 2, cyCol - dCol / 2),
+                            (cxCol + wCol / 2, cyCol + dCol / 2), (cxCol - wCol / 2, cyCol + dCol / 2),
+                        });
+                    continue;
+                }
+                if (string.Equals(colType, "Ignore", StringComparison.OrdinalIgnoreCase))
                     continue;
                 // Cannot convert a point to polygon or polyline — keep as column
                 result.Columns.Add(original.Columns[i]);

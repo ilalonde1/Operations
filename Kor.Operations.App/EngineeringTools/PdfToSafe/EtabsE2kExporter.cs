@@ -79,6 +79,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var areas = new List<(string Id, List<string> PtNames, string StoryName, string PropName, (byte R, byte G, byte B) Color, bool IsWall)>();
             var lineSegs = new List<(string Id, string J1, string J2, string StoryName, string? SecName)>();
             var columnPointNames = new List<(string Name, string StoryName)>();
+            var openings = new List<(string Id, List<string> PtNames, string StoryName)>();
 
             for (int storyIndex = 0; storyIndex < orderedStories.Count; storyIndex++)
             {
@@ -141,6 +142,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 int areaCounter = 0;
                 for (int i = 0; i < xSlabs.Count; i++)
                     areas.Add(($"s{storyIndex + 1}_A{++areaCounter}", xSlabs[i].Select(p => Pt(p.X, p.Y)).ToList(), storyName, PropNameFor(xSlabColors[i]), xSlabColors[i], isWall[i]));
+
+                // THE OPENINGS THE ENGINEER TYPED (2026-10-20): written as floor areas marked OPENING, for the ones that
+                // sit in a slab - by the same rule as the SAFE file, so the two cut the same holes.
+                int openingCounter = 0;
+                foreach (var hole in geometry.CarriedOpenings)
+                {
+                    var pts = FilterPts(Ctr(hole));
+                    if (pts.Count < 3 || WallOpeningDetector.HostSlab(xSlabs, pts) < 0) continue;
+                    openings.Add(($"s{storyIndex + 1}_O{++openingCounter}", pts.Select(p => Pt(p.X, p.Y)).ToList(), storyName));
+                }
 
                 int lineCounter = 0;
                 for (int li = 0; li < xLines.Count; li++)
@@ -206,6 +217,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("$ AREA CONNECTIVITIES");
             foreach (var (id, ptNames, _, _, _, isWall) in areas)
                 sw.WriteLine($"  AREA \"{id}\"  {(isWall ? "WALL" : "FLOOR")}  {string.Join(" ", ptNames.Select(p => $"\"{p}\""))}");
+            foreach (var (id, ptNames, _) in openings)
+                sw.WriteLine($"  AREA \"{id}\"  FLOOR  {string.Join(" ", ptNames.Select(p => $"\"{p}\""))}");
             sw.WriteLine();
             sw.WriteLine("$ LINE CONNECTIVITIES");
             foreach (var (id, j1, j2, _, _) in lineSegs)
@@ -296,6 +309,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 sw.WriteLine($"  AREAOBJ \"{id}\"  STORY \"{storyName}\"  TYPE \"{(isWall ? "Wall" : "Floor")}\"  SECTION \"{propName}\"" +
                     (isWall ? "" : "  DIAPH \"D1\"") +
                     (hasNonUnitMod && !isWall ? modStr : ""));
+            // An opening carries no section: OPENING "Yes" alone, the way ETABS marks one.
+            foreach (var (id, _, storyName) in openings)
+                sw.WriteLine($"  AREAOBJ \"{id}\"  STORY \"{storyName}\"  TYPE \"Floor\"  OPENING \"Yes\"");
             sw.WriteLine();
 
             sw.WriteLine("$ LINE OBJECT DATA");

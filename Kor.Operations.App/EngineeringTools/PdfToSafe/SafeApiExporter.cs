@@ -88,6 +88,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             /// the AUTO_GEN openings in the F2K path.
             /// </summary>
             public bool AutoGenerateOpeningsFromWalls { get; init; } = true;
+            /// <summary>The shapes the engineer typed Opening (<see cref="ExtractedGeometry.CarriedOpenings"/>), in the
+            /// same mm frame as <see cref="Slabs"/>. Each one inside a slab is added on that slab's property and
+            /// flagged as an opening, as the wall-rectangle openings are.</summary>
+            public IReadOnlyList<IReadOnlyList<(double X, double Y)>>? Openings { get; init; }
         }
 
         public sealed record SafeInstall(int Version, string ExePath, string FolderName);

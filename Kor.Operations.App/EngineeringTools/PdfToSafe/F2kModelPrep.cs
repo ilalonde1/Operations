@@ -193,6 +193,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return (xSlabs, xSlabColors, xLines, xColumns, xColumnBaseSizes, xDropPanelCandidates, xLineSectionHints);
         }
 
+        /// <summary>The shapes typed Opening (<see cref="ExtractedGeometry.CarriedOpenings"/>), moved to the same
+        /// centre and cleaned the same way as the slabs in <see cref="PrepareGeometry"/>.</summary>
+        internal static List<List<(double X, double Y)>> PrepareOpenings(ExtractedGeometry geometry, double cx, double cy)
+        {
+            var result = new List<List<(double X, double Y)>>();
+            foreach (var hole in geometry.CarriedOpenings)
+            {
+                var pts = PolygonProcessor.FilterPoints(hole.Select(p => (p.X - cx, p.Y - cy)).ToList());
+                if (pts.Count >= 3) result.Add(pts);
+            }
+            return result;
+        }
+
         internal static F2kStoryData BuildStoryModel(
             List<List<(double X, double Y)>> xSlabs,
             List<(byte R, byte G, byte B)> xSlabColors,
@@ -207,7 +220,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             CultureInfo ic,
             double dropPanelThicknessMultiplier = 1.5,
             IReadOnlyList<(double WidthMm, double DepthMm)?>? xLineSectionHints = null,
-            bool autoGenerateOpeningsFromWalls = false)
+            bool autoGenerateOpeningsFromWalls = false,
+            IReadOnlyList<List<(double X, double Y)>>? xOpenings = null)
         {
             (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
 
@@ -239,7 +253,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             // Automatic opening detection is disabled — for Bluebeam markup, inner
             // polygons are structural elements (columns, walls), not slab holes.
-            // Users can explicitly set shapes to "Opening" type via right-click.
+            // A shape the engineer types "Opening" arrives in xOpenings and is cut below.
             var openingPairs = new List<(int ParentIndex, int ChildIndex)>();
             var childIndices = new HashSet<int>(dropPanelChildIndices);
 
@@ -389,6 +403,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var names = pts.Select(p => Pt(p.X, p.Y)).ToList();
                 string openingId = idPrefix == "" ? $"O{++oIdx}" : $"{idPrefix}O{++oIdx}";
                 openingRows.Add((openingId, parentId, names));
+            }
+
+            // THE OPENINGS THE ENGINEER TYPED (2026-10-20): each is cut from the slab that holds it, by the same rule
+            // the wall-rectangle openings below use. One that sits in no slab has nothing to cut and is left out; the
+            // window's export status counts those.
+            if (xOpenings is not null)
+            {
+                foreach (var hole in xOpenings)
+                {
+                    int host = WallOpeningDetector.HostSlab(xSlabs, hole);
+                    if (host < 0 || !slabIndexToAreaId.TryGetValue(host, out string? parentId)) continue;
+                    var names = hole.Select(p => Pt(p.X, p.Y)).ToList();
+                    string openingId = idPrefix == "" ? $"O{++oIdx}" : $"{idPrefix}O{++oIdx}";
+                    openingRows.Add((openingId, parentId, names));
+                }
             }
 
             if (autoGenerateOpeningsFromWalls

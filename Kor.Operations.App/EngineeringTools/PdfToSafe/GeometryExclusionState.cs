@@ -17,8 +17,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public Dictionary<int, string> LineTypeOverrides { get; } = new();
         public Dictionary<int, string> ColumnTypeOverrides { get; } = new();
 
-        // Per-element section/thickness overrides written by the AI vision pass.
-        // Key = element index in the original ExtractedGeometry list.
+        // Per-element section/thickness overrides. The AI vision pass wrote these; it was removed
+        // (2026-10-20, no Anthropic API in the app) and nothing writes them now, so they stay empty
+        // and the merge at export is a no-op. Key = element index in the original ExtractedGeometry list.
         // Take priority over text-annotation matches in AnnotationResolver during export.
         public Dictionary<int, double> SlabThicknessOverridesMm { get; } = new();
         public Dictionary<int, (double WidthMm, double DepthMm)> ColumnSectionOverridesMm { get; } = new();

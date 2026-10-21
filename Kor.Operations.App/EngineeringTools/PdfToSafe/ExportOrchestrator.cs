@@ -434,6 +434,37 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     }
                 }
 
+                // ── The openings the engineer typed (2026-10-20) ──────────
+                // Same host rule and same two calls as the wall-rectangle
+                // openings above; one in no slab has nothing to cut.
+                if (input.Openings is { Count: > 0 } && input.Slabs.Count > 0)
+                {
+                    var slabsForHost = input.Slabs.Select(s => s.ToList()).ToList();
+                    double lsOpen = imp ? MmToIn : 1.0;
+                    foreach (var hole in input.Openings)
+                    {
+                        var poly = DeduplicateConsecutive(hole);
+                        if (poly.Count < 3) continue;
+                        int host = WallOpeningDetector.HostSlab(slabsForHost, poly);
+                        if (host < 0 || !slabIndexToProp.TryGetValue(host, out string? openingProp)) continue;
+
+                        var ptNames = new string[poly.Count];
+                        bool ptFailed = false;
+                        for (int j = 0; j < poly.Count; j++)
+                        {
+                            int rP = driver.AddPoint(poly[j].X * lsOpen, poly[j].Y * lsOpen, 0.0, out string ptName);
+                            if (rP != 0) { ptFailed = true; break; }
+                            ptNames[j] = ptName;
+                        }
+                        if (ptFailed) { skipped++; continue; }
+
+                        int rArea = driver.AddArea(ptNames, openingProp, out string openAreaName);
+                        if (rArea != 0) { skipped++; continue; }
+                        if (driver.SetAreaOpening(openAreaName, true) != 0) { skipped++; continue; }
+                        openingsCreated++;
+                    }
+                }
+
                 // ── Grid lines from column positions ──────────────────────
                 // Engineers expect A/B/C and 1/2/3 grids in the model. We
                 // generate them from column clustering (same logic as F2K)

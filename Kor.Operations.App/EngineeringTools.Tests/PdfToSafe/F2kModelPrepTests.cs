@@ -282,7 +282,7 @@ public class F2kModelPrepTests
         // structural elements (columns, walls, cores) inside the slab perimeter —
         // treating them all as openings produced swiss-cheese slabs. Nested slab
         // polygons now export as two independent Floor objects; openings are only
-        // created when the user (or AI) explicitly assigns the "Opening" type.
+        // created when the engineer types a shape "Opening" (AShapeTypedOpeningCutsAHoleTests).
         var outer = new List<(double, double)>
         {
             (-5000, -5000), (5000, -5000), (5000, 5000), (-5000, 5000)

@@ -22,9 +22,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
     /// <summary>
     /// Per-colour configuration for the PDF-to-SAFE extraction. A pure data
-    /// record — no WPF controls. The UI is driven entirely by the AI bar
-    /// (AiChatPanel) and the preview overlay; the old Element Configuration
-    /// table has been retired in favour of conversational control.
+    /// record — no WPF controls. The engineer sets these in the colour
+    /// properties grid, right-click on a shape, and the firm defaults.
     /// </summary>
     internal sealed class SlabPropsRow
     {
@@ -54,7 +53,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private readonly GeometryExclusionState _excl;
         private readonly List<SlabPropsRow> _slabPropsRows;
         private BitmapSource? _renderedBitmap;
-        private readonly PdfGeometryAnalysisService _aiService;
         private readonly ILogger<PdfToSafeWindow> _logger;
         private CancellationTokenSource _opCts;
         private readonly PdfViewportController _viewport;
@@ -64,12 +62,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _excl = new GeometryExclusionState();
             _slabPropsRows = new List<SlabPropsRow>();
-            _aiService = new PdfGeometryAnalysisService(
-                Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? string.Empty);
             _opCts = new CancellationTokenSource();
             _viewport = new PdfViewportController();
             InitializeComponent();
-            InitializeAiBar();
         }
 
         private async void LoadPdf_Click(object sender, RoutedEventArgs e)
@@ -84,16 +79,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (dialog.ShowDialog() != true)
                 return;
 
-            await LoadPdfCoreAsync(dialog.FileName, fireVisionAutoClassify: true).ConfigureAwait(true);
+            await LoadPdfCoreAsync(dialog.FileName).ConfigureAwait(true);
         }
 
         /// <summary>
         /// Core PDF-load pipeline used by both the Browse button and the
         /// Auto-Import one-click flow. Owns the state reset, extraction,
-        /// refresh, status set, and (optionally) the fire-and-forget vision
-        /// auto-classify kickoff.
+        /// refresh and status set.
         /// </summary>
-        internal async Task LoadPdfCoreAsync(string pdfPath, bool fireVisionAutoClassify)
+        internal async Task LoadPdfCoreAsync(string pdfPath)
         {
             _loadedFilePath = pdfPath;
             _projectPath = null;
@@ -149,12 +143,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     loadDiagnosis,
                     scaleAssumed ? "#FFF3E0" : StatusFill(_extractedGeometry),
                     scaleAssumed ? "#E65100" : StatusInk(_extractedGeometry));
-
-                // Vision auto-classification. By default fire-and-forget so
-                // the user can continue reviewing the preview; Auto-Import
-                // passes false here and awaits the call itself.
-                if (fireVisionAutoClassify)
-                    _ = TryVisionAutoClassifyAsync();
             }
             catch (OperationCanceledException)
             {
@@ -371,8 +359,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 string? overrideType = _excl.LineTypeOverrides.TryGetValue(i, out var lov) ? lov : null;
                 bool isIgnore = overrideType is not null && string.Equals(overrideType, "Ignore", StringComparison.OrdinalIgnoreCase);
 
-                // Predict the post-reclassification type so when the AI (or the
-                // user) sets a colour's type to Slab / Wall / Column / Beam,
+                // Predict the post-reclassification type so when the user
+                // sets a colour's type to Slab / Wall / Column / Beam,
                 // the line stroke immediately reflects what the exporter will
                 // produce — no need to click "Preview export".
                 string predictedLineType = PredictLineExportType(i, _extractedGeometry, overlayColourSettings, overrideType);
@@ -507,13 +495,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 reclassified.Lines,
                 reclassified.LineSectionHints,
                 reclassified.Slabs);
-            if (openings.Count == 0) return 0;
+            // The shapes typed Opening are drawn the same way, where a slab holds them - what the export cuts.
+            var polygons = openings.Select(o => o.Polygon)
+                .Concat(reclassified.CarriedOpenings.Where(o => WallOpeningDetector.HostSlab(reclassified.Slabs, o) >= 0))
+                .ToList();
+            if (polygons.Count == 0) return 0;
 
             var openingStroke = new SolidColorBrush(Color.FromRgb(196, 30, 116));
             var openingFill   = new SolidColorBrush(Color.FromArgb(34, 196, 30, 116));
             var dash = new DoubleCollection { 4, 2 };
 
-            foreach (var (_, polygon) in openings)
+            foreach (var polygon in polygons)
             {
                 var canvasPts = new PointCollection(polygon.Select(p => toCanvas(p.X, p.Y)));
                 var rect = new System.Windows.Shapes.Polygon
@@ -554,7 +546,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     PreviewCanvas.Children.Add(diag2);
                 }
             }
-            return openings.Count;
+            return polygons.Count;
         }
 
         private int RenderSectionWarnings(ExtractedGeometry reclassified, Func<double, double, Point> toCanvas)
@@ -839,10 +831,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             if (sender is not FrameworkElement fe || fe.Tag is not Tuple<string, int> tag)
                 return;
-
-            // Remember what the user last touched so the AI can answer
-            // "what's this?" without the user having to name the shape.
-            _lastFocusedElement = (tag.Item1, tag.Item2);
 
             if (e.ChangedButton == System.Windows.Input.MouseButton.Right)
             {
@@ -1211,32 +1199,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
         }
 
-        private async void RerunVision_Click(object sender, RoutedEventArgs e)
-        {
-            // Manual rerun for the auto-vision pass. Closes Gap #2 from the
-            // 2026-05-09 PdfToSafe testing pass: the auto-pass currently
-            // fires once on PDF load; switching pages or wanting a second
-            // try previously had no entry point. The gates inside
-            // TryVisionAutoClassifyAsync now surface a banner if anything
-            // prevents the run (Batch 42), so this button can be a thin
-            // pass-through without its own validation.
-            try
-            {
-                await TryVisionAutoClassifyAsync().ConfigureAwait(true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Manual vision rerun failed.");
-                SetStatus($"Vision rerun failed: {ex.Message}", "#FFEBEE", "#C62828");
-            }
-        }
-
         private (double slabMin, double lineMin, bool excludeGridLines) ReadThresholds() => (1000.0, 200.0, false);
 
         private void BuildColorSwatches(ExtractedGeometry geo)
         {
-            // Legacy per-colour UI was retired in favour of the AI bar —
-            // only the excluded-colour set still needs to be reset here.
+            // The per-colour swatches were replaced by the colour properties
+            // grid — only the excluded-colour set still needs to be reset here.
             _excl.Colors.Clear();
         }
 
@@ -1289,8 +1257,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     SdlKPa = _firmDefaults.DefaultSdlKPa,
                     // Occupancy-aware default — Residential 1.92 kPa, Office 2.4,
                     // Retail/Assembly 4.8 — falls back to DefaultLiveKPa for
-                    // custom occupancies. AI auto-vision can override per-colour
-                    // via set_color_properties.
+                    // custom occupancies. The engineer can change it per colour
+                    // in the grid.
                     LiveKPa = _firmDefaults.GetOccupancyLiveKPa(),
                     Included = !IsExcludedType(defaultType)
                 });
@@ -1479,8 +1447,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         /// <summary>
         /// Current export settings. Initialised from <see cref="_firmDefaults"/>
-        /// and mutated in place by the AI's set_export_settings tool handler so
-        /// subsequent exports in the same session honour what the user asked for.
+        /// or a loaded project, so every export in the session uses the same settings.
         /// </summary>
         private readonly ExportSettings _exportSettings = new ExportSettings
         {
@@ -1528,6 +1495,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 g.LineColors.Add(i < reclassified.LineColors.Count ? reclassified.LineColors[i] : ((byte)0, (byte)0, (byte)0));
                 g.LineSectionHints.Add(i < reclassified.LineSectionHints.Count ? reclassified.LineSectionHints[i] : null);
             }
+            foreach (var hole in reclassified.CarriedOpenings) g.CarriedOpenings.Add(hole);
             return g;
         }
 
@@ -1567,7 +1535,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         Multiselect = false
                     };
                     if (dlg.ShowDialog() != true) return;
-                    await LoadPdfCoreAsync(dlg.FileName, fireVisionAutoClassify: false).ConfigureAwait(true);
+                    await LoadPdfCoreAsync(dlg.FileName).ConfigureAwait(true);
                     if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf)
                     {
                         SetStatus("Could not extract vector geometry from the selected PDF.", "#FEE2E2", "#991B1B");
@@ -1575,17 +1543,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     }
                 }
 
-                // ── Step 2: AI auto-classify (if configured) ──────────────
-                // Runs the vision model to assign wall/column/slab types to
-                // each colour, then applies the corrections. Skipped silently
-                // if no API key is set — engineer gets the raw extraction.
-                if (_aiBarInitialized && _appAiService?.IsConfigured == true)
-                {
-                    SetStatusBusy("AI classifying markups…");
-                    await TryVisionAutoClassifyAsync().ConfigureAwait(true);
-                }
-
-                // ── Step 3: OAPI export ───────────────────────────────────
+                // ── Step 2: OAPI export ───────────────────────────────────
+                // The colour types are the engineer's (the grid and firm
+                // defaults); nothing classifies them on the way out.
                 string pdfPath = _loadedFilePath ?? "export";
                 string destFdb = System.IO.Path.Combine(
                     System.IO.Path.GetDirectoryName(pdfPath) ?? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
@@ -1606,8 +1566,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 // Resolve text annotations (e.g., "S-250", "B300x600", "C500x500"
                 // labels near elements) → per-element thickness/section overrides.
-                // Then layer AI-supplied vision overrides on top — vision wins
-                // when both have a value for the same element index.
+                // The per-element overrides merged on top are empty since the
+                // AI pass was removed (GeometryExclusionState).
                 var annRes = AnnotationOverrideMerger.Merge(
                     AnnotationResolver.Resolve(reclassified),
                     _excl.SlabThicknessOverridesMm,
@@ -1705,6 +1665,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     IsImperial         = string.Equals(_firmDefaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase),
                     SafeExePathOverride = overridePath,
                     AutoGenerateOpeningsFromWalls = settings.AutoGenerateOpeningsFromWalls,
+                    Openings = reclassified.CarriedOpenings,
                 };
                 var result = await SafeApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
 
@@ -1774,7 +1735,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         Multiselect = false
                     };
                     if (dlg.ShowDialog() != true) return;
-                    await LoadPdfCoreAsync(dlg.FileName, fireVisionAutoClassify: false).ConfigureAwait(true);
+                    await LoadPdfCoreAsync(dlg.FileName).ConfigureAwait(true);
                     if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf)
                     {
                         SetStatus("Could not extract vector geometry from the selected PDF.", "#FEE2E2", "#991B1B");
@@ -1782,14 +1743,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     }
                 }
 
-                // Step 2: AI auto-classify
-                if (_aiBarInitialized && _appAiService?.IsConfigured == true)
-                {
-                    SetStatusBusy("AI classifying markups…");
-                    await TryVisionAutoClassifyAsync().ConfigureAwait(true);
-                }
-
-                // Step 3: ETABS OAPI export
+                // Step 2: ETABS OAPI export
                 if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf)
                 {
                     SetStatus("No vector geometry available.", "#FEE2E2", "#991B1B");
@@ -1810,7 +1764,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
 
-                // Resolve text annotations (same as SAFE path), then layer AI overrides.
+                // Resolve text annotations (same as SAFE path).
                 var annResE = AnnotationOverrideMerger.Merge(
                     AnnotationResolver.Resolve(reclassified),
                     _excl.SlabThicknessOverridesMm,
@@ -1899,6 +1853,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     IsImperial         = string.Equals(_firmDefaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase),
                     SafeExePathOverride = string.IsNullOrWhiteSpace(_firmDefaults.EtabsExePath) ? null : _firmDefaults.EtabsExePath,
                     AutoGenerateOpeningsFromWalls = esE.AutoGenerateOpeningsFromWalls,
+                    Openings = reclassified.CarriedOpenings,
                 };
                 var result = await EtabsApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
 
@@ -1932,10 +1887,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Select structural PDF", Filter = "PDF files (*.pdf)|*.pdf" };
                     if (dlg.ShowDialog() != true) return;
-                    await LoadPdfCoreAsync(dlg.FileName, fireVisionAutoClassify: false).ConfigureAwait(true);
+                    await LoadPdfCoreAsync(dlg.FileName).ConfigureAwait(true);
                     if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) { SetStatus("Could not extract vector geometry.", "#FEE2E2", "#991B1B"); return; }
                 }
-                if (_aiBarInitialized && _appAiService?.IsConfigured == true) { SetStatusBusy("AI classifying markups…"); await TryVisionAutoClassifyAsync().ConfigureAwait(true); }
                 if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) { SetStatus("No vector geometry available.", "#FEE2E2", "#991B1B"); return; }
 
                 string pdfPath = _loadedFilePath ?? "export";
@@ -1950,7 +1904,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
 
-                // Resolve text annotations (same as SAFE/ETABS path), then layer AI overrides.
+                // Resolve text annotations (same as SAFE/ETABS path).
                 var annResS = AnnotationOverrideMerger.Merge(
                     AnnotationResolver.Resolve(reclassified),
                     _excl.SlabThicknessOverridesMm,
@@ -2000,6 +1954,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     IsImperial = string.Equals(_firmDefaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase),
                     SafeExePathOverride = string.IsNullOrWhiteSpace(_firmDefaults.Sap2000ExePath) ? null : _firmDefaults.Sap2000ExePath,
                     AutoGenerateOpeningsFromWalls = esS.AutoGenerateOpeningsFromWalls,
+                    Openings = reclassified.CarriedOpenings,
                 };
                 var result = await Sap2000ApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
                 if (result.Success)
@@ -2063,8 +2018,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         /// <summary>
         /// Writes the current model to a SAFE F2K file at <paramref name="outputPath"/>.
-        /// No dialogs — caller provides the path. Used by both the button handler
-        /// and the AI export_f2k tool. Returns an empty string on success or an
+        /// No dialogs — caller provides the path. Used by the button handler.
+        /// Returns an empty string on success or an
         /// error message on failure so callers can propagate it to the user.
         /// </summary>
         internal async Task<string> DoExportF2kAsync(string outputPath)
@@ -2165,8 +2120,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 sb.AppendLine().Append("  ").Append(summary.SlabCount).Append(" slab(s) · ")
                   .Append(summary.WallCount).Append(" wall(s) · ")
                   .Append(summary.ColumnCount).Append(" column(s)");
-                if (summary.OpeningCount > 0)
-                    sb.Append(" · ").Append(summary.OpeningCount).Append(" auto-cut opening(s)");
+                if (summary.AutoOpeningCount > 0)
+                    sb.Append(" · ").Append(summary.AutoOpeningCount).Append(" auto-cut opening(s)");
+                if (summary.TypedOpeningCount > 0)
+                    sb.Append(" · ").Append(summary.TypedOpeningCount).Append(" opening(s) cut where you typed Opening");
+                if (summary.UnhostedOpeningCount > 0)
+                    sb.AppendLine().Append("  ⚠ ").Append(summary.UnhostedOpeningCount)
+                      .Append(" shape(s) typed Opening sit in no slab, so nothing was cut there");
             }
             if (r.WarningCount > 0)
             {
@@ -2177,7 +2137,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return sb.ToString().TrimEnd();
         }
 
-        private sealed record ExportSummary(int SlabCount, int WallCount, int ColumnCount, int OpeningCount);
+        private sealed record ExportSummary(int SlabCount, int WallCount, int ColumnCount, int AutoOpeningCount, int TypedOpeningCount, int UnhostedOpeningCount)
+        {
+            /// <summary>Every opening the file cuts: the ones found from wall rectangles and the ones the engineer typed.</summary>
+            public int OpeningCount => AutoOpeningCount + TypedOpeningCount;
+        }
 
         /// <summary>
         /// Builds the count summary used by <see cref="BuildExportStatus(string, ValidationResult, ExportSummary?)"/>.
@@ -2191,11 +2155,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (reclassified.LineSectionHints[i].HasValue) walls++;
             int openings = WallOpeningDetector.DetectRectangularOpenings(
                 reclassified.Lines, reclassified.LineSectionHints, reclassified.Slabs).Count;
+            int typed = reclassified.CarriedOpenings.Count(o => WallOpeningDetector.HostSlab(reclassified.Slabs, o) >= 0);
             return new ExportSummary(
                 SlabCount: reclassified.Slabs.Count,
                 WallCount: walls,
                 ColumnCount: reclassified.Columns.Count,
-                OpeningCount: openings);
+                AutoOpeningCount: openings,
+                TypedOpeningCount: typed,
+                UnhostedOpeningCount: reclassified.CarriedOpenings.Count - typed);
         }
 
         internal async Task<string> DoExportE2kAsync(string outputPath)
@@ -2229,6 +2196,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     RawPathCount = reclassified.RawPathCount, IsVectorPdf = reclassified.IsVectorPdf,
                     TextAnnotations = reclassified.TextAnnotations, DropPanelCandidates = reclassified.DropPanelCandidates,
                 };
+                foreach (var hole in reclassified.CarriedOpenings) filtered.CarriedOpenings.Add(hole);
                 var exClr = _excl.Colors.Count > 0 ? _excl.Colors : null;
                 for (int i = 0; i < reclassified.Slabs.Count; i++)
                 {
@@ -2469,7 +2437,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (!string.IsNullOrEmpty(mapping.GradeCode))
                     row.GradeCode = mapping.GradeCode;
 
-                row.Included = !mapping.Excluded;
+                // A project saved before 2026-10-20 marked every Opening colour excluded because of its type, so
+                // the type is what counts for one: the engineer typed it Opening to have it cut.
+                row.Included = !mapping.Excluded
+                    || string.Equals(row.ElementType, "Opening", StringComparison.OrdinalIgnoreCase);
             }
 
             // Restore per-element type overrides
@@ -2541,8 +2512,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// <summary>
         /// Shows the status badge in "busy" mode: an animated spinner with an
         /// italic label above whatever text is currently in StatusText. Use for
-        /// background AI calls that could otherwise leave the user wondering if
-        /// anything is happening.
+        /// slow work (an OAPI push) that could otherwise leave the user wondering
+        /// if anything is happening.
         /// </summary>
         private void SetStatusBusy(string spinnerLabel, string backgroundHex = "#E8EAF6", string foregroundHex = "#3949AB")
         {
@@ -2558,7 +2529,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         /// <summary>
-        /// Clears the inline spinner without touching StatusText — lets AI calls
+        /// Clears the inline spinner without touching StatusText — lets slow work
         /// signal "done" without overwriting the final message emitted by the caller.
         /// </summary>
         private void ClearStatusBusy()
@@ -2632,9 +2603,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             ExportDxfButton.IsEnabled = canExport;
         }
 
+        // Only Ignore leaves the export. An Opening goes through, and ReclassifyByColor makes it the hole it is
+        // cut as (2026-10-20); it used to be dropped here with Ignore.
         private static bool IsExcludedType(string? type)
-            => string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase);
+            => string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase);
 
     }
 }

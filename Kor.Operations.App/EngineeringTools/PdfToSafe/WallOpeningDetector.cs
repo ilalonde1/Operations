@@ -161,16 +161,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     double cx = 0.5 * (xL + xR);
                     double cy = 0.5 * (yLow + yHigh);
 
-                    int parent = -1;
-                    double parentArea = double.PositiveInfinity;
-                    for (int si = 0; si < slabs.Count; si++)
-                    {
-                        if (slabs[si].Count < 3) continue;
-                        if (!PolygonProcessor.PointInPolygon((cx, cy), slabs[si])) continue;
-                        double sArea = PolygonProcessor.PolygonAreaMm2(slabs[si]);
-                        if (sArea <= area * 1.1) continue;
-                        if (sArea < parentArea) { parentArea = sArea; parent = si; }
-                    }
+                    int parent = HostSlab(slabs, cx, cy, area);
                     if (parent < 0) continue;
 
                     string key = string.Format(System.Globalization.CultureInfo.InvariantCulture,
@@ -187,6 +178,34 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
             return result;
+        }
+
+        /// <summary>
+        /// The slab an opening is cut from: the smallest slab holding the opening's centre whose area is more than
+        /// 1.1 times the opening's. -1 when no slab holds it. One rule for the detected openings above and the ones
+        /// the engineer types "Opening" in the window.
+        /// </summary>
+        public static int HostSlab(IReadOnlyList<List<(double X, double Y)>> slabs, double cx, double cy, double openingAreaMm2)
+        {
+            int parent = -1;
+            double parentArea = double.PositiveInfinity;
+            for (int si = 0; si < slabs.Count; si++)
+            {
+                if (slabs[si].Count < 3) continue;
+                if (!PolygonProcessor.PointInPolygon((cx, cy), slabs[si])) continue;
+                double sArea = PolygonProcessor.PolygonAreaMm2(slabs[si]);
+                if (sArea <= openingAreaMm2 * 1.1) continue;
+                if (sArea < parentArea) { parentArea = sArea; parent = si; }
+            }
+            return parent;
+        }
+
+        /// <summary><see cref="HostSlab(IReadOnlyList{List{ValueTuple{double, double}}}, double, double, double)"/> for an opening's outline.</summary>
+        public static int HostSlab(IReadOnlyList<List<(double X, double Y)>> slabs, List<(double X, double Y)> opening)
+        {
+            if (opening.Count < 3) return -1;
+            var (cx, cy) = PolygonProcessor.PolygonAreaCentroid(opening);
+            return HostSlab(slabs, cx, cy, PolygonProcessor.PolygonAreaMm2(opening));
         }
     }
 }

@@ -51,15 +51,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         public bool DefaultAutoGenerateOpeningsFromWalls { get; set; } = true;
 
-        /// <summary>
-        /// When true, after the auto-vision pass finishes the WPF will fire
-        /// the F2K export to a file next to the source PDF. Saves the
-        /// engineer the click but writes to disk — leave OFF for users who
-        /// want to review before export. The export still surfaces a status
-        /// banner with success/skipped counts.
-        /// </summary>
-        public bool AutoExportAfterClassify { get; set; } = false;
-
         /// <summary>Export DXF layers by the source markup colours.</summary>
         public bool DefaultDxfLayerByColour { get; set; } = false;
 
