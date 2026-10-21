@@ -103,14 +103,14 @@
                         Orientation="Horizontal">
                 <Button Content="Clone"
                         x:Name="CloneButton"
-                        Style="{StaticResource Button.Secondary}"
+                        Style="{StaticResource D.Button}"
                         Margin="0,0,8,0"
                         Padding="12,8"
                         IsEnabled="False"
                         Click="CloneButton_Click"/>
                 <Button Content="Open"
                         x:Name="OpenButton"
-                        Style="{StaticResource Button.Primary}"
+                        Style="{StaticResource D.Primary}"
                         Padding="12,8"
                         IsEnabled="False"
                         IsDefault="True"

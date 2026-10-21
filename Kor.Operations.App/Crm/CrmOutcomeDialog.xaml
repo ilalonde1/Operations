@@ -57,7 +57,7 @@
             <Button Content="Skip" Width="90" Margin="0,0,8,0" IsCancel="True"
                     ToolTip="Close without recording an outcome — you can still edit the pursuit later."/>
             <Button Content="Save outcome" Width="130" IsDefault="True"
-                    Style="{StaticResource Button.Primary}"
+                    Style="{StaticResource D.Primary}"
                     Click="Save_Click"/>
         </StackPanel>
     </Grid>

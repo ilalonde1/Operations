@@ -20,7 +20,7 @@
             <Button Content="Grab selected" Width="140" Margin="10,0,0,0"
                     Click="GrabButton_Click"
                     IsEnabled="{Binding CanGrab}"
-                    Style="{StaticResource Button.Primary}"
+                    Style="{StaticResource D.Primary}"
                     ToolTip="Claim the selected opportunity — it leaves the To grab list and becomes a Drafting pursuit you own."/>
             <Button Content="Not for us…" Width="110" Margin="10,0,0,0"
                     Click="DismissButton_Click"

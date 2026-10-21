@@ -123,7 +123,7 @@ public sealed class OpportunityDetailRegressionTests
     [Fact]
     public void DismissalReasons_AreNotDeveloperSentences()
     {
-        var writer = RepoSource("tools/BdOpportunityDedup/Program.cs");
+        var writer = RepoSource("Kor.Opportunities.Data/Opportunities/OpportunityDedup.cs"); // moved from the tool on 2026-10-20 (eac34851)
         Assert.DoesNotContain("OpportunityKey carries", writer);
         Assert.Contains("Duplicate of ' + @keepKey", writer);
         var migration = RepoSource("Kor.Opportunities.Data/Schema/347_PlainDismissalReasons.sql");

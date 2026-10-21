@@ -13,7 +13,31 @@
             <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" AutoGenerateColumns="False" IsReadOnly="True" RowHeight="NaN">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="#" Binding="{Binding Ordinal}" Width="35"/>
-                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/>
+                    <!-- Status as a small pill in plain words: green met, red not met, grey open or not applicable (KOR palette). -->
+                    <DataGridTemplateColumn Header="Status" Width="96" SortMemberPath="Status">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border x:Name="pill" CornerRadius="10" Padding="9,2" HorizontalAlignment="Left" Background="#EEF0F2">
+                                    <TextBlock x:Name="word" Text="Open" FontSize="11.5" FontWeight="SemiBold" Foreground="#6B7280"/>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Status}" Value="Met">
+                                        <Setter TargetName="pill" Property="Background" Value="#DCFCE7"/>
+                                        <Setter TargetName="word" Property="Foreground" Value="#166534"/>
+                                        <Setter TargetName="word" Property="Text" Value="Met"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Status}" Value="NotMet">
+                                        <Setter TargetName="pill" Property="Background" Value="#FEE2E2"/>
+                                        <Setter TargetName="word" Property="Foreground" Value="#B91C1C"/>
+                                        <Setter TargetName="word" Property="Text" Value="Not met"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Status}" Value="NotApplicable">
+                                        <Setter TargetName="word" Property="Text" Value="N/A"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTemplateColumn Header="Quoted requirement" Width="3*"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Requirement}" TextWrapping="Wrap" Margin="4"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                     <DataGridTextColumn Header="Source" Binding="{Binding SourceRef}" Width="180"/>
                     <DataGridTextColumn Header="Check" Binding="{Binding CheckKind}" Width="100"/>

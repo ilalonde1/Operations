@@ -50,8 +50,8 @@
                 </StackPanel>
             </Grid>
         </DataTemplate>
-        <Style TargetType="TabItem"><Setter Property="Padding" Value="20,9"/></Style>
-        <Style TargetType="DataGrid">
+        <!-- Built on the BD look (BdLook.xaml): its tabs and tables, with this window's own settings on top. -->
+        <Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
             <Setter Property="AutoGenerateColumns" Value="False"/>
             <Setter Property="IsReadOnly" Value="True"/>
             <Setter Property="CanUserAddRows" Value="False"/>
@@ -62,12 +62,13 @@
             <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource Panel.Border}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Panel.Border}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="RowHeight" Value="27"/>
+            <Setter Property="RowHeight" Value="32"/>
+            <Setter Property="Background" Value="White"/>
             <Setter Property="SelectionMode" Value="Single"/>
             <Setter Property="SelectionUnit" Value="FullRow"/>
         </Style>
-        <Style TargetType="DataGridColumnHeader">
-            <Setter Property="Padding" Value="8,6"/>
+        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+            <Setter Property="Padding" Value="10,8"/>
             <Setter Property="ContentTemplate">
                 <Setter.Value>
                     <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap"/></DataTemplate>

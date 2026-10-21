@@ -46,7 +46,7 @@
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Open the existing one" Width="170" Margin="0,0,8,0"
                     Click="OpenExisting_Click" IsDefault="True"
-                    Style="{StaticResource Button.Primary}"
+                    Style="{StaticResource D.Primary}"
                     ToolTip="Cancel this new entry and jump to the existing opportunity."/>
             <Button Content="Save as new anyway" Width="150" Margin="0,0,8,0"
                     Click="SaveAnyway_Click"

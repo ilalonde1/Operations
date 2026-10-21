@@ -19,18 +19,18 @@
 
             <WrapPanel Margin="0,0,0,16">
                 <Button Content="+ Section"
-                        Style="{StaticResource Button.Secondary}"
+                        Style="{StaticResource D.Button}"
                         Margin="0,0,8,8"
                         Click="AddSectionButton_Click"/>
                 <Button Content="+ Personnel"
-                        Style="{StaticResource Button.Secondary}"
+                        Style="{StaticResource D.Button}"
                         Margin="0,0,8,8"
                         Command="{Binding AddPersonnelBlockCommand}"/>
                 <Button Content="+ Overview"
                         Margin="0,0,8,8"
                         Command="{Binding AddCompanyOverviewCommand}">
                     <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                        <Style TargetType="Button" BasedOn="{StaticResource D.Button}">
                             <Setter Property="IsEnabled" Value="True"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding HasCompanyOverview}" Value="True">
@@ -44,7 +44,7 @@
                         Margin="0,0,0,8"
                         Command="{Binding AddContactPageCommand}">
                     <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                        <Style TargetType="Button" BasedOn="{StaticResource D.Button}">
                             <Setter Property="IsEnabled" Value="True"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding HasContactPage}" Value="True">
@@ -55,7 +55,7 @@
                     </Button.Style>
                 </Button>
                 <Button Content="+ Client List"
-                        Style="{StaticResource Button.Secondary}"
+                        Style="{StaticResource D.Button}"
                         Margin="0,0,0,8"
                         Command="{Binding AddClientListBlockCommand}"/>
             </WrapPanel>
@@ -115,18 +115,18 @@
 
                     <Button Content="+ Page Break"
                             Command="{Binding AddPageBreakCommand}"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Margin="0,4,0,12"
                             HorizontalAlignment="Left"/>
 
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Add Section"
-                                Style="{StaticResource Button.Primary}"
+                                Style="{StaticResource D.Primary}"
                                 Margin="0,0,8,0"
                                 Command="{Binding AddSectionCommand}"
                                 Click="AddSectionSubmit_Click"/>
                         <Button Content="Cancel"
-                                Style="{StaticResource Button.Secondary}"
+                                Style="{StaticResource D.Button}"
                                 Click="CancelSectionForm_Click"/>
                     </StackPanel>
                 </StackPanel>

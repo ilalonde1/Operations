@@ -33,7 +33,7 @@
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Cancel" Width="90" Margin="0,0,8,0" IsCancel="True"/>
             <Button Content="Link project" Width="120" IsDefault="True"
-                    Style="{StaticResource Button.Primary}"
+                    Style="{StaticResource D.Primary}"
                     Click="Link_Click"/>
         </StackPanel>
     </Grid>

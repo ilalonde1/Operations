@@ -276,7 +276,7 @@
                         Padding="12,8"
                         Click="GoPrev_Click">
                     <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                        <Style TargetType="Button" BasedOn="{StaticResource D.Button}">
                             <Setter Property="Visibility" Value="Visible"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding CanGoBack}" Value="False">
@@ -289,27 +289,27 @@
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Content="New"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Margin="0,0,6,0"
                             Padding="10,8"
                             Click="NewProposal_Click"/>
                     <Button Content="📂  Open"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Margin="0,0,6,0"
                             Padding="10,8"
                             Click="OpenProposal_Click"/>
                     <Button Content="💾  Save"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Margin="0,0,6,0"
                             Padding="10,8"
                             Click="SaveProposal_Click"/>
                     <Button Content="💾  Save As"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Margin="0,0,6,0"
                             Padding="10,8"
                             Click="SaveProposalAs_Click"/>
                     <Button Content="Manage Staff"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Padding="10,8"
                             Click="ManageStaff_Click"/>
                 </StackPanel>
@@ -323,7 +323,7 @@
                         Click="GoNext_Click"
                         IsEnabled="{Binding CanGoForward}">
                     <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                        <Style TargetType="Button" BasedOn="{StaticResource D.Primary}">
                             <Setter Property="Visibility" Value="Visible"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsOnFinalStep}" Value="True">
@@ -433,22 +433,22 @@
                                        Foreground="{StaticResource Text.Secondary}"
                                        Margin="0,0,0,14"/>
                             <WrapPanel>
-                                <Button Content="+ Cover"             Tag="Cover"             Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Introduction"      Tag="Introduction"      Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Company"           Tag="Company"           Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Scope (BC)"        Tag="Scope - British Columbia" Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Scope (AB)"        Tag="Scope - Alberta"   Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Personnel"         Tag="Personnel"         Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Project Desc"      Tag="ProjectDescription" Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Fee Table"         Tag="FeeTable"          Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Excluded Services" Tag="ExcludedServices"  Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ References"        Tag="References"        Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Rates Table"       Tag="RatesTable"        Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ RFP Rate Schedule" Tag="RfpRateSchedule" Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Approval"          Tag="ApprovalToProceed" Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Signature"         Tag="SignaturePage"     Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Free Text"         Tag="FreeText"          Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
-                                <Button Content="+ Page Break"        Tag="PageBreak"         Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Cover"             Tag="Cover"             Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Introduction"      Tag="Introduction"      Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Company"           Tag="Company"           Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Scope (BC)"        Tag="Scope - British Columbia" Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Scope (AB)"        Tag="Scope - Alberta"   Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Personnel"         Tag="Personnel"         Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Project Desc"      Tag="ProjectDescription" Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Fee Table"         Tag="FeeTable"          Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Excluded Services" Tag="ExcludedServices"  Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ References"        Tag="References"        Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Rates Table"       Tag="RatesTable"        Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ RFP Rate Schedule" Tag="RfpRateSchedule" Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Approval"          Tag="ApprovalToProceed" Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Signature"         Tag="SignaturePage"     Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Free Text"         Tag="FreeText"          Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
+                                <Button Content="+ Page Break"        Tag="PageBreak"         Click="AddBlockType_Click" Style="{StaticResource D.Button}" Margin="0,0,8,8"/>
                             </WrapPanel>
                         </StackPanel>
 
@@ -538,20 +538,20 @@
                                                     <!-- Actions -->
                                                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
                                                         <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="MoveBlockUp_Click"
-                                                                ToolTip="Move up" Style="{StaticResource Button.Secondary}">
+                                                                ToolTip="Move up" Style="{StaticResource D.Button}">
                                                             <TextBlock Text="▲" FontFamily="Segoe UI Symbol" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                         </Button>
                                                         <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="MoveBlockDown_Click"
-                                                                ToolTip="Move down" Style="{StaticResource Button.Secondary}">
+                                                                ToolTip="Move down" Style="{StaticResource D.Button}">
                                                             <TextBlock Text="▼" FontFamily="Segoe UI Symbol" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                         </Button>
                                                         <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="SaveBlockAsTemplate_Click"
-                                                                ToolTip="Save as template" Style="{StaticResource Button.Secondary}">
+                                                                ToolTip="Save as template" Style="{StaticResource D.Button}">
                                                             <TextBlock Text="★" FontFamily="Segoe UI Symbol" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                         </Button>
                                                         <Button Width="28" Height="28"
                                                                 Tag="{Binding DataContext, RelativeSource={RelativeSource Self}}"
-                                                                Click="DeleteBlock_Click" ToolTip="Remove" Style="{StaticResource Button.Secondary}">
+                                                                Click="DeleteBlock_Click" ToolTip="Remove" Style="{StaticResource D.Button}">
                                                             <TextBlock Text="✕" FontFamily="Segoe UI Symbol" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                         </Button>
                                                     </StackPanel>
@@ -782,7 +782,7 @@
                                         IsEnabled="{Binding CanGenerate}" Click="GeneratePreview_Click"
                                         Margin="0,0,12,0">
                                     <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                        <Style TargetType="Button" BasedOn="{StaticResource D.Button}">
                                             <Setter Property="Content" Value="Preview"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsGenerating}" Value="True">

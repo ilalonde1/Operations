@@ -24,7 +24,7 @@
                     <TextBox x:Name="ProjectNameBox" Grid.Column="0"
                              Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"/>
                     <Button Grid.Column="1" Content="🔍" Width="30" Margin="4,0,0,0"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             ToolTip="Look up project from Deltek"
                             Click="LookupProject_Click"/>
                 </Grid>
@@ -77,7 +77,7 @@
                     <TextBox x:Name="AttentionNameBox" Grid.Column="0"
                              Text="{Binding AttentionName, UpdateSourceTrigger=PropertyChanged}"/>
                     <Button Grid.Column="1" Content="🔍" Width="30" Margin="4,0,0,0"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             ToolTip="Look up contact from Deltek"
                             Click="LookupAttention_Click"/>
                 </Grid>
@@ -100,7 +100,7 @@
                     <TextBox x:Name="CcNameBox" Grid.Column="0"
                              Text="{Binding CcName, UpdateSourceTrigger=PropertyChanged}"/>
                     <Button Grid.Column="1" Content="🔍" Width="30" Margin="4,0,0,0"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             ToolTip="Look up contact from Deltek"
                             Click="LookupCc_Click"/>
                 </Grid>

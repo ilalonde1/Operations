@@ -249,7 +249,7 @@
                         Padding="12,8"
                         Command="{Binding PrevStepCommand}">
                     <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                        <Style TargetType="Button" BasedOn="{StaticResource D.Button}">
                             <Setter Property="Visibility" Value="Visible"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding CanGoBack}" Value="False">
@@ -264,22 +264,22 @@
                             Orientation="Horizontal"
                             VerticalAlignment="Center">
                     <Button Content="New"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Margin="0,0,6,0"
                             Padding="10,8"
                             Command="{Binding NewProposalCommand}"/>
                     <Button Content="📂  Open"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Margin="0,0,6,0"
                             Padding="10,8"
                             Command="{Binding LoadProposalCommand}"/>
                     <Button Content="💾  Save"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Margin="0,0,6,0"
                             Padding="10,8"
                             Command="{Binding SaveProposalCommand}"/>
                     <Button Content="Save As…"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Padding="10,8"
                             Command="{Binding SaveProposalAsCommand}"/>
                 </StackPanel>
@@ -292,7 +292,7 @@
                         Padding="12,8"
                         Command="{Binding NextStepCommand}">
                     <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                        <Style TargetType="Button" BasedOn="{StaticResource D.Primary}">
                             <Setter Property="Visibility" Value="Visible"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding CanGoNext}" Value="False">

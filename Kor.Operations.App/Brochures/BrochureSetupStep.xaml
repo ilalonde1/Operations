@@ -39,7 +39,7 @@
                     HorizontalAlignment="Left"
                     Padding="10,6"
                     Margin="0,0,0,10"
-                    Style="{StaticResource Button.Secondary}"
+                    Style="{StaticResource D.Button}"
                     Command="{Binding AnalyzeBrochureCommand}"
                     IsEnabled="{Binding CanProduce}"
                     ToolTip="Upload a PDF brochure and let AI suggest matching colors and style"/>
@@ -175,7 +175,7 @@
                         </Style>
                     </StackPanel.Style>
                     <Button Content="Browse..."
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Command="{Binding PickCoverPhotoCommand}"/>
                     <TextBlock Text="(optional)"
                                Margin="10,8,0,0"
@@ -215,7 +215,7 @@
                             Margin="0,16,8,0"
                             Command="{Binding ClearCoverPhotoCommand}"/>
                     <Button Content="Change..."
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Margin="0,12,0,0"
                             Command="{Binding PickCoverPhotoCommand}"/>
                 </StackPanel>
@@ -260,17 +260,17 @@
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Browse..."
                                 Padding="8,5"
-                                Style="{StaticResource Button.Secondary}"
+                                Style="{StaticResource D.Button}"
                                 Command="{Binding PickLogoCommand}"/>
                         <Button Content="Cover logo (white)..."
                                  Padding="8,5"
                                  Margin="6,0,0,0"
-                                 Style="{StaticResource Button.Secondary}"
+                                 Style="{StaticResource D.Button}"
                                  Command="{Binding PickCoverLogoCommand}"/>
                         <Button Content="Reset to default"
                                  Padding="8,5"
                                  Margin="6,0,0,0"
-                                 Style="{StaticResource Button.Secondary}"
+                                 Style="{StaticResource D.Button}"
                                  Command="{Binding ClearLogoCommand}"/>
                     </StackPanel>
                     <TextBlock Text="{Binding ContactConfig.LogoPath}"

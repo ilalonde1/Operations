@@ -82,7 +82,7 @@
                             Command="{Binding PreviewBrochureCommand}"
                             IsEnabled="{Binding CanProduce, Mode=OneWay}">
                         <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                            <Style TargetType="Button" BasedOn="{StaticResource D.Button}">
                                 <Setter Property="Content" Value="Preview"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsGenerating}" Value="True">
@@ -98,7 +98,7 @@
                             Command="{Binding ProduceBrochureCommand}"
                             IsEnabled="{Binding CanProduce, Mode=OneWay}">
                         <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                            <Style TargetType="Button" BasedOn="{StaticResource D.Primary}">
                                 <Setter Property="Content" Value="Generate PDF"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsGenerating}" Value="True">
@@ -111,7 +111,7 @@
                     <Button Content="Export to Word"
                             Width="160" Height="52"
                             FontSize="15" FontWeight="SemiBold"
-                            Style="{StaticResource Button.Secondary}"
+                            Style="{StaticResource D.Button}"
                             Command="{Binding ExportDocxCommand}"
                             IsEnabled="{Binding CanProduce, Mode=OneWay}"/>
                 </StackPanel>

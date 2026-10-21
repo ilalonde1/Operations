@@ -81,6 +81,11 @@ public sealed class BdScreensRenderTests
                 {
                     Source = new Uri("pack://application:,,,/Kor.Operations.App;component/Themes/KorTheme.xaml", UriKind.Absolute),
                 });
+                // Every BD window gets the BD look when it loads (BdLookApplier); the screens here are drawn without a window.
+                Application.Current.Resources.MergedDictionaries.Add(new ResourceDictionary
+                {
+                    Source = new Uri("pack://application:,,,/Kor.Operations.App;component/BusinessDevelopment/Director/BdLook.xaml", UriKind.Absolute),
+                });
 
                 written += RenderDashboard(dir);
                 written += RenderRealTenders(dir);

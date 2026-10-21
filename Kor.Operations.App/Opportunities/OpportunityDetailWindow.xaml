@@ -45,7 +45,7 @@
                                 Click="OpenPosting_Click"
                                 IsEnabled="{Binding HasPrimaryUrl}"
                                 Padding="14,6" Margin="0,0,8,0"
-                                Style="{StaticResource Button.Primary}" FontWeight="SemiBold"/>
+                                Style="{StaticResource D.Primary}" FontWeight="SemiBold"/>
                         <Button Content="Edit record…" Click="Edit_Click" Padding="14,6" Margin="0,0,8,0"/>
                         <Button Content="Close" Click="Close_Click" Padding="14,6"/>
                     </StackPanel>

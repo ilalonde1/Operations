@@ -236,7 +236,7 @@
                                             Padding="10">
                                         <Button Content="+ Add Project"
                                                 Padding="10,6"
-                                                Style="{StaticResource Button.Secondary}"
+                                                Style="{StaticResource D.Button}"
                                                 HorizontalAlignment="Left"
                                                 Click="NewProject_Click"/>
                                     </Border>
@@ -359,7 +359,7 @@
                                                         </Style>
                                                     </StackPanel.Style>
                                                     <Button Content="Add Photo..."
-                                                            Style="{StaticResource Button.Secondary}"
+                                                            Style="{StaticResource D.Button}"
                                                             Click="AddPhoto_Click"/>
                                                 </StackPanel>
                                                 <StackPanel Orientation="Horizontal">
@@ -383,13 +383,13 @@
                                                                Stretch="UniformToFill"/>
                                                     </Border>
                                                     <Button Content="Change"
-                                                            Style="{StaticResource Button.Secondary}"
+                                                            Style="{StaticResource D.Button}"
                                                             Margin="0,0,8,0"
                                                             Click="AddPhoto_Click"/>
                                                     <Button Content="&#x2715;"
                                                             Width="28"
                                                             Height="28"
-                                                            Style="{StaticResource Button.Secondary}"
+                                                            Style="{StaticResource D.Button}"
                                                             Click="RemovePhoto_Click"/>
                                                 </StackPanel>
                                             </StackPanel>
@@ -404,7 +404,7 @@
                                                     Command="{Binding AddProjectCommand}"
                                                     Click="ProjectFormAction_Click">
                                                 <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                                    <Style TargetType="Button" BasedOn="{StaticResource D.Primary}">
                                                         <Setter Property="Visibility" Value="Visible"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
@@ -419,7 +419,7 @@
                                                     Command="{Binding CancelEditCommand}"
                                                     Click="ProjectFormAction_Click">
                                                 <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                                    <Style TargetType="Button" BasedOn="{StaticResource D.Button}">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
@@ -433,7 +433,7 @@
                                                     Command="{Binding SaveEditCommand}"
                                                     Click="ProjectFormAction_Click">
                                                 <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                                    <Style TargetType="Button" BasedOn="{StaticResource D.Primary}">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
@@ -608,7 +608,7 @@
                         <Button Content="+ Add person"
                                 Margin="0,12,0,0"
                                 HorizontalAlignment="Left"
-                                Style="{StaticResource Button.Secondary}"
+                                Style="{StaticResource D.Button}"
                                 Click="AddPersonButton_Click"/>
                         <Border x:Name="PersonForm"
                                 Margin="0,16,0,0"
@@ -638,7 +638,7 @@
                                             MinWidth="64" MinHeight="32"
                                             Padding="10,0"
                                             Command="{Binding FillPersonFromRosterCommand}"
-                                            Style="{StaticResource Button.Secondary}"/>
+                                            Style="{StaticResource D.Button}"/>
                                 </Grid>
                                 <Separator Margin="0,0,0,10"/>
                                 <StackPanel Margin="0,0,0,16">
@@ -682,7 +682,7 @@
                                                    Stretch="UniformToFill"/>
                                         </Border>
                                         <Button Content="Browse..."
-                                                Style="{StaticResource Button.Secondary}"
+                                                Style="{StaticResource D.Button}"
                                                 Command="{Binding PickPersonPhotoCommand}"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -693,7 +693,7 @@
                                             Command="{Binding CancelPersonEditCommand}"
                                             Click="PersonFormAction_Click">
                                         <Button.Style>
-                                            <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                            <Style TargetType="Button" BasedOn="{StaticResource D.Button}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsEditingPerson}" Value="True">
@@ -708,7 +708,7 @@
                                             CommandParameter="{Binding SelectedBlock}"
                                             Click="PersonFormAction_Click">
                                         <Button.Style>
-                                            <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                            <Style TargetType="Button" BasedOn="{StaticResource D.Primary}">
                                                 <Setter Property="Content" Value="Add Person"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsEditingPerson}" Value="True">
@@ -887,7 +887,7 @@
                                             Command="{Binding AddOverviewSectionCommand}"
                                             CommandParameter="{Binding SelectedBlock}">
                                         <Button.Style>
-                                            <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                            <Style TargetType="Button" BasedOn="{StaticResource D.Primary}">
                                                 <Setter Property="Visibility" Value="Visible"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsEditingOverview}" Value="True">
@@ -901,7 +901,7 @@
                                             Margin="0,0,8,0"
                                             Command="{Binding CancelOverviewEditCommand}">
                                         <Button.Style>
-                                            <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                            <Style TargetType="Button" BasedOn="{StaticResource D.Button}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsEditingOverview}" Value="True">
@@ -914,7 +914,7 @@
                                     <Button Content="Save Changes"
                                             Command="{Binding SaveOverviewEditCommand}">
                                         <Button.Style>
-                                            <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                            <Style TargetType="Button" BasedOn="{StaticResource D.Primary}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsEditingOverview}" Value="True">
@@ -1084,13 +1084,13 @@
                                     Content="Add"
                                     MinWidth="60"
                                     MinHeight="32"
-                                    Style="{StaticResource Button.Secondary}"
+                                    Style="{StaticResource D.Button}"
                                     Command="{Binding AddClientNameCommand}"/>
                             <Button Grid.Column="4"
                                     Content="Paste from Clipboard"
                                     MinHeight="32"
                                     Padding="10,0"
-                                    Style="{StaticResource Button.Secondary}"
+                                    Style="{StaticResource D.Button}"
                                     Command="{Binding PasteClientNamesCommand}"
                                     ToolTip="Paste names separated by newlines, tabs, or commas"/>
                         </Grid>
@@ -1209,7 +1209,7 @@
                                                         HorizontalAlignment="Right"
                                                         Padding="8,4"
                                                         Margin="0,8,0,0"
-                                                        Style="{StaticResource Button.Secondary}"
+                                                        Style="{StaticResource D.Button}"
                                                         Command="{Binding DataContext.RemoveOfficeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"/>
                                             </Grid>
@@ -1222,14 +1222,14 @@
                                     HorizontalAlignment="Left"
                                     Padding="12,6"
                                     Margin="0,8,0,0"
-                                    Style="{StaticResource Button.Secondary}"
+                                    Style="{StaticResource D.Button}"
                                     Command="{Binding AddOfficeCommand}"/>
 
                             <Button Content="Save Contact Info"
                                     HorizontalAlignment="Right"
                                     Padding="12,6"
                                     Margin="0,8,0,0"
-                                    Style="{StaticResource Button.Primary}"
+                                    Style="{StaticResource D.Primary}"
                                     Command="{Binding SaveContactCommand}"/>
                         </StackPanel>
                     </Border>

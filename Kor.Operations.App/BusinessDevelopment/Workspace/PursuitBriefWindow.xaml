@@ -42,7 +42,7 @@
             <Button Content="Own it"
                     Padding="14,7"
                     Margin="0,0,8,0"
-                    Style="{StaticResource Button.Primary}"
+                    Style="{StaticResource D.Primary}"
                     Click="OwnPlay_Click"
                     ToolTip="Claim this play. It leaves the shared boards and the weekly attack sheet; convert it to a pursuit within 14 days or it returns to the pool."/>
             <Button Content="Not for us…"
@@ -72,14 +72,14 @@
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
                                 <Button x:Name="DraftApproachButton" Content="Draft approach"
                                         Padding="14,7"
-                                        Style="{StaticResource Button.Primary}"
+                                        Style="{StaticResource D.Primary}"
                                         Click="DraftApproach_Click"
                                         ToolTip="Claude writes who to call, a call script, and a draft email from this pursuit's current intel."/>
                                 <Button x:Name="CancelApproachButton" Content="Cancel"
                                         Padding="14,7"
                                         Margin="8,0,0,0"
                                         Visibility="Collapsed"
-                                        Style="{StaticResource Button.Secondary}"
+                                        Style="{StaticResource D.Button}"
                                         Click="CancelApproach_Click"
                                         ToolTip="Cancel the current AI draft request."/>
                             </StackPanel>

@@ -207,7 +207,7 @@
                                 Visibility="{Binding HasReview, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                             <TextBlock Text="{Binding ReviewVerdict}" Foreground="White" FontWeight="Bold" FontSize="12"/>
                         </Border>
-                        <Button DockPanel.Dock="Right" Content="Open review" Style="{StaticResource Button.Primary}" Padding="14,4"
+                        <Button DockPanel.Dock="Right" Content="Open review" Style="{StaticResource D.Primary}" Padding="14,4"
                                 Margin="12,0,0,0" VerticalAlignment="Center" Click="OpenReviewButton_Click"
                                 Visibility="{Binding HasReview, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
                                 ToolTip="Bid or not and why, the questions for the buyer, and what the RFP asks for."/>

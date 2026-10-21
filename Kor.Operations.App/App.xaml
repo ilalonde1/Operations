@@ -8,6 +8,9 @@
             <ResourceDictionary.MergedDictionaries>
                 <!-- Use your existing file and folder names -->
                 <ResourceDictionary Source="Themes/KorTheme.xaml"/>
+                <!-- The BD look's named styles (D.Primary, D.Button, D.Card …), so BD screens can ask for them by name. Keyed only:
+                     nothing outside BD changes. The implicit BD styles are applied to BD windows by BdLookApplier. -->
+                <ResourceDictionary Source="BusinessDevelopment/Director/DirectorStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <brochures:AddOneConverter x:Key="AddOneConverter"/>
             <brochures:FileNameFromPathConverter x:Key="FileNameFromPathConverter"/>

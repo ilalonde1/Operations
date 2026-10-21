@@ -26,12 +26,12 @@
 
         <Border DockPanel.Dock="Bottom" Margin="0,14,0,0" Padding="0,12,0,0" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0">
             <DockPanel LastChildFill="False">
-                <Button x:Name="DraftButton" DockPanel.Dock="Left" Style="{StaticResource Button.Primary}" Padding="16,6" Click="DraftEmail_Click"
+                <Button x:Name="DraftButton" DockPanel.Dock="Left" Style="{StaticResource D.Primary}" Padding="16,6" Click="DraftEmail_Click"
                         ToolTip="Opens the questions as an unsent email to the buyer in your Outlook. Nothing is sent."/>
-                <Button x:Name="ChecklistButton" DockPanel.Dock="Left" Style="{StaticResource Button.Secondary}" Padding="14,6" Margin="8,0,0,0" Click="Checklist_Click"/>
-                <Button DockPanel.Dock="Left" Content="Copy" Style="{StaticResource Button.Secondary}" Padding="14,6" Margin="8,0,0,0" Click="Copy_Click"
+                <Button x:Name="ChecklistButton" DockPanel.Dock="Left" Style="{StaticResource D.Button}" Padding="14,6" Margin="8,0,0,0" Click="Checklist_Click"/>
+                <Button DockPanel.Dock="Left" Content="Copy" Style="{StaticResource D.Button}" Padding="14,6" Margin="8,0,0,0" Click="Copy_Click"
                         ToolTip="Copy the whole review as text."/>
-                <Button DockPanel.Dock="Right" Content="Close" Style="{StaticResource Button.Secondary}" Padding="18,6" Click="Close_Click"/>
+                <Button DockPanel.Dock="Right" Content="Close" Style="{StaticResource D.Button}" Padding="18,6" Click="Close_Click"/>
             </DockPanel>
         </Border>
 
