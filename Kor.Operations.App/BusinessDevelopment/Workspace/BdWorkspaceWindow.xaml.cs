@@ -51,10 +51,10 @@ public partial class BdWorkspaceWindow : Window
             // Promote/Open deep-link via NavigateToPursuit) must not be
             // clobbered — the HeaderLoader await above means this runs AFTER
             // any pre-Show navigation (review fix, 2026-07-07).
+            // 21 Oct 2026: a lead lands on Today, as Ian does in BD Director; Dashboard is one click down.
             if (ContentHost.Content is null)
             {
-                SetActiveNav(DashboardButton);
-                ContentHost.Content = _services.GetRequiredService<DashboardView>();
+                NavigateToToday();
             }
         }
         catch (Exception ex)
@@ -311,6 +311,7 @@ public partial class BdWorkspaceWindow : Window
 
         foreach (var button in new[]
         {
+            TodayButton,
             DashboardButton,
             OpportunitiesButton,
             UpcomingButton,
@@ -356,6 +357,7 @@ public partial class BdWorkspaceWindow : Window
         var empty = new RoutedEventArgs();
         switch (key)
         {
+            case "Today": NavigateToToday(); break;
             case "Dashboard": NavigateToDashboard(); break;
             case "Opportunities": NavigateToOpportunities(); break;
             case "Future Projects": NavigateToForwardPipeline(); break;

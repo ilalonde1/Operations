@@ -12,23 +12,37 @@
         FontFamily="Mulish, Segoe UI"
         Loaded="BdWorkspaceWindow_Loaded">
     <Window.Resources>
+        <ResourceDictionary>
+        <!-- The BD look: the Director's buttons and tables for every screen in the workspace. -->
+        <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="/Kor.Operations.App;component/BusinessDevelopment/Director/BdLook.xaml"/></ResourceDictionary.MergedDictionaries>
+        <!-- 21 Oct 2026: the same rail as BD Director (KOR slate #3F5364, the selected place a deeper slate). -->
         <Style x:Key="NavButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="Foreground" Value="#C9D2DB"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="Margin" Value="0,2"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
+            <Setter Property="FontSize" Value="14.5"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="9" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#4C6175"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="b" Property="Opacity" Value="0.4"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="ActiveNavButton" TargetType="Button" BasedOn="{StaticResource NavButton}">
-            <Setter Property="Background" Value="#EDEEF1"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Brand.Primary.Brush}"/>
-            <Setter Property="BorderThickness" Value="3,0,0,0"/>
-            <Setter Property="Foreground" Value="{StaticResource Brand.Primary.Brush}"/>
+            <Setter Property="Background" Value="#344555"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
 
         <!-- Round 2026-07-08 (E4 nav polish): labeled rail groups so the
@@ -40,6 +54,7 @@
             <Setter Property="Opacity" Value="0.65"/>
             <Setter Property="Margin" Value="12,10,0,3"/>
         </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid>
@@ -62,12 +77,12 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="10" Margin="0,0,10,0">
+            <Border Grid.Column="0" Background="#3F5364" CornerRadius="12" Padding="12,16" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="Find an organization"
                                FontSize="11"
-                               Foreground="{StaticResource Text.Secondary}"
-                               Margin="0,0,0,4"/>
+                               Foreground="#9FB0BF"
+                               Margin="2,0,0,5"/>
                     <appControls:OrgSearchTypeahead x:Name="GlobalSearch"
                                                     Margin="0,0,0,10"/>
 
@@ -80,7 +95,9 @@
 
                     <!-- 2026-10-20 "cleaner UI": the seven screens a regional lead uses, then the rest behind More. The group
                          headings (Find / Pursue / Know / Tools) went; seven items need no headings. -->
-                    <Button x:Name="DashboardButton" Content="Dashboard" Style="{StaticResource ActiveNavButton}" Click="Dashboard_Click"/>
+                    <Button x:Name="TodayButton" Content="Today" Style="{StaticResource ActiveNavButton}" Click="Today_Click"
+                            ToolTip="Your tenders with Claude's read, what is coming up, your list, and pursuits waiting for a next step."/>
+                    <Button x:Name="DashboardButton" Content="Dashboard" Style="{StaticResource NavButton}" Click="Dashboard_Click"/>
                     <Button x:Name="OpportunitiesButton" Content="Opportunities" Style="{StaticResource NavButton}" Click="Opportunities_Click"
                             ToolTip="Open tenders — 'To grab' (un-claimed, ranked by fit) or 'All tenders' (the full registry)."/>
                     <Button x:Name="UpcomingButton" Content="Future Projects" Style="{StaticResource NavButton}" Click="Upcoming_Click"
@@ -113,7 +130,9 @@
                 </StackPanel>
             </Border>
 
-            <ContentControl x:Name="ContentHost" Grid.Column="1"/>
+            <Border Grid.Column="1" Background="#F4F5F7" CornerRadius="12">
+                <ContentControl x:Name="ContentHost"/>
+            </Border>
         </Grid>
     </Grid>
 </Window>

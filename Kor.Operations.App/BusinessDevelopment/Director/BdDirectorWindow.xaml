@@ -10,7 +10,7 @@
         WindowStartupLocation="CenterOwner" Background="{StaticResource App.Background}">
     <Window.Resources>
         <ResourceDictionary>
-        <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="DirectorStyles.xaml"/></ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="BdLook.xaml"/></ResourceDictionary.MergedDictionaries>
         <converters:BdDayConverter x:Key="BdDay"/>
         <BooleanToVisibilityConverter x:Key="BoolVisibility"/>
         <opp:NullOrEmptyStringToVisibilityConverter x:Key="TextVisible"/>

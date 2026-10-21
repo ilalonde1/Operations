@@ -16,6 +16,8 @@ public interface IDirectorHomeHost
     void OpenPersonList(DirectorTeamCard person);
     Task ReassignAsync(DirectorCard card, DirectorPerson to);
     Task OpenPursuitAsync(DirectorCard card);
+    /// <summary>Opens a pursuit to write its next step (BD Workspace Today).</summary>
+    void OpenFollowUp(DirectorFollowUp pursuit);
 }
 
 /// <summary>BD Director v3, Today: what needs Ian's call, what is coming up, his list, today's moves.</summary>
@@ -41,6 +43,11 @@ public partial class DirectorTodayView : UserControl
     }
 
     private void Hour_Click(object sender, RoutedEventArgs e) => Host?.OpenHour();
+
+    private void FollowUp_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: DirectorFollowUp pursuit }) Host?.OpenFollowUp(pursuit);
+    }
 
     private void Nudge_Click(object sender, RoutedEventArgs e)
     {

@@ -83,33 +83,9 @@ public partial class BdDirectorWindow : IDirectorHomeHost
 
     // ---- IDirectorHomeHost: what the screens ask for ----
 
-    public async Task CardPrimaryAsync(DirectorCard card)
-    {
-        if (card.Row.Recommendation == "no-go")
-        {
-            await ArchiveAsync(card).ConfigureAwait(true);
-            return;
-        }
-        if (card.Row.Questions.Count > 0 && await LatestReviewAsync(card) is { } review)
-        {
-            PursuitReviewWindow.DraftQuestions(this, review, card.Row.Project, card.Row.QuestionsTo);
-            return;
-        }
-        await OpenReviewAsync(card).ConfigureAwait(true);
-    }
+    public Task CardPrimaryAsync(DirectorCard card) => DirectorActions.CardPrimaryAsync(this, card, _actor, ReloadAsync, _lifetime.Token);
 
-    public async Task OpenReviewAsync(DirectorCard card)
-    {
-        if (await LatestReviewAsync(card) is not { } review)
-        {
-            MessageBox.Show(this, card.Row.ReviewRunning ? "Claude is reading this RFP now; the review appears when it reports."
-                : "Claude has not read this RFP yet. It starts by itself once the documents are in.", "Claude's RFP review",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-        new PursuitReviewWindow(review, card.Row.Project, card.Row.Buyer, null, card.Row.DeadlineUtc,
-            () => OpenChecklist(card), card.Row.OwnerMailbox) { Owner = this }.Show();
-    }
+    public Task OpenReviewAsync(DirectorCard card) => DirectorActions.OpenReviewAsync(this, card, _actor, _lifetime.Token);
 
     public async Task OpenPursuitAsync(DirectorCard card)
     {
@@ -124,19 +100,7 @@ public partial class BdDirectorWindow : IDirectorHomeHost
         }
     }
 
-    public async Task CompleteAskAsync(DirectorListItem item)
-    {
-        try
-        {
-            await AppServices.Get<IBdDirectorLedgerStore>().CloseAskAsync(item.Id, "Done", null, _actor, _lifetime.Token).ConfigureAwait(true);
-            _home.RemoveFromList(item);
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "BD Director: closing ask {Id} failed", item.Id);
-            MessageBox.Show(this, "That did not save. Please try again.", "Your list", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
+    public Task CompleteAskAsync(DirectorListItem item) => DirectorActions.CompleteAskAsync(this, item, _actor, _home, _lifetime.Token);
 
     public void BookTime(DirectorTeamCard person)
     {
@@ -148,6 +112,9 @@ public partial class BdDirectorWindow : IDirectorHomeHost
     }
 
     public void OpenHour() => ShowLibrary(tab: TodayTab);
+
+    public void OpenFollowUp(DirectorFollowUp pursuit) =>
+        _ = global::Kor.Operations.KorDeepLink.OpenAsync($"kor://pursuit/{pursuit.EngagementId}");
 
     public void OpenPersonList(DirectorTeamCard person)
     {
@@ -192,46 +159,4 @@ public partial class BdDirectorWindow : IDirectorHomeHost
         }
     }
 
-    private async Task ArchiveAsync(DirectorCard card)
-    {
-        var reason = card.Deciding;
-        if (MessageBox.Show(this, $"Archive \"{BdDirectorHomeViewModel.Short(card.Row.Project)}\"?\n\nReason recorded: {reason}", "Archive",
-                MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
-        try
-        {
-            var store = AppServices.Get<ICrmEngagementStore>();
-            var current = await store.GetByIdAsync(card.Row.EngagementId, _lifetime.Token).ConfigureAwait(true)
-                ?? throw new InvalidOperationException("The pursuit no longer exists.");
-            await store.UpdateAsync(current with { Stage = CrmEngagementStage.Archived, OutcomeReason = reason.Length <= 400 ? reason : reason[..400] },
-                _actor, _lifetime.Token).ConfigureAwait(true);
-            _vm.Say($"Archived \"{BdDirectorHomeViewModel.Short(card.Row.Project)}\".");
-            await ReloadAsync().ConfigureAwait(true);
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "BD Director: archiving {Id} failed", card.Row.EngagementId);
-            MessageBox.Show(this, "Could not archive. Refresh and try again.", "Archive", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    private async Task<PursuitReviewRow?> LatestReviewAsync(DirectorCard card)
-    {
-        try
-        {
-            return AppServices.GetOptional<SqlPursuitReviewStore>() is { } reviews
-                ? await reviews.LatestAsync(card.Row.EngagementId, _lifetime.Token).ConfigureAwait(true) : null;
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "BD Director: reading the review for {Id} failed", card.Row.EngagementId);
-            return null;
-        }
-    }
-
-    private void OpenChecklist(DirectorCard card)
-    {
-        var checklist = new PursuitChecklistViewModel(AppServices.Get<IPursuitRequirementStore>(), AppServices.Get<IPursuitFileStore>(),
-            card.Row.EngagementId, BdDirectorHomeViewModel.Short(card.Row.Project), _actor);
-        new PursuitChecklistWindow(checklist) { Owner = this }.Show();
-    }
 }

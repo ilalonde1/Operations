@@ -191,6 +191,13 @@ public sealed class BdScreensRenderTests
         hub.ShowMode(allTenders: true);
         Assert.DoesNotContain(vm.FilteredOpportunitiesView.Cast<OpportunityRowView>(), r => r.Model.Name.Contains("Road Construction", StringComparison.OrdinalIgnoreCase));
         written += RenderView(hub, new Size(1680, 980), Path.Combine(dir, "bids-real-tenders.png"));
+
+        // As the BD Workspace draws it (Director/BdLook.xaml).
+        hub.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("pack://application:,,,/Kor.Operations.App;component/BusinessDevelopment/Director/BdLook.xaml", UriKind.Absolute),
+        });
+        written += RenderView(hub, new Size(1680, 980), Path.Combine(dir, "bids-bdlook.png"));
         return written;
     }
 
@@ -350,6 +357,33 @@ public sealed class BdScreensRenderTests
         written += RenderView(content, new Size(1680, 980), Path.Combine(dir, "director-v3-pursuits.png"));
         ((System.Windows.Controls.RadioButton)window.FindName("NavTeam")).IsChecked = true;
         written += RenderView(content, new Size(1680, 980), Path.Combine(dir, "director-v3-team.png"));
+
+        // The BD Workspace a lead uses lands on the same Today, scoped to them: Islam's view. Follow-ups are illustrative.
+        var services = new Mock<IServiceProvider>();
+        services.Setup(s => s.GetService(typeof(ICanonicalOrgStore))).Returns(Mock.Of<ICanonicalOrgStore>());
+        var workspace = new BdWorkspaceWindow(services.Object, () => null!);
+        var lead = new BdDirectorHomeViewModel();
+        var islamAsks = new[]
+        {
+            new BdAsk(21, "ishabana@korstructural.com", 1142, null, "Send the 3 questions to Amaya Kingston", null, 30, new DateTimeOffset(2026, 10, 22, 23, 0, 0, TimeSpan.Zero), "Claude", now, "Open", null, null, null),
+            new BdAsk(22, "ishabana@korstructural.com", 1153, null, "Archive the pursuit", null, 30, new DateTimeOffset(2026, 10, 22, 23, 0, 0, TimeSpan.Zero), "Claude", now, "Open", null, null, null),
+        };
+        lead.Load(board, islamAsks, Array.Empty<BdDirectorPersonRow>(), Array.Empty<DirectorPerson>(), "ishabana@korstructural.com", "Islam Shabana", now, ownOnly: true);
+        lead.LoadFollowUps(new[]
+        {
+            new DirectorFollowUp(901, "Town Hall seismic upgrade", "City of Red Deer", true, now.AddDays(-9), now.AddDays(-30)),
+            new DirectorFollowUp(902, "Arena roof assessment", "Town of Stony Plain", false, null, now.AddDays(-45)),
+            new DirectorFollowUp(903, "Library expansion feasibility", "Strathcona County", false, null, null),
+        });
+        Assert.True(lead.Decisions.Count == 2 && lead.Decisions.All(d => d.Row.OwnerMailbox == "ishabana@korstructural.com") && !lead.HasNudge,
+            $"EXPECTED Islam's 2 tenders and no team nudge; ACTUAL {lead.Decisions.Count} / nudge {lead.HasNudge}");
+        Assert.Equal("NEEDS YOUR ATTENTION", lead.DecisionsHeader);
+        ((System.Windows.Controls.ContentControl)workspace.FindName("ContentHost")).Content = new DirectorTodayView { DataContext = lead };
+        var wsContent = (FrameworkElement)workspace.Content;
+        workspace.Content = null;
+        wsContent.Resources.MergedDictionaries.Add(workspace.Resources);
+        written += RenderView(wsContent, new Size(1680, 980), Path.Combine(dir, "workspace-today.png"));
+        workspace.Close();
         return written;
     }
 
@@ -394,6 +428,13 @@ public sealed class BdScreensRenderTests
         written += RenderView(view, new Size(1680, 980), Path.Combine(dir, "review-strip-reading.png"));
         vm.ShowReviewForRender(PursuitRfpReview.Describe(status with { Reviews = 1, RunId = 7, RunCreatedAtUtc = Now.AddMinutes(-30), RunReportedAtUtc = Now.AddMinutes(-3) }, Now), review, running: false);
         written += RenderView(view, new Size(1680, 980), Path.Combine(dir, "review-strip-ready.png"));
+
+        // The same screen as the BD Workspace draws it: the BD look's buttons and tables (Director/BdLook.xaml).
+        view.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("pack://application:,,,/Kor.Operations.App;component/BusinessDevelopment/Director/BdLook.xaml", UriKind.Absolute),
+        });
+        written += RenderView(view, new Size(1680, 980), Path.Combine(dir, "pursuits-bdlook.png"));
 
         var window = new PursuitReviewWindow(review, "Structural and Civil Engineering – Professional Services Agreement (RFP PF-1026-02)",
             "Banff Centre for Arts and Creativity", "Amaya_Kingston@banffcentre.ca", new DateTimeOffset(2026, 11, 2, 21, 0, 0, TimeSpan.Zero), () => { },

@@ -13,7 +13,7 @@
             <TextBlock Text="{Binding Subtitle}" FontSize="14" Foreground="{StaticResource D.Ink2}" Margin="0,4,0,26"/>
 
             <!-- 1. What needs Ian's call: one card per decision, the reason that decides it, the button that acts on it. -->
-            <TextBlock Text="NEEDS YOUR CALL" Style="{StaticResource D.Section}" Visibility="{Binding HasDecisions, Converter={StaticResource Vis}}"/>
+            <TextBlock Text="{Binding DecisionsHeader}" Style="{StaticResource D.Section}" Visibility="{Binding HasDecisions, Converter={StaticResource Vis}}"/>
             <ItemsControl ItemsSource="{Binding Decisions}" Margin="0,0,0,28" Visibility="{Binding HasDecisions, Converter={StaticResource Vis}}">
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
@@ -114,6 +114,28 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </Grid>
+                    </Border>
+
+                    <!-- A lead's own pursuits with no next step or an overdue one: one click to fix. -->
+                    <TextBlock Text="{Binding FollowUpsHeader}" Style="{StaticResource D.Section}" Margin="2,24,0,10"
+                               Visibility="{Binding HasFollowUps, Converter={StaticResource Vis}}"/>
+                    <Border Style="{StaticResource D.Card}" Padding="18,4" Visibility="{Binding HasFollowUps, Converter={StaticResource Vis}}">
+                        <ItemsControl ItemsSource="{Binding FollowUps}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{StaticResource D.Line}" BorderThickness="0,0,0,1" Padding="0,10">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Content="Set next step" Style="{StaticResource D.Button}" Padding="11,5"
+                                                    VerticalAlignment="Center" Margin="10,0,0,0" Click="FollowUp_Click"/>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Title}" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource D.Ink}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Sub}" FontSize="12" Foreground="{Binding SubBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </Border>
 
                     <Border Style="{StaticResource D.Card}" Margin="0,16,0,0" Visibility="{Binding HasHour, Converter={StaticResource Vis}}">

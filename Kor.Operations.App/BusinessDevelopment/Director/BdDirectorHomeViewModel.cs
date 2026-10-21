@@ -40,6 +40,21 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
     public bool HasWeek => Week.Count > 0;
     public bool HasMyList => MyList.Count > 0;
     public bool WeekEmpty => Week.Count == 0;
+
+    /// <summary>The lead's own live pursuits with no next step or an overdue one (BD Workspace Today): the team's biggest gap.</summary>
+    public ObservableCollection<DirectorFollowUp> FollowUps { get; } = new();
+    public bool HasFollowUps => FollowUps.Count > 0;
+    public string FollowUpsHeader { get; private set; } = "";
+
+    /// <summary>Fills "Waiting for a next step": overdue first, then the longest untouched; at most eight, with the total.</summary>
+    public void LoadFollowUps(IEnumerable<DirectorFollowUp> pursuits)
+    {
+        var all = pursuits.ToList();
+        FollowUps.Clear();
+        foreach (var f in all.OrderByDescending(f => f.Overdue).ThenBy(f => f.LastTouchUtc ?? DateTimeOffset.MinValue).Take(8)) FollowUps.Add(f);
+        FollowUpsHeader = all.Count > FollowUps.Count ? $"WAITING FOR A NEXT STEP  ·  {FollowUps.Count} of {all.Count}" : "WAITING FOR A NEXT STEP";
+        Changed(nameof(HasFollowUps)); Changed(nameof(FollowUpsHeader));
+    }
     public bool ListEmpty => MyList.Count == 0;
 
     /// <summary>Ticks one ask off Today's list in place, once the store has closed it.</summary>
@@ -112,10 +127,21 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>"Needs your call" for Ian in the Director; "Needs your attention" for a lead's own pursuits in the BD Workspace.</summary>
+    public string DecisionsHeader { get; private set; } = "NEEDS YOUR CALL";
+
     /// <summary>Fills every screen from one load. Called on window load and Refresh only.</summary>
+    /// <param name="ownOnly">The BD Workspace's Today: only the actor's own pursuits, no team nudge.</param>
     public void Load(IReadOnlyList<TenderBoardRow> board, IReadOnlyList<BdAsk> myAsks, IReadOnlyList<BdDirectorPersonRow> people,
-        IReadOnlyList<DirectorPerson> roster, string actor, string? actorName, DateTimeOffset now)
+        IReadOnlyList<DirectorPerson> roster, string actor, string? actorName, DateTimeOffset now, bool ownOnly = false)
     {
+        if (ownOnly)
+        {
+            board = board.Where(r => string.Equals(r.OwnerMailbox, actor, StringComparison.OrdinalIgnoreCase)).ToList();
+            people = Array.Empty<BdDirectorPersonRow>();
+        }
+        DecisionsHeader = ownOnly ? "NEEDS YOUR ATTENTION" : "NEEDS YOUR CALL";
+        Changed(nameof(DecisionsHeader));
         _board = board;
         _actor = actor;
         _now = now;
@@ -175,7 +201,11 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
 
         var decisions = Decisions.Count(d => d.NeedsIan);
         var closing = board.Count(r => r.Stage == 1 && r.DeadlineUtc is { } d && d >= now && d <= now.AddDays(7));
-        Subtitle = $"{local:dddd d MMMM}" + (decisions > 0 ? $" · {decisions} decision{(decisions == 1 ? "" : "s")} {(decisions == 1 ? "is" : "are")} yours" : " · nothing waiting on your call")
+        Subtitle = $"{local:dddd d MMMM}"
+            + (ownOnly
+                ? (Decisions.Count > 0 ? $" · {Decisions.Count} of your tenders {(Decisions.Count == 1 ? "has" : "have")} Claude's read" : "")
+                  + (MyList.Count > 0 ? $" · {MyList.Count} thing{(MyList.Count == 1 ? "" : "s")} on your list" : "")
+                : decisions > 0 ? $" · {decisions} decision{(decisions == 1 ? "" : "s")} {(decisions == 1 ? "is" : "are")} yours" : " · nothing waiting on your call")
             + (closing > 0 ? $" · {closing} closing this week" : "");
         TeamSubtitle = live == 0 ? "Who is carrying what, and where a hand would help."
             : $"{live} live pursuits · {undated} without a next step · {overdue} overdue. The biggest gap is next steps that were never written down.";
@@ -206,7 +236,8 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
     {
         var mailbox = PursuitRfpReview.ResolveOwner(a.Owner, r.OwnerMailbox);
         return mailbox.Equals(_actor, StringComparison.OrdinalIgnoreCase) ? "You"
-            : string.Equals(mailbox, r.OwnerMailbox, StringComparison.OrdinalIgnoreCase) ? Owner(r) : mailbox.Split('@')[0];
+            : string.Equals(mailbox, r.OwnerMailbox, StringComparison.OrdinalIgnoreCase) ? Owner(r)
+            : mailbox.Equals(PursuitRfpReview.IanMailbox, StringComparison.OrdinalIgnoreCase) ? "Ian" : mailbox.Split('@')[0];
     }
 
     private string Owner(TenderBoardRow r) =>
@@ -424,6 +455,16 @@ public sealed class DirectorWeekItem
     public string Tag { get; }
     public Brush TagFore { get; }
     public Brush TagBack { get; }
+}
+
+/// <summary>A lead's own pursuit with no next step, or an overdue one.</summary>
+public sealed record DirectorFollowUp(long EngagementId, string Project, string? Buyer, bool Overdue, DateTimeOffset? DueUtc, DateTimeOffset? LastTouchUtc)
+{
+    public string Title => BdDirectorHomeViewModel.ShortBuyer(Buyer) is { Length: > 0 } b ? b : BdDirectorHomeViewModel.ShortProject(Project);
+    public string Sub => (BdDirectorHomeViewModel.ShortBuyer(Buyer).Length > 0 ? BdDirectorHomeViewModel.ShortProject(Project) + " · " : "")
+        + (Overdue && DueUtc is { } d ? $"next step overdue since {d.ToLocalTime():ddd d MMM}"
+           : LastTouchUtc is { } t ? $"no next step · last touched {t.ToLocalTime():d MMM}" : "no next step · never touched");
+    public Brush SubBrush => Overdue ? Palette.Red : Palette.Muted;
 }
 
 /// <summary>One of the actor's open asks on Today, ticked off in place.</summary>

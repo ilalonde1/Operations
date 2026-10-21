@@ -570,17 +570,13 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         _ => "Your call",
     };
 
-    /// <summary>The verdict's colour, from the pursuit stage palette: green bid, grey don't, amber your call.</summary>
+    /// <summary>The verdict's colour, the KOR palette as BD Director uses it: green bid, grey don't, KOR orange your call.</summary>
     public static Brush RecommendationBrush(string recommendation) => recommendation switch
     {
-        "go" => VerdictGo,
-        "no-go" => VerdictNoGo,
-        _ => VerdictDecide,
+        "go" => BusinessDevelopment.Director.Palette.Green,
+        "no-go" => BusinessDevelopment.Director.Palette.Muted,
+        _ => BusinessDevelopment.Director.Palette.Orange,
     };
-
-    private static readonly Brush VerdictGo = FrozenBrush(0x22, 0x8B, 0x22);
-    private static readonly Brush VerdictNoGo = FrozenBrush(0x80, 0x80, 0x80);
-    private static readonly Brush VerdictDecide = FrozenBrush(0xC8, 0x8A, 0x00);
 
     private static Brush FrozenBrush(byte r, byte g, byte b)
     {
