@@ -17,7 +17,10 @@
 if ([string]::IsNullOrWhiteSpace($Sha)) { throw 'migrate-to-korops: the dispatcher did not provide $Sha (the package hash)' }
 $ErrorActionPreference = 'Stop'
 $Pkg      = '1.0.0.56'                                  # the add-in (.vsto) version this package carries
-$PkgGen   = 26                                          # package generation: drives V<N>.zip AND the Active Setup version, so they can never drift
+$PkgGen   = 27                                          # package generation: drives V<N>.zip
+$AppVersion = '2026.10.20.1'                            # the app's FileVersion in this package (Kor.Operations.App/AssemblyInfo.cs; a test keeps them equal)
+$AddinGen = 26                                          # the package that last CHANGED the add-in: drives the Active Setup version, so an app-only
+                                                        # release (V27) does not re-fire an add-in reinstall for every user at next sign-in
 $Guid     = '{6F2C1E0A-7B4D-4E8F-9C31-2A5B8D0E4F52}'   # Active Setup component id for the KOR email filer add-in
 $Dir      = 'C:\ProgramData\KOR\EmailFiler'
 $ResultsDir = Join-Path $Dir 'results'
@@ -25,7 +28,7 @@ $root     = 'C:\KOR-Operations'
 $oldRoot  = 'C:\Newerforma'
 $share    = "\\KOR-FS01\Library\11 IT\_Applications\Newerforma\New\V$PkgGen.zip"
 $appExe   = Join-Path $root 'Kor.Operations.App.exe'
-$asVersion = "$PkgGen,0,0,0"                            # Active Setup Version (HKLM vs HKCU gate); derived from $PkgGen
+$asVersion = "$AddinGen,0,0,0"                          # Active Setup Version (HKLM vs HKCU gate); derived from $AddinGen
 $kept     = $null                                       # previous install, renamed aside, kept for rollback until success
 $rolledBack = $false
 $steps = New-Object System.Collections.Generic.List[string]
@@ -127,14 +130,20 @@ try {
     #    do the DISRUPTIVE work (close Outlook, place, per-user install) that is actually needed -- a fully current box is
     #    a no-op for the user, and we never skip a user who still needs repair just because the disk looks current.
     $installedVsto = if (Test-Path "$root\EmailFilerv2.vsto") { try { ([xml](Get-Content "$root\EmailFilerv2.vsto" -Raw)).assembly.assemblyIdentity.version } catch { $null } } else { $null }
-    $diskCurrent = (Test-Path $appExe) -and ($installedVsto -eq $Pkg)
+    # 2026-10-20 (V27): the app version is checked too. Until V26 every package changed the add-in, so the add-in version
+    # alone said whether the disk was current; an app-only package would have left every migrated PC untouched.
+    $installedApp = if (Test-Path $appExe) { (Get-Item $appExe).VersionInfo.FileVersion } else { $null }
+    $addinCurrent = ($installedVsto -eq $Pkg)
+    $diskCurrent = (Test-Path $appExe) -and ($installedApp -eq $AppVersion) -and $addinCurrent
     $users = @(Get-CimInstance Win32_Process -Filter "Name='explorer.exe'" | ForEach-Object {
         $o = Invoke-CimMethod -InputObject $_ -MethodName GetOwner; $s = Invoke-CimMethod -InputObject $_ -MethodName GetOwnerSid
         [pscustomobject]@{ User = "$($o.Domain)\$($o.User)"; Short = $o.User; Sid = $s.Sid } } | Sort-Object User -Unique)
-    $needWork = @($users | Where-Object { (-not $diskCurrent) -or -not ((User-Manifest $_.Sid) -like '*C:/KOR-Operations/EmailFilerv2.vsto*') })
+    # A user's add-in is reinstalled only if the add-in itself changes or their registration is not at C:\KOR-Operations;
+    # replacing the app alone leaves their Outlook add-in as it is.
+    $needWork = @($users | Where-Object { (-not $addinCurrent) -or -not ((User-Manifest $_.Sid) -like '*C:/KOR-Operations/EmailFilerv2.vsto*') })
     $needPlace = -not $diskCurrent
     $needClose = $needPlace -or ($needWork.Count -gt 0)
-    S ("signed in: " + (($users.User) -join ', ') + "; diskCurrent=$diskCurrent; needPlace=$needPlace; needWork=" + ($needWork.Short -join ','))
+    S ("signed in: " + (($users.User) -join ', ') + "; app $installedApp -> $AppVersion; add-in $installedVsto; diskCurrent=$diskCurrent; needPlace=$needPlace; needWork=" + ($needWork.Short -join ','))
 
     # 2. If placing, pull + verify + stage the package FIRST (non-disruptive, and before anything is touched).
     if ($needPlace) {
@@ -246,7 +255,7 @@ try {
         UsersSignedIn  = $users.Count
         AddinOk        = $okUsers.Count
         AddinFailed    = ($failed.Short -join ',')
-        Result         = if ($ok) { ($(if ($needPlace) { "migrated/updated to $Pkg" } else { "already $Pkg" }) + "; $($okUsers.Count)/$($users.Count) signed-in users OK") } else { "INCOMPLETE: app=$appOk; users still failing: $($failed.Short -join ',')" }
+        Result         = if ($ok) { ($(if ($needPlace) { "updated to app $AppVersion, add-in $Pkg" } else { "already app $AppVersion, add-in $Pkg" }) + "; $($okUsers.Count)/$($users.Count) signed-in users OK") } else { "INCOMPLETE: app=$appOk; users still failing: $($failed.Short -join ',')" }
         UserResults    = ($results -join ' || ')
         Steps          = ($steps -join ' || ')
     }

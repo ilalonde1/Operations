@@ -23,9 +23,9 @@ public static class DeployCatalog
     public static readonly IReadOnlyList<DeployOp> All =
     [
         new(MigrateToKorOps, "Migrate / update to KOR Operations",
-            "Puts this PC on the current KOR Operations build at C:\\KOR-Operations (add-in 1.0.0.56): migrates it off C:\\Newerforma the first time, or updates it in place after that. Re-registers the Outlook add-in to the new path, replaces stale shortcuts, removes C:\\Newerforma. Closes the app and Outlook for about a minute; carries the add-in load-time fix, off-load-path log writer and the timer shutdown guard.",
+            "Puts this PC on the current KOR Operations build at C:\\KOR-Operations (add-in 1.0.0.56): migrates it off C:\\Newerforma the first time, or updates it in place after that. Re-registers the Outlook add-in to the new path, replaces stale shortcuts, removes C:\\Newerforma. Closes the app and Outlook for about a minute. V27 (2026-10-20, app 2026.10.20.1): the cleaner Business Development screens and the regional leads' access; the add-in is unchanged, so a PC already on it keeps its Outlook add-in and only the app is replaced.",
             Disruptive: true, TimeoutSeconds: 900,
-            PackageSharePath: @"\\KOR-FS01\Library\11 IT\_Applications\Newerforma\New\V26.zip"),
+            PackageSharePath: @"\\KOR-FS01\Library\11 IT\_Applications\Newerforma\New\V27.zip"),
     ];
 
     public static DeployOp? Get(string key) => All.FirstOrDefault(o => o.Key == key);
