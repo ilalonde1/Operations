@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Standards Playback</title>
+<!--
+  One-page playback to Nelson Yu of the 2026-10-21 call, for him to correct before anything is built.
+  Written in his words (cover sheets, typical details, templates, the big sheet) and none of the
+  system's. Every folder in "Where it lives" was on his screen in the recording and was re-listed
+  on the share the same day. Nothing in here comments on any colleague.
+  Same design tokens as KOR-StandardDetails-Nelson-Agenda-2026-10-20.html. Render with tools\Format-BdWebPdf.ps1.
+-->
+<style>
+  :root {
+    --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+    --line:#E5E4E1; --slate:#3F5364; --slate-deep:#2C3A47;
+    --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono:"Cascadia Code", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+      --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B;
+      --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+  }
+  :root[data-theme="dark"] { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+    --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B;
+    --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:9.4pt; line-height:1.36; -webkit-font-smoothing:antialiased; }
+  .page { max-width:8.1in; margin:0 auto; }
+
+  .top { background:linear-gradient(180deg,var(--slate-deep),var(--slate)); color:#EAF0F5;
+    border-bottom:2.5px solid var(--accent); padding:11px 20px; }
+  .top .ey { font-family:var(--mono); font-size:7.2pt; letter-spacing:.2em; text-transform:uppercase; color:#FFB59F; }
+  .top h1 { margin:.15rem 0 .1rem; font-size:16pt; color:#fff; letter-spacing:-.01em; }
+  .top .meta { font-size:8.6pt; color:#CBD8E2; }
+
+  .body { padding:10px 20px 0; }
+  .why { margin:0 0 6px; font-size:9.3pt; max-width:46rem; }
+
+  h2 { font-family:var(--mono); font-size:7.6pt; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); margin:11px 0 .35rem; font-weight:700; }
+
+  table { width:100%; border-collapse:collapse; font-size:8.7pt; }
+  th { text-align:left; font-weight:650; color:var(--ink-faint); font-size:7.6pt; letter-spacing:.06em;
+    text-transform:uppercase; padding:.2rem .5rem; border-bottom:1.5px solid var(--line); }
+  td { padding:.28rem .5rem; border-bottom:1px solid var(--line); vertical-align:top; color:var(--ink-soft); }
+  td:first-child { color:var(--ink); font-weight:650; white-space:nowrap; }
+  tr:nth-child(even) td { background:var(--surface-2); }
+  .path { font-family:var(--mono); font-size:7.7pt; color:var(--accent-ink); }
+
+  p.note { margin:.3rem 0 0; font-size:8.8pt; color:var(--ink-soft); }
+  p.note b { color:var(--ink); }
+
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin-top:10px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.5rem .7rem; }
+  .card.out { border-left:3px solid var(--good); background:color-mix(in srgb, var(--good) 7%, var(--surface)); }
+  .card h3 { margin:0 0 .25rem; font-family:var(--mono); font-size:7.5pt; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent-ink); }
+  .card.out h3 { color:var(--good); }
+  .card ol { margin:0; padding-left:1.1rem; }
+  .card li { font-size:8.6pt; color:var(--ink-soft); margin-bottom:.25rem; }
+  .card li b { color:var(--ink); }
+
+  @page { size:Letter; margin:9mm 11mm; }
+  @media print {
+    :root { --ground:#fff; --surface:#fff; --surface-2:#F5F3F1; --ink:#1C2530; --ink-soft:#55636F;
+      --ink-faint:#8A97A2; --line:#E5E4E1; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A; }
+    body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; color-scheme:light; }
+    .page { max-width:none; }
+    table, .pair, .card { break-inside:avoid; }
+    h2 { break-after:avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div class="ey">KOR Structural · Drafting standards</div>
+    <h1>What you told me — please correct anything I got wrong</h1>
+    <div class="meta">For Nelson Yu · from Ian Lalonde · after our call on 21 October</div>
+  </div>
+
+  <div class="body">
+    <p class="why">Thanks for walking me through it. Here's how I understood it. Nothing gets built or
+       changed until you've told me this is right — mark it up, or just reply with what's off.</p>
+
+    <h2>Who does what</h2>
+    <table>
+      <tr><th>Step</th><th>Who</th><th>How</th></tr>
+      <tr><td>Asks for a change</td><td>Any engineer</td><td>A markup in <span class="path">Cover Sheet Markups</span> — not a note on a job saying "update this in the master".</td></tr>
+      <tr><td>Says yes or no</td><td>Jim</td><td>Every change to the cover sheets and typical details goes through him first.</td></tr>
+      <tr><td>Draws it</td><td>You, with Lindsay</td><td>In CAD <b>and</b> in Revit, so the two stay the same. How you and Lindsay split it, I'll settle with Jim.</td></tr>
+      <tr><td>Checks it</td><td>An engineer</td><td>Completed Ready for Backcheck → Backchecked.</td></tr>
+      <tr><td>Publishes it</td><td>You</td><td>A new dated PDF in <span class="path">P:\Projects\00 Templates\000 Kor Master PDF Files</span>, old one to OLD.</td></tr>
+    </table>
+
+    <h2>Where it lives <span style="font-family:var(--sans);letter-spacing:0;text-transform:none;color:var(--ink-faint);font-weight:400;font-size:8.4pt">— I: is the Drafting drive</span></h2>
+    <table>
+      <tr><th>What</th><th>Where</th><th>Notes</th></tr>
+      <tr><td>Revit templates</td><td><span class="path">I:\009_REVIT CUSTOMED\000_Project_Templates</span></td><td>Concrete Tower R24 (has the wood frame in it too), Steel R24, and the Typical Details Container R23 — which not everyone knows is there.</td></tr>
+      <tr><td>CAD job template</td><td><span class="path">I:\Kor Structural\013 Project Templates\AutoCAD</span></td><td>The cover sheet drawings and sheet sets a new CAD job starts from. No towers in CAD any more.</td></tr>
+      <tr><td>CAD typical details</td><td><span class="path">I:\Kor Structural\002 Typical Details</span></td><td>KOR TYPICAL DETAILS.dwg, laid out the same as the PDF, plus the details blocks.</td></tr>
+      <tr><td>Wood frame details</td><td><span class="path">I:\Kor Structural\004 Wood Framing</span></td><td>KOR TYPICAL WOOD FRAMING DETAILS.dwg.</td></tr>
+      <tr><td>Schedules</td><td><span class="path">I:\Kor Structural\007 Plan Schedules\Concrete</span></td><td>Plan Schedules.dwg — every schedule on one big sheet, so you find things by looking, not by name.</td></tr>
+    </table>
+
+    <h2>Why there's a CAD set and a Revit set</h2>
+    <p class="note">Turning Revit into CAD — export, linking it in, or a PDF — gets the line weights and colours wrong,
+       and engineers change cover sheet notes on most jobs anyway. With both masters, a change is made <b>twice
+       and that's the end of it</b>. Making one from the other would mean doing it again on every job. <b>I'll build around the
+       two sets, not against them</b> — the thing worth fixing is never knowing which one is right, not having two.</p>
+
+    <div class="pair">
+      <div class="card">
+        <h3>Still need from you</h3>
+        <ol>
+          <li><b>Which Revit version do new jobs start in now?</b> The templates are R23 and R24.</li>
+          <li><b>When a standard changes,</b> do jobs already underway get updated, or only new ones?</li>
+          <li><b>Low-rise concrete in CAD</b> — which file is the current cover sheet?</li>
+          <li><b>The Steel R24 template</b> — who looks after it?</li>
+        </ol>
+      </div>
+      <div class="card out">
+        <h3>What I'll do next</h3>
+        <ol>
+          <li>Check what I built against your templates and drawings, and show you the differences before anyone uses it.</li>
+          <li>Try the Revit-to-CAD export once, properly, so the question is settled either way.</li>
+          <li>Follow up with Rory on the set Simon sent him to backcheck.</li>
+          <li>The new Revit tools are on your PC next to Michael's — restart Revit to see them.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

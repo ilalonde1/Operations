@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Standards Walkthrough</title>
+<!--
+  One-page agenda for Nelson Yu. Written in the drafters' own words - sheets, general notes,
+  typical details, cover sheets, the template - and none of the system's (catalogue, KOR-D,
+  gatekeeper, palette). Every fact in "What I think I understand" was checked against the
+  folder it names on 2026-10-20; every question is one the folders could not answer.
+  Same design tokens as the rest of docs/. Render with tools\Format-BdWebPdf.ps1.
+-->
+<style>
+  :root {
+    --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+    --line:#E5E4E1; --slate:#3F5364; --slate-deep:#2C3A47;
+    --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono:"Cascadia Code", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+      --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B;
+      --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+  }
+  :root[data-theme="dark"] { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+    --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B;
+    --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:9.7pt; line-height:1.38; -webkit-font-smoothing:antialiased; }
+  .page { max-width:8.1in; margin:0 auto; }
+
+  .top { background:linear-gradient(180deg,var(--slate-deep),var(--slate)); color:#EAF0F5;
+    border-bottom:2.5px solid var(--accent); padding:12px 20px; }
+  .top .ey { font-family:var(--mono); font-size:7.2pt; letter-spacing:.2em; text-transform:uppercase; color:#FFB59F; }
+  .top h1 { margin:.15rem 0 .1rem; font-size:16.5pt; color:#fff; letter-spacing:-.01em; }
+  .top .meta { font-size:8.8pt; color:#CBD8E2; }
+
+  .body { padding:11px 20px 0; }
+  .why { margin:0 0 10px; font-size:9.6pt; color:var(--ink); max-width:44rem; }
+
+  h2 { font-family:var(--mono); font-size:7.8pt; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); margin:12px 0 .4rem; font-weight:700; }
+  h2 .sub { font-family:var(--sans); letter-spacing:0; text-transform:none; color:var(--ink-faint);
+    font-weight:400; font-size:8.6pt; margin-left:.35rem; }
+
+  ul.known { margin:0; padding:0; list-style:none; }
+  ul.known li { padding:.32rem .6rem; border-bottom:1px solid var(--line); font-size:9pt; color:var(--ink-soft); }
+  ul.known li:nth-child(even) { background:var(--surface-2); }
+  ul.known b { color:var(--ink); font-weight:650; }
+  .path { font-family:var(--mono); font-size:8pt; color:var(--accent-ink); white-space:nowrap; }
+
+  ol.ask { margin:0; padding-left:1.25rem; }
+  ol.ask li { margin-bottom:.42rem; font-size:9.2pt; color:var(--ink); }
+  ol.ask li span { display:block; font-size:8.6pt; color:var(--ink-soft); margin-top:.08rem; }
+
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin-top:10px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.55rem .7rem; }
+  .card.out { border-left:3px solid var(--good); background:color-mix(in srgb, var(--good) 7%, var(--surface)); }
+  .card h3 { margin:0 0 .25rem; font-family:var(--mono); font-size:7.6pt; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent-ink); }
+  .card.out h3 { color:var(--good); }
+  .card p { margin:0; font-size:8.8pt; color:var(--ink-soft); }
+
+  @page { size:Letter; margin:9mm 11mm; }
+  @media print {
+    :root { --ground:#fff; --surface:#fff; --surface-2:#F5F3F1; --ink:#1C2530; --ink-soft:#55636F;
+      --ink-faint:#8A97A2; --line:#E5E4E1; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A; }
+    body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; color-scheme:light; }
+    .page { max-width:none; }
+    ul.known, ol.ask, .pair, .card { break-inside:avoid; }
+    h2 { break-after:avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div class="ey">KOR Structural · Drafting standards</div>
+    <h1>How the general notes and typical details are kept today</h1>
+    <div class="meta">For Nelson Yu · from Ian Lalonde · 30 minutes, at your screen</div>
+  </div>
+
+  <div class="body">
+    <p class="why">When Michael left, a lot of how our standards are kept went with him, and the rest
+       lives in a few people's heads. I'd like to write down how it actually works today — so it
+       doesn't depend on anyone's memory, and so anything I build fits what you already do rather
+       than the other way round. You know this better than anyone, so I'd rather hear it from you
+       than guess.</p>
+
+    <h2>What I think I understand <span class="sub">— please correct anything that's wrong</span></h2>
+    <ul class="known">
+      <li><b>The published set</b> is the read-only PDFs in <span class="path">P:\Projects\00 Templates\000 Kor Master PDF Files</span> —
+          Concrete and Wood Frame, each file dated, older copies in <b>OLD</b>.</li>
+      <li><b>Changes come in as engineer markups</b> in <span class="path">03 Cover Sheet Markups</span>, get drafted,
+          go to <b>Completed Ready for Backcheck</b>, then <b>Backchecked</b>, then the PDF is republished.</li>
+      <li><b>In Revit,</b> the general notes live in the project templates in
+          <span class="path">I:\009_REVIT CUSTOMED\000_Project_Templates</span> — Concrete Tower R24, Steel R24, and the
+          Typical Details container R23. A new job copies the template, renames it and detaches it.</li>
+      <li><b>In CAD,</b> the cover sheets in <span class="path">I:\Kor Structural\001 Cover Sheets</span> are built from the
+          G001–G006 note blocks XREF'd in from <b>Cover Sheets Blocks</b>; the typical details are
+          <b>KOR TYPICAL DETAILS.dwg</b> in <span class="path">002 Typical Details</span>.</li>
+      <li><b>In July</b> Jim made Revit the master, and Simon's Revit-vs-CAD review went to the
+          Engineering Committee to bring the two sets back in line.</li>
+    </ul>
+
+    <h2>What only you can tell me</h2>
+    <ol class="ask">
+      <li>Who does what today?
+        <span>For each one — the Revit templates, the wood-frame general notes, the CAD cover sheets,
+        the typical details DWG and the published PDFs — who makes the change, who backchecks it, and
+        who publishes it.</span></li>
+      <li>Where is the current wood-frame general notes file in Revit?
+        <span>In the template folder I can only find wood-frame files marked Do Not Use or moved to
+        Old, but the Revit wood-frame general notes PDF was updated on 6 October. Same question for
+        the low-rise concrete general notes.</span></li>
+      <li>With Revit as the master, how is CAD kept in step?
+        <span>By hand after each Revit change? Who checks that the two still match — and where did
+        Simon's review end up?</span></li>
+      <li>When a standard changes, how does everyone find out?
+        <span>Jobs that already copied the template keep the old notes — does anyone update live
+        jobs, or do the changes only apply to new ones?</span></li>
+      <li>Which Revit version are new jobs starting in now?
+        <span>The templates are R23 and R24.</span></li>
+      <li>What takes up most of your time keeping all this current — and what would you fix first?</li>
+    </ol>
+
+    <div class="pair">
+      <div class="card">
+        <h3>Last five minutes</h3>
+        <p>I'll show you what's been built for the standard details — one screen — and ask you one
+           thing: where it would save you work, and where it would get in your way.</p>
+      </div>
+      <div class="card out">
+        <h3>What comes out of it</h3>
+        <p>A one-page table of who looks after what. I'll send it to you to check before anyone else
+           sees it.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>
