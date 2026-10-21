@@ -21,7 +21,8 @@ public sealed class DeployPackageVersionTests
     private static string RepoFile(string relative)
     {
         var dir = new DirectoryInfo(Path.GetDirectoryName(typeof(DeployPackageVersionTests).Assembly.Location)!);
-        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, ".git"))) dir = dir.Parent;
+        // .git is a folder in the main checkout and a file in a git worktree (release builds come from a clean worktree).
+        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, ".git")) && !File.Exists(Path.Combine(dir.FullName, ".git"))) dir = dir.Parent;
         return File.ReadAllText(Path.Combine(dir!.FullName, relative));
     }
 
