@@ -106,6 +106,8 @@ public static class PlanMetrics
         new PlanMetric("PursuitsWithFee", "Live pursuits with a fee", PlanUnit.Count, false),
         new PlanMetric("PursuitsUntouched14", "Pursuits untouched 14+ days", PlanUnit.Count, true),
         new PlanMetric("PursuitsTender", "Live tender pursuits", PlanUnit.Count, false),
+        new PlanMetric("PursuitsUsa", "Live US pursuits", PlanUnit.Count, false),
+        new PlanMetric("PursuitOwners", "People holding live pursuits", PlanUnit.Count, false),
         new PlanMetric("SubmittedOver60", "Submitted over 60 days, no outcome", PlanUnit.Count, true),
         new PlanMetric("Signals30d", "Signals in 30 days", PlanUnit.Count, false),
         new PlanMetric("SourcesLive", "Sources live", PlanUnit.Count, false),
@@ -193,6 +195,8 @@ public sealed class PlanReadings
         Live("PursuitsWithFee", live.Count(p => p.ProposedFee is > 0));
         Live("PursuitsUntouched14", live.Count(p => now - p.LastTouchUtc >= TimeSpan.FromDays(14)));
         Live("PursuitsTender", live.Count(p => p.IsTender));
+        Live("PursuitsUsa", live.Count(p => p.Region == "USA"));
+        Live("PursuitOwners", live.Select(p => p.OwnerKey).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         Live("SubmittedOver60", live.Count(p => p.Stage == 3 && p.SubmittedUtc is { } s && now - s >= TimeSpan.FromDays(60)));
         Live("RollupAsks", rollupAsks);
         if (radar is not null)

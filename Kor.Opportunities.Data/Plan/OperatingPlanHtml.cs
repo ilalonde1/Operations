@@ -36,8 +36,8 @@ public static class OperatingPlanHtml
 
         // Toolbar: screen only.
         sb.Append("<header class=\"bar screen\"><div><h1>Operating plan</h1><p class=\"meta\">Live · ")
-          .Append(asOf is { } d ? "scoreboard readings of " + Day(d) : "no scoreboard reading yet")
-          .Append(" · live CRM and radar counts at ").Append(E(now.ToString("HH:mm", CultureInfo.InvariantCulture)))
+          .Append(asOf is { } d ? "daily numbers of " + Day(d) : "no daily numbers yet")
+          .Append(" · live opportunity counts at ").Append(E(now.ToString("HH:mm", CultureInfo.InvariantCulture)))
           .Append(" · <b>").Append(plan.Goals.Count).Append(" goals</b>: ").Append(decided).Append(" decided by you, ")
           .Append(plan.Goals.Count - decided).Append(" recommended</p></div>")
           .Append("<nav class=\"seg\">")
@@ -50,7 +50,7 @@ public static class OperatingPlanHtml
         sb.Append("<header class=\"cover print\"><p class=\"eyebrow\">KOR Structural · Operating plan · ")
           .Append(E(Day(DateOnly.FromDateTime(now.Date)))).Append("</p><h1>The operating plan</h1><p class=\"lede\">")
           .Append("Run KOR <b>like a Fortune 500 company</b> in business development, financials, operations and IT, on tools built for it. ")
-          .Append("Live: every number below was read from Deltek, the CRM and NetworkOps when this was printed. ")
+          .Append("Live: every number below was read from Deltek, the opportunity list and NetworkOps when this was printed. ")
           .Append(decided).Append(" of ").Append(plan.Goals.Count).Append(" goals decided; the rest are recommendations.</p></header>");
 
         SummaryView(sb, plan, readings, now, example);
@@ -59,9 +59,9 @@ public static class OperatingPlanHtml
         RhythmView(sb, plan, readings);
         PlatformView(sb, plan, readings);
 
-        sb.Append("<footer class=\"src\">Readings: the scoreboard").Append(asOf is { } a ? " of " + Day(a) : "")
-          .Append(" (the Financials engine, the CRM and NetworkOps, recorded by the morning brief) and live CRM and radar counts. ")
-          .Append("Win/loss figures since 2020 come from the 18 October 2026 review of the fee tracker and the Management share. ")
+        sb.Append("<footer class=\"src\">Numbers: the daily record").Append(asOf is { } a ? " of " + Day(a) : "")
+          .Append(" (from Financials, the opportunity list and NetworkOps, recorded every morning) and live opportunity counts. ")
+          .Append("Figures since 2020 come from the fee proposal tracker, reviewed 18 October 2026; it never recorded most outcomes, so it gives no win rate. ")
           .Append("A dash means no reading yet.</footer>");
         sb.Append("<script>").Append(Script).Append("</script></body></html>");
         return sb.ToString();
@@ -70,12 +70,12 @@ public static class OperatingPlanHtml
     private static void MapView(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings, IReadOnlyList<PlanItem> items,
         PlanExample? example)
     {
-        sb.Append("<section class=\"view\" id=\"v-map\"><h2 class=\"print\">The whole process: signal to cash</h2>");
+        sb.Append("<section class=\"view\" id=\"v-map\"><h2 class=\"print\">The whole process: first lead to getting paid</h2>");
         sb.Append("<div class=\"mapwrap\"><div class=\"map\">");
         Lane(sb, "Business development · how much work comes in", plan, readings, items, new[] { 1, 2, 3, 4 }, "→");
         sb.Append("<div class=\"turn\">↓</div>");
         Lane(sb, "Operations · how much of it becomes cash", plan, readings, items, new[] { 8, 7, 6, 5 }, "←");
-        Lane(sb, "IT · underneath every stage", plan, readings, items, new[] { 9 }, "");
+        Lane(sb, "IT · underneath every step", plan, readings, items, new[] { 9 }, "");
         ExampleBlock(sb, plan, example, compact: false);
         GoalTable(sb, plan, readings);
         sb.Append("</div><aside class=\"panels\">");
@@ -136,7 +136,7 @@ public static class OperatingPlanHtml
             if (!string.IsNullOrWhiteSpace(it.Detail)) sb.Append("<span class=\"w\">").Append(E(it.Detail)).Append("</span>");
             sb.Append("</div>");
         }
-        if (mine.Count > ItemsPerStage) sb.Append("<p class=\"muted\">").Append(mine.Count - ItemsPerStage).Append(" more in the roll-ups.</p>");
+        if (mine.Count > ItemsPerStage) sb.Append("<p class=\"muted\">").Append(mine.Count - ItemsPerStage).Append(" more in the weekly to-do lists.</p>");
         var rhythm = plan.Rhythm.Where(r => r.StageFrom <= s.No && s.No <= r.StageTo).ToList();
         if (rhythm.Count > 0)
         {
@@ -151,11 +151,12 @@ public static class OperatingPlanHtml
 
     private static void GoalTable(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings)
     {
-        sb.Append("<table class=\"goals\"><thead><tr><th>Goal</th><th>Stage</th><th>Baseline</th><th>Now</th><th>Target</th><th>Status</th></tr></thead><tbody>");
+        sb.Append("<table class=\"goals\"><thead><tr><th>Goal</th><th>Step</th><th>Where we started</th><th>Now</th><th>Target</th><th>Status</th></tr></thead><tbody>");
         foreach (var g in plan.Goals)
         {
             var change = g.Metric is null ? null : readings.Change(g.Metric);
-            sb.Append("<tr><td>").Append(E(g.Title)).Append("</td><td>").Append(g.StageNo == 9 ? "IT" : g.StageNo.ToString(CultureInfo.InvariantCulture))
+            var step = plan.Stages.FirstOrDefault(s => s.No == g.StageNo)?.Name ?? (g.StageNo == 9 ? "IT" : g.StageNo.ToString(CultureInfo.InvariantCulture));
+            sb.Append("<tr><td>").Append(E(g.Title)).Append("</td><td>").Append(E(step))
               .Append("</td><td>").Append(E(Baseline(g, readings))).Append("</td><td>").Append(E(Now(g, readings)));
             if (change is { } c) sb.Append(" <span class=\"").Append(c.Better ? "up" : "dn").Append("\">").Append(E(c.Text)).Append("</span>");
             sb.Append("</td><td>").Append(E(Target(g, readings))).Append(" <span class=\"muted\">by ").Append(E(Day(g.DueDate))).Append("</span></td><td>");
@@ -180,7 +181,7 @@ public static class OperatingPlanHtml
               + " given away on " + readings.Show("LosingDoneProjects") + " finished projects."))
           .Append(Fact(readings.Show("ArOver90"), "owed over 90 days, of " + readings.Show("ArTotal") + " owed in all; "
               + readings.Show("Exec.DaysSalesOutstanding") + " days to collect."))
-          .Append(Fact(readings.Show("PursuitsWithFee") + " of " + readings.Show("PursuitsLive"), "live pursuits carry a fee estimate, so that is what the pipeline can be valued on."))
+          .Append(Fact(readings.Show("PursuitsWithFee") + " of " + readings.Show("PursuitsLive"), "live opportunities carry a fee estimate, so that is all the work ahead can be valued on."))
           .Append("</div><div class=\"cols\">");
         Column(sb, plan, readings, "BD", "Business development", "Win more of the right work, earlier", new[] { ("WhereToPlay", "Where to play"), ("HowWeWin", "How KOR wins") });
         Column(sb, plan, readings, "Ops", "Operations", "Turn work into cash, and stop giving hours away", new[] { ("WhereItHurts", "Where it hurts"), ("Priorities", "Priorities") });
@@ -218,13 +219,13 @@ public static class OperatingPlanHtml
     private static void RhythmView(StringBuilder sb, OperatingPlanModel plan, PlanReadings readings)
     {
         sb.Append("<section class=\"view\" id=\"v-rhythm\"><h2>The rhythm</h2>");
-        sb.Append("<p class=\"lede\">The daily hour, the weekly roll-ups and the meetings, each tied to a goal and to the stages it covers, so every task traces back to the plan.</p>");
-        sb.Append("<table class=\"rhythm\"><thead><tr><th>Rhythm</th><th>Who · when</th><th>What happens</th><th>Moves</th><th>Stages</th></tr></thead><tbody>");
+        sb.Append("<p class=\"lede\">The daily hour, the weekly to-do lists and the meetings, each tied to a goal and to the steps it covers, so every task traces back to the plan.</p>");
+        sb.Append("<table class=\"rhythm\"><thead><tr><th>Routine</th><th>Who · when</th><th>What happens</th><th>Moves</th><th>Steps</th></tr></thead><tbody>");
         foreach (var r in plan.Rhythm)
             sb.Append("<tr><td><b>").Append(E(r.Name)).Append("</b></td><td>").Append(E(readings.Fill(r.WhoWhen))).Append("</td><td>")
               .Append(E(readings.Fill(r.WhatHappens))).Append("</td><td>").Append(E(readings.Fill(r.Moves))).Append("</td><td>")
               .Append(StageSpan(r.StageFrom, r.StageTo)).Append("</td></tr>");
-        sb.Append("</tbody></table><div class=\"box\"><p class=\"sec\">The scoreboard is the thread</p><p>The scoreboard records the money and pipeline numbers every morning. The daily hour reads it, each monthly meets with its change, and the quarterly review judges the plan by it. A task that moves none of its numbers should not be in the rhythm.</p></div>");
+        sb.Append("</tbody></table><div class=\"box\"><p class=\"sec\">The daily numbers tie it together</p><p>The app records the money and opportunity numbers every morning. Ian's daily planning hour reads them, each monthly meeting sees how they changed, and the quarterly review judges the plan by them. A task that moves none of these numbers does not belong in the routine.</p></div>");
         LeadsBlock(sb, plan, readings);
         sb.Append("</section>");
     }
@@ -259,9 +260,9 @@ public static class OperatingPlanHtml
     {
         sb.Append("<section class=\"view\" id=\"v-platform\"><h2>The platform</h2>");
         sb.Append("<p class=\"lede\">The tools that let a firm of about sixty run like a Fortune 500 company. The system watches, prepares and drafts; people decide and act.</p>");
-        sb.Append("<div class=\"steps\"><div><b>Watch</b>Every source, every night: tenders, permits, Deltek, the CRM, every PC and server.</div>")
+        sb.Append("<div class=\"steps\"><div><b>Watch</b>Every source, every night: tenders, permits, Deltek, the opportunity list, every PC and server.</div>")
           .Append("<div><b>Prepare</b>Ranked, with the evidence and KOR's own record behind each item.</div>")
-          .Append("<div><b>Draft</b>The email, the agenda, the roll-up, ready to send.</div>")
+          .Append("<div><b>Draft</b>The email, the agenda, the weekly to-do list, ready to send.</div>")
           .Append("<div><b>Decide</b>A person reads it and acts. Nothing goes out on its own.</div></div><div class=\"pillars\">");
         foreach (var p in plan.Pillars)
             sb.Append("<div class=\"pillar\"><h3>").Append(E(p.Title)).Append("</h3><dl>")
@@ -313,16 +314,16 @@ public static class OperatingPlanHtml
                 ("Checked", checks == 0 ? "No checklist yet." : $"{x.Met} met, {x.NotMet} not met: the fix list for the next bid."),
                 ("Get an answer", outcome),
             };
-            sb.Append("<p class=\"sec\">A real example, end to end: ").Append(E(label)).Append(" (pursuit #").Append(x.EngagementId)
+            sb.Append("<p class=\"sec\">A real example, end to end: ").Append(E(label)).Append(" (#").Append(x.EngagementId)
               .Append(")</p><div class=\"exstrip\">");
             foreach (var (step, what) in brief) sb.Append("<div><b>").Append(E(step)).Append("</b><span>").Append(E(what)).Append("</span></div>");
             sb.Append("</div>");
             return;
         }
-        sb.Append("<div class=\"example\"><p class=\"lane\">A real example, end to end · ").Append(E(label)).Append(" · pursuit #")
+        sb.Append("<div class=\"example\"><p class=\"lane\">A real example, end to end · ").Append(E(label)).Append(" · #")
           .Append(x.EngagementId).Append("</p><ol>");
         foreach (var (step, what) in steps) sb.Append("<li><b>").Append(E(step)).Append("</b> ").Append(E(what)).Append("</li>");
-        sb.Append("</ol><p class=\"muted\">Read live from the pursuit in the CRM; every file and checklist line is on it in the app.</p></div>");
+        sb.Append("</ol><p class=\"muted\">Read live from the app; every file and checklist line is on this opportunity in the app.</p></div>");
     }
 
     /// <summary>The clock time as recorded, in the offset it was recorded with (a buyer's own time zone for a submission).</summary>
@@ -516,14 +517,14 @@ ul.plain{padding-left:18px} ul.plain li{margin:4px 0}
  @page{size:letter;margin:11mm 11mm}
  body{padding:0;font-size:8.5pt;line-height:1.35;-webkit-print-color-adjust:exact;print-color-adjust:exact}
  .screen{display:none!important} .print{display:block}
- .view{display:block!important;break-before:page} #v-map{break-before:auto}
- .mapwrap{display:block} .panels{border:0;padding:0;position:static;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
- .panel{display:block!important;border:1px solid var(--line);border-radius:8px;padding:6px 8px;break-inside:avoid;font-size:7.6pt}
- .panel h3{font-size:10.5pt} .panel .sec{margin:6px 0 2px;font-size:6.8pt} .panel .item{margin:2px 0;font-size:7.6pt} .panel .item .w{display:none}
- .panel .chain{padding:3px 6px;font-size:7.6pt} .src{margin-top:8px}
+ .view{display:block!important;break-before:auto;margin-top:14px} #v-map{margin-top:0} h2,h3,h4,.sec,.lane{break-after:avoid}
+ .mapwrap{display:block} .panels{border:0;padding:0;position:static;display:block;margin-top:10px;font-size:0}
+ .panel{display:inline-block!important;vertical-align:top;width:calc((100% - 12px) / 3);margin:0 6px 6px 0;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:5px 7px;break-inside:avoid;font-size:7.2pt;line-height:1.28} .panel:nth-child(3n){margin-right:0}
+ .panel h3{font-size:10pt;margin:0} .panel p{margin:1px 0} .panel .sec{margin:4px 0 1px;font-size:6.5pt} .panel .item{margin:1px 0;font-size:7.2pt} .panel .item .w{display:none}
+ .panel .chain{padding:2px 5px;font-size:7.2pt;margin:1px 0} .src{margin-top:8px}
  .node.sel{border:1px solid var(--line);box-shadow:none;padding:8px 10px}
- .facts{grid-template-columns:repeat(4,1fr)} .cols{grid-template-columns:repeat(3,1fr)} .cols.two{grid-template-columns:1fr 1fr} .col,.pillar,.fact,tr{break-inside:avoid}
- .leadsec{break-before:page} .lead{font-size:8pt}
+ .facts{grid-template-columns:repeat(4,1fr)} .cols{grid-template-columns:repeat(3,1fr)} .cols.two{grid-template-columns:1fr 1fr} .pillar,.fact,tr,.steps div,.box{break-inside:avoid}
+ .lead{font-size:8pt}
  #v-summary{display:none!important}
  body.sum .view,body.sum header.cover,body.sum footer.src{display:none!important}
  body.sum #v-summary{display:block!important;break-before:auto;max-width:none;font-size:8.2pt}

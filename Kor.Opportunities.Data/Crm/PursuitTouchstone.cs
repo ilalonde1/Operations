@@ -34,6 +34,7 @@ public sealed record PursuitState(long EngagementId, string OwnerKey, string Own
     public int OpenRequirements { get; init; }
     public int Requirements { get; init; }
     public string? LatestNews { get; init; }
+    public string? Region { get; init; }
 
     public bool IsTender => OpportunityId is not null;
     public bool IsLive => Stage is 1 or 3;
@@ -193,7 +194,7 @@ SELECT e.Id, e.OwnerStaffId, COALESCE(s.DisplayName, e.OwnerStaffId), e.Stage,
        e.ProposedFee, e.OpenedAtUtc, la.LastActivityUtc, w.LastTouchUtc,
        o.SubmissionDeadlineUtc, COALESCE(sh.SubmittedUtc, o.ProposalSubmittedAtUtc), e.ClosedAtUtc,
        e.NextActionDueUtc, e.NextActionNote, e.OutcomeReason, e.WonProjectWbs1,
-       co.KorProjectsCount, co.LastKorProjectAtUtc, rq.OpenCount, rq.TotalCount, news.Line
+       co.KorProjectsCount, co.LastKorProjectAtUtc, rq.OpenCount, rq.TotalCount, news.Line, e.Region
 FROM opportunities.CrmEngagements e
 LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
 LEFT JOIN opportunities.CanonicalOrg co ON co.Id = e.BuyerCanonicalOrgId
@@ -223,7 +224,7 @@ ORDER BY e.Id;", cmd => cmd.Parameters.Add("@closed", SqlDbType.Int).Value = clo
                 NextActionNote = Text(r, 16), OutcomeReason = Text(r, 17), WonProjectWbs1 = Text(r, 18),
                 KorProjects = r.IsDBNull(19) ? null : r.GetInt32(19), LastKorProject = r.IsDBNull(20) ? null : r.GetDateTime(20),
                 OpenRequirements = r.IsDBNull(21) ? 0 : r.GetInt32(21), Requirements = r.IsDBNull(22) ? 0 : r.GetInt32(22),
-                LatestNews = Text(r, 23),
+                LatestNews = Text(r, 23), Region = Text(r, 24),
             };
         }, ct);
 
