@@ -161,41 +161,18 @@ public partial class OverwatchView : UserControl
     private async Task TrySendReassignEmailAsync(
         string managerUpn, string toEmail, string toDisplay, OverwatchRowView row, string? reason)
     {
-        if (string.IsNullOrWhiteSpace(toEmail) || !toEmail.Contains('@'))
+        // One notice for every place an owner changes (2026-10-21): automatic email with Claude's RFP verdict and the
+        // owner's actions, plus a My day item. A failure is a warning; the move has already been saved.
+        // A person with no email on the roster is stored by name: the notice then says no email went, and still files the ask.
+        var newOwner = string.IsNullOrWhiteSpace(toEmail) ? toDisplay : toEmail;
+        var warning = await global::Kor.Operations.App.Crm.PursuitAssignmentNotice.SendAsync(
+            new global::Kor.Operations.App.Crm.PursuitAssignment(row.EngagementId, null, row.ProjectName, row.Buyer, null,
+                newOwner, toDisplay, managerUpn, reason),
+            _graph, AppServices.Get<IBdDirectorLedgerStore>(), AppServices.GetOptional<SqlPursuitReviewStore>(), CancellationToken.None)
+            .ConfigureAwait(true);
+        if (warning is not null)
         {
-            return;
-        }
-
-        try
-        {
-            var subject = $"Pursuit assigned to you: {row.ProjectName}";
-            var reasonHtml = string.IsNullOrWhiteSpace(reason)
-                ? string.Empty
-                : $"<p><b>Note:</b> {WebUtility.HtmlEncode(reason)}</p>";
-            var buyer = string.IsNullOrWhiteSpace(row.Buyer)
-                ? string.Empty
-                : $" ({WebUtility.HtmlEncode(row.Buyer)})";
-            var inner =
-                $"<p>Hi {WebUtility.HtmlEncode(toDisplay)},</p>" +
-                $"<p>You've been assigned the pursuit <b>{WebUtility.HtmlEncode(row.ProjectName)}</b>{buyer} in the BD workspace.</p>" +
-                reasonHtml +
-                "<p>Open <b>Business Development &#8594; Pursuits</b> to work it.</p>" +
-                $"<p style=\"color:#6B7280;font-size:12px\">Reassigned by {WebUtility.HtmlEncode(managerUpn)} via the KOR Operations app.</p>";
-            // Branded shell like every other app-sent mail (fix F15) — raw HTML
-            // bodies are the divergence class the shared template exists to kill.
-            var body = global::Kor.Operations.KorEmailTemplate.Shell("PURSUIT REASSIGNED", inner);
-
-            await _graph.SendSimpleMailAsync(managerUpn, new[] { toEmail }, subject, body, CancellationToken.None)
-                .ConfigureAwait(true);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                Window.GetWindow(this),
-                $"The pursuit was reassigned, but the notification email to {toDisplay} could not be sent:\n\n{ex.Message}",
-                "Reassigned (email not sent)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            MessageBox.Show(Window.GetWindow(this), "The pursuit was reassigned. " + warning, "Reassigned", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

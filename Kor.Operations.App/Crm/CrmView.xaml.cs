@@ -396,7 +396,7 @@ public partial class CrmView : UserControl
         }
         var label = string.IsNullOrWhiteSpace(row.ProjectName) ? row.OpportunityKey : row.ProjectName;
         new PursuitReviewWindow(review, label, row.Buyer, row.Opportunity?.BuyerContactEmail, row.Opportunity?.SubmissionDeadlineUtc,
-            () => ChecklistButton_Click(sender, e)) { Owner = owner }.Show();
+            () => ChecklistButton_Click(sender, e), row.Engagement.OwnerStaffId) { Owner = owner }.Show();
     }
 
     /// <summary>2026-10-21: opens Claude Code (KOR account) on this PC to read the selected pursuit's documents again.</summary>
@@ -539,7 +539,33 @@ public partial class CrmView : UserControl
     {
         try
         {
-            var saved = await _vm.SaveEngagementAsync(edited, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+            // An owner change goes through the same logged reassignment as BD Director and All Pursuits (history, the linked
+            // RFP's owner, the stale-owner check) and the same automatic notice; the other edits save as before.
+            var original = _vm.Engagements.FirstOrDefault(r => r.Id == edited.Id)?.Engagement;
+            var newOwner = edited.OwnerStaffId;
+            var ownerChanged = original is not null && !string.IsNullOrWhiteSpace(newOwner)
+                && !string.Equals(original.OwnerStaffId, newOwner, StringComparison.OrdinalIgnoreCase);
+            var saved = await _vm.SaveEngagementAsync(ownerChanged ? edited with { OwnerStaffId = original!.OwnerStaffId } : edited,
+                ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+            if (ownerChanged)
+            {
+                var outcome = await _vm.ReassignOwnerAsync(saved, newOwner!, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+                if (outcome == Kor.Opportunities.Data.Crm.ReassignOutcome.Reassigned)
+                {
+                    var row = _vm.Engagements.FirstOrDefault(r => r.Id == saved.Id);
+                    var warning = await PursuitAssignmentNotice.SendAsync(
+                        new PursuitAssignment(saved.Id, saved.BuyerCanonicalOrgId, row?.ProjectName ?? $"pursuit #{saved.Id}", row?.Buyer,
+                            row?.Opportunity?.SubmissionDeadlineUtc, newOwner!, null, ResolveActor(), "Changed in My Pursuits."),
+                        AppServices.Get<Kor.Operations.Graph.IGraphFacade>(), AppServices.Get<Kor.Opportunities.Data.Crm.IBdDirectorLedgerStore>(),
+                        AppServices.GetOptional<Kor.Opportunities.Data.Crm.SqlPursuitReviewStore>(), CancellationToken.None).ConfigureAwait(true);
+                    if (warning is not null)
+                        MessageBox.Show(Window.GetWindow(this), "The owner was changed. " + warning, "Owner changed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else
+                {
+                    MessageBox.Show(Window.GetWindow(this), _vm.StatusMessage, "Owner not changed", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
 
             // Same close-out prompt as the stage menu (plan 1.5) — both Lost
             // doors behave identically.

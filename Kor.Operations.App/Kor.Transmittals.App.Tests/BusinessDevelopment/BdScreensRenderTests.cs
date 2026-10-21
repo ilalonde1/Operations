@@ -329,7 +329,8 @@ public sealed class BdScreensRenderTests
         written += RenderView(view, new Size(1680, 980), Path.Combine(dir, "review-strip-ready.png"));
 
         var window = new PursuitReviewWindow(review, "Structural and Civil Engineering – Professional Services Agreement (RFP PF-1026-02)",
-            "Banff Centre for Arts and Creativity", "Amaya_Kingston@banffcentre.ca", new DateTimeOffset(2026, 11, 2, 21, 0, 0, TimeSpan.Zero), () => { });
+            "Banff Centre for Arts and Creativity", "Amaya_Kingston@banffcentre.ca", new DateTimeOffset(2026, 11, 2, 21, 0, 0, TimeSpan.Zero), () => { },
+            "ishabana@korstructural.com");
         var content = (FrameworkElement)window.Content;
         window.Content = null;
         written += RenderView(content, new Size(980, 860), Path.Combine(dir, "review-window.png"));
@@ -349,7 +350,14 @@ public sealed class BdScreensRenderTests
             new RfpQuestion("Section D says rates must include all travel, but the Rate Bid Form has separate travel lines. Which governs?", "Pricing is 40 points; travel built into hourly rates makes them look higher than local firms'.", "Appendix E D; Appendix C"),
             new RfpQuestion("Can Banff Centre share the preliminary analysis of the Theatre Complex roof trusses and the existing drawings?", "The methodology section asks for a detailed approach to this exact work.", "Appendix E A.2.2, A.3.4"),
         },
-        "Fri 23 Oct 2026, 2:00 pm MST", "Amaya_Kingston@banffcentre.ca", "All three files read.", null, "Claude (session with Ian, 21 Oct)", Now.AddMinutes(-3));
+        "Fri 23 Oct 2026, 2:00 pm MST", "Amaya_Kingston@banffcentre.ca", "All three files read.", null, "Claude (session with Ian, 21 Oct)", Now.AddMinutes(-3),
+        new[]
+        {
+            new RfpAction("Decide go or no-go on the civil question", "Ian", new DateOnly(2026, 10, 22), "Questions close Fri 23 Oct 2:00 pm MST; the civil answer decides whether KOR can bid."),
+            new RfpAction("Send the 3 questions to Amaya Kingston", "owner", new DateOnly(2026, 10, 22), "Gives Banff a day to answer before the cutoff."),
+            new RfpAction("Ask 3 to 5 past clients to return the Appendix D questionnaire", "owner", new DateOnly(2026, 10, 27), "Clients reply to Banff directly; they need lead time."),
+            new RfpAction("Confirm a civil sub-consultant and their rates", "owner", new DateOnly(2026, 10, 28), "The rate form asks for Lead Civil, Senior Civil and Civil Designer rates."),
+        });
 
     // ---- the pursuit-health board: cold, watch, warm, never touched ----
 

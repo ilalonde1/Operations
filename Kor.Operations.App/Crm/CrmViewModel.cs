@@ -102,6 +102,16 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         view.Filter ??= FilterRow;
     }
 
+    /// <summary>
+    /// Mine = the owner, or a second seat (AssignedStaffIds, comma-separated mailboxes, as BD Director's "Choose engineer"
+    /// writes them): a person given a seat on a pursuit sees it under Mine too. Exact matches only.
+    /// </summary>
+    internal static bool IsMine(CrmEngagement e, string? actor) =>
+        !string.IsNullOrWhiteSpace(actor)
+        && (string.Equals(e.OwnerStaffId, actor, StringComparison.OrdinalIgnoreCase)
+            || (e.AssignedStaffIds ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Any(s => string.Equals(s, actor, StringComparison.OrdinalIgnoreCase)));
+
     private bool FilterRow(object item)
     {
         if (item is not CrmEngagementRowView row)
@@ -118,7 +128,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             return false;
         }
 
-        if (_mineOnly && !string.Equals(row.Engagement.OwnerStaffId, CurrentActorUpn, StringComparison.OrdinalIgnoreCase))
+        if (_mineOnly && !IsMine(row.Engagement, CurrentActorUpn))
         {
             return false;
         }
@@ -535,10 +545,20 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     }
 
     /// <summary>The strip's one line beside the verdict: how many questions, and when they are due.</summary>
-    public string ReviewHeadline => _review is null ? "" :
-        _review.Questions.Count == 0 ? "Claude read the RFP: no questions for the buyer."
-        : $"{_review.Questions.Count} question{(_review.Questions.Count == 1 ? "" : "s")} for the buyer"
-          + (_review.QuestionsDeadline is { } d ? $", due {d}" : "");
+    public string ReviewHeadline
+    {
+        get
+        {
+            if (_review is null) return "";
+            var questions = _review.Questions.Count == 0 ? "" : $"{_review.Questions.Count} question{(_review.Questions.Count == 1 ? "" : "s")} for the buyer"
+                + (_review.QuestionsDeadline is { } d ? $", due {d}" : "");
+            // The next thing to do leads: it is what makes the review something to act on.
+            if (_review.Actions.FirstOrDefault() is not { } next)
+                return questions.Length > 0 ? questions : "Claude read the RFP: no questions for the buyer.";
+            var who = PursuitReviewWindow.PersonName(PursuitRfpReview.ResolveOwner(next.Owner, Selected?.Engagement.OwnerStaffId));
+            return $"Next: {next.Action} ({who}, by {next.Due:ddd d MMM})" + (questions.Length > 0 ? "  ·  " + questions : "");
+        }
+    }
 
     public string ReviewVerdict => _review is null ? "" : RecommendationLabel(_review.Recommendation).ToUpperInvariant();
     public Brush ReviewVerdictBrush => RecommendationBrush(_review?.Recommendation ?? "decide");
@@ -938,6 +958,31 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         ReplaceEngagement(saved);
         StatusMessage = $"Saved engagement {saved.Id}.";
         return saved;
+    }
+
+    /// <summary>
+    /// Moves a pursuit to a new owner through the Overwatch store (the one logged path: OpportunityAssignmentLog, the linked
+    /// RFP's owner, refused when someone else moved it first or it has closed), then reloads so the row shows the new owner.
+    /// </summary>
+    public async Task<ReassignOutcome> ReassignOwnerAsync(CrmEngagement pursuit, string toOwner, string actor, CancellationToken ct)
+    {
+        if (AppServices.GetOptional<IPursuitOverwatchStore>() is not { } store)
+        {
+            StatusMessage = "The owner could not be changed here; use BD Director, Reassign.";
+            return ReassignOutcome.Ignored;
+        }
+        var outcome = await store.ReassignAsync(pursuit.Id, pursuit.OpportunityId, pursuit.OwnerStaffId ?? "", toOwner, actor,
+            "Changed in My Pursuits.", ct).ConfigureAwait(true);
+        if (outcome == ReassignOutcome.Reassigned) await LoadAsync(ct).ConfigureAwait(true);
+        StatusMessage = outcome switch
+        {
+            ReassignOutcome.Reassigned => $"Pursuit {pursuit.Id} is now owned by {toOwner}; they have been told.",
+            ReassignOutcome.OwnerChanged => "Someone else changed the owner first. Refresh to see who owns it.",
+            ReassignOutcome.DuplicateForTarget => $"{toOwner} already holds a pursuit for this buyer and region; the owner was not changed.",
+            ReassignOutcome.PursuitClosed => "This pursuit is closed (Won or Lost); the owner was not changed.",
+            _ => StatusMessage,
+        };
+        return outcome;
     }
 
     /// <summary>

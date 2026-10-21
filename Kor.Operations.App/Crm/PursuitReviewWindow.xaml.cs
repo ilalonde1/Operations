@@ -25,8 +25,11 @@ public partial class PursuitReviewWindow : Window
     /// <summary>A question as the window shows it: numbered, with why it matters and where it comes from.</summary>
     public sealed record QuestionLine(int Number, string Question, string Why, string Ref);
 
+    /// <summary>An action as the window shows it: numbered, who and when on the right, red when overdue, amber within two days.</summary>
+    public sealed record ActionLine(int Number, string Action, string Why, string Who, string When, System.Windows.Media.Brush WhenBrush);
+
     public PursuitReviewWindow(PursuitReviewRow review, string project, string? buyer, string? buyerEmail,
-        DateTimeOffset? submissionDeadlineUtc, Action openChecklist)
+        DateTimeOffset? submissionDeadlineUtc, Action openChecklist, string? pursuitOwner = null)
     {
         InitializeComponent();
         _review = review;
@@ -55,6 +58,14 @@ public partial class PursuitReviewWindow : Window
         Dates.Text = dates.ToString();
         Dates.Visibility = dates.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
 
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        Actions.ItemsSource = review.Actions.Select((a, i) => new ActionLine(i + 1, a.Action, a.Why,
+            PersonName(PursuitRfpReview.ResolveOwner(a.Owner, pursuitOwner)),
+            a.Due < today ? $"Overdue · {a.Due:ddd d MMM}" : a.Due == today ? "Today" : a.Due == today.AddDays(1) ? $"Tomorrow · {a.Due:ddd d MMM}" : $"By {a.Due:ddd d MMM}",
+            a.Due < today ? Overdue : a.Due <= today.AddDays(1) ? CrmViewModel.RecommendationBrush("decide") : (System.Windows.Media.Brush)FindResource("Text.Secondary")))
+            .ToList();
+        ActionsHeading.Visibility = Actions.Visibility = review.Actions.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
         QuestionsHeading.Text = review.Questions.Count == 0 ? "No questions for the buyer" : $"Questions for the buyer ({review.Questions.Count})";
         Questions.ItemsSource = review.Questions.Select((x, i) => new QuestionLine(i + 1, x.Question, x.Why, x.Ref is { } r ? "From " + r : "")).ToList();
         DraftButton.Content = review.Questions.Count == 1 ? "Draft the question as an email" : $"Draft the {review.Questions.Count} questions as an email";
@@ -63,6 +74,15 @@ public partial class PursuitReviewWindow : Window
         Summary.Text = review.Summary;
         Footnote.Text = string.Join("  ", new[] { review.FilesRead, review.ChecklistNote }.Where(t => !string.IsNullOrWhiteSpace(t)));
     }
+
+    private static readonly System.Windows.Media.Brush Overdue = Frozen(new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC0, 0x39, 0x2B)));
+
+    private static System.Windows.Media.Brush Frozen(System.Windows.Media.SolidColorBrush b) { b.Freeze(); return b; }
+
+    /// <summary>"ishabana@korstructural.com" reads as "ishabana"; Ian's own mailbox as "Ian".</summary>
+    internal static string PersonName(string mailbox) =>
+        mailbox.Equals(PursuitRfpReview.IanMailbox, StringComparison.OrdinalIgnoreCase) ? "Ian"
+        : mailbox.IndexOf('@') is var at and > 0 ? mailbox[..at] : mailbox;
 
     internal static bool IsAddress(string? s) =>
         s is { Length: > 3 } && !s.Trim().Contains(' ') && s.IndexOf('@') > 0 && s.IndexOf('@') == s.LastIndexOf('@');

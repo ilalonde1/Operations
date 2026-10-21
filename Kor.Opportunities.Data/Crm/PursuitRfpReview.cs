@@ -15,15 +15,21 @@ namespace Kor.Opportunities.Data.Crm;
 /// <summary>A question for the buyer: what to ask, why it matters to KOR, and where in the RFP it comes from.</summary>
 public sealed record RfpQuestion(string Question, string Why, string? Ref);
 
-/// <summary>What a review session reports: migration 377's PursuitReview row, plus the checklist for PursuitRequirement.</summary>
+/// <summary>
+/// Something to do because of what the RFP says: what, who ("owner" = the pursuit's owner, "Ian", or an email address), by
+/// when, and why. Each becomes an ask on its owner's My day (migration 378).
+/// </summary>
+public sealed record RfpAction(string Action, string Owner, DateOnly Due, string Why);
+
+/// <summary>What a review session reports: migration 377's PursuitReview row, the checklist for PursuitRequirement, and the actions.</summary>
 public sealed record RfpReviewReport(string Outcome, string Recommendation, string Summary, string Reasons,
     IReadOnlyList<RfpQuestion> Questions, string? QuestionsDeadline, string? QuestionsTo, string? FilesRead,
-    IReadOnlyList<PursuitRequirementInput> Checklist);
+    IReadOnlyList<PursuitRequirementInput> Checklist, IReadOnlyList<RfpAction> Actions);
 
 /// <summary>A stored review, as the pursuit shows it.</summary>
 public sealed record PursuitReviewRow(long Id, long EngagementId, long? PromptRunId, string Recommendation, string Summary, string Reasons,
     IReadOnlyList<RfpQuestion> Questions, string? QuestionsDeadline, string? QuestionsTo, string? FilesRead, string? ChecklistNote,
-    string ReportedBy, DateTimeOffset ReportedAtUtc);
+    string ReportedBy, DateTimeOffset ReportedAtUtc, IReadOnlyList<RfpAction> Actions);
 
 /// <summary>A pursuit's file, as the review prompt lists it.</summary>
 public sealed record RfpReviewFile(long Id, string FileName, long SizeBytes, string UploadedBy, DateTimeOffset UploadedAtUtc);
@@ -93,6 +99,7 @@ public static class PursuitRfpReview
         sb.AppendLine("2. Whether KOR should bid: `go`, `no-go`, or `decide` when it turns on something only Ian or the buyer can settle. Reasons first: fit with structural work, scope KOR does not do, pricing weight, references needed, insurance, travel, anything unusual.");
         sb.AppendLine("3. The questions for the buyer: only ones whose answer changes whether or how KOR bids. Each with why it matters and the section it comes from. Note the questions deadline and the address questions go to.");
         sb.AppendLine("4. The checklist: every requirement a compliant submission must meet, quoted, with its section.");
+        sb.AppendLine("5. The actions: what has to happen next, in order, each with who does it and by when, so the review is something to act on. Use the RFP's own dates (send questions before the questions deadline, start reference requests now, decide go/no-go a working day before the questions deadline or, if that has passed, within two working days). A no-go still has an action: \"Archive the pursuit\" for the owner. Owner is \"owner\" (whoever owns the pursuit), \"Ian\" (go/no-go and anything needing the BD manager), or a person's email address. Today is " + i.Now.ToLocalTime().ToString("ddd d MMM yyyy", CultureInfo.InvariantCulture) + "; no due date before it.");
         if (i.ChecklistItems > 0) sb.AppendLine("   The pursuit already has a checklist; yours is kept with the review but does not replace it.");
         sb.AppendLine();
         sb.AppendLine("## When you are done: report back (required)");
@@ -108,6 +115,7 @@ public static class PursuitRfpReview
         sb.AppendLine("  \"questionsDeadline\": \"Fri 23 Oct 2026, 2:00 pm MST\",");
         sb.AppendLine("  \"questionsTo\": \"name@buyer.ca\",          // the email address only; how questions must be sent goes in summary");
         sb.AppendLine("  \"filesRead\": \"Which files you read, and any you could not.\",");
+        sb.AppendLine("  \"actions\": [ { \"action\": \"Decide go or no-go\", \"owner\": \"Ian\", \"due\": \"2026-10-22\", \"why\": \"The questions close 23 Oct; a no-go saves the proposal effort.\" } ],   // 1 to 12, in the order to do them");
         sb.AppendLine("  \"checklist\": [ { \"requirement\": \"Quoted requirement\", \"sourceRef\": \"s. 3.1.2\", \"checkKind\": \"Manual\", \"checkParameter\": null } ]");
         sb.AppendLine("}");
         sb.AppendLine("```");
@@ -126,8 +134,14 @@ public static class PursuitRfpReview
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true, ReadCommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
 
     private sealed record ReportFile(string? Outcome, string? Recommendation, string? Summary, string? Reasons, List<QuestionFile>? Questions,
-        string? QuestionsDeadline, string? QuestionsTo, string? FilesRead, List<PursuitRequirementInput>? Checklist);
+        string? QuestionsDeadline, string? QuestionsTo, string? FilesRead, List<PursuitRequirementInput>? Checklist, List<ActionFile>? Actions);
     private sealed record QuestionFile(string? Question, string? Why, string? Ref);
+    private sealed record ActionFile(string? Action, string? Owner, string? Due, string? Why);
+
+    /// <summary>"owner", "Ian", or an email address; anything else is refused so an action never lands on nobody.</summary>
+    public static bool IsActionOwner(string? owner) =>
+        owner is not null && (owner.Equals("owner", StringComparison.OrdinalIgnoreCase) || owner.Equals("Ian", StringComparison.OrdinalIgnoreCase)
+            || (!owner.Contains(' ') && owner.IndexOf('@') > 0 && owner.IndexOf('@') == owner.LastIndexOf('@')));
 
     /// <summary>Parses and validates a session's report. Every problem is reported; nothing is accepted with errors.</summary>
     public static (RfpReviewReport? Report, IReadOnlyList<string> Errors) ParseReport(string json)
@@ -159,11 +173,43 @@ public static class PursuitRfpReview
         try { PursuitRequirementValidation.Validate(checklist); }
         catch (ArgumentException ex) { errors.Add("checklist " + ex.Message); }
 
+        // A review is for acting on: at least one action, each with an owner and a date.
+        var actions = new List<RfpAction>();
+        var acts = f.Actions ?? new List<ActionFile>();
+        if (acts.Count is 0 or > 12) errors.Add("actions: give 1 to 12, in the order to do them (a no-go still has one: archive the pursuit).");
+        for (var n = 0; n < acts.Count; n++)
+        {
+            var a = acts[n];
+            var at = $"action {n + 1}";
+            if (string.IsNullOrWhiteSpace(a?.Action) || a.Action.Length > 300) errors.Add($"{at}: action is required (300 characters at most).");
+            else if (!IsActionOwner(a.Owner?.Trim())) errors.Add($"{at}: owner must be \"owner\", \"Ian\" or an email address.");
+            else if (!DateOnly.TryParseExact(a.Due, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var due)) errors.Add($"{at}: due must be yyyy-MM-dd.");
+            else if (string.IsNullOrWhiteSpace(a.Why) || a.Why.Length > 500) errors.Add($"{at}: why is required (500 characters at most).");
+            else actions.Add(new RfpAction(a.Action.Trim(), a.Owner!.Trim(), due, a.Why.Trim()));
+        }
+
         return errors.Count > 0
             ? (null, errors)
             : (new RfpReviewReport(f.Outcome!, f.Recommendation!, f.Summary!.Trim(), f.Reasons!.Trim(), questions,
-                Blank(f.QuestionsDeadline), Blank(f.QuestionsTo), Blank(f.FilesRead), checklist), Array.Empty<string>());
+                Blank(f.QuestionsDeadline), Blank(f.QuestionsTo), Blank(f.FilesRead), checklist, actions), Array.Empty<string>());
     }
+
+    public static string ActionsJson(IReadOnlyList<RfpAction> actions) => JsonSerializer.Serialize(actions, Json);
+
+    public static IReadOnlyList<RfpAction> ReadActions(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return Array.Empty<RfpAction>();
+        try { return JsonSerializer.Deserialize<List<RfpAction>>(json, Json) ?? new List<RfpAction>(); }
+        catch (JsonException) { return Array.Empty<RfpAction>(); }
+    }
+
+    /// <summary>Who an action lands on: the pursuit's owner, Ian's mailbox, or the address given.</summary>
+    public static string ResolveOwner(string owner, string? pursuitOwner) =>
+        owner.Equals("owner", StringComparison.OrdinalIgnoreCase) ? (string.IsNullOrWhiteSpace(pursuitOwner) ? IanMailbox : pursuitOwner!)
+        : owner.Equals("Ian", StringComparison.OrdinalIgnoreCase) ? IanMailbox
+        : owner.ToLowerInvariant();
+
+    public const string IanMailbox = "ilalonde@korstructural.com";
 
     public static string QuestionsJson(IReadOnlyList<RfpQuestion> questions) => JsonSerializer.Serialize(questions, Json);
 
@@ -308,8 +354,9 @@ DELETE FROM opportunities.PursuitReview WHERE PromptRunId = @id;", con, tx))
     {
         await using var insert = new SqlCommand(@"
 INSERT INTO opportunities.PursuitReview
-    (EngagementId, PromptRunId, Recommendation, Summary, Reasons, QuestionsJson, QuestionsDeadline, QuestionsTo, FilesRead, ChecklistNote, ReportedBy)
-VALUES (@e, @run, @rec, @summary, @reasons, @questions, @deadline, @to, @files, @note, @by);", con, tx);
+    (EngagementId, PromptRunId, Recommendation, Summary, Reasons, QuestionsJson, QuestionsDeadline, QuestionsTo, FilesRead, ChecklistNote, ReportedBy, ActionsJson)
+VALUES (@e, @run, @rec, @summary, @reasons, @questions, @deadline, @to, @files, @note, @by, @actions);", con, tx);
+        insert.Parameters.Add("@actions", SqlDbType.NVarChar, -1).Value = PursuitRfpReview.ActionsJson(report.Actions);
         insert.Parameters.Add("@e", SqlDbType.BigInt).Value = engagementId;
         insert.Parameters.Add("@run", SqlDbType.BigInt).Value = (object?)runId ?? DBNull.Value;
         insert.Parameters.Add("@rec", SqlDbType.NVarChar, 16).Value = report.Recommendation;
@@ -330,15 +377,88 @@ VALUES (@e, @run, @rec, @summary, @reasons, @questions, @deadline, @to, @files, 
         await using var con = await OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(@"
 SELECT TOP (1) Id, EngagementId, PromptRunId, Recommendation, Summary, Reasons, QuestionsJson, QuestionsDeadline, QuestionsTo, FilesRead,
-       ChecklistNote, ReportedBy, ReportedAtUtc
+       ChecklistNote, ReportedBy, ReportedAtUtc, ActionsJson
 FROM opportunities.PursuitReview WHERE EngagementId = @e ORDER BY ReportedAtUtc DESC, Id DESC;", con);
         cmd.Parameters.Add("@e", SqlDbType.BigInt).Value = engagementId;
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
         string? S(int i) => r.IsDBNull(i) ? null : r.GetString(i);
         return new PursuitReviewRow(r.GetInt64(0), r.GetInt64(1), r.IsDBNull(2) ? null : r.GetInt64(2), r.GetString(3), r.GetString(4), r.GetString(5),
-            PursuitRfpReview.ReadQuestions(S(6)), S(7), S(8), S(9), S(10), r.GetString(11), r.GetDateTimeOffset(12));
+            PursuitRfpReview.ReadQuestions(S(6)), S(7), S(8), S(9), S(10), r.GetString(11), r.GetDateTimeOffset(12), PursuitRfpReview.ReadActions(S(13)));
     }
+
+    /// <summary>
+    /// Puts a review's actions where people work: each becomes an Open ask on its owner's My day (a resend of the same review
+    /// withdraws the asks it made before), and the first becomes the pursuit's next step when the pursuit has none or its next
+    /// step is overdue. Returns what was filed, for the CLI to print.
+    /// </summary>
+    public async Task<(int Asks, bool NextStepSet, IReadOnlyList<string> Owners)> FileActionsAsync(long engagementId, string askedBy,
+        IReadOnlyList<RfpAction> actions, DateTimeOffset now, CancellationToken ct)
+    {
+        await using var con = await OpenAsync(ct).ConfigureAwait(false);
+        await using var tx = (SqlTransaction)await con.BeginTransactionAsync(ct).ConfigureAwait(false);
+        string? owner;
+        long? org;
+        string? nextNote;
+        DateTimeOffset? nextDue;
+        await using (var read = new SqlCommand("SELECT OwnerStaffId, BuyerCanonicalOrgId, NextActionNote, NextActionDueUtc FROM opportunities.CrmEngagements WITH (UPDLOCK) WHERE Id = @e;", con, tx))
+        {
+            read.Parameters.Add("@e", SqlDbType.BigInt).Value = engagementId;
+            await using var r = await read.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            if (!await r.ReadAsync(ct).ConfigureAwait(false)) throw new InvalidOperationException($"Pursuit {engagementId} does not exist.");
+            owner = r.IsDBNull(0) ? null : r.GetString(0);
+            org = r.IsDBNull(1) ? null : r.GetInt64(1);
+            nextNote = r.IsDBNull(2) ? null : r.GetString(2);
+            nextDue = r.IsDBNull(3) ? null : r.GetDateTimeOffset(3);
+        }
+
+        await using (var withdraw = new SqlCommand(@"UPDATE opportunities.BdAsk SET Status = N'Withdrawn', ClosedAtUtc = sysdatetimeoffset(),
+    ClosedBy = @by, ClosedNote = N'Replaced by a newer report of the same review.'
+WHERE EngagementId = @e AND AskedBy = @by AND Status = N'Open';", con, tx))
+        {
+            withdraw.Parameters.Add("@e", SqlDbType.BigInt).Value = engagementId;
+            withdraw.Parameters.Add("@by", SqlDbType.NVarChar, 150).Value = askedBy;
+            await withdraw.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+
+        var owners = new List<string>();
+        foreach (var a in actions)
+        {
+            var to = PursuitRfpReview.ResolveOwner(a.Owner, owner);
+            owners.Add(to);
+            await using var insert = new SqlCommand(@"INSERT INTO opportunities.BdAsk (ToStaffKey, EngagementId, CanonicalOrgId, Ask, WhyNow, Minutes, DueUtc, AskedBy)
+VALUES (@to, @e, @org, @ask, @why, 30, @due, @by);", con, tx);
+            insert.Parameters.Add("@to", SqlDbType.NVarChar, 150).Value = to;
+            insert.Parameters.Add("@e", SqlDbType.BigInt).Value = engagementId;
+            insert.Parameters.Add("@org", SqlDbType.BigInt).Value = (object?)org ?? DBNull.Value;
+            insert.Parameters.Add("@ask", SqlDbType.NVarChar, 500).Value = a.Action.Length <= 500 ? a.Action : a.Action[..500];
+            insert.Parameters.Add("@why", SqlDbType.NVarChar, 1000).Value = a.Why;
+            insert.Parameters.Add("@due", SqlDbType.DateTimeOffset).Value = DueAtEndOfDay(a.Due);
+            insert.Parameters.Add("@by", SqlDbType.NVarChar, 150).Value = askedBy;
+            await insert.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+
+        // The pursuit's own next step: only filled when empty or overdue, so a person's own next step is never overwritten.
+        var nextStepSet = false;
+        if (actions.Count > 0 && (string.IsNullOrWhiteSpace(nextNote) || nextDue is null || nextDue < now))
+        {
+            var first = actions[0];
+            await using var next = new SqlCommand(@"UPDATE opportunities.CrmEngagements SET NextActionNote = @note, NextActionDueUtc = @due,
+    UpdatedAtUtc = sysdatetimeoffset(), UpdatedBy = @by WHERE Id = @e;", con, tx);
+            next.Parameters.Add("@e", SqlDbType.BigInt).Value = engagementId;
+            next.Parameters.Add("@note", SqlDbType.NVarChar, 500).Value = first.Action.Length <= 500 ? first.Action : first.Action[..500];
+            next.Parameters.Add("@due", SqlDbType.DateTimeOffset).Value = DueAtEndOfDay(first.Due);
+            next.Parameters.Add("@by", SqlDbType.NVarChar, 150).Value = askedBy;
+            await next.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+            nextStepSet = true;
+        }
+
+        await tx.CommitAsync(ct).ConfigureAwait(false);
+        return (actions.Count, nextStepSet, owners);
+    }
+
+    /// <summary>A due day is the end of that day in Alberta/BC working hours: 5 pm Mountain, so an action is not "overdue" at breakfast.</summary>
+    private static DateTimeOffset DueAtEndOfDay(DateOnly due) => new(due.ToDateTime(new TimeOnly(17, 0)), TimeSpan.FromHours(-6));
 
     /// <summary>What the review prompt says about a pursuit, read live as the review opens. Null when the pursuit does not exist.</summary>
     public async Task<RfpReviewInput?> LoadInputAsync(long engagementId, string requestedBy, DateTimeOffset now, CancellationToken ct)

@@ -465,8 +465,14 @@ internal static class KnowledgeCli
 
         var filed = report.Checklist.Count > 0 && note is null;
         if (filed) await requirements.ImportAsync(engagementId!.Value, report.Checklist, "Claude (RFP review)", replace: false, ct);
+
+        // The actions go where people work: an ask on each owner's My day, and the first as the pursuit's next step.
+        var askedBy = add ? "Claude (RFP review)" : $"Claude (RFP review run {id})";
+        var (asks, nextStep, owners) = await reviews.FileActionsAsync(engagementId!.Value, askedBy, report.Actions, DateTimeOffset.UtcNow, ct);
         Console.WriteLine($"Review kept on pursuit #{engagementId}: {report.Recommendation}, {report.Questions.Count} question(s) for the buyer, "
-            + (filed ? $"{report.Checklist.Count} checklist item(s) filed." : note ?? "no checklist.") + " It shows in My Pursuits.");
+            + (filed ? $"{report.Checklist.Count} checklist item(s) filed" : note ?? "no checklist") + $", {asks} action(s) on My day for "
+            + string.Join(", ", owners.Distinct(StringComparer.OrdinalIgnoreCase)) + (nextStep ? "; the first is the pursuit's next step." : "; the pursuit's own next step was kept.")
+            + " It shows in My Pursuits.");
         return 0;
     }
 

@@ -17,6 +17,8 @@ public sealed class PursuitRfpReviewTests
           "summary": "An MSA for structural and civil engineering.", "reasons": "Decide: civil is a minimum qualification.\nPricing is 40 points.",
           "questions": [ { "question": "Can a structural firm propose with a civil sub-consultant?", "why": "KOR is structural only.", "ref": "Appendix E A.3" } ],
           "questionsDeadline": "Fri 23 Oct 2026, 2:00 pm MST", "questionsTo": "buyer@example.ca",
+          "actions": [ { "action": "Decide go or no-go", "owner": "Ian", "due": "2026-10-22", "why": "Questions close 23 Oct." },
+                       { "action": "Send the questions", "owner": "owner", "due": "2026-10-23", "why": "Last day for questions." } ],
           "checklist": [ { "requirement": "Proposals should not exceed 20 pages", "sourceRef": "s. 3.1.2", "checkKind": "PageLimit", "checkParameter": "20" } ]
         }
         """;
@@ -42,6 +44,24 @@ public sealed class PursuitRfpReviewTests
         Assert.Contains(why, e => e.StartsWith("reasons", StringComparison.Ordinal));
         Assert.Contains(why, e => e.Contains("why is required", StringComparison.Ordinal));
         Assert.Contains(why, e => e.Contains("page limit", StringComparison.Ordinal));
+        Assert.Contains(why, e => e.StartsWith("actions: give 1 to 12", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Every_action_has_an_owner_who_exists_and_a_date_and_lands_on_a_mailbox()
+    {
+        var (report, _) = PursuitRfpReview.ParseReport(Report);
+        Assert.Equal(2, report!.Actions.Count);
+        Assert.Equal(new DateOnly(2026, 10, 22), report.Actions[0].Due);
+        Assert.Equal("ilalonde@korstructural.com", PursuitRfpReview.ResolveOwner(report.Actions[0].Owner, "ishabana@korstructural.com"));
+        Assert.Equal("ishabana@korstructural.com", PursuitRfpReview.ResolveOwner(report.Actions[1].Owner, "ishabana@korstructural.com"));
+        Assert.Equal("rwong@korstructural.com", PursuitRfpReview.ResolveOwner("RWong@korstructural.com", "x@y.ca"));
+        Assert.Equal(report.Actions, PursuitRfpReview.ReadActions(PursuitRfpReview.ActionsJson(report.Actions)));
+
+        var (bad, why) = PursuitRfpReview.ParseReport(Report.Replace("\"owner\": \"owner\"", "\"owner\": \"the team\"").Replace("2026-10-22", "Thursday"));
+        Assert.Null(bad);
+        Assert.Contains(why, e => e.StartsWith("action 1: due", StringComparison.Ordinal));
+        Assert.Contains(why, e => e.StartsWith("action 2: owner", StringComparison.Ordinal));
     }
 
     [Fact]

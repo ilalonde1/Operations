@@ -679,6 +679,18 @@ public partial class BdDirectorWindow : Window
             var outcome = await _vm.ReassignAsync(row, dialog.TargetOwner, _actor, dialog.Reason, ct).ConfigureAwait(true);
             if (outcome is not ReassignOutcome.Reassigned and not ReassignOutcome.Ignored)
                 MessageBox.Show(this, _vm.StatusMessage, "Reassign", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (outcome == ReassignOutcome.Reassigned)
+            {
+                // Ian, 21 Oct 2026: the new owner is told automatically (email + a My day item), as from All Pursuits.
+                var p = row.Pursuit;
+                var warning = await Kor.Operations.App.Crm.PursuitAssignmentNotice.SendAsync(
+                    new Kor.Operations.App.Crm.PursuitAssignment(p.EngagementId, null, row.ProjectName, p.Buyer, null,
+                        dialog.TargetOwner, dialog.TargetDisplay, _actor, dialog.Reason),
+                    AppServices.Get<Kor.Operations.Graph.IGraphFacade>(), AppServices.Get<IBdDirectorLedgerStore>(),
+                    AppServices.GetOptional<SqlPursuitReviewStore>(), ct).ConfigureAwait(true);
+                if (warning is not null)
+                    MessageBox.Show(this, "The pursuit was reassigned. " + warning, "Reassigned", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
         catch (OperationCanceledException) { /* Window closed. */ }
         catch (Exception ex)

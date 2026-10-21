@@ -37,6 +37,32 @@
 
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
+                <TextBlock x:Name="ActionsHeading" Text="What to do" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{StaticResource Brand.Primary.Brush}"/>
+                <ItemsControl x:Name="Actions" Margin="0,0,0,18">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,6" Padding="12,8" CornerRadius="8" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                    Background="{StaticResource App.Background}">
+                                <DockPanel>
+                                    <Border DockPanel.Dock="Left" Width="22" Height="22" CornerRadius="11" Margin="0,0,12,0" VerticalAlignment="Top"
+                                            BorderBrush="{StaticResource Brand.Primary.Brush}" BorderThickness="2">
+                                        <TextBlock Text="{Binding Number}" FontWeight="Bold" FontSize="11" Foreground="{StaticResource Brand.Primary.Brush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel DockPanel.Dock="Right" Margin="12,0,0,0" MinWidth="150">
+                                        <TextBlock Text="{Binding Who}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Right" Foreground="{StaticResource Text.Primary}"/>
+                                        <TextBlock Text="{Binding When}" FontSize="12" HorizontalAlignment="Right" Foreground="{Binding WhenBrush}"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Action}" TextWrapping="Wrap" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
+                                        <TextBlock Text="{Binding Why}" TextWrapping="Wrap" FontSize="12" Margin="0,3,0,0" Foreground="{StaticResource Text.Secondary}"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
                 <TextBlock x:Name="WhyHeading" Text="Why" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" Foreground="{StaticResource Brand.Primary.Brush}"/>
                 <ItemsControl x:Name="Reasons" Margin="0,0,0,18">
                     <ItemsControl.ItemTemplate>
