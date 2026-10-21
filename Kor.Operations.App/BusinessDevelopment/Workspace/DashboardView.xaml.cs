@@ -180,21 +180,18 @@ public partial class DashboardView : UserControl
     // Each row carries the Opportunity.Id. A double-click opens the RFP read view;
     // editing is a second step from there (2026-10-13).
 
-    private async void LatestRfpsGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        if (sender is not DataGrid grid || grid.SelectedItem is not DashboardViewModel.FeedRow row)
-        {
-            return;
-        }
-
-        await OpenOpportunityDialogAsync(row.OpportunityId).ConfigureAwait(true);
-    }
-
     private async void DeadlinesList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (sender is not ListBox list || list.SelectedItem is not DashboardViewModel.DeadlineRow row)
         {
             return;
+        }
+
+        // One click opens a tender, but only a click on a row: the scrollbar is part of the list too.
+        for (var d = e.OriginalSource as DependencyObject; d is not null && d != list; d = System.Windows.Media.VisualTreeHelper.GetParent(d))
+        {
+            if (d is System.Windows.Controls.Primitives.ScrollBar) return;
+            if (d is ListBoxItem) break;
         }
 
         await OpenOpportunityDialogAsync(row.OpportunityId).ConfigureAwait(true);

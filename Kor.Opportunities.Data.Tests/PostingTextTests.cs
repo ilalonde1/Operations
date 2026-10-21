@@ -16,6 +16,16 @@ public sealed class PostingTextTests
             PostingText.ToPlain(raw));
     }
 
+    [Theory]
+    [InlineData("REQUEST FOR PROPOSALS (RFP) FOR ENGINEERING CONSULTANT SERVICES FOR EDMONTON – JOHN E BROWNLEE BUILDING",
+        "Request for Proposals (RFP) for Engineering Consultant Services for Edmonton – John E Brownlee Building")]
+    [InlineData("PRE-QUALIFICATION REQUEST (“PQR”) 021771 For ARCHITECTURAL SERVICES Ministry of Infrastructure",
+        "Pre-Qualification Request (“PQR”) 021771 for Architectural Services Ministry of Infrastructure")]
+    [InlineData("Prime Consultant - SE02 Second-Floor Patio Renovation", "Prime Consultant - SE02 Second-Floor Patio Renovation")]
+    [InlineData("MDB - New CAT II Accommodations Buildings", "MDB - New CAT II Accommodations Buildings")]
+    public void Capitalised_tender_titles_read_in_normal_case(string raw, string shown)
+        => Assert.Equal(shown, PostingText.DisplayTitle(raw));
+
     [Fact]
     public void Escaped_markup_and_entities_are_decoded_and_plain_text_is_left_alone()
     {

@@ -88,15 +88,19 @@ public partial class OrgSearchTypeahead : UserControl
             ct.ThrowIfCancellationRequested();
             ResultsList.ItemsSource = rows;
             ResultsList.SelectedIndex = rows.Count > 0 ? 0 : -1;
-            ResultsPopup.IsOpen = rows.Count > 0;
+            // 2026-10-20: an empty result used to show nothing at all, which read as a broken box.
+            ShowMessage(rows.Count > 0 ? null : $"No organization matches \"{q}\". Try part of the name, e.g. \"Westland\".");
+            ResultsPopup.IsOpen = true;
         }
         catch (OperationCanceledException)
         {
         }
-        catch
+        catch (Exception ex)
         {
+            Serilog.Log.Warning(ex, "Organization search failed for {Query}.", q);
             ResultsList.ItemsSource = null;
-            ResultsPopup.IsOpen = false;
+            ShowMessage("Search failed: " + ex.Message);
+            ResultsPopup.IsOpen = true;
         }
     }
 
@@ -197,6 +201,12 @@ public partial class OrgSearchTypeahead : UserControl
         }, DispatcherPriority.Input);
     }
 
+    private void ShowMessage(string? text)
+    {
+        MessageText.Text = text ?? "";
+        MessageText.Visibility = text is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     private void CancelSearch()
     {
         var old = _searchCts;
@@ -204,4 +214,25 @@ public partial class OrgSearchTypeahead : UserControl
         old?.Cancel();
         old?.Dispose();
     }
+}
+
+/// <summary>An organization's kind in words a lead knows ("GC" reads as "General contractor").</summary>
+public sealed class OrgKindLabelConverter : System.Windows.Data.IValueConverter
+{
+    public static string Label(string? kind) => (kind ?? "").Trim() switch
+    {
+        "GC" => "General contractor",
+        "KorClient" => "KOR client",
+        "KorStructural" => "KOR Structural",
+        "Buyer" => "Public buyer",
+        "Competitor" => "Structural competitor",
+        "Modular" => "Modular builder",
+        "Unknown" or "" => "Organization",
+        var k => k,
+    };
+
+    public object Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture) => Label(value as string);
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+        => throw new NotSupportedException();
 }

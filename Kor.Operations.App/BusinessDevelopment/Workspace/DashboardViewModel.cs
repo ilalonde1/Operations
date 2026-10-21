@@ -210,11 +210,16 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
     public sealed record FeedRow(long OpportunityId, string Name, string Buyer, string? Province, string Status, string? Deadline);
 
     internal static DeadlineRow CreateDeadlineRow(Opportunity o, DateTimeOffset now)
-        => new(o.Id, o.Name, o.BuyerName, o.ProjectProvince, OpportunityDeadlineDisplay.Date(o.SubmissionDeadlineUtc),
-            o.SubmissionDeadlineUtc is { } d ? OpportunityDeadlineDisplay.Countdown(d, now) : "not specified");
+        => new(o.Id, Kor.Opportunities.Data.Ingestion.PostingText.DisplayTitle(o.Name), o.BuyerName, o.ProjectProvince,
+            OpportunityDeadlineDisplay.Date(o.SubmissionDeadlineUtc),
+            o.SubmissionDeadlineUtc is { } d ? OpportunityDeadlineDisplay.Countdown(d, now) : "not specified")
+        { IsNew = o.CreatedAtUtc >= now.AddDays(-7) };
 
     public sealed record DeadlineRow(long OpportunityId, string Name, string Buyer, string? Province, string? Deadline, string Countdown)
     {
+        /// <summary>Posted in the last seven days: the list's "New" tag, which replaced the separate New RFPs card.</summary>
+        public bool IsNew { get; init; }
+
         /// <summary>The card's second line: buyer · province · local closing time, blanks skipped.</summary>
         public string Detail => string.Join(" · ", new[] { Buyer, Province, Deadline }.Where(s => !string.IsNullOrWhiteSpace(s)));
     }
@@ -302,13 +307,16 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
                     o.Status.ToString(),
                     OpportunityDeadlineDisplay.Date(o.SubmissionDeadlineUtc))));
 
+            // 2026-10-20: one list, every open tender for a structural firm, soonest deadline first, with a "New" tag;
+            // the separate New RFPs card repeated the same tenders.
             Replace(Deadlines, live
-                .Where(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= thirtyDays)
+                .Where(o => o.SubmissionDeadlineUtc >= now)
                 .OrderBy(o => o.SubmissionDeadlineUtc)
                 .Select(o => CreateDeadlineRow(o, now)));
             OnPropertyChanged(nameof(HasDeadlines));
 
-            StatusMessage = $"{live.Count:N0} open tenders for a structural firm; {Deadlines.Count:N0} close in the next 30 days.";
+            var closingIn30 = Deadlines.Count(r => live.Any(o => o.Id == r.OpportunityId && o.SubmissionDeadlineUtc <= thirtyDays));
+            StatusMessage = $"{Deadlines.Count:N0} open tenders for a structural firm; {closingIn30:N0} close in the next 30 days; {Deadlines.Count(r => r.IsNew):N0} new this week.";
         }
         catch (OperationCanceledException)
         {

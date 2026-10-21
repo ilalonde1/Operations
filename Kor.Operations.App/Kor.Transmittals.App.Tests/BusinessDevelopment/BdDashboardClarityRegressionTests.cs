@@ -19,10 +19,13 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// </summary>
 public sealed class BdDashboardClarityRegressionTests
 {
-    private static readonly string[] DashboardKeeps = { "Closing soon", "New RFPs", "Priority Actions", "Reachable Now", "In Bidding", "Watching" };
+    // 2026-10-20: Closing soon + New RFPs became one list, "Tenders for KOR"; the tiles say what they count.
+    private static readonly string[] DashboardKeeps = { "Tenders for KOR", "Priority Actions", "Structural engineer not chosen yet",
+        "Building projects out for bid", "Building projects coming up" };
 
     private static readonly string[] DashboardLoses =
     {
+        "Text=\"New RFPs\"", "Text=\"Reachable Now\"", "Text=\"In Bidding\"", "Text=\"Watching\"",
         "Pipeline by sector", "By market", "By Stage", "Value by Market", "Open Structural Seats",
         "Competitor Watch", "Forward Pipeline", "Total pipeline", "Deadlines - Next 6 Months", "Pipeline Funnel",
     };
@@ -38,7 +41,7 @@ public sealed class BdDashboardClarityRegressionTests
 
         // The whole-screen card count: four cards plus the funnel row, not thirteen blocks.
         var cards = Regex.Matches(xaml, @"Style=""\{StaticResource Card\}""").Count;
-        Assert.True(cards == 3, $"EXPECTED 3 card blocks (closing, new, actions); ACTUAL {cards}");
+        Assert.True(cards == 2, $"EXPECTED 2 card blocks (tenders, actions); ACTUAL {cards}");
 
         var vm = Source("Kor.Operations.App/BusinessDevelopment/Workspace/DashboardViewModel.cs");
         Assert.DoesNotContain("SectorBars", vm);
@@ -59,6 +62,7 @@ public sealed class BdDashboardClarityRegressionTests
         Assert.Contains("var live = opps.Where(o => o.DismissedAtUtc is null && Kor.Opportunities.Data.Ingestion.KorBidFit.IsKorWork(o.Name)).ToList();", vm);
         Assert.Contains("Replace(LatestRfps, live", vm);
         Assert.Contains("Replace(Deadlines, live", vm);
+        Assert.Contains("Replace(Deadlines, live", vm);
         Assert.DoesNotContain("Replace(LatestRfps, opps", vm);
         Assert.DoesNotContain("Replace(Deadlines, opps", vm);
 
@@ -71,18 +75,15 @@ public sealed class BdDashboardClarityRegressionTests
     }
 
     [Fact]
-    public void NewRfps_LongNamesTrimWithEllipsis()
+    public void TenderList_LongNamesTrimWithEllipsis_AndNeverScrollsSideways()
     {
+        // 2026-10-20, Ian's screenshot: a long title gave the Closing soon list a horizontal scrollbar.
         var xaml = Source("Kor.Operations.App/BusinessDevelopment/Workspace/DashboardView.xaml");
-        foreach (var property in new[] { "Name", "Buyer" })
-        {
-            var column = Regex.Match(xaml, @"<DataGridTextColumn\b[^>]*\bBinding=""\{Binding " + property
-                + @"\}""[^>]*>(.*?)</DataGridTextColumn>", RegexOptions.Singleline);
-            Assert.True(column.Success, $"EXPECTED a styled {property} column; ACTUAL none");
-            Assert.Contains("DataGridTextColumn.ElementStyle", column.Value);
-            Assert.Contains("Property=\"TextTrimming\" Value=\"CharacterEllipsis\"", column.Value);
-            Assert.Contains($"Property=\"ToolTip\" Value=\"{{Binding {property}}}\"", column.Value);
-        }
+        var list = Regex.Match(xaml, @"<ListBox\b[^>]*x:Name=""DeadlinesList""[^>]*>", RegexOptions.Singleline);
+        Assert.True(list.Success, "EXPECTED the tender list; ACTUAL none");
+        Assert.Contains("ScrollViewer.HorizontalScrollBarVisibility=\"Disabled\"", list.Value);
+        Assert.Matches(@"<TextBlock Text=""\{Binding Name\}""[^>]*TextTrimming=""CharacterEllipsis""[^>]*ToolTip=""\{Binding Name\}""", xaml);
+        Assert.Matches(@"<TextBlock Text=""\{Binding Detail\}""[^>]*TextTrimming=""CharacterEllipsis""", xaml);
     }
 
     [Fact]

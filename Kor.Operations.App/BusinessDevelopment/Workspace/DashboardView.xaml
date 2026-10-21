@@ -10,8 +10,9 @@
              Unloaded="DashboardView_Unloaded">
     <!-- 2026-10-13 clarity pass ("Clarity is King"). The dashboard answers three
          questions and shows the funnel's three numbers, nothing else:
-           what is closing  -> Closing soon (next 30 days, countdown, double-click = the RFP)
-           what is new      -> New RFPs (latest 15, double-click = the RFP)
+           what to bid on   -> Tenders for KOR (structural-firm work only, soonest deadline first, "New" tag for
+                               this week's, one click = the RFP). 2026-10-20: Closing soon and New RFPs became this one
+                               list; the two repeated the same tenders.
            what should I do -> Priority Actions (collapsed, count in the header)
          Thirteen blocks became four. The pipeline charts and the five stat tiles
          moved to the Pipeline window (one bar template there), the open-seats list
@@ -104,8 +105,8 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="Reachable Now" Foreground="White" FontWeight="SemiBold" FontSize="15"/>
-                        <TextBlock Text="Act now — structural seat open" Foreground="#FFE4DA" FontSize="12" Margin="0,2,0,0"/>
+                        <TextBlock Text="Structural engineer not chosen yet" Foreground="White" FontWeight="SemiBold" FontSize="15"/>
+                        <TextBlock Text="Building projects to call about now" Foreground="#FFE4DA" FontSize="12" Margin="0,2,0,0"/>
                     </StackPanel>
                     <TextBlock Grid.Column="1"
                                Text="{Binding OpenSeatCountDisplay}"
@@ -113,10 +114,6 @@
                                FontSize="30"
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
-                    <Border Style="{StaticResource InfoBadgeOverlay}">
-                        <TextBlock Text="ⓘ" Foreground="White" FontSize="11"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
                 </Grid>
             </Button>
 
@@ -131,8 +128,8 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="In Bidding" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
-                        <TextBlock Text="Being procured now" Foreground="#C8D2DE" FontSize="12" Margin="0,2,0,0"/>
+                        <TextBlock Text="Building projects out for bid" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock Text="In procurement or design" Foreground="#C8D2DE" FontSize="12" Margin="0,2,0,0"/>
                     </StackPanel>
                     <TextBlock Grid.Column="1"
                                Text="{Binding BidWindowCountDisplay}"
@@ -140,10 +137,6 @@
                                FontSize="26"
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
-                    <Border Style="{StaticResource InfoBadgeOverlay}">
-                        <TextBlock Text="ⓘ" Foreground="White" FontSize="11"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
                 </Grid>
             </Button>
 
@@ -158,8 +151,8 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="Watching" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
-                        <TextBlock Text="Longer-term — keep an eye on" Foreground="#E0E2E4" FontSize="12" Margin="0,2,0,0"/>
+                        <TextBlock Text="Building projects coming up" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock Text="Years out; keep an eye on them" Foreground="#E0E2E4" FontSize="12" Margin="0,2,0,0"/>
                     </StackPanel>
                     <TextBlock Grid.Column="1"
                                Text="{Binding RadarCountDisplay}"
@@ -167,10 +160,6 @@
                                FontSize="24"
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
-                    <Border Style="{StaticResource InfoBadgeOverlay}">
-                        <TextBlock Text="ⓘ" Foreground="White" FontSize="11"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
                 </Grid>
             </Button>
         </Grid>
@@ -183,15 +172,16 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8">
-                    <Run Text="Closing soon"/>
-                    <Run Text="  next 30 days · double-click opens the RFP" FontSize="11" FontWeight="Normal" Foreground="{StaticResource Text.Secondary}"/>
+                    <Run Text="Tenders for KOR"/>
+                    <Run Text="  closing soonest first · click one to open it" FontSize="11" FontWeight="Normal" Foreground="{StaticResource Text.Secondary}"/>
                 </TextBlock>
                 <ListBox Grid.Row="1"
                          x:Name="DeadlinesList"
                          ItemsSource="{Binding Deadlines}"
                          BorderThickness="0"
-                         MaxHeight="340"
-                         MouseDoubleClick="DeadlinesList_MouseDoubleClick"
+                         MaxHeight="620"
+                         MouseLeftButtonUp="DeadlinesList_MouseDoubleClick"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          ScrollViewer.VerticalScrollBarVisibility="Auto">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
@@ -212,9 +202,22 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Margin="0,0,12,0">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Text.Secondary}" FontSize="11"
-                                               TextTrimming="CharacterEllipsis"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border CornerRadius="3" Padding="5,0" Margin="0,1,6,0" VerticalAlignment="Center" Background="#1E7D3A">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsNew}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="New" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Text.Secondary}" FontSize="11.5"
+                                               TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                                 </StackPanel>
                                 <Border Grid.Column="1" Background="{StaticResource Brand.Accent.Brush}" CornerRadius="999" Padding="8,3" VerticalAlignment="Center">
                                     <TextBlock Foreground="White" FontSize="11" FontWeight="SemiBold">
@@ -226,7 +229,7 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
                 <TextBlock Grid.Row="1"
-                           Text="Nothing closes in the next 30 days."
+                           Text="No open tenders for KOR right now."
                            Foreground="{StaticResource Text.Secondary}"
                            HorizontalAlignment="Center" Margin="0,18,0,8">
                     <TextBlock.Style>
@@ -243,54 +246,6 @@
             </Grid>
         </Border>
 
-        <!-- Row 2: what is new. -->
-        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="12" Margin="0,0,0,12"
-                ToolTip="{fin:FinancialMetricTooltip Key=BdDashboard_LatestRfps}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" Cursor="Help"
-                           ToolTip="{fin:FinancialMetricTooltip Key=BdDashboard_LatestRfps}">
-                    <Run Text="New RFPs"/>
-                    <Run Text="  latest 15 · double-click opens the RFP" FontSize="11" FontWeight="Normal" Foreground="{StaticResource Text.Secondary}"/>
-                </TextBlock>
-                <DataGrid Grid.Row="1"
-                          x:Name="LatestRfpsGrid"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True"
-                          CanUserAddRows="False"
-                          CanUserDeleteRows="False"
-                          HeadersVisibility="Column"
-                          GridLinesVisibility="Horizontal"
-                          MaxHeight="420"
-                          ItemsSource="{Binding LatestRfps}"
-                          MouseDoubleClick="LatestRfpsGrid_MouseDoubleClick">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" MinWidth="160">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                                    <Setter Property="ToolTip" Value="{Binding Name}"/>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
-                        <DataGridTextColumn Header="Buyer" Binding="{Binding Buyer}" Width="180">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                                    <Setter Property="ToolTip" Value="{Binding Buyer}"/>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
-                        <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="80"/>
-                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
-                        <DataGridTextColumn Header="Closes" Binding="{Binding Deadline}" Width="190"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </Grid>
-        </Border>
 
         <Border Grid.Row="3" Padding="14" Margin="0,0,0,12">
             <Border.Style>
