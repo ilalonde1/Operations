@@ -29,10 +29,15 @@
             <Button Content="Refresh" Width="80" Click="RefreshButton_Click"/>
             <Button Content="Edit…" Width="80" Click="EditEngagementButton_Click"
                     ToolTip="Edit the pursuit (owner, fee, notes, stage)."/>
+            <Button Content="Next step…" Width="90" Click="NextStepButton_Click"
+                    ToolTip="Set your next step on the selected pursuit and the date it is due."/>
             <Button Content="More  ▾" Width="90" Margin="0,0,16,0" Click="MoreActionsButton_Click"
                     ToolTip="More actions for the selected pursuit.">
                 <Button.ContextMenu>
                     <ContextMenu>
+                        <MenuItem Header="Checklist…" Click="ChecklistButton_Click"
+                                  ToolTip="Every requirement quoted from the RFP, checked against your draft."/>
+                        <Separator/>
                         <MenuItem Header="Buyer profile…" Click="BuyerIntelButton_Click"
                                   IsEnabled="{Binding Selected.HasBuyerIntel, FallbackValue=False}"
                                   ToolTip="Open the buyer's dossier — key people, signals, and KOR track record."/>

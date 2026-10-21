@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -744,6 +745,58 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         var saved = await _engagementStore.UpdateAsync(updated, actor, ct).ConfigureAwait(true);
         ReplaceEngagement(saved);
         StatusMessage = $"{row.OpportunityKey}: stage → {CrmStageNames.Display(newStage)}.";
+        return saved;
+    }
+
+    /// <summary>
+    /// The lead's own next step and its date, the same fields the weekly to-do list and the Director's asks write. The date
+    /// is 5 pm local on the chosen day, as a roll-up reply sets it.
+    /// </summary>
+    public async Task<CrmEngagement> SetNextStepAsync(CrmEngagementRowView row, string note, DateTime dueDay, string actor, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(note)) throw new ArgumentException("Enter the next step.", nameof(note));
+        var due = new DateTimeOffset(DateTime.SpecifyKind(dueDay.Date.AddHours(17), DateTimeKind.Local)).ToUniversalTime();
+        var saved = await _engagementStore.UpdateAsync(row.Engagement with { NextActionNote = note.Trim(), NextActionDueUtc = due },
+            actor, ct).ConfigureAwait(true);
+        ReplaceEngagement(saved);
+        StatusMessage = $"{row.OpportunityKey}: next step due {dueDay:ddd d MMM}.";
+        return saved;
+    }
+
+    /// <summary>
+    /// Marks the pursuit Submitted with the proposal that was sent, stored in the database, the same as the Director's
+    /// "Mark submitted": a new PDF is attached first, or the existing submitted attachment is kept.
+    /// </summary>
+    public async Task<CrmEngagement> MarkSubmittedAsync(CrmEngagementRowView row, BusinessDevelopment.Director.SubmittedDetails submission,
+        string actor, CancellationToken ct)
+    {
+        var record = row.Engagement;
+        var error = BusinessDevelopment.Director.SubmittedDetails.Validate(submission.FileName, submission.FolderLink, submission.SourcePath, record.SubmittedFileId);
+        if (error is not null) throw new ArgumentException(error, nameof(submission));
+        PursuitFile attachment;
+        if (!string.IsNullOrWhiteSpace(submission.SourcePath))
+        {
+            // The one attachment path (database content), the same as a dropped file.
+            attachment = (await _fileStorage.StoreAsync(record.Id, record.OpportunityId, row.OpportunityKey, submission.SourcePath!,
+                actor, ct).ConfigureAwait(true)).File;
+            if (Selected?.Id == record.Id) Files.Insert(0, new PursuitFileRowView(attachment));
+        }
+        else
+        {
+            attachment = (await _fileStore.ListByEngagementAsync(record.Id, ct).ConfigureAwait(true))
+                .SingleOrDefault(f => f.Id == record.SubmittedFileId)
+                ?? throw new InvalidOperationException("The existing submitted attachment is unavailable. Browse to the PDF again.");
+        }
+        var saved = await _engagementStore.UpdateAsync(record with
+        {
+            Stage = CrmEngagementStage.Submitted,
+            OutcomeReason = null,
+            SubmittedFileId = attachment.Id,
+            SubmittedFileName = submission.FileName.Trim(),
+            FolderLink = string.IsNullOrWhiteSpace(submission.FolderLink) ? record.FolderLink : submission.FolderLink.Trim(),
+        }, actor, ct).ConfigureAwait(true);
+        ReplaceEngagement(saved);
+        StatusMessage = $"{row.OpportunityKey}: submitted, with {attachment.FileName} stored.";
         return saved;
     }
 

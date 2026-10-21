@@ -329,6 +329,40 @@ public partial class CrmView : UserControl
         win.Show();
     }
 
+    private async void NextStepButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.Selected is not { } row)
+        {
+            MessageBox.Show(Window.GetWindow(this), "Select a pursuit first.", "Next step", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var dialog = new NextStepDialog(string.IsNullOrWhiteSpace(row.ProjectName) ? row.OpportunityKey : row.ProjectName,
+            row.Engagement.NextActionNote, row.Engagement.NextActionDueUtc) { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            await _vm.SetNextStepAsync(row, dialog.Note, dialog.DueDay, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "Next step not saved", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ChecklistButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.Selected is not { } row)
+        {
+            MessageBox.Show(Window.GetWindow(this), "Select a pursuit first.", "Checklist", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var label = string.IsNullOrWhiteSpace(row.ProjectName) ? row.OpportunityKey : row.ProjectName;
+        var checklist = new BusinessDevelopment.Director.PursuitChecklistViewModel(
+            AppServices.Get<Kor.Opportunities.Data.Crm.IPursuitRequirementStore>(),
+            AppServices.Get<Kor.Opportunities.Data.Crm.IPursuitFileStore>(), row.Id, label, ResolveActor());
+        new BusinessDevelopment.Director.PursuitChecklistWindow(checklist) { Owner = Window.GetWindow(this) }.Show();
+    }
+
     private void SetStageButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.ContextMenu is not null)
@@ -352,6 +386,17 @@ public partial class CrmView : UserControl
 
         try
         {
+            if (newStage == CrmEngagementStage.Submitted)
+            {
+                // The proposal that was sent is stored with the pursuit as it is marked submitted, as in the Director.
+                var current = _vm.Selected.Engagement;
+                var dialog = new BusinessDevelopment.Director.SubmittedDialog(current.SubmittedFileName, current.FolderLink, current.SubmittedFileId)
+                    { Owner = Window.GetWindow(this) };
+                if (dialog.ShowDialog() != true || dialog.Result is not { } submission) return;
+                await _vm.MarkSubmittedAsync(_vm.Selected, submission, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+                return;
+            }
+
             var wasLost = _vm.Selected.Engagement.Stage == CrmEngagementStage.Lost;
             var prepared = PursuitCloseReason.Prompt(Window.GetWindow(this), _vm.Selected.Engagement, newStage);
             if (prepared is null) return;
