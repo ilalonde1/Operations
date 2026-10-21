@@ -45,8 +45,11 @@ public sealed class BdDirectorPendingBidsRegressionTests
     {
         var xaml = Source(Director + "BdDirectorWindow.xaml");
         var tabs = XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "TabItem").ToArray();
-        Assert.Equal(new[] { "Today", "People", "Pursuits", "Doctrine", "Data", "Actions", "Meetings", "References", "The number", "By person", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day", "Plan" },
+        // v3 (21 Oct 2026): five places on the rail; the tabbed screens live in Library, the old Today as "Prepared hour".
+        Assert.Equal(new[] { "Prepared hour", "People", "Pursuits", "Doctrine", "Data", "Actions", "Meetings", "References", "The number", "By person", "Funnel", "Accounts", "Asks & decisions", "Knowledge", "Market", "This week", "Pending bids", "My day" },
             tabs.Select(t => (string?)t.Attribute("Header")));
+        Assert.Equal(new[] { "today", "pursuits", "team", "plan", "library" },
+            XDocument.Parse(xaml).Descendants().Where(e => e.Name.LocalName == "RadioButton" && (string?)e.Attribute("GroupName") == "nav").Select(e => (string?)e.Attribute("Tag")));
         Assert.Equal("Bids in flight: each pursuit that came from an RFP, who holds it, when it is due, and whether it went in. Pursuits without an RFP behind them are relationship work and stay on People and Accounts.", BdDirectorViewModel.PendingBidsCaption);
         Assert.Contains("{x:Static director:BdDirectorViewModel.PendingBidsCaption}", xaml, StringComparison.Ordinal);
         Assert.Equal(new[] { "Client", "Project", "RFP", "Assignee", "Due", "Time left", "Stage", "Submitted", "File", "Link" },
@@ -451,6 +454,7 @@ public sealed class BdDirectorPendingBidsRegressionTests
                 var fixture = new DirectorPendingBidsFixture();
                 using var vm = fixture.Create();
                 var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>());
+                ((System.Windows.Controls.RadioButton)window.FindName("NavLibrary")).IsChecked = true; // v3: the tabbed screens live in Library
                 var row = new BdDirectorPendingBidRow(fixture.Bids[0], fixture.Now);
                 using var source = new AttachmentFixtureFile();
                 window.SubmitBidAsync(row, dialog =>

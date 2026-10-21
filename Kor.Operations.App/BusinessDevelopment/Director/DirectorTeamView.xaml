@@ -1,0 +1,55 @@
+<UserControl x:Class="Kor.Operations.App.BusinessDevelopment.Director.DirectorTeamView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="DirectorStyles.xaml"/></ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="Vis"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="36,30,36,30">
+            <TextBlock Text="Team" Style="{StaticResource D.Title}"/>
+            <TextBlock Text="{Binding TeamSubtitle}" FontSize="14" Foreground="{StaticResource D.Ink2}" Margin="0,4,0,24"/>
+            <!-- One card per person: what they carry and where a hand would help. Nothing about who opened what. -->
+            <ItemsControl ItemsSource="{Binding Team}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource D.Card}" Margin="0,0,16,16" Padding="18,18">
+                            <DockPanel LastChildFill="False">
+                                <DockPanel DockPanel.Dock="Top">
+                                    <Border DockPanel.Dock="Left" Style="{StaticResource D.Avatar}" Width="42" Height="42" CornerRadius="21" Background="{Binding AvatarBrush}" Margin="0,0,12,0">
+                                        <TextBlock Text="{Binding Initials}" Foreground="White" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontSize="15.5" FontWeight="SemiBold" Foreground="{StaticResource D.Ink}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Sub}" FontSize="12.5" Foreground="{StaticResource D.Ink2}"/>
+                                    </StackPanel>
+                                </DockPanel>
+                                <!-- Where their pursuits stand: red overdue, green dated, grey no next step. -->
+                                <Grid DockPanel.Dock="Top" Height="8" Margin="0,16,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="{Binding OverdueWidth}"/><ColumnDefinition Width="{Binding DatedWidth}"/><ColumnDefinition Width="{Binding UndatedWidth}"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Background="#B91C1C" CornerRadius="4,0,0,4"/>
+                                    <Border Grid.Column="1" Background="#166534"/>
+                                    <Border Grid.Column="2" Background="#DCE0E5" CornerRadius="0,4,4,0"/>
+                                </Grid>
+                                <TextBlock DockPanel.Dock="Top" Text="{Binding Summary}" FontSize="12.5" Foreground="{StaticResource D.Ink2}" TextWrapping="Wrap"/>
+                                <TextBlock DockPanel.Dock="Top" Text="{Binding Help}" Foreground="{Binding HelpFore}" FontSize="12.5" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,14,0,0">
+                                    <Button Content="Book 20 min" Style="{StaticResource D.Primary}" Click="Book_Click" Margin="0,0,6,0"
+                                            Visibility="{Binding IsTopNeed, Converter={StaticResource Vis}}"/>
+                                    <Button Content="Book 20 min" Style="{StaticResource D.Button}" Click="Book_Click" Margin="0,0,6,0"
+                                            Visibility="{Binding IsOtherNeed, Converter={StaticResource Vis}}"/>
+                                    <Button Content="Open list" Style="{StaticResource D.Ghost}" Click="List_Click"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

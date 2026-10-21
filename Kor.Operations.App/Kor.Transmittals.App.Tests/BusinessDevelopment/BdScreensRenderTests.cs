@@ -286,6 +286,73 @@ public sealed class BdScreensRenderTests
         return RenderView(view, new Size(1680, 980), Path.Combine(dir, "pursuits.png"));
     }
 
+    // ---- BD Director v3: Today, Pursuits (with the side panel open on a reassignment) and Team ----
+    // Tender rows follow the live pursuits of 21 Oct 2026 (Banff #1142, Peace River #1163, Leduc #1153 and #1112); the people
+    // are the Director fixture's eight. Asks are illustrative.
+
+    private static int RenderDirectorV3(BdDirectorWindow window, FrameworkElement content, BdDirectorViewModel vm, string dir)
+    {
+        var now = new DateTimeOffset(2026, 10, 21, 21, 30, 0, TimeSpan.Zero);
+        RfpAction A(string what, string who, int y, int m, int d, string why) => new(what, who, new DateOnly(y, m, d), why);
+        var board = new[]
+        {
+            new TenderBoardRow(1153, "Request for Proposals for Integrated Project Delivery (IPD) Team Project Partner – Civil Consultant West Campus Recreation Project – Phase 1",
+                "City of Leduc", 1, "ishabana@korstructural.com", "Islam Shabana", new DateTimeOffset(2026, 10, 29, 20, 0, 0, TimeSpan.Zero), null, null, "no-go",
+                "The work is civil engineering, not structural; KOR already bid the structural seat (IP-061) on 15 Oct.", Array.Empty<RfpQuestion>(), null,
+                new[] { A("Archive the pursuit", "owner", 2026, 10, 22, "No-go: this is the civil seat.") }, null, false, 39716, now),
+            new TenderBoardRow(1142, "Structural and Civil Engineering - Professional Services Agreement", "Banff Centre", 1, "ishabana@korstructural.com", "Islam Shabana",
+                new DateTimeOffset(2026, 11, 5, 21, 0, 0, TimeSpan.Zero), null, null, "decide",
+                "Decide: the first work package is squarely KOR's work, but the RFP also asks for civil utility design as a minimum qualification, which KOR does not do.",
+                new[] { new RfpQuestion("Can a structural firm propose with a civil sub-consultant?", "Civil is a minimum qualification.", "Appendix E A.3"),
+                        new RfpQuestion("Which governs on travel?", "Pricing is 40 points.", "Appendix E D"),
+                        new RfpQuestion("Can Banff share the preliminary analysis?", "Methodology asks for it.", "A.3.4") },
+                "Fri 23 Oct 2026, 2:00 pm MST", new[] { A("Send the 3 questions to Amaya Kingston", "owner", 2026, 10, 22, "Questions close Fri 2 pm."),
+                    A("Decide go or no-go on the civil question", "Ian", 2026, 10, 23, "The answer decides whether KOR can bid.") }, "Amaya_Kingston@banffcentre.ca", false, 41243, now),
+            new TenderBoardRow(1163, "Peace Regional Pool Structural Engineering Services", "Town of Peace River", 1, "ilalonde@korstructural.com", "Ian Lalonde",
+                new DateTimeOffset(2026, 11, 13, 21, 0, 0, TimeSpan.Zero), null, null, "decide",
+                "The core work is structural and it is the kind KOR does: corroded steel deck, joists and beams over a pool, slide footings and pillars. Two things only Ian can settle decide the bid.",
+                Enumerable.Range(1, 8).Select(i => new RfpQuestion($"Question {i}", "Why", null)).ToArray(), "Fri 6 Nov 2026",
+                new[] { A("Pick the three most recent similar municipal projects and ask those clients to act as references", "owner", 2026, 10, 23, "Experience is 25%."),
+                    A("Check COR, TLC or SECOR and the insurance in Schedule F 8.2", "owner", 2026, 10, 27, "A condition of award."),
+                    A("Decide go or no-go", "Ian", 2026, 10, 28, "Before the 30 Oct site meeting."),
+                    A("Line up sub-consultants", "owner", 2026, 10, 30, "Testing, slide, finishes."),
+                    A("Send the questions to Tanya Bell", "Ian", 2026, 11, 4, "Questions close 6 Nov.") }, "tbell@peaceriver.ca", false, 41438, now),
+            new TenderBoardRow(1112, "Request for Proposals for Integrated Project Delivery (IPD) Team Project Partner – Structural Consultant", "City of Leduc", 3,
+                "ishabana@korstructural.com", "Islam Shabana", new DateTimeOffset(2026, 10, 15, 20, 0, 0, TimeSpan.Zero), "Expect a short-list call", null, null, null,
+                Array.Empty<RfpQuestion>(), null, Array.Empty<RfpAction>(), null, false, 39332, now),
+        };
+        var asks = new[]
+        {
+            new BdAsk(11, "ilalonde@korstructural.com", 1163, null, "Decide go or no-go on Peace River", null, 30, new DateTimeOffset(2026, 10, 28, 23, 0, 0, TimeSpan.Zero), "Claude", now, "Open", null, null, null),
+            new BdAsk(12, "ilalonde@korstructural.com", 1163, null, "Send the Peace River questions to Tanya Bell", null, 30, new DateTimeOffset(2026, 11, 4, 23, 0, 0, TimeSpan.Zero), "Claude", now, "Open", null, null, null),
+            new BdAsk(13, "ilalonde@korstructural.com", 1142, null, "Decide go or no-go on Banff's civil question", null, 30, new DateTimeOffset(2026, 10, 23, 23, 0, 0, TimeSpan.Zero), "Claude", now, "Open", null, null, null),
+        };
+        var roster = new[]
+        {
+            new DirectorPerson("Ian Lalonde", "ilalonde@korstructural.com", 2), new DirectorPerson("Islam Shabana", "ishabana@korstructural.com", 3),
+            new DirectorPerson("Rory Beirne", "rbeirne@korstructural.com", 7), new DirectorPerson("James DesRoches", "jdesroches@korstructural.com", 30),
+        };
+        var home = window.Home;
+        home.Load(board, asks, vm.People.ToList(), roster, "ilalonde@korstructural.com", "Ian Lalonde", now);
+        home.HourTitle = "Close the week's decisions before Friday's question deadlines";
+        home.HourProgress = "2 of 5 moves done";
+        Assert.True(home.Decisions.Count == 3 && home.Deciding.Count == 3 && home.Submitted.Count == 1 && home.MyList.Count == 3,
+            $"EXPECTED 3 decisions / 3 deciding / 1 submitted / 3 on the list; ACTUAL {home.Decisions.Count} / {home.Deciding.Count} / {home.Submitted.Count} / {home.MyList.Count}");
+
+        var written = 0;
+        ((System.Windows.Controls.RadioButton)window.FindName("NavToday")).IsChecked = true;
+        written += RenderView(content, new Size(1680, 980), Path.Combine(dir, "director-v3-today.png"));
+        ((System.Windows.Controls.RadioButton)window.FindName("NavPursuits")).IsChecked = true;
+        home.Selected = home.Deciding.First(c => c.Row.EngagementId == 1163);
+        home.ReassignTo = roster[1];
+        Assert.Contains("3 actions", home.ReassignPreview, StringComparison.Ordinal);
+        Assert.Contains("Your 2 stay with you", home.ReassignPreview, StringComparison.Ordinal);
+        written += RenderView(content, new Size(1680, 980), Path.Combine(dir, "director-v3-pursuits.png"));
+        ((System.Windows.Controls.RadioButton)window.FindName("NavTeam")).IsChecked = true;
+        written += RenderView(content, new Size(1680, 980), Path.Combine(dir, "director-v3-team.png"));
+        return written;
+    }
+
     // ---- Claude's RFP review: the strip on a pursuit in its three states, and the review window (Banff Centre, 21 Oct) ----
 
     private static int RenderReview(string dir)
@@ -536,6 +603,7 @@ public sealed class BdScreensRenderTests
             $"EXPECTED 101 live / 8 people / no decided live pursuits; ACTUAL {vm.Live} / {vm.PeopleCount} / {vm.Outcomes}");
 
         var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>());
+        ((System.Windows.Controls.RadioButton)window.FindName("NavLibrary")).IsChecked = true; // v3: the tabbed screens live in Library
         var content = (FrameworkElement)window.Content;
         var tabs = Assert.IsType<System.Windows.Controls.TabControl>(window.FindName("Tabs"));
         // Render just the content; Loaded never fires and no telemetry/DI/DB runs.
@@ -543,6 +611,8 @@ public sealed class BdScreensRenderTests
         window.Content = null;
         content.DataContext = vm;
         content.Resources.MergedDictionaries.Add(window.Resources);
+        var v3 = RenderDirectorV3(window, content, vm, dir);
+        ((System.Windows.Controls.RadioButton)window.FindName("NavLibrary")).IsChecked = true; // the older screens live in Library now
         var files = new[] { "director-number.png", "director-people.png", "director-funnel.png", "director-accounts.png", "director-asks.png", "director-knowledge.png", "director-market.png", "director-week.png" };
         var written = 0;
         for (var i = 0; i < files.Length; i++)
@@ -750,6 +820,7 @@ public sealed class BdScreensRenderTests
         Assert.Single(doctrine.NeedsLook);
 
         var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>(), rhythm, doctrine);
+        ((System.Windows.Controls.RadioButton)window.FindName("NavLibrary")).IsChecked = true; // v3: the tabbed screens live in Library
         var tabs = Assert.IsType<System.Windows.Controls.TabControl>(window.FindName("Tabs"));
         var content = (FrameworkElement)window.Content;
         window.Content = null;
@@ -873,6 +944,7 @@ public sealed class BdScreensRenderTests
         using var vm = fixture.Create();
         vm.LoadMyDayAsync(CancellationToken.None, fixture.Now).GetAwaiter().GetResult();
         var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>());
+        ((System.Windows.Controls.RadioButton)window.FindName("NavLibrary")).IsChecked = true; // v3: the tabbed screens live in Library
         var tabs = Assert.IsType<System.Windows.Controls.TabControl>(window.FindName("Tabs"));
         var content = (FrameworkElement)window.Content;
         window.Content = null;
@@ -902,6 +974,7 @@ public sealed class BdScreensRenderTests
         Assert.Equal(6, vm.Live);
         Assert.Equal(2, vm.PeopleCount);
         var window = new BdDirectorWindow(vm, Mock.Of<IProposalStaffStore>());
+        ((System.Windows.Controls.RadioButton)window.FindName("NavLibrary")).IsChecked = true; // v3: the tabbed screens live in Library
         var tabs = Assert.IsType<System.Windows.Controls.TabControl>(window.FindName("Tabs"));
         var grid = Assert.IsType<System.Windows.Controls.DataGrid>(window.FindName("PendingBidsGrid"));
         var content = (FrameworkElement)window.Content;

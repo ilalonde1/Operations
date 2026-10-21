@@ -92,21 +92,28 @@ public partial class PursuitReviewWindow : Window
         reasons.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(l => l.TrimStart('-', '•', '*', ' ')).Where(l => l.Length > 0).ToList();
 
-    private async void DraftEmail_Click(object sender, RoutedEventArgs e)
+    private void DraftEmail_Click(object sender, RoutedEventArgs e) => DraftQuestions(this, _review, _project, _sendTo);
+
+    /// <summary>
+    /// The review's questions as an email to the buyer, opened UNSENT in the person's Outlook (questions to a buyer are Ian's to
+    /// send). Shared by this window and BD Director's "Draft questions" card button.
+    /// </summary>
+    internal static async void DraftQuestions(Window owner, PursuitReviewRow review, string project, string? sendTo)
     {
         var body = new StringBuilder();
         body.AppendLine("Hello,");
         body.AppendLine();
-        body.AppendLine($"KOR Structural has the following questions on {_project}:");
+        body.AppendLine($"KOR Structural has the following questions on {project}:");
         body.AppendLine();
-        for (var i = 0; i < _review.Questions.Count; i++)
+        for (var i = 0; i < review.Questions.Count; i++)
         {
-            var q = _review.Questions[i];
+            var q = review.Questions[i];
             body.AppendLine($"{i + 1}. {q.Question}{(q.Ref is { } r ? $" ({r})" : "")}");
             body.AppendLine();
         }
         body.AppendLine("Thank you,");
-        var draft = new HourDraft(_sendTo ?? "", $"Questions: {_project}", body.ToString());
+        var to = IsAddress(sendTo) ? sendTo!.Trim() : IsAddress(review.QuestionsTo) ? review.QuestionsTo!.Trim() : "";
+        var draft = new HourDraft(to, $"Questions: {project}", body.ToString());
         try
         {
             await Task.Run(() => OutlookDraft.Open(draft)).ConfigureAwait(true);
@@ -114,7 +121,7 @@ public partial class PursuitReviewWindow : Window
         catch (Exception ex)
         {
             Log.Warning(ex, "RFP review: opening the questions draft failed");
-            MessageBox.Show(this, "Outlook could not open the draft: " + ex.Message, "Questions email", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(owner, "Outlook could not open the draft: " + ex.Message, "Questions email", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

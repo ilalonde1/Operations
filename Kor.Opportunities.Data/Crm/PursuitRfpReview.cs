@@ -31,6 +31,12 @@ public sealed record PursuitReviewRow(long Id, long EngagementId, long? PromptRu
     IReadOnlyList<RfpQuestion> Questions, string? QuestionsDeadline, string? QuestionsTo, string? FilesRead, string? ChecklistNote,
     string ReportedBy, DateTimeOffset ReportedAtUtc, IReadOnlyList<RfpAction> Actions);
 
+/// <summary>One live tender pursuit as the BD Director's Today and Pursuits screens show it, with its latest review if any.</summary>
+public sealed record TenderBoardRow(long EngagementId, string Project, string? Buyer, int Stage, string? OwnerMailbox, string? OwnerName,
+    DateTimeOffset? DeadlineUtc, string? NextStep, DateTimeOffset? NextStepDueUtc, string? Recommendation, string? Reasons,
+    IReadOnlyList<RfpQuestion> Questions, string? QuestionsDeadline, IReadOnlyList<RfpAction> Actions, string? QuestionsTo,
+    bool ReviewRunning, long? OpportunityId, DateTimeOffset? UpdatedAtUtc);
+
 /// <summary>A pursuit's file, as the review prompt lists it.</summary>
 public sealed record RfpReviewFile(long Id, string FileName, long SizeBytes, string UploadedBy, DateTimeOffset UploadedAtUtc);
 
@@ -510,6 +516,41 @@ SELECT Id, FileName, SizeBytes, UploadedBy, UploadedAtUtc FROM opportunities.Opp
             files.Add(new RfpReviewFile(r.GetInt64(0), r.GetString(1), r.IsDBNull(2) ? 0 : r.GetInt64(2), r.GetString(3), r.GetDateTimeOffset(4)));
         return new RfpReviewInput(engagementId, head.Name, head.Buyer, head.Contact, head.Email, head.Deadline, null, head.Stage, head.Url,
             files, head.Checklist, requestedBy, now);
+    }
+
+    /// <summary>
+    /// The live tender pursuits the BD Director's Today and Pursuits screens show: drafting or submitted, with a deadline from
+    /// a week ago on, or a review; each with its owner's name and its latest review. One read, on window load and Refresh.
+    /// </summary>
+    internal const string BoardSql = @"
+SELECT e.Id, o.Name, o.BuyerName, e.Stage, e.OwnerStaffId, who.DisplayName, o.SubmissionDeadlineUtc, e.NextActionNote, e.NextActionDueUtc,
+       r.Recommendation, r.Reasons, r.QuestionsJson, r.QuestionsDeadline, r.ActionsJson, r.QuestionsTo,
+       CAST(CASE WHEN run.Id IS NOT NULL AND run.OutcomeAtUtc IS NULL THEN 1 ELSE 0 END AS bit), e.OpportunityId, e.UpdatedAtUtc
+FROM opportunities.CrmEngagements e
+JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+OUTER APPLY (SELECT TOP (1) s.DisplayName FROM opportunities.BdStaff s WHERE s.Mailbox = e.OwnerStaffId COLLATE DATABASE_DEFAULT) who
+OUTER APPLY (SELECT TOP (1) v.Recommendation, v.Reasons, v.QuestionsJson, v.QuestionsDeadline, v.ActionsJson, v.QuestionsTo
+             FROM opportunities.PursuitReview v WHERE v.EngagementId = e.Id ORDER BY v.ReportedAtUtc DESC, v.Id DESC) r
+OUTER APPLY (SELECT TOP (1) x.Id, x.OutcomeAtUtc FROM opportunities.BdPromptRun x WHERE x.EngagementId = e.Id AND x.Kind = N'rfp' ORDER BY x.Id DESC) run
+WHERE e.Stage IN (1, 3)
+  AND (r.Recommendation IS NOT NULL OR o.SubmissionDeadlineUtc >= DATEADD(day, -7, SYSDATETIMEOFFSET()))
+ORDER BY COALESCE(o.SubmissionDeadlineUtc, '9999-12-31'), e.Id;";
+
+    public async Task<IReadOnlyList<TenderBoardRow>> ListBoardAsync(CancellationToken ct)
+    {
+        await using var con = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(BoardSql, con) { CommandTimeout = 30 };
+        var rows = new List<TenderBoardRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            string? S(int i) => r.IsDBNull(i) ? null : r.GetString(i);
+            DateTimeOffset? D(int i) => r.IsDBNull(i) ? null : r.GetDateTimeOffset(i);
+            rows.Add(new TenderBoardRow(r.GetInt64(0), r.GetString(1), S(2), r.GetInt32(3), S(4), S(5), D(6), S(7), D(8), S(9), S(10),
+                PursuitRfpReview.ReadQuestions(S(11)), S(12), PursuitRfpReview.ReadActions(S(13)), S(14), r.GetBoolean(15),
+                r.IsDBNull(16) ? null : r.GetInt64(16), D(17)));
+        }
+        return rows;
     }
 
     internal const string StatusSql = @"

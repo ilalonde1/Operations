@@ -9,6 +9,8 @@
         Title="BD Director" Width="1680" Height="980" MinWidth="1100" MinHeight="720"
         WindowStartupLocation="CenterOwner" Background="{StaticResource App.Background}">
     <Window.Resources>
+        <ResourceDictionary>
+        <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="DirectorStyles.xaml"/></ResourceDictionary.MergedDictionaries>
         <converters:BdDayConverter x:Key="BdDay"/>
         <BooleanToVisibilityConverter x:Key="BoolVisibility"/>
         <opp:NullOrEmptyStringToVisibilityConverter x:Key="TextVisible"/>
@@ -83,27 +85,67 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
+        </ResourceDictionary>
     </Window.Resources>
-    <Grid Margin="22,16">
+    <!-- Version 3 (21 Oct 2026, Ian: "Clarity is powerful", KOR palette): a rail with five places. Today, Pursuits and Team are
+         the new screens; Plan is the operating plan; Library holds everything else the Director had, unchanged. -->
+    <Grid Background="{StaticResource D.Page}">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="212"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+
+        <DockPanel Background="{StaticResource D.Slate}">
+            <StackPanel DockPanel.Dock="Top" Margin="22,24,22,26" Orientation="Horizontal">
+                <TextBlock Text="KOR" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                <TextBlock Text=" BD" Foreground="{StaticResource D.Orange}" FontSize="18" FontWeight="Bold"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Bottom" Margin="22,0,22,20">
+                <Button Content="Refresh" Click="Refresh_Click" IsEnabled="{Binding CanRefresh}" Style="{StaticResource D.Button}"
+                        Background="Transparent" Foreground="White" BorderBrush="#6A7D8F" HorizontalAlignment="Left"/>
+                <TextBlock Text="{Binding StatusMessage}" Foreground="#9FB0BF" FontSize="11.5" TextWrapping="Wrap" Margin="0,10,0,0"/>
+            </StackPanel>
+            <StackPanel Margin="12,0">
+                <RadioButton x:Name="NavToday" GroupName="nav" Style="{StaticResource D.Nav}" IsChecked="True" Checked="Nav_Checked" Tag="today">
+                    <DockPanel Width="164">
+                        <Border DockPanel.Dock="Right" Background="{StaticResource D.Orange}" CornerRadius="9" Padding="7,0" x:Name="TodayBadge" Visibility="Collapsed">
+                            <TextBlock x:Name="TodayBadgeText" Foreground="White" FontSize="11.5" FontWeight="Bold"/>
+                        </Border>
+                        <TextBlock Text="Today"/>
+                    </DockPanel>
+                </RadioButton>
+                <RadioButton x:Name="NavPursuits" GroupName="nav" Style="{StaticResource D.Nav}" Checked="Nav_Checked" Tag="pursuits" Content="Pursuits"/>
+                <RadioButton x:Name="NavTeam" GroupName="nav" Style="{StaticResource D.Nav}" Checked="Nav_Checked" Tag="team" Content="Team"/>
+                <RadioButton x:Name="NavPlan" GroupName="nav" Style="{StaticResource D.Nav}" Checked="Nav_Checked" Tag="plan" Content="Plan"/>
+                <RadioButton x:Name="NavLibrary" GroupName="nav" Style="{StaticResource D.Nav}" Checked="Nav_Checked" Tag="library" Content="Library"/>
+            </StackPanel>
+        </DockPanel>
+
+        <director:DirectorTodayView Grid.Column="1" x:Name="TodayPanel"/>
+        <director:DirectorPursuitsView Grid.Column="1" x:Name="PursuitsPanel" Visibility="Collapsed"/>
+        <director:DirectorTeamView Grid.Column="1" x:Name="TeamPanel" Visibility="Collapsed"/>
+
+        <!-- The operating plan (migration 372): one HTML page drawn by OperatingPlanPage; Print plan prints this same page.
+             It loads with the window and on Refresh, never on navigation, like every other screen here. -->
+        <Grid Grid.Column="1" x:Name="PlanPanel" Visibility="Collapsed" Background="White">
+            <wv2:WebView2 x:Name="PlanView"/>
+            <TextBlock x:Name="PlanStatus" Margin="16" Foreground="#5A6876" TextWrapping="Wrap" Text="Opening the plan…"/>
+        </Grid>
+
+    <Grid Grid.Column="1" x:Name="LibraryPanel" Visibility="Collapsed" Margin="26,22">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <DockPanel Margin="0,0,0,12">
-            <Button DockPanel.Dock="Right" Content="Refresh" Click="Refresh_Click" Padding="18,6"
-                    IsEnabled="{Binding CanRefresh}" VerticalAlignment="Center"/>
-            <StackPanel>
-                <TextBlock Text="BD Director" FontSize="26" FontWeight="SemiBold"/>
-                <TextBlock Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,0">
-                    <Run Text="{Binding Live, Mode=OneWay}"/><Run Text=" live pursuits · "/>
-                    <Run Text="{Binding PeopleCount, Mode=OneWay}"/><Run Text=" people · as of "/>
-                    <Run Text="{Binding AsOf, Mode=OneWay, Converter={StaticResource BdDay}}"/>
-                </TextBlock>
-            </StackPanel>
-        </DockPanel>
+        <StackPanel Margin="0,0,0,12">
+            <TextBlock Text="Library" Style="{StaticResource D.Title}"/>
+            <TextBlock Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,0">
+                <Run Text="Everything else, as before: the prepared hour, doctrine, and the detailed data. "/>
+                <Run Text="{Binding Live, Mode=OneWay}"/><Run Text=" live pursuits · "/>
+                <Run Text="{Binding PeopleCount, Mode=OneWay}"/><Run Text=" people · as of "/>
+                <Run Text="{Binding AsOf, Mode=OneWay, Converter={StaticResource BdDay}}"/>
+            </TextBlock>
+        </StackPanel>
         <TabControl x:Name="Tabs" Grid.Row="1">
-        <TabItem Header="Today" x:Name="TodayTab">
+        <TabItem Header="Prepared hour" x:Name="TodayTab">
             <Grid Margin="12">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <TextBlock Text="{Binding HourMessage}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"
@@ -1170,17 +1212,10 @@
         </TabItem>
         </TabControl>
         </TabItem>
-        <!-- The operating plan (migration 372): one HTML page drawn by OperatingPlanPage; Print plan prints this same page.
-             It loads with the window and on Refresh, never on tab change, like every other screen here. -->
-        <TabItem Header="Plan" x:Name="PlanTab">
-            <Grid>
-                <wv2:WebView2 x:Name="PlanView"/>
-                <TextBlock x:Name="PlanStatus" Margin="16" Foreground="#5A6876" TextWrapping="Wrap" Text="Opening the plan…"/>
-            </Grid>
-        </TabItem>
         </TabControl>
         <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="{StaticResource Text.Secondary}"/>
         <TextBlock Grid.Row="2" x:Name="RhythmStatus" Text="{Binding Status}" Margin="0,8,0,0" HorizontalAlignment="Right"
                    Foreground="{StaticResource Text.Secondary}"/>
+    </Grid>
     </Grid>
 </Window>

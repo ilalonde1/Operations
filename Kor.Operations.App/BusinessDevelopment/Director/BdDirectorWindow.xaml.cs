@@ -73,6 +73,7 @@ public partial class BdDirectorWindow : Window
         _staffStore = staffStore ?? throw new ArgumentNullException(nameof(staffStore));
         InitializeComponent();
         DataContext = vm;
+        WireHome();
         Loaded += Window_Loaded;
         Closed += (_, _) => { _lifetime.Cancel(); _vm.Dispose(); _lifetime.Dispose(); };
     }
@@ -108,6 +109,7 @@ public partial class BdDirectorWindow : Window
             }
             if (_doctrine is not null) await _doctrine.LoadAsync(_lifetime.Token).ConfigureAwait(true);
             await director.ConfigureAwait(true);
+            await LoadHomeAsync(_lifetime.Token).ConfigureAwait(true);
             // The plan reads the same stores; started, not awaited, so the other screens never wait on it.
             if (_rhythm is not null) _ = LoadPlanAsync();
         }
@@ -124,8 +126,8 @@ public partial class BdDirectorWindow : Window
             Kor.Opportunities.Data.BdReports.Generators.KorReportLinks.DirectorReferences => ReferencesTab,
             _ => null,
         };
-        if (inData is null) { Tabs.SelectedItem = TodayTab; return; }
-        Tabs.SelectedItem = DataTab;
+        if (inData is null) { NavToday.IsChecked = true; return; }
+        ShowLibrary(tab: DataTab);
         DataTabs.SelectedItem = inData;
     }
 
@@ -314,7 +316,7 @@ public partial class BdDirectorWindow : Window
         if (_doctrine.CitationCards.FirstOrDefault(c => c.Id == id) is { } card && card.Role != _doctrine.Role)
             await RhythmActionAsync(ct => _doctrine.SelectRoleAsync(card.Role, ct)).ConfigureAwait(true);
         _doctrine.FocusCard(id);
-        Tabs.SelectedItem = DoctrineTab;
+        ShowLibrary(tab: DoctrineTab);
         DoctrineTab.UpdateLayout();
         FocusedDoctrineCard.BringIntoView();
     }

@@ -272,6 +272,9 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
         private set => SetField(ref _statusMessage, value);
     }
 
+    /// <summary>The window's v3 screens report what they did on the same status line.</summary>
+    internal void Say(string message) => StatusMessage = message;
+
     public bool IsLoading
     {
         get => _isLoading;

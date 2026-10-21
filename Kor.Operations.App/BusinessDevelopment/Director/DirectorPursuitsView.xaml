@@ -1,0 +1,150 @@
+<UserControl x:Class="Kor.Operations.App.BusinessDevelopment.Director.DirectorPursuitsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="DirectorStyles.xaml"/></ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="Vis"/>
+
+            <!-- A tender as a card: verdict, title, buyer, next step, countdown, owner. Selected = a blue edge. -->
+            <DataTemplate x:Key="CardTemplate">
+                <Border x:Name="card" Style="{StaticResource D.Card}" Padding="16,14" Margin="0,0,0,12" Cursor="Hand"
+                        MouseLeftButtonUp="Card_Click">
+                    <StackPanel>
+                        <Border Style="{StaticResource D.Pill}" Background="{Binding VerdictBrush}">
+                            <TextBlock Text="{Binding Verdict}" Foreground="{Binding VerdictFore}" FontSize="10.5" FontWeight="Bold"/>
+                        </Border>
+                        <TextBlock Text="{Binding Title}" FontSize="14.5" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{StaticResource D.Ink}" Margin="0,9,0,2"/>
+                        <TextBlock Text="{Binding Buyer}" FontSize="12.5" Foreground="{StaticResource D.Ink2}"/>
+                        <TextBlock Text="{Binding NextStep}" FontSize="12.5" TextWrapping="Wrap" Foreground="{StaticResource D.Ink}" Margin="0,9,0,0"
+                                   Visibility="{Binding HasNextStep, Converter={StaticResource Vis}}"/>
+                        <DockPanel Margin="0,11,0,0">
+                            <Border DockPanel.Dock="Right" Style="{StaticResource D.Avatar}" Background="{Binding AvatarBrush}" ToolTip="{Binding Row.OwnerName}">
+                                <TextBlock Text="{Binding Initials}" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <Border Style="{StaticResource D.Chip}" Background="{Binding ChipBack}">
+                                <TextBlock Text="{Binding Chip}" Foreground="{Binding ChipFore}" FontSize="12" FontWeight="SemiBold"/>
+                            </Border>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                        <Setter TargetName="card" Property="BorderBrush" Value="{StaticResource D.Select}"/>
+                        <Setter TargetName="card" Property="BorderThickness" Value="2"/>
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+
+        <DockPanel Margin="36,30,30,0">
+            <StackPanel DockPanel.Dock="Top">
+                <TextBlock Text="Pursuits" Style="{StaticResource D.Title}"/>
+                <TextBlock Text="{Binding PursuitsSubtitle}" FontSize="14" Foreground="{StaticResource D.Ink2}" Margin="0,4,0,18"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                    <RadioButton Content="Everyone" GroupName="who" IsChecked="True" Checked="Everyone_Checked" Style="{StaticResource D.Filter}"/>
+                    <RadioButton Content="Mine" GroupName="who" Checked="Mine_Checked" Style="{StaticResource D.Filter}" Margin="8,0,0,0"/>
+                    <Button Content="All live pursuits…" Style="{StaticResource D.Ghost}" Margin="14,0,0,0" Click="AllPursuits_Click"
+                            ToolTip="Every live pursuit by person, including relationships with no tender (Library)."/>
+                </StackPanel>
+            </StackPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="{Binding DecidingHeader}" Style="{StaticResource D.Section}"/>
+                        <ItemsControl ItemsSource="{Binding Deciding}" ItemTemplate="{StaticResource CardTemplate}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="{Binding SubmittedHeader}" Style="{StaticResource D.Section}"/>
+                        <ItemsControl ItemsSource="{Binding Submitted}" ItemTemplate="{StaticResource CardTemplate}"/>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </DockPanel>
+
+        <!-- The side panel: one pursuit, its next steps, and who owns it. Reassigning says what the new owner gets first. -->
+        <Border Grid.Column="1" Width="460" Background="White" BorderBrush="{StaticResource D.Line}" BorderThickness="1,0,0,0"
+                Visibility="{Binding HasSelected, Converter={StaticResource Vis}}">
+            <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="26,26,26,26" DataContext="{Binding Selected}">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource D.Ghost}" Padding="8,2" Click="Close_Click" ToolTip="Close"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource D.Pill}" Background="{Binding VerdictBrush}">
+                                <TextBlock Text="{Binding Verdict}" Foreground="{Binding VerdictFore}" FontSize="11" FontWeight="Bold"/>
+                            </Border>
+                            <Border Style="{StaticResource D.Chip}" Background="{Binding ChipBack}" Margin="8,0,0,0">
+                                <TextBlock Text="{Binding Chip}" Foreground="{Binding ChipFore}" FontSize="12" FontWeight="SemiBold"/>
+                            </Border>
+                        </StackPanel>
+                    </DockPanel>
+                    <TextBlock Text="{Binding Row.Project}" FontSize="19" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{StaticResource D.Ink}" Margin="0,12,0,4"/>
+                    <TextBlock FontSize="12.5" Foreground="{StaticResource D.Ink2}" TextWrapping="Wrap">
+                        <Run Text="{Binding Row.Buyer, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding OwnerLine, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Number, Mode=OneWay}"/>
+                    </TextBlock>
+                    <TextBlock Text="{Binding Deciding}" FontSize="13.5" TextWrapping="Wrap" LineHeight="20" Foreground="{StaticResource D.Ink}" Margin="0,14,0,0"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                        <Button Content="Open review" Style="{StaticResource D.Primary}" Click="Review_Click"/>
+                        <Button Content="Open in My Pursuits" Style="{StaticResource D.Ghost}" Margin="6,0,0,0" Click="Pursuit_Click"/>
+                    </StackPanel>
+
+                    <TextBlock Text="NEXT STEPS" Style="{StaticResource D.Section}" Margin="2,26,0,6"/>
+                    <ItemsControl ItemsSource="{Binding Steps}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{StaticResource D.Line}" BorderThickness="0,0,0,1" Padding="0,10">
+                                    <DockPanel>
+                                        <Border DockPanel.Dock="Left" Width="22" Height="22" CornerRadius="11" BorderBrush="{StaticResource D.Slate}" BorderThickness="2" Margin="0,0,12,0" VerticalAlignment="Top">
+                                            <TextBlock Text="{Binding Number}" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource D.Slate}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel DockPanel.Dock="Right" Margin="10,0,0,0">
+                                            <TextBlock Text="{Binding Who}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Right" Foreground="{StaticResource D.Ink}"/>
+                                            <TextBlock Text="{Binding When}" FontSize="12" HorizontalAlignment="Right" Foreground="{StaticResource D.Ink2}"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Action}" FontSize="13" TextWrapping="Wrap" Foreground="{StaticResource D.Ink}"/>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock FontSize="12" Foreground="{StaticResource D.Ink2}" Margin="0,8,0,0" TextWrapping="Wrap">
+                        <Run Text="{Binding More, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding Extras, Mode=OneWay}"/>
+                    </TextBlock>
+                </StackPanel>
+            </ScrollViewer>
+            <!-- Owner, pinned under the panel's content: bound to the view model, not the card. -->
+            <Border Grid.Row="1" BorderBrush="{StaticResource D.Line}" BorderThickness="0,1,0,0" Padding="26,18,26,22">
+            <StackPanel>
+                <TextBlock Text="OWNER" Style="{StaticResource D.Section}"/>
+                <ComboBox ItemsSource="{Binding People}" SelectedItem="{Binding ReassignTo}" Height="40" FontSize="13.5">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel Margin="2,3">
+                                <Border DockPanel.Dock="Left" Style="{StaticResource D.Avatar}" Width="26" Height="26" CornerRadius="13" Background="{Binding AvatarBrush}" Margin="0,0,10,0">
+                                    <TextBlock Text="{Binding Initials}" Foreground="White" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding LiveText}" Foreground="{StaticResource D.Ink3}" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Border Background="#F1F7F3" BorderBrush="#D3E8DA" BorderThickness="1" CornerRadius="10" Padding="14,11" Margin="0,12,0,0"
+                        Visibility="{Binding CanReassign, Converter={StaticResource Vis}}">
+                    <TextBlock Text="{Binding ReassignPreview}" TextWrapping="Wrap" FontSize="13" LineHeight="19" Foreground="{StaticResource D.Ink}"/>
+                </Border>
+                <Button Content="{Binding ReassignButton}" Style="{StaticResource D.Primary}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                        IsEnabled="{Binding CanReassign}" Click="Reassign_Click"/>
+            </StackPanel>
+            </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
