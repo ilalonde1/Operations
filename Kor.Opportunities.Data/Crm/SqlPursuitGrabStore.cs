@@ -172,10 +172,39 @@ END";
         cmd.Parameters.Add("@me", SqlDbType.NVarChar, 150).Value = staffUpn.Trim();
 
         var engagementId = ReadEngagementId(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false));
+        if (engagementId > 0) await RequestDocumentsNowAsync(con, staffUpn.Trim(), ct).ConfigureAwait(false);
 
         return engagementId > 0
             ? new GrabResult(GrabOutcome.Grabbed, engagementId)
             : new GrabResult(GrabOutcome.AlreadyTaken, 0);
+    }
+
+    /// <summary>The portal download jobs a grab asks for at once (Ian, 21 Oct 2026: "grab it right away").</summary>
+    internal static readonly string[] DocumentJobs = { "ApcDocumentJob", "BidsAndTendersDocumentJob" };
+
+    /// <summary>
+    /// A grab asks the Worker to fetch the tender's documents now instead of at the next scheduled run: one trigger per
+    /// portal job (opportunities.JobTriggerRequests; the Worker's poller fires it within seconds). Each job only touches
+    /// pursuits on its own portal, so asking both is harmless. Best effort: the grab has already succeeded, and the
+    /// schedules still pick the pursuit up if this fails.
+    /// </summary>
+    private static async Task RequestDocumentsNowAsync(SqlConnection con, string by, CancellationToken ct)
+    {
+        foreach (var job in DocumentJobs)
+        {
+            try
+            {
+                await using var trigger = new SqlCommand(
+                    "INSERT INTO opportunities.JobTriggerRequests (JobName, RequestedBy) VALUES (@j, @r);", con) { CommandTimeout = CommandTimeoutSeconds };
+                trigger.Parameters.Add("@j", SqlDbType.NVarChar, 200).Value = job;
+                trigger.Parameters.Add("@r", SqlDbType.NVarChar, 150).Value = (by + " (grab)").Length <= 150 ? by + " (grab)" : by;
+                await trigger.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+            }
+            catch (SqlException)
+            {
+                // The schedule is the fallback; a refused trigger must not undo or fail the grab.
+            }
+        }
     }
 
     public async Task<long> ClaimOwnedAsync(long opportunityId, string staffUpn, CancellationToken ct)
@@ -193,7 +222,9 @@ END";
 
         try
         {
-            return ReadEngagementId(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false));
+            var engagementId = ReadEngagementId(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false));
+            if (engagementId > 0) await RequestDocumentsNowAsync(con, staffUpn.Trim(), ct).ConfigureAwait(false);
+            return engagementId;
         }
         catch (SqlException ex) when (ex.Number is 2601 or 2627)
         {
