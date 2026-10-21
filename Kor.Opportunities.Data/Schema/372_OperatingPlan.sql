@@ -239,7 +239,7 @@ USING (VALUES
     (32, N'BD', N'LeadGets', N'Reminders at the right time.', N'Live. In the weekly list: when to make first contact, when to follow up after sending a proposal, when to ask for a decision.', 320),
     (33, N'BD', N'LeadGets', N'Bid documents, and who else is bidding.', N'Live. The bid package of every Bids&Tenders tender we pursue is saved with the pursuit automatically, and checked daily for addenda until it closes; Alberta Purchasing Connection documents join as soon as the company sign-in is confirmed.', 330),
     (34, N'BD', N'LeadGets', N'Help writing proposals.', N'Live. A checklist of everything the client asked for, the rate sheet and the team chart, prepared for them; first used on Leduc.', 340),
-    (35, N'BD', N'LeadGets', N'Ian''s backing.', N'Starting. A quick answer on whether to bid and on the fee, and a 15-minute check-in every two weeks.', 350),
+    (35, N'BD', N'LeadGets', N'Ian''s backing, from the week of 26 Oct.', N'Starting. From the week of 26 Oct: a quick answer on whether to bid and on the fee, and a 15-minute check-in every two weeks.', 350),
     (40, N'BD', N'LeadAsk', N'Keep every opportunity moving.', N'Each one has a next step and a date. If it is dead, say so and drop it.', 400),
     (41, N'BD', N'LeadAsk', N'Reply to the weekly list.', N'One line per item: done, new date, or dropped and why.', 410),
     (42, N'BD', N'LeadAsk', N'Decide whether to bid before writing a fee.', N'Especially for clients who rarely hire us.', 420),
