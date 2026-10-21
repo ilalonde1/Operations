@@ -328,6 +328,17 @@ public partial class BdWorkspaceWindow : Window
         {
             button.Style = (Style)FindResource(ReferenceEquals(button, active) ? "ActiveNavButton" : "NavButton");
         }
+
+        // A screen under More (reached by Back or a link from another screen) opens the group so the highlight shows.
+        if (MoreNav.Children.Contains(active)) ShowMoreNav(true);
+    }
+
+    private void MoreNavToggle_Click(object sender, RoutedEventArgs e) => ShowMoreNav(MoreNav.Visibility != Visibility.Visible);
+
+    private void ShowMoreNav(bool show)
+    {
+        MoreNav.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        MoreNavToggle.Content = show ? "Less  ▴" : "More  ▾";
     }
 
     private void BackButton_Click(object sender, RoutedEventArgs e)

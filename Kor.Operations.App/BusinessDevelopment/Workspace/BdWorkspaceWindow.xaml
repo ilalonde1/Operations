@@ -78,51 +78,38 @@
                             Click="BackButton_Click" IsEnabled="False" Margin="0,0,0,4"
                             ToolTip="Back to the previous screen."/>
 
-                    <TextBlock Text="FIND" Style="{StaticResource NavGroupHeader}" Margin="12,0,0,3"/>
+                    <!-- 2026-10-20 "cleaner UI": the seven screens a regional lead uses, then the rest behind More. The group
+                         headings (Find / Pursue / Know / Tools) went; seven items need no headings. -->
                     <Button x:Name="DashboardButton" Content="Dashboard" Style="{StaticResource ActiveNavButton}" Click="Dashboard_Click"/>
                     <Button x:Name="OpportunitiesButton" Content="Opportunities" Style="{StaticResource NavButton}" Click="Opportunities_Click"
                             ToolTip="Open tenders — 'To grab' (un-claimed, ranked by fit) or 'All tenders' (the full registry)."/>
                     <Button x:Name="UpcomingButton" Content="Future Projects" Style="{StaticResource NavButton}" Click="Upcoming_Click"
                             ToolTip="Major projects on the horizon — earlier than tenders, before an RFP exists."/>
-
-                    <TextBlock Text="PURSUE" Style="{StaticResource NavGroupHeader}"/>
-                    <!-- "Pursuits" and "Pursuit Monitor" are MINE vs EVERYONE'S, and the
-                         old labels said nothing about which. The distinction is the only
-                         reason both screens exist. -->
                     <Button x:Name="PursuitsButton" Content="My Pursuits" Style="{StaticResource NavButton}" Click="Pursuits_Click"
                             ToolTip="The pursuits you own — calls, contacts, stages, outcomes."/>
-                    <Button x:Name="OverwatchButton" Content="All Pursuits" Style="{StaticResource NavButton}" Click="Overwatch_Click"
-                            ToolTip="Manager board — every owned live pursuit across the team, coldest first."/>
-
-                    <TextBlock Text="KNOW" Style="{StaticResource NavGroupHeader}"/>
                     <Button x:Name="RelationshipsButton" Content="Relationships" Style="{StaticResource NavButton}" Click="Relationships_Click"/>
-                    <!-- "BD" is redundant inside the Business Development workspace. -->
-                    <Button x:Name="AttributionButton" Content="Scorecard" Style="{StaticResource NavButton}" Click="Attribution_Click"
-                            ToolTip="Wins, won fee, active pursuits — the honest scorecard."/>
-                    <Button x:Name="CompetitionButton" Content="Market History" Style="{StaticResource NavButton}" Click="Competition_Click"
-                            ToolTip="Who won what, historically — the competitor record."/>
-                    <Button x:Name="EventsButton" Content="Events" Style="{StaticResource NavButton}" Click="Events_Click"/>
-                    <!-- This screen's own content is headed ENGAGEMENTS, with a capture
-                         rate over Region / Initiator / Contact / Company / Submitted /
-                         Accepted. It is outreach, not pursuits, so KNOW is the right
-                         group and "Engagements" is what it actually shows. -->
-                    <Button x:Name="BdTrackingButton" Content="Engagements" Style="{StaticResource NavButton}" Click="BdTracking_Click"
-                            ToolTip="Who we approached and whether it converted — the KOR Structural BD Tracking 2026 spreadsheet, ingested (read-only)."/>
-
-                    <TextBlock Text="TOOLS" Style="{StaticResource NavGroupHeader}"/>
                     <Button x:Name="BriefsMakerButton" Content="Make a Brief..." Style="{StaticResource NavButton}" Click="BriefsMaker_Click"/>
                     <Button x:Name="ProposalsButton" Content="Proposals" Style="{StaticResource NavButton}" Click="Proposals_Click"
                             ToolTip="Opens the Fee Proposal Builder in a separate window."/>
-                    <Button x:Name="BrochuresButton" Content="Brochures" Style="{StaticResource NavButton}" Click="Brochures_Click"
+                    <Button x:Name="MoreNavToggle" Content="More  ▾" Style="{StaticResource NavButton}" Click="MoreNavToggle_Click"
+                            Margin="0,10,0,0" ToolTip="All Pursuits, Scorecard, Market History, Events, Engagements, Brochures, Reports, Admin."/>
+                    <StackPanel x:Name="MoreNav" Visibility="Collapsed">
+                        <Button x:Name="OverwatchButton" Content="All Pursuits" Style="{StaticResource NavButton}" Click="Overwatch_Click"
+                            ToolTip="Manager board — every owned live pursuit across the team, coldest first."/>
+                        <Button x:Name="AttributionButton" Content="Scorecard" Style="{StaticResource NavButton}" Click="Attribution_Click"
+                            ToolTip="Wins, won fee, active pursuits — the honest scorecard."/>
+                        <Button x:Name="CompetitionButton" Content="Market History" Style="{StaticResource NavButton}" Click="Competition_Click"
+                            ToolTip="Who won what, historically — the competitor record."/>
+                        <Button x:Name="EventsButton" Content="Events" Style="{StaticResource NavButton}" Click="Events_Click"/>
+                        <Button x:Name="BdTrackingButton" Content="Engagements" Style="{StaticResource NavButton}" Click="BdTracking_Click"
+                            ToolTip="Who we approached and whether it converted — the KOR Structural BD Tracking 2026 spreadsheet, ingested (read-only)."/>
+                        <Button x:Name="BrochuresButton" Content="Brochures" Style="{StaticResource NavButton}" Click="Brochures_Click"
                             ToolTip="Opens the Sales Brochure Builder in a separate window."/>
-                    <!-- Audit item 25: BdReportsWindow was constructed only from
-                         HomeWindow, so Reports was unreachable from the BD workspace
-                         entirely. Same separate-window pattern as Proposals/Brochures. -->
-                    <Button x:Name="ReportsButton" Content="Reports" Style="{StaticResource NavButton}" Click="Reports_Click"
+                        <Button x:Name="ReportsButton" Content="Reports" Style="{StaticResource NavButton}" Click="Reports_Click"
                             ToolTip="Opens the BD Reports window — pipeline, seats and market reports."/>
-
-                    <Button x:Name="AdminButton" Content="Admin" Style="{StaticResource NavButton}" Click="Admin_Click"
-                            Margin="0,14,0,2" ToolTip="Sources, ingestion, and settings."/>
+                        <Button x:Name="AdminButton" Content="Admin" Style="{StaticResource NavButton}" Click="Admin_Click"
+                            ToolTip="Sources, ingestion, and settings."/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

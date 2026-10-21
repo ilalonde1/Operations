@@ -219,7 +219,17 @@
                                     <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Text.Secondary}" FontSize="11.5"
                                                TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                                 </StackPanel>
-                                <Border Grid.Column="1" Background="{StaticResource Brand.Accent.Brush}" CornerRadius="999" Padding="8,3" VerticalAlignment="Center">
+                                <Border Grid.Column="1" CornerRadius="999" Padding="8,3" VerticalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#8A949E"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsUrgent}" Value="True">
+                                                    <Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <TextBlock Foreground="White" FontSize="11" FontWeight="SemiBold">
                                         <Run Text="{Binding Countdown, Mode=OneWay}"/>
                                     </TextBlock>

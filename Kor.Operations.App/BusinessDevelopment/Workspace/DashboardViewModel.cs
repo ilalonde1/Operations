@@ -213,12 +213,15 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
         => new(o.Id, Kor.Opportunities.Data.Ingestion.PostingText.DisplayTitle(o.Name), o.BuyerName, o.ProjectProvince,
             OpportunityDeadlineDisplay.Date(o.SubmissionDeadlineUtc),
             o.SubmissionDeadlineUtc is { } d ? OpportunityDeadlineDisplay.Countdown(d, now) : "not specified")
-        { IsNew = o.CreatedAtUtc >= now.AddDays(-7) };
+        { IsNew = o.CreatedAtUtc >= now.AddDays(-7), IsUrgent = o.SubmissionDeadlineUtc is { } u && u - now <= TimeSpan.FromDays(3) };
 
     public sealed record DeadlineRow(long OpportunityId, string Name, string Buyer, string? Province, string? Deadline, string Countdown)
     {
         /// <summary>Posted in the last seven days: the list's "New" tag, which replaced the separate New RFPs card.</summary>
         public bool IsNew { get; init; }
+
+        /// <summary>Closes within three days: the only countdown shown in red, so red means "act now".</summary>
+        public bool IsUrgent { get; init; }
 
         /// <summary>The card's second line: buyer · province · local closing time, blanks skipped.</summary>
         public string Detail => string.Join(" · ", new[] { Buyer, Province, Deadline }.Where(s => !string.IsNullOrWhiteSpace(s)));
