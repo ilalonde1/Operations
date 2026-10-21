@@ -178,8 +178,12 @@ try {
     if ($needPlace) {
         try {
             if (Test-Path $root) {
-                $kept = "$root`_old_" + (Get-Date -Format 'yyyyMMddHHmmss')
-                Rename-Item $root $kept -ErrorAction Stop
+                # Retried: a handle on the folder (an Explorer window, a scanner, a process of another session) is usually
+                # released within seconds. 2026-10-20, KOR-223N: one attempt failed "access denied".
+                $aside = "$root`_old_" + (Get-Date -Format 'yyyyMMddHHmmss')
+                for ($i = 0; $i -lt 6 -and -not $kept; $i++) {
+                    try { Rename-Item $root $aside -ErrorAction Stop; $kept = $aside } catch { if ($i -eq 5) { throw } ; Start-Sleep -Seconds 5 }
+                }
                 S 'existing C:\KOR-Operations renamed aside (rollback point)'
             }
             Move-Item $staged $root -ErrorAction Stop
@@ -188,7 +192,11 @@ try {
             S "C:\KOR-Operations = V$PkgGen ($files files)"
         }
         catch {
-            try { if (Test-Path $root) { Remove-Item $root -Recurse -Force -ErrorAction SilentlyContinue } } catch {}
+            # Remove C:\KOR-Operations ONLY when it is the half-placed NEW build, i.e. the previous install was renamed aside
+            # first. If the rename itself failed, C:\KOR-Operations IS the previous install and is left untouched.
+            # 2026-10-20, KOR-223N: this line ran unconditionally after a failed rename and deleted the working install.
+            if ($kept) { try { if (Test-Path $root) { Remove-Item $root -Recurse -Force -ErrorAction SilentlyContinue } } catch {} }
+            else { S 'C:\KOR-Operations could not be moved aside; it was left as it was (no change made)' }
             if ($kept -and (Test-Path $kept)) {
                 try { Rename-Item $kept $root -ErrorAction Stop; $rolledBack = $true; $kept = $null; S 'ROLLED BACK: previous C:\KOR-Operations restored' }
                 catch { S "ROLLBACK FAILED: previous install is at $kept" }
