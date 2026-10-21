@@ -221,6 +221,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var usedGrades = allAreas.Select(a => a.GradeCode).Concat(allDropAreas.Select(a => a.GradeCode))
                 .Distinct().OrderBy(g => g).ToList();
             if (usedGrades.Count == 0) usedGrades.Add(PdfToSafeConstants.DefaultConcreteGrade);
+            // EVERY MATERIAL A SECTION NAMES IS DEFINED (2026-10-20). The frame-section tables below name
+            // DefaultConcreteGrade for every column and wall/beam section, but only the slabs' grades were defined:
+            // a slab grade other than C30 with any column or wall left the sections pointing at an undefined material.
+            bool framesNameDefault = stories.Any(s => s.ColumnPointNames.Count > 0 || s.LineSegs.Any(l => l.SecName is not null));
+            if (framesNameDefault && !usedGrades.Contains(PdfToSafeConstants.DefaultConcreteGrade))
+                usedGrades = usedGrades.Append(PdfToSafeConstants.DefaultConcreteGrade).OrderBy(g => g).ToList();
 
             sw.WriteLine("TABLE:  \"MATERIAL PROPERTIES - GENERAL\"");
             foreach (var g in usedGrades)
