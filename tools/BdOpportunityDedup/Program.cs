@@ -60,6 +60,7 @@ internal static class Program
         var includeSameSource = false;
         var minSimilarity = 0.90;
         string? db = null;
+        (long Keep, long Drop)? pair = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -76,6 +77,9 @@ internal static class Program
                     break;
                 case "--min-similarity" when i + 1 < args.Length:
                     minSimilarity = double.Parse(args[++i], CultureInfo.InvariantCulture);
+                    break;
+                case "--pair" when i + 2 < args.Length:
+                    pair = (long.Parse(args[++i], CultureInfo.InvariantCulture), long.Parse(args[++i], CultureInfo.InvariantCulture));
                     break;
                 default:
                     Console.Error.WriteLine($"Unknown argument: {args[i]}");
@@ -98,6 +102,25 @@ internal static class Program
 
         var rows = await LoadAsync(con).ConfigureAwait(false);
         Console.WriteLine($"active opportunities considered: {rows.Count}");
+
+        // --pair KEEP DROP (2026-10-20): a person has settled one held group, e.g. Leduc AB-2026-06617 carried by two
+        // APC feeds where the kept copy holds the pursuit. The DROPPED row must still carry no pursuit, owner or human
+        // work, and the two must share a title core; everything else is the person's call, named by Id.
+        if (pair is { } p0)
+        {
+            var keep = rows.SingleOrDefault(r => r.Id == p0.Keep);
+            var drop = rows.SingleOrDefault(r => r.Id == p0.Drop);
+            var refusal = keep is null || drop is null ? "both Ids must be active opportunities"
+                : drop.HasPursuit || drop.HasOwner || drop.HasHumanWork ? "the dropped row carries a pursuit, an owner or human work"
+                : keep.NormName != drop.NormName ? $"titles differ: \"{keep.NormName}\" / \"{drop.NormName}\""
+                : null;
+            if (refusal is not null) { Console.Error.WriteLine($"--pair refused: {refusal}"); return 3; }
+            Console.WriteLine($"PAIR: keep {keep!.OpportunityKey} <- drop {drop!.OpportunityKey}  {keep.Name}");
+            if (!commit) { Console.WriteLine("Dry run. Re-run with --commit to apply."); return 0; }
+            var n = await MergeAsync(con, new Plan(keep, drop)).ConfigureAwait(false);
+            Console.WriteLine($"COMMITTED: {n} row(s) merged.");
+            return 0;
+        }
 
         // A group is normally only considered when the SAME title arrives under SEVERAL
         // sources — a second portal is the corroboration that this is one solicitation.
@@ -194,6 +217,20 @@ internal static class Program
             return "copies disagree on Status — one may be live and one dead";
         }
 
+        // 2026-10-20: two different reference numbers on the SAME portal are two solicitations that share a title
+        // ("Notice to Vendors of upcoming procurement opportunities", BCBID-229472 / 232044 / 234181), never one RFP
+        // held twice. A portal's own engineering feed (BCBIDENG-) carries the same reference, so it is compared by number.
+        // A re-post of ONE solicitation under a fresh number (BC Bid does this) keeps its buyer and its deadline, so
+        // that pair is still allowed through, as --include-same-source always allowed.
+        var sharesBuyerAndDeadline = members.Select(m => m.BuyerName.Trim().ToLowerInvariant()).Distinct(StringComparer.Ordinal).Count() == 1
+            && members.All(m => m.DeadlineDate.HasValue) && members.Select(m => m.DeadlineDate!.Value).Distinct().Count() == 1;
+        var refs = members.Select(m => (Portal: PortalOf(m.SourcePrefix), Ref: RefOf(m.OpportunityKey))).ToList();
+        if (!sharesBuyerAndDeadline && refs.GroupBy(r => r.Portal, StringComparer.OrdinalIgnoreCase)
+                .Any(g => g.Select(r => r.Ref).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1))
+        {
+            return "same portal, different reference numbers — separate solicitations sharing a title";
+        }
+
         // Survivor: highest relevance, then the one that actually carries a
         // deadline, then the oldest row. A deadline is the field most often
         // missing on one side and the one people act on.
@@ -206,7 +243,7 @@ internal static class Program
 
         foreach (var other in members.Where(m => m.Id != pick.Id))
         {
-            var sim = OpportunityDuplicateScorer.NameSimilarity(pick.Name, other.Name);
+            var sim = OpportunityDuplicateScorer.NameSimilarity(CoreTitle(pick.Name), CoreTitle(other.Name));
             if (sim < minSimilarity)
             {
                 return $"similarity {sim:0.00} below the {minSimilarity:0.00} floor";
@@ -215,6 +252,29 @@ internal static class Program
 
         return null;
     }
+
+    // 2026-10-20: the title a person reads, without the decorations portals add. One tender arrives as
+    // "26-010 Building Condition Assessment and Feasibility Study – Building B" on one feed and without the number on
+    // another, or with CivicInfo's "(Vernon (City))" appended. Grouping and the similarity floor use this core.
+    private static readonly System.Text.RegularExpressions.Regex CityTail =
+        new(@"\s*\([^()]*\((city|district|town|village)\)\)\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    private static readonly System.Text.RegularExpressions.Regex LeadingRef =
+        new(@"^\s*(rfp|rfq|rfb|itt|rft|nrfp|rfsq|rfpq|noi|tender)?\s*[#:]?\s*[a-z]{0,4}[-\s]?\d[\w./-]*\s*[-–:|]*\s*", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    private static readonly System.Text.RegularExpressions.Regex NonWord = new(@"[^a-z0-9]+");
+
+    internal static string CoreTitle(string name)
+    {
+        var t = CityTail.Replace(name ?? "", "");
+        var stripped = LeadingRef.Replace(t, "");
+        if (stripped.Length >= 12) t = stripped;  // never strip a title down to almost nothing
+        return NonWord.Replace(t.ToLowerInvariant(), " ").Trim();
+    }
+
+    // BC Bid's engineering feed (BCBIDENG) is the same portal as BCBID: one reference number, two feeds.
+    private static string PortalOf(string sourcePrefix) =>
+        sourcePrefix.EndsWith("ENG", StringComparison.OrdinalIgnoreCase) ? sourcePrefix[..^3] : sourcePrefix;
+
+    private static string RefOf(string key) => key.IndexOf('-') is > 0 and var dash ? key[(dash + 1)..] : key;
 
     private static async Task<int> MergeAsync(SqlConnection con, Plan p)
     {
@@ -335,8 +395,11 @@ WHERE o.DismissedAtUtc IS NULL AND LEN(o.Name) > 25;";
                 r.GetInt64(0), r.GetString(1), name, r.GetString(3), r.GetInt32(4),
                 r.IsDBNull(5) ? null : r.GetDecimal(5),
                 r.GetInt32(6) == 1, r.GetInt32(8) == 1, r.GetInt32(9) == 1, r.GetInt32(10) == 1,
-                name.Trim().ToLowerInvariant(),
-                r.GetString(1).Length >= 8 ? r.GetString(1)[..8] : r.GetString(1),
+                CoreTitle(name),
+                // The source is the key's text before its first dash ("BCBID-229472" -> "BCBID"). It was the first eight
+                // characters until 2026-10-20, which read BCBID-229472 and BCBID-232044 as two sources ("BCBID-22",
+                // "BCBID-23") and planned to merge three different BC Bid notices that share a generic title.
+                r.GetString(1).IndexOf('-') is > 0 and var dash ? r.GetString(1)[..dash] : r.GetString(1),
                 r.IsDBNull(7) ? null : r.GetDateTime(7)));
         }
 
