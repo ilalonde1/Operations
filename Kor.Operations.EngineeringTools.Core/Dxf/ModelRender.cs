@@ -133,11 +133,20 @@ public static class ModelRender
         File.WriteAllText(svgPath, svg ?? "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"40\"><text x=\"10\" y=\"25\">nothing to draw</text></svg>", new UTF8Encoding(false));
         if (!png) return (svgPath, null, drawn);
         string pngPath = Path.ChangeExtension(outPngOrSvg, ".png");
-        return (svgPath, Screenshot(svgPath, pngPath) ? pngPath : null, drawn);
+        // THE WINDOW IS THE SHEET'S OWN SIZE (2026-10-20). A fixed 1900 x 1900 window cut a tall sheet off at the
+        // 1900th pixel: 143 E 3rd's 41 storeys drew 9. The sheet states its size on its root element.
+        var size = svg is null ? null : System.Text.RegularExpressions.Regex.Match(svg, "<svg[^>]*?width=\"(\\d+)\"[^>]*?height=\"(\\d+)\"");
+        bool shot = size is { Success: true }
+            ? Screenshot(svgPath, pngPath, int.Parse(size.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(size.Groups[2].Value, CultureInfo.InvariantCulture))
+            : Screenshot(svgPath, pngPath);
+        return (svgPath, shot ? pngPath : null, drawn);
     }
 
     /// <summary>Edge headless, its own profile, forward-slash URL, one retry: what render_storeys.sh learned (2026-09-10).</summary>
-    public static bool Screenshot(string svgPath, string pngPath, int sizePx = 1900)
+    public static bool Screenshot(string svgPath, string pngPath, int sizePx = 1900) => Screenshot(svgPath, pngPath, sizePx, sizePx);
+
+    /// <summary><see cref="Screenshot(string, string, int)"/> into a window <paramref name="widthPx"/> by <paramref name="heightPx"/>.</summary>
+    public static bool Screenshot(string svgPath, string pngPath, int widthPx, int heightPx)
     {
         string? edge = new[]
         {
@@ -155,7 +164,7 @@ public static class ModelRender
                 if (File.Exists(pngPath)) File.Delete(pngPath);
                 var psi = new ProcessStartInfo(edge)
                 {
-                    Arguments = $"--headless=new --disable-gpu --hide-scrollbars --no-first-run --user-data-dir=\"{profile}\" --window-size={sizePx},{sizePx} --screenshot=\"{Path.GetFullPath(pngPath)}\" \"{url}\"",
+                    Arguments = $"--headless=new --disable-gpu --hide-scrollbars --no-first-run --user-data-dir=\"{profile}\" --window-size={widthPx},{heightPx} --screenshot=\"{Path.GetFullPath(pngPath)}\" \"{url}\"",
                     UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
                 };
                 using var p = Process.Start(psi);

@@ -64,46 +64,17 @@ internal static class StickfileVerb
             }
         }
 
-        // The job number is what the banked job-scoped facts are keyed on - her slab counts, her
-        // match-line joins. Taken from the file name when it is not given, which is where it is on
-        // every set in the corpus: "31005-01 2025-06-13 1ST & BEECH Stickset CC#5.pdf".
-        job ??= JobNumberIn(Path.GetFileName(pdf)) ?? Path.GetFileNameWithoutExtension(pdf);
-
-        Directory.CreateDirectory(outDir);
-        // The banked rules, or the compiled defaults where KorStandards is unreachable - and it says which.
-        var (options, rulesSource) = PdfIntakeOptions.For(rulesDb);
+        // THE WHOLE RUN IS StickfileRun (Core, 2026-10-20), shared with the app's "Build whole building" button so
+        // the two cannot drift. This verb parses its arguments and prints.
+        var r = StickfileRun.Run(pdf, outDir, scale, job, rulesDb, first, last, questions, render);
+        var built = r.Built;
 
         Console.WriteLine($"stickfile : {Path.GetFileName(pdf)}");
-        Console.WriteLine($"job       : {job}");
+        Console.WriteLine($"job       : {r.Job}");
         Console.WriteLine($"out       : {Path.GetFullPath(outDir)}");
-        Console.WriteLine($"rules     : {rulesSource}");
+        Console.WriteLine($"rules     : {r.RulesSource}");
         Console.WriteLine();
-
-        // THE SCALE IS READ OFF THE SHEET unless given. A page with no scale is the one case the
-        // reader cannot get past on its own - every path stays unclassified - so it is said plainly.
-        int useScale = scale ?? 96;
-        if (scale is null) Console.WriteLine("scale     : not given; 96 assumed (1/8\" = 1'-0\"). Pass --scale if the set draws at another.");
-
-        var built = PdfOnlyBuild.Build(pdf, outDir, useScale, options, rulesDb,
-            onSheet: null, stem: job, firstPage: first, lastPage: last);
-
-        // WHAT EVERY PAGE GAVE, one row each. PdfOnlyBuild does not write this - the corpus analyzer
-        // builds its own ledger and the verbs never did - so a single set had no way to see its own
-        // sheet table except by reading 30 KB of report. It is the first thing anyone asks for when a
-        // storey is empty: which drawing was supposed to draw it, and what did that drawing give?
-        string sheetsCsv = Path.Combine(outDir, "sheets.csv");
-        using (var w = new StreamWriter(sheetsCsv))
-        {
-            w.WriteLine("page,sheet_number,sheet_type,title,level,scale_note,scale_denominator,slabs,columns,walls,footings,lines,dxf_files,failure");
-            foreach (var s in built.Sheets.Sheets.OrderBy(s => s.Page))
-                w.WriteLine(string.Join(",", new[]
-                {
-                    s.Page.ToString(), Csv(s.SheetNumber), Csv(s.SheetType), Csv(s.Title), Csv(s.Level),
-                    Csv(s.ScaleNote), s.ScaleDenominator?.ToString() ?? "",
-                    s.Slabs.ToString(), s.Columns.ToString(), s.Walls.ToString(), s.Footings.ToString(),
-                    s.Lines.ToString(), Csv(string.Join(" | ", s.DxfFiles)), Csv(s.Failure),
-                }));
-        }
+        if (r.ScaleAssumed) Console.WriteLine("scale     : not given; 96 assumed (1/8\" = 1'-0\"). Pass --scale if the set draws at another.");
 
         Console.WriteLine();
         Console.WriteLine($"pages read: {built.Pages}   plan sheets: {built.Sheets.Sheets.Count(s => s.IsPlan)}   views written: {built.Sheets.Written}");
@@ -114,7 +85,7 @@ internal static class StickfileVerb
             Console.WriteLine("NO MODEL WAS BUILT.");
             Console.WriteLine($"  {built.ModelError}");
             Console.WriteLine();
-            Console.WriteLine($"  What was read is still here: {Path.Combine(outDir, "sheets.csv")} and {Path.Combine(outDir, "dxf")}.");
+            Console.WriteLine($"  What was read is still here: {r.SheetsCsv} and {Path.Combine(outDir, "dxf")}.");
             return 2;
         }
 
@@ -125,71 +96,23 @@ internal static class StickfileVerb
         Console.WriteLine($"  model   : {built.OutputE2k}");
         Console.WriteLine($"  report  : {Path.Combine(outDir, "report.txt")}");
         Console.WriteLine($"  levels  : {Path.Combine(outDir, "levels.csv")}");
-        Console.WriteLine($"  sheets  : {sheetsCsv}");
-
+        Console.WriteLine($"  sheets  : {r.SheetsCsv}");
         if (questions)
-        {
-            string wb = Path.Combine(outDir, "questions.xlsx");
-            try
-            {
-                ModelQuestionnaire.Write(wb, m, m.ClassificationUsed, m.ComposeUsed, job);
-                int open = ModelQuestionnaire.StandingQuestions(m.ClassificationUsed, m.ComposeUsed, m).Count(q => !q.Decided);
-                Console.WriteLine($"  questions: {wb}   ({open} waiting on the engineer)");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"  questions: not written - {ex.Message}");
-            }
-        }
-
+            Console.WriteLine(r.Questions is not null
+                ? $"  questions: {r.Questions}   ({r.OpenQuestions} waiting on the engineer)"
+                : $"  questions: not written - {r.QuestionsError}");
         if (render)
-        {
-            string png = Path.Combine(outDir, "model.png");
-            try
-            {
-                // EVERY STOREY ON ONE SHEET. The repo's oldest standing rule about this pipeline is
-                // that the output gets LOOKED AT rather than counted, and a model nobody renders is a
-                // model whose faults are found by the engineer opening the file.
-                ModelRenderVerb.Run(["model-render", built.OutputE2k, png, $"{job} - every storey"]);
-                Console.WriteLine($"  render  : {png}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"  render  : not written - {ex.Message}");
-            }
-        }
+            Console.WriteLine(r.Png is not null ? $"  render  : {r.Png}" : $"  render  : not written - {r.RenderError}");
 
-        // WHAT THE ENGINEER SHOULD LOOK AT FIRST, taken from the run's own flags rather than a guess.
-        var loud = m.Warnings.Concat(m.Summary.Flags)
-            .Where(w => w.Contains("NOT PLACED", StringComparison.Ordinal)
-                        || w.Contains("ASSUMED, NOT READ", StringComparison.Ordinal)
-                        || w.Contains("RECEIVED A FLOOR", StringComparison.Ordinal))
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        if (loud.Count > 0)
+        if (r.ReadFirst.Count > 0)
         {
             Console.WriteLine();
             Console.WriteLine("READ THESE FIRST:");
-            foreach (string w in loud.Take(6))
+            foreach (string w in r.ReadFirst.Take(6))
                 Console.WriteLine("  - " + (w.Length > 300 ? w[..300] + " ..." : w));
-            if (loud.Count > 6) Console.WriteLine($"  ... and {loud.Count - 6} more in report.txt");
+            if (r.ReadFirst.Count > 6) Console.WriteLine($"  ... and {r.ReadFirst.Count - 6} more in report.txt");
         }
 
         return 0;
-    }
-
-    /// <summary>One CSV field, quoted where it has to be: a sheet title carries commas and quotes.</summary>
-    private static string Csv(string? v) =>
-        string.IsNullOrEmpty(v) ? "" :
-        v.Contains(',') || v.Contains('"') || v.Contains('\n') || v.Contains('\r')
-            ? "\"" + v.Replace("\"", "\"\"") + "\""
-            : v;
-
-    /// <summary>The five-digit job and its suffix out of a file name: "31005-01 2025-06-13 ….pdf".</summary>
-    private static string? JobNumberIn(string name)
-    {
-        var m = System.Text.RegularExpressions.Regex.Match(name, @"\b(\d{5}-\d{2})\b");
-        return m.Success ? m.Groups[1].Value : null;
     }
 }

@@ -127,6 +127,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
 
                 ScaleInput.Text = scale.ToString(CultureInfo.InvariantCulture);
+                _readScale = scaleAssumed ? null : scale;
 
                 _projectSettingsLoaded = false; // fresh PDF → firm defaults apply
 

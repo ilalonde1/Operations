@@ -110,6 +110,15 @@
                                             Margin="0,6,0,0"
                                             Click="Sap2000ApiExport_Click"
                                             ToolTip="Exports the markups, typed as set in the colour grid, directly into a SAP2000 model via the OAPI. One click."/>
+                                    <Button x:Name="BuildWholeBuildingButton"
+                                            Content="🏢 Build whole building (ETABS)"
+                                            Style="{StaticResource Button.Primary}"
+                                            HorizontalAlignment="Stretch"
+                                            FontSize="13" FontWeight="SemiBold"
+                                            Height="38"
+                                            Margin="0,6,0,0"
+                                            Click="BuildWholeBuilding_Click"
+                                            ToolTip="Reads every plan sheet in the PDF set and builds the whole building as an ETABS model (out.e2k), with the report, the engineer's questions workbook and a picture of every storey, into a new numbered folder beside the PDF. The same build as 'takeoff stickfile'."/>
                                     <Button x:Name="FirmDefaultsButton"
                                             Content="⚙ Firm defaults…"
                                             Style="{StaticResource Button.Secondary}"
