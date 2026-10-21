@@ -1156,10 +1156,14 @@ public static class E2kGeometryComposer
                 // ON ITS OWN STOREY ONLY: a column offset from the one below it (a transfer, a step in the grid) is two columns,
                 // and the first cut snapped across storeys - 126 to 207 columns moved 0.3-0.7 m on each of the six banked sets.
                 if (ColumnJointNear(x, y) is { } sameJoint) { x = sameJoint.X; y = sameJoint.Y; }
+                // OVERLAP MEANS THE FOOTPRINTS MEET (2026-10-21): centres closer than half the two sizes together. The larger
+                // side alone as the reach merged neighbours that stand apart - 41 of ours on 31065, 31138 and 31202, seven
+                // of them columns of hers, and a round column on 31138 swallowed by a square one. L37's pairs (231 and 295 mm
+                // apart; 14 x 36 and 18 x 18, so 686 mm) still merge.
                 else if (Environment.GetEnvironmentVariable("KOR_STEP162_OFF") != "1")
                 {
                     double cx = x, cy = y, reach = Math.Max(w, d);
-                    var overlapping = writtenCols.Where(r => r.Story == colStory.Name && Math.Sqrt((r.X - cx) * (r.X - cx) + (r.Y - cy) * (r.Y - cy)) <= Math.Max(reach, r.Size))
+                    var overlapping = writtenCols.Where(r => r.Story == colStory.Name && Math.Sqrt((r.X - cx) * (r.X - cx) + (r.Y - cy) * (r.Y - cy)) < (reach + r.Size) / 2)
                         .OrderBy(r => (r.X - cx) * (r.X - cx) + (r.Y - cy) * (r.Y - cy)).ToList();
                     if (overlapping.Count > 0) { x = overlapping[0].X; y = overlapping[0].Y; }
                 }
@@ -1841,25 +1845,60 @@ public static class E2kGeometryComposer
         // smaller) takes that opening - the same object, assigned here too, as a borrowed floor takes its donor's holes.
         // ASSUMED, and listed by storey. What it does NOT do: a storey with no floor, a hole cut on one side only, or any hole
         // a storey already has there.
+        // "BELOW" AND "ABOVE" ARE AT THE HOLE, NOT IN THE LIST (2026-10-21). The storey list is the whole site's, by elevation,
+        // and 31168's three towers interleave in it (A-L36, B-L36, A-L35, B-L35 ...), so the list's neighbours were the other
+        // tower: tower B's shafts were cut through tower A's floors where A has no plate - 29 openings cut on no plate, and her
+        // 64 openings fell to 28 matched. Below and above are now the nearest storeys down and up whose plate stands under the
+        // hole's centre, the storey itself must have a plate there, and a hole it already carries (its own, or borrowed with a
+        // neighbour's floor) is not added again.
         if (Environment.GetEnvironmentVariable("KOR_STEP167_OFF") != "1")
         {
             static double Overlap((string Name, double X0, double Y0, double X1, double Y1) a, (string Name, double X0, double Y0, double X1, double Y1) b)
                 => Math.Max(0, Math.Min(a.X1, b.X1) - Math.Max(a.X0, b.X0)) * Math.Max(0, Math.Min(a.Y1, b.Y1) - Math.Max(a.Y0, b.Y0));
             static double Area((string Name, double X0, double Y0, double X1, double Y1) a) => (a.X1 - a.X0) * (a.Y1 - a.Y0);
+            bool PlateUnder(string storey, double x, double y)
+                => platesByStorey.TryGetValue(storey, out var plates)
+                   && plates.Any(p => x >= p.Where.MinX && x <= p.Where.MaxX && y >= p.Where.MinY && y <= p.Where.MaxY);
+            var boxOf = openingBoxes.Values.SelectMany(v => v).GroupBy(b => b.Name, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var holesOn = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var line in areaAssigns)
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(line, "^\\s*AREAASSIGN\\s+\"([^\"]+)\"\\s+\"([^\"]+)\"\\s+OPENING \"Yes\"");
+                if (!m.Success) continue;
+                if (!holesOn.TryGetValue(m.Groups[2].Value, out var set)) holesOn[m.Groups[2].Value] = set = new(StringComparer.OrdinalIgnoreCase);
+                set.Add(m.Groups[1].Value);
+            }
+            List<(string Name, double X0, double Y0, double X1, double Y1)> Holes(string storey)
+                => holesOn.TryGetValue(storey, out var names) ? names.Where(boxOf.ContainsKey).Select(n => boxOf[n]).ToList() : new();
             var throughAdded = new List<string>();
             for (int i = 1; i + 1 < allStories.Count; i++)
             {
-                string below = allStories[i - 1].Name, here = allStories[i].Name, above = allStories[i + 1].Name;
+                string here = allStories[i].Name;
                 if (!storeysWithPlates.Contains(here)) continue;
-                if (!openingBoxes.TryGetValue(below, out var under) || !openingBoxes.TryGetValue(above, out var over)) continue;
-                openingBoxes.TryGetValue(here, out var own);
-                foreach (var b in under)
-                {
-                    if (!over.Any(a => Overlap(a, b) >= 0.5 * Math.Min(Area(a), Area(b)))) continue;
-                    if (own is not null && own.Any(o => Overlap(o, b) >= 0.5 * Math.Min(Area(o), Area(b)))) continue;
-                    areaAssigns.Add($"  AREAASSIGN  \"{b.Name}\"  \"{here}\"  OPENING \"Yes\"");
-                    throughAdded.Add($"{here} ({b.Name})");
-                }
+                var own = Holes(here);
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                for (int k = i - 1; k >= 0; k--)
+                    foreach (var b in Holes(allStories[k].Name))
+                    {
+                        if (!seen.Add(b.Name)) continue;
+                        double cx = (b.X0 + b.X1) / 2, cy = (b.Y0 + b.Y1) / 2;
+                        if (!PlateUnder(here, cx, cy)) continue;
+                        // below and above are the nearest storeys with anything at the hole - a plate under its centre or
+                        // a hole over it; another tower's storey has neither there and is passed over
+                        bool Cuts(string storey) => Holes(storey).Any(a => Overlap(a, b) >= 0.5 * Math.Min(Area(a), Area(b)));
+                        bool Something(string storey) => PlateUnder(storey, cx, cy) || Cuts(storey);
+                        bool nearerBelow = false;
+                        for (int j = k + 1; j < i && !nearerBelow; j++) nearerBelow = Something(allStories[j].Name);
+                        if (nearerBelow) continue;
+                        int up = i + 1;
+                        while (up < allStories.Count && !Something(allStories[up].Name)) up++;
+                        if (up >= allStories.Count || !Cuts(allStories[up].Name)) continue;
+                        if (own.Any(o => Overlap(o, b) >= 0.5 * Math.Min(Area(o), Area(b)))) continue;
+                        areaAssigns.Add($"  AREAASSIGN  \"{b.Name}\"  \"{here}\"  OPENING \"Yes\"");
+                        own.Add(b);
+                        throughAdded.Add($"{here} ({b.Name})");
+                    }
             }
             if (throughAdded.Count > 0)
                 flags.Add($"ASSUMED: {throughAdded.Count} opening(s) cut on the storeys above and below at the same place were cut through the " +

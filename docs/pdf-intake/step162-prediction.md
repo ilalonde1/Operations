@@ -27,3 +27,11 @@ The reach is the column's larger side. Half of it was tried first and left the L
     takeoff corpus-gate --bisect KOR_STEP162_OFF
 
 ⛔ Run where the drawings are local. Never over the VPN.
+
+## Judged, 2026-10-21
+
+- **Corpus gate:** no set lost to this rule.
+- **Six sets:** 41 of our columns removed on 31065, 31138, 31202 - 4 of hers lost on 31065, 3 on 31138; DXF route built
+  31138's round column square.
+- **Fixed:** two columns merge only where their footprints meet (`< (reach + size) / 2`, was `<= max`). 31202 gets 7
+  back; the round column is round. OPEN: 31138 still merges 13, 3 of them hers - to render and look at.

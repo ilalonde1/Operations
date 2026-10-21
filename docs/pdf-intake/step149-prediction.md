@@ -50,3 +50,15 @@ it be dropped. On the witness one 4.9 m strip plate left L1–L6 with it.
 3. The six-set gate.
 
 ⛔ Run where the drawings are local. Never over the VPN.
+
+## Judged, 2026-10-21 (corpus gate run 24b09de9, 57 sets; six-set attribution by knob)
+
+- **Corpus gate:** 1 set of 56 lost to this rule - 30972-01, her plate we read 209,434 -> 203,254 sq ft of 246,123, all of
+  it on L1 (20,951 -> 14,771 of her 39,292). Her openings we have rose 28 -> 32 of 45.
+- **Looked at** (L1 rendered on, off and hers, `model-render --storey L1`): with the rule on, the east wing her model
+  slabs is read and the upper-left, which her model leaves open under one large void, is no longer covered. That is
+  closer to hers in shape than the off build. What is wrong: a diagonal plate edge across the lower-left middle, where
+  her slab runs on - the cut-line side effect this doc warned of, cutting a plate that should stand.
+- **Six sets:** 31065 plate 85% -> 81% of hers and one opening fewer; 31170 173% -> 182% (already oversize).
+- **Verdict:** KEPT, not banked clean. The plate loss on 30972 is mostly a void we no longer cover; the diagonal edge and
+  the 31065 drop are open and are this rule's to answer.

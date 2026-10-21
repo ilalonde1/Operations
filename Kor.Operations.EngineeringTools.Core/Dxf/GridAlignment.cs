@@ -553,6 +553,23 @@ public static class GridAlignment
             $"set where {best.Support} of its {sheet.Count} columns and walls stand over members already placed (no axis named in common)");
     }
 
+    /// <summary>
+    /// A SHEET THAT ALREADY STANDS ON THE PLACED MEMBERS WHERE IT SITS IS NOT MOVED (2026-10-21). True when at least
+    /// <see cref="LeastConvincingByColumns"/> of its member places, and at least half of them, land within
+    /// <see cref="ColumnRegistrationMm"/> of a placed member at no shift - the same quorum <see cref="SolveByColumns(IReadOnlyList{DxfPoint}, IReadOnlyList{DxfPoint}, double, out string)"/>
+    /// asks of a fit. DXFs exported from one model share its frame; registering them again on their members found a
+    /// bay-repeat on 31138 and doubled its walls (204 to 458).
+    /// </summary>
+    public static bool StandsWhereItSits(IReadOnlyList<DxfPoint> sheetColumns, IReadOnlyList<DxfPoint> placedColumns, double scale = 1.0)
+    {
+        double bin = ColumnRegistrationMm * scale;
+        var sheet = DistinctPlaces(sheetColumns, bin * 0.1, scale);
+        var placed = DistinctPlaces(placedColumns, bin * 0.1, 1.0);
+        if (sheet.Count < LeastConvincingByColumns || placed.Count < LeastConvincingByColumns) return false;
+        int support = sheet.Count(p => placed.Any(q => LoopGeometry.Within(Math.Sqrt((q.X - p.X * scale) * (q.X - p.X * scale) + (q.Y - p.Y * scale) * (q.Y - p.Y * scale)), bin)));
+        return support >= LeastConvincingByColumns && support * 2 >= sheet.Count;
+    }
+
     /// <summary>The distinct places among points, by distance: a point within <paramref name="within"/> of one already kept is that one. The scale is applied before comparing; the result is in the caller's unit.</summary>
     private static List<DxfPoint> DistinctPlaces(IReadOnlyList<DxfPoint> points, double within, double scale)
     {

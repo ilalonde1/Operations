@@ -109,7 +109,11 @@ public static class SheetViews
             if (line.CentreX / page.WidthPts >= TitleRegionMinFx || consumed.Contains(line)) continue;
             string text = joined.TryGetValue(line, out var two) ? two : line.Text;
             // Step 150; KOR_STEP150_OFF=1 restores "a view's title says PLAN".
-            bool storeyAlone = !NamesAPlan(text) && NamesAStoreyAlone(text)
+            // A BARE NUMBER IS THE VIEW'S BUBBLE, NOT ITS TITLE (2026-10-21, the corpus gate): 31117's S2.02, S2.03 and
+            // S2.09 put the view number "1" or "2" on the underline with the scale below it, and step 90's rule reads a lone
+            // number as a storey's name - so LEVEL 1, 2 and 5 PLAN were split into views titled "1" and "2" that no storey
+            // has, and the set lost every plate it had. A view's storey-alone title says its storey in a word: LEVEL 36, ROOF, L12.
+            bool storeyAlone = !NamesAPlan(text) && NamesAStoreyAlone(text) && text.Any(char.IsLetter)
                 && Environment.GetEnvironmentVariable("KOR_STEP150_OFF") != "1";
             if (!NamesAPlan(text) && !storeyAlone) continue;
             var under = UnderlineOf(line);

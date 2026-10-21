@@ -321,4 +321,24 @@ public sealed class ASheetIsItsViewsTests
         Assert.Equal("section/elevation", DrawingIntake.SheetTypeOf("LEVEL 2 WALL ELEVATIONS"));
         Assert.Equal("other", DrawingIntake.SheetTypeOf("PODIUM MEZZANINE"));
     }
+
+    /// <summary>
+    /// A VIEW TITLED BY ITS STOREY ALONE (step 150): "LEVEL 36" over an underline with the view's scale under it is a view.
+    /// A BARE NUMBER IS THE VIEW'S BUBBLE (the corpus gate, 2026-10-21): 31117's "1" and "2" on an underline with the scale
+    /// under them split LEVEL 1, 2 and 5 PLAN into views no storey has, and the set lost every plate. WHAT THIS COVERS: the
+    /// storey-alone view kept, the bare number refused, beside a PLAN title on the same sheet. WHAT IT DOES NOT: the real
+    /// sheet's layout (the corpus gate rebuilds 31117); a bubble whose number the extractor joins to the title's words.
+    /// </summary>
+    [Fact]
+    public void AStoreyAloneViewTitleSaysItsStoreyInAWordAndABareNumberIsTheBubble()
+    {
+        Assert.NotNull(SheetScaleReader.RatioOf("1:100"));
+        var page = Page(
+            [("LEVEL", 400, 100), ("36", 440, 100), ("1:100", 400, 85),
+             ("2", 1800, 100), ("1:100", 1800, 85),
+             ("LEVEL", 2200, 100), ("1", 2240, 100), ("PLAN", 2280, 100)],
+            Stroke(340, 525, 98), Stroke(1740, 1900, 98), Stroke(2140, 2325, 98));
+        var views = SheetViews.Titles(page);
+        Assert.Equal(["LEVEL 36", "LEVEL 1 PLAN"], views.Select(v => v.Title).ToArray());
+    }
 }

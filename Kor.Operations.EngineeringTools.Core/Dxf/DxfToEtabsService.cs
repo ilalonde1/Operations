@@ -1405,6 +1405,13 @@ public static class DxfToEtabsService
                         $"the set names no grid: the plan placing the most storeys ({storeysOfSheet[anchor].Count}) stands in its own frame and the others are set on its members");
             }
             var candidates = files.Where(f => !alignedByName.ContainsKey(f) && MembersOf(f).Count >= GridAlignment.LeastConvincingByColumns).ToList();
+            // A GRIDLESS SET WHOSE SHEETS ALREADY STACK IS ONE MODEL'S EXPORT (2026-10-21). DXFs exported from one model share
+            // its frame: 31138's sheets name no axis, and registering each again on its members found bay-repeats and
+            // doubled its walls (204 to 458). When at least half the sheets stand over the anchor's members where they sit,
+            // every sheet keeps its place; a page-by-page set (143 E 3rd's PDF views) does not stack, and is registered.
+            bool oneFrameAlready = noSheetNamesAnAxis && alignedByName.Count == 1 && candidates.Count > 0
+                && candidates.Count(f => GridAlignment.StandsWhereItSits(MembersOf(f),
+                    MembersOf(alignedByName.Keys.First()).Select(p => new DxfPoint(p.X * scale, p.Y * scale)).ToList(), scale)) * 2 >= candidates.Count;
             var byColumns = new List<string>();
             for (bool placedMore = candidates.Count > 0; placedMore;)
             {
@@ -1441,7 +1448,10 @@ public static class DxfToEtabsService
                 foreach (string f in candidates.Where(f => !alignedByName.ContainsKey(f)).ToList())
                 {
                     GridAlignment.Fit? fit = null;
-                    if (siblingsFirst && siblingsOf[f].Count > 0)
+                    if (oneFrameAlready)
+                        fit = new GridAlignment.Fit(new AnnotationOverlay.Frame(0, 0, 0), 0, 0,
+                            "a set naming no grid whose sheets already stack where they sit: one model's frame, kept");
+                    else if (siblingsFirst && siblingsOf[f].Count > 0)
                     {
                         var placedSiblings = siblingsOf[f].Where(alignedByName.ContainsKey).ToList();
                         if (placedSiblings.Count == 0) { waited = true; continue; }

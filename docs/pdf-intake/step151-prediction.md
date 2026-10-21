@@ -23,3 +23,11 @@ axis. It was first judged byte-identical on the whole-page read and dropped, the
     takeoff corpus-gate --bisect KOR_STEP151_OFF
 
 ⛔ Run where the drawings are local. Never over the VPN.
+
+## Judged, 2026-10-21
+
+- **Corpus gate:** no set lost to this rule (bisect over 6 lost sets: none restored by KOR_STEP151_OFF).
+- **DXF route:** this rule caused most of 31138's failures - walls 458 against her ~204, 215 members not modelled. The
+  gridless seed re-registered sheets that already stack where they sit.
+- **Fixed:** a set naming no grid whose sheets already stack where they sit is one model's export, kept in its frame
+  (`GridAlignment.StandsWhereItSits`, `DxfToEtabsService`). 31138 walls 458 -> 228; Omar's 143 E 3rd byte-identical to v6.

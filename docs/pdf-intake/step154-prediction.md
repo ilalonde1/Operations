@@ -34,3 +34,9 @@ face stays available to the other short faces along it.
     takeoff corpus-gate --bisect KOR_STEP154_OFF   - against her walls on the 48
 
 ⛔ Run where the drawings are local. Never over the VPN.
+
+## Judged, 2026-10-21
+
+- **Corpus gate:** no set lost to this rule.
+- **DXF route:** 31138 builds 228 walls against her 204 +/-21 - 24 walls her model does not have, which fails this rule's
+  own criterion above. With KOR_STEP154_OFF the walls are in tolerance. OPEN: not yet rendered and looked at.

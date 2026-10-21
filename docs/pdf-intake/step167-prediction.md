@@ -26,3 +26,13 @@ ASSUMED, by storey.
     takeoff corpus-gate --bisect KOR_STEP167_OFF
 
 ⛔ Run where the drawings are local. Never over the VPN.
+
+## Judged, 2026-10-21
+
+- **Corpus gate:** no set lost to this rule (31168 shares no storey with columns with her model there, so the gate
+  could not see it).
+- **Six sets:** 31168's openings we have of hers fell 64 -> 28 of 64 - this rule; it also failed 31168's integrity test
+  (29 openings cut where there is no plate).
+- **Fixed:** the storeys below and above are judged AT THE HOLE (a plate under its centre, or a hole overlapping it by
+  half), not by list position; the storey between must have a plate under the hole. 31168 back to 64 of 64; Omar's
+  143 E 3rd byte-identical to v6 (L36 KO69 still carried); 31202 59 of 68 (KO1 on L2 is not cut: no plate there).

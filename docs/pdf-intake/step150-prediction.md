@@ -43,3 +43,16 @@ named axes). A gridless seed was tried as step 151 and REJECTED: byte-identical 
 3. The six-set gate.
 
 ⛔ Run where the drawings are local. Never over the VPN.
+
+## Judged, 2026-10-21 (corpus gate run 24b09de9, 57 sets)
+
+- **Corpus gate:** 2 sets of 56 moved by this rule. 31117-01 lost every plate (5,421 -> 0 sq ft of 9,086; openings
+  7 -> 0); 31064-01 gained plate (4,536 -> 10,654 of 21,181) and lost openings (10 -> 7 of 10).
+- **Why, read from 31117's views:** S2.02, S2.03 and S2.09 carry the view's NUMBER ("1", "2") on the underline with the
+  scale under it. Step 90's storey-alone rule reads a lone number as a storey's name, so LEVEL 1, 2 and 5 PLAN were
+  split into views titled "1" and "2" that no storey has, and nothing reached a storey.
+- **Fixed:** a storey-alone view title must say its storey in a word (`text.Any(char.IsLetter)`); test
+  `AStoreyAloneViewTitleSaysItsStoreyInAWordAndABareNumberIsTheBubble`. 31117 and 31064 rebuilt after the fix: see below.
+- **After the fix:** 31117 back to the bank (5,421 sq ft, openings 7 of 7); 31064 builds exactly as with
+  KOR_STEP150_OFF (4,536 sq ft, 10 of 10). Its 10,654 sq ft under the unfixed rule came with the bare-number split and
+  went with it; that L2 still reads 4,536 of her 21,181 is open and not this rule's.
