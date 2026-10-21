@@ -109,7 +109,8 @@ public static class RfpReviewLauncher
 
         var markdown = PursuitRfpReview.Prompt(input, new BdPromptHandle(runId.Value, token));
         await runs.SetPromptShaAsync(runId.Value, BdDoctrine.Sha(markdown), ct).ConfigureAwait(true);
-        PromptLauncher.OpenInClaude(PromptLauncher.Save($"rfp-review-{runId.Value}.md", markdown));
+        // One-shot: Claude reads, reports back and exits, and the terminal closes itself (Ian, 21 Oct: "can it close automatically").
+        PromptLauncher.RunInClaude(PromptLauncher.Save($"rfp-review-{runId.Value}.md", markdown), $"RFP review #{engagementId}");
         Log.Information("RFP review: opened run {RunId} for pursuit {EngagementId} ({Files} files)", runId.Value, engagementId, input.Files.Count);
         Opened?.Invoke(engagementId, input.Project);
         return true;

@@ -36,4 +36,19 @@ public static class PromptLauncher
         foreach (var a in new[] { "-d", dir, "cmd", "/k", "claude", $"Read {promptPath} and follow it." }) psi.ArgumentList.Add(a);
         Process.Start(psi);
     }
+
+    /// <summary>
+    /// The same, for a job that needs nobody (Claude's RFP review): Claude Code runs the prompt once (-p), reports back and
+    /// exits, and the tab closes with it. If it fails the tab stays open (pause) so the person sees why. Same Claude Code,
+    /// same account; permissions as Ian runs it (--dangerously-skip-permissions), since nobody is there to answer a prompt.
+    /// </summary>
+    public static void RunInClaude(string promptPath, string title)
+    {
+        var dir = Directory.Exists(PromptComposer.RepoPath) ? PromptComposer.RepoPath : Path.GetDirectoryName(promptPath)!;
+        var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
+        foreach (var a in new[] { "--title", title, "-d", dir, "cmd", "/c", "claude", "-p", $"Read {promptPath} and follow it.",
+                     "--dangerously-skip-permissions", "||", "pause" })
+            psi.ArgumentList.Add(a);
+        Process.Start(psi);
+    }
 }
