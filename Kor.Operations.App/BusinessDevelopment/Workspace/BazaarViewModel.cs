@@ -60,7 +60,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
         var candidates = _hubRows.Where(r => OpportunityHubSelection.Matches(r, segment, "", _hubKind)).ToArray();
         var eligible = BazaarOpportunitySelector.SelectDefaultView(candidates.Select(r => r.Model), DateTimeOffset.UtcNow)
             .Select(o => o.Id).ToHashSet();
-        MatchingSmallWorkCount = candidates.Count(r => eligible.Contains(r.Id) && r.Kind == OpportunityKind.Application && r.IsBigTicket == false);
+        MatchingSmallWorkCount = candidates.Count(r => eligible.Contains(r.Id) && OpportunityHubSelection.IsCollapsible(r, segment));
         var rows = OpportunityHubSelection.Sort(candidates.Where(r => eligible.Contains(r.Id)
             && OpportunityHubSelection.MatchesWorkSize(r, segment, _workFilter)), segment, DateTimeOffset.UtcNow);
         Grabbable.Clear();

@@ -63,8 +63,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private OpportunityKind? _hubKind;
     internal OpportunityKind? HubKind => _hubKind;
     internal OpportunityWorkFilter HubWorkFilter { get; private set; } = OpportunityWorkFilter.CollapseSmaller;
-    internal int MatchingSmallWorkCount => Opportunities.Count(r => r.Kind == OpportunityKind.Application
-        && r.IsBigTicket == false && MatchesFilters(r, applyWorkSize: false));
+    internal int MatchingSmallWorkCount => HubSegment is not { } segment ? 0
+        : Opportunities.Count(r => OpportunityHubSelection.IsCollapsible(r, segment) && MatchesFilters(r, applyWorkSize: false));
     internal int VisibleHubCount => FilteredOpportunitiesView.Cast<OpportunityRowView>().Count();
     public event EventHandler? HubChanged;
 

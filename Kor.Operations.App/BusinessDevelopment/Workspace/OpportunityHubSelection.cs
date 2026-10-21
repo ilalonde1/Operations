@@ -13,14 +13,23 @@ public enum OpportunityWorkFilter { CollapseSmaller, All, SmallerOnly }
 
 internal static class OpportunityHubSelection
 {
-    // Presentation only: the SQL view is the sole scope classifier. Unknowns
-    // remain visible by default; Bids/Mine do not inherit Signals' collapse.
+    // Presentation only. Signals: the SQL view is the sole scope classifier and unknowns remain visible by default.
+    // Bids: tenders that are not structural-firm work (roads, utilities, supplies; KorBidFit) fold away the same way,
+    // with the count and a Show button. Mine is never collapsed: what a lead owns always shows.
+    internal static bool IsCollapsible(OpportunityRowView row, OpportunityHubSegment segment) => segment switch
+    {
+        OpportunityHubSegment.Signals => row.Kind == OpportunityKind.Application && row.IsBigTicket == false,
+        OpportunityHubSegment.Bids => row.Kind is OpportunityKind.Bid or OpportunityKind.Award
+            && !Kor.Opportunities.Data.Ingestion.KorBidFit.IsKorWork(row.Model.Name),
+        _ => false,
+    };
+
     internal static bool MatchesWorkSize(OpportunityRowView row, OpportunityHubSegment segment, OpportunityWorkFilter filter)
     {
-        if (segment != OpportunityHubSegment.Signals) return true;
-        var small = row.Kind == OpportunityKind.Application && row.IsBigTicket == false;
-        return filter switch { OpportunityWorkFilter.CollapseSmaller => !small,
-            OpportunityWorkFilter.SmallerOnly => small, _ => true };
+        if (segment == OpportunityHubSegment.Mine) return true;
+        var collapsed = IsCollapsible(row, segment);
+        return filter switch { OpportunityWorkFilter.CollapseSmaller => !collapsed,
+            OpportunityWorkFilter.SmallerOnly => collapsed, _ => true };
     }
     internal static bool Matches(OpportunityRowView row, OpportunityHubSegment segment, string actor, OpportunityKind? kind = null)
     {

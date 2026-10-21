@@ -105,7 +105,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             HashSet<(byte R, byte G, byte B)>? excludedColors = null,
             bool layerByColour = false,
             Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null)
-            => DxfExporter.Export(geometry, outputPath, excludedSlabs, excludedLines, excludedColumns, excludedColors, layerByColour, colorSettings);
+            => DxfExporter.Export(geometry, outputPath, excludedSlabs, excludedLines, excludedColumns, excludedColors, layerByColour, colorSettings,
+                markupElementTypes: FirmMarkupDeclarations(colorSettings));
+
+        // THE SAME INK MEANS THE SAME MEMBER ON BOTH ROUTES (2026-10-20). The CLI reads a markup colour through the firm's
+        // declaration (dxf.pdf.markup-structure-colours, step 152); the window wrote the same burgundy as whatever geometry
+        // bucket it fell in, so one PDF gave WALL-MARKUP from the CLI and COLUMN-MARKUP from the app. A colour the engineer
+        // has typed in the window's colour grid keeps his type; a colour nobody typed takes the firm's declaration.
+        private static IReadOnlyDictionary<(byte R, byte G, byte B), string> FirmMarkupDeclarations(
+            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings)
+            => PdfIntakeOptions.Default.MarkupElementTypes()
+                .Where(kv => colorSettings is null || !colorSettings.ContainsKey(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
 
         // ── F2K export (SAFE native ASCII format) ────────────────────────────
         // File → Import → SAFE v12.x in SAFE v23 reads this directly and creates

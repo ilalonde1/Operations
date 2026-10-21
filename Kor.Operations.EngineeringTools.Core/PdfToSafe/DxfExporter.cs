@@ -61,9 +61,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             bool layerByColour = false,
             IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
             bool korLayers = false,
-            PlanClassificationOptions? classification = null)
+            PlanClassificationOptions? classification = null,
+            IReadOnlyDictionary<(byte R, byte G, byte B), string>? markupElementTypes = null)
         {
-            var lines = ExportLines(geometry, excludedSlabs, excludedLines, excludedColumns, excludedColors, layerByColour, colorSettings, korLayers, classification);
+            var lines = ExportLines(geometry, excludedSlabs, excludedLines, excludedColumns, excludedColors, layerByColour, colorSettings, korLayers, classification, markupElementTypes);
             if (lines.Count == 0) return;                       // nothing drawn: no file, as before
 
             // WINDOWS-1252, NOT ASCII, AND THE FILE SAYS SO.

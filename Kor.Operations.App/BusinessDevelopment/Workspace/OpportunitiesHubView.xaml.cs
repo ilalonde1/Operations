@@ -124,13 +124,19 @@ public partial class OpportunitiesHubView : UserControl
         BidsBtn.Style = (Style)FindResource(_segment == OpportunityHubSegment.Bids ? "SegBtnActive" : "SegBtn");
         MineBtn.Style = (Style)FindResource(_segment == OpportunityHubSegment.Mine ? "SegBtnActive" : "SegBtn");
         ToGrabFilter.Visibility = _segment == OpportunityHubSegment.Mine ? Visibility.Collapsed : Visibility.Visible;
-        SmallWorkPanel.Visibility = _segment == OpportunityHubSegment.Signals ? Visibility.Visible : Visibility.Collapsed;
+        SmallWorkPanel.Visibility = _segment == OpportunityHubSegment.Mine ? Visibility.Collapsed : Visibility.Visible;
         var grab = ToGrabFilter.IsChecked == true ? _grab?.DataContext as BazaarViewModel : null;
         var smaller = grab?.MatchingSmallWorkCount ?? _vm.MatchingSmallWorkCount;
         var visible = grab?.Grabbable.Count ?? _vm.VisibleHubCount;
+        var bidsTab = _segment == OpportunityHubSegment.Bids;
+        WorkSizeLabel.Text = bidsTab ? "Show:" : "Work size:";
+        ((ComboBoxItem)WorkSizeFilter.Items[0]).Content = bidsTab ? "Structural work only" : "Smaller work collapsed";
+        ((ComboBoxItem)WorkSizeFilter.Items[1]).Content = bidsTab ? "All tenders" : "All work";
+        ((ComboBoxItem)WorkSizeFilter.Items[2]).Content = bidsTab ? "Not structural work only" : "Smaller work only";
+        var hiddenWord = bidsTab ? "not structural work (roads, utilities, supplies)" : "smaller";
         SmallWorkReveal.Content = WorkSizeFilter.SelectedIndex == 0
-            ? $"{smaller:N0} smaller items hidden · Show" : "Hide smaller items";
-        SmallWorkCount.Text = $"{visible:N0} matching items shown · {smaller:N0} classified smaller";
+            ? $"{smaller:N0} {(bidsTab ? "tenders" : "smaller items")} hidden · Show" : bidsTab ? "Hide tenders that are not structural work" : "Hide smaller items";
+        SmallWorkCount.Text = $"{visible:N0} shown · {smaller:N0} classified {hiddenWord}";
         ModeHint.Text = _segment switch
         {
             OpportunityHubSegment.Signals => "Applications / rezonings and other leads · newest filed first; unknown dates last",

@@ -197,7 +197,7 @@ public sealed class OpportunityDetailViewModel : INotifyPropertyChanged, Kor.Ope
             .ToList();
 
         var description = ordered
-            .Select(o => o.Description?.Trim())
+            .Select(o => Kor.Opportunities.Data.Ingestion.PostingText.ToPlain(o.Description))
             .Where(d => !string.IsNullOrWhiteSpace(d))
             .OrderByDescending(d => d!.Length)
             .FirstOrDefault();

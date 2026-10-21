@@ -17,6 +17,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Fixtures\apc-listing-20261008.html" />
     <EmbeddedResource Include="Fixtures\apc-posting-AB-2026-06968-20261020.json" />
+    <EmbeddedResource Include="Fixtures\KorBidFitLabels-2026-10-20.tsv" />
     <EmbeddedResource Include="Fixtures\bchousing-nanaimo-fifth-street-20261016.html" />
     <EmbeddedResource Include="Fixtures\bchousing-kamloops-no-timeline-20261016.html" />
     <ProjectReference Include="..\Kor.Opportunities.Core\Kor.Opportunities.Core.csproj" />

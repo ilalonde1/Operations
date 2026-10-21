@@ -51,7 +51,7 @@
             <TextBlock x:Name="CountHint" Margin="16,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}"/>
         </StackPanel>
         <WrapPanel Grid.Row="2" x:Name="SmallWorkPanel" Margin="12,0,12,10">
-            <TextBlock Text="Work size:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <TextBlock x:Name="WorkSizeLabel" Text="Work size:" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <ComboBox x:Name="WorkSizeFilter" Width="205" SelectedIndex="0" SelectionChanged="WorkSize_Changed"
                       ToolTip="Uses the shared application scope classification. Unassessed applications remain visible by default.">
                 <ComboBoxItem Content="Smaller work collapsed"/>

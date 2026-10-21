@@ -54,7 +54,14 @@ public sealed class OpportunityHubTests
             OpportunityWorkFilter.SmallerOnly)).Select(r => r.Id));
         Assert.All(rows, r => Assert.True(OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Signals, OpportunityWorkFilter.All)));
         Assert.All(rows, r => Assert.True(OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Mine, OpportunityWorkFilter.CollapseSmaller)));
-        Assert.All(rows, r => Assert.True(OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Bids, OpportunityWorkFilter.SmallerOnly)));
+        // Bids fold away tenders that are not structural-firm work; signals in the Bids list are never folded.
+        var road = new OpportunityRowView(new Opportunity { Id = 5, Name = "26-75-INF Kalamalka Lake Road Construction" }) { Kind = OpportunityKind.Bid };
+        var prime = new OpportunityRowView(new Opportunity { Id = 6, Name = "Prime Consultant Services: RCH Mammography Replacement" }) { Kind = OpportunityKind.Bid };
+        var bids = new[] { road, prime };
+        Assert.Equal([6L], bids.Where(r => OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Bids, OpportunityWorkFilter.CollapseSmaller)).Select(r => r.Id));
+        Assert.Equal([5L], bids.Where(r => OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Bids, OpportunityWorkFilter.SmallerOnly)).Select(r => r.Id));
+        Assert.All(bids, r => Assert.True(OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Bids, OpportunityWorkFilter.All)));
+        Assert.All(bids, r => Assert.True(OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Mine, OpportunityWorkFilter.CollapseSmaller)));
     }
 
     [Fact]
@@ -162,7 +169,7 @@ public sealed class OpportunityHubTests
         var hubStore = new Mock<IOpportunityHubStore>();
         hubStore.Setup(s => s.ListHubAsync(It.IsAny<CancellationToken>())).ReturnsAsync([
             new(new Opportunity { Id = 1, Name = "Application" }, OpportunityKind.Application, DateTimeOffset.UtcNow),
-            new(new Opportunity { Id = 2, Name = "Bid" }, OpportunityKind.Bid, DateTimeOffset.UtcNow)]);
+            new(new Opportunity { Id = 2, Name = "Prime Consultant Services" }, OpportunityKind.Bid, DateTimeOffset.UtcNow)]);
         var grab = new Mock<IPursuitGrabStore>();
         grab.Setup(s => s.GrabAsync(1, "me", It.IsAny<CancellationToken>())).ReturnsAsync(new GrabResult(GrabOutcome.Grabbed, 1));
         var vm = new BazaarViewModel(Mock.Of<IOpportunityStore>(), grab.Object, Mock.Of<IPursuitLifecycleStore>(), hubStore.Object);
