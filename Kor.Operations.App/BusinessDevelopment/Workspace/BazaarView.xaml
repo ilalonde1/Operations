@@ -62,7 +62,7 @@
                         <DataGridTemplateColumn Header="Relevance" Width="110">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Border Background="{Binding TierBrush}" CornerRadius="999"
+                                    <Border Background="{Binding TierBrush}" CornerRadius="10"
                                             Margin="2" Padding="8,2" HorizontalAlignment="Left">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding TierDisplay}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>

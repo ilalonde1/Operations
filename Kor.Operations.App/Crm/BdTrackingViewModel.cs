@@ -135,7 +135,8 @@ public sealed class BdTrackingViewModel : INotifyPropertyChanged, Kor.Operations
         _aiContextLine =
             $"BD Tracking — {Engagements.Count:N0} engagements across {Engagements.Select(r => r.Region).Distinct().Count()} regions; " +
             $"currently filtered to {SelectedRegion} / initiator={SelectedInitiator}; " +
-            $"rollup: {roll.ActivityCount} engagements, ${roll.ProposalsSubmittedCad:N0} submitted, ${roll.ProposalsAcceptedCad:N0} accepted, capture rate {roll.CaptureRate:P0}.";
+            $"rollup: {roll.ActivityCount} engagements, ${roll.ProposalsSubmittedCad:N0} submitted, ${roll.ProposalsAcceptedCad:N0} accepted. " +
+            "Never state a capture or win rate from this tracker: it never recorded most outcomes.";
     }
 
     // Round 37c (T6.001): the status line used to say "Loaded N..." forever,

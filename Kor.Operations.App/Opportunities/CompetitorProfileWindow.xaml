@@ -57,7 +57,7 @@
                     <TextBlock Text="Vendor Profile (AI-researched)" FontSize="13" FontWeight="SemiBold"/>
                     <TextBlock Text="{Binding AgentEnrichedAtUtc, StringFormat='  {0:yyyy-MM-dd}'}"
                                FontSize="11" Foreground="#888" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                    <Border Background="{Binding OverlapScoreBrush}" CornerRadius="999" Padding="8,2" Margin="12,0,0,0"
+                    <Border Background="{Binding OverlapScoreBrush}" CornerRadius="10" Padding="8,2" Margin="12,0,0,0"
                             Visibility="{Binding HasOverlapScore, Converter={StaticResource BoolToVis}}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding OverlapScoreLabel}" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
@@ -129,7 +129,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="#FFF8E5" BorderBrush="#D4B370" BorderThickness="1" CornerRadius="999"
+                                <Border Background="#FFF8E5" BorderBrush="#D4B370" BorderThickness="1" CornerRadius="10"
                                         Padding="8,2" Margin="0,0,6,4">
                                     <TextBlock Text="{Binding}" FontSize="11"/>
                                 </Border>
@@ -146,7 +146,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="#EEF4FB" BorderBrush="#7AAEDE" BorderThickness="1" CornerRadius="999"
+                                <Border Background="#EEF4FB" BorderBrush="#7AAEDE" BorderThickness="1" CornerRadius="10"
                                         Padding="8,2" Margin="0,0,6,4">
                                     <TextBlock Text="{Binding}" FontSize="11"/>
                                 </Border>
@@ -163,7 +163,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="#F0F7EE" BorderBrush="#8FB87D" BorderThickness="1" CornerRadius="999"
+                                <Border Background="#F0F7EE" BorderBrush="#8FB87D" BorderThickness="1" CornerRadius="10"
                                         Padding="8,2" Margin="0,0,6,4">
                                     <TextBlock Text="{Binding}" FontSize="11"/>
                                 </Border>

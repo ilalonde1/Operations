@@ -61,7 +61,7 @@
                             <!-- Round 53: ID column (OpportunityKey, internal lookup
                                  like "BCBID-NXC-J7H6N") dropped — not actionable
                                  for browsing; double-click opens the full record. -->
-                            <DataGridTextColumn Header="Title" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Title" Binding="{Binding Name}" Width="360"/>
                             <DataGridTextColumn Header="Buyer" Binding="{Binding BuyerName}" Width="250"/>
                             <DataGridTextColumn Header="Province" Binding="{Binding ProjectProvince}" Width="60"/>
                             <DataGridTextColumn Header="Status" Binding="{Binding HistoricalStatus}" Width="90"/>

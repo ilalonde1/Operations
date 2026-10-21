@@ -29,8 +29,9 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
     public const string Provider = "Major Projects Inventory (BD)";
     public const string AllFilter = "All";
 
-    private static readonly Brush StatusNeutral = Freeze(new SolidColorBrush(Color.FromRgb(0x60, 0x9B, 0xD1)));
-    private static readonly Brush StatusError = Freeze(new SolidColorBrush(Color.FromRgb(0xC1, 0x1E, 0x1E)));
+    // The status line is quiet text now (21 Oct 2026, the BD look): grey when all is well, KOR red on an error.
+    private static readonly Brush StatusNeutral = Freeze(new SolidColorBrush(Color.FromRgb(0x6B, 0x72, 0x80)));
+    private static readonly Brush StatusError = Freeze(new SolidColorBrush(Color.FromRgb(0xB9, 0x1C, 0x1C)));
 
     private readonly IMajorProjectsInventoryStore _store;
     private readonly IPursuitLifecycleStore _lifecycleStore;

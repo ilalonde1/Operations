@@ -45,7 +45,7 @@
                 <DataGridTemplateColumn Header="Status" Width="90" SortMemberPath="StatusDisplay">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <Border Background="{Binding StatusBrush}" CornerRadius="999"
+                            <Border Background="{Binding StatusBrush}" CornerRadius="10"
                                     Margin="2" Padding="6,2" HorizontalAlignment="Left">
                                 <TextBlock Text="{Binding StatusDisplay}" Foreground="White"
                                            FontSize="11" FontWeight="SemiBold"/>

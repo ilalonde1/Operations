@@ -109,7 +109,7 @@
                                         HorizontalAlignment="Right"
                                         MaxWidth="260">
                                 <Border Background="#E8EDF2"
-                                        CornerRadius="999"
+                                        CornerRadius="10"
                                         Padding="12,5"
                                         HorizontalAlignment="Right">
                                     <TextBlock Text="{Binding SeatStatusDisplay}"
@@ -187,7 +187,7 @@
                         <WrapPanel>
                             <TextBlock Text="{Binding Brief.Architect.ArchitectName}" FontSize="16" FontWeight="SemiBold" Margin="0,0,12,8"/>
                             <Border Background="#E8EDF2"
-                                    CornerRadius="999"
+                                    CornerRadius="10"
                                     Padding="10,4"
                                     Margin="0,0,12,8">
                                 <TextBlock Text="{Binding ArchitectPatternDisplay}" FontWeight="Bold"/>

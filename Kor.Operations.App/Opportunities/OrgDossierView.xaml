@@ -181,7 +181,7 @@
                                                     <Border Background="{StaticResource App.Background}"
                                                             BorderBrush="{StaticResource Panel.Border}"
                                                             BorderThickness="1"
-                                                            CornerRadius="999"
+                                                            CornerRadius="10"
                                                             Padding="8,2"
                                                             Margin="0,2,4,2">
                                                         <TextBlock Text="{Binding}"
@@ -204,7 +204,7 @@
                                         <!-- Priority / status -> colored pill -->
                                         <Border Grid.Column="1"
                                                 Background="{Binding Value, Converter={StaticResource PriorityBrush}}"
-                                                CornerRadius="999"
+                                                CornerRadius="10"
                                                 Padding="10,3"
                                                 Margin="0,3"
                                                 HorizontalAlignment="Left"
@@ -361,7 +361,7 @@
                                             <StackPanel Grid.Column="0">
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
                                                     <Border Background="{StaticResource Brand.Primary.Brush}"
-                                                            CornerRadius="999" Padding="8,1" Margin="0,0,8,0"
+                                                            CornerRadius="10" Padding="8,1" Margin="0,0,8,0"
                                                             VerticalAlignment="Center">
                                                         <TextBlock Text="{Binding ActionType, Converter={StaticResource IntelTypeLabel}, Mode=OneWay}"
                                                                    Foreground="White" FontSize="10" FontWeight="SemiBold"
@@ -576,7 +576,7 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <TextBlock Text="{Binding DisplayName}" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                            <Border Background="{StaticResource CorporateBlue}" CornerRadius="999" Padding="8,3" Margin="14,2,0,0" VerticalAlignment="Top">
+                            <Border Background="{StaticResource CorporateBlue}" CornerRadius="10" Padding="8,3" Margin="14,2,0,0" VerticalAlignment="Top">
                                 <TextBlock Text="{Binding Kind}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
                             </Border>
                         </StackPanel>
@@ -619,7 +619,7 @@
                             </Border>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                 <Border Background="{Binding DisplacementBrief.KorPriority, Converter={StaticResource PriorityBrush}}"
-                                        CornerRadius="999"
+                                        CornerRadius="10"
                                         Padding="10,3"
                                         Margin="0,0,6,0"
                                         Visibility="{Binding DisplacementBrief.HasKorPriority, Converter={StaticResource BoolToVis}}">
@@ -630,7 +630,7 @@
                                                Typography.Capitals="AllSmallCaps"/>
                                 </Border>
                                 <Border Background="{StaticResource Panel.Border}"
-                                        CornerRadius="999"
+                                        CornerRadius="10"
                                         Padding="10,3"
                                         Margin="0,0,6,0"
                                         Visibility="{Binding DisplacementBrief.HasMarket, Converter={StaticResource BoolToVis}}">
@@ -640,7 +640,7 @@
                                                FontWeight="SemiBold"/>
                                 </Border>
                                 <Border Background="{StaticResource Panel.Border}"
-                                        CornerRadius="999"
+                                        CornerRadius="10"
                                         Padding="10,3"
                                         Visibility="{Binding DisplacementBrief.HasConfidence, Converter={StaticResource BoolToVis}}">
                                     <TextBlock Foreground="{StaticResource Text.Primary}" FontSize="11" FontWeight="SemiBold">

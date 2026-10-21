@@ -95,7 +95,7 @@
                       ItemsSource="{Binding FilteredProjectsView}"
                       SelectedItem="{Binding Selected}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="*"/>
+                    <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="340"/>
                     <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="72"/>
                     <DataGridTextColumn Header="Stage" Binding="{Binding StageDisplay}" Width="130"/>
                     <DataGridTextColumn Header="Sector" Binding="{Binding Sector}" Width="120"/>
@@ -111,7 +111,7 @@
                     <DataGridTemplateColumn Header="Indigenous" Width="84" SortMemberPath="IsIndigenous">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Border Background="{StaticResource CorporateBlue}" CornerRadius="999"
+                                <Border Background="{StaticResource CorporateBlue}" CornerRadius="10"
                                         Padding="6,2" HorizontalAlignment="Left"
                                         Visibility="{Binding IsIndigenous, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                                     <TextBlock Text="Yes" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
@@ -297,8 +297,8 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="3" Padding="12,6" Background="{Binding StatusBrush}">
-            <TextBlock Text="{Binding StatusMessage}" Foreground="White" FontSize="12"/>
+        <Border Grid.Row="3" Padding="4,8,4,2" Background="Transparent">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="{Binding StatusBrush}" FontSize="12"/>
         </Border>
     </Grid>
 </Window>

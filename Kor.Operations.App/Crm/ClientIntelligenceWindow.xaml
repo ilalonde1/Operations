@@ -91,23 +91,23 @@
         </Grid>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="12,0,12,8">
-            <Border Background="#1F7A1F" CornerRadius="999" Padding="6,2" Margin="0,0,8,0"
+            <Border Background="#1F7A1F" CornerRadius="10" Padding="6,2" Margin="0,0,8,0"
                     Visibility="{Binding BadgeRepeatVisible, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                 <TextBlock Text="Repeat client" Style="{StaticResource BadgeText}"/>
             </Border>
-            <Border Background="#22588B" CornerRadius="999" Padding="6,2" Margin="0,0,8,0"
+            <Border Background="#22588B" CornerRadius="10" Padding="6,2" Margin="0,0,8,0"
                     Visibility="{Binding BadgePriorWorkVisible, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                 <TextBlock Text="Prior work" Style="{StaticResource BadgeText}"/>
             </Border>
-            <Border Background="#1F7A1F" CornerRadius="999" Padding="6,2" Margin="0,0,8,0"
+            <Border Background="#1F7A1F" CornerRadius="10" Padding="6,2" Margin="0,0,8,0"
                     Visibility="{Binding BadgeRecommendVisible, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                 <TextBlock Text="Recommended" Style="{StaticResource BadgeText}"/>
             </Border>
-            <Border Background="#5C5470" CornerRadius="999" Padding="6,2" Margin="0,0,8,0"
+            <Border Background="#5C5470" CornerRadius="10" Padding="6,2" Margin="0,0,8,0"
                     Visibility="{Binding BadgeGovernmentVisible, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                 <TextBlock Text="Government" Style="{StaticResource BadgeText}"/>
             </Border>
-            <Border Background="#C11E1E" CornerRadius="999" Padding="6,2" Margin="0,0,8,0"
+            <Border Background="#C11E1E" CornerRadius="10" Padding="6,2" Margin="0,0,8,0"
                     Visibility="{Binding BadgeCompetitorVisible, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                 <TextBlock Text="Competitor" Style="{StaticResource BadgeText}"/>
             </Border>
@@ -182,7 +182,7 @@
                                                     BorderBrush="#D8CFEE" BorderThickness="1" CornerRadius="4">
                                                 <StackPanel>
                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                                        <Border Background="#7A5BD0" CornerRadius="999" Padding="6,1" Margin="0,0,8,0">
+                                                        <Border Background="#7A5BD0" CornerRadius="10" Padding="6,1" Margin="0,0,8,0">
                                                             <TextBlock Text="{Binding MentionType, FallbackValue=other}"
                                                                        Foreground="White" FontSize="10" FontWeight="SemiBold"/>
                                                         </Border>
@@ -364,7 +364,7 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border Background="#EEF4FB" BorderBrush="#7AAEDE" BorderThickness="1"
-                                                CornerRadius="999" Padding="6,1" HorizontalAlignment="Left">
+                                                CornerRadius="10" Padding="6,1" HorizontalAlignment="Left">
                                             <TextBlock Text="{Binding ExternalSource}" FontSize="10" Foreground="#22588B"/>
                                         </Border>
                                     </DataTemplate>

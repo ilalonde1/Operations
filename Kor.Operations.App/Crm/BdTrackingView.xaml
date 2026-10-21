@@ -84,7 +84,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Button Content="{Binding}"
+                    <Button Content="{Binding Converter={x:Static local:RegionLabelConverter.Instance}}"
                             Style="{StaticResource RegionTab}"
                             Click="RegionTab_Click"
                             Tag="{Binding}"/>
@@ -116,13 +116,10 @@
                         <TextBlock Text="{Binding Rollup.SubmittedDisplay}" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
                         <TextBlock Text="SUBMITTED" Style="{StaticResource StatCaption}"/>
                     </StackPanel>
-                    <StackPanel Margin="0,0,18,0">
+                    <!-- No capture rate (21 Oct 2026): a tracker rate is a win rate by another name, and the tracker never recorded most outcomes. -->
+                    <StackPanel>
                         <TextBlock Text="{Binding Rollup.AcceptedDisplay}" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource Risk.HighConfidence.Foreground}"/>
                         <TextBlock Text="ACCEPTED" Style="{StaticResource StatCaption}"/>
-                    </StackPanel>
-                    <StackPanel>
-                        <TextBlock Text="{Binding Rollup.CaptureRateDisplay}" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource Brand.Accent.Brush}"/>
-                        <TextBlock Text="CAPTURE RATE" Style="{StaticResource StatCaption}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -225,10 +222,10 @@
                         <!-- Header: company name + region + initiator chip. -->
                         <TextBlock Text="{Binding Selected.BuyerDisplayName}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
                         <StackPanel Orientation="Horizontal" Margin="0,4,0,10">
-                            <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999" Padding="8,2" Margin="0,0,6,0">
+                            <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="10" Padding="8,2" Margin="0,0,6,0">
                                 <TextBlock Text="{Binding Selected.Region}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
                             </Border>
-                            <Border Background="{StaticResource Brand.Accent.Brush}" CornerRadius="999" Padding="8,2">
+                            <Border Background="{StaticResource Brand.Accent.Brush}" CornerRadius="10" Padding="8,2">
                                 <TextBlock Text="{Binding Selected.Initiator}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
                             </Border>
                         </StackPanel>
@@ -267,7 +264,7 @@
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="{Binding ProjectName}" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{StaticResource CorporateBlue}" TextDecorations="Underline"/>
-                                                <Border Background="{StaticResource CorporateBlue}" CornerRadius="999" Padding="6,1" Margin="8,1,0,0">
+                                                <Border Background="{StaticResource CorporateBlue}" CornerRadius="10" Padding="6,1" Margin="8,1,0,0">
                                                     <TextBlock Text="{Binding ConfidenceDisplay}" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
                                                 </Border>
                                             </StackPanel>
@@ -288,7 +285,7 @@
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="{Binding OccurredDisplay}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,0,8,0"/>
-                                                <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999" Padding="6,1" Margin="0,0,6,0">
+                                                <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="10" Padding="6,1" Margin="0,0,6,0">
                                                     <TextBlock Text="{Binding TypeDisplay}" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
                                                 </Border>
                                                 <TextBlock Text="{Binding ContactName}" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>

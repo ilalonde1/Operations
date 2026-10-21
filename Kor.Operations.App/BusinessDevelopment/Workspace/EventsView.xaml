@@ -33,7 +33,7 @@
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0">
-                                    <Border CornerRadius="999" Padding="8,4" HorizontalAlignment="Left">
+                                    <Border CornerRadius="10" Padding="8,4" HorizontalAlignment="Left">
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Setter Property="Background" Value="{StaticResource App.Background}"/>

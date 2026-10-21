@@ -6,9 +6,11 @@
     <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="DirectorStyles.xaml"/></ResourceDictionary.MergedDictionaries>
 
     <!-- Buttons: flat, rounded, no Windows chrome. -->
+    <!-- Light vertical padding: many BD screens fix a button's height, and a taller padding clipped their text. -->
     <Style TargetType="Button" BasedOn="{StaticResource D.Button}">
         <Setter Property="FontWeight" Value="Normal"/>
-        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="Padding" Value="12,3"/>
+        <Setter Property="MinHeight" Value="28"/>
     </Style>
 
     <!-- Tabs: words with a slate underline under the selected one, no boxes. -->
@@ -106,7 +108,7 @@
         <Setter Property="GridLinesVisibility" Value="Horizontal"/>
         <Setter Property="HorizontalGridLinesBrush" Value="#EEF0F2"/>
         <Setter Property="RowHeaderWidth" Value="0"/>
-        <Setter Property="MinRowHeight" Value="32"/>
+        <Setter Property="MinRowHeight" Value="30"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Foreground" Value="{StaticResource D.Ink}"/>
         <Setter Property="AlternatingRowBackground" Value="White"/>
@@ -126,7 +128,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="DataGridCell">
-                    <Border Background="{TemplateBinding Background}" Padding="8,5">
+                    <!-- Horizontal padding only: tables that fix their own row height must not have their text clipped. -->
+                    <Border Background="{TemplateBinding Background}" Padding="8,0">
                         <ContentPresenter VerticalAlignment="Center"/>
                     </Border>
                 </ControlTemplate>
