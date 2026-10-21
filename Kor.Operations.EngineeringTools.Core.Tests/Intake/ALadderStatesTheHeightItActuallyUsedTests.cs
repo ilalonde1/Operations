@@ -29,9 +29,9 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// actually used; and that a step far under the height the set's storeys stand at carries a warning that names
 /// the two brackets to check.
 ///
-/// WHAT IT DOES NOT: it does not put the storeys where they belong — 31017-01's tower is still 18 m tall after
-/// this, and the file now says so instead of claiming 3,050 mm. Telling whose building a level belongs to is the
-/// larger job this is the evidence for. It does not fire where both brackets ARE the same building's and the
+/// WHAT IT DOES NOT: tell whose building a level belongs to in general. Step 169 (2026-10-21) puts the storeys
+/// where they belong only where the gap gives it away — an even share under half the set's storey — and 31017-01's
+/// tower now stands at 3,050 mm a storey. It does not fire where both brackets ARE the same building's and the
 /// gap is genuinely small, because there is nothing wrong there. And the same-class fault it would NOT catch:
 /// a run bracketed by another building's level whose gap happens to be plausible — two buildings with similar
 /// storey heights would space evenly, wrongly, and silently.
@@ -61,27 +61,42 @@ public sealed class ALadderStatesTheHeightItActuallyUsedTests
             plans, assumedHeightMm: 3050);
     }
 
+    /// <summary>
+    /// STEP 169 (2026-10-21): the larger job this class was the evidence for. An even share under half the set's storey
+    /// means the stated level above is another building's, so 31017-01's L5..L24 walk up from L4 at 3,050 mm a storey,
+    /// ASSUMED and listed so — the tower 76 m tall, as her model has it at 120 in a storey — and C4 keeps its stated 18,512.
+    /// </summary>
     [Fact]
-    public void AStoreySharedOutBetweenTwoStatedLevelsIsNotListedAsAssumedAtTheTypicalHeight()
+    public void ARunUnderHalfAStoreyAFloorWalksUpAtTheSetsStoreyAndIsListedAsAssumed()
     {
         var ladder = ThirtyOneThousandAndSeventeen();
         var lines = StoreysFromPlans.LevelsFileLines(ladder);
         foreach (string l in lines) _out.WriteLine(l);
 
-        var spaced = ladder.Storeys.Where(s => s.Spaced).Select(s => s.Name).ToList();
-        Assert.NotEmpty(spaced);
-
-        // the ASSUMED header names a height; a storey that does not stand at it is not in that header
-        string? assumed = lines.FirstOrDefault(l => l.StartsWith("# ASSUMED:", StringComparison.Ordinal));
-        foreach (string name in spaced)
-            Assert.True(assumed is null || !assumed.Contains($" {name}", StringComparison.Ordinal),
-                $"{name} was spaced between two stated levels and is still listed under: {assumed}");
+        Assert.DoesNotContain(ladder.Storeys, s => s.Spaced);
+        var at = ladder.Storeys.ToDictionary(s => s.Name, s => s.ElevationMm);
+        for (int n = 5; n <= 24; n++) Assert.Equal(15057 + 3050 * (n - 4), at[$"L{n}"], 0);
+        Assert.Equal(18512, at["C4"], 0);
+        string assumed = Assert.Single(lines, l => l.StartsWith("# ASSUMED:", StringComparison.Ordinal));
+        Assert.Contains("3050 mm", assumed, StringComparison.Ordinal);
+        Assert.Contains(" L24", assumed, StringComparison.Ordinal);
+        Assert.DoesNotContain(lines, l => l.StartsWith("# SPACED EVENLY:", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// A ladder whose storeys WERE shared out far under the set's storey (as KOR_STEP169_OFF builds 31017-01) still
+    /// says so: the run, its two brackets, the step, and the warning naming the two levels to check. Built directly,
+    /// so no environment flag is set where a class running beside this one could read it.
+    /// </summary>
     [Fact]
     public void TheLevelsFileNamesTheRunItsTwoBracketsAndTheStepItActuallyUsed()
     {
-        var lines = StoreysFromPlans.LevelsFileLines(ThirtyOneThousandAndSeventeen());
+        var storeys = new List<StoreysFromPlans.Storey> { new("L4", 15057, "stated on S3.01", false) };
+        for (int n = 5; n <= 24; n++) storeys.Add(new($"L{n}", 15057 + 164.5 * (n - 4), "spaced", false, Spaced: true));
+        storeys.Add(new("C4", 18512, "stated on S3.01", false));
+        var ladder = new StoreysFromPlans.Ladder(storeys, 2, 20, 0, 3050, "the set's typical storey, 3050 mm");
+
+        var lines = StoreysFromPlans.LevelsFileLines(ladder);
         string note = Assert.Single(lines, l => l.StartsWith("# SPACED EVENLY:", StringComparison.Ordinal));
         _out.WriteLine(note);
 
@@ -90,7 +105,9 @@ public sealed class ALadderStatesTheHeightItActuallyUsedTests
         // and it warns, naming the two levels to check, because the step is nothing like the set's storey
         Assert.Contains("⚠", note, StringComparison.Ordinal);
         Assert.Contains("SAME building", note, StringComparison.Ordinal);
-        Assert.Contains("⚠", StoreysFromPlans.Summary(ThirtyOneThousandAndSeventeen()), StringComparison.Ordinal);
+        Assert.Contains("⚠", StoreysFromPlans.Summary(ladder), StringComparison.Ordinal);
+        // and a spaced storey is not listed under the ASSUMED header, which names a height it does not stand at
+        Assert.DoesNotContain(lines, l => l.StartsWith("# ASSUMED:", StringComparison.Ordinal));
     }
 
     [Fact]

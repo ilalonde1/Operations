@@ -229,7 +229,16 @@ public static class StoreysFromPlans
                 if (between > 0 && lastStated < 0)
                     for (int k = 1; k <= between; k++)
                         storeys[i - k] = storeys[i - k] with { ElevationMm = elevation - height * k, From = $"a plan names it; {height:0} mm below {(k == 1 ? name : order[i - k + 1])} ({heightSource})", Assumed = true };
-                if (between > 0 && lastStated >= 0)
+                // A CEILING UNDER HALF A STOREY A FLOOR IS ANOTHER BUILDING'S LEVEL (step 169, 2026-10-21; KOR_STEP169_OFF=1
+                // restores the even share). 31017-01 states its tower's L4 at 15,057 and its podium's C4 at 18,512, and twenty
+                // tower storeys were shared out over the podium's last gap at 164 mm each - one floor by any reading, so the
+                // same-floor fold kept one copy of their members and L9 and L13-L24 came out empty. SpacingNotes has named the
+                // case since 2026-09-23. Where an even share falls under half the height the set's storeys measure, the level
+                // above is not this run's ceiling: the run stays where the walk up from the last stated level put it, at that
+                // height a storey, ASSUMED as every plan-only storey is.
+                double share = lastStated >= 0 ? (elevation - storeys[lastStated].ElevationMm) / (between + 1) : 0;
+                bool notItsCeiling = share < height / 2 && Environment.GetEnvironmentVariable("KOR_STEP169_OFF") != "1";
+                if (between > 0 && lastStated >= 0 && !notItsCeiling)
                 {
                     double from = storeys[lastStated].ElevationMm, step = (elevation - from) / (between + 1);
                     for (int k = 1; k <= between; k++)
