@@ -9,19 +9,6 @@ internal static class RebarVerb
         var bPages = PdfPageTextReader.ReadPages(args[1]);
         var aPages = PdfPageTextReader.ReadPages(args[2]);
 
-        // PRE-CHECK — refuse up front if EITHER set is scanned/flattened (no vector text layer). You cannot
-        // detect a callout change against a side the tool is blind to, so catch it here with a clear reason
-        // rather than only at the later 0-callouts guard. Exit 3, no report written.
-        foreach (var (label, path, pages) in new[] { ("BEFORE", args[1], bPages), ("AFTER", args[2], aPages) })
-        {
-            var rv = PdfReadabilityAssessor.AssessPageTexts(pages);
-            if (!rv.Readable)
-            {
-                Console.Error.WriteLine($"CANNOT READ THE {label} SET ({Path.GetFileName(path)}) — {rv.Reason}");
-                return 3;
-            }
-        }
-
         string rname = args.Length > 4 ? args[4] : string.Empty;
         string rbl = args.Length > 5 ? args[5] : "Before";
         string ral = args.Length > 6 ? args[6] : "After";
@@ -31,14 +18,11 @@ internal static class RebarVerb
         // Positioned-word pipeline (same as the overlay markup) so the ledger and the PDF tell one story.
         var rr = RebarChangeService.ComparePdfs(args[1], args[2], rbl, ral);
 
-        // "Can't-read" guard: matched real sheets but read ZERO reinforcing call-outs ⇒ the set's annotation
-        // grammar wasn't recognised. That is NOT "no change" — refuse to emit a falsely-reassuring report.
-        if (rr.SheetsCompared >= 3 && rr.TotalCalloutsRead == 0)
+        // Refuse an unreadable set, or zero call-outs read, rather than emit a falsely-reassuring report. The same
+        // check the app's window runs (RebarChangeService.WhyNotReportable). Exit 3, no report written.
+        if (RebarChangeService.WhyNotReportable(bPages, aPages, rr) is { } refused)
         {
-            Console.Error.WriteLine(
-                $"ABORT: compared {rr.SheetsCompared} sheets but read 0 reinforcing call-outs — this set's " +
-                "call-out style was not recognised, so a change cannot be detected. This is NOT a 'no change' " +
-                "result. No report written.");
+            Console.Error.WriteLine(refused);
             return 3;
         }
 

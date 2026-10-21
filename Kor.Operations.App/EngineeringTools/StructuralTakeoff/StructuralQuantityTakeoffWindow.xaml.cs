@@ -377,9 +377,22 @@ namespace Kor.Operations.EngineeringTools.StructuralTakeoff
                 var beforePages = beforeRead.Pages;
                 var afterPages = afterRead.Pages;
 
-                var change = RebarChangeService.Compare(
-                    beforePages, afterPages,
+                // THE LEDGER READS THE SAME WAY AS THE HIGHLIGHTED PDF (2026-10-20). It used the page-text reader while
+                // the PDF used positioned words, and on 31065 IFT->IFC they disagreed on 22 of 72 sheets - the ledger
+                // called S5.02 removed and S6.03 new (both are in both issues) and saw changes on S1.07-S1.09 that are
+                // not there. ComparePdfs is the reader the PDF and `takeoff rebar` use. It reads the text layer only:
+                // an image-only page (OCR'd above, for the weight estimate) has no call-outs in the ledger.
+                var change = RebarChangeService.ComparePdfs(
+                    _beforePdf, _afterPdf,
                     BeforeLabelBox.Text.Trim(), AfterLabelBox.Text.Trim(), Unit);
+
+                if (RebarChangeService.WhyNotReportable(
+                        PdfPageTextReader.ReadPages(_beforePdf), PdfPageTextReader.ReadPages(_afterPdf), change) is { } refused)
+                {
+                    CompareResultStatus.Text = "No report written.";
+                    MessageBox.Show(refused, "Structural Quantity Takeoff", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
 
                 ComparePreviewGrid.ItemsSource = change.Sheets
                     .Where(s => s.Status != RebarChangeStatus.Unchanged)
@@ -472,7 +485,9 @@ namespace Kor.Operations.EngineeringTools.StructuralTakeoff
         private static string OcrNote(PdfReadResult before, PdfReadResult after)
         {
             int n = before.OcrPageNumbers.Count + after.OcrPageNumbers.Count;
-            return n > 0 ? $" · {n} image-only page(s) OCR-recovered (verify)" : string.Empty;
+            // The ledger reads the text layer (ComparePdfs), so an image-only page's call-outs are not in it; OCR
+            // reaches only the weight estimate. Said, so a missing sheet is never read as "unchanged".
+            return n > 0 ? $" · {n} image-only page(s): call-outs NOT compared there, check them by hand" : string.Empty;
         }
 
         private static string StatusText(RebarChangeStatus s) => s switch

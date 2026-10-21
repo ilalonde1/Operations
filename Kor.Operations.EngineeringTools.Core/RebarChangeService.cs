@@ -43,6 +43,28 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             return Diff(Load(beforePdfPath), Load(afterPdfPath), beforeLabel, afterLabel);
         }
 
+        /// <summary>
+        /// Why a comparison must NOT be reported, or null when it may. One check for the command and the app
+        /// (2026-10-20: only the command refused; the window wrote a report either way). Refused: either set has no
+        /// readable text layer (a callout change cannot be seen on a side the reader is blind to), or real sheets
+        /// were matched and ZERO call-outs read (the set's call-out style was not recognised - that is NOT "no
+        /// change", and a report would say it was).
+        /// </summary>
+        public static string? WhyNotReportable(
+            IReadOnlyList<string> beforePages, IReadOnlyList<string> afterPages, RebarChangeResult result,
+            string beforeName = "BEFORE", string afterName = "AFTER")
+        {
+            foreach (var (label, pages) in new[] { (beforeName, beforePages), (afterName, afterPages) })
+            {
+                var rv = PdfReadabilityAssessor.AssessPageTexts(pages);
+                if (!rv.Readable) return $"CANNOT READ THE {label} SET - {rv.Reason}";
+            }
+            if (result.SheetsCompared >= 3 && result.TotalCalloutsRead == 0)
+                return $"Compared {result.SheetsCompared} sheets but read 0 reinforcing call-outs - this set's call-out style " +
+                       "was not recognised, so a change cannot be detected. This is NOT a 'no change' result. No report written.";
+            return null;
+        }
+
         public static RebarChangeResult Compare(
             IReadOnlyList<string> beforePages,
             IReadOnlyList<string> afterPages,

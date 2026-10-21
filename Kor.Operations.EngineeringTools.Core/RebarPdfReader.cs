@@ -159,11 +159,18 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 }
                 var ms = start.Match(t);
                 if (!ms.Success) continue;
+                // THE "@" IS WHAT MAKES IT A CALL-OUT (2026-10-20). A bar size followed by any number is also a row of
+                // a splice or development-length table: "10M  500  19"(575)" on 31065 S1.02 read as 10M@575 and put a
+                // red "removed" box on a table that never changed. The "@" may be glued to the size ("15M@"), stand
+                // alone, or lead the spacing ("@200").
+                bool at = t.EndsWith('@');
                 for (int j = i + 1; j <= Math.Min(i + 2, words.Count - 1); j++)
                 {
-                    if (words[j].Text == "@") continue;
-                    var msp = space.Match(RebarPlanCallout.TrimWordToken(words[j].Text));
-                    if (msp.Success)
+                    if (words[j].Text == "@") { at = true; continue; }
+                    string next = RebarPlanCallout.TrimWordToken(words[j].Text);
+                    if (next.StartsWith('@')) { at = true; next = next[1..]; }
+                    var msp = space.Match(next);
+                    if (msp.Success && at)
                     {
                         var b1 = words[i].BoundingBox;
                         var b2 = words[j].BoundingBox;
