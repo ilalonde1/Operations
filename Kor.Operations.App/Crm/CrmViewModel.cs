@@ -506,8 +506,120 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 
     public bool HasPlanTakers => _planTakersSummary.Length > 0;
 
+    // ---- Claude's RFP review (migration 377): where the documents and the review stand, and the review itself ----
+
+    private string? _reviewStatus;
+    private PursuitReviewRow? _review;
+
+    /// <summary>The pursuit's documents-and-review status in plain words; null hides the strip (not a portal tender, no review).</summary>
+    public string? ReviewStatus
+    {
+        get => _reviewStatus;
+        private set { if (SetField(ref _reviewStatus, value)) OnPropertyChanged(nameof(HasReviewStatus)); }
+    }
+
+    public bool HasReviewStatus => !string.IsNullOrEmpty(_reviewStatus);
+
+    public PursuitReviewRow? Review
+    {
+        get => _review;
+        private set
+        {
+            if (SetField(ref _review, value))
+            {
+                OnPropertyChanged(nameof(HasReview));
+                OnPropertyChanged(nameof(ReviewHeadline));
+                OnPropertyChanged(nameof(ReviewVerdict));
+                OnPropertyChanged(nameof(ReviewVerdictBrush));
+                OnPropertyChanged(nameof(ShowReviewStatusLine));
+            }
+        }
+    }
+
+    public bool HasReview => _review is not null;
+
+    private bool _reviewRunning;
+
+    /// <summary>The small status line: shown while there is no review, or while a new one is being read; a finished review needs no caption.</summary>
+    public bool ShowReviewStatusLine => _review is null || _reviewRunning;
+
+    /// <summary>For the screen render: puts a status and review on the strip without a database.</summary>
+    internal void ShowReviewForRender(string? status, PursuitReviewRow? review, bool running)
+    {
+        _reviewRunning = running;
+        ReviewStatus = status;
+        Review = review;
+        OnPropertyChanged(nameof(ShowReviewStatusLine));
+    }
+
+    /// <summary>The strip's one line beside the verdict: how many questions, and when they are due.</summary>
+    public string ReviewHeadline => _review is null ? "" :
+        _review.Questions.Count == 0 ? "Claude read the RFP: no questions for the buyer."
+        : $"{_review.Questions.Count} question{(_review.Questions.Count == 1 ? "" : "s")} for the buyer"
+          + (_review.QuestionsDeadline is { } d ? $", due {d}" : "");
+
+    public string ReviewVerdict => _review is null ? "" : RecommendationLabel(_review.Recommendation).ToUpperInvariant();
+    public Brush ReviewVerdictBrush => RecommendationBrush(_review?.Recommendation ?? "decide");
+
+    public static string RecommendationLabel(string recommendation) => recommendation switch
+    {
+        "go" => "Bid",
+        "no-go" => "Don't bid",
+        _ => "Your call",
+    };
+
+    /// <summary>The verdict's colour, from the pursuit stage palette: green bid, grey don't, amber your call.</summary>
+    public static Brush RecommendationBrush(string recommendation) => recommendation switch
+    {
+        "go" => VerdictGo,
+        "no-go" => VerdictNoGo,
+        _ => VerdictDecide,
+    };
+
+    private static readonly Brush VerdictGo = FrozenBrush(0x22, 0x8B, 0x22);
+    private static readonly Brush VerdictNoGo = FrozenBrush(0x80, 0x80, 0x80);
+    private static readonly Brush VerdictDecide = FrozenBrush(0xC8, 0x8A, 0x00);
+
+    private static Brush FrozenBrush(byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+        brush.Freeze();
+        return brush;
+    }
+
+    /// <summary>Reloads the review strip for the selected pursuit (after a review opens or reports).</summary>
+    public async Task RefreshReviewAsync()
+    {
+        if (Selected is { } s) await LoadReviewAsync(s.Id, CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private async Task LoadReviewAsync(long engagementId, CancellationToken ct)
+    {
+        if (AppServices.GetOptional<SqlPursuitReviewStore>() is not { } reviews) return;
+        try
+        {
+            var status = await reviews.StatusAsync(engagementId, ct).ConfigureAwait(true);
+            var review = await reviews.LatestAsync(engagementId, ct).ConfigureAwait(true);
+            if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
+            _reviewRunning = status is { RunId: not null, RunReportedAtUtc: null };
+            ReviewStatus = status is null ? null : PursuitRfpReview.Describe(status, DateTimeOffset.UtcNow);
+            Review = review;
+            OnPropertyChanged(nameof(ShowReviewStatusLine));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "RFP review status load failed for engagement {EngagementId}.", engagementId);
+        }
+    }
+
     private async Task LoadDetailAsync(CancellationToken ct)
     {
+        ReviewStatus = null;
+        Review = null;
         Activities.Clear();
         Contacts.Clear();
         Files.Clear();
@@ -567,6 +679,9 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
                     Serilog.Log.Warning(ex, "Attachment list load failed for engagement {EngagementId}.", engagementId);
                 }
             }
+
+            await LoadReviewAsync(engagementId, ct).ConfigureAwait(true);
+            if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
 
             // Phase 2/3 context reads AFTER the core panel renders (review nit:
             // fetched activities must not wait on warmth/history round-trips) —

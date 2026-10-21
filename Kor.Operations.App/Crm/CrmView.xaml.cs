@@ -56,7 +56,24 @@ public partial class CrmView : UserControl
         AppServices.Get<AppAiContextBuilder>().Register(_vm);
         // Plan 2.2c: adoption instrumentation — fire-and-forget, expendable.
         AppServices.Get<Kor.Opportunities.Data.Crm.IBdUiOpenStore>().RecordOpen("Pursuits", ResolveActor());
+        // Claude's RFP review: when one opens on this PC, say so on the pursuit; while the selected pursuit is waiting for its
+        // documents or its review, re-read its one status row each minute, so the strip moves on by itself.
+        RfpReviewLauncher.Opened += OnReviewOpened;
+        Unloaded += (_, _) => { RfpReviewLauncher.Opened -= OnReviewOpened; _reviewPoll.Stop(); };
+        _reviewPoll.Tick += async (_, _) =>
+        {
+            if (_vm.HasReviewStatus && !_vm.HasReview) await _vm.RefreshReviewAsync().ConfigureAwait(true);
+        };
+        _reviewPoll.Start();
         await ReloadAsync().ConfigureAwait(true);
+    }
+
+    private readonly System.Windows.Threading.DispatcherTimer _reviewPoll = new() { Interval = TimeSpan.FromMinutes(1) };
+
+    private async void OnReviewOpened(long engagementId, string project)
+    {
+        _vm.SetStatusMessage($"Claude is reading the RFP for #{engagementId} {project} in Claude Code (KOR account); the review appears on the pursuit when it reports.");
+        if (_vm.Selected?.Id == engagementId) await _vm.RefreshReviewAsync().ConfigureAwait(true);
     }
 
     /// <summary>
@@ -361,6 +378,51 @@ public partial class CrmView : UserControl
             AppServices.Get<Kor.Opportunities.Data.Crm.IPursuitRequirementStore>(),
             AppServices.Get<Kor.Opportunities.Data.Crm.IPursuitFileStore>(), row.Id, label, ResolveActor());
         new BusinessDevelopment.Director.PursuitChecklistWindow(checklist) { Owner = Window.GetWindow(this) }.Show();
+    }
+
+    /// <summary>2026-10-21: Claude's stored review of the selected pursuit's RFP (migration 377).</summary>
+    private void OpenReviewButton_Click(object sender, RoutedEventArgs e)
+    {
+        var owner = Window.GetWindow(this);
+        if (_vm.Selected is not { } row)
+        {
+            MessageBox.Show(owner, "Select a pursuit first.", "Claude's RFP review", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (_vm.Review is not { } review || review.EngagementId != row.Id)
+        {
+            MessageBox.Show(owner, _vm.ReviewStatus ?? "This pursuit has no RFP review yet.", "Claude's RFP review", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var label = string.IsNullOrWhiteSpace(row.ProjectName) ? row.OpportunityKey : row.ProjectName;
+        new PursuitReviewWindow(review, label, row.Buyer, row.Opportunity?.BuyerContactEmail, row.Opportunity?.SubmissionDeadlineUtc,
+            () => ChecklistButton_Click(sender, e)) { Owner = owner }.Show();
+    }
+
+    /// <summary>2026-10-21: opens Claude Code (KOR account) on this PC to read the selected pursuit's documents again.</summary>
+    private async void RunReviewButton_Click(object sender, RoutedEventArgs e)
+    {
+        var owner = Window.GetWindow(this);
+        if (_vm.Selected is not { } row)
+        {
+            MessageBox.Show(owner, "Select a pursuit first.", "Claude's RFP review", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (_vm.Files.Count == 0)
+        {
+            MessageBox.Show(owner, "This pursuit has no documents to read yet.", "Claude's RFP review", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        try
+        {
+            await RfpReviewLauncher.OpenAsync(AppServices.Get<Kor.Opportunities.Data.Crm.SqlPursuitReviewStore>(),
+                AppServices.Get<Kor.Opportunities.Data.Crm.IBdDoctrineStore>(), row.Id, ResolveActor(), onlyIfNone: false, CancellationToken.None).ConfigureAwait(true);
+            await _vm.RefreshReviewAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(owner, ex.Message, "Claude's RFP review", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
     }
 
     /// <summary>2026-10-21: one person signs in to APC once; the Worker downloads pursued APC tenders' documents on it.</summary>

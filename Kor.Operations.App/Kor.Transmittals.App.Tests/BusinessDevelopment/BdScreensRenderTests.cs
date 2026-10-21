@@ -86,6 +86,7 @@ public sealed class BdScreensRenderTests
                 written += RenderRealTenders(dir);
                 written += RenderRfpWindows(dir);
                 written += RenderPursuits(dir);
+                written += RenderReview(dir);
                 written += RenderPursuitHealth(dir);
                 written += RenderDirector(dir);
                 written += RenderReplyDialog(dir);
@@ -284,6 +285,71 @@ public sealed class BdScreensRenderTests
         var view = new CrmView(vm, Mock.Of<IServiceProvider>());
         return RenderView(view, new Size(1680, 980), Path.Combine(dir, "pursuits.png"));
     }
+
+    // ---- Claude's RFP review: the strip on a pursuit in its three states, and the review window (Banff Centre, 21 Oct) ----
+
+    private static int RenderReview(string dir)
+    {
+        var engagements = new Mock<ICrmEngagementStore>();
+        engagements.Setup(s => s.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Engagements());
+        var opportunities = new Mock<IOpportunityStore>();
+        opportunities.Setup(s => s.ListAsync(It.IsAny<CancellationToken>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            .ReturnsAsync(Opportunities());
+        var files = new Mock<IPursuitFileStore>();
+        files.Setup(s => s.ListByEngagementAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<PursuitFile>
+        {
+            new(29, 501, 39410, "Appendix C - Rate Bid Form.xlsx", "", null, 30_650, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Now.AddHours(-2), "apc", true),
+            new(28, 501, 39410, "Appendix D - Past Performance Questionnaire.pdf", "", null, 473_605, "application/pdf", Now.AddHours(-2), "apc", true),
+            new(27, 501, 39410, "RFP# PF-1026-02.pdf", "", null, 1_193_698, "application/pdf", Now.AddHours(-2), "apc", true),
+        });
+        var storage = new Mock<IPursuitFileStorage>();
+        storage.SetupGet(s => s.IsConfigured).Returns(true);
+
+        var activities = new Mock<ICrmActivityStore>();
+        activities.Setup(s => s.ListByEngagementAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<CrmActivity>());
+        var contacts = new Mock<ICrmContactStore>();
+        contacts.Setup(s => s.ListByEngagementAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<CrmContact>());
+
+        var vm = new CrmViewModel(engagements.Object, activities.Object, contacts.Object,
+            opportunities.Object, Mock.Of<IDeltekClientContextService>(), Mock.Of<ICanonicalOrgStore>(),
+            Mock.Of<IPursuitContextStore>(), Mock.Of<IOpportunityInterestedFirmStore>(), files.Object, storage.Object);
+        vm.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var view = new CrmView(vm, Mock.Of<IServiceProvider>());
+        vm.Selected = vm.Engagements.First();
+        DrainDispatcher();
+
+        var review = BanffReview();
+        var status = new PursuitReviewStatus(501, "APC", 3, Now.AddHours(-2), Now.AddHours(-2), true, null, null, null, null, null, null, 0);
+        var written = 0;
+        vm.ShowReviewForRender(PursuitRfpReview.Describe(status with { PortalFiles = 0, LastFileAtUtc = null }, Now), null, running: false);
+        written += RenderView(view, new Size(1680, 980), Path.Combine(dir, "review-strip-waiting.png"));
+        vm.ShowReviewForRender(PursuitRfpReview.Describe(status with { RunId = 7, RunCreatedAtUtc = Now.AddMinutes(-4), RunCreatedBy = "ilalonde@korstructural.com" }, Now), null, running: true);
+        written += RenderView(view, new Size(1680, 980), Path.Combine(dir, "review-strip-reading.png"));
+        vm.ShowReviewForRender(PursuitRfpReview.Describe(status with { Reviews = 1, RunId = 7, RunCreatedAtUtc = Now.AddMinutes(-30), RunReportedAtUtc = Now.AddMinutes(-3) }, Now), review, running: false);
+        written += RenderView(view, new Size(1680, 980), Path.Combine(dir, "review-strip-ready.png"));
+
+        var window = new PursuitReviewWindow(review, "Structural and Civil Engineering – Professional Services Agreement (RFP PF-1026-02)",
+            "Banff Centre for Arts and Creativity", "Amaya_Kingston@banffcentre.ca", new DateTimeOffset(2026, 11, 2, 21, 0, 0, TimeSpan.Zero), () => { });
+        var content = (FrameworkElement)window.Content;
+        window.Content = null;
+        written += RenderView(content, new Size(980, 860), Path.Combine(dir, "review-window.png"));
+        window.Close();
+        return written;
+    }
+
+    private static PursuitReviewRow BanffReview() => new(1, 501, null, "decide",
+        "Banff Centre for Arts and Creativity wants structural and civil engineers on a Master Services Agreement: 3 years, extendable to 9, paid hourly as needed, with no guaranteed volume. Only one firm gets the first work package: the Theatre Complex roof trusses and joists, which a preliminary analysis says are undersized, plus the parkade and gangways. Scoring: pricing 40, team 20, qualifications and references 20, scope coverage 10, methodology 10; the top 3 present.",
+        "Decide: the first work package is squarely KOR's work, but the RFP also asks for civil utility design as a minimum qualification, which KOR does not do (Appendix E A.3).\n"
+        + "The rate form has a line for sub-consultant mark-up, which suggests a civil sub-consultant is acceptable; ask before investing in the proposal.\n"
+        + "Pricing is 40 of 100 points; the RFP and the rate form disagree on how travel to Banff is charged.\n"
+        + "References: 3 to 5 past clients must send Banff the questionnaire directly - start those requests now if it is a go.",
+        new[]
+        {
+            new RfpQuestion("Will Banff Centre accept a proposal from a structural engineering firm that provides the civil utility services through a named civil sub-consultant?", "Civil utility experience is a minimum qualification; KOR is structural only. The answer decides whether KOR can bid at all.", "Appendix E A.2.1, A.3"),
+            new RfpQuestion("Section D says rates must include all travel, but the Rate Bid Form has separate travel lines. Which governs?", "Pricing is 40 points; travel built into hourly rates makes them look higher than local firms'.", "Appendix E D; Appendix C"),
+            new RfpQuestion("Can Banff Centre share the preliminary analysis of the Theatre Complex roof trusses and the existing drawings?", "The methodology section asks for a detailed approach to this exact work.", "Appendix E A.2.2, A.3.4"),
+        },
+        "Fri 23 Oct 2026, 2:00 pm MST", "Amaya_Kingston@banffcentre.ca", "All three files read.", null, "Claude (session with Ian, 21 Oct)", Now.AddMinutes(-3));
 
     // ---- the pursuit-health board: cold, watch, warm, never touched ----
 

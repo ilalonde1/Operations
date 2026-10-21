@@ -16,8 +16,27 @@ public sealed class PursuitFileRowView
     public long Id => Model.Id;
     public string FileName => Model.FileName;
     public string? StoredPath => Model.LocalPath;
-    public string TypeDisplay => Model.ContentType ?? "File";
-    public string UploadedByDisplay => Model.UploadedBy;
+    /// <summary>What kind of file, in words a person uses (PDF, Excel, Word), not a media type.</summary>
+    public string TypeDisplay => System.IO.Path.GetExtension(Model.FileName).ToLowerInvariant() switch
+    {
+        ".pdf" => "PDF",
+        ".xlsx" or ".xlsm" or ".xls" or ".csv" => "Excel",
+        ".docx" or ".doc" => "Word",
+        ".zip" => "Zip",
+        ".dwg" or ".dxf" => "Drawing",
+        ".msg" or ".eml" => "Email",
+        ".png" or ".jpg" or ".jpeg" => "Image",
+        var ext when ext.Length > 1 => ext[1..].ToUpperInvariant(),
+        _ => "File",
+    };
+
+    /// <summary>Who added it; a portal download says so plainly instead of the job's key.</summary>
+    public string UploadedByDisplay => Model.UploadedBy switch
+    {
+        "apc" => "APC download",
+        "bids-and-tenders" => "Bids&Tenders download",
+        var by => by,
+    };
     public string UploadedDisplay => Model.UploadedAtUtc.LocalDateTime.ToString("yyyy-MM-dd HH:mm");
 
     public string SizeDisplay

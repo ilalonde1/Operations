@@ -1,0 +1,410 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Globalization;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
+
+namespace Kor.Opportunities.Data.Crm;
+
+/// <summary>A question for the buyer: what to ask, why it matters to KOR, and where in the RFP it comes from.</summary>
+public sealed record RfpQuestion(string Question, string Why, string? Ref);
+
+/// <summary>What a review session reports: migration 377's PursuitReview row, plus the checklist for PursuitRequirement.</summary>
+public sealed record RfpReviewReport(string Outcome, string Recommendation, string Summary, string Reasons,
+    IReadOnlyList<RfpQuestion> Questions, string? QuestionsDeadline, string? QuestionsTo, string? FilesRead,
+    IReadOnlyList<PursuitRequirementInput> Checklist);
+
+/// <summary>A stored review, as the pursuit shows it.</summary>
+public sealed record PursuitReviewRow(long Id, long EngagementId, long? PromptRunId, string Recommendation, string Summary, string Reasons,
+    IReadOnlyList<RfpQuestion> Questions, string? QuestionsDeadline, string? QuestionsTo, string? FilesRead, string? ChecklistNote,
+    string ReportedBy, DateTimeOffset ReportedAtUtc);
+
+/// <summary>A pursuit's file, as the review prompt lists it.</summary>
+public sealed record RfpReviewFile(long Id, string FileName, long SizeBytes, string UploadedBy, DateTimeOffset UploadedAtUtc);
+
+/// <summary>Everything the review prompt says about the pursuit, gathered by the app at the moment the review opens.</summary>
+public sealed record RfpReviewInput(long EngagementId, string Project, string? Buyer, string? BuyerContact, string? BuyerEmail,
+    DateTimeOffset? SubmissionDeadlineUtc, string? Owner, string Stage, string? PostingUrl, IReadOnlyList<RfpReviewFile> Files,
+    int ChecklistItems, string RequestedBy, DateTimeOffset Now);
+
+/// <summary>Where a pursuit's documents and review stand, read in one query for the pursuit's status line.</summary>
+public sealed record PursuitReviewStatus(long EngagementId, string? Portal, int PortalFiles, DateTimeOffset? LastFileAtUtc,
+    DateTimeOffset? LastFetchAtUtc, bool? LastFetchSucceeded, string? LastFetchNote, string? PortalSessionError,
+    long? RunId, DateTimeOffset? RunCreatedAtUtc, string? RunCreatedBy, DateTimeOffset? RunReportedAtUtc, int Reviews);
+
+/// <summary>
+/// Claude's reading of a grabbed tender's RFP. When the documents arrive, the app on a PC with Claude Code opens a session on
+/// them (the BD Director's method: <see cref="BdPromptComposer"/>, a one-time token, a report back through the BD CLI); the
+/// session reads the files from the database with <c>pursuit files text</c> and reports a summary, a recommendation, the
+/// questions for the buyer and the checklist. Pure parts here, so a test can prove what the prompt says and what a report
+/// must hold; <see cref="SqlPursuitReviewStore"/> keeps the result. No model is called from the app (rule 14).
+/// </summary>
+public static class PursuitRfpReview
+{
+    public const string Kind = "rfp";
+    public static IReadOnlyList<string> Recommendations { get; } = Array.AsReadOnly(new[] { "go", "no-go", "decide" });
+
+    /// <summary>The uploaders that mean "fetched from the portal by the Worker": a review starts when one of these lands.</summary>
+    public static IReadOnlyList<string> PortalUploaders { get; } = Array.AsReadOnly(new[] { "apc", "bids-and-tenders" });
+
+    public static string Subject(long engagementId, string project) => Clip($"RFP review: pursuit #{engagementId} {project}", 200);
+
+    public static string Prompt(RfpReviewInput i, BdPromptHandle report)
+    {
+        var cli = BdPromptComposer.Cli;
+        var sb = new StringBuilder();
+        sb.AppendLine($"# Read the RFP for pursuit #{i.EngagementId}: {i.Project}");
+        sb.AppendLine();
+        sb.AppendLine($"Opened for {i.RequestedBy} at {i.Now.ToLocalTime():yyyy-MM-dd HH:mm}, from the live database, because this tender's documents have arrived.");
+        sb.AppendLine("Your job: read every document on this pursuit and tell KOR, in plain words, what this is, whether to bid and why, what to ask the buyer before the questions deadline, and what the submission must contain. Then report back; the app shows your report on the pursuit.");
+        sb.AppendLine();
+        sb.AppendLine("## Rules");
+        sb.AppendLine("- Never call the Anthropic API or any outside service, and never send anything to anyone. Questions are drafted for Ian; he decides what goes out.");
+        sb.AppendLine("- KOR Structural is a structural engineering consultancy. Say plainly which parts of the scope are not structural (civil utilities, roads, mechanical, testing) and what that means for a bid: a sub-consultant, a question to the buyer, or a reason not to bid.");
+        sb.AppendLine("- Ground every statement in the documents: name the section or page. Never say the RFP lacks something without the search that shows it.");
+        sb.AppendLine("- Never cite tracker win rates; KOR's real win rate is not yet known.");
+        sb.AppendLine("- Read only. The one write you make is the report at the end.");
+        sb.AppendLine("- Plain words, short sentences. Ian manages BD; he is not an engineer.");
+        sb.AppendLine();
+        sb.AppendLine("## The pursuit");
+        sb.AppendLine($"- Pursuit #{i.EngagementId}, stage {i.Stage}{(i.Owner is { } o ? ", owner " + o : "")}.");
+        sb.AppendLine($"- Project: {i.Project}");
+        if (i.Buyer is { } b) sb.AppendLine($"- Buyer: {b}");
+        if (i.BuyerContact is not null || i.BuyerEmail is not null) sb.AppendLine($"- Buyer contact on file: {i.BuyerContact ?? "(no name)"}{(i.BuyerEmail is { } e ? " <" + e + ">" : "")}");
+        sb.AppendLine($"- Submission deadline on file: {(i.SubmissionDeadlineUtc is { } d ? d.ToLocalTime().ToString("ddd d MMM yyyy h:mm tt", CultureInfo.InvariantCulture) : "not on file")}. Trust the RFP's own timetable over this.");
+        if (i.PostingUrl is { } u) sb.AppendLine($"- Posting: {u}");
+        sb.AppendLine($"- Checklist items already on the pursuit: {i.ChecklistItems}.");
+        sb.AppendLine();
+        sb.AppendLine("## The documents");
+        foreach (var f in i.Files)
+            sb.AppendLine($"- file {f.Id}: {f.FileName} ({f.SizeBytes:N0} bytes, from {f.UploadedBy}, {f.UploadedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm})");
+        sb.AppendLine();
+        sb.AppendLine($"Read them all as text, straight from the database (nothing is copied to disk): `{cli} pursuit files text {i.EngagementId}`.");
+        sb.AppendLine($"One file: `{cli} pursuit files text {i.EngagementId} --file <file id>`. A scanned page has no text; say which.");
+        sb.AppendLine();
+        sb.AppendLine("## What to work out");
+        sb.AppendLine("1. What it is: the buyer, the work, the contract form and term, the first work package if any, the timetable (questions deadline, addenda, submission, interviews), how it is scored, page limits and mandatory forms.");
+        sb.AppendLine("2. Whether KOR should bid: `go`, `no-go`, or `decide` when it turns on something only Ian or the buyer can settle. Reasons first: fit with structural work, scope KOR does not do, pricing weight, references needed, insurance, travel, anything unusual.");
+        sb.AppendLine("3. The questions for the buyer: only ones whose answer changes whether or how KOR bids. Each with why it matters and the section it comes from. Note the questions deadline and the address questions go to.");
+        sb.AppendLine("4. The checklist: every requirement a compliant submission must meet, quoted, with its section.");
+        if (i.ChecklistItems > 0) sb.AppendLine("   The pursuit already has a checklist; yours is kept with the review but does not replace it.");
+        sb.AppendLine();
+        sb.AppendLine("## When you are done: report back (required)");
+        sb.AppendLine("Write the report to a JSON file, then run the command below once.");
+        sb.AppendLine();
+        sb.AppendLine("```json");
+        sb.AppendLine("{");
+        sb.AppendLine("  \"outcome\": \"answered\",               // answered | partly (some documents unreadable) | not-answered");
+        sb.AppendLine("  \"recommendation\": \"decide\",          // go | no-go | decide");
+        sb.AppendLine("  \"summary\": \"What this is, in a short paragraph: buyer, work, contract, timetable, scoring.\",");
+        sb.AppendLine("  \"reasons\": \"Why go, no-go or decide: one point per line, the deciding one first.\",");
+        sb.AppendLine("  \"questions\": [ { \"question\": \"Can a structural firm propose with a civil sub-consultant?\", \"why\": \"Civil utilities are a minimum qualification; KOR does not do them.\", \"ref\": \"Appendix E A.3\" } ],");
+        sb.AppendLine("  \"questionsDeadline\": \"Fri 23 Oct 2026, 2:00 pm MST\",");
+        sb.AppendLine("  \"questionsTo\": \"name@buyer.ca\",");
+        sb.AppendLine("  \"filesRead\": \"Which files you read, and any you could not.\",");
+        sb.AppendLine("  \"checklist\": [ { \"requirement\": \"Quoted requirement\", \"sourceRef\": \"s. 3.1.2\", \"checkKind\": \"Manual\", \"checkParameter\": null } ]");
+        sb.AppendLine("}");
+        sb.AppendLine("```");
+        sb.AppendLine();
+        sb.AppendLine("checkKind is Manual, PhrasePresent (checkParameter = the phrase the proposal must contain), PageLimit (checkParameter = the page count) or FileName (checkParameter = a file the submission must include).");
+        sb.AppendLine();
+        sb.AppendLine("```powershell");
+        sb.AppendLine($"{cli} pursuit review report {report.RunId.ToString(CultureInfo.InvariantCulture)} <report.json> --token {report.Token}");
+        sb.AppendLine("```");
+        sb.AppendLine();
+        sb.AppendLine("If the command refuses the report it says why; fix the file and run it again. Sending again replaces this run's review.");
+        sb.AppendLine($"The token is for run {report.RunId.ToString(CultureInfo.InvariantCulture)} only.");
+        return sb.ToString();
+    }
+
+    private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true, ReadCommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
+
+    private sealed record ReportFile(string? Outcome, string? Recommendation, string? Summary, string? Reasons, List<QuestionFile>? Questions,
+        string? QuestionsDeadline, string? QuestionsTo, string? FilesRead, List<PursuitRequirementInput>? Checklist);
+    private sealed record QuestionFile(string? Question, string? Why, string? Ref);
+
+    /// <summary>Parses and validates a session's report. Every problem is reported; nothing is accepted with errors.</summary>
+    public static (RfpReviewReport? Report, IReadOnlyList<string> Errors) ParseReport(string json)
+    {
+        ReportFile? f;
+        try { f = JsonSerializer.Deserialize<ReportFile>(json, Json); }
+        catch (JsonException ex) { return (null, new[] { "Not valid JSON: " + ex.Message }); }
+        if (f is null) return (null, new[] { "The report is empty." });
+
+        var errors = new List<string>();
+        if (f.Outcome is null || !BdDoctrine.Outcomes.Contains(f.Outcome)) errors.Add($"outcome must be one of: {string.Join(", ", BdDoctrine.Outcomes)}.");
+        if (f.Recommendation is null || !Recommendations.Contains(f.Recommendation)) errors.Add("recommendation must be go, no-go or decide.");
+        if (string.IsNullOrWhiteSpace(f.Summary)) errors.Add("summary is required: what this tender is, in plain words.");
+        if (string.IsNullOrWhiteSpace(f.Reasons)) errors.Add("reasons is required: why go, no-go or decide.");
+        var questions = new List<RfpQuestion>();
+        var qs = f.Questions ?? new List<QuestionFile>();
+        if (qs.Count > 40) errors.Add("at most 40 questions.");
+        for (var n = 0; n < qs.Count; n++)
+        {
+            var q = qs[n];
+            if (string.IsNullOrWhiteSpace(q?.Question) || q.Question.Length > 1000) errors.Add($"question {n + 1}: question is required (1000 characters at most).");
+            else if (string.IsNullOrWhiteSpace(q.Why) || q.Why.Length > 1000) errors.Add($"question {n + 1}: why is required (1000 characters at most).");
+            else questions.Add(new RfpQuestion(q.Question.Trim(), q.Why.Trim(), string.IsNullOrWhiteSpace(q.Ref) ? null : Clip(q.Ref.Trim(), 200)));
+        }
+        if (f.QuestionsDeadline is { Length: > 100 }) errors.Add("questionsDeadline is longer than 100 characters.");
+        if (f.QuestionsTo is { Length: > 320 }) errors.Add("questionsTo is longer than 320 characters.");
+        if (f.FilesRead is { Length: > 2000 }) errors.Add("filesRead is longer than 2000 characters.");
+        var checklist = f.Checklist ?? new List<PursuitRequirementInput>();
+        try { PursuitRequirementValidation.Validate(checklist); }
+        catch (ArgumentException ex) { errors.Add("checklist " + ex.Message); }
+
+        return errors.Count > 0
+            ? (null, errors)
+            : (new RfpReviewReport(f.Outcome!, f.Recommendation!, f.Summary!.Trim(), f.Reasons!.Trim(), questions,
+                Blank(f.QuestionsDeadline), Blank(f.QuestionsTo), Blank(f.FilesRead), checklist), Array.Empty<string>());
+    }
+
+    public static string QuestionsJson(IReadOnlyList<RfpQuestion> questions) => JsonSerializer.Serialize(questions, Json);
+
+    public static IReadOnlyList<RfpQuestion> ReadQuestions(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return Array.Empty<RfpQuestion>();
+        try { return JsonSerializer.Deserialize<List<RfpQuestion>>(json, Json) ?? new List<RfpQuestion>(); }
+        catch (JsonException) { return Array.Empty<RfpQuestion>(); }
+    }
+
+    /// <summary>
+    /// The pursuit's status line, in plain words, so whoever is looking knows what is happening without asking: waiting for the
+    /// documents, a sign-in needed, the documents in, Claude reading them, or the review ready. Null for a pursuit that is not
+    /// a portal tender and has no review.
+    /// </summary>
+    public static string? Describe(PursuitReviewStatus s, DateTimeOffset now)
+    {
+        // One short line each; the files themselves are listed under Files, so the line never repeats them.
+        if (s.RunId is not null && s.RunCreatedAtUtc is { } opened && s.RunReportedAtUtc is null)
+            return now - opened > TimeSpan.FromHours(6)
+                ? $"Claude started reading the RFP {opened.ToLocalTime():ddd h:mm tt} but has not reported. Run it again from More."
+                : $"Claude is reading the RFP, started {opened.ToLocalTime():h:mm tt}. The review appears here when it's done.";
+        if (s.Reviews > 0) return "Claude's RFP review is ready.";
+        if (s.PortalFiles > 0)
+            return $"{s.PortalFiles} document{(s.PortalFiles == 1 ? "" : "s")} in from {s.Portal ?? "the portal"}. Claude's review starts by itself on Ian's PC.";
+        if (s.Portal is null) return null;
+        if (s.Portal == "APC" && s.PortalSessionError is not null)
+            return "APC sign-in needed before the documents can download: More ▸ Sign in to APC.";
+        var every = s.Portal == "APC" ? "every 10 minutes" : "every hour";
+        return s.LastFetchAtUtc is { } at && s.LastFetchSucceeded == false
+            ? $"The last {s.Portal} download failed at {at.ToLocalTime():h:mm tt} ({s.LastFetchNote}). Trying again {every}."
+            : $"Waiting for the documents from {s.Portal}, checked {every}.";
+    }
+
+    private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+    private static string Clip(string s, int max) => s.Length <= max ? s : s[..max];
+}
+
+/// <summary>Review runs and their reports (migration 377). Nothing here sends anything to anyone.</summary>
+public sealed class SqlPursuitReviewStore
+{
+    private readonly string _db;
+
+    public SqlPursuitReviewStore(string connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentException("Connection string is required.", nameof(connectionString));
+        _db = connectionString;
+    }
+
+    /// <summary>
+    /// Pursuits whose portal documents are in and that have never had a review run: what the app opens by itself. Drafting
+    /// only (a submitted bid needs no reading), one run per pursuit ever; "Run the review again" is a person's choice.
+    /// </summary>
+    internal const string DueSql = @"
+SELECT e.Id
+FROM opportunities.CrmEngagements e
+WHERE e.Stage = 1
+  AND EXISTS (SELECT 1 FROM opportunities.OpportunityFiles f WHERE f.EngagementId = e.Id AND f.UploadedBy IN (N'apc', N'bids-and-tenders'))
+  AND NOT EXISTS (SELECT 1 FROM opportunities.BdPromptRun r WHERE r.EngagementId = e.Id AND r.Kind = N'rfp')
+  AND NOT EXISTS (SELECT 1 FROM opportunities.PursuitReview v WHERE v.EngagementId = e.Id)
+ORDER BY e.Id;";
+
+    public async Task<IReadOnlyList<long>> ListDueAsync(CancellationToken ct)
+    {
+        await using var con = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(DueSql, con) { CommandTimeout = 30 };
+        var ids = new List<long>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false)) ids.Add(r.GetInt64(0));
+        return ids;
+    }
+
+    /// <summary>
+    /// Records a review run as it opens. With <paramref name="onlyIfNone"/> it is also the claim: null when the pursuit already
+    /// has a run, so two PCs with the app open never both start one.
+    /// </summary>
+    public async Task<long?> StartRunAsync(long engagementId, string subject, string createdBy, byte[] tokenSha256, bool onlyIfNone, CancellationToken ct)
+    {
+        await using var con = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(@"
+INSERT INTO opportunities.BdPromptRun (Kind, Role, Subject, Question, CreatedBy, PromptSha256, TokenSha256, EngagementId)
+OUTPUT INSERTED.Id
+SELECT N'rfp', N'BD', @subject, NULL, @by, @prompt, @token, @e
+WHERE @force = 1 OR NOT EXISTS (SELECT 1 FROM opportunities.BdPromptRun WITH (UPDLOCK, HOLDLOCK) WHERE EngagementId = @e AND Kind = N'rfp');", con);
+        cmd.Parameters.Add("@e", SqlDbType.BigInt).Value = engagementId;
+        cmd.Parameters.Add("@subject", SqlDbType.NVarChar, 200).Value = subject;
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 150).Value = createdBy;
+        cmd.Parameters.Add("@prompt", SqlDbType.Binary, 32).Value = new byte[32];
+        cmd.Parameters.Add("@token", SqlDbType.Binary, 32).Value = tokenSha256;
+        cmd.Parameters.Add("@force", SqlDbType.Bit).Value = !onlyIfNone;
+        return await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false) is { } id and not DBNull ? Convert.ToInt64(id, CultureInfo.InvariantCulture) : null;
+    }
+
+    /// <summary>
+    /// A session's report. Refused (null) when the token does not match a review run. Stores the review (a resend of the same
+    /// run replaces it) and returns the run's pursuit, so the caller can file the checklist.
+    /// </summary>
+    public async Task<long?> ReportAsync(long runId, string token, RfpReviewReport report, string? checklistNote, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        await using var con = await OpenAsync(ct).ConfigureAwait(false);
+        await using var tx = (SqlTransaction)await con.BeginTransactionAsync(ct).ConfigureAwait(false);
+        long engagementId;
+        string by;
+        await using (var check = new SqlCommand(@"SELECT EngagementId, CreatedBy FROM opportunities.BdPromptRun WITH (UPDLOCK)
+WHERE Id = @id AND TokenSha256 = @token AND Kind = N'rfp' AND EngagementId IS NOT NULL;", con, tx))
+        {
+            check.Parameters.Add("@id", SqlDbType.BigInt).Value = runId;
+            check.Parameters.Add("@token", SqlDbType.Binary, 32).Value = BdDoctrine.Sha(token);
+            await using var r = await check.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+            engagementId = r.GetInt64(0);
+            by = r.GetString(1);
+        }
+
+        await using (var update = new SqlCommand(@"
+UPDATE opportunities.BdPromptRun SET Outcome = @outcome, Answer = @summary, OutcomeAtUtc = sysdatetimeoffset() WHERE Id = @id;
+DELETE FROM opportunities.PursuitReview WHERE PromptRunId = @id;", con, tx))
+        {
+            update.Parameters.Add("@id", SqlDbType.BigInt).Value = runId;
+            update.Parameters.Add("@outcome", SqlDbType.NVarChar, 16).Value = report.Outcome;
+            update.Parameters.Add("@summary", SqlDbType.NVarChar, -1).Value = report.Summary;
+            await update.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+
+        await InsertAsync(con, tx, engagementId, runId, report, checklistNote, $"Claude (opened by {by})", ct).ConfigureAwait(false);
+        await tx.CommitAsync(ct).ConfigureAwait(false);
+        return engagementId;
+    }
+
+    /// <summary>A review written outside a run (one done in a session before the pursuit had a run), kept the same way.</summary>
+    public async Task AddAsync(long engagementId, RfpReviewReport report, string? checklistNote, string reportedBy, CancellationToken ct)
+    {
+        await using var con = await OpenAsync(ct).ConfigureAwait(false);
+        await using var tx = (SqlTransaction)await con.BeginTransactionAsync(ct).ConfigureAwait(false);
+        await InsertAsync(con, tx, engagementId, null, report, checklistNote, reportedBy, ct).ConfigureAwait(false);
+        await tx.CommitAsync(ct).ConfigureAwait(false);
+    }
+
+    private static async Task InsertAsync(SqlConnection con, SqlTransaction tx, long engagementId, long? runId, RfpReviewReport report,
+        string? checklistNote, string reportedBy, CancellationToken ct)
+    {
+        await using var insert = new SqlCommand(@"
+INSERT INTO opportunities.PursuitReview
+    (EngagementId, PromptRunId, Recommendation, Summary, Reasons, QuestionsJson, QuestionsDeadline, QuestionsTo, FilesRead, ChecklistNote, ReportedBy)
+VALUES (@e, @run, @rec, @summary, @reasons, @questions, @deadline, @to, @files, @note, @by);", con, tx);
+        insert.Parameters.Add("@e", SqlDbType.BigInt).Value = engagementId;
+        insert.Parameters.Add("@run", SqlDbType.BigInt).Value = (object?)runId ?? DBNull.Value;
+        insert.Parameters.Add("@rec", SqlDbType.NVarChar, 16).Value = report.Recommendation;
+        insert.Parameters.Add("@summary", SqlDbType.NVarChar, -1).Value = report.Summary;
+        insert.Parameters.Add("@reasons", SqlDbType.NVarChar, -1).Value = report.Reasons;
+        insert.Parameters.Add("@questions", SqlDbType.NVarChar, -1).Value = PursuitRfpReview.QuestionsJson(report.Questions);
+        insert.Parameters.Add("@deadline", SqlDbType.NVarChar, 100).Value = (object?)report.QuestionsDeadline ?? DBNull.Value;
+        insert.Parameters.Add("@to", SqlDbType.NVarChar, 320).Value = (object?)report.QuestionsTo ?? DBNull.Value;
+        insert.Parameters.Add("@files", SqlDbType.NVarChar, 2000).Value = (object?)report.FilesRead ?? DBNull.Value;
+        insert.Parameters.Add("@note", SqlDbType.NVarChar, 400).Value = (object?)checklistNote ?? DBNull.Value;
+        insert.Parameters.Add("@by", SqlDbType.NVarChar, 150).Value = reportedBy.Length <= 150 ? reportedBy : reportedBy[..150];
+        await insert.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The newest review of a pursuit, or null.</summary>
+    public async Task<PursuitReviewRow?> LatestAsync(long engagementId, CancellationToken ct)
+    {
+        await using var con = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(@"
+SELECT TOP (1) Id, EngagementId, PromptRunId, Recommendation, Summary, Reasons, QuestionsJson, QuestionsDeadline, QuestionsTo, FilesRead,
+       ChecklistNote, ReportedBy, ReportedAtUtc
+FROM opportunities.PursuitReview WHERE EngagementId = @e ORDER BY ReportedAtUtc DESC, Id DESC;", con);
+        cmd.Parameters.Add("@e", SqlDbType.BigInt).Value = engagementId;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+        string? S(int i) => r.IsDBNull(i) ? null : r.GetString(i);
+        return new PursuitReviewRow(r.GetInt64(0), r.GetInt64(1), r.IsDBNull(2) ? null : r.GetInt64(2), r.GetString(3), r.GetString(4), r.GetString(5),
+            PursuitRfpReview.ReadQuestions(S(6)), S(7), S(8), S(9), S(10), r.GetString(11), r.GetDateTimeOffset(12));
+    }
+
+    /// <summary>What the review prompt says about a pursuit, read live as the review opens. Null when the pursuit does not exist.</summary>
+    public async Task<RfpReviewInput?> LoadInputAsync(long engagementId, string requestedBy, DateTimeOffset now, CancellationToken ct)
+    {
+        await using var con = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(@"
+SELECT o.Name, o.BuyerName, o.BuyerContactName, o.BuyerContactEmail, o.SubmissionDeadlineUtc, e.Stage,
+       (SELECT TOP (1) x.Url FROM opportunities.OpportunityObservations x WHERE x.OpportunityId = o.Id AND x.Url LIKE N'http%'
+        ORDER BY x.IngestedAtUtc DESC, x.Id DESC),
+       (SELECT COUNT(*) FROM opportunities.PursuitRequirement q WHERE q.EngagementId = e.Id)
+FROM opportunities.CrmEngagements e JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+WHERE e.Id = @e;
+SELECT Id, FileName, SizeBytes, UploadedBy, UploadedAtUtc FROM opportunities.OpportunityFiles WHERE EngagementId = @e ORDER BY Id;", con) { CommandTimeout = 30 };
+        cmd.Parameters.Add("@e", SqlDbType.BigInt).Value = engagementId;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+        string? S(int i) => r.IsDBNull(i) ? null : r.GetString(i);
+        var stage = r.GetInt32(5) switch { 1 => "Drafting", 3 => "Submitted", 6 => "Won", 7 => "Lost", 8 => "Archived", var n => n.ToString(CultureInfo.InvariantCulture) };
+        var head = (Name: r.GetString(0), Buyer: S(1), Contact: S(2), Email: S(3), Deadline: r.IsDBNull(4) ? (DateTimeOffset?)null : r.GetDateTimeOffset(4),
+            Stage: stage, Url: S(6), Checklist: r.GetInt32(7));
+        await r.NextResultAsync(ct).ConfigureAwait(false);
+        var files = new List<RfpReviewFile>();
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+            files.Add(new RfpReviewFile(r.GetInt64(0), r.GetString(1), r.IsDBNull(2) ? 0 : r.GetInt64(2), r.GetString(3), r.GetDateTimeOffset(4)));
+        return new RfpReviewInput(engagementId, head.Name, head.Buyer, head.Contact, head.Email, head.Deadline, null, head.Stage, head.Url,
+            files, head.Checklist, requestedBy, now);
+    }
+
+    internal const string StatusSql = @"
+SELECT
+    portal.Portal,
+    (SELECT COUNT(*) FROM opportunities.OpportunityFiles f WHERE f.EngagementId = e.Id AND f.UploadedBy IN (N'apc', N'bids-and-tenders')),
+    (SELECT MAX(f.UploadedAtUtc) FROM opportunities.OpportunityFiles f WHERE f.EngagementId = e.Id AND f.UploadedBy IN (N'apc', N'bids-and-tenders')),
+    fetch.FetchedAtUtc, fetch.Succeeded, fetch.Note,
+    CASE WHEN portal.Portal = N'APC' THEN (SELECT s.LastError FROM opportunities.PortalSession s WHERE s.Portal = N'APC') END,
+    run.Id, run.CreatedAtUtc, run.CreatedBy, run.OutcomeAtUtc,
+    (SELECT COUNT(*) FROM opportunities.PursuitReview v WHERE v.EngagementId = e.Id)
+FROM opportunities.CrmEngagements e
+OUTER APPLY (SELECT TOP (1) CASE WHEN x.Url LIKE N'https://purchasing.alberta.ca/posting/AB-%' THEN N'APC' ELSE N'Bids&Tenders' END AS Portal
+             FROM opportunities.OpportunityObservations x
+             WHERE x.OpportunityId = e.OpportunityId
+               AND (x.Url LIKE N'https://purchasing.alberta.ca/posting/AB-%' OR x.Url LIKE N'%.bidsandtenders.ca/Module/Tenders/%/Tender/Detail/%')
+             ORDER BY CASE WHEN x.Url LIKE N'%.bidsandtenders.ca/%' THEN 0 ELSE 1 END, x.IngestedAtUtc DESC) portal
+OUTER APPLY (SELECT TOP (1) d.FetchedAtUtc, d.Succeeded, d.Note FROM opportunities.PursuitDocumentFetch d
+             WHERE d.EngagementId = e.Id ORDER BY d.FetchedAtUtc DESC, d.Id DESC) fetch
+OUTER APPLY (SELECT TOP (1) r.Id, r.CreatedAtUtc, r.CreatedBy, r.OutcomeAtUtc FROM opportunities.BdPromptRun r
+             WHERE r.EngagementId = e.Id AND r.Kind = N'rfp' ORDER BY r.CreatedAtUtc DESC, r.Id DESC) run
+WHERE e.Id = @e;";
+
+    public async Task<PursuitReviewStatus?> StatusAsync(long engagementId, CancellationToken ct)
+    {
+        await using var con = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(StatusSql, con) { CommandTimeout = 30 };
+        cmd.Parameters.Add("@e", SqlDbType.BigInt).Value = engagementId;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+        DateTimeOffset? D(int i) => r.IsDBNull(i) ? null : r.GetDateTimeOffset(i);
+        string? S(int i) => r.IsDBNull(i) ? null : r.GetString(i);
+        return new PursuitReviewStatus(engagementId, S(0), r.GetInt32(1), D(2), D(3), r.IsDBNull(4) ? null : r.GetBoolean(4), S(5), S(6),
+            r.IsDBNull(7) ? null : r.GetInt64(7), D(8), S(9), D(10), r.GetInt32(11));
+    }
+
+    private async Task<SqlConnection> OpenAsync(CancellationToken ct)
+    {
+        var con = new SqlConnection(_db);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        return con;
+    }
+}

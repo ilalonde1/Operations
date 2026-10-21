@@ -13,6 +13,9 @@
 // claims search "<question>" [--take 12]
 // brief export [--week <yyyy-MM-dd>] --to <folder>
 // brief import <export.json> <sections.json> --by <name> [--force]
+// pursuit files text <engagementId> [--file <id>]          a pursuit's documents as text, read from the database in memory
+// pursuit review report <runId> <report.json> --token <t>  an RFP review session's report, kept on the pursuit
+// pursuit review add <engagementId> <report.json> --by <name>  a review written without a run
 // hour import <hour.json> --by <name>       the prepared hour, written in session, for the Today tab and the 6 a.m. email
 // hour render <hour.json> --to <file.html>  the email exactly as it would be sent, for checking; sends nothing
 // hour verify <yyyy-MM-dd> --kind Morning [--after <ISO timestamp>]  read and validate the stored hour; nonzero if absent or stale
@@ -84,8 +87,13 @@ internal static class KnowledgeCli
             if (verb == "prompt" && options.Positionals[1].Equals("synthesis", StringComparison.OrdinalIgnoreCase))
                 return await PromptSynthesisAsync(options, store!, new SqlBdDoctrineStore(connection!), ct);
             if (verb == "prompt") return await PromptReportAsync(options, new SqlBdDoctrineStore(connection!), ct);
+            if (verb == "pursuit" && options.Positionals[1].Equals("files", StringComparison.OrdinalIgnoreCase)
+                && options.Positionals[2].Equals("text", StringComparison.OrdinalIgnoreCase))
+                return await PursuitFilesTextAsync(options, connection!, ct);
             if (verb == "pursuit" && options.Positionals[1].Equals("files", StringComparison.OrdinalIgnoreCase))
                 return await PursuitFilesAddAsync(options, connection!, ct);
+            if (verb == "pursuit" && options.Positionals[1].Equals("review", StringComparison.OrdinalIgnoreCase))
+                return await PursuitReviewAsync(options, connection!, ct);
             if (verb == "pursuit")
             {
                 var json = await File.ReadAllTextAsync(options.Positionals[4], ct);
@@ -388,6 +396,87 @@ internal static class KnowledgeCli
         return 0;
     }
 
+    /// <summary>
+    /// Prints the text of a pursuit's files, read from the database in memory (nothing is copied to disk): every file, or one
+    /// with --file. This is how the RFP review session reads the documents.
+    /// </summary>
+    private static async Task<int> PursuitFilesTextAsync(Arguments args, string connection, CancellationToken ct)
+    {
+        var engagementId = long.Parse(args.Positionals[3], CultureInfo.InvariantCulture);
+        var only = args.Value("--file") is { } raw ? long.Parse(raw, NumberStyles.None, CultureInfo.InvariantCulture) : (long?)null;
+        var files = new SqlPursuitFileStore(connection);
+        var list = (await files.ListByEngagementAsync(engagementId, ct)).Where(f => only is null || f.Id == only).OrderBy(f => f.Id).ToList();
+        if (list.Count == 0)
+        {
+            Console.Error.WriteLine(only is null ? $"Pursuit {engagementId} has no files." : $"File {only} is not on pursuit {engagementId}.");
+            return 2;
+        }
+        foreach (var f in list)
+        {
+            Console.WriteLine($"===== file {f.Id}: {f.FileName} ({f.SizeBytes:N0} bytes, from {f.UploadedBy}) =====");
+            await using var content = await files.OpenContentAsync(f.Id, ct);
+            if (content is null) { Console.WriteLine("[stored on the file share, not in the database; open it from the pursuit]"); continue; }
+            using var buffer = new MemoryStream();
+            await content.CopyToAsync(buffer, ct);
+            Console.WriteLine(PursuitFileText.Read(f.FileName, buffer.ToArray()));
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// pursuit review report: an RFP review session's report, checked against its run's token, kept on the pursuit; the checklist
+    /// goes into the pursuit's checklist when that is empty. pursuit review add: the same for a review written in a session
+    /// without a run, recorded under --by.
+    /// </summary>
+    private static async Task<int> PursuitReviewAsync(Arguments args, string connection, CancellationToken ct)
+    {
+        var (report, errors) = PursuitRfpReview.ParseReport(await File.ReadAllTextAsync(args.Positionals[4], ct));
+        if (report is null)
+        {
+            foreach (var e in errors) Console.Error.WriteLine("FAIL " + e);
+            return 2;
+        }
+
+        var id = long.Parse(args.Positionals[3], CultureInfo.InvariantCulture);
+        var reviews = new SqlPursuitReviewStore(connection);
+        var requirements = new SqlPursuitRequirementStore(connection);
+        var add = args.Positionals[2].Equals("add", StringComparison.OrdinalIgnoreCase);
+        var engagementId = add ? id : (long?)null;
+        string? note = null;
+
+        // Which pursuit a run belongs to is only known once its token checks out, so the checklist is decided after the report
+        // is stored; a refused token never reaches the checklist.
+        if (add)
+        {
+            note = await ChecklistNoteAsync(requirements, id, report, ct);
+            await reviews.AddAsync(id, report, note, args.Value("--by")!, ct);
+        }
+        else
+        {
+            engagementId = await reviews.ReportAsync(id, args.Value("--token")!, report, null, ct);
+            if (engagementId is null)
+            {
+                Console.Error.WriteLine($"FAIL The token does not match review run {id}. Use the command exactly as the prompt gave it.");
+                return 2;
+            }
+            note = await ChecklistNoteAsync(requirements, engagementId.Value, report, ct);
+            if (note is not null) await reviews.ReportAsync(id, args.Value("--token")!, report, note, ct);
+        }
+
+        var filed = report.Checklist.Count > 0 && note is null;
+        if (filed) await requirements.ImportAsync(engagementId!.Value, report.Checklist, "Claude (RFP review)", replace: false, ct);
+        Console.WriteLine($"Review kept on pursuit #{engagementId}: {report.Recommendation}, {report.Questions.Count} question(s) for the buyer, "
+            + (filed ? $"{report.Checklist.Count} checklist item(s) filed." : note ?? "no checklist.") + " It shows in My Pursuits.");
+        return 0;
+    }
+
+    private static async Task<string?> ChecklistNoteAsync(SqlPursuitRequirementStore requirements, long engagementId, RfpReviewReport report, CancellationToken ct)
+    {
+        if (report.Checklist.Count == 0) return null;
+        var existing = (await requirements.ListAsync(engagementId, ct)).Count;
+        return existing == 0 ? null : $"The pursuit already had {existing} checklist item(s), so the review's {report.Checklist.Count} were not filed over them.";
+    }
+
     private static string ContentType(string name) => Path.GetExtension(name).ToLowerInvariant() switch
     {
         ".pdf" => "application/pdf",
@@ -685,6 +774,9 @@ internal static class KnowledgeCli
         BdKnowledgeIngest hour verify <yyyy-MM-dd> --kind Morning [--after <ISO timestamp>]
         BdKnowledgeIngest pursuit checklist import <engagementId> <file.json> --by <name> [--replace]
         BdKnowledgeIngest pursuit files add <engagementId> <file or folder> --by <name> [--submitted <file name>]
+        BdKnowledgeIngest pursuit files text <engagementId> [--file <file id>]
+        BdKnowledgeIngest pursuit review report <runId> <report.json> --token <token>
+        BdKnowledgeIngest pursuit review add <engagementId> <report.json> --by <name>
         BdKnowledgeIngest doctrine list [--role BD|Operations|IT]
         BdKnowledgeIngest doctrine show <id> [--role BD|Operations|IT]
         BdKnowledgeIngest doctrine similar <report.json> [--role BD|Operations|IT] [--exclude-run <id>]
@@ -697,7 +789,7 @@ internal static class KnowledgeCli
     {
         private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "--force", "--dry", "--help", "--replace", "--checked", "--summary" };
         private static readonly HashSet<string> Values = new(StringComparer.Ordinal)
-            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--submitted", "--week", "--token", "--role", "--focus", "--exclude-run", "--after" };
+            { "--db", "--kind", "--licence", "--title", "--author", "--year", "--calibre", "--by", "--source", "--take", "--per-source", "--to", "--submitted", "--week", "--token", "--role", "--focus", "--exclude-run", "--after", "--file" };
         private readonly Dictionary<string, string?> _options = new(StringComparer.Ordinal);
         internal List<string> Positionals { get; } = new();
         internal string? Value(string name) => _options.GetValueOrDefault(name);
@@ -741,18 +833,26 @@ internal static class KnowledgeCli
             var doctrineAction = verb == "doctrine" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
             var promptAction = verb == "prompt" && Positionals.Count > 1 ? Positionals[1].ToLowerInvariant() : "";
             var expected = verb == "prompt" ? promptAction == "synthesis" ? 2 : 4 : verb == "doctrine" ? doctrineAction is "show" or "similar" ? 3 : 2
-                : verb == "pursuit" ? 5 : verb == "hour" ? 3 : verb is "rhythm" or "plan" ? 2 : verb == "brief" ? briefAction == "import" ? 4 : 2
+                : verb == "pursuit" ? Positionals.Count > 2 && Positionals[2].Equals("text", StringComparison.OrdinalIgnoreCase) ? 4 : 5 : verb == "hour" ? 3 : verb is "rhythm" or "plan" ? 2 : verb == "brief" ? briefAction == "import" ? 4 : 2
                 : verb == "claims" ? claimAction == "embed" ? 2 : 3 : verb is "ingest" or "search" or "export" ? 2 : 1;
             if (Positionals.Count != expected) throw new ArgumentException($"Wrong number of arguments for {verb}; use --help.");
             if (verb == "pursuit")
             {
-                var files = Positionals[1].Equals("files", StringComparison.OrdinalIgnoreCase) && Positionals[2].Equals("add", StringComparison.OrdinalIgnoreCase);
-                if (!files && (!Positionals[1].Equals("checklist", StringComparison.OrdinalIgnoreCase)
-                    || !Positionals[2].Equals("import", StringComparison.OrdinalIgnoreCase)))
-                    throw new ArgumentException("Use pursuit checklist import <engagementId> <file.json> --by <name> [--replace], or pursuit files add <engagementId> <folder> --by <name> [--submitted <file name>].");
-                if (!long.TryParse(Positionals[3], NumberStyles.None, CultureInfo.InvariantCulture, out var engagementId))
-                    throw new ArgumentException("A positive pursuit ID is required.");
-                PursuitRequirementValidation.Identity(engagementId, Value("--by") ?? "");
+                var pursuitAction = (Positionals[1] + " " + Positionals[2]).ToLowerInvariant();
+                if (pursuitAction is not ("files add" or "files text" or "checklist import" or "review report" or "review add"))
+                    throw new ArgumentException("Use pursuit checklist import, pursuit files add, pursuit files text, pursuit review report or pursuit review add; see --help.");
+                if (!long.TryParse(Positionals[3], NumberStyles.None, CultureInfo.InvariantCulture, out var id) || id <= 0)
+                    throw new ArgumentException(pursuitAction == "review report" ? "A positive review run ID is required." : "A positive pursuit ID is required.");
+                if (pursuitAction == "review report")
+                {
+                    if (Value("--token") is not { Length: >= 20 and <= 100 }) throw new ArgumentException("Use pursuit review report <runId> <report.json> --token <token>.");
+                }
+                else if (pursuitAction == "files text")
+                {
+                    if (Value("--file") is { } file && !long.TryParse(file, NumberStyles.None, CultureInfo.InvariantCulture, out _))
+                        throw new ArgumentException("--file needs a file id.");
+                }
+                else PursuitRequirementValidation.Identity(id, Value("--by") ?? "");
             }
             if (verb == "hour")
             {
@@ -824,7 +924,14 @@ internal static class KnowledgeCli
                 "embed" => new[] { "--source" },
                 "search" => new[] { "--take", "--per-source" },
                 "export" => new[] { "--to" },
-                "pursuit" => Positionals[1].Equals("files", StringComparison.OrdinalIgnoreCase) ? new[] { "--by", "--submitted" } : new[] { "--by", "--replace" },
+                "pursuit" => (Positionals[1] + " " + Positionals[2]).ToLowerInvariant() switch
+                {
+                    "files add" => new[] { "--by", "--submitted" },
+                    "files text" => new[] { "--file" },
+                    "review report" => new[] { "--token" },
+                    "review add" => new[] { "--by" },
+                    _ => new[] { "--by", "--replace" },
+                },
                 "hour" => Positionals[1].Equals("verify", StringComparison.OrdinalIgnoreCase)
                     ? new[] { "--kind", "--after" } : new[] { "--by", "--to" },
                 "rhythm" => new[] { "--to" },

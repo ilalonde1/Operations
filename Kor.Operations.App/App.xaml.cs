@@ -155,6 +155,12 @@ namespace Kor.Operations
             Log.ForContext<OperationsApp>().Information("Startup: showing {Window}", startupWindow.GetType().Name);
             startupWindow.Show();
 
+            // Claude's RFP review opens by itself when a grabbed tender's documents arrive, on a PC that has Claude Code.
+            Kor.Operations.App.Crm.RfpReviewLauncher.StartWatching(
+                _services.GetRequiredService<Kor.Opportunities.Data.Crm.SqlPursuitReviewStore>(),
+                _services.GetRequiredService<Kor.Opportunities.Data.Crm.IBdDoctrineStore>(),
+                () => SignedInUserUpn is { Length: > 0 } upn ? upn.Trim() : Environment.UserName);
+
             // kor:// deep link on cold launch (a report PDF/email link opened the
             // app) — open the target once the main window is up.
             var coldLink = KorUriScheme.FindLink(args);

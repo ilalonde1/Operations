@@ -37,6 +37,10 @@
                     <ContextMenu>
                         <MenuItem Header="Checklist…" Click="ChecklistButton_Click"
                                   ToolTip="Every requirement quoted from the RFP, checked against your draft."/>
+                        <MenuItem Header="Claude's RFP review…" Click="OpenReviewButton_Click"
+                                  ToolTip="What the RFP asks for, bid or not and why, and the questions for the buyer."/>
+                        <MenuItem Header="Run the RFP review again" Click="RunReviewButton_Click"
+                                  ToolTip="Opens Claude Code under the KOR account on this PC to read the pursuit's documents again, for example after an addendum."/>
                         <Separator/>
                         <MenuItem Header="Buyer profile…" Click="BuyerIntelButton_Click"
                                   IsEnabled="{Binding Selected.HasBuyerIntel, FallbackValue=False}"
@@ -189,12 +193,38 @@
 
             <Grid Grid.Column="2" Margin="8,0,0,0">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="2*"/>
                     <RowDefinition Height="3*"/>
                     <RowDefinition Height="2*"/>
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,8">
+                <!-- A tender pursuit's first question is "do we bid, and what do we ask?": where the documents and Claude's RFP
+                     review stand (migration 377) sits on top, so nobody has to ask what is happening. -->
+                <Border Grid.Row="0" Margin="0,0,0,8" Padding="12,9" CornerRadius="8"
+                        Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                        Visibility="{Binding HasReviewStatus, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                    <DockPanel LastChildFill="True">
+                        <Border DockPanel.Dock="Left" CornerRadius="12" Padding="12,4" Margin="0,0,12,0" VerticalAlignment="Center"
+                                Background="{Binding ReviewVerdictBrush}"
+                                Visibility="{Binding HasReview, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                            <TextBlock Text="{Binding ReviewVerdict}" Foreground="White" FontWeight="Bold" FontSize="12"/>
+                        </Border>
+                        <Button DockPanel.Dock="Right" Content="Open review" Style="{StaticResource Button.Primary}" Padding="14,4"
+                                Margin="12,0,0,0" VerticalAlignment="Center" Click="OpenReviewButton_Click"
+                                Visibility="{Binding HasReview, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                                ToolTip="Bid or not and why, the questions for the buyer, and what the RFP asks for."/>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding ReviewHeadline}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                                       Visibility="{Binding HasReview, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                            <TextBlock Text="{Binding ReviewStatus}" TextWrapping="Wrap" FontSize="13"
+                                       Foreground="{StaticResource Text.Primary}"
+                                       Visibility="{Binding ShowReviewStatusLine, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,8">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -319,7 +349,7 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="1" Style="{StaticResource Card}">
+                <Border Grid.Row="2" Style="{StaticResource Card}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -395,7 +425,7 @@
                 </Border>
 
                 <!-- Drag onto the panel or Browse. Attachments are stored in the database. -->
-                <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,8,0,0"
+                <Border Grid.Row="3" Style="{StaticResource Card}" Margin="0,8,0,0"
                         AllowDrop="True" Drop="FilesPanel_Drop" DragOver="FilesPanel_DragOver"
                         Visibility="{Binding FilesEnabled, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                     <Grid>

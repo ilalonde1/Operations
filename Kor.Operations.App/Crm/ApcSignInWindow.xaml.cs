@@ -97,7 +97,11 @@ public partial class ApcSignInWindow : Window
             await _sessions.SaveSignInAsync(ApcPortal.PortalKey, session.Account, tokens.RefreshToken, tokens.RefreshExpiresUtc, _signedInBy, CancellationToken.None).ConfigureAwait(true);
             _saved = true;
             _poll.Stop();
-            Status.Text = $"Saved: {session.Account ?? "the APC account"}. The app now downloads the documents of pursued APC tenders, within about 10 minutes of a grab. You can close this window.";
+            // APC lands a fresh sign-in on whatever page it was asked for, which this account may not be allowed to see
+            // ("Unauthorized"); the home page reads as what it is, a successful sign-in.
+            Browser.CoreWebView2.Navigate(ApcPortal.SiteUrl);
+            // Signing out ends the session on APC's side, and with it the one the app saved; closing the window does not.
+            Status.Text = $"Saved: {session.Account ?? "the APC account"}. The app now downloads the documents of pursued APC tenders, within about 10 minutes of a grab. Close this window; don't sign out here, which would end the saved session too.";
         }
         catch (Exception ex)
         {

@@ -285,6 +285,8 @@ internal static class OpportunitiesModule
         services.AddSingleton<IPursuitRequirementStore>(_ => new SqlPursuitRequirementStore(options.OpportunitiesDb));
         // 2026-10-21: the APC session a person signs in to once (My Pursuits > More > Sign in to APC); the Worker keeps it alive.
         services.AddSingleton(_ => new Kor.Opportunities.Data.Portals.SqlPortalSessionStore(options.OpportunitiesDb));
+        // 2026-10-21: Claude's RFP review of a grabbed tender (migration 377), opened in Claude Code by RfpReviewLauncher.
+        services.AddSingleton(_ => new SqlPursuitReviewStore(options.OpportunitiesDb));
         services.AddSingleton<App.Brochures.BrochurePursuitLauncher>();
         services.AddSingleton<App.Crm.IPursuitFileStorage, App.Crm.DbPursuitFileStorage>();
         services.AddSingleton(_ => new App.Crm.LanPursuitFileStorage(
