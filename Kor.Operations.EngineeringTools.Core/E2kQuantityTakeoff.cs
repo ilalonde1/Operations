@@ -334,12 +334,16 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 "footings, pile caps, piles and grade beams are below the lowest modelled storey and are not in an ETABS superstructure model. Quantify them by hand."));
 
             // ---- one row per storey, element, variant and grade ------------------------------------
+            // In building order, lowest storey first: by name, L10..L19 stood between L1 and L2 (143 E 3rd, 2026-10-21).
+            var elevation = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            foreach (var s in doc.ReadStories()) elevation.TryAdd(s.Name, s.Elevation);
             var grouped = inputs
                 .GroupBy(r => (r.Level, r.Element, r.Variant, r.Grade))
                 .Select(g => new StructuralTakeoffInput(
                     g.Key.Level, g.Key.Element, g.Key.Variant,
                     g.Sum(x => x.ConcreteVolume), g.Sum(x => x.FormworkArea), g.Key.Grade))
-                .OrderBy(r => r.Level, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Element)
+                .OrderBy(r => elevation.TryGetValue(r.Level, out var z) ? z : double.MaxValue)
+                .ThenBy(r => r.Level, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Element)
                 .ToList();
 
             return new E2kTakeoffResult(grouped, residual, flags, read, openingDeducted, unit, unitNote)

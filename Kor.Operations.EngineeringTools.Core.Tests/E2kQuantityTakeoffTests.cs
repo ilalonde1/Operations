@@ -569,4 +569,38 @@ public sealed class E2kQuantityTakeoffTests
         // 100 + 100 + 10 = 210 ft³
         Assert.Equal(210.0 * Yd3PerFt3, result.Inputs.Sum(i => i.ConcreteVolume), 6);
     }
+
+    // ---------------------------------------------------------------------------------------
+    // The rows stand in building order, lowest storey first - never by name, where L10..L19 sort
+    // between L1 and L2 (the 143 E 3rd takeoff, 2026-10-21).
+    // ---------------------------------------------------------------------------------------
+
+    [Fact]
+    public void TheRowsStandInBuildingOrderNotByName()
+    {
+        string[] storeys = { "L10", "L2", "L1", "B1" };
+        var lines = new List<string>
+        {
+            "$ CONTROLS", "  UNITS  \"Kip\"  \"in\"", "",
+            "$ STORIES - IN SEQUENCE FROM TOP",
+        };
+        lines.AddRange(storeys.Select(s => $"  STORY \"{s}\"  HEIGHT 120"));
+        lines.AddRange(new[]
+        {
+            "  STORY \"Base\"  ELEV 0", "",
+            "$ SLAB PROPERTIES",
+            "  SHELLPROP  \"KOR-S12\"  PROPTYPE  \"Slab\"  MATERIAL \"30 MPa Floor\"  SLABTHICKNESS 12", "",
+            "$ POINT COORDINATES",
+            "  POINT \"P1\"  0 0 0", "  POINT \"P2\"  120 0 0", "  POINT \"P3\"  120 120 0", "  POINT \"P4\"  0 120 0", "",
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"F1\"  FLOOR  4  \"P1\"  \"P2\"  \"P3\"  \"P4\"  0  0  0  0", "",
+            "$ AREA ASSIGNS",
+        });
+        lines.AddRange(storeys.Select(s => $"  AREAASSIGN  \"F1\"  \"{s}\"  SECTION \"KOR-S12\""));
+        lines.AddRange(new[] { "", "$ END OF MODEL FILE" });
+
+        var result = E2kQuantityTakeoff.Read(E2kDocument.Parse(lines.ToArray()));
+
+        Assert.Equal(new[] { "B1", "L1", "L2", "L10" }, result.Inputs.Select(i => i.Level).ToArray());
+    }
 }
