@@ -17,8 +17,8 @@
 if ([string]::IsNullOrWhiteSpace($Sha)) { throw 'migrate-to-korops: the dispatcher did not provide $Sha (the package hash)' }
 $ErrorActionPreference = 'Stop'
 $Pkg      = '1.0.0.56'                                  # the add-in (.vsto) version this package carries
-$PkgGen   = 28                                          # package generation: drives V<N>.zip
-$AppVersion = '2026.10.21.1'                            # the app's FileVersion in this package (Kor.Operations.App/AssemblyInfo.cs; a test keeps them equal)
+$PkgGen   = 29                                          # package generation: drives V<N>.zip
+$AppVersion = '2026.10.22.1'                            # the app's FileVersion in this package (Kor.Operations.App/AssemblyInfo.cs; a test keeps them equal)
 $AddinGen = 26                                          # the package that last CHANGED the add-in: drives the Active Setup version, so an app-only
                                                         # release (V27) does not re-fire an add-in reinstall for every user at next sign-in
 $Guid     = '{6F2C1E0A-7B4D-4E8F-9C31-2A5B8D0E4F52}'   # Active Setup component id for the KOR email filer add-in

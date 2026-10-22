@@ -569,7 +569,7 @@ SELECT
     portal.Portal,
     (SELECT COUNT(*) FROM opportunities.OpportunityFiles f WHERE f.EngagementId = e.Id AND f.UploadedBy IN (N'apc', N'bids-and-tenders')),
     (SELECT MAX(f.UploadedAtUtc) FROM opportunities.OpportunityFiles f WHERE f.EngagementId = e.Id AND f.UploadedBy IN (N'apc', N'bids-and-tenders')),
-    fetch.FetchedAtUtc, fetch.Succeeded, fetch.Note,
+    lastFetch.FetchedAtUtc, lastFetch.Succeeded, lastFetch.Note,
     CASE WHEN portal.Portal = N'APC' THEN (SELECT s.LastError FROM opportunities.PortalSession s WHERE s.Portal = N'APC') END,
     run.Id, run.CreatedAtUtc, run.CreatedBy, run.OutcomeAtUtc,
     (SELECT COUNT(*) FROM opportunities.PursuitReview v WHERE v.EngagementId = e.Id)
@@ -580,7 +580,7 @@ OUTER APPLY (SELECT TOP (1) CASE WHEN x.Url LIKE N'https://purchasing.alberta.ca
                AND (x.Url LIKE N'https://purchasing.alberta.ca/posting/AB-%' OR x.Url LIKE N'%.bidsandtenders.ca/Module/Tenders/%/Tender/Detail/%')
              ORDER BY CASE WHEN x.Url LIKE N'%.bidsandtenders.ca/%' THEN 0 ELSE 1 END, x.IngestedAtUtc DESC) portal
 OUTER APPLY (SELECT TOP (1) d.FetchedAtUtc, d.Succeeded, d.Note FROM opportunities.PursuitDocumentFetch d
-             WHERE d.EngagementId = e.Id ORDER BY d.FetchedAtUtc DESC, d.Id DESC) fetch
+             WHERE d.EngagementId = e.Id ORDER BY d.FetchedAtUtc DESC, d.Id DESC) lastFetch
 OUTER APPLY (SELECT TOP (1) r.Id, r.CreatedAtUtc, r.CreatedBy, r.OutcomeAtUtc FROM opportunities.BdPromptRun r
              WHERE r.EngagementId = e.Id AND r.Kind = N'rfp' ORDER BY r.CreatedAtUtc DESC, r.Id DESC) run
 WHERE e.Id = @e;";

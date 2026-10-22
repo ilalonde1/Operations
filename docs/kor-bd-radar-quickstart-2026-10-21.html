@@ -1,0 +1,91 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Business Development Quick Start</title><style>
+  :root {
+    --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+    --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+    --accent:#FF5B35; --accent-ink:#C6360F;
+    --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --crit:#C0392B;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono:"Cascadia Code", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+      --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87;
+      --line:#29323B; --line-strong:#38434E; --slate:#7E97AC; --slate-deep:#C4D3DF;
+      --accent:#FF7150; --accent-ink:#FF9276; }
+  }
+  :root[data-theme="dark"] { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+    --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B; --line-strong:#38434E;
+    --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:10pt; line-height:1.35; -webkit-font-smoothing:antialiased; }
+  .page { max-width: 8.1in; margin: 0 auto; padding: 0 0 .2in; }
+  .top { background: linear-gradient(180deg,#2C3A47,#3F5364); color:#EAF0F5; border-bottom:2.5px solid var(--accent); padding: 12px 20px; }
+  .top h1 { margin:0; font-size:18pt; font-weight:700; color:#fff; }
+  .top .ey { font-family:var(--mono); font-size:7.5pt; letter-spacing:.2em; text-transform:uppercase; color:#FFB59F; }
+  .top p { margin:.15rem 0 0; font-size:9.5pt; color:#CBD8E2; }
+  .body { padding: 10px 20px 0; }
+  h2 { font-family:var(--mono); font-size:7.8pt; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-ink); margin: 8px 0 .3rem; font-weight:700; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:.45rem; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.45rem .65rem; }
+  .card p { margin:.15rem 0 0; font-size:8.8pt; color:var(--ink-soft); line-height:1.35; }
+  .card .lead { color:var(--ink); font-weight:650; font-size:9.3pt; margin:0; }
+  .steps { display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }
+  .step { background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:8px; padding:.4rem .6rem; }
+  .step .n { font-family:var(--mono); font-weight:700; color:var(--accent-ink); font-size:8pt; letter-spacing:.06em; }
+  .step p { margin:.1rem 0 0; font-size:8.8pt; color:var(--ink-soft); line-height:1.3; }
+  .step p b, .card p b { color:var(--ink); font-weight:600; }
+  .ui { font-family:var(--mono); font-size:8pt; background:var(--surface-2); border:1px solid var(--line-strong); border-radius:4px; padding:0 .3em; color:var(--ink); white-space:nowrap; }
+  .reply { font-family:var(--mono); font-size:8.4pt; background:var(--surface-2); border-radius:6px; padding:.35rem .55rem; margin:.3rem 0 0; color:var(--ink); line-height:1.5; }
+  .accent { border-left:3px solid var(--good); background: color-mix(in srgb, var(--good) 8%, var(--surface)); }
+  .new { border-left:3px solid var(--accent); }
+  .foot { padding: 8px 20px 0; font-size:7.5pt; color:var(--ink-faint); font-family:var(--mono); }
+  @page { size: Letter; margin: 10mm 11mm; }
+  @media print {
+    :root { --ground:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F3F1; --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A; }
+    body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .page { max-width:none; }
+    .card, .step { break-inside:avoid; }
+  }
+  @media (max-width: 640px) { .two, .steps { grid-template-columns:1fr; } .body { padding: 10px 16px 0; } }
+</style></head><body><div class='page'>
+<div class='top'><div class='ey'>KOR Structural · Business Development · 21 October 2026</div><h1>Business Development Quick Start</h1>
+<p>Find it. Grab it. Work it. Close it. Everything below is in the KOR Operations app.</p></div>
+<div class='body'>
+
+<h2>New in this version</h2>
+<div class='card new'><p><b>It opens on Today</b>: what needs you, your list with dates, and pursuits waiting for a next step.
+<b>One Grab button</b> for tenders and for projects years out. <b>The documents arrive by themselves</b>, and Claude's
+review of the RFP lands on the pursuit. <b>People by name</b> everywhere. <span class='ui'>My Pursuits</span> shows yours
+(turn off <span class='ui'>Mine</span> for everyone's), each marked <b>No RFP yet</b>, <b>Out for bid</b>, <b>Submitted</b>, <b>Won</b> or <b>Lost</b>.</p></div>
+
+<h2>Two kinds of opportunity</h2>
+<div class='two'>
+<div class='card'><p class='lead'>Early: a project years out, or a permit</p><p>A project announced, a rezoning or a permit, long before any tender. The structural engineer is usually not chosen yet. Find who is behind it and phone them.</p></div>
+<div class='card'><p class='lead'>A bid: somebody asking for prices</p><p>A tender with a deadline. The engineer is often chosen already, so decide quickly whether to bid.</p></div>
+</div>
+
+<h2>The steps</h2>
+<div class='steps'>
+<div class='step'><div class='n'>1 · OPEN IT</div><p>Home › <span class='ui'>Business Development</span>. It opens on <span class='ui'>Today</span>. Everything else is in the left menu; <span class='ui'>More ▾</span> holds the rest.</p></div>
+<div class='step'><div class='n'>2 · FIND IT</div><p><span class='ui'>Opportunities</span>: <b>Signals</b> (permits, rezonings) and <b>Bids</b> (tenders, structural work only). <span class='ui'>Future Projects</span>: projects years out, KOR's kind of work only.</p></div>
+<div class='step'><div class='n'>3 · GRAB IT</div><p>Select the row and press <span class='ui'>Grab</span>; the same button on Future Projects. It is now yours and moves to <span class='ui'>My Pursuits</span>. Ian sees what is grabbed and may hand one on; you get an email when one is given to you. Not for KOR? <span class='ui'>Not for us…</span></p></div>
+<div class='step'><div class='n'>4 · WHEN THE RFP POSTS</div><p>If you hold a future project and its tender is posted, the tender <b>joins your pursuit</b>, whoever pressed Grab. Today asks once: <span class='ui'>Yes, it's this project</span> or <span class='ui'>Not this project</span> (then it is theirs).</p></div>
+<div class='step'><div class='n'>5 · LOG IT, SET THE NEXT STEP</div><p>In <span class='ui'>Activity log</span> pick <b>Call</b>, <b>Meeting</b> or <b>Email out</b>, one line, <span class='ui'>Log</span>. Then <span class='ui'>Next step…</span>: what and by when. A future project with no next step and nothing done for 14 days goes back to the pool; the morning email warns you four days before.</p></div>
+<div class='step'><div class='n'>6 · DOCUMENTS AND THE REVIEW</div><p>For Bids&amp;Tenders and Alberta Purchasing tenders the bid documents appear in <span class='ui'>Files</span> minutes after you grab, and addenda daily until it closes. When Claude has read the RFP, <span class='ui'>Open review</span> shows bid or not and why, the questions for the buyer, and the checklist.</p></div>
+<div class='step'><div class='n'>7 · CHECK IT AND PUT A FEE ON IT</div><p>Write it as you do now; tick it off against <span class='ui'>More ▾</span> › <span class='ui'>Checklist…</span> (every RFP requirement). Put one rough number in <span class='ui'>Edit…</span> › <span class='ui'>Proposed fee</span>. <b>Coming:</b> one standard KOR proposal, built in the app.</p></div>
+<div class='step'><div class='n'>8 · SUBMIT, THEN WIN OR LOSE</div><p><span class='ui'>Set stage</span> › <span class='ui'>Submitted</span>, then <span class='ui'>Browse…</span> to the PDF you sent. When it is decided: <span class='ui'>Won</span> or <span class='ui'>Lost</span>, one line on why, and for a loss who won.</p></div>
+</div>
+
+<h2>Every week: Ian's to-do list</h2>
+<div class='card'><p>An email from Ian with a numbered list: who to call, what to send, by when. <b>Reply with one line per number</b>; a new date moves your next step, the same as <span class='ui'>Next step…</span>.</p>
+<div class='reply'>1. done &nbsp;&nbsp; 2. moved to Fri 30 Oct &nbsp;&nbsp; 3. dropped, went with RJC</div></div>
+
+<h2>Start here</h2>
+<div class='card accent'><p class='lead'>Open Today, then My Pursuits.</p><p>Log your last real contact on each pursuit, give every one a next step, and close out anything already won, lost or dead. Then grab one new project or signal in your region this week.</p></div>
+
+</div>
+</div></body></html>
