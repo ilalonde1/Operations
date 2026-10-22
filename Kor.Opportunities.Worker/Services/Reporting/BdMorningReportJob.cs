@@ -189,6 +189,13 @@ FROM opportunities.MajorProjectsInventory m
 WHERE m.OwnerStaffId IS NOT NULL
   AND m.RetiredAtUtc IS NULL
   AND m.OwnedAtUtc < DATEADD(DAY, -10, SYSDATETIMEOFFSET())
+  -- The reaper's rule, four days early: only a grab whose pursuit has gone quiet is warned about (MpiOwnershipReaperJob).
+  AND NOT EXISTS (SELECT 1
+                  FROM opportunities.CrmEngagementProjectLink l
+                  JOIN opportunities.CrmEngagements e ON e.Id = l.EngagementId
+                  WHERE l.MajorProjectsInventoryId = m.Id AND l.MatchedBy = N'Grab' AND e.Stage IN (1, 3)
+                    AND (e.OpportunityId IS NOT NULL OR e.NextActionDueUtc >= SYSDATETIMEOFFSET()
+                         OR e.UpdatedAtUtc >= DATEADD(DAY, -10, SYSDATETIMEOFFSET())))
 ORDER BY m.OwnedAtUtc ASC;", con) { CommandTimeout = 60 };
 
             await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -395,7 +402,7 @@ ORDER BY m.OwnedAtUtc ASC;", con) { CommandTimeout = 60 };
 
         if (ownedPlays.Count > 0)
         {
-            sb.Append("<h3>Plays you took, about to auto-release <span style=\"color:#666;font-weight:normal\">(released back to the pool at day 14)</span></h3>");
+            sb.Append("<h3>Projects you grabbed that have gone quiet <span style=\"color:#666;font-weight:normal\">(back to the pool after 14 days with no next step; set one to keep it)</span></h3>");
             sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
             foreach (var play in ownedPlays)
             {

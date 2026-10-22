@@ -24,9 +24,9 @@ public partial class PursuitBriefWindow : Window
     }
 
     // ---- Pursuit lifecycle (migration 284) — the weekly attack sheet's
-    // kor://mpi deep links land here, so Own it / Not for us live here too. ----
+    // kor://mpi deep links land here, so Grab / Not for us live here too. ----
 
-    private async void OwnPlay_Click(object sender, RoutedEventArgs e)
+    private async void GrabPlay_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.LoadedMpiId <= 0)
         {
@@ -35,18 +35,16 @@ public partial class PursuitBriefWindow : Window
 
         var actor = ResolveActor();
         var name = _vm.Brief?.Project.ProjectName ?? $"project #{_vm.LoadedMpiId}";
-        var confirm = MessageBox.Show(this,
-            $"Own “{name}” as {actor}?\n\nIt leaves the shared boards and the weekly attack sheet. Convert it to a pursuit within 14 days or it returns to the pool (your morning digest will warn you first).",
-            "Own this play", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-        if (confirm != MessageBoxResult.OK)
+        if (MessageBox.Show(this, Opportunities.MajorProjectsInventoryViewModel.GrabPrompt(name, actor), "Grab",
+                MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
         {
             return;
         }
 
         await RunLifecycleAsync(
-            store => store.OwnProjectAsync(_vm.LoadedMpiId, actor, System.Threading.CancellationToken.None),
-            $"Owned — “{name}” is yours now.",
-            "Someone already owns or removed this play — it has left the pool.").ConfigureAwait(true);
+            store => store.GrabProjectAsync(_vm.LoadedMpiId, actor, System.Threading.CancellationToken.None),
+            $"Grabbed: “{name}” is your pursuit now.",
+            "Someone already grabbed or removed this project. It has left the pool.").ConfigureAwait(true);
     }
 
     private async void DismissPlay_Click(object sender, RoutedEventArgs e)

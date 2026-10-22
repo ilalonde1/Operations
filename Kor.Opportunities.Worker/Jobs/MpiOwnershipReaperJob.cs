@@ -23,10 +23,10 @@ namespace Kor.Opportunities.Worker.Jobs;
 /// the shared audit stream (OpportunityAssignmentLog) with the previous
 /// owner, so admin can see exactly what came back and from whom.
 ///
-/// Deliberately age-based, not activity-based: MPI ownership has no
-/// engagement linkage yet (CrmEngagements carries no MPI FK), so "worked"
-/// cannot be detected honestly. When own→pursuit conversion lands, the guard
-/// should become "no conversion AND no activity".
+/// Since 21 Oct 2026 a grab opens the project's pursuit at once (CrmEngagementProjectLink, MatchedBy 'Grab'), so
+/// "worked" is detectable and the guard is activity, not age: a grab is released only when its pursuit has had no
+/// tender join it, has no next step still to come, and has not been touched for the window. The release archives that
+/// pursuit (stage 8, kept) in the same transaction. A grab from before then, with no pursuit, is released on age alone.
 /// </summary>
 [DisallowConcurrentExecution]
 public sealed class MpiOwnershipReaperJob : IJob
@@ -42,17 +42,35 @@ BEGIN TRANSACTION;
 
 DECLARE @reaped TABLE (Id bigint NOT NULL, PrevOwner nvarchar(300) NULL);
 
+DECLARE @cutoff datetimeoffset = DATEADD(DAY, -@days, SYSDATETIMEOFFSET());
+
 UPDATE m
    SET OwnerStaffId = NULL,
        OwnedAtUtc   = NULL
 OUTPUT deleted.Id, deleted.OwnerStaffId INTO @reaped (Id, PrevOwner)
 FROM opportunities.MajorProjectsInventory m
 WHERE m.OwnerStaffId IS NOT NULL
-  AND m.OwnedAtUtc < DATEADD(DAY, -@days, SYSDATETIMEOFFSET());
+  AND m.OwnedAtUtc < @cutoff
+  -- Its pursuit, if it has one, has gone quiet: no tender, no next step to come, untouched for the window.
+  AND NOT EXISTS (SELECT 1
+                  FROM opportunities.CrmEngagementProjectLink l
+                  JOIN opportunities.CrmEngagements e ON e.Id = l.EngagementId
+                  WHERE l.MajorProjectsInventoryId = m.Id AND l.MatchedBy = N'Grab' AND e.Stage IN (1, 3)
+                    AND (e.OpportunityId IS NOT NULL OR e.NextActionDueUtc >= SYSDATETIMEOFFSET() OR e.UpdatedAtUtc >= @cutoff));
+
+DECLARE @closed TABLE (Id bigint);
+UPDATE e
+   SET Stage = 8, ClosedAtUtc = SYSDATETIMEOFFSET(), UpdatedAtUtc = SYSDATETIMEOFFSET(), UpdatedBy = N'system:reaper'
+OUTPUT inserted.Id INTO @closed
+  FROM opportunities.CrmEngagements e
+  JOIN opportunities.CrmEngagementProjectLink l ON l.EngagementId = e.Id AND l.MatchedBy = N'Grab'
+  JOIN @reaped r ON r.Id = l.MajorProjectsInventoryId
+ WHERE e.Stage = 1 AND e.OpportunityId IS NULL;
+INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId) SELECT Id, 8, N'system:reaper' FROM @closed;
 
 INSERT INTO opportunities.OpportunityAssignmentLog (MpiId, Action, FromStaffId, ByStaffId, Reason)
 SELECT Id, N'MpiReap', PrevOwner, N'system:reaper',
-       N'Auto-released after ' + CAST(@days AS nvarchar(10)) + N' days without conversion to a pursuit'
+       N'Auto-released after ' + CAST(@days AS nvarchar(10)) + N' days with no next step and nothing done'
 FROM @reaped;
 
 COMMIT TRANSACTION;

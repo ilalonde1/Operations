@@ -170,7 +170,7 @@ public partial class MajorProjectsInventoryView : UserControl
 
     // ---- Pursuit lifecycle (migration 284) ----------------------------------
 
-    private async void OwnProject_Click(object sender, RoutedEventArgs e)
+    private async void GrabProject_Click(object sender, RoutedEventArgs e)
     {
         var row = _vm.Selected;
         if (row is null)
@@ -179,18 +179,13 @@ public partial class MajorProjectsInventoryView : UserControl
         }
 
         var actor = ResolveActor();
-        var confirm = MessageBox.Show(
-            Window.GetWindow(this),
-            $"Own “{row.ProjectName}” as {actor}?\n\nIt leaves the shared boards and the weekly attack sheet. Convert it to a pursuit within 14 days or it returns to the pool (your morning digest will warn you first).",
-            "Own this play",
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Question);
-        if (confirm != MessageBoxResult.OK)
+        if (MessageBox.Show(Window.GetWindow(this), MajorProjectsInventoryViewModel.GrabPrompt(row.ProjectName, actor), "Grab",
+                MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
         {
             return;
         }
 
-        await _vm.OwnSelectedAsync(actor, CancellationToken.None).ConfigureAwait(true);
+        await _vm.GrabSelectedAsync(actor, CancellationToken.None).ConfigureAwait(true);
     }
 
     private async void DismissProject_Click(object sender, RoutedEventArgs e)

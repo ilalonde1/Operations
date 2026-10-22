@@ -20,7 +20,7 @@ public enum LifecycleOutcome
 
 /// <summary>
 /// Human lifecycle transitions for prime-target projects (MajorProjectsInventory)
-/// and tenders (Opportunities): own / release / dismiss ("not for us") / restore.
+/// and tenders (Opportunities): grab / release / dismiss ("not for us") / restore.
 /// Every transition is a single guarded transaction that also writes the shared
 /// audit stream (OpportunityAssignmentLog, MpiId column from migration 284) —
 /// the WHERE guard makes concurrent actions race-safe, mirroring
@@ -30,11 +30,11 @@ public enum LifecycleOutcome
 /// </summary>
 public interface IPursuitLifecycleStore
 {
-    /// <summary>Claims an un-owned, un-dismissed, live project. Owned rows leave
+    /// <summary>Grabs an un-owned, un-dismissed, live project and opens its pursuit (no tender yet). Grabbed rows leave
     /// vw_ActionableProjects (boards + weekly sheet) and enter the owner's digest.</summary>
-    Task<LifecycleOutcome> OwnProjectAsync(long mpiId, string staffUpn, CancellationToken ct);
+    Task<LifecycleOutcome> GrabProjectAsync(long mpiId, string staffUpn, CancellationToken ct);
 
-    /// <summary>Releases ownership back to the shared pool (owner or admin).</summary>
+    /// <summary>Releases ownership back to the shared pool (owner or admin) and archives the pursuit the grab opened.</summary>
     Task<LifecycleOutcome> ReleaseProjectAsync(long mpiId, string staffUpn, CancellationToken ct);
 
     /// <summary>Marks a project "not for us" with a reason. Also clears ownership
@@ -56,9 +56,14 @@ public sealed class SqlPursuitLifecycleStore : IPursuitLifecycleStore
 {
     private const int CommandTimeoutSeconds = 30;
 
-    // Action literals in OpportunityAssignmentLog. Existing vocabulary is
-    // 'Grab' (SqlPursuitGrabStore); these extend it for the lifecycle verbs.
-    private const string OwnSql = @"
+    // Action literals in OpportunityAssignmentLog: 'Grab' is the one verb for taking work, a tender
+    // (SqlPursuitGrabStore) or a forward project (here); the rest are the lifecycle verbs.
+    //
+    // Grabbing a forward project opens a pursuit for it at once (Ian, 21 Oct 2026: one kind of pursuit, so the
+    // Director sees forward work beside tenders): a Drafting engagement with no tender yet, linked to the project
+    // (CrmEngagementProjectLink, MatchedBy 'Grab'). When the RFP posts, the tender joins this pursuit
+    // (SqlPursuitGrabStore.JoinAsync). Region stays NULL so the one-relationship-per-buyer index does not apply.
+    private const string GrabSql = @"
 SET XACT_ABORT ON;
 SET NOCOUNT ON;
 BEGIN TRANSACTION;
@@ -78,11 +83,41 @@ BEGIN
 END
 ELSE
 BEGIN
-    INSERT INTO opportunities.OpportunityAssignmentLog (MpiId, Action, ToStaffId, ByStaffId, Reason)
-    VALUES (@id, N'MpiOwn', @me, @me, N'Owned from the board');
+    DECLARE @eng TABLE (Id bigint);
+    INSERT INTO opportunities.CrmEngagements
+        (OpportunityId, Stage, OwnerStaffId, BuyerCanonicalOrgId, PotentialProjects, ExternalSource, ExternalSourceKey, CreatedBy, UpdatedBy)
+    OUTPUT inserted.Id INTO @eng
+    SELECT NULL, 1, @me, m.ProponentCanonicalOrgId, m.ProjectName, N'Grab.Forward',
+           N'MPI.' + CAST(m.Id AS nvarchar(20)) + N'.' + FORMAT(SYSUTCDATETIME(), N'yyyyMMddHHmmssfff'), @me, @me
+    FROM opportunities.MajorProjectsInventory m
+    WHERE m.Id = @id;
+    DECLARE @newEng bigint = (SELECT TOP 1 Id FROM @eng);
+
+    INSERT INTO opportunities.CrmEngagementProjectLink (EngagementId, MajorProjectsInventoryId, Confidence, MatchedText, MatchedBy)
+    SELECT @newEng, @id, 100, LEFT(m.ProjectName, 500), N'Grab' FROM opportunities.MajorProjectsInventory m WHERE m.Id = @id;
+
+    INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId) VALUES (@newEng, 1, @me);
+
+    INSERT INTO opportunities.OpportunityAssignmentLog (MpiId, EngagementId, Action, ToStaffId, ByStaffId, Reason)
+    VALUES (@id, @newEng, N'Grab', @me, @me, N'Grabbed a forward project');
     COMMIT TRANSACTION;
     SELECT CAST(1 AS int);
 END";
+
+    // Letting a forward project go archives the pursuit its grab opened (stage 8: kept, out of every live count),
+    // unless a tender has joined it, in which case it is a tender pursuit now and carries on.
+    private const string CloseForwardPursuitSql = @"
+    DECLARE @closed TABLE (Id bigint);
+    UPDATE e
+       SET Stage = 8, ClosedAtUtc = SYSDATETIMEOFFSET(), UpdatedAtUtc = SYSDATETIMEOFFSET(), UpdatedBy = @me
+    OUTPUT inserted.Id INTO @closed
+      FROM opportunities.CrmEngagements e
+      JOIN opportunities.CrmEngagementProjectLink l ON l.EngagementId = e.Id AND l.MatchedBy = N'Grab'
+     WHERE l.MajorProjectsInventoryId = @id
+       AND e.Stage = 1
+       AND e.OpportunityId IS NULL;
+    INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId) SELECT Id, 8, @me FROM @closed;
+";
 
     private const string ReleaseSql = @"
 SET XACT_ABORT ON;
@@ -105,6 +140,7 @@ BEGIN
 END
 ELSE
 BEGIN
+" + CloseForwardPursuitSql + @"
     INSERT INTO opportunities.OpportunityAssignmentLog (MpiId, Action, FromStaffId, ByStaffId, Reason)
     VALUES (@id, N'MpiRelease', @prev, @me, N'Released back to the pool');
     COMMIT TRANSACTION;
@@ -136,6 +172,7 @@ BEGIN
 END
 ELSE
 BEGIN
+" + CloseForwardPursuitSql + @"
     INSERT INTO opportunities.OpportunityAssignmentLog (MpiId, Action, FromStaffId, ByStaffId, Reason)
     VALUES (@id, N'MpiDismiss', @prev, @me, @reason);
     COMMIT TRANSACTION;
@@ -238,8 +275,8 @@ END";
         _connectionString = connectionString;
     }
 
-    public Task<LifecycleOutcome> OwnProjectAsync(long mpiId, string staffUpn, CancellationToken ct)
-        => ExecuteAsync(OwnSql, mpiId, staffUpn, reason: null, ct);
+    public Task<LifecycleOutcome> GrabProjectAsync(long mpiId, string staffUpn, CancellationToken ct)
+        => ExecuteAsync(GrabSql, mpiId, staffUpn, reason: null, ct);
 
     public Task<LifecycleOutcome> ReleaseProjectAsync(long mpiId, string staffUpn, CancellationToken ct)
         => ExecuteAsync(ReleaseSql, mpiId, staffUpn, reason: null, ct);

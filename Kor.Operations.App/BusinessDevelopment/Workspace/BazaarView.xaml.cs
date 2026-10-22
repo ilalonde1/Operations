@@ -100,6 +100,12 @@ public partial class BazaarView : UserControl
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
+            else if (result.JoinedOwner is { } owner)
+            {
+                MessageBox.Show(Window.GetWindow(this),
+                    $"“{row.Name}” is the RFP for {result.JoinedProject}, which {owner} is already pursuing.\n\nIt has joined that pursuit, so it stays with {owner}. Its documents are being fetched and Claude reviews them when they arrive.",
+                    "Already being pursued", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
             else if (result.Outcome == GrabOutcome.Grabbed && result.EngagementId > 0
                      && Window.GetWindow(this) is BdWorkspaceWindow workspace)
             {

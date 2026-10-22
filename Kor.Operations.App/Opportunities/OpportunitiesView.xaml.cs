@@ -328,7 +328,7 @@ public partial class OpportunitiesView : UserControl
     /// don't duplicate it. Routes to CrmView via the workspace (fix F6 — the
     /// old CrmWindow twin lacked proposal linkage and the audited actor chain).
     /// </summary>
-    private async void PromoteToPursuitButton_Click(object sender, RoutedEventArgs e)
+    private async void GrabButton_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.Selected is null)
         {
@@ -342,7 +342,7 @@ public partial class OpportunitiesView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(OwnerWindow(), ex.Message, "Opportunities — Promote To Pursuit Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(OwnerWindow(), ex.Message, "Grab failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

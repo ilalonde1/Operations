@@ -28,19 +28,19 @@ public sealed class BdWriteBoundaryRegressionTests
     // Brief 5 / BD-A01: covers both actual SQL constants and the caller's refusal
     // branch. Does not execute SQL or WPF; a trigger undoing ownership would escape.
     [Fact]
-    public void ClaimAndGrab_UseTheSameEligibilityTransaction()
+    public void GrabAndJoin_UseTheSameEligibilityGuard()
     {
         string Sql(string name) => (string)typeof(SqlPursuitGrabStore)
             .GetField(name, BindingFlags.NonPublic | BindingFlags.Static)!.GetRawConstantValue()!;
-        var grab = Sql("GrabSql");
-        var claim = Sql("ClaimOwnedSql");
-        Assert.True(claim == grab,
-            "EXPECTED claim to execute the same guarded transaction as grab; ACTUAL SQL differs");
-        var guard = Between(claim, " WHERE Id = @id", "IF @@ROWCOUNT");
-        foreach (var predicate in new[] { "AND Status = 1", "AND OwnerStaffId IS NULL", "AND DismissedAtUtc IS NULL" })
-            Assert.True(guard.Contains(predicate, StringComparison.Ordinal),
-                $"EXPECTED {predicate} before engagement creation; ACTUAL:\n{guard}");
-        Assert.Contains("ROLLBACK TRANSACTION", Between(claim, "IF @@ROWCOUNT = 0", "ELSE"));
+        foreach (var name in new[] { "GrabSql", "JoinSql" })
+        {
+            var sql = Sql(name);
+            var guard = Between(sql, " WHERE Id = @id", "IF @@ROWCOUNT");
+            foreach (var predicate in new[] { "AND Status = 1", "AND OwnerStaffId IS NULL", "AND DismissedAtUtc IS NULL" })
+                Assert.True(guard.Contains(predicate, StringComparison.Ordinal),
+                    $"EXPECTED {name} to hold {predicate} before touching a pursuit; ACTUAL:\n{guard}");
+            Assert.Contains("ROLLBACK TRANSACTION", Between(sql, "IF @@ROWCOUNT = 0", "ELSE"));
+        }
     }
 
     [Fact]

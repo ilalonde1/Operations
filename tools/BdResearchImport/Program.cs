@@ -6813,7 +6813,7 @@ WHERE  Province IS NOT NULL
                     list = new List<(long, string, HashSet<string>)>();
                     mpiByProvince[prov] = list;
                 }
-                list.Add((id, name, TokenizeName(name)));
+                list.Add((id, name, ProjectNameMatch.Tokens(name)));
             }
         }
         Console.WriteLine($"[BD-CROSSLINK] loaded MPI by province: {string.Join(", ", mpiByProvince.Select(kv => $"{kv.Key}={kv.Value.Count}"))}");
@@ -6833,7 +6833,7 @@ WHERE  Province IS NOT NULL
 
             foreach (var phrase in SplitPotentialProjectsPhrases(eng.Text))
             {
-                var phraseTokens = TokenizeName(phrase);
+                var phraseTokens = ProjectNameMatch.Tokens(phrase);
                 if (phraseTokens.Count == 0) continue;
 
                 double bestScore = 0;
@@ -6841,7 +6841,7 @@ WHERE  Province IS NOT NULL
                 string bestName = "";
                 foreach (var (mpiId, mpiName, mpiTokens) in candidates)
                 {
-                    var score = ScoreMatch(phrase, phraseTokens, mpiName, mpiTokens);
+                    var score = ProjectNameMatch.Score(phrase, phraseTokens, mpiName, mpiTokens);
                     if (score > bestScore)
                     {
                         bestScore = score;
@@ -6923,64 +6923,6 @@ END;";
         {
             Console.WriteLine($"[WARN] Could not write BD cross-link reports to {outDir}: {ex.GetType().Name}: {ex.Message}");
         }
-    }
-
-    private static readonly HashSet<string> Stopwords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "a","an","the","of","and","or","for","to","in","at","on","by","with","from",
-        "new","existing","project","building","centre","center","place"
-    };
-
-    private static HashSet<string> TokenizeName(string name)
-    {
-        var tokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var sb = new System.Text.StringBuilder();
-        foreach (var ch in name.ToLowerInvariant())
-        {
-            if (char.IsLetterOrDigit(ch))
-            {
-                sb.Append(ch);
-            }
-            else
-            {
-                if (sb.Length > 0)
-                {
-                    var tok = sb.ToString();
-                    if (tok.Length >= 3 && !Stopwords.Contains(tok)) tokens.Add(tok);
-                    sb.Clear();
-                }
-            }
-        }
-        if (sb.Length > 0)
-        {
-            var tok = sb.ToString();
-            if (tok.Length >= 3 && !Stopwords.Contains(tok)) tokens.Add(tok);
-        }
-        return tokens;
-    }
-
-    private static double ScoreMatch(string phrase, HashSet<string> phraseTokens, string name, HashSet<string> nameTokens)
-    {
-        if (phraseTokens.Count == 0 || nameTokens.Count == 0) return 0;
-
-        // Substring containment bonus: if the entire phrase (no whitespace) appears
-        // inside the name (or vice-versa), boost. Minimum length is 12 chars to
-        // avoid generic single-word matches like "surrey" / "towers" firing on
-        // any MPI project that happens to contain those words.
-        var phraseFlat = string.Concat(phrase.Where(char.IsLetterOrDigit)).ToLowerInvariant();
-        var nameFlat = string.Concat(name.Where(char.IsLetterOrDigit)).ToLowerInvariant();
-        if (phraseFlat.Length >= 12 && (nameFlat.Contains(phraseFlat) || phraseFlat.Contains(nameFlat)))
-        {
-            return 1.0;
-        }
-
-        // Jaccard on the token sets — but require at least 2 significant tokens
-        // in common for the match to count (single-token "tower" / "school" /
-        // "centre" Jaccard hits otherwise dominate).
-        var intersect = phraseTokens.Intersect(nameTokens).Count();
-        if (intersect < 2) return 0;
-        var union = phraseTokens.Union(nameTokens).Count();
-        return union == 0 ? 0 : (double)intersect / union;
     }
 
     private static IEnumerable<string> SplitPotentialProjectsPhrases(string text)

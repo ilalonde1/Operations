@@ -35,7 +35,11 @@ public sealed record PursuitReviewRow(long Id, long EngagementId, long? PromptRu
 public sealed record TenderBoardRow(long EngagementId, string Project, string? Buyer, int Stage, string? OwnerMailbox, string? OwnerName,
     DateTimeOffset? DeadlineUtc, string? NextStep, DateTimeOffset? NextStepDueUtc, string? Recommendation, string? Reasons,
     IReadOnlyList<RfpQuestion> Questions, string? QuestionsDeadline, IReadOnlyList<RfpAction> Actions, string? QuestionsTo,
-    bool ReviewRunning, long? OpportunityId, DateTimeOffset? UpdatedAtUtc);
+    bool ReviewRunning, long? OpportunityId, DateTimeOffset? UpdatedAtUtc)
+{
+    /// <summary>A grabbed forward project with no tender yet: no RFP to read, no deadline.</summary>
+    public bool IsForward => OpportunityId is null;
+}
 
 /// <summary>A pursuit's file, as the review prompt lists it.</summary>
 public sealed record RfpReviewFile(long Id, string FileName, long SizeBytes, string UploadedBy, DateTimeOffset UploadedAtUtc);
@@ -523,17 +527,23 @@ SELECT Id, FileName, SizeBytes, UploadedBy, UploadedAtUtc FROM opportunities.Opp
     /// a week ago on, or a review; each with its owner's name and its latest review. One read, on window load and Refresh.
     /// </summary>
     internal const string BoardSql = @"
-SELECT e.Id, o.Name, o.BuyerName, e.Stage, e.OwnerStaffId, who.DisplayName, o.SubmissionDeadlineUtc, e.NextActionNote, e.NextActionDueUtc,
+SELECT e.Id, COALESCE(o.Name, fwd.ProjectName), COALESCE(o.BuyerName, fwd.ProponentName, fwd.MunicipalityName), e.Stage, e.OwnerStaffId, who.DisplayName,
+       o.SubmissionDeadlineUtc, e.NextActionNote, e.NextActionDueUtc,
        r.Recommendation, r.Reasons, r.QuestionsJson, r.QuestionsDeadline, r.ActionsJson, r.QuestionsTo,
        CAST(CASE WHEN run.Id IS NOT NULL AND run.OutcomeAtUtc IS NULL THEN 1 ELSE 0 END AS bit), e.OpportunityId, e.UpdatedAtUtc
 FROM opportunities.CrmEngagements e
-JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+-- A forward pursuit (a grabbed project, no tender yet) shows under its project's name.
+OUTER APPLY (SELECT TOP (1) m.ProjectName, m.ProponentName, m.MunicipalityName
+             FROM opportunities.CrmEngagementProjectLink l JOIN opportunities.MajorProjectsInventory m ON m.Id = l.MajorProjectsInventoryId
+             WHERE l.EngagementId = e.Id AND l.MatchedBy = N'Grab') fwd
 OUTER APPLY (SELECT TOP (1) s.DisplayName FROM opportunities.BdStaff s WHERE s.Mailbox = e.OwnerStaffId COLLATE DATABASE_DEFAULT) who
 OUTER APPLY (SELECT TOP (1) v.Recommendation, v.Reasons, v.QuestionsJson, v.QuestionsDeadline, v.ActionsJson, v.QuestionsTo
              FROM opportunities.PursuitReview v WHERE v.EngagementId = e.Id ORDER BY v.ReportedAtUtc DESC, v.Id DESC) r
 OUTER APPLY (SELECT TOP (1) x.Id, x.OutcomeAtUtc FROM opportunities.BdPromptRun x WHERE x.EngagementId = e.Id AND x.Kind = N'rfp' ORDER BY x.Id DESC) run
 WHERE e.Stage IN (1, 3)
-  AND (r.Recommendation IS NOT NULL OR o.SubmissionDeadlineUtc >= DATEADD(day, -7, SYSDATETIMEOFFSET()))
+  AND (o.Id IS NOT NULL AND (r.Recommendation IS NOT NULL OR o.SubmissionDeadlineUtc >= DATEADD(day, -7, SYSDATETIMEOFFSET()))
+       OR o.Id IS NULL AND e.Stage = 1 AND fwd.ProjectName IS NOT NULL)
 ORDER BY COALESCE(o.SubmissionDeadlineUtc, '9999-12-31'), e.Id;";
 
     public async Task<IReadOnlyList<TenderBoardRow>> ListBoardAsync(CancellationToken ct)

@@ -70,6 +70,7 @@ public partial class CrmView : UserControl
 
     private readonly System.Windows.Threading.DispatcherTimer _reviewPoll = new() { Interval = TimeSpan.FromMinutes(1) };
 
+    // async-void OK: the launcher's "review opened" callback (an event in all but name); it only refreshes the strip.
     private async void OnReviewOpened(long engagementId, string project)
     {
         _vm.SetStatusMessage($"Claude is reading the RFP for #{engagementId} {project} in Claude Code (KOR account); the review appears on the pursuit when it reports.");

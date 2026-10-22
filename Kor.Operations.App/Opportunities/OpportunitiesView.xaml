@@ -40,15 +40,15 @@
             <StackPanel.Resources>
                 <Style TargetType="Button" BasedOn="{StaticResource Button.ActionBar}"/>
             </StackPanel.Resources>
-            <!-- U2: one clear primary (Start Pursuit); New/Edit inline; the power
+            <!-- U2: one clear primary (Grab); New/Edit inline; the power
                  and ops actions live under "More" so this isn't a 10-button wall. -->
             <Button Content="Refresh"  Width="100" Click="RefreshButton_Click"/>
-            <Button x:Name="PromoteToPursuitButton"
-                    Content="Start Pursuit"
+            <Button x:Name="GrabButton"
+                    Content="Grab"
                     Width="130"
                     Style="{StaticResource Button.ActionBarPrimary}"
-                    Click="PromoteToPursuitButton_Click"
-                    ToolTip="Create a pursuit from the selected opportunity, or open the existing one."/>
+                    Click="GrabButton_Click"
+                    ToolTip="Grab the selected tender: it becomes your pursuit. If it is already a pursuit, this opens it."/>
 
             <Button x:Name="GenerateBriefButton"
                     Content="Brief"
@@ -79,7 +79,7 @@
             </Button>
 
             <!-- 2026-10-20 "cleaner UI": record-keeping and ingestion tools sit behind More > Show admin tools, so a
-                 regional lead sees Refresh, Start Pursuit, Brief and More only. -->
+                 regional lead sees Refresh, Grab, Brief and More only. -->
             <StackPanel x:Name="AdminActions" Orientation="Horizontal" Visibility="Collapsed">
             <Button Content="New"      Width="90"  Click="NewButton_Click"/>
             <Button Content="Edit…"    Width="80"  Click="EditButton_Click"/>
@@ -384,8 +384,8 @@
                         <Border Background="#F4F8FB" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="3"
                                 Padding="10" Margin="0,4,0,0"
                                 Visibility="{Binding NoEngagement, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-                            <!-- The button above is labelled "Start Pursuit", not "Promote to Pursuit". -->
-                            <TextBlock Text="Not yet a Pursuit. Click 'Start Pursuit' above to start tracking activity, contacts, and proposal work."
+                            <!-- The button above is labelled "Grab": one verb for taking work, everywhere. -->
+                            <TextBlock Text="Not yet a Pursuit. Click Grab above to make it your pursuit and track activity, contacts and proposal work."
                                        TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
                         </Border>
 

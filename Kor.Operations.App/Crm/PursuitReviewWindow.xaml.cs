@@ -92,13 +92,13 @@ public partial class PursuitReviewWindow : Window
         reasons.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(l => l.TrimStart('-', '•', '*', ' ')).Where(l => l.Length > 0).ToList();
 
-    private void DraftEmail_Click(object sender, RoutedEventArgs e) => DraftQuestions(this, _review, _project, _sendTo);
+    private async void DraftEmail_Click(object sender, RoutedEventArgs e) => await DraftQuestionsAsync(this, _review, _project, _sendTo).ConfigureAwait(true);
 
     /// <summary>
     /// The review's questions as an email to the buyer, opened UNSENT in the person's Outlook (questions to a buyer are Ian's to
     /// send). Shared by this window and BD Director's "Draft questions" card button.
     /// </summary>
-    internal static async void DraftQuestions(Window owner, PursuitReviewRow review, string project, string? sendTo)
+    internal static async Task DraftQuestionsAsync(Window owner, PursuitReviewRow review, string project, string? sendTo)
     {
         var body = new StringBuilder();
         body.AppendLine("Hello,");

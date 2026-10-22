@@ -26,8 +26,30 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
     public ObservableCollection<DirectorCard> Decisions { get; } = new();
     public ObservableCollection<DirectorWeekItem> Week { get; } = new();
     public ObservableCollection<DirectorListItem> MyList { get; } = new();
+    public ObservableCollection<DirectorCard> Forward { get; } = new();
     public ObservableCollection<DirectorCard> Deciding { get; } = new();
     public ObservableCollection<DirectorCard> Submitted { get; } = new();
+
+    /// <summary>What the team grabbed that the manager has not kept or redirected yet (Director only).</summary>
+    public ObservableCollection<DirectorGrab> NewGrabs { get; } = new();
+    public bool HasNewGrabs => NewGrabs.Count > 0;
+    public string NewGrabsHeader => $"NEW GRABS  ·  {NewGrabs.Count}";
+
+    /// <summary>Fills "New grabs", newest first, each with the verdict its board card carries.</summary>
+    public void LoadGrabs(IEnumerable<RecentGrab> grabs)
+    {
+        NewGrabs.Clear();
+        foreach (var g in grabs)
+            NewGrabs.Add(new DirectorGrab(g, Deciding.Concat(Forward).Concat(Submitted).FirstOrDefault(c => c.Row.EngagementId == g.EngagementId), _now));
+        Changed(nameof(HasNewGrabs)); Changed(nameof(NewGrabsHeader));
+    }
+
+    /// <summary>A grab kept or given away leaves the list in place.</summary>
+    public void RemoveGrab(DirectorGrab grab)
+    {
+        NewGrabs.Remove(grab);
+        Changed(nameof(HasNewGrabs)); Changed(nameof(NewGrabsHeader));
+    }
     public ObservableCollection<DirectorTeamCard> Team { get; } = new();
 
     public string Greeting { get; private set; } = "";
@@ -36,10 +58,12 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
     public string TeamSubtitle { get; private set; } = "";
     public DirectorTeamCard? Nudge { get; private set; }
     public bool HasNudge => Nudge is not null;
-    public bool HasDecisions => Decisions.Count > 0;
+    public bool NoDecisions => Decisions.Count == 0;
+    public string ListHeader { get; private set; } = "YOUR LIST";
+    /// <summary>"6 late": the list's overdue count, beside its header.</summary>
+    public string ListLate { get; private set; } = "";
+    public bool HasListLate => ListLate.Length > 0;
     public bool HasWeek => Week.Count > 0;
-    public bool HasMyList => MyList.Count > 0;
-    public bool WeekEmpty => Week.Count == 0;
 
     /// <summary>The lead's own live pursuits with no next step or an overdue one (BD Workspace Today): the team's biggest gap.</summary>
     public ObservableCollection<DirectorFollowUp> FollowUps { get; } = new();
@@ -61,11 +85,12 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
     public void RemoveFromList(DirectorListItem item)
     {
         MyList.Remove(item);
-        Changed(nameof(HasMyList)); Changed(nameof(ListEmpty));
+        Changed(nameof(ListEmpty));
     }
     public int DecisionCount => Decisions.Count;
-    public string DecidingHeader => $"Deciding  {Deciding.Count}";
-    public string SubmittedHeader => $"Submitted  {Submitted.Count}";
+    public string ForwardHeader => $"NO RFP YET  ·  {Forward.Count}";
+    public string DecidingHeader => $"OUT FOR BID  ·  {Deciding.Count}";
+    public string SubmittedHeader => $"SUBMITTED  ·  {Submitted.Count}";
 
     private string _hourTitle = "";
     private string _hourProgress = "";
@@ -90,7 +115,7 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
         set
         {
             _selected = value;
-            foreach (var c in Deciding.Concat(Submitted)) c.IsSelected = ReferenceEquals(c, value);
+            foreach (var c in Forward.Concat(Deciding).Concat(Submitted)) c.IsSelected = ReferenceEquals(c, value);
             Changed(); Changed(nameof(HasSelected));
             ReassignTo = null;
         }
@@ -158,9 +183,9 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
         Week.Clear();
         var horizon = now.AddDays(21);
         var items = new List<DirectorWeekItem>();
-        foreach (var r in board.Where(r => r.Stage == 1))
+        foreach (var r in board.Where(r => r.Stage == 1 && !r.IsForward))
         {
-            var name = ShortBuyer(r.Buyer) is { Length: > 0 } b ? b : Short(r.Project);
+            var name = JobName(r.Project);
             if (r.DeadlineUtc is { } d && d >= now && d <= horizon)
                 items.Add(new DirectorWeekItem(d, $"{name} closes", r.Recommendation is null ? Owner(r) : $"{Verdict(r.Recommendation)} · {Owner(r)}", DeadlineTag(d, now), d.ToLocalTime().TimeOfDay.TotalMinutes > 0));
             // The actor's own actions are on "Your list"; here are the dates and what others owe.
@@ -174,12 +199,18 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
         foreach (var w in items.OrderBy(i => i.When).Take(8)) Week.Add(w);
 
         MyList.Clear();
-        foreach (var a in myAsks.OrderBy(a => a.DueUtc).Take(8))
+        foreach (var a in myAsks.OrderBy(a => a.DueUtc).Take(10))
         {
             var pursuit = board.FirstOrDefault(r => r.EngagementId == a.EngagementId);
-            MyList.Add(new DirectorListItem(a.Id, a.Ask, $"by {a.DueUtc.ToLocalTime():ddd d MMM}" + (pursuit is null ? "" : $" · {(ShortBuyer(pursuit.Buyer) is { Length: > 0 } b ? b : Short(pursuit.Project))}"),
-                a.DueUtc < now ? Palette.Red : Palette.Muted));
+            var late = (local.Date - a.DueUtc.ToLocalTime().Date).Days;
+            var when = late > 0 ? $"{late} day{(late == 1 ? "" : "s")} late · was due {a.DueUtc.ToLocalTime():ddd d MMM}"
+                : late == 0 ? "due today" : $"by {a.DueUtc.ToLocalTime():ddd d MMM}";
+            MyList.Add(new DirectorListItem(a.Id, a.Ask, when + (pursuit is null ? "" : $" · {JobName(pursuit.Project)}"),
+                late > 0 ? Palette.Red : Palette.Muted));
         }
+        var lateAsks = myAsks.Count(a => a.DueUtc.ToLocalTime().Date < local.Date);
+        ListHeader = myAsks.Count > MyList.Count ? $"YOUR LIST  ·  {MyList.Count} of {myAsks.Count}" : "YOUR LIST";
+        ListLate = lateAsks > 0 ? $"{lateAsks} late" : "";
 
         People.Clear();
         foreach (var p in roster.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)) People.Add(p);
@@ -203,30 +234,35 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
         var closing = board.Count(r => r.Stage == 1 && r.DeadlineUtc is { } d && d >= now && d <= now.AddDays(7));
         Subtitle = $"{local:dddd d MMMM}"
             + (ownOnly
-                ? (Decisions.Count > 0 ? $" · {Decisions.Count} of your tenders {(Decisions.Count == 1 ? "has" : "have")} Claude's read" : "")
-                  + (MyList.Count > 0 ? $" · {MyList.Count} thing{(MyList.Count == 1 ? "" : "s")} on your list" : "")
+                ? (Decisions.Count > 0 ? $" · {Decisions.Count} tender{(Decisions.Count == 1 ? "" : "s")} to decide" : " · no tender waiting on you")
+                  + (lateAsks > 0 ? $" · {lateAsks} late on your list" : "")
                 : decisions > 0 ? $" · {decisions} decision{(decisions == 1 ? "" : "s")} {(decisions == 1 ? "is" : "are")} yours" : " · nothing waiting on your call")
             + (closing > 0 ? $" · {closing} closing this week" : "");
         TeamSubtitle = live == 0 ? "Who is carrying what, and where a hand would help."
             : $"{live} live pursuits · {undated} without a next step · {overdue} overdue. The biggest gap is next steps that were never written down.";
         FillBoard();
         foreach (var name in new[] { nameof(Greeting), nameof(Subtitle), nameof(TeamSubtitle), nameof(Nudge), nameof(HasNudge),
-                     nameof(HasDecisions), nameof(HasWeek), nameof(HasMyList), nameof(DecisionCount), nameof(WeekEmpty), nameof(ListEmpty) })
+                     nameof(HasWeek), nameof(DecisionCount), nameof(ListEmpty),
+                     nameof(NoDecisions), nameof(ListHeader), nameof(ListLate), nameof(HasListLate) })
             Changed(name);
     }
 
     private void FillBoard()
     {
         var keep = _selected?.Row.EngagementId;
+        Forward.Clear();
         Deciding.Clear();
         Submitted.Clear();
         foreach (var r in _board.Where(r => !_mineOnly || string.Equals(r.OwnerMailbox, _actor, StringComparison.OrdinalIgnoreCase)))
-            (r.Stage == 3 ? Submitted : Deciding).Add(new DirectorCard(r, _actor, _now));
+            (r.Stage == 3 ? Submitted : r.IsForward ? Forward : Deciding).Add(new DirectorCard(r, _actor, _now));
+        var forward = _board.Count(r => r.IsForward);
+        var open = _board.Count(r => r.Stage == 1 && !r.IsForward);
         var waiting = _board.Count(r => r.Stage == 1 && r.Recommendation is "decide" or "go" or "no-go");
-        PursuitsSubtitle = $"{_board.Count(r => r.Stage == 1)} open tender{(_board.Count(r => r.Stage == 1) == 1 ? "" : "s")} · {_board.Count(r => r.Stage == 3)} submitted"
+        PursuitsSubtitle = (forward > 0 ? $"{forward} with no RFP yet · " : "")
+            + $"{open} out for bid · {_board.Count(r => r.Stage == 3)} submitted"
             + (waiting > 0 ? $" · {waiting} with Claude's read" : "");
-        Changed(nameof(PursuitsSubtitle)); Changed(nameof(DecidingHeader)); Changed(nameof(SubmittedHeader));
-        Selected = keep is { } id ? Deciding.Concat(Submitted).FirstOrDefault(c => c.Row.EngagementId == id) : null;
+        Changed(nameof(PursuitsSubtitle)); Changed(nameof(ForwardHeader)); Changed(nameof(DecidingHeader)); Changed(nameof(SubmittedHeader));
+        Selected = keep is { } id ? Forward.Concat(Deciding).Concat(Submitted).FirstOrDefault(c => c.Row.EngagementId == id) : null;
     }
 
     private bool IsMine(RfpAction a, TenderBoardRow r) =>
@@ -281,6 +317,24 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
         if (t.Length <= 80) return t;
         var cut = t.LastIndexOf(' ', 78);
         return t[..(cut > 40 ? cut : 78)].TrimEnd(' ', '-', '–', ',') + "…";
+    }
+
+    /// <summary>The job as people say it: the project without the procurement boilerplate in front ("Request for Proposals
+    /// for …") or the service name behind ("… Structural Engineering Services"). "Peace Regional Pool Structural Engineering
+    /// Services" is the Peace Regional Pool.</summary>
+    internal static string JobName(string project)
+    {
+        var t = ShortProject(project);
+        var cut = Regex.Replace(t, @"[\s,:–—-]*\b((Prime|Structural|Architectural|Engineering|Design|Consult(ing|ant)|Professional|Building)\s+)+(Consult(ing|ant)\s+)?Services?\s*(-\s*RFP)?$", "",
+            RegexOptions.IgnoreCase).Trim();
+        return cut.Length >= 8 ? cut : t;
+    }
+
+    /// <summary>Text without its citations: "(Schedule B 2.1; McCuaig FCA 3.1.1)" and "(RFP 6.1.6)" belong in the review, not on a card.</summary>
+    internal static string Uncited(string text)
+    {
+        var t = Regex.Replace(text, @"\s*\((RFP|Schedule|Appendix|Section|FCA|McCuaig|Addendum|Sch\.|s\.|p\.|pp\.|page|Part|Article|Clause|\d)[^()]*\)", "", RegexOptions.IgnoreCase);
+        return Regex.Replace(t, @"\s+([.,;:?!])", "$1").Trim();
     }
 
     /// <summary>A project name short enough for a card: the part before a long dash or the first 48 characters.</summary>
@@ -357,35 +411,57 @@ public sealed class DirectorCard : INotifyPropertyChanged
         var mine = string.Equals(row.OwnerMailbox, actor, StringComparison.OrdinalIgnoreCase);
         OwnerLine = $"{(mine ? "You" : BdDirectorHomeViewModel.First(row.OwnerName ?? row.OwnerMailbox?.Split('@')[0] ?? "Unowned"))}"
             + (row.DeadlineUtc is { } d ? $" · closes {d.ToLocalTime():ddd d MMM}" : "");
-        // Who it is for leads; what it is follows, without the procurement boilerplate.
-        var buyer = BdDirectorHomeViewModel.ShortBuyer(row.Buyer);
-        Title = buyer.Length > 0 ? buyer : BdDirectorHomeViewModel.ShortProject(row.Project);
-        Buyer = buyer.Length > 0 ? BdDirectorHomeViewModel.ShortProject(row.Project) : row.Buyer ?? "";
-        Verdict = row.Stage == 3 ? "SUBMITTED" : BdDirectorHomeViewModel.Verdict(row.Recommendation).ToUpperInvariant();
-        VerdictBrush = row.Stage == 3 ? Palette.Blue
+        // What the job is leads ("Peace Regional Pool"), who it is for follows ("Town of Peace River"): a town's name alone
+        // said nothing about the work (Ian, 21 Oct: "not sure what this is").
+        Title = BdDirectorHomeViewModel.JobName(row.Project);
+        Buyer = Regex.Replace(row.Buyer ?? "", @"\s*\((APC|BC Bid)\)\s*$", "", RegexOptions.IgnoreCase).Trim();
+        Verdict = row.Stage == 3 ? "SUBMITTED" : row.IsForward ? "NO RFP YET" : BdDirectorHomeViewModel.Verdict(row.Recommendation).ToUpperInvariant();
+        VerdictBrush = row.Stage == 3 ? Palette.Blue : row.IsForward ? Palette.Slate
             : row.Recommendation switch { "go" => Palette.Green, "no-go" => Palette.Muted, "decide" => Palette.Orange, _ => Palette.Line };
-        VerdictFore = row.Stage != 3 && row.Recommendation is null ? Palette.Muted : Brushes.White;
+        VerdictFore = row.Stage != 3 && !row.IsForward && row.Recommendation is null ? Palette.Muted : Brushes.White;
         var reasons = (row.Reasons ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var deciding = Regex.Replace(reasons.FirstOrDefault() ?? "", @"^(decide|go|no-go|bid|don't bid)\s*[:\-–]\s*", "", RegexOptions.IgnoreCase);
-        Deciding = deciding.Length > 0 ? char.ToUpperInvariant(deciding[0]) + deciding[1..] : (row.ReviewRunning ? "Claude is reading the RFP now." : "Claude has not read this RFP yet.");
+        Deciding = deciding.Length > 0 ? char.ToUpperInvariant(deciding[0]) + deciding[1..]
+            : row.IsForward ? "No RFP yet. The work now is getting KOR known to the owner and the architect before one is written; when it posts, it joins this pursuit."
+            : row.ReviewRunning ? "Claude is reading the RFP now." : "Claude has not read this RFP yet.";
+        HasReview = !row.IsForward;
+        // The card shows what decides the bid, not the first paragraph cut off: the open questions in the deciding reason,
+        // else its first two sentences, citations dropped (the review keeps them).
+        var plain = BdDirectorHomeViewModel.Uncited(deciding);
+        var sentences = Regex.Split(plain, @"(?<=[.?!])\s+(?=[A-Z])").Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+        var questions = sentences.Where(s => s.EndsWith('?'))
+            .Select(s => Regex.Replace(s, @"^(First|Second|Third|Fourth|Finally|Also|And),?\s+", "", RegexOptions.IgnoreCase))
+            .Select(s => char.ToUpperInvariant(s[0]) + s[1..]).Take(3).ToList();
+        if (questions.Count > 0)
+        {
+            PointsLead = questions.Count == 1 ? "It comes down to one question" : $"It comes down to {(questions.Count == 2 ? "two" : "three")} questions";
+            Points = questions;
+        }
+        else
+        {
+            PointsLead = "";
+            var lead = sentences.Count > 0 ? string.Join(" ", sentences.Take(2)) : Deciding;
+            Points = new[] { char.ToUpperInvariant(lead[0]) + lead[1..] };
+        }
         var next = row.Actions.FirstOrDefault();
         NextStep = next is not null ? $"→  {next.Action}  ·  {next.Due:ddd d MMM}"
             : !string.IsNullOrWhiteSpace(row.NextStep) ? $"→  {BdDirectorHomeViewModel.Short(row.NextStep!)}" + (row.NextStepDueUtc is { } n ? $"  ·  {n.ToLocalTime():ddd d MMM}" : "") : "";
         (string text, ChipKind kind) chip = row.Stage == 3 ? ("", ChipKind.Grey)
-            : row.DeadlineUtc is { } due ? BdDirectorHomeViewModel.DeadlineTag(due, now) : ("no deadline on file", ChipKind.Grey);
+            : row.DeadlineUtc is { } due ? BdDirectorHomeViewModel.DeadlineTag(due, now)
+            : row.IsForward ? ("watching for the RFP", ChipKind.Grey) : ("no deadline on file", ChipKind.Grey);
         Chip = row.Stage == 3 ? (row.DeadlineUtc is { } closed ? $"closed {closed.ToLocalTime():d MMM}" : "awaiting the result")
             : row.DeadlineUtc is null ? chip.text : $"closes {chip.text}";
         (ChipFore, ChipBack) = Palette.Chip(chip.kind);
         Initials = BdDirectorHomeViewModel.Initials(row.OwnerName, row.OwnerMailbox);
         AvatarBrush = Palette.Avatar(row.OwnerMailbox);
         NeedsIan = row.Stage == 1 && row.Recommendation is "decide" or "no-go" or "go";
-        PrimaryAction = row.Recommendation switch
+        PrimaryAction = row.IsForward ? "Open pursuit" : row.Recommendation switch
         {
             "no-go" => "Archive it",
             _ when row.Questions.Count > 0 => $"Draft {row.Questions.Count} question{(row.Questions.Count == 1 ? "" : "s")}",
             _ => "Open review",
         };
-        SecondaryAction = PrimaryAction == "Open review" ? "" : "Open review";
+        SecondaryAction = PrimaryAction is "Open review" or "Open pursuit" ? "" : "Open review";
         HasSecondary = SecondaryAction.Length > 0;
         Steps = row.Actions.Take(3).Select((a, i) => new DirectorStep(i + 1, a.Action,
             a.Owner.Equals("owner", StringComparison.OrdinalIgnoreCase) ? "Owner" : a.Owner.Equals("Ian", StringComparison.OrdinalIgnoreCase) ? "Ian" : a.Owner.Split('@')[0],
@@ -406,6 +482,12 @@ public sealed class DirectorCard : INotifyPropertyChanged
     public Brush VerdictBrush { get; }
     public Brush VerdictFore { get; }
     public string Deciding { get; }
+    /// <summary>What decides the bid, as the card shows it: the open questions, or two plain sentences.</summary>
+    public IReadOnlyList<string> Points { get; }
+    public string PointsLead { get; }
+    public bool HasPointsLead => PointsLead.Length > 0;
+    /// <summary>A tender has Claude's review to open; a forward pursuit has none yet.</summary>
+    public bool HasReview { get; }
     public string NextStep { get; }
     public bool HasNextStep => NextStep.Length > 0;
     public string Chip { get; }
@@ -460,11 +542,46 @@ public sealed class DirectorWeekItem
 /// <summary>A lead's own pursuit with no next step, or an overdue one.</summary>
 public sealed record DirectorFollowUp(long EngagementId, string Project, string? Buyer, bool Overdue, DateTimeOffset? DueUtc, DateTimeOffset? LastTouchUtc)
 {
-    public string Title => BdDirectorHomeViewModel.ShortBuyer(Buyer) is { Length: > 0 } b ? b : BdDirectorHomeViewModel.ShortProject(Project);
-    public string Sub => (BdDirectorHomeViewModel.ShortBuyer(Buyer).Length > 0 ? BdDirectorHomeViewModel.ShortProject(Project) + " · " : "")
+    public string Title => BdDirectorHomeViewModel.JobName(Project);
+    public string Sub => (BdDirectorHomeViewModel.ShortBuyer(Buyer) is { Length: > 0 } b ? b + " · " : "")
         + (Overdue && DueUtc is { } d ? $"next step overdue since {d.ToLocalTime():ddd d MMM}"
            : LastTouchUtc is { } t ? $"no next step · last touched {t.ToLocalTime():d MMM}" : "no next step · never touched");
     public Brush SubBrush => Overdue ? Palette.Red : Palette.Muted;
+}
+
+/// <summary>A grab on the manager's Today: who took what, when, and what Claude made of it; Keep or give it to someone.</summary>
+public sealed class DirectorGrab
+{
+    public DirectorGrab(RecentGrab grab, DirectorCard? card, DateTimeOffset now)
+    {
+        Grab = grab;
+        Card = card;
+        var who = BdDirectorHomeViewModel.First(grab.OwnerName ?? grab.OwnerMailbox?.Split('@')[0] ?? "Someone");
+        Title = $"{who} grabbed {BdDirectorHomeViewModel.JobName(grab.Project)}";
+        var verdict = grab.IsForward ? "no RFP yet"
+            : card?.Row.Recommendation is { } r ? $"Claude: {BdDirectorHomeViewModel.Verdict(r).ToLowerInvariant()}"
+            : card?.Row.ReviewRunning == true ? "Claude is reading it" : "waiting for the documents";
+        Sub = string.Join("  ·  ", new[] { Ago(grab.GrabbedAtUtc, now), grab.Buyer ?? "", verdict }.Where(s => s.Length > 0));
+        Initials = BdDirectorHomeViewModel.Initials(grab.OwnerName, grab.OwnerMailbox);
+        AvatarBrush = Palette.Avatar(grab.OwnerMailbox);
+    }
+
+    public RecentGrab Grab { get; }
+    /// <summary>The pursuit's board card, for "Give to…" (null when the board does not carry it).</summary>
+    public DirectorCard? Card { get; }
+    public string Title { get; }
+    public string Sub { get; }
+    public string Initials { get; }
+    public Brush AvatarBrush { get; }
+
+    internal static string Ago(DateTimeOffset when, DateTimeOffset now)
+    {
+        var span = now - when;
+        return span.TotalMinutes < 60 ? $"{Math.Max(1, (int)span.TotalMinutes)} min ago"
+            : span.TotalHours < 24 ? $"{(int)span.TotalHours} h ago"
+            : span.TotalDays < 2 ? "yesterday"
+            : $"{when.ToLocalTime():ddd d MMM}";
+    }
 }
 
 /// <summary>One of the actor's open asks on Today, ticked off in place.</summary>

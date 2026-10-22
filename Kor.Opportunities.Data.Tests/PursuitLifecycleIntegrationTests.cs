@@ -102,6 +102,132 @@ public sealed class PursuitLifecycleIntegrationTests
         }
     }
 
+    /// <summary>
+    /// The forward cycle (Ian, 21 Oct 2026): grabbing a forward project opens a pursuit the Director's board shows; the
+    /// manager sees it under New grabs until kept; the RFP for it, when it posts, is matched and joins that pursuit, owned by
+    /// the forward owner whoever pressed Grab; letting the project go then leaves the pursuit alone because it has a tender.
+    /// Does NOT cover the app's join prompt or the Worker's document fetch the join asks for.
+    /// </summary>
+    [Fact]
+    public async Task ForwardGrab_OpensAPursuit_TheTenderJoinsIt_AndKeepClearsNewGrabs()
+    {
+        var cs = ConnectionString;
+        if (string.IsNullOrWhiteSpace(cs)) return; // no DB in this environment
+
+        var owner = "audittest-forward@korstructural.com";
+        var other = "audittest-other@korstructural.com";
+        var manager = "audittest-manager@korstructural.com";
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var lifecycle = new Kor.Opportunities.Data.MajorProjects.SqlPursuitLifecycleStore(cs);
+        var grabStore = new SqlPursuitGrabStore(cs);
+        var reviews = new SqlPursuitReviewStore(cs);
+        long mpiId = 0, oppId = 0, engId = 0;
+        await using var con = new SqlConnection(cs);
+        await con.OpenAsync();
+        try
+        {
+            await using (var insert = new SqlCommand(
+                "INSERT INTO opportunities.MajorProjectsInventory (Province, SourceKey, ProjectName) OUTPUT inserted.Id VALUES (N'AB', @k, @n);", con))
+            {
+                insert.Parameters.AddWithValue("@k", $"AUDITTEST-{tag}");
+                insert.Parameters.AddWithValue("@n", $"Auditville {tag} Aquatic Centre Replacement");
+                mpiId = (long)(await insert.ExecuteScalarAsync())!;
+            }
+
+            Assert.Equal(Kor.Opportunities.Data.MajorProjects.LifecycleOutcome.Applied, await lifecycle.GrabProjectAsync(mpiId, owner, CancellationToken.None));
+            engId = await ScalarAsync<long>(con, "SELECT EngagementId FROM opportunities.CrmEngagementProjectLink WHERE MajorProjectsInventoryId=@p0 AND MatchedBy=N'Grab'", mpiId);
+            Assert.Equal(owner, await ScalarAsync<string>(con, "SELECT OwnerStaffId FROM opportunities.CrmEngagements WHERE Id=@p0", engId));
+            var board = await reviews.ListBoardAsync(CancellationToken.None);
+            Assert.Contains(board, r => r.EngagementId == engId && r.IsForward && r.Project.Contains(tag, StringComparison.Ordinal));
+
+            var grabs = await grabStore.RecentGrabsAsync(manager, CancellationToken.None);
+            Assert.Contains(grabs, g => g.EngagementId == engId && g.IsForward && g.OwnerMailbox == owner);
+
+            // The RFP posts; someone else goes to grab it and is offered the forward pursuit instead.
+            var opp = await new SqlOpportunityStore(cs).InsertAsync(new Opportunity
+            {
+                OpportunityKey = $"AUDITTEST-{Guid.NewGuid():N}",
+                Name = $"Request for Proposals - Auditville {tag} Aquatic Centre Replacement - Prime Consultant Services",
+                BuyerName = "AUDITTEST Town of Auditville", ProjectProvince = "AB", Status = OpportunityStatus.New,
+            }, other, CancellationToken.None);
+            oppId = opp.Id;
+            var joined = await grabStore.GrabAsync(oppId, other, CancellationToken.None);
+            Assert.True(joined.Outcome == GrabOutcome.Grabbed && joined.EngagementId == engId && joined.JoinedOwner is not null,
+                $"EXPECTED the tender to join pursuit {engId}; ACTUAL {joined}");
+            Assert.Equal(oppId, await ScalarAsync<long>(con, "SELECT OpportunityId FROM opportunities.CrmEngagements WHERE Id=@p0", engId));
+            Assert.Equal(owner, await ScalarAsync<string>(con, "SELECT OwnerStaffId FROM opportunities.Opportunities WHERE Id=@p0", oppId));
+            Assert.Equal(1, await ScalarAsync<int>(con, "SELECT COUNT(*) FROM opportunities.CrmEngagements WHERE OpportunityId=@p0", oppId));
+            Assert.Equal(GrabOutcome.AlreadyTaken, (await grabStore.GrabAsync(oppId, other, CancellationToken.None)).Outcome);
+
+            await grabStore.KeepAsync(engId, manager, CancellationToken.None);
+            Assert.DoesNotContain(await grabStore.RecentGrabsAsync(manager, CancellationToken.None), g => g.EngagementId == engId);
+
+            // Letting the project go now leaves the pursuit live: it has its tender.
+            Assert.Equal(Kor.Opportunities.Data.MajorProjects.LifecycleOutcome.Applied, await lifecycle.ReleaseProjectAsync(mpiId, owner, CancellationToken.None));
+            Assert.Equal(1, await ScalarAsync<int>(con, "SELECT Stage FROM opportunities.CrmEngagements WHERE Id=@p0", engId));
+        }
+        finally
+        {
+            if (engId > 0)
+            {
+                await ExecAsync(con, "DELETE FROM opportunities.OpportunityAssignmentLog WHERE EngagementId=@p0", engId);
+                await ExecAsync(con, "DELETE FROM opportunities.CrmEngagementStageHistory WHERE EngagementId=@p0", engId);
+                await ExecAsync(con, "DELETE FROM opportunities.CrmEngagementProjectLink WHERE EngagementId=@p0", engId);
+                await ExecAsync(con, "DELETE FROM opportunities.CrmEngagements WHERE Id=@p0", engId);
+            }
+            if (mpiId > 0)
+            {
+                await ExecAsync(con, "DELETE FROM opportunities.OpportunityAssignmentLog WHERE MpiId=@p0", mpiId);
+                await ExecAsync(con, "DELETE FROM opportunities.MajorProjectsInventory WHERE Id=@p0", mpiId);
+            }
+            await CleanupAsync(cs, oppId);
+        }
+    }
+
+    /// <summary>A forward project with nothing joined, let go: its pursuit is archived (kept, out of live counts), not deleted.</summary>
+    [Fact]
+    public async Task ForwardRelease_ArchivesThePursuitItsGrabOpened()
+    {
+        var cs = ConnectionString;
+        if (string.IsNullOrWhiteSpace(cs)) return; // no DB in this environment
+
+        var owner = "audittest-forward@korstructural.com";
+        var lifecycle = new Kor.Opportunities.Data.MajorProjects.SqlPursuitLifecycleStore(cs);
+        long mpiId = 0, engId = 0;
+        await using var con = new SqlConnection(cs);
+        await con.OpenAsync();
+        try
+        {
+            await using (var insert = new SqlCommand(
+                "INSERT INTO opportunities.MajorProjectsInventory (Province, SourceKey, ProjectName) OUTPUT inserted.Id VALUES (N'BC', @k, N'AUDITTEST forward release');", con))
+            {
+                insert.Parameters.AddWithValue("@k", $"AUDITTEST-{Guid.NewGuid():N}");
+                mpiId = (long)(await insert.ExecuteScalarAsync())!;
+            }
+            await lifecycle.GrabProjectAsync(mpiId, owner, CancellationToken.None);
+            engId = await ScalarAsync<long>(con, "SELECT EngagementId FROM opportunities.CrmEngagementProjectLink WHERE MajorProjectsInventoryId=@p0 AND MatchedBy=N'Grab'", mpiId);
+
+            Assert.Equal(Kor.Opportunities.Data.MajorProjects.LifecycleOutcome.Applied, await lifecycle.ReleaseProjectAsync(mpiId, owner, CancellationToken.None));
+            Assert.Equal(8, await ScalarAsync<int>(con, "SELECT Stage FROM opportunities.CrmEngagements WHERE Id=@p0", engId));
+            Assert.Equal(1, await ScalarAsync<int>(con, "SELECT COUNT(*) FROM opportunities.CrmEngagementStageHistory WHERE EngagementId=@p0 AND Stage=8", engId));
+        }
+        finally
+        {
+            if (engId > 0)
+            {
+                await ExecAsync(con, "DELETE FROM opportunities.OpportunityAssignmentLog WHERE EngagementId=@p0", engId);
+                await ExecAsync(con, "DELETE FROM opportunities.CrmEngagementStageHistory WHERE EngagementId=@p0", engId);
+                await ExecAsync(con, "DELETE FROM opportunities.CrmEngagementProjectLink WHERE EngagementId=@p0", engId);
+                await ExecAsync(con, "DELETE FROM opportunities.CrmEngagements WHERE Id=@p0", engId);
+            }
+            if (mpiId > 0)
+            {
+                await ExecAsync(con, "DELETE FROM opportunities.OpportunityAssignmentLog WHERE MpiId=@p0", mpiId);
+                await ExecAsync(con, "DELETE FROM opportunities.MajorProjectsInventory WHERE Id=@p0", mpiId);
+            }
+        }
+    }
+
     private static Opportunity NewTestOpportunity() => new()
     {
         OpportunityKey = $"AUDITTEST-{Guid.NewGuid():N}",

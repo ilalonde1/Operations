@@ -18,6 +18,10 @@ public interface IDirectorHomeHost
     Task OpenPursuitAsync(DirectorCard card);
     /// <summary>Opens a pursuit to write its next step (BD Workspace Today).</summary>
     void OpenFollowUp(DirectorFollowUp pursuit);
+    /// <summary>The manager keeps a new grab with its grabber (BD Director only; the Workspace shows no grabs).</summary>
+    Task KeepGrabAsync(DirectorGrab grab) => Task.CompletedTask;
+    /// <summary>The manager gives a new grab to someone else: the Pursuits side panel, open on it.</summary>
+    void GiveGrab(DirectorGrab grab) { }
 }
 
 /// <summary>BD Director v3, Today: what needs Ian's call, what is coming up, his list, today's moves.</summary>
@@ -43,6 +47,16 @@ public partial class DirectorTodayView : UserControl
     }
 
     private void Hour_Click(object sender, RoutedEventArgs e) => Host?.OpenHour();
+
+    private async void Keep_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: DirectorGrab grab } && Host is { } host) await host.KeepGrabAsync(grab).ConfigureAwait(true);
+    }
+
+    private void Give_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: DirectorGrab grab }) Host?.GiveGrab(grab);
+    }
 
     private void FollowUp_Click(object sender, RoutedEventArgs e)
     {

@@ -45,6 +45,7 @@ public static class RfpReviewLauncher
             return doc.RootElement.TryGetProperty("oauthAccount", out var account) && account.TryGetProperty("emailAddress", out var email)
                 ? email.GetString() : null;
         }
+        // silent-catch OK: an unreadable account file means "not signed in as the KOR account", which the caller reports.
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
             return null;

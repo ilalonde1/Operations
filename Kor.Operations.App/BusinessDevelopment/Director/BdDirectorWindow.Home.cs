@@ -45,6 +45,7 @@ public partial class BdDirectorWindow : IDirectorHomeHost
                 .Where(p => p.Mailbox.Contains('@')).ToList();
             var me = _vm.People.FirstOrDefault(p => p.OwnerKeys.Any(k => k.Equals(_actor, StringComparison.OrdinalIgnoreCase)))?.DisplayName;
             _home.Load(board, asks, _vm.People.ToList(), roster, _actor, me, DateTimeOffset.UtcNow);
+            _home.LoadGrabs(await AppServices.Get<IPursuitGrabStore>().RecentGrabsAsync(_actor, ct).ConfigureAwait(true));
             if (_rhythm is { Hour: { } hour })
             {
                 _home.HourTitle = hour.Title;
@@ -101,6 +102,32 @@ public partial class BdDirectorWindow : IDirectorHomeHost
     }
 
     public Task CompleteAskAsync(DirectorListItem item) => DirectorActions.CompleteAskAsync(this, item, _actor, _home, _lifetime.Token);
+
+    public async Task KeepGrabAsync(DirectorGrab grab)
+    {
+        try
+        {
+            await AppServices.Get<IPursuitGrabStore>().KeepAsync(grab.Grab.EngagementId, _actor, _lifetime.Token).ConfigureAwait(true);
+            _home.RemoveGrab(grab);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "BD Director: keeping grab {Id} failed", grab.Grab.EngagementId);
+            MessageBox.Show(this, "That did not save. Please try again.", "Keep", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>Opens Pursuits with the grab in the side panel, where the owner picker says what the new owner gets.</summary>
+    public void GiveGrab(DirectorGrab grab)
+    {
+        if (grab.Card is null)
+        {
+            _ = global::Kor.Operations.KorDeepLink.OpenAsync($"kor://pursuit/{grab.Grab.EngagementId}");
+            return;
+        }
+        NavPursuits.IsChecked = true;
+        _home.Selected = grab.Card;
+    }
 
     public void BookTime(DirectorTeamCard person)
     {

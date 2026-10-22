@@ -53,13 +53,20 @@
                 </StackPanel>
             </StackPanel>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <!-- The pursuit's life left to right: a grabbed project with no RFP yet, a tender out for bid, a submitted bid. -->
                 <Grid>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
                     <StackPanel>
+                        <TextBlock Text="{Binding ForwardHeader}" Style="{StaticResource D.Section}"/>
+                        <ItemsControl ItemsSource="{Binding Forward}" ItemTemplate="{StaticResource CardTemplate}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
                         <TextBlock Text="{Binding DecidingHeader}" Style="{StaticResource D.Section}"/>
                         <ItemsControl ItemsSource="{Binding Deciding}" ItemTemplate="{StaticResource CardTemplate}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="2">
+                    <StackPanel Grid.Column="4">
                         <TextBlock Text="{Binding SubmittedHeader}" Style="{StaticResource D.Section}"/>
                         <ItemsControl ItemsSource="{Binding Submitted}" ItemTemplate="{StaticResource CardTemplate}"/>
                     </StackPanel>
@@ -89,10 +96,22 @@
                     <TextBlock FontSize="12.5" Foreground="{StaticResource D.Ink2}" TextWrapping="Wrap">
                         <Run Text="{Binding Row.Buyer, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding OwnerLine, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Number, Mode=OneWay}"/>
                     </TextBlock>
-                    <TextBlock Text="{Binding Deciding}" FontSize="13.5" TextWrapping="Wrap" LineHeight="20" Foreground="{StaticResource D.Ink}" Margin="0,14,0,0"/>
+                    <TextBlock Text="{Binding PointsLead}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource D.Ink2}" Margin="0,16,0,0"
+                               Visibility="{Binding HasPointsLead, Converter={StaticResource Vis}}"/>
+                    <ItemsControl ItemsSource="{Binding Points}" Margin="0,4,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="0,6,0,0">
+                                    <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="{StaticResource D.Orange}" Margin="2,8,12,0" VerticalAlignment="Top"/>
+                                    <TextBlock Text="{Binding}" FontSize="13.5" TextWrapping="Wrap" LineHeight="20" Foreground="{StaticResource D.Ink}"/>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                        <Button Content="Open review" Style="{StaticResource D.Primary}" Click="Review_Click"/>
-                        <Button Content="Open in My Pursuits" Style="{StaticResource D.Ghost}" Margin="6,0,0,0" Click="Pursuit_Click"/>
+                        <Button Content="Open review" Style="{StaticResource D.Primary}" Margin="0,0,6,0" Click="Review_Click"
+                                Visibility="{Binding HasReview, Converter={StaticResource Vis}}"/>
+                        <Button Content="Open in My Pursuits" Style="{StaticResource D.Ghost}" Click="Pursuit_Click"/>
                     </StackPanel>
 
                     <TextBlock Text="NEXT STEPS" Style="{StaticResource D.Section}" Margin="2,26,0,6"/>

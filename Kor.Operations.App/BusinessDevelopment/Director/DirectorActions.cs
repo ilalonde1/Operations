@@ -18,9 +18,15 @@ namespace Kor.Operations.App.BusinessDevelopment.Director;
 /// </summary>
 public static class DirectorActions
 {
-    /// <summary>The card's main button: archive a no-go, draft the questions when there are some, otherwise open the review.</summary>
+    /// <summary>The card's main button: open a forward pursuit, archive a no-go, draft the questions when there are some,
+    /// otherwise open the review.</summary>
     public static async Task CardPrimaryAsync(Window owner, DirectorCard card, string actor, Func<Task> reload, CancellationToken ct)
     {
+        if (card.Row.IsForward)
+        {
+            await global::Kor.Operations.KorDeepLink.OpenAsync($"kor://pursuit/{card.Row.EngagementId}").ConfigureAwait(true);
+            return;
+        }
         if (card.Row.Recommendation == "no-go")
         {
             await ArchiveAsync(owner, card, actor, reload, ct).ConfigureAwait(true);
@@ -28,7 +34,7 @@ public static class DirectorActions
         }
         if (card.Row.Questions.Count > 0 && await LatestReviewAsync(card, ct).ConfigureAwait(true) is { } review)
         {
-            PursuitReviewWindow.DraftQuestions(owner, review, card.Row.Project, card.Row.QuestionsTo);
+            await PursuitReviewWindow.DraftQuestionsAsync(owner, review, card.Row.Project, card.Row.QuestionsTo).ConfigureAwait(true);
             return;
         }
         await OpenReviewAsync(owner, card, actor, ct).ConfigureAwait(true);

@@ -178,6 +178,14 @@ BEGIN
                UpdatedBy     = @by
          WHERE Id = @oppId;
 
+    -- A forward pursuit's project carries the owner too (the Future Projects list reads it): it moves with the pursuit.
+    UPDATE m
+       SET OwnerStaffId = @to
+      FROM opportunities.MajorProjectsInventory m
+      JOIN opportunities.CrmEngagementProjectLink l ON l.MajorProjectsInventoryId = m.Id AND l.MatchedBy = N'Grab'
+     WHERE l.EngagementId = @engId
+       AND m.OwnerStaffId = @from;
+
     INSERT INTO opportunities.OpportunityAssignmentLog
         (OpportunityId, EngagementId, Action, FromStaffId, ToStaffId, ByStaffId, Reason)
     VALUES (@oppId, @engId, N'Reassign', @from, @to, @by, @reason);

@@ -322,7 +322,7 @@ public sealed class BdScreensRenderTests
                     A("Decide go or no-go on the civil question", "Ian", 2026, 10, 23, "The answer decides whether KOR can bid.") }, "Amaya_Kingston@banffcentre.ca", false, 41243, now),
             new TenderBoardRow(1163, "Peace Regional Pool Structural Engineering Services", "Town of Peace River", 1, "ilalonde@korstructural.com", "Ian Lalonde",
                 new DateTimeOffset(2026, 11, 13, 21, 0, 0, TimeSpan.Zero), null, null, "decide",
-                "The core work is structural and it is the kind KOR does: corroded steel deck, joists and beams over a pool, slide footings and pillars. Two things only Ian can settle decide the bid.",
+                "The core work is structural, and it is the kind KOR does: corroded steel deck, joists and beams over a pool, slide footings and pillars, concrete spalling (Schedule B 2.1; McCuaig FCA 3.1.1-3.1.3). Two things only Ian can settle decide the bid. First, can KOR staff site visits in Peace River, about 5 hours north of Edmonton, through tendering, construction in the Aug-Oct shutdown, and a one-year warranty inspection (Schedule B 2.2.8-2.2.10, 2.4)? Second, does KOR have three recent similar municipal projects, with the people it would propose, to show (RFP 6.1.6)?",
                 Enumerable.Range(1, 8).Select(i => new RfpQuestion($"Question {i}", "Why", null)).ToArray(), "Fri 6 Nov 2026",
                 new[] { A("Pick the three most recent similar municipal projects and ask those clients to act as references", "owner", 2026, 10, 23, "Experience is 25%."),
                     A("Check COR, TLC or SECOR and the insurance in Schedule F 8.2", "owner", 2026, 10, 27, "A condition of award."),
@@ -332,6 +332,9 @@ public sealed class BdScreensRenderTests
             new TenderBoardRow(1112, "Request for Proposals for Integrated Project Delivery (IPD) Team Project Partner – Structural Consultant", "City of Leduc", 3,
                 "ishabana@korstructural.com", "Islam Shabana", new DateTimeOffset(2026, 10, 15, 20, 0, 0, TimeSpan.Zero), "Expect a short-list call", null, null, null,
                 Array.Empty<RfpQuestion>(), null, Array.Empty<RfpAction>(), null, false, 39332, now),
+            // A grabbed forward project: no tender yet (illustrative).
+            new TenderBoardRow(1170, "Mayerthorpe School Replacement", "Alberta Infrastructure", 1, "rbeirne@korstructural.com", "Rory Beirne",
+                null, null, null, null, null, Array.Empty<RfpQuestion>(), null, Array.Empty<RfpAction>(), null, false, null, now),
         };
         var asks = new[]
         {
@@ -346,10 +349,18 @@ public sealed class BdScreensRenderTests
         };
         var home = window.Home;
         home.Load(board, asks, vm.People.ToList(), roster, "ilalonde@korstructural.com", "Ian Lalonde", now);
+        home.LoadGrabs(new[]
+        {
+            new RecentGrab(1142, "Structural and Civil Engineering - Professional Services Agreement", "Banff Centre", "ishabana@korstructural.com", "Islam Shabana", now.AddHours(-2), false),
+            new RecentGrab(1170, "Mayerthorpe School Replacement", "Alberta Infrastructure", "rbeirne@korstructural.com", "Rory Beirne", now.AddHours(-26), true),
+        });
         home.HourTitle = "Close the week's decisions before Friday's question deadlines";
         home.HourProgress = "2 of 5 moves done";
-        Assert.True(home.Decisions.Count == 3 && home.Deciding.Count == 3 && home.Submitted.Count == 1 && home.MyList.Count == 3,
-            $"EXPECTED 3 decisions / 3 deciding / 1 submitted / 3 on the list; ACTUAL {home.Decisions.Count} / {home.Deciding.Count} / {home.Submitted.Count} / {home.MyList.Count}");
+        Assert.True(home.Decisions.Count == 3 && home.Forward.Count == 1 && home.Deciding.Count == 3 && home.Submitted.Count == 1 && home.MyList.Count == 3 && home.NewGrabs.Count == 2,
+            $"EXPECTED 3 decisions / 1 forward / 3 out for bid / 1 submitted / 3 on the list / 2 new grabs; ACTUAL {home.Decisions.Count} / {home.Forward.Count} / {home.Deciding.Count} / {home.Submitted.Count} / {home.MyList.Count} / {home.NewGrabs.Count}");
+        Assert.Equal("Islam grabbed Structural and Civil Engineering - Professional Services Agreement", home.NewGrabs[0].Title);
+        Assert.Contains("Claude: your call", home.NewGrabs[0].Sub, StringComparison.Ordinal);
+        Assert.Contains("no RFP yet", home.NewGrabs[1].Sub, StringComparison.Ordinal);
 
         var written = 0;
         ((System.Windows.Controls.RadioButton)window.FindName("NavToday")).IsChecked = true;

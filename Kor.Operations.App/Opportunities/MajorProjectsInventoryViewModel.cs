@@ -67,11 +67,11 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
     // rows; owned rows stay visible with their owner badge. Removed shows the
     // "not for us" set with who/when/why — nothing is ever deleted.
     public const string LifecycleActive = "Active";
-    public const string LifecycleOwned = "Owned";
+    public const string LifecycleGrabbed = "Grabbed";
     public const string LifecycleRemoved = "Removed";
 
     public IReadOnlyList<string> LifecycleFilterOptions { get; } =
-        new[] { LifecycleActive, LifecycleOwned, LifecycleRemoved, AllFilter };
+        new[] { LifecycleActive, LifecycleGrabbed, LifecycleRemoved, AllFilter };
 
     public string LifecycleFilter
     {
@@ -113,7 +113,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
 
     private void NotifyLifecycleChanged()
     {
-        OnPropertyChanged(nameof(CanOwnSelected));
+        OnPropertyChanged(nameof(CanGrabSelected));
         OnPropertyChanged(nameof(CanDismissSelected));
         OnPropertyChanged(nameof(CanReleaseSelected));
         OnPropertyChanged(nameof(CanRestoreSelected));
@@ -122,14 +122,14 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
     }
 
     // Lifecycle affordances for the selected row (migration 284).
-    public bool CanOwnSelected => Selected is { OwnerStaffId: null, DismissedAtUtc: null };
+    public bool CanGrabSelected => Selected is { OwnerStaffId: null, DismissedAtUtc: null };
     public bool CanDismissSelected => Selected is { DismissedAtUtc: null };
     public bool CanReleaseSelected => Selected is { OwnerStaffId: not null };
     public bool CanRestoreSelected => Selected is { DismissedAtUtc: not null };
     public bool HasSelectedLifecycleNote => !string.IsNullOrWhiteSpace(SelectedLifecycleDisplay);
 
     /// <summary>Owner / removed badge for the detail pane, e.g.
-    /// "Owned by ian since Jul 13" or "Removed by jim Jul 12 — wrong region".</summary>
+    /// "Grabbed by ian on Jul 13" or "Removed by jim Jul 12 — wrong region".</summary>
     public string SelectedLifecycleDisplay
     {
         get
@@ -144,7 +144,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
             if (Selected.OwnerStaffId is { } o)
             {
                 var since = Selected.OwnedAtUtc?.ToLocalTime().ToString("MMM d") ?? "?";
-                return $"Owned by {ShortUpn(o)} since {since}";
+                return $"Grabbed by {ShortUpn(o)} on {since}";
             }
             return string.Empty;
         }
@@ -157,13 +157,16 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
         return at > 0 ? upn[..at] : upn;
     }
 
-    /// <summary>Own the selected play: it leaves the shared boards + weekly
-    /// sheet and enters the owner's digest. Auto-released after 14 days unless
-    /// converted to a pursuit (the digest warns from day 10).</summary>
-    public Task<bool> OwnSelectedAsync(string staffUpn, CancellationToken ct)
-        => ApplyLifecycleAsync(r => _lifecycleStore.OwnProjectAsync(r.Id, staffUpn, ct),
+    /// <summary>What grabbing a forward project does, in the words both screens that offer it use.</summary>
+    public static string GrabPrompt(string project, string actor) =>
+        $"Grab “{project}” as {actor}?\n\nIt becomes your pursuit (no RFP yet) and leaves the shared boards. When its RFP posts, the tender joins your pursuit. If it sits 14 days with no next step, it goes back to the pool.";
+
+    /// <summary>Grab the selected project: it becomes the actor's pursuit (no tender yet), leaves the shared boards and
+    /// weekly sheet, and enters the owner's digest.</summary>
+    public Task<bool> GrabSelectedAsync(string staffUpn, CancellationToken ct)
+        => ApplyLifecycleAsync(r => _lifecycleStore.GrabProjectAsync(r.Id, staffUpn, ct),
             r => r with { OwnerStaffId = staffUpn, OwnedAtUtc = DateTimeOffset.UtcNow },
-            "Owned — it's yours now. Convert it to a pursuit within 14 days or it returns to the pool.");
+            "Grabbed: it is your pursuit now, in My Pursuits and on the Director's board.");
 
     public Task<bool> ReleaseSelectedAsync(string staffUpn, CancellationToken ct)
         => ApplyLifecycleAsync(r => _lifecycleStore.ReleaseProjectAsync(r.Id, staffUpn, ct),
@@ -453,7 +456,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
         // stay visible in Active (they're still real pipeline, just claimed).
         var lifecycleMatch = _lifecycleFilter switch
         {
-            LifecycleOwned => row.OwnerStaffId is not null,
+            LifecycleGrabbed => row.OwnerStaffId is not null,
             LifecycleRemoved => row.DismissedAtUtc is not null,
             AllFilter => true,
             _ => row.DismissedAtUtc is null,
