@@ -186,7 +186,11 @@ try {
                 }
                 S 'existing C:\KOR-Operations renamed aside (rollback point)'
             }
-            Move-Item $staged $root -ErrorAction Stop
+            # Retried like the rename above: a scanner reading the just-extracted files holds them for a few seconds.
+            # 2026-10-21, KOR-224: two runs failed "Access to the path 'C:\KOR-Operations_new\V28' is denied" here.
+            for ($j = 0; $j -lt 12; $j++) {
+                try { Move-Item $staged $root -ErrorAction Stop; break } catch { if ($j -eq 11) { throw } ; Start-Sleep -Seconds 5 }
+            }
             $files = @(Get-ChildItem $root -Recurse -File).Count
             if (-not (Test-Path $appExe) -or -not (Test-Path "$root\EmailFilerv2.vsto") -or $files -lt 900) { throw "placed C:\KOR-Operations incomplete ($files files)" }
             S "C:\KOR-Operations = V$PkgGen ($files files)"
