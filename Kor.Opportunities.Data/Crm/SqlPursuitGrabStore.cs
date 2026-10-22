@@ -93,6 +93,8 @@ public sealed record ForwardMatch(long EngagementId, string ProjectName, string?
     public string Owner => OwnerName ?? OwnerMailbox?.Split('@')[0] ?? "someone";
     /// <summary>The project's province, for narrowing the match; not shown.</summary>
     public string? Province { get; init; }
+    /// <summary>The project's municipality: the tender must name it (audit C9, 2026-10-21).</summary>
+    public string? Municipality { get; init; }
 }
 
 public sealed class SqlPursuitGrabStore : IPursuitGrabStore
@@ -240,7 +242,8 @@ WHERE g.Action IN (N'Grab', N'Join')
   AND g.ToStaffId <> @manager
   AND g.Id = (SELECT MAX(x.Id) FROM opportunities.OpportunityAssignmentLog x WHERE x.EngagementId = g.EngagementId AND x.Action IN (N'Grab', N'Join'))
   AND NOT EXISTS (SELECT 1 FROM opportunities.OpportunityAssignmentLog k
-                  WHERE k.EngagementId = g.EngagementId AND k.Action IN (N'Kept', N'Reassign') AND k.Id > g.Id)
+                  WHERE k.EngagementId = g.EngagementId AND k.Id > g.Id
+                    AND (k.Action IN (N'Kept', N'Reassign') OR (g.Action = N'Join' AND k.Action = N'JoinRejected')))
 ORDER BY g.AtUtc DESC;";
 
     // A join is settled by the first JoinAccepted or JoinRejected after it.
@@ -276,12 +279,12 @@ SET NOCOUNT ON;
 
 BEGIN TRANSACTION;
 
-DECLARE @joinId bigint, @opp bigint, @grabber nvarchar(300), @joinedAt datetimeoffset, @owner nvarchar(300);
+DECLARE @joinId bigint, @opp bigint, @grabber nvarchar(300), @joinedAt datetimeoffset, @owner nvarchar(300), @stage int;
 SELECT TOP (1) @joinId = j.Id, @opp = j.OpportunityId, @grabber = j.ByStaffId, @joinedAt = j.AtUtc
 FROM opportunities.OpportunityAssignmentLog j WITH (UPDLOCK, HOLDLOCK)
 WHERE j.EngagementId = @eng AND j.Action = N'Join' AND NOT " + JoinSettledSql + @"
 ORDER BY j.Id DESC;
-SELECT @owner = OwnerStaffId FROM opportunities.CrmEngagements WITH (UPDLOCK, HOLDLOCK)
+SELECT @owner = OwnerStaffId, @stage = Stage FROM opportunities.CrmEngagements WITH (UPDLOCK, HOLDLOCK)
 WHERE Id = @eng AND OpportunityId = @opp AND Stage IN (1, 3);
 
 IF @joinId IS NULL OR @owner IS NULL OR @grabber IS NULL
@@ -291,23 +294,32 @@ BEGIN
     RETURN;
 END
 
-UPDATE opportunities.CrmEngagements SET OpportunityId = NULL, UpdatedAtUtc = SYSDATETIMEOFFSET(), UpdatedBy = @by WHERE Id = @eng;
+-- A submitted bid is the tender's: the split pursuit keeps 'submitted', and the forward pursuit goes back to waiting for
+-- its RFP (audit C8, 2026-10-21: the split came out at stage 1 and the forward pursuit stayed submitted with no tender).
+UPDATE opportunities.CrmEngagements SET OpportunityId = NULL, Stage = 1, UpdatedAtUtc = SYSDATETIMEOFFSET(), UpdatedBy = @by WHERE Id = @eng;
+IF @stage = 3 INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId) VALUES (@eng, 1, @by);
 
 DECLARE @new TABLE (Id bigint);
 INSERT INTO opportunities.CrmEngagements
     (OpportunityId, Stage, OwnerStaffId, BuyerCanonicalOrgId, ExternalSource, ExternalSourceKey, CreatedBy, UpdatedBy)
 OUTPUT inserted.Id INTO @new
-SELECT @opp, 1, @grabber, o.BuyerCanonicalOrgId, N'Grab.Unjoined', o.OpportunityKey, @by, @by
+SELECT @opp, @stage, @grabber, o.BuyerCanonicalOrgId, N'Grab.Unjoined', o.OpportunityKey, @by, @by
 FROM opportunities.Opportunities o WHERE o.Id = @opp;
 DECLARE @newEng bigint = (SELECT TOP (1) Id FROM @new);
 
 UPDATE opportunities.Opportunities SET OwnerStaffId = @grabber, UpdatedAtUtc = SYSDATETIMEOFFSET(), UpdatedBy = @by WHERE Id = @opp;
 
-UPDATE opportunities.OpportunityFiles     SET EngagementId = @newEng WHERE EngagementId = @eng AND UploadedAtUtc >= @joinedAt;
+-- What came with the tender goes with it; what the forward owner added stays (audit C1, 2026-10-21: everything stamped after
+-- the join moved, including the owner's own uploads and requirements). Files: a portal job's download (UploadedBy is the
+-- job, no @) or the grabber's own. Requirements: anything not added by the owner. Fetches, reviews and review runs are about
+-- the RFP by definition, so they all go.
+UPDATE opportunities.OpportunityFiles     SET EngagementId = @newEng
+ WHERE EngagementId = @eng AND UploadedAtUtc >= @joinedAt AND (UploadedBy NOT LIKE N'%@%' OR UploadedBy = @grabber);
 UPDATE opportunities.PursuitDocumentFetch SET EngagementId = @newEng WHERE EngagementId = @eng AND FetchedAtUtc >= @joinedAt;
 UPDATE opportunities.PursuitReview        SET EngagementId = @newEng WHERE EngagementId = @eng AND ReportedAtUtc >= @joinedAt;
 UPDATE opportunities.BdPromptRun          SET EngagementId = @newEng WHERE EngagementId = @eng AND Kind = N'rfp' AND CreatedAtUtc >= @joinedAt;
-UPDATE opportunities.PursuitRequirement   SET EngagementId = @newEng WHERE EngagementId = @eng AND CreatedAtUtc >= @joinedAt;
+UPDATE opportunities.PursuitRequirement   SET EngagementId = @newEng
+ WHERE EngagementId = @eng AND CreatedAtUtc >= @joinedAt AND ISNULL(CreatedBy, N'') <> @owner;
 
 -- The review's next step (it is one of the review's asks) goes with the review; a person's own next step stays.
 DECLARE @reviewAsks TABLE (Ask nvarchar(500));
@@ -324,7 +336,7 @@ UPDATE opportunities.BdAsk
    SET EngagementId = @newEng, ToStaffKey = CASE WHEN ToStaffKey = @owner THEN @grabber ELSE ToStaffKey END
  WHERE EngagementId = @eng AND AskedAtUtc >= @joinedAt AND AskedBy LIKE N'Claude (RFP review%';
 
-INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId) VALUES (@newEng, 1, @by);
+INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId) VALUES (@newEng, @stage, @by);
 INSERT INTO opportunities.OpportunityAssignmentLog (OpportunityId, EngagementId, Action, FromStaffId, ToStaffId, ByStaffId, Reason)
 VALUES (@opp, @eng, N'JoinRejected', @owner, @grabber, @by, N'Not this project: the tender is its own pursuit');
 INSERT INTO opportunities.OpportunityAssignmentLog (OpportunityId, EngagementId, Action, ToStaffId, ByStaffId, Reason)
@@ -340,13 +352,13 @@ FROM opportunities.CrmEngagements e WHERE e.Id = @eng;";
 
     // Live forward pursuits (no tender yet) with their project, for the carry-over match.
     private const string ForwardSql = @"
-SELECT e.Id, m.ProjectName, m.Province, e.OwnerStaffId, who.DisplayName
+SELECT e.Id, m.ProjectName, m.Province, e.OwnerStaffId, who.DisplayName, m.MunicipalityName
 FROM opportunities.CrmEngagements e
 JOIN opportunities.CrmEngagementProjectLink l ON l.EngagementId = e.Id AND l.MatchedBy = N'Grab'
 JOIN opportunities.MajorProjectsInventory m ON m.Id = l.MajorProjectsInventoryId
 OUTER APPLY (SELECT TOP (1) s.DisplayName FROM opportunities.BdStaff s WHERE s.Mailbox = e.OwnerStaffId COLLATE DATABASE_DEFAULT) who
 WHERE e.Stage = 1 AND e.OpportunityId IS NULL AND m.ProjectName IS NOT NULL;
-SELECT Name, ProjectProvince FROM opportunities.Opportunities WHERE Id = @id;";
+SELECT Name, ProjectProvince, CONCAT(Name, N' ', BuyerName, N' ', ProjectCity) FROM opportunities.Opportunities WHERE Id = @id;";
 
     /// <summary>
     /// Every branch of both statements SELECTs something, so today the scalar is
@@ -439,26 +451,46 @@ SELECT Name, ProjectProvince FROM opportunities.Opportunities WHERE Id = @id;";
         await using var cmd = new SqlCommand(ForwardSql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = opportunityId;
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
-        var pursuits = new List<(long Id, string Project, string? Province, string? Owner, string? OwnerName)>();
+        var pursuits = new List<ForwardMatch>();
         while (await r.ReadAsync(ct).ConfigureAwait(false))
-            pursuits.Add((r.GetInt64(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2), r.IsDBNull(3) ? null : r.GetString(3), r.IsDBNull(4) ? null : r.GetString(4)));
+            pursuits.Add(new ForwardMatch(r.GetInt64(0), r.GetString(1), r.IsDBNull(3) ? null : r.GetString(3), r.IsDBNull(4) ? null : r.GetString(4), 0)
+                { Province = r.IsDBNull(2) ? null : r.GetString(2), Municipality = r.IsDBNull(5) ? null : r.GetString(5) });
         if (pursuits.Count == 0 || !await r.NextResultAsync(ct).ConfigureAwait(false) || !await r.ReadAsync(ct).ConfigureAwait(false)) return null;
         var tender = r.GetString(0);
         var province = r.IsDBNull(1) ? null : r.GetString(1);
-        return Best(tender, province, pursuits.Select(p => new ForwardMatch(p.Id, p.Project, p.Owner, p.OwnerName, 0) { Province = p.Province }));
+        return Best(tender, province, pursuits, r.IsDBNull(2) ? tender : r.GetString(2));
     }
 
-    /// <summary>The pursuit whose project the tender names, same province when both say one; null under
-    /// <see cref="ProjectNameMatch.Confident"/>.</summary>
-    internal static ForwardMatch? Best(string tender, string? province, IEnumerable<ForwardMatch> pursuits)
+    /// <summary>Above this a name match stands on its own; under it the tender must also name the project's place.</summary>
+    internal const double NearMatch = 0.80;
+
+    // Words in a municipality that are not the place ("City of", "District of Mission", "Invermere area").
+    private static readonly HashSet<string> PlaceNoise = new(StringComparer.OrdinalIgnoreCase)
+        { "city", "town", "district", "village", "county", "municipality", "regional", "area", "township", "first", "nation" };
+
+    /// <summary>
+    /// The pursuit whose project the tender names: same province when both say one, a name score at or above
+    /// <see cref="ProjectNameMatch.Confident"/>, and the project's municipality named somewhere in the tender's title, buyer
+    /// or city. With no municipality on file, the names must nearly match (<see cref="NearMatch"/>). Audit C9, 2026-10-21:
+    /// "Burnaby Fire Hall Replacement" took "Surrey Fire Hall Replacement" at exactly 0.60 on three generic words.
+    /// </summary>
+    internal static ForwardMatch? Best(string tender, string? province, IEnumerable<ForwardMatch> pursuits, string? tenderPlaceText = null)
     {
         var tokens = ProjectNameMatch.Tokens(tender);
+        var placeTokens = ProjectNameMatch.Tokens(tenderPlaceText ?? tender);
         return pursuits
             .Where(p => province is null || p.Province is null || string.Equals(p.Province, province, StringComparison.OrdinalIgnoreCase))
             .Select(p => p with { Score = ProjectNameMatch.Score(tender, tokens, p.ProjectName, ProjectNameMatch.Tokens(p.ProjectName)) })
-            .Where(p => p.Score >= ProjectNameMatch.Confident)
+            .Where(p => p.Score >= ProjectNameMatch.Confident && (NamesThePlace(p.Municipality, placeTokens) ?? p.Score >= NearMatch))
             .OrderByDescending(p => p.Score)
             .FirstOrDefault();
+    }
+
+    /// <summary>True when the tender names the municipality, false when it does not, null when there is no municipality.</summary>
+    private static bool? NamesThePlace(string? municipality, HashSet<string> tenderTokens)
+    {
+        var place = ProjectNameMatch.Tokens(municipality ?? "").Where(t => !PlaceNoise.Contains(t)).ToList();
+        return place.Count == 0 ? null : place.Any(tenderTokens.Contains);
     }
 
     public async Task<IReadOnlyList<RecentGrab>> RecentGrabsAsync(string manager, CancellationToken ct)

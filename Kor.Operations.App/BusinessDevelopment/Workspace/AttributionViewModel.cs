@@ -71,8 +71,8 @@ public sealed class AttributionViewModel : ObservableObject, IAiContextProvider
             var unattributed = _summary.ByOwner.FirstOrDefault(o => o.Owner == "(unattributed)")?.Wins ?? 0;
             if (unattributed > 0 || _summary.Lost == 0)
             {
-                return "The owner breakdown fills in as grabbed pursuits convert to wins — "
-                     + $"{unattributed} historical win(s) predate owner tracking.";
+                return $"Wins by person fill in as grabbed pursuits are won. The {unattributed} wins recorded so far "
+                     + "came from the fee proposal tracker, which did not record who led them.";
             }
             return string.Empty;
         }
@@ -89,16 +89,17 @@ public sealed class AttributionViewModel : ObservableObject, IAiContextProvider
             var summary = await _store.GetSummaryAsync(ct).ConfigureAwait(true);
             _summary = summary;
 
+            // Feed keys and logins in words (2026-10-21: "Deltek.CustomProposal", "M.FeeProposalTracking", "(unattributed)").
             BySource.Clear();
             foreach (var s in summary.BySource)
             {
-                BySource.Add(s);
+                BySource.Add(s with { Source = PlainSource(s.Source) });
             }
 
             ByOwner.Clear();
-            foreach (var o in summary.ByOwner)
+            foreach (var o in summary.ByOwner.Where(o => o.Owner != "(unattributed)"))
             {
-                ByOwner.Add(o);
+                ByOwner.Add(o with { Owner = StaffDisplay.Short(o.Owner) });
             }
 
             foreach (var name in new[]
@@ -110,7 +111,7 @@ public sealed class AttributionViewModel : ObservableObject, IAiContextProvider
                 OnPropertyChanged(name);
             }
 
-            StatusMessage = $"{summary.Wins} win(s) · {summary.ActivePursuits} active pursuit(s).";
+            StatusMessage = $"{Plural(summary.Wins, "win")} · {Plural(summary.ActivePursuits, "active pursuit")}.";
         }
         catch (OperationCanceledException)
         {
@@ -125,6 +126,16 @@ public sealed class AttributionViewModel : ObservableObject, IAiContextProvider
             IsLoading = false;
         }
     }
+
+    private static string Plural(int n, string noun) => $"{n:N0} {noun}{(n == 1 ? "" : "s")}";
+
+    internal static string PlainSource(string source) => source switch
+    {
+        "M.FeeProposalTracking" => "Fee proposal tracker",
+        "Deltek.CustomProposal" => "Deltek, before the tracker (not in the wins above)",
+        _ when source.StartsWith("Grab", StringComparison.OrdinalIgnoreCase) => "Grabbed in the app",
+        _ => source,
+    };
 
     // ===== IAiContextProvider =====
 

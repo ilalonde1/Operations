@@ -649,7 +649,8 @@ public sealed class DirectorTeamCard
         Name = person.DisplayName;
         Initials = BdDirectorHomeViewModel.Initials(person.DisplayName, person.PersonKey);
         AvatarBrush = Palette.Avatar(person.OwnerKeys.FirstOrDefault() ?? person.PersonKey);
-        var tenders = board.Count(r => r.Stage == 1 && person.OwnerKeys.Any(k => string.Equals(k, r.OwnerMailbox, StringComparison.OrdinalIgnoreCase)));
+        // A forward project is not a tender (audit C19, 2026-10-21).
+        var tenders = board.Count(r => r.Stage == 1 && !r.IsForward && person.OwnerKeys.Any(k => string.Equals(k, r.OwnerMailbox, StringComparison.OrdinalIgnoreCase)));
         Sub = $"{person.Live} pursuit{(person.Live == 1 ? "" : "s")}" + (tenders > 0 ? $" · {tenders} open tender{(tenders == 1 ? "" : "s")}" : "");
         var dated = Math.Max(0, person.Live - person.NoNextAction - person.OverdueNextAction);
         Overdue = person.OverdueNextAction;

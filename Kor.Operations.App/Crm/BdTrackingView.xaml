@@ -145,7 +145,7 @@
                           SelectedItem="{Binding Selected}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Region"    Binding="{Binding Region}"              Width="140"/>
-                        <DataGridTextColumn Header="Initiator" Binding="{Binding Initiator}"           Width="80"/>
+                        <DataGridTextColumn Header="Initiator" Binding="{Binding InitiatorDisplay}"    Width="130"/>
                         <DataGridTextColumn Header="Contact"   Binding="{Binding PrimaryContact}"      Width="140"/>
                         <DataGridTemplateColumn Header="Company" Width="*" SortMemberPath="BuyerDisplayName">
                             <DataGridTemplateColumn.CellTemplate>
@@ -226,7 +226,7 @@
                                 <TextBlock Text="{Binding Selected.Region}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
                             </Border>
                             <Border Background="{StaticResource Brand.Accent.Brush}" CornerRadius="10" Padding="8,2">
-                                <TextBlock Text="{Binding Selected.Initiator}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Selected.InitiatorDisplay}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
                             </Border>
                         </StackPanel>
 

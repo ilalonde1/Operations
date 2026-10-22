@@ -542,7 +542,8 @@ OUTER APPLY (SELECT TOP (1) v.Recommendation, v.Reasons, v.QuestionsJson, v.Ques
              FROM opportunities.PursuitReview v WHERE v.EngagementId = e.Id ORDER BY v.ReportedAtUtc DESC, v.Id DESC) r
 OUTER APPLY (SELECT TOP (1) x.Id, x.OutcomeAtUtc FROM opportunities.BdPromptRun x WHERE x.EngagementId = e.Id AND x.Kind = N'rfp' ORDER BY x.Id DESC) run
 WHERE e.Stage IN (1, 3)
-  AND (o.Id IS NOT NULL AND (r.Recommendation IS NOT NULL OR o.SubmissionDeadlineUtc >= DATEADD(day, -7, SYSDATETIMEOFFSET()))
+  -- A submitted bid stays until it is won or lost, however long ago it closed (audit C10, 2026-10-21).
+  AND (o.Id IS NOT NULL AND (e.Stage = 3 OR r.Recommendation IS NOT NULL OR o.SubmissionDeadlineUtc >= DATEADD(day, -7, SYSDATETIMEOFFSET()))
        OR o.Id IS NULL AND e.Stage = 1 AND fwd.ProjectName IS NOT NULL)
 ORDER BY COALESCE(o.SubmissionDeadlineUtc, '9999-12-31'), e.Id;";
 

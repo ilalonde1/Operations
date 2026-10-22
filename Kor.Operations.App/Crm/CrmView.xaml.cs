@@ -613,6 +613,7 @@ public partial class CrmView : UserControl
             ContactEmailBox.Clear();
             ContactPhoneBox.Clear();
             ContactPrimaryCheck.IsChecked = false;
+            AddContactToggle.IsChecked = false;
         }
         catch (Exception ex)
         {

@@ -7,7 +7,8 @@ namespace Kor.Opportunities.Data.Tests;
 // Measures the tender rule against all 581 open tenders of 2026-10-20, each labelled by hand as KOR work or not.
 // Compares the rule's verdict on the title with the label; it does not see the description, the buyer or the documents,
 // and because the rule was tuned on this same set it says nothing about titles unlike these. Floors are the measured
-// figures (precision 64/67, recall 64/68): a change that lets in road work or drops consultant work fails here.
+// figures (precision 63/66, recall 63/67): a change that lets in road work or drops consultant work fails here.
+// 2026-10-21: Touchwood Lake Campground Electrification relabelled N (utility work; Ian saw it on the Dashboard).
 public sealed class KorBidFitTests
 {
     private static IEnumerable<(long Id, bool Ours, string Title)> Labels(string file = "KorBidFitLabels-2026-10-20.tsv")
@@ -33,7 +34,7 @@ public sealed class KorBidFitTests
         var missed = rows.Where(r => r.Ours && !KorBidFit.IsKorWork(r.Title)).Select(r => $"{r.Id} {r.Title}").ToList();
         Assert.True(wrong.Count <= 3, "Shown but not KOR work:\n" + string.Join("\n", wrong));
         Assert.True(missed.Count <= 4, "KOR work the rule misses:\n" + string.Join("\n", missed));
-        Assert.Equal(64, right);
+        Assert.Equal(63, right);
     }
 
     // The tender archive (Market History) is a different population: its "consulting services" are as often payroll, IT or
@@ -59,8 +60,14 @@ public sealed class KorBidFitTests
     [InlineData("12875 Construction - Watermain Upgrade - Jaud Rd", false)]
     [InlineData("Civil Engineering Consulting Services - Mountain Highway Improvements", false)]
     [InlineData("RFPQ-Mechanical Consulting Services - Standing Opportunity", false)]
+    [InlineData("DESIGN, ENGINEERING AND CONSTRUCTION ADMINISTRATION CONSULTANT SERVICES - TOUCHWOOD LAKE CAMPGROUND ELECTRIFICATION Lakeland Provincial Recreation Area", false)]
     [InlineData("Construction Management - Ecole North Oyster Elementary - Seismic Upgrade and Addition", false)]
     [InlineData("Structural and Civil Engineering – Professional Services Agreement", true)]
+    // Adversarial audit, 2026-10-21: a street name, a mental-health building and a heritage building are still buildings.
+    [InlineData("Prime consultant services - Main Street Elementary School Replacement", true)]
+    [InlineData("Prime consultant services - New Mental Health Hospital", true)]
+    [InlineData("Prime consultant services - Heritage School Expansion", true)]
+    [InlineData("Street Light Installation, Traffic Signal Installation and Other Work", false)]
     [InlineData("Multi-disciplinary Architectural and Engineering Consultant Services", true)]
     [InlineData("Building Condition Assessment and Feasibility Study – Building B", true)]
     [InlineData("DESIGN BUILD | RFQ # R-27016 - 107TH STREET ELEMENTARY | SEISMIC MODERNIZATION PROJECT", true)]

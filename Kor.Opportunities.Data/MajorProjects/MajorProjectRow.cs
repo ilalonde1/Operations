@@ -1,6 +1,8 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Kor.Opportunities.Data.MajorProjects;
 
@@ -63,7 +65,34 @@ public sealed record MajorProjectRow(
 {
     private static readonly CultureInfo CanadianCulture = CultureInfo.GetCultureInfo("en-CA");
 
-    public string StageDisplay => FirstNonBlank(ProjectStage, Stage, ProjectStatus) ?? "";
+    public string StageDisplay => PlainStage(FirstNonBlank(ProjectStage, Stage, ProjectStatus));
+
+    // Source codes in words: the California CEQA notices, the camel-case stages, lower-case feed values.
+    private static readonly Dictionary<string, string> StageWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["CapitalPlan"] = "Capital plan",
+        ["Announced-Funded"] = "Announced and funded",
+        ["NOE"] = "CEQA exemption filed",
+        ["NOD"] = "CEQA approval filed",
+        ["NOP"] = "CEQA review starting",
+        ["MND"] = "CEQA mitigated declaration",
+        ["EIR"] = "CEQA impact report",
+        ["filing"] = "Filed",
+        ["triage"] = "New",
+        ["reinstated"] = "Reinstated",
+        ["on-hold"] = "On hold",
+        ["in-procurement"] = "Procurement",
+        ["DP"] = "Development permit",
+    };
+
+    public static string PlainStage(string? raw)
+    {
+        var s = (raw ?? "").Trim();
+        if (s.Length == 0) return "";
+        if (StageWords.TryGetValue(s, out var words)) return words;
+        s = Regex.Replace(s, @"(?<=[a-z])(?=[A-Z])", " ");
+        return char.ToUpper(s[0], CanadianCulture) + s[1..];
+    }
     public string CostDisplay => EstimatedCostCad.HasValue
         ? string.Format(CanadianCulture, "{0:C0}", EstimatedCostCad.Value)
         : EstimatedCostText ?? "";

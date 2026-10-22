@@ -109,12 +109,18 @@ public sealed class BdTrackingViewModel : INotifyPropertyChanged, Kor.Operations
         }
     }
 
+    // The options are first names; the rows hold logins ("cmurtagh@…"), so a plain comparison matched nothing and every
+    // person filter showed an empty list (found 2026-10-21). Match the first name of the person the login belongs to.
+    private static bool IsInitiator(BdTrackingEngagementRow r, string firstName)
+        => string.Equals(r.Initiator, firstName, StringComparison.OrdinalIgnoreCase)
+        || r.InitiatorDisplay.StartsWith(firstName + " ", StringComparison.OrdinalIgnoreCase);
+
     private void RefreshFiltered()
     {
         _filteredEngagements.Clear();
         foreach (var r in Engagements.Where(r =>
             (SelectedRegion == AllRegions || string.Equals(r.Region, SelectedRegion, StringComparison.OrdinalIgnoreCase)) &&
-            (SelectedInitiator == AllInitiators || string.Equals(r.Initiator, SelectedInitiator, StringComparison.OrdinalIgnoreCase))))
+            (SelectedInitiator == AllInitiators || IsInitiator(r, SelectedInitiator))))
         {
             _filteredEngagements.Add(r);
         }
@@ -454,6 +460,7 @@ public sealed class BdTrackingEngagementRow
 {
     public long Id { get; init; }
     public string Initiator { get; init; } = "";
+    public string InitiatorDisplay => Kor.Operations.App.BusinessDevelopment.StaffDisplay.Short(Initiator);
     public string Region { get; init; } = "";
     public long? BuyerCanonicalOrgId { get; init; }
     public string BuyerDisplayName { get; init; } = "";

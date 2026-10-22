@@ -61,19 +61,17 @@
                             <!-- Round 53: ID column (OpportunityKey, internal lookup
                                  like "BCBID-NXC-J7H6N") dropped — not actionable
                                  for browsing; double-click opens the full record. -->
-                            <DataGridTextColumn Header="Title" Binding="{Binding Name}" Width="360"/>
-                            <DataGridTextColumn Header="Buyer" Binding="{Binding BuyerName}" Width="250"/>
-                            <DataGridTextColumn Header="Province" Binding="{Binding ProjectProvince}" Width="60"/>
-                            <DataGridTextColumn Header="Status" Binding="{Binding HistoricalStatus}" Width="90"/>
-                            <DataGridTextColumn Header="RFP Date" Binding="{Binding RfpReleaseDate, StringFormat=yyyy-MM-dd}" Width="100"/>
-                            <DataGridTextColumn Header="Closes" Binding="{Binding SubmissionDeadlineUtc, Converter={StaticResource OpportunityDeadlineConverter}}" Width="290"/>
-                            <DataGridTextColumn Header="Est. Value" Binding="{Binding EstimatedValue, StringFormat=C0}" Width="100"/>
-                            <DataGridTextColumn Header="Amends" Binding="{Binding AmendmentCount}" Width="65"/>
-                            <DataGridTextColumn Header="Awarded To" Binding="{Binding AwardedToOrganization}" Width="200"/>
+                            <!-- 2026-10-21: the columns a lead reads, sized to the window (it was 13 fixed widths and
+                                 always scrolled sideways, with "Provinc" cut off and Status/Amends/Commodities mostly
+                                 empty). Double-click still opens everything. -->
+                            <DataGridTextColumn Header="Title" Binding="{Binding Name}" Width="2.4*" MinWidth="260"/>
+                            <DataGridTextColumn Header="Buyer" Binding="{Binding BuyerName}" Width="1.3*" MinWidth="150"/>
+                            <DataGridTextColumn Header="Prov." Binding="{Binding ProjectProvince}" Width="52"/>
+                            <DataGridTextColumn Header="Closed" Binding="{Binding SubmissionDeadlineUtc, Converter={StaticResource OpportunityDeadlineConverter}}" Width="180" SortMemberPath="SubmissionDeadlineUtc"/>
+                            <DataGridTextColumn Header="Est. value" Binding="{Binding EstimatedValue, StringFormat=C0}" Width="100"/>
+                            <DataGridTextColumn Header="Awarded to" Binding="{Binding AwardedToOrganization}" Width="*" MinWidth="120"/>
                             <DataGridTextColumn Header="Awarded $" Binding="{Binding AwardedValue, StringFormat=C0}" Width="100"/>
                             <DataGridTextColumn Header="Docs" Binding="{Binding DocumentCount}" Width="55"/>
-                            <DataGridTextColumn Header="Downloaded" Binding="{Binding DownloadedDocumentCount}" Width="85"/>
-                            <DataGridTextColumn Header="Commodities" Binding="{Binding Commodities}" Width="220"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>

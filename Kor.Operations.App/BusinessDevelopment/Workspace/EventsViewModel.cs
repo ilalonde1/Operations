@@ -105,7 +105,9 @@ public sealed class EventsViewModel : INotifyPropertyChanged, Kor.Operations.Ser
             score++;
         }
 
-        var tier = score >= 4 ? "Tier 1" : score >= 2 ? "Tier 2" : "Watch";
+        // The researched verdict at the head of "Why" decides when there is one: two LA galas the research calls LOW showed
+        // as Tier 1 on keywords alone (Ian, 2026-10-21). The score is only for events nobody has researched yet.
+        var tier = ResearchedTier(row.KorRelevance) ?? (score >= 4 ? "Tier 1" : score >= 2 ? "Tier 2" : "Watch");
         var tierRank = tier switch
         {
             "Tier 1" => 0,
@@ -128,6 +130,21 @@ public sealed class EventsViewModel : INotifyPropertyChanged, Kor.Operations.Ser
             row.RegistrationUrl,
             row.CostNote,
             row.SourceNote);
+    }
+
+    // The verdict is a capitalised word and a dash ("HIGH - ", "LOW — ") or the word "Highest". Prose that only starts with
+    // the letters ("Lower Mainland buyers...", "Highway suppliers...") is not one (audit M7, 2026-10-21).
+    private static readonly System.Text.RegularExpressions.Regex Verdict = new(@"^\s*(?:(?<v>HIGH|MEDIUM|LOW)\s*[-–—:]|(?<v>Highest)\b)");
+
+    internal static string? ResearchedTier(string? relevance)
+    {
+        var m = Verdict.Match(relevance ?? "");
+        return !m.Success ? null : m.Groups["v"].Value switch
+        {
+            "Highest" or "HIGH" => "Tier 1",
+            "MEDIUM" => "Tier 2",
+            _ => "Watch",
+        };
     }
 
     private static bool IsPriorityEventType(string? eventType)

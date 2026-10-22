@@ -87,7 +87,9 @@ WHEN NOT MATCHED THEN
 SELECT {AllColumns}
 FROM opportunities.IndustryEvents
 WHERE RetiredAtUtc IS NULL
-  AND (EndDate IS NULL OR EndDate >= CAST(SYSDATETIMEOFFSET() AS date))
+  -- A one-day event has no EndDate: its StartDate is when it ends. Without the COALESCE, September events headed the
+  -- Events screen in late October (2026-10-21). An event with neither date stays listed.
+  AND (COALESCE(EndDate, StartDate) IS NULL OR COALESCE(EndDate, StartDate) >= CAST(SYSDATETIMEOFFSET() AS date))
 ORDER BY
     CASE WHEN StartDate IS NULL THEN 1 ELSE 0 END,
     StartDate,

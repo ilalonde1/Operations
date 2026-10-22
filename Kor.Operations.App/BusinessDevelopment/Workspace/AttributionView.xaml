@@ -41,7 +41,7 @@
             <Border Style="{StaticResource StatTile}">
                 <StackPanel>
                     <TextBlock Text="{Binding WinsDisplay}" Style="{StaticResource StatValue}"/>
-                    <TextBlock Text="Wins (CRM)" Style="{StaticResource StatLabel}"/>
+                    <TextBlock Text="Wins recorded" Style="{StaticResource StatLabel}"/>
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource StatTile}">
@@ -72,13 +72,14 @@
 
         <!-- Honest maturity note -->
         <Border Grid.Row="2" Margin="0,0,0,8" Padding="10,6"
-                Background="#FFF7E6" BorderBrush="#E0C078" BorderThickness="1" CornerRadius="3"
+                Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6"
                 Visibility="{Binding HasMaturityNote, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
             <TextBlock Text="{Binding MaturityNote}" TextWrapping="Wrap" FontSize="12"/>
         </Border>
 
-        <!-- Breakdowns -->
-        <Grid Grid.Row="3">
+        <!-- Breakdowns: as tall as their rows (MinHeight keeps the empty message readable), not two window-high boxes
+             holding one or two rows each (2026-10-21). -->
+        <Grid Grid.Row="3" VerticalAlignment="Top" MinHeight="150">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="10"/>
@@ -91,7 +92,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Wins by source feed" FontSize="14" FontWeight="SemiBold"
+                    <TextBlock Grid.Row="0" Text="Where the wins were recorded" FontSize="14" FontWeight="SemiBold"
                                Foreground="{StaticResource Brand.Primary.Brush}" Margin="0,0,0,8"/>
                     <DataGrid Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
                               HeadersVisibility="Column" ItemsSource="{Binding BySource}">
@@ -126,12 +127,12 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Wins by owner" FontSize="14" FontWeight="SemiBold"
+                    <TextBlock Grid.Row="0" Text="Wins by person" FontSize="14" FontWeight="SemiBold"
                                Foreground="{StaticResource Brand.Primary.Brush}" Margin="0,0,0,8"/>
                     <DataGrid Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
                               HeadersVisibility="Column" ItemsSource="{Binding ByOwner}">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Owner"   Binding="{Binding Owner}"                  Width="*"/>
+                            <DataGridTextColumn Header="Person"  Binding="{Binding Owner}"                  Width="*"/>
                             <DataGridTextColumn Header="Wins"    Binding="{Binding Wins}"                   Width="70"/>
                             <DataGridTextColumn Header="Won fee" Binding="{Binding WonFee, StringFormat={}{0:C0}}" Width="120"/>
                         </DataGrid.Columns>
@@ -140,7 +141,7 @@
                     <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
                                Margin="16" TextAlignment="Center" TextWrapping="Wrap" FontSize="12"
                                Foreground="{StaticResource Text.Secondary}"
-                               Text="No wins attributed to an owner yet.">
+                               Text="None yet. A pursuit grabbed in the app and won is counted here, under the person who grabbed it.">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Visibility" Value="Collapsed"/>

@@ -27,7 +27,13 @@ public sealed class CrmEngagementRowView
 
     public long Id => Engagement.Id;
     public long? OpportunityId => Engagement.OpportunityId;
-    public string StageDisplay => CrmStageNames.Display(Engagement.Stage);
+    // The stored stage 1 ("Pending") read differently here and in BD Director, which splits it the way a lead thinks of it:
+    // a tender is out (Out for bid) or there is no RFP yet (Ian, 2026-10-21).
+    public const string NotSubmitted = "Not submitted";
+    // A permit or rezoning signal is an opportunity row too, but with no closing date: it is not out for bid.
+    public string StageDisplay => Engagement.Stage == CrmEngagementStage.Drafting
+        ? (Engagement.OpportunityId.HasValue && Opportunity?.SubmissionDeadlineUtc is not null ? "Out for bid" : "No RFP yet")
+        : CrmStageNames.Display(Engagement.Stage);
     public string OwnerDisplay => string.IsNullOrWhiteSpace(Engagement.OwnerStaffId) ? "—" : StaffDisplay.Short(Engagement.OwnerStaffId);
 
     /// <summary>True for engagements rooted in a formal Opportunity (RFP); false for BD-tracking touchpoints.</summary>

@@ -31,7 +31,9 @@ public sealed record PursuitOverwatchRow(
     DateTimeOffset OpenedAtUtc,
     int ActivityCount,
     DateTimeOffset? EmailLastTouchUtc,
-    DateTimeOffset StageSinceUtc);
+    DateTimeOffset StageSinceUtc,
+    // The tender's closing date; null for a permit or rezoning signal, which is not out for bid (2026-10-21).
+    DateTimeOffset? DeadlineUtc = null);
 
 /// <summary>Outcome of a reassign attempt.</summary>
 public enum ReassignOutcome
@@ -112,7 +114,8 @@ SELECT e.Id                                            AS EngagementId,
        e.OpenedAtUtc                                   AS OpenedAtUtc,
        COALESCE(la.ActivityCount, 0)                   AS ActivityCount,
        w.LastTouchUtc                                  AS EmailLastTouchUtc,
-       COALESCE(sh.StageSinceUtc, e.OpenedAtUtc)       AS StageSinceUtc
+       COALESCE(sh.StageSinceUtc, e.OpenedAtUtc)       AS StageSinceUtc,
+       o.SubmissionDeadlineUtc                         AS DeadlineUtc
 FROM opportunities.CrmEngagements e
 LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
 LEFT JOIN opportunities.CanonicalOrg co ON co.Id = e.BuyerCanonicalOrgId
@@ -228,7 +231,8 @@ END";
                 OpenedAtUtc: reader.GetDateTimeOffset(8),
                 ActivityCount: reader.GetInt32(9),
                 EmailLastTouchUtc: reader.IsDBNull(10) ? null : reader.GetDateTimeOffset(10),
-                StageSinceUtc: reader.GetDateTimeOffset(11)));
+                StageSinceUtc: reader.GetDateTimeOffset(11),
+                DeadlineUtc: reader.IsDBNull(12) ? null : reader.GetDateTimeOffset(12)));
         }
 
         return rows;

@@ -66,8 +66,16 @@ public sealed class BdDirectorPendingBidsRegressionTests
                      (CrmEngagementStage.Won, "Won"), (CrmEngagementStage.Lost, "Lost") })
         {
             Assert.Equal(pair.Item2, CrmStageNames.Display(pair.Item1));
-            Assert.Equal(pair.Item2, new CrmEngagementRowView(new CrmEngagement { Stage = pair.Item1 }, null).StageDisplay);
+            if (pair.Item1 != CrmEngagementStage.Drafting)
+                Assert.Equal(pair.Item2, new CrmEngagementRowView(new CrmEngagement { Stage = pair.Item1 }, null).StageDisplay);
         }
+        // A stage-1 pursuit row reads the way BD Director splits it (2026-10-21): no tender yet, or a tender out for bid.
+        Assert.Equal("No RFP yet", new CrmEngagementRowView(new CrmEngagement { Stage = CrmEngagementStage.Drafting }, null).StageDisplay);
+        Assert.Equal("Out for bid", new CrmEngagementRowView(new CrmEngagement { Stage = CrmEngagementStage.Drafting, OpportunityId = 1 },
+            new Opportunity { SubmissionDeadlineUtc = DateTimeOffset.Now }).StageDisplay);
+        // A rezoning signal is an opportunity row with no closing date: not out for bid.
+        Assert.Equal("No RFP yet", new CrmEngagementRowView(new CrmEngagement { Stage = CrmEngagementStage.Drafting, OpportunityId = 1 },
+            new Opportunity()).StageDisplay);
         foreach (var folder in new[] { Director, "Kor.Operations.App/Crm" })
         foreach (var file in Directory.EnumerateFiles(Path.Combine(Root(), folder), "*", SearchOption.AllDirectories)
                      .Where(f => Path.GetExtension(f) is ".cs" or ".xaml"))

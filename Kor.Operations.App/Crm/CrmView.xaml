@@ -69,7 +69,7 @@
                     ToolTip="Change the stage of the selected pursuit.">
                 <Button.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="{x:Static models:CrmStageNames.Pending}" Click="StageMenuItem_Click" Tag="1"/>
+                        <MenuItem Header="Not submitted (no RFP yet, or out for bid)" Click="StageMenuItem_Click" Tag="1"/>
                         <MenuItem Header="{x:Static models:CrmStageNames.Submitted}" Click="StageMenuItem_Click" Tag="3"/>
                         <MenuItem Header="{x:Static models:CrmStageNames.Won}" Click="StageMenuItem_Click" Tag="6"/>
                         <MenuItem Header="{x:Static models:CrmStageNames.Lost}" Click="StageMenuItem_Click" Tag="7"/>
@@ -125,15 +125,8 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
             </DockPanel>
-
-            <Border Margin="0,0,0,8" Padding="10,6"
-                    Background="#F4F8FB" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
-                    CornerRadius="3"
-                    Visibility="{Binding HasAnalytics, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-                <StackPanel Orientation="Vertical">
-                    <TextBlock Text="{Binding AnalyticsHeadline}" FontWeight="SemiBold"/>
-                </StackPanel>
-            </Border>
+            <!-- The won/lost headline line is gone (2026-10-21): next to the Won pill it read as a contradiction
+                 (305 vs 128, the difference being earlier Deltek wins). The pills are the counts. -->
         </StackPanel>
 
         <Grid Grid.Row="2" Margin="0,0,0,8">
@@ -178,7 +171,7 @@
                                  detail panel to keep the list scannable. -->
                             <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}"        Width="2*" MinWidth="180"/>
                             <DataGridTextColumn Header="Buyer"   Binding="{Binding Buyer}"              Width="*"  MinWidth="120"/>
-                            <DataGridTextColumn Header="Owner"   Binding="{Binding OwnerDisplay}"       Width="90"/>
+                            <DataGridTextColumn Header="Owner"   Binding="{Binding OwnerDisplay}"       Width="130"/>
                             <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedDisplay}"     Width="100"/>
                         </DataGrid.Columns>
                     </DataGrid>
@@ -229,7 +222,13 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Contacts" Margin="0,0,0,8" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,8" LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left" Text="Contacts" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}" VerticalAlignment="Center"/>
+                            <Button DockPanel.Dock="Right" Content="Remove" Width="70" Margin="4,0,0,0" Click="RemoveContactButton_Click"
+                                    ToolTip="Remove the selected contact."/>
+                            <!-- The add form stays folded until asked for: it sat open on every pursuit (2026-10-21). -->
+                            <ToggleButton DockPanel.Dock="Right" x:Name="AddContactToggle" Content="Add contact" Padding="10,2"/>
+                        </DockPanel>
 
                         <Border Grid.Row="1" Margin="0,0,0,8" Padding="8,5"
                                 Background="#FFF7E6" BorderBrush="#E0C078" BorderThickness="1"
@@ -298,7 +297,8 @@
                                    ToolTip="Firms that downloaded/expressed interest on this RFP (portal names as-published)."/>
                         <!-- Two lines that fit the pane. The 2026-10-14 render harness showed the old
                              single row (820 px of fixed widths) with Add and Remove off the right edge. -->
-                        <Grid Margin="0,0,0,8">
+                        <Grid Margin="0,0,0,8"
+                              Visibility="{Binding IsChecked, ElementName=AddContactToggle, Converter={StaticResource BoolToVis}}">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
@@ -308,22 +308,27 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox Grid.Row="0" Grid.Column="0" x:Name="ContactNameBox" Margin="0,0,4,4"
-                                     controls:Placeholder.Text="Name (required)"
-                                     ToolTip="Display name (required)"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" x:Name="ContactRoleBox" Margin="0,0,0,4"
-                                     controls:Placeholder.Text="Role / title"
-                                     ToolTip="Role / title"/>
-                            <TextBox Grid.Row="1" Grid.Column="0" x:Name="ContactEmailBox" Margin="0,0,4,0"
-                                     controls:Placeholder.Text="Email"
-                                     ToolTip="Email"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="ContactPhoneBox" Margin="0,0,4,0"
-                                     controls:Placeholder.Text="Phone"
-                                     ToolTip="Phone"/>
-                            <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal">
-                                <CheckBox x:Name="ContactPrimaryCheck" Content="primary" Margin="0,4,8,0"/>
-                                <Button Content="Add" Width="60" Click="AddContactButton_Click"/>
-                                <Button Content="Remove" Width="70" Margin="4,0,0,0" Click="RemoveContactButton_Click"/>
+                            <!-- Labels above, not placeholders: a placeholder is drawn on the adorner layer and kept
+                                 showing over the Contacts header while this form was folded away (2026-10-21). -->
+                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,4,4">
+                                <TextBlock Text="Name (required)" FontSize="11" Foreground="#666"/>
+                                <TextBox x:Name="ContactNameBox"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,4">
+                                <TextBlock Text="Role or title" FontSize="11" Foreground="#666"/>
+                                <TextBox x:Name="ContactRoleBox"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,4,0">
+                                <TextBlock Text="Email" FontSize="11" Foreground="#666"/>
+                                <TextBox x:Name="ContactEmailBox"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,4,0">
+                                <TextBlock Text="Phone" FontSize="11" Foreground="#666"/>
+                                <TextBox x:Name="ContactPhoneBox"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom">
+                                <CheckBox x:Name="ContactPrimaryCheck" Content="Primary" Margin="0,4,8,0"/>
+                                <Button Content="Save" Width="60" Click="AddContactButton_Click"/>
                             </StackPanel>
                         </Grid>
                         </StackPanel>
@@ -415,7 +420,7 @@
                                 <DataGridTextColumn Header="When"     Binding="{Binding OccurredDisplay}" Width="130"/>
                                 <DataGridTextColumn Header="Type"     Binding="{Binding TypeDisplay}"     Width="90"/>
                                 <DataGridTextColumn Header="Subject"  Binding="{Binding Subject}"         Width="*"/>
-                                <DataGridTextColumn Header="By"       Binding="{Binding CreatedBy}"       Width="120"/>
+                                <DataGridTextColumn Header="By"       Binding="{Binding CreatedByDisplay}" Width="130"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>

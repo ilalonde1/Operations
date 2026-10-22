@@ -98,6 +98,12 @@ var plainColumns = new (string Table, string Column, bool IsJson)[]
     ("IntelSignal", "Detail", false),
     ("IntelSignal", "RetiredReason", false),
     ("IntelWork", "Notes", false),
+    // 2026-10-21: the Events screen showed "â€"" in the Defence event's "Why" (Ian). Not in the 10-15 scan's schemas.
+    ("IndustryEvents", "KorRelevance", false),
+    ("IndustryEvents", "TargetsPresent", false),
+    ("IndustryEvents", "SourceNote", false),
+    ("IndustryEvents", "CostNote", false),
+    ("IndustryEvents", "SectorsThemes", false),
 };
 
 foreach (var (table, column, isJson) in plainColumns)

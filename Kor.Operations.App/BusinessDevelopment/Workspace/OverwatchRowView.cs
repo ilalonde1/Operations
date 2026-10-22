@@ -56,10 +56,13 @@ public sealed class OverwatchRowView
 
     public long EngagementId => Row.EngagementId;
     public long? OpportunityId => Row.OpportunityId;
-    /// <summary>The person, not the address: "ilalonde", because a 110px column showed "ilalonde@korstructu" (render harness, 2026-10-14).</summary>
+    /// <summary>The person's name from the BD staff directory, never the address (2026-10-14, names 2026-10-21).</summary>
     public string OwnerDisplay => StaffDisplay.Short(Row.OwnerStaffId);
-    public string StageDisplay => ((CrmEngagementStage)Row.Stage).ToString();
-    public string ProjectName => Row.ProjectName;
+    /// <summary>The same words as My Pursuits and BD Director: "Drafting" was the enum's name, not anyone's (2026-10-21).</summary>
+    public string StageDisplay => (CrmEngagementStage)Row.Stage == CrmEngagementStage.Drafting
+        ? (Row.OpportunityId.HasValue && Row.DeadlineUtc.HasValue ? "Out for bid" : "No RFP yet")
+        : CrmStageNames.Display((CrmEngagementStage)Row.Stage);
+    public string ProjectName => Row.ProjectName == "(unnamed)" ? "No project named yet" : Row.ProjectName;
     public string Buyer => Row.Buyer;
     public string RegionDisplay => Row.Region ?? "";
 
@@ -71,8 +74,8 @@ public sealed class OverwatchRowView
     /// <summary>Days in the CURRENT stage (plan 2.2a; stage history with OpenedAtUtc fallback).</summary>
     public int StageAgeDays { get; }
 
-    /// <summary>"Drafting 34d" — the stage plus how long it has sat there.</summary>
-    public string StageAgeDisplay => $"{StageDisplay} {StageAgeDays}d";
+    /// <summary>"Out for bid · 34 days": the stage plus how long it has sat there.</summary>
+    public string StageAgeDisplay => $"{StageDisplay} · {StageAgeDays} day{(StageAgeDays == 1 ? "" : "s")}";
 
     private DateTimeOffset LastTouchUtc { get; }
 

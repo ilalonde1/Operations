@@ -44,6 +44,9 @@ public partial class BdWorkspaceWindow : Window
             // Header identity is cosmetic and should not block the workspace.
         }
 
+        // People's names in every owner column (StaffDisplay never throws; it falls back to logins).
+        await StaffDisplay.EnsureLoadedAsync(_services.GetRequiredService<Kor.Opportunities.Data.Crm.IBdStaffDirectory>(), default).ConfigureAwait(true);
+
         try
         {
             // Default to the Dashboard ONLY when nothing has claimed the host:

@@ -237,8 +237,31 @@ UPDATE opportunities.CrmEngagements SET NextActionNote = N'AUDITTEST pick refere
                 await ask.ExecuteNonQueryAsync();
             }
 
+            // Adversarial audit 2026-10-21 (C1, C8): after the join a portal download and the review's requirement arrive for the
+            // tender, the forward owner uploads their own drawing and adds their own requirement, and the bid is submitted.
+            await using (var arrive = new SqlCommand(@"
+INSERT INTO opportunities.OpportunityFiles (OpportunityId, EngagementId, FileName, UploadedBy, Content) VALUES
+    (@o, @e, N'AUDITTEST portal RFP.pdf', N'apc', 0x00), (@o, @e, N'AUDITTEST owner drawing.pdf', @owner, 0x00);
+INSERT INTO opportunities.PursuitRequirement (EngagementId, Ordinal, Requirement, SourceRef, CheckKind, CreatedBy) VALUES
+    (@e, 1, N'AUDITTEST from the RFP', N'RFP 1', N'Manual', N'Claude (RFP review)'), (@e, 2, N'AUDITTEST owner note', N'-', N'Manual', @owner);
+UPDATE opportunities.CrmEngagements SET Stage = 3 WHERE Id = @e;", con))
+            {
+                arrive.Parameters.AddWithValue("@o", oppId);
+                arrive.Parameters.AddWithValue("@e", engId);
+                arrive.Parameters.AddWithValue("@owner", owner);
+                await arrive.ExecuteNonQueryAsync();
+            }
+
             newEng = await grabStore.RejectJoinAsync(engId, owner, CancellationToken.None);
             Assert.True(newEng > 0 && newEng != engId, $"EXPECTED a new pursuit; ACTUAL {newEng}");
+            Assert.Equal(newEng, await ScalarAsync<long>(con, "SELECT EngagementId FROM opportunities.OpportunityFiles WHERE FileName=N'AUDITTEST portal RFP.pdf' AND OpportunityId=@p0", oppId));
+            Assert.Equal(engId, await ScalarAsync<long>(con, "SELECT EngagementId FROM opportunities.OpportunityFiles WHERE FileName=N'AUDITTEST owner drawing.pdf' AND OpportunityId=@p0", oppId));
+            Assert.Equal(newEng, await ScalarAsync<long>(con, "SELECT EngagementId FROM opportunities.PursuitRequirement WHERE Requirement=N'AUDITTEST from the RFP' AND EngagementId IN (@p0, @p1)", engId, newEng));
+            Assert.Equal(engId, await ScalarAsync<long>(con, "SELECT EngagementId FROM opportunities.PursuitRequirement WHERE Requirement=N'AUDITTEST owner note' AND EngagementId IN (@p0, @p1)", engId, newEng));
+            Assert.Equal(3, await ScalarAsync<int>(con, "SELECT Stage FROM opportunities.CrmEngagements WHERE Id=@p0", newEng));
+            Assert.Equal(1, await ScalarAsync<int>(con, "SELECT Stage FROM opportunities.CrmEngagements WHERE Id=@p0", engId));
+            // M1: the rejected join is no longer a "new grab" for the manager.
+            Assert.DoesNotContain(await grabStore.RecentGrabsAsync("audittest-manager@korstructural.com", CancellationToken.None), g => g.EngagementId == engId);
             Assert.Equal(oppId, await ScalarAsync<long>(con, "SELECT OpportunityId FROM opportunities.CrmEngagements WHERE Id=@p0", newEng));
             Assert.Equal(grabber, await ScalarAsync<string>(con, "SELECT OwnerStaffId FROM opportunities.CrmEngagements WHERE Id=@p0", newEng));
             Assert.Equal(grabber, await ScalarAsync<string>(con, "SELECT OwnerStaffId FROM opportunities.Opportunities WHERE Id=@p0", oppId));
@@ -254,6 +277,8 @@ UPDATE opportunities.CrmEngagements SET NextActionNote = N'AUDITTEST pick refere
         {
             foreach (var e in new[] { engId, newEng }.Where(e => e > 0))
             {
+                await ExecAsync(con, "DELETE FROM opportunities.OpportunityFiles WHERE EngagementId=@p0", e);
+                await ExecAsync(con, "DELETE FROM opportunities.PursuitRequirement WHERE EngagementId=@p0", e);
                 await ExecAsync(con, "DELETE FROM opportunities.BdAsk WHERE EngagementId=@p0", e);
                 await ExecAsync(con, "DELETE FROM opportunities.OpportunityAssignmentLog WHERE EngagementId=@p0", e);
                 await ExecAsync(con, "DELETE FROM opportunities.CrmEngagementStageHistory WHERE EngagementId=@p0", e);
@@ -331,10 +356,11 @@ UPDATE opportunities.CrmEngagements SET NextActionNote = N'AUDITTEST pick refere
         await ExecAsync(con, "DELETE FROM opportunities.Opportunities WHERE Id=@p0", oppId);
     }
 
-    private static async Task<T> ScalarAsync<T>(SqlConnection con, string sql, long p0)
+    private static async Task<T> ScalarAsync<T>(SqlConnection con, string sql, long p0, long p1 = 0)
     {
         await using var cmd = new SqlCommand(sql, con);
         cmd.Parameters.Add("@p0", SqlDbType.BigInt).Value = p0;
+        cmd.Parameters.Add("@p1", SqlDbType.BigInt).Value = p1;
         var value = await cmd.ExecuteScalarAsync();
         return (T)Convert.ChangeType(value!, typeof(T));
     }

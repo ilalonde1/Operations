@@ -65,7 +65,10 @@ OUTPUT inserted.Id INTO @closed
   FROM opportunities.CrmEngagements e
   JOIN opportunities.CrmEngagementProjectLink l ON l.EngagementId = e.Id AND l.MatchedBy = N'Grab'
   JOIN @reaped r ON r.Id = l.MajorProjectsInventoryId
- WHERE e.Stage = 1 AND e.OpportunityId IS NULL;
+ WHERE e.Stage = 1 AND e.OpportunityId IS NULL
+   -- The same guard again, on the row being archived: a next step set between the two statements keeps the pursuit
+   -- (audit C4, 2026-10-21).
+   AND NOT (e.NextActionDueUtc >= SYSDATETIMEOFFSET() OR e.UpdatedAtUtc >= @cutoff);
 INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId) SELECT Id, 8, N'system:reaper' FROM @closed;
 
 INSERT INTO opportunities.OpportunityAssignmentLog (MpiId, Action, FromStaffId, ByStaffId, Reason)

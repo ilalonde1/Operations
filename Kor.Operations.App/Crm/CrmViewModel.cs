@@ -55,7 +55,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     // never reduced.
     private string? _stageFilterKey;                    // null = live default (Drafting + Submitted)
     private string _searchText = string.Empty;
-    private bool _mineOnly;
+    // On by default: the screen is "My Pursuits"; it listed all 822 (Ian, 2026-10-21). Everyone's is one click on "Mine".
+    private bool _mineOnly = true;
     private readonly Debouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(250));
 
     /// <summary>Resolved identity of the signed-in user (set by the view on
@@ -112,6 +113,10 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             || (e.AssignedStaffIds ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Any(s => string.Equals(s, actor, StringComparison.OrdinalIgnoreCase)));
 
+    // With no signed-in actor (render harness, a failed identity lookup) "Mine" cannot be decided, so it shows everyone's.
+    private bool PassesMine(CrmEngagementRowView row)
+        => !_mineOnly || string.IsNullOrWhiteSpace(CurrentActorUpn) || IsMine(row.Engagement, CurrentActorUpn);
+
     private bool FilterRow(object item)
     {
         if (item is not CrmEngagementRowView row)
@@ -128,7 +133,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             return false;
         }
 
-        if (_mineOnly && !IsMine(row.Engagement, CurrentActorUpn))
+        if (!PassesMine(row))
         {
             return false;
         }
@@ -174,6 +179,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         {
             if (SetField(ref _mineOnly, value))
             {
+                RebuildStageChips();
                 RefreshEngagementsView();
             }
         }
@@ -196,24 +202,27 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     private void RebuildStageChips()
     {
         StageSummary.Clear();
-        var rows = Engagements.Select(r => r.Engagement).ToList();
+        // The pills count what the list can show: with "Mine" on, they are your pursuits, not the firm's.
+        var rows = Engagements.Where(PassesMine).Select(r => r.Engagement).ToList();
 
         var liveCount = rows.Count(e => e.Stage is CrmEngagementStage.Drafting or CrmEngagementStage.Submitted);
         StageSummary.Add(new StageChip(
             "Live", liveCount, CrmEngagementRowView.BrushFor(CrmEngagementStage.Drafting),
             LiveChipKey, IsActive: _stageFilterKey is null));
 
+        // In the order a pursuit moves (2026-10-21; it was Won first).
         foreach (var stage in new[]
                  {
-                     CrmEngagementStage.Won, CrmEngagementStage.Submitted,
-                     CrmEngagementStage.Drafting, CrmEngagementStage.Lost,
+                     CrmEngagementStage.Drafting, CrmEngagementStage.Submitted,
+                     CrmEngagementStage.Won, CrmEngagementStage.Lost,
                  })
         {
             var count = rows.Count(e => e.Stage == stage);
             if (count > 0)
             {
                 StageSummary.Add(new StageChip(
-                    CrmStageNames.Display(stage), count, CrmEngagementRowView.BrushFor(stage),
+                    stage == CrmEngagementStage.Drafting ? CrmEngagementRowView.NotSubmitted : CrmStageNames.Display(stage),
+                    count, CrmEngagementRowView.BrushFor(stage),
                     stage.ToString(), IsActive: _stageFilterKey == stage.ToString()));
             }
         }
@@ -442,7 +451,9 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 
             StatusMessage = engagements.Count == 0
                 ? "No pursuits yet — promote an opportunity from the Opportunities window to start one."
-                : $"Loaded {engagements.Count} pursuit{(engagements.Count == 1 ? "" : "s")}.";
+                : _mineOnly && !string.IsNullOrWhiteSpace(CurrentActorUpn)
+                    ? $"Your pursuits. {engagements.Count:N0} in the firm: turn off \"Mine\" to see everyone's."
+                    : $"Loaded {engagements.Count} pursuit{(engagements.Count == 1 ? "" : "s")}.";
         }
         catch (OperationCanceledException)
         {
@@ -802,17 +813,26 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             foreach (var a in assignments)
             {
                 var d = BdDateDisplay.Day(a.AtUtc);
+                // People by name, actions in words (it read "Grabbed by ilalonde@korstructural.com", 2026-10-21).
+                // The person who acted is ByStaffId; From/To are the previous and new owner (audit C16, 2026-10-21: it read
+                // "Given to Bob by Alice" when Ian gave it, and named the grabber as the one who sent a join back).
+                var to = BusinessDevelopment.StaffDisplay.Short(a.ToStaffId);
+                var by = BusinessDevelopment.StaffDisplay.Short(a.ByStaffId);
                 parts.Add(a.Action switch
                 {
-                    "Grab" => $"Grabbed by {a.ToStaffId} {d}",
-                    "Claim" => $"Claimed by {a.ToStaffId} {d}",
-                    "Reassign" => $"Reassigned {a.FromStaffId} → {a.ToStaffId} {d}",
+                    "Grab" => $"Grabbed by {to} {d}",
+                    "Claim" => $"Claimed by {to} {d}",
+                    "Reassign" => $"Given to {to} by {by} {d}",
+                    "Join" => $"RFP joined {to}'s pursuit {d}",
+                    "JoinAccepted" => $"{by} accepted the RFP {d}",
+                    "JoinRejected" => $"{by} sent the RFP back {d}",
+                    "Kept" => $"Kept by {by} {d}",
                     _ => $"{a.Action} {d}",
                 });
             }
 
             var stageAgeDays = Math.Max(0, (int)(DateTimeOffset.Now - stageSince).TotalDays);
-            parts.Add($"In {CrmStageNames.Display(row.Engagement.Stage)} {stageAgeDays}d");
+            parts.Add($"{row.StageDisplay} {(stageAgeDays == 0 ? "since today" : stageAgeDays == 1 ? "for 1 day" : $"for {stageAgeDays} days")}");
             PursuitHistorySummary = string.Join("  ·  ", parts);
         }
         catch (OperationCanceledException) { throw; }

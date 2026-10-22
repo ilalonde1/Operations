@@ -74,8 +74,14 @@ public sealed class BdCrmClarityRegressionTests
                     $"EXPECTED selection or a placeholder on every ComboBox; ACTUAL none on:\n{box.Value}");
                 continue;
             }
-            Assert.True(box.Value.Contains("controls:Placeholder.Text=", StringComparison.Ordinal),
-                $"EXPECTED a placeholder on every TextBox; ACTUAL none on:\n{box.Value}");
+            // Labelled either way: a placeholder, or a label above it in its own StackPanel (the folded contact form,
+            // 2026-10-21: a placeholder on a collapsed box still drew over the Contacts header).
+            var before = xaml[..box.Index];
+            var panel = before.LastIndexOf("<StackPanel", StringComparison.Ordinal);
+            var labelledAbove = panel >= 0 && before[panel..].Contains("<TextBlock Text=", StringComparison.Ordinal)
+                                && !before[panel..].Contains("</StackPanel>", StringComparison.Ordinal);
+            Assert.True(labelledAbove || box.Value.Contains("controls:Placeholder.Text=", StringComparison.Ordinal),
+                $"EXPECTED a placeholder or a label above every TextBox; ACTUAL neither on:\n{box.Value}");
         }
 
         Assert.Contains("Text=\"Pursuits\"", xaml);

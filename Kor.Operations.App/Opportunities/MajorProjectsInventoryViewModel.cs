@@ -44,6 +44,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
     private string _lifecycleFilter = LifecycleActive;
     private PipelineFunnel _funnelFilter = PipelineFunnel.None;
     private bool _indigenousOnly;
+    private bool _korMarketsOnly = true;
     private decimal? _minCost;
     private string _statusMessage = "Ready.";
     private Brush _statusBrush = StatusNeutral;
@@ -327,6 +328,20 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
         }
     }
 
+    // On by default: a structural firm's lead list never shows wind farms, roads or substations (Ian, 2026-10-20/21).
+    public bool KorMarketsOnly
+    {
+        get => _korMarketsOnly;
+        set
+        {
+            if (SetField(ref _korMarketsOnly, value))
+            {
+                FilteredProjectsView.Refresh();
+                UpdateStatus();
+            }
+        }
+    }
+
     public decimal? MinCost
     {
         get => _minCost;
@@ -368,7 +383,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
             var rows = await _store.ListAllAsync(ct).ConfigureAwait(true);
 
             ReplaceOptions(ProvinceFilterOptions, options.Provinces);
-            ReplaceOptions(StageFilterOptions, options.Stages);
+            ReplaceOptions(StageFilterOptions, options.Stages.Select(MajorProjectRow.PlainStage).ToList());
             ReplaceOptions(SectorFilterOptions, options.Sectors);
             ReplaceOptions(RegionFilterOptions, options.Regions);
 
@@ -384,13 +399,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
                 ? Projects.FirstOrDefault(p => p.Id == selectedId.Value)
                 : Projects.FirstOrDefault();
             FilteredProjectsView.Refresh();
-
-            var byProvince = Projects
-                .GroupBy(p => p.Province)
-                .OrderBy(g => ProvinceOrder(g.Key))
-                .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
-                .Select(g => $"{g.Count():N0} {g.Key}");
-            StatusMessage = $"{Projects.Count:N0} projects - {string.Join(", ", byProvince)}";
+            UpdateStatus();
 
             // Apply any filter values that were set before LoadAsync was
             // called (e.g. dashboard bar-chart drill-down). Setting the
@@ -445,6 +454,21 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
 
     public void ClearFunnelFilter() => FunnelFilter = PipelineFunnel.None;
 
+    private static bool IsKorProject(MajorProjectRow row) => KorProjectFit.IsKorProject(row.Sector, row.ProjectName);
+
+    private void UpdateStatus()
+    {
+        var counted = KorMarketsOnly ? Projects.Where(IsKorProject).ToList() : Projects.ToList();
+        var byProvince = counted
+            .GroupBy(p => p.Province)
+            .OrderBy(g => ProvinceOrder(g.Key))
+            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => $"{g.Count():N0} {g.Key}");
+        var hidden = Projects.Count - counted.Count;
+        StatusMessage = $"{counted.Count:N0} projects · {string.Join(", ", byProvince)}"
+            + (hidden > 0 ? $"  ·  {hidden:N0} energy, road and plant projects hidden" : "");
+    }
+
     private bool ProjectFilterPredicate(object obj)
     {
         if (obj is not MajorProjectRow row)
@@ -462,6 +486,11 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
             _ => row.DismissedAtUtc is null,
         };
         if (!lifecycleMatch)
+        {
+            return false;
+        }
+
+        if (KorMarketsOnly && !IsKorProject(row))
         {
             return false;
         }
@@ -487,6 +516,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
         }
 
         if (!IsAll(StageFilter)
+            && !string.Equals(row.StageDisplay, StageFilter, StringComparison.OrdinalIgnoreCase)
             && !string.Equals(row.ProjectStage, StageFilter, StringComparison.OrdinalIgnoreCase)
             && !string.Equals(row.Stage, StageFilter, StringComparison.OrdinalIgnoreCase)
             && !string.Equals(row.ProjectStatus, StageFilter, StringComparison.OrdinalIgnoreCase))

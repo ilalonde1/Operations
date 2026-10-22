@@ -32,50 +32,52 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+        <!-- Same filter look as Market History: a small label above each field, wrapping on a narrow window. -->
         <Border Grid.Row="0" Margin="0,0,0,8" Padding="10,6" Background="{StaticResource App.Background}" CornerRadius="4">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="REF #:" Margin="0,4,4,0" FontWeight="SemiBold"/>
-                <TextBox x:Name="RefBox" Width="80" Margin="0,0,4,0"
-                         KeyDown="RefBox_KeyDown"
-                         ToolTip="Type a REF # from the attack sheet and press Enter (or Open) to jump straight to that play's dossier."/>
-                <Button Content="Open dossier" Margin="0,0,16,0" Click="OpenRef_Click"/>
-
-                <TextBlock Text="Search:" Margin="0,4,8,0" FontWeight="SemiBold"/>
-                <TextBox Width="260" Margin="0,0,12,0"
-                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
-                         ToolTip="Searches project, proponent, architect, and municipality"/>
-
-                <TextBlock Text="View:" Margin="0,4,4,0"/>
-                <ComboBox Width="100" Margin="0,0,12,0"
-                          ItemsSource="{Binding LifecycleFilterOptions}"
-                          SelectedItem="{Binding LifecycleFilter}"
-                          ToolTip="Active hides removed projects. Grabbed shows projects someone is pursuing; Removed shows 'not for us' projects with who/when/why — nothing is deleted."/>
-
-                <TextBlock Text="Province:" Margin="0,4,4,0"/>
-                <ComboBox Width="100" Margin="0,0,12,0"
-                          ItemsSource="{Binding ProvinceFilterOptions}"
-                          SelectedItem="{Binding ProvinceFilter}"/>
-
-                <TextBlock Text="Stage:" Margin="0,4,4,0"/>
-                <ComboBox Width="170" Margin="0,0,12,0"
-                          ItemsSource="{Binding StageFilterOptions}"
-                          SelectedItem="{Binding StageFilter}"/>
-
-                <TextBlock Text="Sector:" Margin="0,4,4,0"/>
-                <ComboBox Width="180" Margin="0,0,12,0"
-                          ItemsSource="{Binding SectorFilterOptions}"
-                          SelectedItem="{Binding SectorFilter}"/>
-
-                <CheckBox Content="Indigenous only"
-                          VerticalAlignment="Center"
-                          Margin="0,0,12,0"
-                          IsChecked="{Binding IndigenousOnly}"/>
-
-                <TextBlock Text="Min cost:" Margin="0,4,4,0"/>
-                <TextBox Width="120"
-                         Text="{Binding MinCost, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
-                         ToolTip="Minimum EstimatedCostCad"/>
-            </StackPanel>
+            <WrapPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,12,4">
+                    <TextBlock Text="Search" FontSize="11" Foreground="#666"/>
+                    <TextBox Width="260"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                             ToolTip="Searches project, proponent, architect, structural engineer, contractor and municipality"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,12,4">
+                    <TextBlock Text="Show" FontSize="11" Foreground="#666"/>
+                    <ComboBox Width="100"
+                              ItemsSource="{Binding LifecycleFilterOptions}"
+                              SelectedItem="{Binding LifecycleFilter}"
+                              ToolTip="Active hides removed projects. Grabbed shows projects someone is pursuing; Removed shows 'not for us' projects with who, when and why. Nothing is deleted."/>
+                </StackPanel>
+                <StackPanel Margin="0,0,12,4">
+                    <TextBlock Text="Province" FontSize="11" Foreground="#666"/>
+                    <ComboBox Width="90" ItemsSource="{Binding ProvinceFilterOptions}" SelectedItem="{Binding ProvinceFilter}"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,12,4">
+                    <TextBlock Text="Stage" FontSize="11" Foreground="#666"/>
+                    <ComboBox Width="170" ItemsSource="{Binding StageFilterOptions}" SelectedItem="{Binding StageFilter}"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,12,4">
+                    <TextBlock Text="Sector" FontSize="11" Foreground="#666"/>
+                    <ComboBox Width="170" ItemsSource="{Binding SectorFilterOptions}" SelectedItem="{Binding SectorFilter}"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,16,4">
+                    <TextBlock Text="Min cost ($)" FontSize="11" Foreground="#666"/>
+                    <TextBox Width="110" Text="{Binding MinCost, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"/>
+                </StackPanel>
+                <CheckBox Content="KOR markets only" VerticalAlignment="Bottom" Margin="0,0,14,8"
+                          IsChecked="{Binding KorMarketsOnly}"
+                          ToolTip="Hides wind, hydro and solar projects, roads, tunnels, substations and plant. A transit centre or fire hall filed under Infrastructure still shows."/>
+                <CheckBox Content="Indigenous only" VerticalAlignment="Bottom" Margin="0,0,20,8" IsChecked="{Binding IndigenousOnly}"/>
+                <StackPanel Margin="0,0,0,4">
+                    <TextBlock Text="Attack sheet REF #" FontSize="11" Foreground="#666"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox x:Name="RefBox" Width="70" Margin="0,0,4,0"
+                                 KeyDown="RefBox_KeyDown"
+                                 ToolTip="Type a REF # from the attack sheet and press Enter to open that play's dossier."/>
+                        <Button Content="Open" Click="OpenRef_Click" Padding="10,2"/>
+                    </StackPanel>
+                </StackPanel>
+            </WrapPanel>
         </Border>
 
         <Border Grid.Row="1"
@@ -116,30 +118,17 @@
                       ItemsSource="{Binding FilteredProjectsView}"
                       SelectedItem="{Binding Selected}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="340"/>
-                    <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="72"/>
-                    <DataGridTextColumn Header="Stage" Binding="{Binding StageDisplay}" Width="130"/>
-                    <DataGridTextColumn Header="Sector" Binding="{Binding Sector}" Width="120"/>
-                    <DataGridTextColumn Header="Cost" Binding="{Binding CostDisplay}" Width="110"/>
-                    <DataGridTextColumn Header="Municipality" Binding="{Binding MunicipalityName}" Width="130"/>
-                    <DataGridTextColumn Header="Proponent" Binding="{Binding ProponentName}" Width="190"/>
-                    <DataGridTextColumn Header="Architect" Binding="{Binding ArchitectName}" Width="170"/>
-                    <DataGridTextColumn Header="Structural" Binding="{Binding StructuralEngineerName}" Width="170"/>
-                    <DataGridTextColumn Header="GC" Binding="{Binding GeneralContractorName}" Width="170"/>
-                    <DataGridTextColumn Header="Pipeline" Binding="{Binding KorPipelineTag}" Width="120"/>
-                    <DataGridTextColumn Header="Schedule" Binding="{Binding ScheduleNotes}" Width="220"/>
-                    <DataGridTextColumn Header="Complete" Binding="{Binding CompletionYear}" Width="80"/>
-                    <DataGridTemplateColumn Header="Indigenous" Width="84" SortMemberPath="IsIndigenous">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <Border Background="{StaticResource CorporateBlue}" CornerRadius="10"
-                                        Padding="6,2" HorizontalAlignment="Left"
-                                        Visibility="{Binding IsIndigenous, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-                                    <TextBlock Text="Yes" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
-                                </Border>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
+                    <!-- The columns a lead reads; contractor, schedule and the rest are on the right when a row is picked.
+                         Star widths so the grid fits the window instead of scrolling sideways. -->
+                    <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="3*" MinWidth="220"/>
+                    <DataGridTextColumn Header="Prov." Binding="{Binding Province}" Width="52"/>
+                    <DataGridTextColumn Header="Stage" Binding="{Binding StageDisplay}" Width="*" MinWidth="100"/>
+                    <DataGridTextColumn Header="Sector" Binding="{Binding Sector}" Width="*" MinWidth="90"/>
+                    <DataGridTextColumn Header="Cost" Binding="{Binding CostDisplay}" Width="110" SortMemberPath="EstimatedCostCad"/>
+                    <DataGridTextColumn Header="Municipality" Binding="{Binding MunicipalityName}" Width="*" MinWidth="90"/>
+                    <DataGridTextColumn Header="Proponent" Binding="{Binding ProponentName}" Width="1.4*" MinWidth="110"/>
+                    <DataGridTextColumn Header="Architect" Binding="{Binding ArchitectName}" Width="1.2*" MinWidth="100"/>
+                    <DataGridTextColumn Header="Structural" Binding="{Binding StructuralEngineerName}" Width="1.1*" MinWidth="90"/>
                 </DataGrid.Columns>
             </DataGrid>
 

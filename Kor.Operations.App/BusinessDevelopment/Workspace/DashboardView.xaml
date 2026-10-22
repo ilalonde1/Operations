@@ -20,6 +20,7 @@
          panel went: Future Projects IS that list. -->
     <UserControl.Resources>
         <converters:BdDayConverter x:Key="BdDay"/>
+        <converters:StaffNameConverter x:Key="StaffName"/>
         <!-- Every clickable list reads as clickable: Hand cursor + slate hover. -->
         <Style TargetType="DataGridRow">
             <Setter Property="Cursor" Value="Hand"/>
@@ -285,7 +286,7 @@
                                 <TextBlock Foreground="{StaticResource Text.Secondary}">
                                     <Run Text="{Binding Minutes, Mode=OneWay}"/><Run Text=" minutes · due "/>
                                     <Run Text="{Binding DueUtc, Mode=OneWay, Converter={StaticResource BdDay}}"/>
-                                    <Run Text=" · asked by "/><Run Text="{Binding AskedBy, Mode=OneWay}"/>
+                                    <Run Text=" · asked by "/><Run Text="{Binding AskedBy, Mode=OneWay, Converter={StaticResource StaffName}}"/>
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">

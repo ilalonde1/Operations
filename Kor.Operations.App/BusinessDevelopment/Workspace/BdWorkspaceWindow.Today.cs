@@ -35,12 +35,15 @@ public partial class BdWorkspaceWindow : IDirectorHomeHost
         _ = LoadTodayAsync();
     }
 
+    // Only a real UPN is kept: a bare Windows login used while sign-in was still resolving stuck for the whole session and
+    // matched none of the stored owners (audit C13, 2026-10-21). The fallback is used for that one load and asked again next.
     private string Actor()
     {
         if (_actor.Length > 0) return _actor;
-        _actor = new[] { global::Kor.Operations.OperationsApp.SignedInUserUpn, _services.GetService<UserOptions>()?.UserUpnOverride, Environment.UserName }
+        var actor = new[] { global::Kor.Operations.OperationsApp.SignedInUserUpn, _services.GetService<UserOptions>()?.UserUpnOverride, Environment.UserName }
             .First(v => !string.IsNullOrWhiteSpace(v))!.Trim();
-        return _actor;
+        if (actor.Contains('@')) _actor = actor;
+        return actor;
     }
 
     private async Task LoadTodayAsync()

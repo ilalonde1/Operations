@@ -54,7 +54,7 @@
                           MouseDoubleClick="OverwatchGrid_MouseDoubleClick"
                           ToolTip="Double-click a pursuit to open and manage it in Pursuits.">
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Header="Staleness" Width="90">
+                        <DataGridTemplateColumn Header="Quiet for" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Border Background="{Binding StalenessBrush}" CornerRadius="10"
@@ -64,15 +64,23 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Owner"      Binding="{Binding OwnerDisplay}"        Width="100"/>
-                        <!-- Plan 2.2a: stage + how long it has sat there ("Drafting 34d"). -->
-                        <DataGridTextColumn Header="Stage"      Binding="{Binding StageAgeDisplay}"     Width="110"/>
+                        <DataGridTextColumn Header="Owner"      Binding="{Binding OwnerDisplay}"        Width="165"/>
+                        <!-- The stage alone, in the words My Pursuits and BD Director use. Its age read "Drafting 5d" next to a
+                             144-day quiet badge (stage history restarted on 16 Oct) and contradicted it; the age is the tooltip. -->
+                        <DataGridTextColumn Header="Stage"      Binding="{Binding StageDisplay}"        Width="100">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="ToolTip" Value="{Binding StageAgeDisplay}"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                         <DataGridTextColumn Header="Project"    Binding="{Binding ProjectName}"         Width="*" MinWidth="220"/>
-                        <DataGridTextColumn Header="Buyer"      Binding="{Binding Buyer}"               Width="210" MinWidth="140"/>
-                        <DataGridTextColumn Header="Region"     Binding="{Binding RegionDisplay}"       Width="125"/>
+                        <DataGridTextColumn Header="Buyer"      Binding="{Binding Buyer}"               Width="0.7*" MinWidth="140"/>
+                        <DataGridTextColumn Header="Region"     Binding="{Binding RegionDisplay}"       Width="190"/>
                         <!-- Plan 3.1: fused touch, source-labelled ("2026-07-01 (email)"). -->
                         <DataGridTextColumn Header="Last touch" Binding="{Binding LastTouchDisplay}"    Width="155"/>
-                        <DataGridTextColumn Header="Acts"       Binding="{Binding ActivityCountDisplay}" Width="50"/>
+                        <DataGridTextColumn Header="Activities" Binding="{Binding ActivityCountDisplay}" Width="70"/>
                         <DataGridTextColumn Header="Opened"     Binding="{Binding OpenedDisplay}"       Width="100"/>
                     </DataGrid.Columns>
                 </DataGrid>
