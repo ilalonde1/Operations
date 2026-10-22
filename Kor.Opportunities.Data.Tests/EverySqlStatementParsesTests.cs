@@ -76,7 +76,12 @@ public sealed class EverySqlStatementParsesTests
         await using (var con = new SqlConnection(cs))
         {
             await con.OpenAsync();
-            await using var cmd = new SqlCommand("SELECT TOP (1) Id FROM opportunities.CrmEngagements WHERE OpportunityId IS NOT NULL AND Stage IN (1, 3) ORDER BY Id DESC", con);
+            // A real pursuit, never one of the AUDITTEST rows the lifecycle tests create and delete in parallel (picking the
+            // newest once caught one mid-delete).
+            await using var cmd = new SqlCommand(@"SELECT TOP (1) e.Id FROM opportunities.CrmEngagements e
+JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+WHERE e.Stage IN (1, 3) AND o.OpportunityKey NOT LIKE N'AUDITTEST%' AND ISNULL(e.OwnerStaffId, N'') NOT LIKE N'audittest%'
+ORDER BY e.Id", con);
             engagementId = (long)(await cmd.ExecuteScalarAsync())!;
         }
         var status = await new Kor.Opportunities.Data.Crm.SqlPursuitReviewStore(cs).StatusAsync(engagementId, CancellationToken.None);
