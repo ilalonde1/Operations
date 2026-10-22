@@ -25,7 +25,7 @@
                             x:Name="HeaderBar"
                             Margin="2,0,2,8"
                             HeaderText="BD Reports"
-                            SubtitleText="Pursuit dashboard + on-demand sector reports from live honing verdicts"
+                            SubtitleText="Pick a sector or a report; it opens on the right, ready to save as PDF or Word"
                             AvatarDiameter="96"
                             AvatarBorderThickness="2"/>
 
@@ -53,10 +53,7 @@
                             IsEnabled="{Binding IsIdle}"/>
                 </Grid>
 
-                <!-- 2026-06-12 UX pass (ss2): compact one-row sector items so the
-                     whole catalog fits without scrolling — freshness dot + title +
-                     number-only verdict mini-pills; the full labeled breakdown
-                     lives in the row tooltip. -->
+                <!-- One sector per item: its name, its counts in words, its total; the full breakdown is the tooltip. -->
                 <ListBox Grid.Row="1"
                          x:Name="SectorList"
                          ItemsSource="{Binding Sectors}"
@@ -66,73 +63,25 @@
                          Background="Transparent"
                          BorderThickness="0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                    <ListBox.Resources>
-                        <Style x:Key="MiniPillText" TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="White"/>
-                            <Setter Property="FontSize" Value="10"/>
-                            <Setter Property="FontWeight" Value="SemiBold"/>
-                        </Style>
-                        <Style x:Key="MiniPill" TargetType="Border">
-                            <Setter Property="CornerRadius" Value="999"/>
-                            <Setter Property="Padding" Value="6,1"/>
-                            <Setter Property="Margin" Value="3,0,0,0"/>
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                        </Style>
-                    </ListBox.Resources>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
+                            <!-- The sector's name, and under it its counts in words (Ian, 21 Oct 2026: unlabelled coloured pills
+                                 were clutter). Only "urgent" carries colour, and only when there is some. -->
                             <Grid Margin="2,0" ToolTip="{Binding SummaryTooltip}">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-
-                                <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,8,0">
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="Fill" Value="#1E8449"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding HasAging}" Value="True">
-                                                    <Setter Property="Fill" Value="#B7950B"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding HasStale}" Value="True">
-                                                    <Setter Property="Fill" Value="#C0392B"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Ellipse.Style>
-                                </Ellipse>
-
-                                <TextBlock Grid.Column="1"
-                                           Text="{Binding Title}"
-                                           FontSize="13" FontWeight="SemiBold"
-                                           VerticalAlignment="Center"
-                                           TextTrimming="CharacterEllipsis"/>
-
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
-                                    <Border Style="{StaticResource MiniPill}" Background="#C0392B">
-                                        <TextBlock Style="{StaticResource MiniPillText}" Text="{Binding PursueUrgent}"/>
-                                    </Border>
-                                    <Border Style="{StaticResource MiniPill}" Background="#1E8449">
-                                        <TextBlock Style="{StaticResource MiniPillText}" Text="{Binding PursueDisplay}"/>
-                                    </Border>
-                                    <Border Style="{StaticResource MiniPill}" Background="#B7950B">
-                                        <TextBlock Style="{StaticResource MiniPillText}" Text="{Binding MonitorDisplay}"/>
-                                    </Border>
-                                    <Border Style="{StaticResource MiniPill}" Background="#2471A3">
-                                        <TextBlock Style="{StaticResource MiniPillText}" Text="{Binding DiscoverDisplay}"/>
-                                    </Border>
-                                    <Border Style="{StaticResource MiniPill}" Background="#85929E">
-                                        <TextBlock Style="{StaticResource MiniPillText}" Text="{Binding NotHonedDisplay}"/>
-                                    </Border>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Title}" FontSize="13.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0">
+                                        <Run Text="{Binding UrgentDisplay, Mode=OneWay}" Foreground="#B91C1C" FontWeight="SemiBold"/><Run Text="{Binding UrgentSeparator, Mode=OneWay}"/><Run Text="{Binding CountsDisplay, Mode=OneWay}"/>
+                                    </TextBlock>
                                 </StackPanel>
-
-                                <TextBlock Grid.Column="3"
+                                <TextBlock Grid.Column="1"
                                            Text="{Binding TotalDisplay, Mode=OneWay}"
                                            Foreground="{StaticResource Text.Secondary}"
-                                           FontSize="11"
+                                           FontSize="12"
                                            VerticalAlignment="Center"
                                            MinWidth="32"
                                            TextAlignment="Right"

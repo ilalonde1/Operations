@@ -29,11 +29,13 @@ public sealed record SectorCardVm(
     int AgingCount,
     int StaleCount)
 {
-    public string PursueDisplay => Pursue.ToString(CultureInfo.InvariantCulture);
-    public string MonitorDisplay => Monitor.ToString(CultureInfo.InvariantCulture);
-    public string DiscoverDisplay => Discover.ToString(CultureInfo.InvariantCulture);
-    public string NotHonedDisplay => NotHoned.ToString(CultureInfo.InvariantCulture);
     public string TotalDisplay => Total.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>The sector's counts in words, under its name (Ian, 21 Oct 2026: five unlabelled coloured pills were clutter).
+    /// Urgent leads, in red, only when there is some.</summary>
+    public string UrgentDisplay => PursueUrgent > 0 ? $"{PursueUrgent} urgent" : "";
+    public string UrgentSeparator => PursueUrgent > 0 ? "  ·  " : "";
+    public string CountsDisplay => $"{Pursue} to pursue  ·  {Monitor} to watch";
 
     /// <summary>BD-UI-Plan decision 6: green &lt;30d, yellow 30-90d, red 90+d.</summary>
     public string FreshnessDisplay =>
@@ -45,9 +47,6 @@ public sealed record SectorCardVm(
     /// </summary>
     public string SummaryTooltip =>
         $"{Total} projects — {PursueUrgent} URGENT · {Pursue} PURSUE · {Monitor} MONITOR · {Discover} DISCOVER · {NotHoned} not honed\n{FreshnessDisplay}";
-
-    public bool HasStale => StaleCount > 0;
-    public bool HasAging => AgingCount > 0 && StaleCount == 0;
 }
 
 /// <summary>One cross-cutting analytical report entry in the left-hand list.</summary>

@@ -9,13 +9,21 @@
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI"
         Loaded="Window_Loaded">
-    <Grid Margin="16">
+    <Grid Margin="24,20,24,20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TabControl Grid.Row="0" x:Name="TypeTabs">
+        <!-- Says what this is before asking for anything (Ian, 21 Oct 2026: clarity is powerful). -->
+        <StackPanel Margin="0,0,0,14">
+            <TextBlock Text="Make a brief" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource D.Ink}"/>
+            <TextBlock Text="A short PDF or Word brief on an organization, a region, a project, a person or a sector. Choose what it is about, pick it, then generate."
+                       FontSize="13" Foreground="{StaticResource D.Ink2}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <TabControl Grid.Row="1" x:Name="TypeTabs">
             <TabItem Header="Organization">
                 <StackPanel Margin="0,12,0,0">
                     <TextBlock Text="Pick an organization"
@@ -295,7 +303,7 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Text="Extra keyword (LIKE-match on ProjectName + Description)"
+                        <TextBlock Text="Extra keyword (searched in project names and descriptions)"
                                    FontSize="11"
                                    Foreground="{StaticResource Text.Secondary}"
                                    Margin="0,0,0,4"/>
@@ -328,21 +336,21 @@
             </TabItem>
         </TabControl>
 
-        <StackPanel Grid.Row="1"
+        <StackPanel Grid.Row="2"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,16,0,0">
-            <Button x:Name="GeneratePdfButton"
-                    Content="Generate PDF"
-                    Padding="14,6"
-                    Margin="0,0,8,0"
-                    IsEnabled="False"
-                    Click="GeneratePdf_Click"/>
             <Button x:Name="GenerateDocxButton"
                     Content="Generate Word"
-                    Padding="14,6"
+                    Style="{StaticResource D.Button}"
+                    Margin="0,0,8,0"
                     IsEnabled="False"
                     Click="GenerateDocx_Click"/>
+            <Button x:Name="GeneratePdfButton"
+                    Content="Generate PDF"
+                    Style="{StaticResource D.Primary}"
+                    IsEnabled="False"
+                    Click="GeneratePdf_Click"/>
         </StackPanel>
     </Grid>
 </Window>
