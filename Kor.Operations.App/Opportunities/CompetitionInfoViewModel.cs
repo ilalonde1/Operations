@@ -63,7 +63,8 @@ public sealed class CompetitionInfoViewModel : INotifyPropertyChanged, Kor.Opera
     {
         try
         {
-            var rows = await _dashboard.GetCompetitorWatchAsync(12, ct).ConfigureAwait(true);
+            // Every firm with a read: 12 by name cut WSP and Weiler Smith Bowers off the end (2026-10-22).
+            var rows = await _dashboard.GetCompetitorWatchAsync(200, ct).ConfigureAwait(true);
             CompetitorWatch.Clear();
             foreach (var row in rows)
             {

@@ -23,9 +23,9 @@ public static class DeployCatalog
     public static readonly IReadOnlyList<DeployOp> All =
     [
         new(MigrateToKorOps, "Migrate / update to KOR Operations",
-            "Puts this PC on the current KOR Operations build at C:\\KOR-Operations (add-in 1.0.0.56): migrates it off C:\\Newerforma the first time, or updates it in place after that. Re-registers the Outlook add-in to the new path, replaces stale shortcuts, removes C:\\Newerforma. Closes the app and Outlook for about a minute. V29 (2026-10-22, app 2026.10.22.1): V28 plus the fix for the RFP review strip on My Pursuits, which did not load for any pursuit in V28; the add-in is unchanged, so a PC already on it keeps its Outlook add-in and only the app is replaced.",
+            "Puts this PC on the current KOR Operations build at C:\\KOR-Operations (add-in 1.0.0.56): migrates it off C:\\Newerforma the first time, or updates it in place after that. Re-registers the Outlook add-in to the new path, replaces stale shortcuts, removes C:\\Newerforma. Closes the app and Outlook for about a minute. V30 (2026-10-22, app 2026.10.22.2): V29 plus the BD screens cleaned after a live sweep: names for every owner, no road work in Awards, every architect and competitor listed, no columns cut short, Save PDF on reports, and reports in plain words; the add-in is unchanged, so a PC already on it keeps its Outlook add-in and only the app is replaced.",
             Disruptive: true, TimeoutSeconds: 900,
-            PackageSharePath: @"\\KOR-FS01\Library\11 IT\_Applications\Newerforma\New\V29.zip"),
+            PackageSharePath: @"\\KOR-FS01\Library\11 IT\_Applications\Newerforma\New\V30.zip"),
     ];
 
     public static DeployOp? Get(string key) => All.FirstOrDefault(o => o.Key == key);

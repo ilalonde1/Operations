@@ -58,7 +58,8 @@ WHERE 1 = 1
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sb.ToString(), con) { CommandTimeout = CommandTimeoutSeconds };
-        cmd.Parameters.Add("@maxRows", SqlDbType.Int).Value = maxRows;
+        // With "Competes with KOR only" the cap applies AFTER the KOR-work filter below, as on Historical RFPs (audit C12).
+        cmd.Parameters.Add("@maxRows", SqlDbType.Int).Value = f.CompetesWithKorOnly == true ? int.MaxValue : maxRows;
         if (!string.IsNullOrWhiteSpace(f.KeywordLike))
             cmd.Parameters.Add("@kw", SqlDbType.NVarChar, 200).Value = "%" + f.KeywordLike.Trim() + "%";
         if (!string.IsNullOrWhiteSpace(f.VendorLike))
@@ -104,7 +105,10 @@ WHERE 1 = 1
             });
         }
 
-        return rows;
+        // AgentCompetesWithKor is about the WINNER (a firm that competes with KOR somewhere), not the work: it let a $117M
+        // highway corridor, municipal water mains and a berth inspection through (Ian, 2026-10-22: no road work in anything
+        // the team reads). "Competes with KOR only" therefore also means KOR's kind of work, by the same tested rule.
+        return f.CompetesWithKorOnly == true ? rows.Where(r => Ingestion.KorBidFit.IsKorWork(r.Title)).Take(maxRows).ToList() : rows;
     }
 
     public async Task<AwardQueryFacets> GetFacetsAsync(CancellationToken ct)

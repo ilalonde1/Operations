@@ -74,8 +74,8 @@ public sealed class BdGuardedSynthesisRegressionTests
             $"EXPECTED 0 synthesized, 2 rejected as stale; ACTUAL {actual}");
         var note = SqlBdReportService.SynthesisRefreshNote(new(2, 0, 0, 2, actual.Updated, 0,
             RejectedStale: actual.RejectedStale));
-        Assert.Contains("2 rejected as stale", note);
-        Assert.Contains("0 synthesized", note);
+        Assert.Contains("0 of 2 projects with recent news were updated", note);
+        Assert.Contains("shown as last researched", note);
     }
 
     [Fact]

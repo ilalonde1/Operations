@@ -28,11 +28,11 @@ public static class CompetitorIntelReportGenerator
 
         b.Italic(
             "Structural engineering competitors mapped across KOR's BD pipeline. Where they're entrenched + which projects they hold = where to focus KOR's differentiation. " +
-            "Sources: IntelSignal references + IntelPersonAffiliation + IntelAction on Competitor-kind canonical orgs. " +
-            $"Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb.");
+            "Built from the news items, people and actions KOR has recorded against competitor firms. " +
+            $"As of {BdReportFormatting.ReaderDate(generatedAtUtc)}.");
 
-        b.H2($"Competitor footprint — top {competitors.Count} by intel references");
-        b.P("These are KOR's tracked rivals across the BC + AB + US West Coast structural-engineering market. Tracking their footprint via Intel references gives KOR a flip-opportunity heatmap.");
+        b.H2($"Competitor footprint — top {competitors.Count} by mentions in KOR's records");
+        b.P("These are KOR's tracked rivals across the BC + AB + US West Coast structural-engineering market. Tracking their footprint shows KOR where rivals are entrenched and where projects could be won from them.");
         b.Table(
             new[] { "Competitor", "Signals", "People", "Actions", "Total", "Linked projects" },
             competitors.Select(c => (IReadOnlyList<string>)new[]
@@ -54,7 +54,7 @@ public static class CompetitorIntelReportGenerator
         foreach (var c in competitors.Take(5))
         {
             b.H3(c.DisplayName, KorReportLinks.Org(c.CanonicalOrgId));
-            b.B("Footprint: ", $"{c.Total} Intel refs (Signals: {c.Signals} | People: {c.People} | Actions: {c.Actions})");
+            b.B("Footprint: ", $"{c.Total} mentions (Signals: {c.Signals} | People: {c.People} | Actions: {c.Actions})");
             b.P("Projects with a recorded structural role (may be historical):");
             if (c.TopProjects.Count > 0)
             {
@@ -65,7 +65,7 @@ public static class CompetitorIntelReportGenerator
             }
             else
             {
-                b.P("  (No structurally-linked projects in the org graph yet — see Org Dossier for narrative intel.)");
+                b.P("  (No projects recorded with this firm as structural engineer yet — see the Org Dossier.)");
             }
 
             b.P(string.Empty);
@@ -74,7 +74,7 @@ public static class CompetitorIntelReportGenerator
         b.H2("Strategic synthesis");
 
         b.H3("Where rivals are entrenched (DEAD signals)");
-        b.P("Per Yurkovich-class error catch: projects where a competitor is named as incumbent are flagged DEAD in KOR's honed briefs. Examples:");
+        b.P("Projects where a competitor is the named incumbent are rated DEAD. Examples:");
         b.P("  - Richmond Hospital Yurkovich Pavilion = Entuitive incumbent");
         b.P("  - Cowichan Hospital = Bush, Bohlman & Partners (Alliance)");
         b.P("  - Cariboo Memorial Hospital + several others = Stantec (captive in-house)");

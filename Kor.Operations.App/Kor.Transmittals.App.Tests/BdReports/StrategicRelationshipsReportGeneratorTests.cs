@@ -36,7 +36,7 @@ public sealed class StrategicRelationshipsReportGeneratorTests
         var paragraphs = doc.Blocks.OfType<ParagraphBlock>().Select(p => p.Text).ToList();
         Assert.Contains("  - Alex Trifunov — Pre-Construction Manager", paragraphs);
         Assert.Contains("  - 100: Hospital (BC) — $1B", paragraphs);
-        Assert.Contains(paragraphs, p => p.Contains("No direct keyword match"));
+        Assert.Contains(paragraphs, p => p.Contains("No matching projects found"));
 
         var summary = doc.Blocks.OfType<TableBlock>().Single();
         Assert.Equal("1", summary.Rows[0][2]);

@@ -32,7 +32,7 @@ public static class ArchitectFrequencyReportGenerator
             "Architects ranked by linked portfolio projects from inventory and architect-role work, including historical and delivered projects. This does not establish live pursuits or available team seats. " +
             "The premise: in public AEC work, the prime consultant (typically architect) submits ONE team proposal with structural sub included. " +
             "One architect relationship = N projects. " +
-            $"Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb.");
+            $"As of {BdReportFormatting.ReaderDate(generatedAtUtc)}.");
 
         b.H2($"Top {Math.Min(20, architects.Count)} highest-leverage architects");
         var ranked = architects.Take(20).ToList();
@@ -53,7 +53,7 @@ public static class ArchitectFrequencyReportGenerator
             {
                 KorReportLinks.Org(a.CanonicalOrgId), null, null, null, null, null, null,
             }).ToList());
-        b.P("More linked portfolio projects indicates a larger recorded footprint; current opportunities and team seats require separate verification. KOR-aligned status indicates the architect appears in KOR's established relationship list (per memory).");
+        b.P("More linked portfolio projects indicates a larger recorded footprint; current opportunities and team seats require separate verification. KOR-aligned means the architect is on KOR's list of established relationships.");
 
         b.H2("Top 10 architects — drill-down with projects");
         foreach (var a in architects.Take(10))
@@ -62,8 +62,8 @@ public static class ArchitectFrequencyReportGenerator
             b.B("Linked portfolio projects: ", $"{a.ActiveProjects} (${(a.PipelineCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture)}M known-cost subtotal; {BdReportFormatting.CostCoverage(a.CostedProjectCount, a.ActiveProjects)})");
             b.B("Intel depth: ", $"Signals: {a.Signals} | People: {a.People} | Open actions: {a.OpenActions}");
             b.B("KOR relationship: ", IsKorAligned(a.DisplayName)
-                ? "KOR-aligned (per memory client list)"
-                : "NEW target — no prior memory reference");
+                ? "KOR-aligned (on KOR's client list)"
+                : "NEW target — no recorded KOR relationship");
             b.P("Linked portfolio sample (up to 8 projects):");
             if (a.TopProjects.Count > 0)
             {
@@ -74,7 +74,7 @@ public static class ArchitectFrequencyReportGenerator
             }
             else
             {
-                b.P("  (No portfolio sample returned — see Org Dossier for intel detail.)");
+                b.P("  (No sample projects on file — see the Org Dossier for detail.)");
             }
 
             b.P(string.Empty);
@@ -82,7 +82,7 @@ public static class ArchitectFrequencyReportGenerator
 
         var korAligned = architects.Where(a => IsKorAligned(a.DisplayName)).Take(25).ToList();
         b.H2("KOR-aligned architects (warm-intro lever)");
-        b.P($"{korAligned.Count} KOR-aligned architects are already in KOR's memory client list. These are immediate warm-intro candidates — KOR likely has a Principal-in-Charge relationship to leverage.");
+        b.P($"{korAligned.Count} KOR-aligned architects are already on KOR's client list. These are immediate warm-intro candidates — KOR likely has a Principal-in-Charge relationship to leverage.");
         if (korAligned.Count > 0)
         {
             b.Table(
@@ -102,7 +102,7 @@ public static class ArchitectFrequencyReportGenerator
 
         var newTargets = architects.Where(a => !IsKorAligned(a.DisplayName)).Take(15).ToList();
         b.H2("NEW high-leverage architects (cold-outreach campaign)");
-        b.P($"{newTargets.Count} non-aligned architects do NOT appear in KOR's memory client list. These represent NEW relationship-building targets — combined {newTargets.Sum(a => a.ActiveProjects)} linked portfolio projects, including historical work; live pursuit potential is unverified.");
+        b.P($"{newTargets.Count} non-aligned architects are NOT on KOR's client list. These represent NEW relationship-building targets — combined {newTargets.Sum(a => a.ActiveProjects)} linked portfolio projects, including historical work; whether any are live pursuits is not yet confirmed.");
         if (newTargets.Count > 0)
         {
             b.Table(
@@ -143,7 +143,7 @@ public static class ArchitectFrequencyReportGenerator
         b.H2("Next steps");
         b.P("1. Build relationships with top 5 architects — concrete monthly outreach plan per architect.");
         b.P("2. For NEW architects (non-KOR-aligned) — pursue an introduction-via-shared-past-project angle. Most architects in BC have crossed paths with BMZ pre-2021.");
-        b.P("3. Architect links grow as primes ingests land — re-generate this report after each drain cycle; unlinked projects don't rank here.");
+        b.P("3. Re-run this report periodically — architect links grow as more projects are researched; projects without a known architect don't rank here.");
 
         return b.Build();
     }

@@ -121,7 +121,12 @@ public partial class BdReportsWindow : Window
                 return;
             }
 
-            if (_pendingPreview is not null && string.Equals(e.Uri, "about:blank", StringComparison.OrdinalIgnoreCase))
+            // The navigation NavigateToString starts reports a data: URI on the current WebView2 runtime, not about:blank,
+            // so every report was taken for a navigation away and Save PDF never enabled (2026-10-22, on a single clean
+            // open). The first navigation after TryShowPreview is ours; NavigationCompleted still confirms the document
+            // by its kor-preview-id marker before PDF export is allowed.
+            if (_pendingPreview is not null && _previewNavigationId is null
+                && (e.Uri.StartsWith("data:", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Uri, "about:blank", StringComparison.OrdinalIgnoreCase)))
             {
                 _previewNavigationId = e.NavigationId;
             }

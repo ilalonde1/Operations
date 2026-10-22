@@ -38,7 +38,7 @@ public static class PrimeConsultantReportGenerator
         b.Italic(
             "Prime consultant intelligence for KOR's BD pipeline. In public AEC work, the Prime Consultant (typically the architect) submits ONE team proposal to the owner — including KOR as structural sub. " +
             $"Retrieved {projects.Count} research records: {complete} name a firm with a relationship assessment, {negative} record a negative finding (no prime identified, with the reason where known), {partial} are partial or unusable. Retrieval alone does not establish completed research. " +
-            $"Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb.");
+            $"As of {BdReportFormatting.ReaderDate(generatedAtUtc)}.");
 
         b.H2("Executive Summary");
         b.B("Research records retrieved: ", projects.Count.ToString(CultureInfo.InvariantCulture));
@@ -46,7 +46,7 @@ public static class PrimeConsultantReportGenerator
         b.B("Negative findings (research found no prime; reason recorded where known): ", negative.ToString(CultureInfo.InvariantCulture));
         b.B("Partial or unusable research: ", partial.ToString(CultureInfo.InvariantCulture));
         b.B("Prime consultant identified: ", PctDisplay(withPrime.Count, projects.Count));
-        b.B("Prime not identified in available payload: ", PctDisplay(withoutPrime.Count, projects.Count));
+        b.B("Prime not identified: ", PctDisplay(withoutPrime.Count, projects.Count));
         b.B("Relationship assessment unknown: ", projects.Count(p => p.KnownToKor is null).ToString(CultureInfo.InvariantCulture));
         b.B("Primes reported known to KOR: ", korAligned.Count.ToString(CultureInfo.InvariantCulture));
         b.P("Prime identification success rate varies by project type: high for public flagships (press coverage, permit applications), lower for early-stage private developments. Unknown primes typically require FOIP request or direct owner outreach.");
@@ -54,7 +54,7 @@ public static class PrimeConsultantReportGenerator
         b.H2("Primes reported known to KOR — confirm relationship before outreach");
         if (korAligned.Count > 0)
         {
-            b.P("These research payloads report a KOR relationship. A current contact or available introduction has not been established by this report.");
+            b.P("Research reports a KOR relationship with these firms. A current contact or introduction still needs confirming.");
             b.Table(
                 new[] { "Id", "Project", "Prime Firm", "Cost", "Province" },
                 korAligned.Select(p => (IReadOnlyList<string>)new[]
@@ -68,7 +68,7 @@ public static class PrimeConsultantReportGenerator
         }
         else
         {
-            b.P("No KOR-aligned primes identified in this research batch. (KOR-aligned status depends on Sonnet's read of KOR's memory client list — see honing brief details for nuance.)");
+            b.P("No primes known to KOR identified in this research. Check each Project Brief for relationship detail.");
         }
 
         b.H2("Top 30 identified primes — by project cost");
@@ -90,7 +90,7 @@ public static class PrimeConsultantReportGenerator
             .Take(25)
             .ToList();
         b.Table(
-            new[] { "Prime Consultant Firm", "Projects", "Sample MPI Ids" },
+            new[] { "Prime Consultant Firm", "Projects", "Sample project Ids" },
             frequency.Select(g => (IReadOnlyList<string>)new[]
             {
                 Safe(g.Key, 55),
@@ -127,7 +127,7 @@ public static class PrimeConsultantReportGenerator
             {
                 true => "Reported known to KOR; current introduction availability unverified",
                 false => "Research explicitly reports not known to KOR",
-                null => "Unknown / not assessed in the research payload",
+                null => "Unknown / not assessed",
             });
 
             if (!string.IsNullOrWhiteSpace(p.KorAngle))
@@ -142,7 +142,7 @@ public static class PrimeConsultantReportGenerator
         if (withoutPrime.Count > 0)
         {
             b.H2("No prime identified — what the research recorded");
-            b.P("For these projects the research names no prime firm. Where the payload says why (procurement paused, unfunded, a duplicate, not yet disclosed) that note is shown; a payload with no assessment at all is marked unusable. Neither case establishes that no prime has been selected.");
+            b.P("For these projects the research names no prime firm. Where the research says why (procurement paused, unfunded, a duplicate, not yet disclosed) that note is shown; a record with no finding at all is marked as needing research. Neither case establishes that no prime has been selected.");
             b.Table(
                 new[] { "Id", "Project", "Cost", "Province", "Research note" },
                 withoutPrime.Take(20).Select(p => (IReadOnlyList<string>)new[]
@@ -153,12 +153,12 @@ public static class PrimeConsultantReportGenerator
                     p.Province,
                     p.HasUsableResearch
                         ? Safe(p.ResearchNote ?? "Negative finding; no reason recorded", 160)
-                        : "Unusable payload: no assessment recorded; re-research",
+                        : "No usable finding recorded; needs research",
                 }).ToList());
         }
 
         b.H2("Strategic Synthesis");
-        b.Italic("Historical guidance from the 2026-06-09 analyst sweep; named projects, contacts and recommendations below are not verified by this report.");
+        b.Italic("The notes below date from June 2026; confirm named projects, contacts and status before acting.");
         b.H3("Most-leveraged prime relationships");
         b.P("Per the heatmap above, firms appearing 3+ times across KOR's pipeline = highest-leverage relationships to build/deepen. One sustained Principal-in-Charge relationship at these firms unlocks recurring KOR structural sub positioning across multiple projects.");
         b.H3("EllisDon-as-prime pattern");
@@ -172,13 +172,13 @@ public static class PrimeConsultantReportGenerator
         b.P("1. KOR-aligned primes table — immediate outreach via existing KOR relationship at named firms.");
         b.P("2. EllisDon BC office — re-engage on Royal Columbian, RIH, future BC healthcare. 5 named contacts already in pipeline.");
         b.P("3. Hariri Pontarini + Adamson + Stantec on SFU Medicine — initiate structural-sub positioning via Stantec (prime team includes Stantec captive structural; opportunity may be on Phase 2 or future SFU pursuits).");
-        b.P("4. Iredale Architecture (Build Canada Homes consortium) — DASH stream BD opportunity. KOR-aligned per memory.");
+        b.P("4. Iredale Architecture (Build Canada Homes consortium) — DASH stream BD opportunity. Already KOR-aligned.");
         b.P("5. Top 20 unknown-prime projects — FOIP request to BC/AB municipalities + Health Authorities + School Districts for development permit / RFI documentation.");
         b.P("6. Audit the prime heatmap quarterly — firms appearing on 5+ KOR pipeline projects are top-tier relationship priorities.");
 
-        b.H2("Methodology");
-        b.P($"Sourced from {projects.Count} Sonnet-researched briefs via the bc-ab-primes drain queue (PROMPT.md at tools/BdQueueDrainPrompts/bc-ab-primes/PROMPT.md). Each brief required: named prime consultant firm with sourceUrl, named Principal-in-Charge where discoverable, KOR relationship status (BMZ legacy check included), KOR pursuit verdict, 12-month engagement timeline. Briefs without prime identification document the search trail.");
-        b.Italic("Live from MajorProjectEnrichment.ResultJson where ProviderName = 'PrimeConsultantResearch'. Drill-down per project via Project Brief in the BD workspace.");
+        b.H2("About this report");
+        b.P($"Built from {projects.Count} project research records. Each aims to name the prime consultant firm with a source, the Principal-in-Charge where it can be found, KOR's relationship with the firm (including BMZ-era work), a pursuit rating and a 12-month engagement timeline. Where no prime was found, the record notes what was searched.");
+        b.Italic("Open any project's Project Brief in the BD workspace for detail.");
 
         return b.Build();
     }

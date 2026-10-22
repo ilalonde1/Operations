@@ -25,7 +25,6 @@ public static class SectorReportGenerator
     private const int PursueWhyCap = 400;
     private const int MonitorWhyCap = 110;
     private const int DeadWhyCap = 140;
-    private const int DuplicateWhyCap = 120;
     private const int TableNameCap = 60;
     private const int TableProponentCap = 30;
 
@@ -43,38 +42,38 @@ public static class SectorReportGenerator
 
         // The PS builders report only honed briefs; never-honed MPIs surface
         // on the dashboard as NotHoned, not in the report body.
-        var honed = rows.Where(x => x.Verdict is not null).ToList();
+        // A row rated as a duplicate of another is not shown to the reader, so it is not counted either: "Projects
+        // reviewed" must match the rows the report lists (2026-10-22).
+        var honed = rows.Where(x => x.Verdict is not null && x.Verdict != BdVerdicts.Duplicate).ToList();
         var urgent = honed.Where(x => x.IsUrgent).ToList();
         var pursue = honed.Where(x => x.Verdict == BdVerdicts.Pursue && !x.IsUrgent).ToList();
         var monitor = honed.Where(x => x.Verdict == BdVerdicts.Monitor).ToList();
         var discover = honed.Where(x => x.Verdict == BdVerdicts.Discover).ToList();
         var dead = honed.Where(x => x.Verdict == BdVerdicts.Dead).ToList();
-        var duplicate = honed.Where(x => x.Verdict == BdVerdicts.Duplicate).ToList();
 
         var b = new BdReportDocumentBuilder(definition.ReportTitle);
 
-        b.Italic($"Background guidance (not reconciled to current rows): {prose.IntroNote} Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb honing verdicts.");
+        b.Italic($"{prose.IntroNote} As of {BdReportFormatting.ReaderDate(generatedAtUtc)}.");
 
         b.P(BdReportFormatting.EvidenceNote(rows));
         b.H2("Executive Summary");
         b.Kpis(
-            new KpiItem(honed.Count.ToString(CultureInfo.InvariantCulture), "Projects honed"),
+            new KpiItem(honed.Count.ToString(CultureInfo.InvariantCulture), "Projects reviewed"),
             new KpiItem(urgent.Count.ToString(CultureInfo.InvariantCulture), "Urgent", urgent.Count > 0 ? ChipTone.Urgent : ChipTone.Neutral),
             new KpiItem(pursue.Count.ToString(CultureInfo.InvariantCulture), "Pursue", ChipTone.Positive),
             new KpiItem(monitor.Count.ToString(CultureInfo.InvariantCulture), "Monitor", ChipTone.Caution),
             new KpiItem(discover.Count.ToString(CultureInfo.InvariantCulture), "Discover", ChipTone.Info));
         b.B("DEAD — locked or delivered: ", dead.Count.ToString(CultureInfo.InvariantCulture));
-        b.B("DUPLICATE — flagged for MPI consolidation: ", duplicate.Count.ToString(CultureInfo.InvariantCulture));
 
         foreach (var paragraph in prose.SummaryNarrative)
         {
-            b.P("Background guidance (not verified against this report): " + paragraph);
+            b.P(paragraph);
         }
 
         b.H2("URGENT — IMMEDIATE action required");
         if (urgent.Count == 0)
         {
-            b.P("None in this honing pass.");
+            b.P("None right now.");
         }
 
         var rank = 1;
@@ -170,22 +169,6 @@ public static class SectorReportGenerator
             },
             new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left });
 
-        if (duplicate.Count > 0)
-        {
-            b.H2("DUPLICATE — Flagged for MPI consolidation");
-            b.P("Honing identified these as same-project duplicates. Worth a consolidation migration before the next drain cycle.");
-            AppendBucketTable(b, duplicate,
-                new[] { "Id", "Project", "Proponent", "Why DUPLICATE" },
-                p => new[]
-                {
-                    p.MpiId.ToString(CultureInfo.InvariantCulture),
-                    Safe(p.ProjectName, TableNameCap),
-                    Safe(p.ProponentName, TableProponentCap),
-                    Safe(p.KorAngle, DuplicateWhyCap),
-                },
-                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left });
-        }
-
         if (prose.Synthesis.Count > 0)
         {
             b.H2("Strategic Synthesis");
@@ -194,7 +177,7 @@ public static class SectorReportGenerator
                 b.H3(section.Title);
                 foreach (var paragraph in section.Paragraphs)
                 {
-                    b.P("Background guidance (not verified against this report): " + paragraph);
+                    b.P(paragraph);
                 }
             }
         }
@@ -202,7 +185,6 @@ public static class SectorReportGenerator
         if (prose.RecommendedActions.Count > 0)
         {
             b.H2("Recommended next actions");
-            b.Italic("Background recommendations; applicability and urgency are not verified against the current rows.");
             var n = 1;
             foreach (var action in prose.RecommendedActions)
             {
@@ -223,7 +205,7 @@ public static class SectorReportGenerator
     {
         if (bucket.Count == 0)
         {
-            b.P("None in this honing pass.");
+            b.P("None right now.");
             return;
         }
 

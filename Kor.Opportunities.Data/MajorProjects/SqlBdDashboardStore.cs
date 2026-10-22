@@ -73,6 +73,10 @@ FROM opportunities.CanonicalOrgEnrichment e
 JOIN opportunities.CanonicalOrg co ON co.Id = e.CanonicalOrgId
 WHERE e.ProviderName = N'CompetitorSignals'
   AND co.RetiredAtUtc IS NULL
+  -- A read that says research found nothing is not a read: it listed 'Quaak' (no public trace) and Kontur (a
+  -- geotechnical firm) as structural competitors, while the cap of 12 by name hid WSP and Weiler Smith Bowers (2026-10-22).
+  AND ISNULL(JSON_VALUE(e.ResultJson,'$.capacityRead'), N'') NOT LIKE N'insufficient signal%'
+  AND LEN(ISNULL(JSON_VALUE(e.ResultJson,'$.capacityRead'), N'')) > 0
 ORDER BY co.DisplayName;";
 
         await using var con = new SqlConnection(_connectionString);

@@ -33,10 +33,10 @@ public sealed class ExecSummaryReportGeneratorTests
 
         var labels = doc.Blocks.OfType<LabelValueBlock>()
             .GroupBy(x => x.Label).ToDictionary(g => g.Key, g => g.First().Value);
-        Assert.Equal("1,942", labels["Total active MPIs (cross-sector, distinct): "]);
-        Assert.Equal("1,425 (73%)", labels["Honed (recorded verdict present): "]);
+        Assert.Equal("1,942", labels["Active projects (all sectors, each counted once): "]);
+        Assert.Equal("1,425 (73%)", labels["Reviewed and rated: "]);
         Assert.Equal("~$93.8B CAD", labels["Known-cost subtotal (PURSUE/MONITOR/DISCOVER): "]);
-        Assert.Equal("1", labels["Recorded URGENT flags: "]);
+        Assert.Equal("1", labels["Rated URGENT: "]);
 
         var heatmap = doc.Blocks.OfType<TableBlock>().Single();
         Assert.Equal("Hospitals & Healthcare", heatmap.Rows[0][0]);
@@ -48,7 +48,7 @@ public sealed class ExecSummaryReportGeneratorTests
         Assert.Contains(headings, h => h.StartsWith("1. Urgent One"));
         Assert.Contains("Strategic compounding relationships", headings);
         Assert.Contains("Cross-sector strategic insights", headings);
-        Assert.Contains("Methodology footnote", headings);
+        Assert.Contains("About these figures", headings);
     }
 
     [Fact]
@@ -58,6 +58,6 @@ public sealed class ExecSummaryReportGeneratorTests
             new BdExecHeadline(0, 0, 0m), Array.Empty<SectorVerdictSummary>(),
             Array.Empty<PursuitBriefRow>(), GeneratedAt);
 
-        Assert.Contains(doc.Blocks.OfType<ParagraphBlock>(), p => p.Text == "No URGENT items in the current honing data.");
+        Assert.Contains(doc.Blocks.OfType<ParagraphBlock>(), p => p.Text == "No URGENT items right now.");
     }
 }

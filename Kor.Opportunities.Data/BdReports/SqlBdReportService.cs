@@ -136,11 +136,10 @@ WHERE m.RetiredAtUtc IS NULL
     }
 
     internal static string SynthesisRefreshNote(OnDemandHoningSynthesizer.EnsureResult result)
-        => $"On-demand review: {result.Synthesized} synthesized from stored inputs; " +
-           $"{result.Quiet} quiet in directly linked project actions (cached, not rechecked); " +
-           $"{result.Due - result.Synthesized} due but not refreshed, including {result.Deferred} deferred " +
-           $"and {result.RejectedStale} rejected as stale. " +
-           "Unlinked tender observations are not used. No external verification was performed.";
+        => result.Due <= 0
+            ? string.Empty
+            : $"{result.Synthesized} of {result.Due} projects with recent news were updated for this report; " +
+              "the rest are shown as last researched.";
 
     public async Task<IReadOnlyList<PursuitBriefRow>> GetSectorPursuitsAsync(string sectorKey, CancellationToken ct)
     {
@@ -162,7 +161,7 @@ WHERE m.RetiredAtUtc IS NULL
   AND {def.MpiWhere};";
 
         var rows = await ReadPursuitRowsAsync(sql, ct).ConfigureAwait(false);
-        var refreshNote = "Cached research; on-demand refresh not performed. No external verification was performed.";
+        var refreshNote = string.Empty;
 
         // View-time freshness: refresh only the stale-and-changed verdicts (the
         // synthesizer's own cost gate means fresh/quiet rows cost nothing), then
@@ -183,7 +182,7 @@ WHERE m.RetiredAtUtc IS NULL
             catch (OperationCanceledException) { throw; }
             catch
             {
-                refreshNote = "Cached research; refresh unavailable. Could not complete the on-demand review; facts were not rechecked.";
+                refreshNote = "Recent news could not be checked for this report; projects are shown as last researched.";
             }
         }
 

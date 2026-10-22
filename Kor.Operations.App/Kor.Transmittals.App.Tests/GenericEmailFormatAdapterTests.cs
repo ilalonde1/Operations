@@ -22,6 +22,24 @@ public sealed class GenericEmailFormatAdapterTests
         Assert.Equal("Unknown", candidate.Buyer);
     }
 
+    // 2026-10-22: all 100 rows the BD alerts mailbox had made were a portal's own mail, and the newest APC digest headed
+    // the Opportunities list. Each subject below is one of those kinds, copied from the rows; none may become a candidate.
+    [Theory]
+    [InlineData("APC - Notification of New Postings for \"KOR Structural AB - daily\" - Wed, Oct 21")]
+    [InlineData("APC Opportunity AB-2026-04147 Awarded")]
+    [InlineData("APC Opportunity AB-2026-03317 Amended")]
+    [InlineData("Bidders list  Posted for APC Opportunity AB-2026-04147")]
+    [InlineData("Bidders and Pre-qualified Suppliers List")]
+    [InlineData("Your APC Account Sign-in Email Has Changed")]
+    [InlineData("Your APC Supplier Account Role Has Been Updated")]
+    [InlineData("Test RFP From Acme BC Inc")]
+    public void Parse_APortalsOwnMail_IsNotAnOpportunity(string subject)
+        => Assert.Null(_adapter.Parse(CreateMessage(subject: subject, body: "See https://purchasing.alberta.ca/posting/AB-2026-04147")));
+
+    [Fact]
+    public void Parse_AnRfpThatMentionsAPostingNumber_IsStillAnOpportunity()
+        => Assert.NotNull(_adapter.Parse(CreateMessage(subject: "RFP AB-2026-04147 Prime Consultant Services - Peace River Pool", body: "https://purchasing.alberta.ca/posting/AB-2026-04147")));
+
     [Fact]
     public void Parse_WithHtmlHref_ExtractsUrlFromHref()
     {

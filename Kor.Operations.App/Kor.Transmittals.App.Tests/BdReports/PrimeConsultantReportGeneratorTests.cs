@@ -31,7 +31,7 @@ public sealed class PrimeConsultantReportGeneratorTests
             .GroupBy(x => x.Label).ToDictionary(g => g.Key, g => g.First().Value);
         Assert.Equal("4", labels["Research records retrieved: "]);
         Assert.Equal("3 (75%)", labels["Prime consultant identified: "]);
-        Assert.Equal("1 (25%)", labels["Prime not identified in available payload: "]);
+        Assert.Equal("1 (25%)", labels["Prime not identified: "]);
         Assert.Equal("1", labels["Primes reported known to KOR: "]);
 
         var tables = doc.Blocks.OfType<TableBlock>().ToList();

@@ -168,20 +168,21 @@ public sealed class BdMissingEvidenceRegressionTests
         Assert.Equal(1, source.Split("e.LastRefreshAtUtc = @evidenceCutoffUtc").Length - 1);
         var service = Source("Kor.Opportunities.Data/BdReports/SqlBdReportService.cs");
         Assert.Contains("RefreshNote", service);
-        Assert.Contains("refresh unavailable", service);
+        Assert.Contains("could not be checked", service);
         var note = BdReportFormatting.EvidenceNote(Array.Empty<PursuitBriefRow>());
-        Assert.Contains("not a verification date", note);
-        Assert.Contains("source as-of date unavailable", note);
+        Assert.Contains("as last researched", note);
+        Assert.Contains("confirm status before acting", note);
+        Assert.DoesNotContain("verified", note);
         var cached = new PursuitBriefRow(1, "Cached project", "BC", null, null, null, null,
             null, null, null, null, BdVerdicts.Pursue, null, null, null, null,
             DateTimeOffset.Parse("2020-01-01T00:00:00Z"), false)
-            { RefreshNote = "Cached research; refresh unavailable." };
+            { RefreshNote = "Recent news could not be checked for this report." };
         var doc = SectorReportGenerator.Build(new SectorReportDefinition("test", "Test", "Test", "1=1"),
             new SectorReportProse("Intro", Array.Empty<string>(), Array.Empty<SynthesisSection>(), Array.Empty<string>()),
             new[] { cached }, DateTimeOffset.UtcNow);
         var actual = HtmlPreviewBuilder.Render(doc);
-        Assert.Contains("refresh unavailable", actual);
-        Assert.Contains("2020-01-01", actual);
+        Assert.Contains("could not be checked", actual);
+        Assert.Contains("1 Jan 2020", actual);
     }
 
     // Covers an empty executive report's generated text, not accuracy of supplied
@@ -194,8 +195,8 @@ public sealed class BdMissingEvidenceRegressionTests
         var actual = HtmlPreviewBuilder.Render(doc);
         Assert.DoesNotContain("structurally eliminated", actual);
         Assert.DoesNotContain("Every PURSUE has", actual);
-        Assert.Contains("Historical guidance", actual);
-        Assert.Contains("not verified by this report", actual);
+        Assert.Contains("date from June 2026", actual);
+        Assert.Contains("confirm amounts, contacts and status before acting", actual);
     }
 
     // Covers actual common opportunity assessment text for absent status/fit/seat
@@ -256,7 +257,7 @@ public sealed class BdMissingEvidenceRegressionTests
         Assert.Equal("1", labels["Partial or unusable research: "]);
         var html = HtmlPreviewBuilder.Render(doc);
         Assert.Contains("none - procurement is PAUSED", html);
-        Assert.Contains("Unusable payload", html);
+        Assert.Contains("No usable finding recorded", html);
     }
 
     private static PursuitBrief Brief(string? client) => new(

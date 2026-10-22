@@ -121,10 +121,12 @@
                     <!-- The columns a lead reads; contractor, schedule and the rest are on the right when a row is picked.
                          Star widths so the grid fits the window instead of scrolling sideways. -->
                     <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="3*" MinWidth="220"/>
-                    <DataGridTextColumn Header="Prov." Binding="{Binding Province}" Width="52"/>
+                    <!-- A fixed column needs MinWidth too: short of room, the grid shrinks fixed columns to 20 px before star
+                         ones, which showed "$5,70(" and hid Prov. entirely (2026-10-22). -->
+                    <DataGridTextColumn Header="Prov." Binding="{Binding Province}" Width="52" MinWidth="52"/>
                     <DataGridTextColumn Header="Stage" Binding="{Binding StageDisplay}" Width="*" MinWidth="100"/>
                     <DataGridTextColumn Header="Sector" Binding="{Binding Sector}" Width="*" MinWidth="90"/>
-                    <DataGridTextColumn Header="Cost" Binding="{Binding CostDisplay}" Width="110" SortMemberPath="EstimatedCostCad"/>
+                    <DataGridTextColumn Header="Cost" Binding="{Binding CostDisplay}" Width="120" MinWidth="120" SortMemberPath="EstimatedCostCad"/>
                     <DataGridTextColumn Header="Municipality" Binding="{Binding MunicipalityName}" Width="*" MinWidth="90"/>
                     <DataGridTextColumn Header="Proponent" Binding="{Binding ProponentName}" Width="1.4*" MinWidth="110"/>
                     <DataGridTextColumn Header="Architect" Binding="{Binding ArchitectName}" Width="1.2*" MinWidth="100"/>
@@ -264,12 +266,10 @@
                             <TextBlock Grid.Row="10" Grid.Column="0" Text="Timeline" Style="{StaticResource DetailLabel}"/>
                             <TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding Selected.TimelineDisplay}" Style="{StaticResource DetailValue}"/>
 
-                            <TextBlock Grid.Row="11" Grid.Column="0" Text="Issue" Style="{StaticResource DetailLabel}"/>
-                            <TextBlock Grid.Row="11" Grid.Column="1" Style="{StaticResource DetailValue}">
-                                <Run Text="{Binding Selected.IssueYear, Mode=OneWay, TargetNullValue=''}"/>
-                                <Run Text=" Q"/>
-                                <Run Text="{Binding Selected.IssueQuarter, Mode=OneWay, TargetNullValue=''}"/>
-                            </TextBlock>
+                            <TextBlock Grid.Row="11" Grid.Column="0" Text="Inventory issue" Style="{StaticResource DetailLabel}"
+                                       Visibility="{Binding Selected.HasIssue, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                            <TextBlock Grid.Row="11" Grid.Column="1" Text="{Binding Selected.IssueDisplay}" Style="{StaticResource DetailValue}"
+                                       Visibility="{Binding Selected.HasIssue, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
                         </Grid>
 
                         <WrapPanel Margin="0,0,0,8" Visibility="{Binding Selected.HasFundingFlags, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">

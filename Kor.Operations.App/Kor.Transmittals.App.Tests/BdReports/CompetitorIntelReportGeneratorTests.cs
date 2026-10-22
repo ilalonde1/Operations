@@ -35,7 +35,7 @@ public sealed class CompetitorIntelReportGeneratorTests
 
         // Unlinked rival gets the no-links placeholder, not an empty section.
         var paragraphs = doc.Blocks.OfType<ParagraphBlock>().Select(p => p.Text).ToList();
-        Assert.Contains(paragraphs, p => p.Contains("No structurally-linked projects"));
+        Assert.Contains(paragraphs, p => p.Contains("No projects recorded with this firm as structural engineer"));
         Assert.Contains(paragraphs, p => p.Contains("10: Sample Tower"));
     }
 

@@ -119,7 +119,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             int highest = Directory.EnumerateDirectories(dir, stem + " - ETABS model - *")
                 .Select(d => version.Match(Path.GetFileName(d)))
                 .Where(m => m.Success)
-                .Select(m => int.Parse(m.Groups[1].Value))
+                .Select(m => int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture))
                 .DefaultIfEmpty(0)
                 .Max();
             return Path.Combine(dir, $"{stem} - ETABS model - {DateTime.Now:yyyy-MM-dd} v{highest + 1}");

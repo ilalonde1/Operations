@@ -14,6 +14,14 @@ public sealed partial class GenericEmailFormatAdapter : IEmailFormatAdapter
 
     public OpportunityCandidate? Parse(EmailMessage message)
     {
+        // A portal's own mail (APC's daily digest, its status notices, bidder lists, account changes) is not an opportunity:
+        // the postings it lists arrive through the portal's own source. Every one of the 100 rows this mailbox had made by
+        // 2026-10-22 was one of these, and the newest headed the Opportunities list (Ian, 2026-10-22).
+        if (IsPortalNotice(message.Subject))
+        {
+            return null;
+        }
+
         var bodyText = CleanBodyText(message.BodyHtmlOrPlain);
         var lineBodyText = CleanBodyTextPreservingLineBreaks(message.BodyHtmlOrPlain);
         var url = ExtractFirstHttpsUrl(message.BodyHtmlOrPlain) ?? ExtractFirstHttpsUrl(bodyText);
@@ -37,6 +45,9 @@ public sealed partial class GenericEmailFormatAdapter : IEmailFormatAdapter
             RawJson = JsonSerializer.Serialize(message),
         };
     }
+
+    internal static bool IsPortalNotice(string? subject) =>
+        !string.IsNullOrWhiteSpace(subject) && PortalNoticeRegex().IsMatch(subject);
 
     private static string ResolveTitle(string? subject, string lineBodyText)
     {
@@ -195,4 +206,8 @@ public sealed partial class GenericEmailFormatAdapter : IEmailFormatAdapter
 
     [GeneratedRegex("^[^\\r\\n]+", RegexOptions.Compiled)]
     private static partial Regex FirstLineRegex();
+
+    [GeneratedRegex(@"\bNotification\s+of\s+New\s+Postings\b|^\s*APC\s+Opportunity\s+\S+\s+(Amended|Closed|Awarded|Cancelled)\b|\bBidders\s+(list|and\s+Pre-?qualified)|\bYour\s+APC\b|\bAccount\s+(Sign-?in|Role)\b|^\s*Test\s+RFP\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex PortalNoticeRegex();
 }

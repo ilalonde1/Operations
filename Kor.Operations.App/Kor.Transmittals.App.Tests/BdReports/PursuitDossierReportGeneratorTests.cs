@@ -50,19 +50,19 @@ public sealed class PursuitDossierReportGeneratorTests
         Assert.Equal("1", kpis["Urgent"].Value);
         Assert.Equal(ChipTone.Urgent, kpis["Urgent"].Tone);
         Assert.Equal("$2.3B", kpis["Known-cost subtotal (CAD)"].Value);
-        Assert.Equal("75%", kpis["Architect edge"].Value);
-        Assert.Equal("1", kpis["Graph gaps"].Value);
-        Assert.Equal(ChipTone.Caution, kpis["Graph gaps"].Tone);
+        Assert.Equal("75%", kpis["Architect known"].Value);
+        Assert.Equal("1", kpis["Architect unknown"].Value);
+        Assert.Equal(ChipTone.Caution, kpis["Architect unknown"].Tone);
 
         var labels = doc.Blocks.OfType<LabelValueBlock>()
             .GroupBy(x => x.Label).ToDictionary(g => g.Key, g => g.First().Value);
-        Assert.Equal("3 of 4 (75%)", labels["Architect edge resolved: "]);
+        Assert.Equal("3 of 4 (75%)", labels["Architect known: "]);
 
         var headings = doc.Blocks.OfType<HeadingBlock>().Select(h => h.Text).ToList();
         // Dikeakos has 2 pursuits -> cluster; Solo Arch has 1 -> no cluster.
         Assert.Contains(headings, h => h.StartsWith("Dikeakos — 2 pursuits", StringComparison.Ordinal));
         Assert.DoesNotContain(headings, h => h.StartsWith("Solo Arch", StringComparison.Ordinal));
-        Assert.Contains("Graph gaps — pursuits with no architect edge", headings);
+        Assert.Contains("Architect unknown — pursuits with no known route in", headings);
 
         var tables = doc.Blocks.OfType<TableBlock>().ToList();
         // urgent team-state, one cluster, gaps.
@@ -73,7 +73,7 @@ public sealed class PursuitDossierReportGeneratorTests
         // Drill-down dossier marks the unresolved edge loudly.
         var unresolved = doc.Blocks.OfType<LabelValueBlock>()
             .Where(x => x.Label == "Architect: ").Select(x => x.Value).ToList();
-        Assert.Contains("UNRESOLVED — no graph edge yet", unresolved);
+        Assert.Contains("UNKNOWN — not yet identified", unresolved);
 
         // kor:// drill-down targets: dossier H3 -> project (cost-in-heading),
         // cluster H3 -> org, urgent-table pursuit cell -> project; unresolved
@@ -82,7 +82,7 @@ public sealed class PursuitDossierReportGeneratorTests
         Assert.Equal("kor://org/7", doc.Blocks.OfType<HeadingBlock>().First(h => h.Text.StartsWith("Dikeakos", StringComparison.Ordinal)).Link);
         Assert.Equal("kor://mpi/1", tables[0].CellLinks![0][1]);
         var noEdgeArchitect = doc.Blocks.OfType<LabelValueBlock>()
-            .First(x => x.Label == "Architect: " && x.Value.StartsWith("UNRESOLVED", StringComparison.Ordinal));
+            .First(x => x.Label == "Architect: " && x.Value.StartsWith("UNKNOWN", StringComparison.Ordinal));
         Assert.Null(noEdgeArchitect.Link);
     }
 
@@ -114,20 +114,20 @@ public sealed class PursuitDossierReportGeneratorTests
     }
 
     [Fact]
-    public void Build_EmptyPool_StillRendersSummaryAndMethodology()
+    public void Build_EmptyPool_StillRendersSummaryAndAboutSection()
     {
         var doc = PursuitDossierReportGenerator.Build(Array.Empty<PursuitDossierRow>(), GeneratedAt);
 
         var headings = doc.Blocks.OfType<HeadingBlock>().Select(h => h.Text).ToList();
         Assert.Contains("Executive Summary", headings);
-        Assert.Contains("Methodology", headings);
+        Assert.Contains("About this report", headings);
         Assert.DoesNotContain("URGENT pursuits — team state", headings);
         Assert.Empty(doc.Blocks.OfType<TableBlock>());
 
         // Empty pool still leads with a (zeroed) KPI strip; pct shows a dash.
         var kpis = Assert.Single(doc.Blocks.OfType<KpiStripBlock>()).Items;
         Assert.Equal("0", kpis.Single(k => k.Label == "Active pursuits").Value);
-        Assert.Equal("—", kpis.Single(k => k.Label == "Architect edge").Value);
+        Assert.Equal("—", kpis.Single(k => k.Label == "Architect known").Value);
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public sealed class PursuitDossierReportGeneratorTests
 
         var noEdge = chipRows[1].Chips;
         Assert.Contains(noEdge, c => c.Text == BdVerdicts.Pursue && c.Tone == ChipTone.Positive);
-        Assert.Contains(noEdge, c => c.Text == "NO ARCHITECT EDGE" && c.Tone == ChipTone.Neutral);
+        Assert.Contains(noEdge, c => c.Text == "ARCHITECT UNKNOWN" && c.Tone == ChipTone.Neutral);
     }
 
     [Fact]

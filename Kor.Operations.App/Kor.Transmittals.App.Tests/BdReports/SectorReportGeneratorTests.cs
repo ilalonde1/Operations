@@ -81,26 +81,28 @@ public sealed class SectorReportGeneratorTests
         // Headline counts lead as the KPI summary strip (2026-06-12 UX pass).
         var kpis = Assert.Single(doc.Blocks.OfType<KpiStripBlock>()).Items
             .ToDictionary(k => k.Label, k => k);
-        Assert.Equal("3", kpis["Projects honed"].Value);
+        Assert.Equal("3", kpis["Projects reviewed"].Value);
         Assert.Equal("1", kpis["Urgent"].Value);
         Assert.Equal(ChipTone.Urgent, kpis["Urgent"].Tone);
         Assert.Equal("2", kpis["Pursue"].Value);
     }
 
     [Fact]
-    public void Build_DuplicateSectionOnlyWhenPresent_AndTablePopulated()
+    public void Build_DuplicateListings_AreLeftOutOfTheReadersReport()
     {
+        // Duplicate listings are internal data hygiene, not BD content: no
+        // section, no table, no count line, and no consolidation talk.
         var rows = new[] { Row(9, "Dup One", BdVerdicts.Duplicate, "same as 4570") };
 
         var doc = SectorReportGenerator.Build(Definition, Prose, rows, GeneratedAt);
 
-        var dupHeading = doc.Blocks.OfType<HeadingBlock>().SingleOrDefault(h => h.Text.StartsWith("DUPLICATE"));
-        Assert.NotNull(dupHeading);
-
-        var tables = doc.Blocks.OfType<TableBlock>().ToList();
-        var dupTable = tables.Single(t => t.Headers.Contains("Why DUPLICATE"));
-        Assert.Equal("9", dupTable.Rows[0][0]);
-        Assert.Equal("same as 4570", dupTable.Rows[0][3]);
+        Assert.DoesNotContain(doc.Blocks.OfType<HeadingBlock>(), h => h.Text.Contains("DUPLICATE"));
+        Assert.DoesNotContain(doc.Blocks.OfType<TableBlock>(), t => t.Headers.Contains("Why DUPLICATE"));
+        var html = HtmlPreviewBuilder.Render(doc);
+        Assert.DoesNotContain("Dup One", html);
+        Assert.DoesNotContain("same as 4570", html);
+        Assert.DoesNotContain("DUPLICATE", html);
+        Assert.DoesNotContain("consolidation", html);
     }
 
     [Fact]
@@ -126,7 +128,7 @@ public sealed class SectorReportGeneratorTests
         // placeholders. PURSUE renders as a populated table.
         var table = Assert.Single(doc.Blocks.OfType<TableBlock>());
         Assert.Contains("Why PURSUE", table.Headers);
-        Assert.Equal(4, doc.Blocks.OfType<ParagraphBlock>().Count(p => p.Text == "None in this honing pass."));
+        Assert.Equal(4, doc.Blocks.OfType<ParagraphBlock>().Count(p => p.Text == "None right now."));
     }
 
     [Fact]
@@ -135,9 +137,10 @@ public sealed class SectorReportGeneratorTests
         var doc = SectorReportGenerator.Build(Definition, Prose, Array.Empty<PursuitBriefRow>(), GeneratedAt);
 
         var intro = (ItalicNoteBlock)doc.Blocks[1];
-        Assert.StartsWith("Background guidance (not reconciled to current rows): Intro framing.", intro.Text);
-        Assert.Contains("2026-06-09 20:00 UTC", intro.Text);
-        Assert.Contains("live KorOpportunitiesDb", intro.Text);
+        Assert.StartsWith("Intro framing.", intro.Text);
+        Assert.Contains("As of 9 Jun 2026", intro.Text);
+        Assert.DoesNotContain("KorOpportunitiesDb", intro.Text);
+        Assert.DoesNotContain("honing", intro.Text, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

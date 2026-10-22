@@ -3,16 +3,28 @@ namespace Kor.Opportunities.Data.BdReports;
 
 public static class BdReportFormatting
 {
-    public const string SourceProvenance = "Generation time is not a verification date; inventory source as-of date unavailable in these report inputs. Confirm source currency before acting.";
+    public const string SourceProvenance = "Project details are as last researched; confirm status before acting.";
 
     public static string EvidenceNote(System.Collections.Generic.IEnumerable<PursuitBriefRow> rows)
     {
         var list = rows.ToList();
         var dates = list.Where(x => x.LastRefreshAtUtc.HasValue).Select(x => x.LastRefreshAtUtc!.Value).ToList();
-        var datesNote = dates.Count == 0 ? "No stored honing timestamp available." :
-            $"Stored honing timestamps: {dates.Min():yyyy-MM-dd} to {dates.Max():yyyy-MM-dd}; {dates.Count}/{list.Count} dated (may include legacy cache touches).";
-        return SourceProvenance + " " + datesNote + " " +
-            string.Join(" ", list.Select(x => x.RefreshNote).Distinct());
+        var datesNote = dates.Count == 0
+            ? SourceProvenance
+            : "Project details are as last researched (" + ResearchedRange(dates.Min(), dates.Max()) + "); confirm status before acting.";
+        var refreshNotes = list.Select(x => x.RefreshNote).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct();
+        return string.Join(" ", new[] { datesNote }.Concat(refreshNotes));
+    }
+
+    /// <summary>Reader-facing date, e.g. "22 Oct 2026" — culture-invariant.</summary>
+    public static string ReaderDate(System.DateTimeOffset value) =>
+        value.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string ResearchedRange(System.DateTimeOffset first, System.DateTimeOffset last)
+    {
+        var a = ReaderDate(first);
+        var b = ReaderDate(last);
+        return a == b ? a : a + " to " + b;
     }
     public static string CostCoverage(int? costed, int? population) =>
         costed.HasValue && population.HasValue

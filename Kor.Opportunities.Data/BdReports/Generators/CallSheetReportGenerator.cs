@@ -40,7 +40,7 @@ public static class CallSheetReportGenerator
 
         b.Italic(
             "Cross-cutting action sheet pulled across all BD sectors. PURSUE_URGENT + PURSUE items ranked by urgency then project value. " +
-            $"This is what to act on THIS WEEK. Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb honing verdicts.");
+            $"This is what to act on THIS WEEK. As of {BdReportFormatting.ReaderDate(generatedAtUtc)}.");
 
         var pipelineCad = pool.Sum(p => p.EstimatedCostCad ?? 0);
         b.Kpis(
@@ -55,7 +55,7 @@ public static class CallSheetReportGenerator
         foreach (var p in top)
         {
             b.H3($"{rank}. {p.ProjectName} ({CostOf(p)})", KorReportLinks.Mpi(p.MpiId));
-            b.Chips(new ChipItem(p.Verdict ?? "NO VERDICT", ChipTones.ForVerdict(p.Verdict)));
+            b.Chips(new ChipItem(p.Verdict ?? "NOT RATED", ChipTones.ForVerdict(p.Verdict)));
             var facts = new List<string> { $"Id {p.MpiId}" };
             if (!string.IsNullOrWhiteSpace(p.Province))
             {
@@ -80,7 +80,7 @@ public static class CallSheetReportGenerator
 
         if (top.Count == 0)
         {
-            b.P("No URGENT items in the current honing data.");
+            b.P("No URGENT items right now.");
         }
 
         if (remaining.Count > 0)
@@ -89,14 +89,14 @@ public static class CallSheetReportGenerator
             foreach (var p in remaining)
             {
                 b.H3($"{p.ProjectName} ({CostOf(p)})", KorReportLinks.Mpi(p.MpiId));
-                b.P($"MPI {p.MpiId} — {p.Province}{(string.IsNullOrWhiteSpace(p.MunicipalityName) ? string.Empty : ", " + p.MunicipalityName)}. {Safe(p.KorAngle, UrgentAngleCap)}");
+                b.P($"Id {p.MpiId} — {p.Province}{(string.IsNullOrWhiteSpace(p.MunicipalityName) ? string.Empty : ", " + p.MunicipalityName)}. {Safe(p.KorAngle, UrgentAngleCap)}");
             }
         }
 
         b.H2($"PURSUE pool — top {Math.Min(pursue.Count, PursueTableCap)} of {pursue.Count} open opportunities");
         if (pursue.Count == 0)
         {
-            b.P("No open PURSUE items in the current honing data.");
+            b.P("No open PURSUE items right now.");
         }
         else
         {
@@ -130,7 +130,7 @@ public static class CallSheetReportGenerator
 
         b.H2("Status of all BD sectors");
         b.Table(
-            new[] { "Sector", "Honed", "URGENT", "PURSUE", "MONITOR", "DISCOVER" },
+            new[] { "Sector", "Reviewed", "URGENT", "PURSUE", "MONITOR", "DISCOVER" },
             sectorSummaries.Select(s => (IReadOnlyList<string>)new[]
             {
                 s.SectorTitle,
@@ -143,7 +143,7 @@ public static class CallSheetReportGenerator
             new[] { ColumnAlignment.Left, ColumnAlignment.Center, ColumnAlignment.Right, ColumnAlignment.Right, ColumnAlignment.Right, ColumnAlignment.Right });
 
         b.H2("Where to find more detail");
-        b.P("Every sector report generates on demand from the BD Reports tile (this window). Per-project intel: Org Dossier for enriched canonical orgs, Project Brief for any MPI with honing-pass data, Region Brief for BC + AB rolled-up category views.");
+        b.P("Every sector report generates on demand from the BD Reports tile (this window). Per-project detail: Org Dossier for any firm, Project Brief for any reviewed project, Region Brief for BC + AB rolled-up category views.");
 
         return b.Build();
     }
@@ -168,7 +168,7 @@ public static class CallSheetReportGenerator
             "Graham Design Builders LP — Alex Trifunov",
             new[]
             {
-                "$3.4B+ active BC healthcare pipeline. Pre-construction Manager Vancouver office is the entry. Dawson Creek Hospital structural NOT publicly named — live KOR intel gap.",
+                "$3.4B+ active BC healthcare pipeline. Pre-construction Manager Vancouver office is the entry. Dawson Creek Hospital structural engineer NOT publicly named — not yet known to KOR.",
             }),
         new(
             "CSF (Conseil scolaire francophone)",

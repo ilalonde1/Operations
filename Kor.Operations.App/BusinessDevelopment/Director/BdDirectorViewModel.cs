@@ -1011,7 +1011,8 @@ public sealed class BdDirectorViewModel : ObservableObject, IDisposable
     {
         var signalsTask = _director.GetRecentSignalsAsync(30, 25, ct);
         var forwardTask = _dashboard.GetForwardPipelineAsync(12, ct);
-        var seatsTask = _dashboard.GetOpenStructuralSeatsAsync(10, ct);
+        // All of them, as the funnel line counts them all: the first 10 by name were A to C of 30 (2026-10-22).
+        var seatsTask = _dashboard.GetOpenStructuralSeatsAsync(200, ct);
         var funnelTask = _dashboard.GetPipelineFunnelAsync(ct);
         var opportunitiesTask = _opportunities.ListAsync(ct, includeClosed: false, includeNonPrime: false);
         await Task.WhenAll(signalsTask, forwardTask, seatsTask, funnelTask, opportunitiesTask).ConfigureAwait(true);

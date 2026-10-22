@@ -190,8 +190,10 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Kind" Binding="{Binding KindDisplay}" Width="155"/>
                     <DataGridTextColumn Header="Work size" Binding="{Binding WorkSizeDisplay}" Width="120" MinWidth="110"/>
-                    <DataGridTextColumn Header="Filed / posted" Binding="{Binding FiledAtDisplay}" SortMemberPath="FiledAtUtc" Width="110"/>
-                    <DataGridTemplateColumn Header="Repeat" Width="72" SortMemberPath="IsRepeatClient">
+                    <DataGridTextColumn Header="Filed / posted" Binding="{Binding FiledAtDisplay}" SortMemberPath="FiledAtUtc" Width="120" MinWidth="120"/>
+                    <!-- Fixed columns carry MinWidth: short of room the grid shrinks them to 20 px first, which cut
+                         "Filed / posted" to "2026-10-2" and Repeat to "Rep" (2026-10-22). -->
+                    <DataGridTemplateColumn Header="Repeat" Width="72" MinWidth="72" SortMemberPath="IsRepeatClient">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Background="{StaticResource Risk.HighConfidence.Foreground}" CornerRadius="10"
@@ -234,9 +236,9 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Name"          Binding="{Binding DisplayName}" SortMemberPath="Name" Width="*" MinWidth="260"/>
-                    <DataGridTextColumn Header="Buyer"         Binding="{Binding BuyerName}"             Width="200" MinWidth="150"/>
-                    <DataGridTemplateColumn Header="Status" Width="150" SortMemberPath="Status">
+                    <DataGridTextColumn Header="Name"          Binding="{Binding DisplayName}" SortMemberPath="Name" Width="*" MinWidth="220"/>
+                    <DataGridTextColumn Header="Buyer"         Binding="{Binding BuyerName}"             Width="180" MinWidth="150"/>
+                    <DataGridTemplateColumn Header="Status" Width="150" MinWidth="150" SortMemberPath="Status">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -253,7 +255,7 @@
                     </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Discipline"    Binding="{Binding Discipline}"            Width="90"/>
                     <DataGridTextColumn Header="Value"         Binding="{Binding EstimatedValueDisplay}" Width="110"/>
-                    <DataGridTextColumn Header="Deadline"      Binding="{Binding DeadlineDisplay}"       Width="230"/>
+                    <DataGridTextColumn Header="Deadline"      Binding="{Binding DeadlineDisplay}"       Width="200" MinWidth="170"/>
                     <DataGridTextColumn Header="Owner"         Binding="{Binding OwnerStaffId}"          Width="70"/>
                     <DataGridTextColumn Header="Updated"       Binding="{Binding UpdatedAtDisplay}"      Width="100"/>
                 </DataGrid.Columns>

@@ -29,10 +29,10 @@ public static class SectorReportProseCatalog
         new Dictionary<string, SectorReportProse>(StringComparer.OrdinalIgnoreCase)
         {
             ["hospitals"] = new(
-                "Healthcare construction pipeline in BC and Alberta, from Sonnet first-pass + honing verification. This is the YURKOVICH CORRECTION PASS — the highest-rigor honing PROMPT in KOR's pipeline (20-30 tool calls per project). Procurement model identification (Alliance / P3 / Progressive DB captive / Progressive DB external / Traditional DBB / Pre-procurement) is non-negotiable in every brief.",
+                "BC and Alberta healthcare construction projects KOR could work on. Each project's procurement model (Alliance / P3 / Progressive DB captive / Progressive DB external / Traditional DBB / Pre-procurement) is identified, because it decides whether the structural seat is still open.",
                 new[]
                 {
-                    "Yurkovich correction worked. The honing PROMPT explicitly required procurement model identification via 2 independent sources before marking any project PURSUE. Alliance / P3 / Stantec-captive projects auto-marked DEAD with named incumbent. Progressive DB with external structural slot is where most PURSUE opportunities sit.",
+                    "Alliance, P3 and Stantec-captive projects already have their structural engineer locked in; they are rated DEAD with the incumbent named. Most PURSUE opportunities are progressive design-build projects that bring in an outside structural engineer.",
                 },
                 new SynthesisSection[]
                 {
@@ -40,31 +40,31 @@ public static class SectorReportProseCatalog
                         "Procurement model breakdown",
                         new[]
                         {
-                            "The Yurkovich correction worked as designed — Sonnet identified the procurement model on every project before scoring. Alliance projects (Richmond Hospital Yurkovich locked with Entuitive, Cowichan locked with Bush Bohlman) are correctly DEAD. Stantec-captive projects (Cariboo Memorial, several others) are correctly DEAD. The PURSUE list is concentrated in Progressive DB with external structural sub OR Traditional DBB pre-procurement.",
+                            "Alliance projects (Richmond Hospital Yurkovich Pavilion, locked with Entuitive; Cowichan, locked with Bush Bohlman) are DEAD. Stantec-captive projects (Cariboo Memorial and several others) are DEAD. The PURSUE list is concentrated in Progressive DB with an external structural sub, or Traditional DBB before procurement.",
                         }),
                     new(
                         "NACIC + SACIC twin opportunity — Alberta compassionate intervention",
                         new[]
                         {
-                            "Northern Alberta Compassionate Intervention Centre (NACIC, MPI 7036, $90M, Edmonton) and Southern Alberta Compassionate Intervention Centre (SACIC / Spyhill, MPI 6473, $159M, Calgary) are TWIN PROJECTS under the same DBFM procurement. RFP stage NOW. Contract award August 2026. Shortlisted consortia forming teams NOW. KOR's Alberta presence is the direct angle.",
+                            "Northern Alberta Compassionate Intervention Centre (NACIC, Id 7036, $90M, Edmonton) and Southern Alberta Compassionate Intervention Centre (SACIC / Spyhill, Id 6473, $159M, Calgary) are TWIN PROJECTS under the same DBFM procurement. RFP stage NOW. Contract award August 2026. Shortlisted consortia forming teams NOW. KOR's Alberta presence is the direct angle.",
                         }),
                     new(
                         "Plant and Animal Health Centre $400M — biggest URGENT",
                         new[]
                         {
-                            "MPI 6585. RFP stage with shortlisted teams. Structural sub slot OPEN in each shortlisted team and filling NOW. Identify the shortlisted prime contractors and engage their pre-construction teams immediately.",
+                            "Id 6585. RFP stage with shortlisted teams. Structural sub slot OPEN in each shortlisted team and filling NOW. Identify the shortlisted prime contractors and engage their pre-construction teams immediately.",
                         }),
                     new(
                         "Vancouver General Hospital Campus Redevelopment Building 1",
                         new[]
                         {
-                            "MPI 6494. VCH Campus Building 1 — interim rezoning pending Summer 2026 City Council vote. Pre-procurement but high-priority. Sharon Petty (VCH Director Real Estate Operations, ex-CPO Richmond Hospital) is the relationship.",
+                            "Id 6494. VCH Campus Building 1 — interim rezoning pending Summer 2026 City Council vote. Pre-procurement but high-priority. Sharon Petty (VCH Director Real Estate Operations, ex-CPO Richmond Hospital) is the relationship.",
                         }),
                     new(
                         "Vernon Jubilee Hospital Psychiatric — D-B RFP active",
                         new[]
                         {
-                            "MPI 3133. IBC RFP stage. Award likely H1 2026. Structural sub within D-B team. If KOR can engage shortlisted teams (likely PCL, Graham, EllisDon, Bird), structural sub slot is accessible.",
+                            "Id 3133. IBC RFP stage. Award likely H1 2026. Structural sub within D-B team. If KOR can engage shortlisted teams (likely PCL, Graham, EllisDon, Bird), structural sub slot is accessible.",
                         }),
                 },
                 new[]
@@ -77,7 +77,7 @@ public static class SectorReportProseCatalog
                 }
             ),
             ["schools"] = new(
-                "K-12 school construction pipeline in BC and Alberta. Verdicts: PURSUE / MONITOR / DEAD / DISCOVER. Schools are KOR's bread-and-butter recurring market — landing one SD opens the whole district pipeline. The BMZ legacy (KOR was Bryson Markulin Zickmantel before 2021 rebrand) is explicitly leveraged where prior SD relationships exist.",
+                "K-12 school construction pipeline in BC and Alberta. Ratings: PURSUE / MONITOR / DEAD / DISCOVER. Schools are KOR's bread-and-butter recurring market — landing one SD opens the whole district pipeline. The BMZ legacy (KOR was Bryson Markulin Zickmantel before 2021 rebrand) is explicitly leveraged where prior SD relationships exist.",
                 new[]
                 {
                     "Schools market is rolling procurement — SDs typically procure 1-5 projects per year via pre-qualified consultant lists. Landing one SD opens the whole pipeline.",
@@ -106,23 +106,23 @@ public static class SectorReportProseCatalog
                         "CSF (Conseil scolaire francophone) projects",
                         new[]
                         {
-                            "École Beausoleil, École Élémentaire Beausoleil, École Beausoleil K-12 — multiple CSF MPIs appear PURSUE. CSF is a SINGLE province-wide francophone school district with consolidated capital procurement. One CSF relationship = access to their entire BC pipeline.",
+                            "École Beausoleil, École Élémentaire Beausoleil, École Beausoleil K-12 — multiple CSF projects are rated PURSUE. CSF is a SINGLE province-wide francophone school district with consolidated capital procurement. One CSF relationship = access to their entire BC pipeline.",
                         }),
                 },
                 new[]
                 {
-                    "CALL Brian Jonker SD62 (Sooke) at 250-474-9800 re: North Langford Secondary $220M structural-engineer slot. Sonnet flagged this as the highest-priority single action.",
-                    "Verify BidCentral for École Beausoleil $73M RFP + Matthew McNair Secondary SD38 RFP. Both have unawarded SE slots per honing pass.",
+                    "CALL Brian Jonker SD62 (Sooke) at 250-474-9800 re: North Langford Secondary $220M structural-engineer slot. This is the highest-priority single action.",
+                    "Verify BidCentral for École Beausoleil $73M RFP + Matthew McNair Secondary SD38 RFP. Both had unawarded structural slots when last researched.",
                     "Audit KOR portfolio for prior BMZ-era SD relationships — identify SDs where KOR has a warm-intro path that pre-dates the rebrand. Likely candidates: Vancouver SD39, Burnaby SD41, Coquitlam SD43, Surrey SD36, Richmond SD38.",
                     "Target BC seismic upgrade specialty — bid on the SMP pipeline. KOR's seismic structural expertise + BC market depth = direct competitive position. Architects to engage as warm-intro: PUBLIC Architecture, Acton Ostry, KMBR, MMA, Stantec.",
                     "Build CSF relationship — single province-wide francophone SD with multiple PURSUE projects. One relationship = recurring access.",
                 }
             ),
             ["indigenous"] = new(
-                "BC + Alberta First Nations / Métis / Indigenous construction pipeline. Verdicts: PURSUE / MONITOR / DEAD / DISCOVER. Indigenous procurement is relationship-driven, not open-bid — warm-introduction paths and 1-3 year relationship cadence acknowledged in every recommendation. Cultural-competency and protocol-respect baked into the honing PROMPT.",
+                "BC + Alberta First Nations / Métis / Indigenous construction pipeline. Ratings: PURSUE / MONITOR / DEAD / DISCOVER. Indigenous procurement is relationship-driven, not open-bid — warm-introduction paths and 1-3 year relationship cadence acknowledged in every recommendation. Every recommendation assumes cultural competency and respect for Nation protocol.",
                 new[]
                 {
-                    "Indigenous BD reality: most projects are NOT competitive open-RFP. They are relationship-led procurement where Nation chief and council, development corporations, or non-profit operators select trusted partners. KOR's pursuit play is a 1-3 year relationship cadence. The PURSUE projects below have either explicit RFP windows OR specific named warm-introduction paths surfaced by the honing pass.",
+                    "Indigenous BD reality: most projects are NOT competitive open-RFP. They are relationship-led procurement where Nation chief and council, development corporations, or non-profit operators select trusted partners. KOR's pursuit play is a 1-3 year relationship cadence. The PURSUE projects below have either explicit RFP windows OR specific named warm-introduction paths.",
                 },
                 new SynthesisSection[]
                 {
@@ -150,7 +150,7 @@ public static class SectorReportProseCatalog
                         {
                             "Gwaii Engineering (gwaiieng.com) is an Indigenous-owned (Haida) CCAB-certified civil & environmental engineering firm, Victoria BC, founded 2017 by Corey Brown (Sta'staas Eagle Clan, Old Masset). ~20+ staff. It is the incumbent civil engineer for 25+ coastal-BC / Vancouver Island First Nations (Malahat, Cowichan, Tsawout, Tsawwassen, Songhees, Ditidaht, Ucluelet, Tla'amin, K'ómoks, Haida Nation) plus BC Housing — the same owners this pipeline tracks.",
                             "WHY IT SOLVES THE CAUTION: civil (Gwaii) and structural (KOR) are complementary, non-competing disciplines. A KOR-structural + Gwaii-civil team satisfies the Indigenous-owned-firm / participation requirement (CCAB) AND brings Gwaii's standing with the Nation/owner — turning the 'KOR is not Indigenous-owned' blocker into a strength. No prior KOR–Gwaii contractual history (net-new white space).",
-                            "Sibling firm: Islander Engineering (Victoria, civil/land-dev) shares founder Corey Brown + staff — covers the conventional-market Island lane. Single relationship (Corey Brown, cbrown@gwaiieng.com; Brandon Ducharme, Capital Advisory, bducharme@gwaiieng.com) opens both. Full dossiers: docs/KOR-Gwaii-Engineering-Dossier + KOR-Islander-Gwaii-Exec-Teaming-Brief (2026-06-23).",
+                            "Sibling firm: Islander Engineering (Victoria, civil/land-dev) shares founder Corey Brown + staff — covers the conventional-market Island lane. Single relationship (Corey Brown, cbrown@gwaiieng.com; Brandon Ducharme, Capital Advisory, bducharme@gwaiieng.com) opens both. Full dossiers on both firms (June 2026) are available from BD.",
                         }),
                 },
                 new[]
@@ -162,7 +162,7 @@ public static class SectorReportProseCatalog
                 }
             ),
             ["bc-housing"] = new(
-                "BC Housing-funded projects: supportive housing, affordable housing, complex care, shelters, transitional housing. The honing PROMPT identified BC Housing partnership model (non-profit operator / municipality / for-profit developer / Indigenous operator / hybrid) for every project — that's where the structural-eng decision actually happens.",
+                "BC Housing-funded projects: supportive housing, affordable housing, complex care, shelters, transitional housing. Each project's BC Housing partnership model (non-profit operator / municipality / for-profit developer / Indigenous operator / hybrid) is identified — that's where the structural-eng decision actually happens.",
                 new[]
                 {
                     "BC Housing rarely builds directly — they partner with non-profit operators (Lookout, Atira, RainCity, Coast Mental Health, PHS, AHMA), municipalities, or for-profit developers. The structural-engineer decision usually happens at the operator level, not BC Housing itself. Pursuit play is operator-relationship building.",
@@ -200,11 +200,11 @@ public static class SectorReportProseCatalog
                     "Audit MONITOR list for repeat operators — operators appearing 3+ times are KOR's highest-leverage relationships. Likely candidates: Lookout, Atira, RainCity, Coast Mental Health.",
                     "PURSUE projects — direct outreach to named operator + BC Housing project director per brief.",
                     "Build BCNPHA Annual Conference relationship attendance — operators network here, BC Housing executives attend.",
-                    "Indigenous Housing Fund channel via AHMA — separate but adjacent to Indigenous Projects BD pipeline. Use the indigenous-projects honing learnings.",
+                    "Indigenous Housing Fund channel via AHMA — separate but adjacent to Indigenous Projects BD pipeline. See the Indigenous Projects report for the approach.",
                 }
             ),
             ["defense"] = new(
-                "BC + Alberta defense and military construction pipeline, with named contacts and KOR action items. Verdicts: PURSUE_URGENT / PURSUE / MONITOR / DEAD / DISCOVER. PROMPT-driven Yurkovich-class error catch confirmed the original DB filter pulled false positives (schools, civic arenas, RCMP, First Nations commercial misclassified as defense) — re-categorization candidates are flagged inside the MONITOR/DEAD briefs.",
+                "BC + Alberta defense and military construction pipeline, with named contacts and KOR action items. Ratings: PURSUE_URGENT / PURSUE / MONITOR / DEAD / DISCOVER. Some projects listed near military bases are not defense work (schools, civic arenas, RCMP, First Nations commercial); their notes in the MONITOR and DEAD tables say so.",
                 new[]
                 {
                     "Defense procurement reality: nearly everything flows through DCC (Defence Construction Canada) procurement gates, with CFHA (Canadian Forces Housing Agency) running the residential programs. Security clearance (Reliability or SECRET-level FSC) gates many structural sub slots — every PURSUE brief should be checked for clearance requirements before outreach. KOR's entry is almost always as structural sub on a design-build prime's team (EllisDon, PCL, Graham, Bird), not direct to DND.",
@@ -221,7 +221,7 @@ public static class SectorReportProseCatalog
                         "EllisDon as strategic defense relationship",
                         new[]
                         {
-                            "EllisDon recurs across the defense briefs as design prime (see PURSUE/MONITOR entries above) — the same firm KOR is building toward in BC healthcare. EllisDon is to defense what Graham Design Builders is to BC healthcare: a strategic relationship to build deliberately. Contacts via their Victoria, Vancouver, or Calgary offices (named contacts in the EllisDon deep-dive and IntelPersonAffiliation).",
+                            "EllisDon recurs across the defense briefs as design prime (see PURSUE/MONITOR entries above) — the same firm KOR is building toward in BC healthcare. EllisDon is to defense what Graham Design Builders is to BC healthcare: a strategic relationship to build deliberately. Contacts via their Victoria, Vancouver, or Calgary offices (named contacts in the Strategic Relationships report).",
                         }),
                     new(
                         "Security clearance capability",
@@ -240,12 +240,6 @@ public static class SectorReportProseCatalog
                         new[]
                         {
                             "KOR has active project relationships with two viable defense-team partners: Yellowridge Construction (design-build GC, 60+ years, builds DND plus Indigenous / First Nations housing & health facilities) and DHK Architects — both real KOR working relationships (e.g. Yellowridge — 611 Brunswick St, Prince George; DHK — All Clan House, Stellako BC). For DND packages with Indigenous-participation requirements or on/near Nation land, pair with Gwaii Engineering (Indigenous-owned, CCAB-certified civil) and its sibling Islander Engineering: KOR structural + Gwaii civil earns Indigenous-participation scoring. NOTE: KOR has no prior jobs with Islander/Gwaii — forward-looking teaming, not past performance.",
-                        }),
-                    new(
-                        "Defense MPI ingestion hygiene",
-                        new[]
-                        {
-                            "The honing pass functioned partly as a data-hygiene audit: geographic proximity to a CFB caused schools, arenas, RCMP detachments, and First Nations commercial projects to auto-classify as defense. Tighter ingestion filters needed; re-categorization candidates are flagged per-brief in the MONITOR and DEAD sections above.",
                         }),
                 },
                 new[]
@@ -277,12 +271,6 @@ public static class SectorReportProseCatalog
                             "HCMA Architecture + Design is BC's dominant recreational specialist architect. One sustained HCMA relationship = recurring KOR positioning across most BC rec pipeline. Newton Community Centre, Britannia, Cameron — HCMA is on most major BC rec projects.",
                         }),
                     new(
-                        "Newton Community Centre quadruplets — m114 candidate",
-                        new[]
-                        {
-                            "Newton Community Centre $310.6M (largest civic project in City of Surrey history) appears 4 times across MPIs 4221, 4589, 5288, 6782. Britannia Community Centre $300M appears 2 times (4196, 6483). Worth m114 consolidation similar to UHNBC + Vernon Jubilee. Sonnet may have flagged additional duplicates in the DUPLICATE bucket above.",
-                        }),
-                    new(
                         "Municipality relationships compound",
                         new[]
                         {
@@ -300,15 +288,14 @@ public static class SectorReportProseCatalog
                     "HCMA Vancouver office — single warm-intro to HCMA Principal positions KOR for recurring BC rec pursuits. Identify Principal-in-Charge on Newton + Britannia and start there.",
                     "Newton Community Centre Surrey $310.6M — largest civic project in Surrey history. If KOR has Surrey municipal relationship, this is the showcase pursuit.",
                     "PURSUE list — review each for procurement model + incumbent before outreach.",
-                    "m114 migration — consolidate Newton 4x + Britannia 2x duplicates before next drain cycle (same UHNBC + Vernon Jubilee pattern).",
                 }
             ),
             ["residential"] = new(
-                "Residential / condo tower construction pipeline in BC and Alberta — KOR's largest BD market. High-rise concrete + mid-rise concrete-wood hybrid = direct KOR core. Memory-confirmed KOR client list (Wesgroup, Bosa, Reliance, Westland, Belford, Anthem, Cressey, Peterson, Strand, Beedie, Capital Region Housing, Onni, Concord, Polygon) checked against every project.",
+                "Residential / condo tower construction pipeline in BC and Alberta — KOR's largest BD market. High-rise concrete + mid-rise concrete-wood hybrid = direct KOR core. Every project is checked against KOR's existing developer clients (Wesgroup, Bosa, Reliance, Westland, Belford, Anthem, Cressey, Peterson, Strand, Beedie, Capital Region Housing, Onni, Concord, Polygon).",
                 new[]
                 {
-                    "Residential is RELATIONSHIP-driven — most BC residential is developer-led with in-house GC (Wesgroup, Bosa, Polygon, Onni) or developer + selected GC + pre-qualified subs. Architect drives structural-engineer selection. Memory-confirmed KOR client developers checked against every project for prior-relationship advantage.",
-                    "NOTE: residential is honed in batches — the verdict counts above are live for whatever has been honed to date and grow as more of the pipeline is honed.",
+                    "Residential is RELATIONSHIP-driven — most BC residential is developer-led with in-house GC (Wesgroup, Bosa, Polygon, Onni) or developer + selected GC + pre-qualified subs. Architect drives structural-engineer selection. Where a project's developer is an existing KOR client, that prior relationship is the advantage.",
+                    "NOTE: residential projects are still being reviewed — the counts above cover those reviewed so far and will grow.",
                 },
                 new SynthesisSection[]
                 {
@@ -316,13 +303,13 @@ public static class SectorReportProseCatalog
                         "Developer-relationship play dominates residential",
                         new[]
                         {
-                            "Residential market is developer-led. Most BC residential structural is awarded via developer-PQ-list rather than open RFP. The compounding move is operator-level relationship rather than project-by-project chase. Memory-confirmed KOR clients (Wesgroup, Bosa, Reliance, Anthem, Cressey, Beedie, Onni, Polygon) each have multi-decade pipelines.",
+                            "Residential market is developer-led. Most BC residential structural is awarded via developer-PQ-list rather than open RFP. The compounding move is operator-level relationship rather than project-by-project chase. Existing KOR clients (Wesgroup, Bosa, Reliance, Anthem, Cressey, Beedie, Onni, Polygon) each have multi-decade pipelines.",
                         }),
                     new(
                         "BMZ legacy = warm-intro lever",
                         new[]
                         {
-                            "KOR was Bryson Markulin Zickmantel pre-2021. Many BC residential developers have BMZ-era references that pre-date the rebrand. Audit KOR portfolio for prior BMZ work on each developer in MONITOR list — that's the warm-intro path. Memory feedback explicitly noted BMZ legacy as KOR's 30+ year BC residential differentiator.",
+                            "KOR was Bryson Markulin Zickmantel pre-2021. Many BC residential developers have BMZ-era references that pre-date the rebrand. Audit KOR portfolio for prior BMZ work on each developer in MONITOR list — that's the warm-intro path. The BMZ legacy is KOR's 30+ year BC residential differentiator.",
                         }),
                     new(
                         "In-house GC developers = direct entry",
@@ -339,8 +326,7 @@ public static class SectorReportProseCatalog
                 },
                 new[]
                 {
-                    "Audit MONITOR list for repeat developers — developers appearing 3+ times = strategic-relationship targets. Memory-confirmed KOR clients appearing in MONITOR are warm-leads.",
-                    "Continue residential honing for complete coverage. After each pass this report regenerates from the full live pipeline.",
+                    "Audit MONITOR list for repeat developers — developers appearing 3+ times = strategic-relationship targets. Existing KOR clients appearing in MONITOR are warm leads.",
                     "BMZ legacy audit — surface pre-2021 KOR portfolio references per developer to establish warm-intro lead-ins.",
                     "Wesgroup / Bosa / Onni in-house construction relationships — single VP Development relationship at each unlocks entire pipeline.",
                 }
@@ -357,7 +343,7 @@ public static class SectorReportProseCatalog
                         "Commercial office market reality — procurement-mature, mostly locked",
                         new[]
                         {
-                            "Most honed commercial office projects come back DEAD — structural engineer already assigned, project delivered, or owner pre-locked (the live verdict counts above are the current figure). The commercial office market in BC + AB is procurement-mature; pursuits concentrate in a small set of active RFPs.",
+                            "Most commercial office projects reviewed are DEAD — structural engineer already assigned, project delivered, or owner pre-locked (see the current counts above). The commercial office market in BC + AB is procurement-mature; pursuits concentrate in a small set of active RFPs.",
                         }),
                     new(
                         "The PURSUE set — small but high-leverage",
@@ -375,22 +361,22 @@ public static class SectorReportProseCatalog
                         "Strategic relationships > project pursuits",
                         new[]
                         {
-                            "Because the market is largely locked, the commercial pursuit play is RELATIONSHIPS not projects. Build sustained relationships with the BC commercial office majors: Concert Properties, Westbank, Beedie Development, Anthem, Aquilini, Reliance. Most of these are already KorClients (per memory). The relationship investment compounds across multi-decade commercial pipelines.",
+                            "Because the market is largely locked, the commercial pursuit play is RELATIONSHIPS not projects. Build sustained relationships with the BC commercial office majors: Concert Properties, Westbank, Beedie Development, Anthem, Aquilini, Reliance. Most of these are already KOR clients. The relationship investment compounds across multi-decade commercial pipelines.",
                         }),
                 },
                 new[]
                 {
                     "Waterfront Square Office Tower — DPB hearing complete May 11, 2026. Verify approval status THIS WEEK. James Cheng Architects + Cadillac Fairview VP Development BC channel.",
                     "Oxford 11-15 East 4th Ave Life Sciences — Post-rezoning, Development Permit in process. Oxford Properties + Chernoff Thompson Architects channel.",
-                    "Centre Block SFU Surrey — Note flagged as duplicate of 6890. Verify whether it is genuinely distinct or merge with 6890. Stantec Architecture + PCL Westcoast channel.",
+                    "Centre Block SFU Surrey — may be the same project as Id 6890; confirm before outreach. Stantec Architecture + PCL Westcoast channel.",
                     "Audit MONITOR list for repeat developers — Concert / Westbank / Beedie / Anthem / Aquilini appearing multiple times = strategic-relationship targets.",
                 }
             ),
             ["post-secondary"] = new(
-                "Post-secondary capital pipeline (universities, colleges, polytechnics) in BC and Alberta. Mass timber academic specialist match (UBC Brock Commons / Earth Sciences model) flagged as KOR sweet spot. BMZ legacy reference baked into every brief.",
+                "Post-secondary capital pipeline (universities, colleges, polytechnics) in BC and Alberta. Mass timber academic specialist match (UBC Brock Commons / Earth Sciences model) flagged as KOR sweet spot. BMZ-era references are noted where they exist.",
                 new[]
                 {
-                    "Post-secondary is RELATIONSHIP-driven — universities + colleges procure on 5-year capital plans with pre-qualified consultant lists. Sonnet flagged 5 immediate actions including direct architect contact paths.",
+                    "Post-secondary is RELATIONSHIP-driven — universities + colleges procure on 5-year capital plans with pre-qualified consultant lists. Five immediate actions are listed below, including direct architect contact paths.",
                 },
                 new SynthesisSection[]
                 {
@@ -398,13 +384,13 @@ public static class SectorReportProseCatalog
                         "Post-secondary market is procurement-mature",
                         new[]
                         {
-                            "Of 182 post-secondary projects honed, 169 are DEAD or DUPLICATE. The post-secondary market in BC + AB is procurement-mature; pursuits are concentrated in 10-13 active or upcoming RFPs.",
+                            "Of 182 post-secondary projects reviewed, 169 were already locked, delivered or listed twice. The post-secondary market in BC + AB is procurement-mature; pursuits are concentrated in 10-13 active or upcoming RFPs.",
                         }),
                     new(
                         "Student housing is the dominant sub-segment",
                         new[]
                         {
-                            "UBC Lower Mall, KPU Surrey, UVic 510-bed (delayed 2034 per m113), UBC Brock Commons follow-ons — student housing P3 / DBFM is the dominant procurement sub-pattern. Mass timber + concrete hybrid (Brock Commons model) = direct KOR specialty.",
+                            "UBC Lower Mall, KPU Surrey, UVic 510-bed (delayed to 2034), UBC Brock Commons follow-ons — student housing P3 / DBFM is the dominant procurement sub-pattern. Mass timber + concrete hybrid (Brock Commons model) = direct KOR specialty.",
                         }),
                     new(
                         "Research facility specialty is structural-eng intensive",
@@ -421,7 +407,7 @@ public static class SectorReportProseCatalog
                 },
                 new[]
                 {
-                    "CALL Ryder Architecture re: UBC Lower Mall Student Housing 6880 — Sonnet flagged this as priority 1.",
+                    "CALL Ryder Architecture re: UBC Lower Mall Student Housing (Id 6880) — priority 1.",
                     "MONITOR BC Bid for KPU Surrey 6897 SE RFP — may be live now.",
                     "Build U of A relationship for LIFT Centre 6979 — SE RFP expected 2026.",
                     "NorQuest College CSC 7062 — open competition, no incumbent, KOR has fair chance.",
@@ -429,10 +415,10 @@ public static class SectorReportProseCatalog
                 }
             ),
             ["okanagan"] = new(
-                "Okanagan Region construction pipeline — Kelowna, West Kelowna, Vernon, Penticton, Lake Country, Summerland, Peachland, Coldstream, Armstrong, Enderby, Oliver, Osoyoos. First REGION cut of the BD pipeline (sector reports slice by what is being built; this slices by where). The 2026-06-07 Okanagan research pass populated projects, buyer orgs, and people intel for the region's municipal and institutional owners — buyer-org contacts are mapped for City of Kelowna, City of Vernon, City of Penticton, District of Peachland, District of Summerland, City of West Kelowna, and Interior Health.",
+                "Okanagan Region construction pipeline — Kelowna, West Kelowna, Vernon, Penticton, Lake Country, Summerland, Peachland, Coldstream, Armstrong, Enderby, Oliver, Osoyoos. A region view: the sector reports group projects by what is being built; this one groups by where. Buyer contacts are mapped for the region's municipal and institutional owners — City of Kelowna, City of Vernon, City of Penticton, District of Peachland, District of Summerland, City of West Kelowna, and Interior Health.",
                 new[]
                 {
-                    "The Okanagan is KOR's natural interior growth corridor: close enough to serve from Vancouver, public-owner-driven (municipalities, school districts, Interior Health), and procurement-open — unlike the Lower Mainland's developer-PQ-list market, most Okanagan structural work is won through open municipal and institutional RFPs where KOR's credentials compete directly. The honing pass found a young pipeline: zero DEAD verdicts, with the active list concentrated in PURSUE and MONITOR.",
+                    "The Okanagan is KOR's natural interior growth corridor: close enough to serve from Vancouver, public-owner-driven (municipalities, school districts, Interior Health), and procurement-open — unlike the Lower Mainland's developer-PQ-list market, most Okanagan structural work is won through open municipal and institutional RFPs where KOR's credentials compete directly. It is a young pipeline: no projects rated DEAD, with the active list concentrated in PURSUE and MONITOR.",
                     "Recurring buyers dominate the region: City of Kelowna (civic cluster — Mission Activity Centre, Okanagan Centre for the Performing Arts, Community Theatre upgrades), SD23 Central Okanagan and SD83 North Okanagan-Shuswap (school programs), Interior Health (Vernon Jubilee and Cottonwoods), and the utilities (FortisBC Kelowna LNG capacity, BC Hydro Westbank substation). The compounding play is buyer-level relationships, not project-level chase — the same pattern as BC Housing operators and rec municipalities.",
                 },
                 new SynthesisSection[]
@@ -441,41 +427,41 @@ public static class SectorReportProseCatalog
                         "Vernon Jubilee Hospital — the region's URGENT",
                         new[]
                         {
-                            "New Inpatient Psychiatric Unit (MPI 7031, Interior Health / North Okanagan Regional Hospital District) is the region's PURSUE_URGENT and pairs with the hospitals report's Vernon Jubilee D-B RFP entry (MPI 3133). Interior Health is the single most leveraged relationship in the region — it also owns Cottonwoods Care Centre Redevelopment in Kelowna (MPI 4486). One Interior Health capital-projects relationship covers the regional healthcare pipeline.",
+                            "New Inpatient Psychiatric Unit (Id 7031, Interior Health / North Okanagan Regional Hospital District) is the region's PURSUE_URGENT and pairs with the hospitals report's Vernon Jubilee D-B RFP entry (Id 3133). Interior Health is the single most leveraged relationship in the region — it also owns Cottonwoods Care Centre Redevelopment in Kelowna (Id 4486). One Interior Health capital-projects relationship covers the regional healthcare pipeline.",
                         }),
                     new(
-                        "Burtch Road Middle School $101M — triplet needs consolidation",
+                        "Burtch Road Middle School $101M — the region's largest education pursuit",
                         new[]
                         {
-                            "SD23's Burtch Road Middle School appears three times (MPIs 2195, 4537, 5113) — same $101M project from three ingest sources. m114-style consolidation candidate (the Newton Community Centre pattern). Pursuit-wise it is the region's largest single education opportunity, and SD23 is the region's highest-velocity school district.",
+                            "SD23's Burtch Road Middle School ($101M) is the region's largest single education opportunity, and SD23 is the region's highest-velocity school district. The project is listed under three Ids (2195, 4537, 5113).",
                         }),
                     new(
                         "Municipal civic + recreation wave = KOR structural sweet spot",
                         new[]
                         {
-                            "Penticton Twin Pad Arena ($70M, City of Penticton) is a long-span recreational structure — direct KOR specialty per the recreation report. Kelowna's civic cluster (performing arts centre, community theatre, Mission Activity Centre) and Peachland Firehall ($16-18M) round out a municipal wave where the June 7 people-intel pass mapped facilities and procurement contacts at every buyer. Small-to-mid municipal owners here procure openly — a credentials-forward introduction lands differently than in the Lower Mainland.",
+                            "Penticton Twin Pad Arena ($70M, City of Penticton) is a long-span recreational structure — direct KOR specialty per the recreation report. Kelowna's civic cluster (performing arts centre, community theatre, Mission Activity Centre) and Peachland Firehall ($16-18M) round out a municipal wave where facilities and procurement contacts are mapped at every buyer. Small-to-mid municipal owners here procure openly — a credentials-forward introduction lands differently than in the Lower Mainland.",
                         }),
                     new(
                         "Indigenous and institutional threads",
                         new[]
                         {
-                            "Penticton Indian Band's Outma Sqilx'w School Addition (MPI 4860) and BC Housing's Skaha Assembly Redevelopment (MPI 4467) connect this region to the Indigenous and BC Housing playbooks. UBCO Student Housing Expansion (MPI 4513) and Okanagan College Aviation Campus (MPI 5668) do the same for post-secondary. Okanagan Indian Band (OKIB) carries mapped people intel from the June 7 pass. Live Edge Okanagan Builders is already a KorClient with signal coverage — the region is not a cold start.",
+                            "Penticton Indian Band's Outma Sqilx'w School Addition (Id 4860) and BC Housing's Skaha Assembly Redevelopment (Id 4467) connect this region to the Indigenous and BC Housing playbooks. UBCO Student Housing Expansion (Id 4513) and Okanagan College Aviation Campus (Id 5668) do the same for post-secondary. Okanagan Indian Band (OKIB) contacts are mapped. Live Edge Okanagan Builders is already a KOR client — the region is not a cold start.",
                         }),
                 },
                 new[]
                 {
-                    "Interior Health capital projects relationship — covers Vernon Jubilee Psychiatric (URGENT, MPI 7031) + Cottonwoods Kelowna (MPI 4486) in one channel. Cross-reference the hospitals report's Vernon Jubilee D-B entry before outreach.",
-                    "SD23 Central Okanagan — Burtch Road Middle School $101M is the region's biggest education pursuit; consolidate the triplet (2195/4537/5113) before the next drain cycle.",
+                    "Interior Health capital projects relationship — covers Vernon Jubilee Psychiatric (URGENT, Id 7031) + Cottonwoods Kelowna (Id 4486) in one channel. Cross-reference the hospitals report's Vernon Jubilee D-B entry before outreach.",
+                    "SD23 Central Okanagan — Burtch Road Middle School $101M is the region's biggest education pursuit.",
                     "City of Penticton — Twin Pad Arena $70M long-span structure; lead with KOR's recreational portfolio (aquatic/arena precedent projects).",
-                    "Audit the mapped buyer contacts from the 2026-06-07 people pass (Kelowna, Vernon, Penticton, Peachland, Summerland, West Kelowna) and pick the top three municipal introductions for Q3 2026.",
+                    "Review the mapped buyer contacts (Kelowna, Vernon, Penticton, Peachland, Summerland, West Kelowna) and pick the top three municipal introductions for Q3 2026.",
                 }
             ),
             ["us-west"] = new(
-                "US West Coast construction pipeline — California, Washington, Oregon. Second region cut of the BD pipeline, and the home of every US row in the inventory: the 2026-06-12 geography scoping moved these out of the BC + AB sector reports (a $1.74B Seattle hospital had been topping the hospitals report). KOR's US practice serves Los Angeles and San Diego today; Washington and Oregon are stated growth markets. US dollar costs are stored CAD-converted with the rate and date stamped in the cost text.",
+                "US West Coast construction pipeline — California, Washington, Oregon. A region view covering KOR's US projects; the BC + AB sector reports leave them out. KOR's US practice serves Los Angeles and San Diego today; Washington and Oregon are stated growth markets. US dollar costs are converted to CAD, with the rate and date shown in the cost text.",
                 new[]
                 {
-                    "California is the depth market: the largest US state slice with the bulk of the live pursuits, anchored by KOR's existing LA + San Diego presence. Washington is thin but carries the single biggest US opportunity (Harborview, Seattle). Oregon is a pure watch-list — the Portland and Salem research streams landed entirely MONITOR verdicts, early-stage projects worth a quarterly re-scan rather than outreach today.",
-                    "A quarter of the US rows carry no Sector tag — they ingested as bare geography rows and have not been through post-ingest enrichment. The verdict coverage is real (most rows are honed) but the sector mix under-reports until that backfill runs.",
+                    "California is the depth market: the largest US state slice with the bulk of the live pursuits, anchored by KOR's existing LA + San Diego presence. Washington is thin but carries the single biggest US opportunity (Harborview, Seattle). Oregon is a pure watch-list — the Portland and Salem projects are all rated MONITOR, early-stage projects worth a quarterly review rather than outreach today.",
+                    "About a quarter of US projects have no sector assigned yet, so any sector breakdown understates the true mix.",
                 },
                 new SynthesisSection[]
                 {
@@ -483,33 +469,33 @@ public static class SectorReportProseCatalog
                         "Harborview Medical Center — the biggest US URGENT",
                         new[]
                         {
-                            "Harborview Medical Center New Inpatient Tower + campus rebuild (MPI 3943, Seattle, USD $1.74B) is the largest live pursuit in the US slice and the single most expensive URGENT in the whole inventory. It is KOR's natural Washington beachhead: a healthcare campus rebuild squarely in KOR's hospital depth, in a stated growth market.",
+                            "Harborview Medical Center New Inpatient Tower + campus rebuild (Id 3943, Seattle, USD $1.74B) is the largest live pursuit in the US slice and the single most expensive URGENT in the whole inventory. It is KOR's natural Washington beachhead: a healthcare campus rebuild squarely in KOR's hospital depth, in a stated growth market.",
                         }),
                     new(
                         "University of California student-housing wave",
                         new[]
                         {
-                            "Three UC system projects sit PURSUE_URGENT: UC Santa Barbara East Campus Student Housing (MPI 4166, USD $566M), UCLA 901 Levering Student Housing (MPI 4151, USD $351M), and UC San Diego Pepper Canyon East District (MPI 4154). The UC capital program is the US equivalent of the BC post-secondary play — one institutional relationship compounds across campuses, and UCLA / UCSD are inside KOR's existing LA + San Diego service area.",
+                            "Three UC system projects sit PURSUE_URGENT: UC Santa Barbara East Campus Student Housing (Id 4166, USD $566M), UCLA 901 Levering Student Housing (Id 4151, USD $351M), and UC San Diego Pepper Canyon East District (Id 4154). The UC capital program is the US equivalent of the BC post-secondary play — one institutional relationship compounds across campuses, and UCLA / UCSD are inside KOR's existing LA + San Diego service area.",
                         }),
                     new(
                         "California hospital wave",
                         new[]
                         {
-                            "Beyond the URGENTs (Hillcrest Medical Center Replacement in San Diego, MPI 3940; the new hospital wing at Beverly & San Vicente in Los Angeles, MPI 3938), the PURSUE list is hospital-heavy: Santa Clara Medical Center (USD $2.8B), La Jolla Medical Center Tower 2 (USD $1.0B), Emeryville Medical Center (USD $1.0B). California hospital owners are procuring at scale, and the San Diego / LA entries overlap KOR's existing footprint.",
+                            "Beyond the URGENTs (Hillcrest Medical Center Replacement in San Diego, Id 3940; the new hospital wing at Beverly & San Vicente in Los Angeles, Id 3938), the PURSUE list is hospital-heavy: Santa Clara Medical Center (USD $2.8B), La Jolla Medical Center Tower 2 (USD $1.0B), Emeryville Medical Center (USD $1.0B). California hospital owners are procuring at scale, and the San Diego / LA entries overlap KOR's existing footprint.",
                         }),
                     new(
                         "San Diego Civic Center — the megaproject",
                         new[]
                         {
-                            "San Diego Civic Center Redevelopment (MPI 4278, USD $3.3B, PURSUE) is the largest single project in the US slice — a downtown civic core redevelopment in the city KOR already serves. Multi-phase, multi-tower; structural selection will happen per-phase, so the relationship clock starts now.",
+                            "San Diego Civic Center Redevelopment (Id 4278, USD $3.3B, PURSUE) is the largest single project in the US slice — a downtown civic core redevelopment in the city KOR already serves. Multi-phase, multi-tower; structural selection will happen per-phase, so the relationship clock starts now.",
                         }),
                 },
                 new[]
                 {
-                    "Harborview Seattle (MPI 3943) — identify the design-build teams forming on the inpatient tower and campus rebuild packages; this is the Washington market entry.",
+                    "Harborview Seattle (Id 3943) — identify the design-build teams forming on the inpatient tower and campus rebuild packages; this is the Washington market entry.",
                     "UC system relationship — UCLA 901 Levering + UCSD Pepper Canyon are inside the existing service area; one UC capital-programs relationship covers the URGENT trio.",
                     "San Diego pair — Hillcrest Medical Center Replacement (URGENT) + Civic Center Redevelopment ($3.3B): both in KOR's home US market, both early enough to position.",
-                    "Run post-ingest enrichment on the untagged US rows so the sector mix reads true, and keep Oregon (Portland/Salem MONITOR block) on a quarterly re-scan cadence.",
+                    "Keep Oregon (Portland / Salem, all MONITOR) on a quarterly review.",
                 }
             ),
         };

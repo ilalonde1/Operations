@@ -53,7 +53,8 @@ public sealed class RelationshipsViewModel : INotifyPropertyChanged, Kor.Operati
     {
         try
         {
-            var rows = await _dashboard.GetOpenStructuralSeatsAsync(12, ct).ConfigureAwait(true);
+            // Every architect with an open seat: 12 by name showed A to D of 30 and called it "12 architects" (2026-10-22).
+            var rows = await _dashboard.GetOpenStructuralSeatsAsync(200, ct).ConfigureAwait(true);
             OpenSeats.Clear();
             foreach (var row in rows)
             {

@@ -63,10 +63,13 @@ public sealed class BdReportMeaningRegressionTests
             Array.Empty<SynthesisSection>(), Array.Empty<string>());
         var doc = SectorReportGenerator.Build(definition, prose, rows, Generated);
         var kpis = doc.Blocks.OfType<KpiStripBlock>().Single().Items.ToDictionary(x => x.Label, x => x.Value);
-        Assert.Equal("6", kpis["Projects honed"]);
+        // Five: the duplicate is neither listed nor counted, so the total matches the rows the reader sees.
+        Assert.Equal("5", kpis["Projects reviewed"]);
         foreach (var label in new[] { "Urgent", "Pursue", "Monitor", "Discover" }) Assert.Equal("1", kpis[label]);
         var actual = ExportText(doc);
-        foreach (var row in rows) Assert.Contains(row.ProjectName, actual);
+        // Every rated row reaches its section; duplicate listings are left out of the reader's report.
+        foreach (var row in rows.Where(r => r.Verdict != BdVerdicts.Duplicate)) Assert.Contains(row.ProjectName, actual);
+        Assert.DoesNotContain(rows.Single(r => r.Verdict == BdVerdicts.Duplicate).ProjectName, actual);
     }
 
     // Covers response-to-write selection/counting; no SQL or HTTP execution.

@@ -33,24 +33,24 @@ public static class PursuitDossierReportGenerator
         var gaps = pursuits.Where(p => !p.HasArchitectEdge).ToList();
         var pipelineCad = pursuits.Sum(p => p.EstimatedCostCad ?? 0);
 
-        var b = new BdReportDocumentBuilder("KOR Structural — Pursuit Dossiers (Live Relationship Graph)");
+        var b = new BdReportDocumentBuilder("KOR Structural — Pursuit Dossiers");
 
         b.P(BdReportFormatting.SourceProvenance);
 
         b.Italic(
-            "One dossier per active pursuit, read live from the org graph: who designs it, who holds the structural seat, who builds it, and how warm KOR's path in is. " +
-            "On public AEC work KOR wins as the architect's structural sub — the architect edge IS the route to the pursuit. " +
-            $"Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb.");
+            "One dossier per active pursuit, from KOR's records: who designs it, who holds the structural seat, who builds it, and how warm KOR's path in is. " +
+            "On public AEC work KOR wins as the architect's structural sub — the architect IS the route to the pursuit." +
+            $"As of {BdReportFormatting.ReaderDate(generatedAtUtc)}.");
 
         b.H2("Executive Summary");
         b.Kpis(
             new KpiItem(pursuits.Count.ToString(CultureInfo.InvariantCulture), "Active pursuits"),
             new KpiItem(urgent.Count.ToString(CultureInfo.InvariantCulture), "Urgent", urgent.Count > 0 ? ChipTone.Urgent : ChipTone.Neutral),
             new KpiItem(CadCompact(pipelineCad), "Known-cost subtotal (CAD)"),
-            new KpiItem(PctCompact(withArchitect.Count, pursuits.Count), "Architect edge"),
-            new KpiItem(gaps.Count.ToString(CultureInfo.InvariantCulture), "Graph gaps", gaps.Count > 0 ? ChipTone.Caution : ChipTone.Positive));
+            new KpiItem(PctCompact(withArchitect.Count, pursuits.Count), "Architect known"),
+            new KpiItem(gaps.Count.ToString(CultureInfo.InvariantCulture), "Architect unknown", gaps.Count > 0 ? ChipTone.Caution : ChipTone.Positive));
         b.P(BdReportFormatting.CostCoverage(pursuits.Count(p => p.EstimatedCostCad.HasValue), pursuits.Count));
-        b.B("Architect edge resolved: ", PctDisplay(withArchitect.Count, pursuits.Count));
+        b.B("Architect known: ", PctDisplay(withArchitect.Count, pursuits.Count));
         b.B("Incumbent structural engineer known: ", withIncumbentSe.Count.ToString(CultureInfo.InvariantCulture));
         if (korSeated.Count > 0)
         {
@@ -62,7 +62,7 @@ public static class PursuitDossierReportGenerator
         if (urgent.Count > 0)
         {
             b.H2("URGENT pursuits — team state");
-            b.P("Act-now pool with everything the graph knows about each team. A named architect with intel depth has research records; a KOR relationship remains unverified; an empty Architect cell = route-in unknown.");
+            b.P("Urgent pursuits with what KOR knows about each team. A named architect does not by itself mean KOR has a relationship there; an empty Architect cell means the route in is unknown.");
             b.Table(
                 new[] { "Id", "Pursuit", "Cost", "Architect", "Structural Engineer", "GC" },
                 urgent.Select(p => (IReadOnlyList<string>)new[]
@@ -91,7 +91,7 @@ public static class PursuitDossierReportGenerator
         if (withSignals.Count > 0)
         {
             b.H2("Live signals on active pursuits");
-            b.P("Signals that name a specific pursuit by project — live intel on the deal itself, distinct from the org-level intel on each team firm (which lives in that firm's dossier).");
+            b.P("News that names a specific pursuit — about the project itself. News about each team firm is in that firm's Org Dossier.");
             foreach (var p in withSignals
                 .OrderByDescending(p => p.IsUrgent)
                 .ThenByDescending(p => p.EstimatedCostCad ?? decimal.MinValue))
@@ -123,9 +123,9 @@ public static class PursuitDossierReportGenerator
                 b.H3(
                     $"{anchor.ArchitectName} — {cluster.Count()} pursuits, {CadDisplay(cluster.Sum(p => p.EstimatedCostCad ?? 0))}",
                     KorReportLinks.Org(anchor.ArchitectOrgId));
-                b.B("Org intel on file: ", IntelDepthDisplay(anchor));
+                b.B("On file for this architect: ", IntelDepthDisplay(anchor));
                 b.Table(
-                    new[] { "Id", "Pursuit", "Cost", "Province", "Verdict" },
+                    new[] { "Id", "Pursuit", "Cost", "Province", "Rating" },
                     ordered.Select(p => (IReadOnlyList<string>)new[]
                     {
                         p.MpiId.ToString(CultureInfo.InvariantCulture),
@@ -153,7 +153,7 @@ public static class PursuitDossierReportGenerator
                      .Take(DrillDownCount))
         {
             b.H3($"{rank}. {p.ProjectName} — {p.CostDisplay}", KorReportLinks.Mpi(p.MpiId));
-            var dossierChips = new List<ChipItem> { new(p.Verdict ?? "NO VERDICT", ChipTones.ForVerdict(p.Verdict)) };
+            var dossierChips = new List<ChipItem> { new(p.Verdict ?? "NOT RATED", ChipTones.ForVerdict(p.Verdict)) };
             if (p.StructuralEngineerIsKor)
             {
                 dossierChips.Add(new ChipItem("KOR SEAT", ChipTone.Positive));
@@ -161,7 +161,7 @@ public static class PursuitDossierReportGenerator
 
             if (!p.HasArchitectEdge)
             {
-                dossierChips.Add(new ChipItem("NO ARCHITECT EDGE", ChipTone.Neutral));
+                dossierChips.Add(new ChipItem("ARCHITECT UNKNOWN", ChipTone.Neutral));
             }
 
             b.Chips(dossierChips.ToArray());
@@ -184,7 +184,7 @@ public static class PursuitDossierReportGenerator
 
             b.B("Architect: ", p.HasArchitectEdge
                     ? $"{p.ArchitectName} ({IntelDepthDisplay(p)})"
-                    : "UNRESOLVED — no graph edge yet",
+                    : "UNKNOWN — not yet identified",
                 KorReportLinks.Org(p.ArchitectOrgId));
             if (p.StructuralEngineerIsKor)
             {
@@ -212,8 +212,8 @@ public static class PursuitDossierReportGenerator
 
         if (gaps.Count > 0)
         {
-            b.H2("Graph gaps — pursuits with no architect edge");
-            b.P("The route into these pursuits is unknown: no architect link in the graph. They are the remaining -PursuitGaps research worklist, cost-descending — every edge resolved here is resolved forever.");
+            b.H2("Architect unknown — pursuits with no known route in");
+            b.P("No architect is known for these pursuits, so the route in is unknown. Listed by cost, largest first; identifying the architect is the next step on each.");
             var gapRows = gaps
                 .OrderByDescending(p => p.EstimatedCostCad ?? decimal.MinValue)
                 .Take(GapTableCount)
@@ -239,12 +239,11 @@ public static class PursuitDossierReportGenerator
             }
         }
 
-        b.H2("Methodology");
+        b.H2("About this report");
         b.P(
-            "Pursuit pool = active MajorProjectsInventory rows whose ProjectBriefHoning verdict is PURSUE or PURSUE_URGENT. " +
-            "Team edges are CanonicalOrg foreign keys on the MPI row (Architect / StructuralEngineer / GeneralContractor), resolved by the -PursuitGaps graph-completion campaign and maintained by ingest; retired orgs read as gaps, never as stale names. " +
-            "Architect intel depth = org-scoped IntelSignal + IntelPersonAffiliation + open IntelAction counts, the same recipe as the Architect Frequency report.");
-        b.Italic("Live from KorOpportunitiesDb via IBdReportService.GetPursuitDossiersAsync — dashboard, DOCX and AI answers share this query.");
+            "Pursuits are active projects rated PURSUE or PURSUE_URGENT. " +
+            "Architect, structural engineer and general contractor are as recorded for each project; a firm that is no longer active shows as unknown, never under an old name. " +
+            "What is on file for an architect counts the people, news items and open actions KOR holds for that firm, counted the same way as in the Architect Frequency report.");
 
         return b.Build();
     }

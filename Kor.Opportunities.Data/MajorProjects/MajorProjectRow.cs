@@ -129,6 +129,11 @@ public sealed record MajorProjectRow(
     public bool HasProjectWebsite => !string.IsNullOrWhiteSpace(ProjectWebsite);
     public bool HasTimeline => !string.IsNullOrWhiteSpace(TimelineDisplay);
 
+    // Which quarterly issue of a major-projects inventory listed it. A project from any other source has none, and the
+    // panel showed a bare "Q" for it (2026-10-22).
+    public string IssueDisplay => IssueYear is null ? "" : IssueQuarter is null ? $"{IssueYear}" : $"{IssueYear} Q{IssueQuarter}";
+    public bool HasIssue => IssueYear is not null;
+
     private static string? FirstNonBlank(params string?[] values)
         => values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))?.Trim();
 

@@ -100,12 +100,13 @@ public sealed class BdDashboardClarityRegressionTests
         var relationships = Source("Kor.Operations.App/BusinessDevelopment/Workspace/RelationshipsView.xaml");
         Assert.Contains("Architects without a settled structural partner", relationships);
         Assert.Contains("OpenSeatsGrid_MouseDoubleClick", relationships);
-        Assert.Contains("GetOpenStructuralSeatsAsync(12", Source("Kor.Operations.App/BusinessDevelopment/Workspace/RelationshipsViewModel.cs"));
+        // Every row, never a first-N by name presented as the whole (2026-10-22: 12 of 30 architects, 12 of 16 competitors).
+        Assert.Contains("GetOpenStructuralSeatsAsync(200", Source("Kor.Operations.App/BusinessDevelopment/Workspace/RelationshipsViewModel.cs"));
 
         var competition = Source("Kor.Operations.App/Opportunities/CompetitionInfoView.xaml");
         Assert.Contains("Header=\"Competitor watch\"", competition);
         Assert.Contains("CompetitorRow_DoubleClick", competition);
-        Assert.Contains("GetCompetitorWatchAsync(12", Source("Kor.Operations.App/Opportunities/CompetitionInfoViewModel.cs"));
+        Assert.Contains("GetCompetitorWatchAsync(200", Source("Kor.Operations.App/Opportunities/CompetitionInfoViewModel.cs"));
     }
 
     [Fact]

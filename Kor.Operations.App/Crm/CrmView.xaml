@@ -342,9 +342,10 @@
                                   ItemsSource="{Binding Contacts}">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header=""        Binding="{Binding PrimaryDisplay}" Width="30"/>
-                                <DataGridTextColumn Header="Name"    Binding="{Binding DisplayName}"    Width="*"/>
-                                <DataGridTextColumn Header="Role"    Binding="{Binding Role}"           Width="140"/>
-                                <DataGridTextColumn Header="Email"   Binding="{Binding Email}"          Width="200"/>
+                                <!-- The name is the column that matters: it had no floor and shrank to nothing beside the fixed ones (2026-10-22). -->
+                                <DataGridTextColumn Header="Name"    Binding="{Binding DisplayName}"    Width="*" MinWidth="150"/>
+                                <DataGridTextColumn Header="Role"    Binding="{Binding Role}"           Width="110"/>
+                                <DataGridTextColumn Header="Email"   Binding="{Binding Email}"          Width="180"/>
                                 <DataGridTextColumn Header="Phone"   Binding="{Binding Phone}"          Width="120"/>
                             </DataGrid.Columns>
                         </DataGrid>

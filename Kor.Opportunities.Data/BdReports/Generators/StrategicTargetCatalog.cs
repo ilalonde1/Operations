@@ -15,12 +15,12 @@ public static class StrategicTargetCatalog
         new StrategicTargetDefinition(
             "Graham Design Builders LP (BC Healthcare Cornerstone)",
             "Design-Build GC + sometimes Prime",
-            "$3.4B+ active BC healthcare pipeline. Embedded on Richmond Hospital Yurkovich Pavilion (Phase 2, $1.96B). Honing pass surfaced as strategic canonical layered with KOR (m108).",
+            "$3.4B+ active BC healthcare pipeline. Embedded on Richmond Hospital Yurkovich Pavilion (Phase 2, $1.96B). Identified as a strategic relationship for KOR.",
             new[]
             {
                 "Alex Trifunov — Pre-Construction Manager, Graham Vancouver office. Primary entry point.",
                 "Graham Healthcare division — pursue cold via LinkedIn + direct office outreach.",
-                "(Additional contacts may be in IntelPersonAffiliation table — query Org Dossier 8361 in app.)",
+                "(More contacts may be on file — see the Graham Org Dossier in the BD workspace.)",
             },
             "Graham",
             "Healthcare specialty depth — KOR's BC institutional structural experience compatible with Graham's healthcare delivery model. Position as preferred structural sub on BC Cancer Kamloops + BC Children's Centre for Health Complexity + future RIH Phase 3.",
@@ -35,7 +35,7 @@ public static class StrategicTargetCatalog
         new StrategicTargetDefinition(
             "EllisDon Corporation (Defense + Healthcare + Commercial Cross-Cutting)",
             "Major GC / Design-Build Prime",
-            "Embedded on Esquimalt JNCM $165M + CFB Cold Lake FFCP + TELUS Ocean Vancouver + multiple BC healthcare pursuits. Strategic canonical (22257). 7 named BC contacts already captured in IntelPersonAffiliation.",
+            "Embedded on Esquimalt JNCM $165M + CFB Cold Lake FFCP + TELUS Ocean Vancouver + multiple BC healthcare pursuits. 7 named BC contacts already on file.",
             new[]
             {
                 "Daniel Murphy — VP Preconstruction Services (dmurphy@ellisdon.com). Decision-maker for structural sub on BC pursuits.",
@@ -57,7 +57,7 @@ public static class StrategicTargetCatalog
         new StrategicTargetDefinition(
             "MST Development Corp (Musqueam-Squamish-Tsleil-Waututh) — Indigenous Lower Mainland Anchor",
             "Indigenous Joint Venture Developer",
-            "Single highest-leverage Indigenous BD relationship. Controls Jericho Lands (MPI 6911), Maplewood Innovation District (MPI 4882), Tsleil-Waututh North Shore Innovation District (MPI 6913). Billion-dollar multi-tower phased developments.",
+            "Single highest-leverage Indigenous BD relationship. Controls Jericho Lands (Id 6911), Maplewood Innovation District (Id 4882), Tsleil-Waututh North Shore Innovation District (Id 6913). Billion-dollar multi-tower phased developments.",
             new[]
             {
                 "MST Development Corp — Vancouver office. Identify Principal-in-Charge via LinkedIn + Vancouver BoT.",
@@ -77,7 +77,7 @@ public static class StrategicTargetCatalog
         new StrategicTargetDefinition(
             "HCMA Architecture + Design (BC Recreational Dominant Architect)",
             "Architect (Prime Consultant on BC Rec)",
-            "29 affiliations in IntelPersonAffiliation — second-most referenced architect in KOR's pipeline. Dominant BC rec specialist. On Newton Community Centre, Britannia, Cameron, most major BC rec projects.",
+            "29 people on file — second-most referenced architect in KOR's pipeline. Dominant BC rec specialist. On Newton Community Centre, Britannia, Cameron, most major BC rec projects.",
             new[]
             {
                 "HCMA Vancouver office — Principal-in-Charge on Newton or Britannia. Identify via firm website / LinkedIn.",
@@ -115,7 +115,7 @@ public static class StrategicTargetCatalog
         new StrategicTargetDefinition(
             "Sharon Petty — VCH Director Real Estate Operations (VGH + Future BC Healthcare)",
             "Owner-side Decision Maker",
-            "VGH Building 1 Redevelopment (MPI 6494) + future VCH pipeline. Ex-CPO at Richmond Hospital (long history with BC healthcare procurement).",
+            "VGH Building 1 Redevelopment (Id 6494) + future VCH pipeline. Ex-CPO at Richmond Hospital (long history with BC healthcare procurement).",
             new[]
             {
                 "Sharon Petty — Director, Real Estate Operations, Vancouver Coastal Health.",
@@ -135,7 +135,7 @@ public static class StrategicTargetCatalog
         new StrategicTargetDefinition(
             "Jessie Gresley-Jones — VSB ($850M Seismic Schools Program)",
             "Owner-side Decision Maker (Procurement)",
-            "VPO pre-qualification = single action that unlocks 30 VSB seismic schools ($850M program). Currently honed PURSUE for Olympic Village Elementary (MPI 4436, PURSUE_URGENT).",
+            "VPO pre-qualification = single action that unlocks 30 VSB seismic schools ($850M program). Olympic Village Elementary (Id 4436) is rated PURSUE_URGENT.",
             new[]
             {
                 "Jessie Gresley-Jones — VSB Vancouver School Board, jgresley-jones@vsb.bc.ca",
@@ -179,7 +179,7 @@ public static class StrategicTargetCatalog
                 "Wesgroup — VP Development + in-house construction lead. Vancouver HQ.",
                 "Bosa Properties — VP Development. Vancouver HQ.",
                 "Reliance Properties — VP Development. Vancouver HQ.",
-                "Anthem Properties — already on Anthem Park MPI 2548 (CDA + KOR aligned).",
+                "Anthem Properties — already on Anthem Park Id 2548 (CDA + KOR aligned).",
                 "Cressey Development, Onni Group (in-house construction), Polygon Homes, Concord Pacific — each warrants dedicated relationship audit.",
                 "BMZ-era references should be audited per developer before outreach.",
             },
@@ -196,7 +196,7 @@ public static class StrategicTargetCatalog
         new StrategicTargetDefinition(
             "Ryder Architecture (UBC Lower Mall Student Housing $144M)",
             "Architect (Prime Consultant)",
-            "Sonnet honing flagged as immediate-action target for UBC Lower Mall Student Housing (MPI 6880). Mass timber academic specialty + UBC institutional portfolio.",
+            "Immediate-action target for UBC Lower Mall Student Housing (Id 6880). Mass timber academic specialty + UBC institutional portfolio.",
             new[]
             {
                 "Ryder Architecture Vancouver office — Principal-in-Charge on UBC Lower Mall.",

@@ -120,7 +120,7 @@ public sealed class BdDirectorMarketAndBriefRegressionTests
         await vm.LoadMarketAsync(CancellationToken.None);
         director.Verify(s => s.GetRecentSignalsAsync(30, 25, It.IsAny<CancellationToken>()), Times.Once);
         fixture.Dashboard.Verify(s => s.GetForwardPipelineAsync(12, It.IsAny<CancellationToken>()), Times.Once);
-        fixture.Dashboard.Verify(s => s.GetOpenStructuralSeatsAsync(10, It.IsAny<CancellationToken>()), Times.Once);
+        fixture.Dashboard.Verify(s => s.GetOpenStructuralSeatsAsync(200, It.IsAny<CancellationToken>()), Times.Once);
         fixture.Dashboard.Verify(s => s.GetPipelineFunnelAsync(It.IsAny<CancellationToken>()), Times.Once);
         fixture.Opportunities.Verify(s => s.ListAsync(It.IsAny<CancellationToken>(), 5000, false, false), Times.Once);
         Assert.True(vm.MarketSignals.Count == 3 && vm.ForwardPipeline.Count == 3 && vm.OpenSeats.Count == 2 && vm.MarketDeadlines.Count == 3,
@@ -235,7 +235,7 @@ internal static class DirectorMarketDefaults
     {
         var mock = new Mock<IBdDashboardStore>();
         mock.Setup(s => s.GetForwardPipelineAsync(12, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdForwardPipelineRow>());
-        mock.Setup(s => s.GetOpenStructuralSeatsAsync(10, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdOpenStructuralSeatRow>());
+        mock.Setup(s => s.GetOpenStructuralSeatsAsync(200, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<BdOpenStructuralSeatRow>());
         mock.Setup(s => s.GetPipelineFunnelAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new PipelineFunnel(0, 0, 0));
         return mock.Object;
     }
@@ -267,7 +267,7 @@ internal sealed class DirectorMarketFixture
         var now = DateTimeOffset.UtcNow;
         Dashboard.Setup(s => s.GetForwardPipelineAsync(12, It.IsAny<CancellationToken>())).ReturnsAsync(Enumerable.Range(1, 3)
             .Select(i => new BdForwardPipelineRow(i, "Illustrative planned project " + i, "Illustrative proponent", "BC", "Education", i * 10000000m, "Planning")).ToArray());
-        Dashboard.Setup(s => s.GetOpenStructuralSeatsAsync(10, It.IsAny<CancellationToken>())).ReturnsAsync(Enumerable.Range(1, 2)
+        Dashboard.Setup(s => s.GetOpenStructuralSeatsAsync(200, It.IsAny<CancellationToken>())).ReturnsAsync(Enumerable.Range(1, 2)
             .Select(i => new BdOpenStructuralSeatRow(i, "Illustrative firm " + i, "BC", "Open", "High", "Illustrative opening for a conversation.")).ToArray());
         Dashboard.Setup(s => s.GetPipelineFunnelAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new PipelineFunnel(3, 3, 2));
         var opportunities = Enumerable.Range(1, 3).Select(i => new Opportunity { Id = i, Name = "Illustrative RFP " + i, BuyerName = "Illustrative buyer", ProjectProvince = "BC", SubmissionDeadlineUtc = now.AddDays(i * 4) }).ToList();

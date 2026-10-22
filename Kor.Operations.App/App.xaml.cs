@@ -79,6 +79,7 @@ namespace Kor.Operations
 
             Log.Logger = CompositionHelpers.GetSerilogLogger();
             WindowFit.Register();
+            GridColumnFloor.Register();
             Kor.Operations.App.BusinessDevelopment.BdLookApplier.Register();
             // One guaranteed line per launch: proves logging is alive this session, and dates the session.
             Log.ForContext<OperationsApp>().Information("App starting. version={Version} args={Args}",

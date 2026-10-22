@@ -31,40 +31,40 @@ public static class ExecSummaryReportGenerator
 
         var b = new BdReportDocumentBuilder("KOR Structural — BD Pipeline Executive Overview");
 
-        b.Italic($"Recorded BD verdicts and report counts, generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC. Completeness and current accuracy are not verified by this report.");
+        b.Italic($"KOR's BD pipeline across all sectors, as of {BdReportFormatting.ReaderDate(generatedAtUtc)}.");
         b.P(BdReportFormatting.EvidenceNote(callSheetPool));
 
         b.H2("The Headline");
         var honedPct = headline.TotalActiveMpis == 0
             ? 0
             : (int)Math.Round(100.0 * headline.HonedCount / headline.TotalActiveMpis);
-        b.B("Total active MPIs (cross-sector, distinct): ", headline.TotalActiveMpis.ToString("N0", CultureInfo.InvariantCulture));
-        b.B("Honed (recorded verdict present): ", $"{headline.HonedCount:N0} ({honedPct}%)");
+        b.B("Active projects (all sectors, each counted once): ", headline.TotalActiveMpis.ToString("N0", CultureInfo.InvariantCulture));
+        b.B("Reviewed and rated: ", $"{headline.HonedCount:N0} ({honedPct}%)");
         b.B("Known-cost subtotal (PURSUE/MONITOR/DISCOVER): ", "~$" + (headline.HonedCostCad / 1_000_000_000m).ToString("F1", CultureInfo.InvariantCulture) + "B CAD");
         b.P(BdReportFormatting.CostCoverage(headline.CostedProjectCount, headline.CostPopulationCount));
-        b.B("Recorded URGENT flags: ", callSheetPool.Count(x => x.IsUrgent).ToString(CultureInfo.InvariantCulture));
-        b.B("Recorded non-urgent PURSUE pool: ", callSheetPool.Count(x => !x.IsUrgent).ToString(CultureInfo.InvariantCulture));
+        b.B("Rated URGENT: ", callSheetPool.Count(x => x.IsUrgent).ToString(CultureInfo.InvariantCulture));
+        b.B("Rated PURSUE (not urgent): ", callSheetPool.Count(x => !x.IsUrgent).ToString(CultureInfo.InvariantCulture));
         b.P(string.Empty);
-        b.P("A recorded pursuit verdict does not establish named decision-makers, an available introduction or an open structural seat. Review the project evidence before acting.");
+        b.P("A PURSUE rating does not by itself mean a decision-maker is named, an introduction is available or the structural seat is open. Check the project detail before acting.");
 
         b.H2("IMMEDIATE — Action this week");
         var urgent = callSheetPool.Where(x => x.IsUrgent).Take(ImmediateActionCap).ToList();
         if (urgent.Count == 0)
         {
-            b.P("No URGENT items in the current honing data.");
+            b.P("No URGENT items right now.");
         }
 
         var rank = 1;
         foreach (var p in urgent)
         {
             b.H3($"{rank}. {p.ProjectName} ({CostOf(p)})");
-            b.P($"MPI {p.MpiId} — {p.Province}{(string.IsNullOrWhiteSpace(p.MunicipalityName) ? string.Empty : ", " + p.MunicipalityName)}. {Safe(p.KorAngle, ImmediateAngleCap)}");
+            b.P($"Id {p.MpiId} — {p.Province}{(string.IsNullOrWhiteSpace(p.MunicipalityName) ? string.Empty : ", " + p.MunicipalityName)}. {Safe(p.KorAngle, ImmediateAngleCap)}");
             rank++;
         }
 
         b.H2("Sector heatmap");
         b.Table(
-            new[] { "Sector", "Total", "Honed", "% Honed", "Known-cost subtotal (M); coverage" },
+            new[] { "Sector", "Total", "Reviewed", "% Reviewed", "Known-cost subtotal (M); coverage" },
             summaries.Select(s =>
             {
                 var honed = s.Total - s.NoVerdict;
@@ -78,15 +78,15 @@ public static class ExecSummaryReportGenerator
                     "$" + (s.HonedCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture) + "M; " + BdReportFormatting.CostCoverage(s.CostedProjectCount, s.CostPopulationCount),
                 };
             }).ToList());
-        b.P("Known-cost subtotals count live verdicts only (PURSUE/MONITOR/DISCOVER — DEAD and DUPLICATE excluded). They are partial estimates, not full pipeline valuations. Sector filters deliberately overlap (a BC Housing project is also Residential), so the heatmap rows do not sum to the distinct headline totals.");
+        b.P("Known-cost subtotals count PURSUE, MONITOR and DISCOVER projects only (DEAD projects and duplicate listings excluded). They are partial estimates, not full pipeline valuations. Sector filters deliberately overlap (a BC Housing project is also Residential), so the heatmap rows do not sum to the distinct headline totals.");
 
-        b.Italic("Historical guidance from the 2026-06-09 analyst sweep; amounts, contacts and recommendations below are not verified by this report.");
+        b.Italic("The notes below date from June 2026; confirm amounts, contacts and status before acting.");
         foreach (var section in ProseSections)
         {
             b.H2(section.H2);
             foreach (var paragraph in section.Lead)
             {
-                b.P("Historical guidance: " + paragraph);
+                b.P(paragraph);
             }
 
             foreach (var sub in section.Subsections)
@@ -94,16 +94,16 @@ public static class ExecSummaryReportGenerator
                 b.H3(sub.Title);
                 foreach (var paragraph in sub.Paragraphs)
                 {
-                    b.P("Historical guidance: " + paragraph);
+                    b.P(paragraph);
                 }
             }
         }
 
         b.H2("Detailed reports — drill-down references");
-        b.P("Every sector report (with every PURSUE, every MONITOR, every named contact and verdict reasoning) generates on demand from the BD Reports tile, alongside the weekly call sheet. Per-project intel: Org Dossier, Project Brief, Region Brief in the BD workspace.");
+        b.P("Every sector report (with every PURSUE, every MONITOR, every named contact and the reasoning behind each rating) generates on demand from the BD Reports tile, alongside the weekly call sheet. Per-project intel: Org Dossier, Project Brief, Region Brief in the BD workspace.");
 
-        b.H2("Methodology footnote");
-        b.P("Report counts are read from stored records. Enrichment, procurement facts, contacts and source freshness are not independently verified during document generation. Historical guidance is supplied separately from the live query results.");
+        b.H2("About these figures");
+        b.P("Counts come from KOR's project records. Procurement facts, contacts and project status are as last researched and are not rechecked when this report is produced.");
 
         return b.Build();
     }
@@ -124,8 +124,8 @@ public static class ExecSummaryReportGenerator
             {
                 new("Healthcare", new[]
                 {
-                    "Graham Design Builders LP (canonical 8361) — $3.4B+ active BC healthcare pipeline. Alex Trifunov, Vancouver Pre-Construction Manager. Single relationship = entire Graham healthcare portfolio.",
-                    "EllisDon (canonical 22257) — $1.6B UHNBC + defense + Esquimalt JNCM + future BC healthcare. 7 named BC contacts: Daniel Murphy (VP Preconstruction), Keeli Husband (Dir BD), Craig Enns (SVP BC), Candace MacDonald (Dir Special Projects), David McFarlane (COO Western), plus 2 more.",
+                    "Graham Design Builders LP — $3.4B+ active BC healthcare pipeline. Alex Trifunov, Vancouver Pre-Construction Manager. Single relationship = entire Graham healthcare portfolio.",
+                    "EllisDon — $1.6B UHNBC + defense + Esquimalt JNCM + future BC healthcare. 7 named BC contacts: Daniel Murphy (VP Preconstruction), Keeli Husband (Dir BD), Craig Enns (SVP BC), Candace MacDonald (Dir Special Projects), David McFarlane (COO Western), plus 2 more.",
                     "Sharon Petty at VCH — Director Real Estate Operations. VGH Building 1 + future VCH pipeline.",
                 }),
                 new("Indigenous", new[]
@@ -148,11 +148,11 @@ public static class ExecSummaryReportGenerator
                 }),
                 new("Residential", new[]
                 {
-                    "KOR memory-confirmed client developers (warm-leads): Wesgroup, Bosa, Reliance, Westland, Belford, Anthem, Cressey, Peterson, Strand, Beedie, Capital Region Housing, Onni, Concord, Polygon. BMZ pre-2021 legacy = 30+ years of BC residential relationships.",
+                    "Existing KOR client developers (warm leads): Wesgroup, Bosa, Reliance, Westland, Belford, Anthem, Cressey, Peterson, Strand, Beedie, Capital Region Housing, Onni, Concord, Polygon. BMZ pre-2021 legacy = 30+ years of BC residential relationships.",
                 }),
                 new("Post-Secondary", new[]
                 {
-                    "Ryder Architecture (UBC Lower Mall Student Housing) — immediate call per Sonnet honing flag.",
+                    "Ryder Architecture (UBC Lower Mall Student Housing) — priority call.",
                 }),
             }),
         new(
@@ -162,8 +162,8 @@ public static class ExecSummaryReportGenerator
             {
                 new("Procurement-mature markets vs open RFP markets", new[]
                 {
-                    "Commercial Office: largely DEAD (procurement-mature, structural already locked). Hospitals: heavily Alliance / P3 / Stantec-captive. Indigenous: relationship-driven (not open-bid). Schools: large active pipeline of seismic upgrades. (Each sector report carries the live verdict counts for current figures.)",
-                    "Implication: pursuit strategy by sector is FUNDAMENTALLY different. Commercial = relationships not RFPs. Schools = relationship + active RFP both work. Hospitals = procurement model identification is the make/break gate (Yurkovich correction).",
+                    "Commercial Office: largely DEAD (procurement-mature, structural already locked). Hospitals: heavily Alliance / P3 / Stantec-captive. Indigenous: relationship-driven (not open-bid). Schools: large active pipeline of seismic upgrades. (Each sector report carries the current counts.)",
+                    "Implication: pursuit strategy by sector is FUNDAMENTALLY different. Commercial = relationships not RFPs. Schools = relationship + active RFP both work. Hospitals = identifying the procurement model is the make-or-break step.",
                 }),
                 new("Mass timber as KOR's emerging differentiator", new[]
                 {
@@ -179,7 +179,8 @@ public static class ExecSummaryReportGenerator
                 }),
                 new("Alliance / P3 / Captive-structural as DEAD signals", new[]
                 {
-                    "Yurkovich correction: procurement model identification BEFORE marking PURSUE. Alliance = structural locked with team partner. P3 / DBFM = structural locked with selected design-build prime. Stantec-captive = healthcare locked with in-house structural. These are the 3 systematic locks that mark a project DEAD even if construction hasn't started. Honing PROMPTs now mandate this verification.",
+                    "Identify the procurement model before treating any project as a PURSUE. Alliance = structural locked with team partner. P3 / DBFM = structural locked with selected design-build prime. Stantec-captive = healthcare locked with in-house structural. These are the 3 systematic locks that make a project DEAD even if construction hasn't started.",
+                    "Examples: Richmond Hospital Yurkovich Pavilion (Entuitive incumbent), Cowichan Hospital (Alliance with Bush Bohlman), Cariboo Memorial and several others (Stantec-captive).",
                 }),
                 new("Single-action multiplier opportunities", new[]
                 {
@@ -195,28 +196,11 @@ public static class ExecSummaryReportGenerator
             "Geographic concentration",
             new[]
             {
-                "KOR market footprint: BC + LA + San Diego today; growth = Edmonton + US West Coast (WA/OR). The honed pipeline reflects this — BC dominates, AB second, US West Coast first-pass running now.",
+                "KOR market footprint: BC + LA + San Diego today; growth = Edmonton + US West Coast (WA/OR). The pipeline reflects this — BC dominates, AB second, US West Coast building up.",
                 "BC concentration: Greater Vancouver (Vancouver, Surrey, Burnaby, Coquitlam, Richmond), Vancouver Island (Victoria, Saanich, Nanaimo, Courtenay), Interior (Kelowna, Vernon, Penticton), Northern BC (Prince George, Quesnel).",
                 "AB concentration: Calgary CBD, Edmonton metropolitan, Red Deer corridor, Rocky View (Airdrie, Cochrane), Strathcona County. NorQuest + SAIT + NAIT + MacEwan + U of A non-medical surfaced as post-secondary opportunities.",
             },
             Array.Empty<SynthesisSection>()),
-        new(
-            "Data hygiene + intelligence quality",
-            new[]
-            {
-                "Honed briefs are not aggregated guesses — each has named procurement model, named incumbent (if applicable), named decision-makers with contact info, named warm-intro path, and 12-month engagement timeline.",
-            },
-            new SynthesisSection[]
-            {
-                new("Yurkovich-class error catches", new[]
-                {
-                    "The honing PROMPT's rigor (20-30 tool calls per project, mandatory procurement model identification) caught:",
-                    "- Richmond Hospital Yurkovich Pavilion (Entuitive incumbent, NOT KOR opportunity)",
-                    "- Cowichan Hospital (Alliance with Bush Bohlman)",
-                    "- Cariboo Memorial + several others (Stantec-captive)",
-                    "- 7 Yurkovich-class corrections in hospitals batch alone",
-                }),
-            }),
     };
 
     private static string CostOf(PursuitBriefRow p)

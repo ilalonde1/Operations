@@ -70,7 +70,7 @@ public sealed class CallSheetReportGeneratorTests
         var doc = CallSheetReportGenerator.Build(Array.Empty<PursuitBriefRow>(), Summaries, GeneratedAt);
 
         var paragraphs = doc.Blocks.OfType<ParagraphBlock>().Select(p => p.Text).ToList();
-        Assert.Contains("No URGENT items in the current honing data.", paragraphs);
-        Assert.Contains("No open PURSUE items in the current honing data.", paragraphs);
+        Assert.Contains("No URGENT items right now.", paragraphs);
+        Assert.Contains("No open PURSUE items right now.", paragraphs);
     }
 }

@@ -78,7 +78,7 @@ public sealed record PursuitBriefRow(
     DateTimeOffset? LastRefreshAtUtc,
     bool IsUrgent)
 {
-    public string RefreshNote { get; init; } = "Cached research; no external verification performed for this report.";
+    public string RefreshNote { get; init; } = string.Empty;
 }
 
 /// <summary>

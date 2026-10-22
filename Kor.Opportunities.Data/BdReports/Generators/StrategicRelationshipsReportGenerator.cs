@@ -27,7 +27,7 @@ public static class StrategicRelationshipsReportGenerator
             $"{targets.Count} named compounding relationships — one relationship = N projects across multi-year, multi-sector pipelines. " +
             "Each target has named contacts (where known), KOR's positioning angle, and a 12-month engagement plan. " +
             "The action sheet for the next 30-60 days of partner-level outreach. " +
-            $"Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb.");
+            $"As of {BdReportFormatting.ReaderDate(generatedAtUtc)}.");
 
         foreach (var (def, projects) in targets)
         {
@@ -48,7 +48,7 @@ public static class StrategicRelationshipsReportGenerator
                 b.P($"  - {step}");
             }
 
-            b.P($"Project matches (sample from honed briefs; {Math.Min(10, projects.Count)} of {projects.Count} retrieved shown):");
+            b.P($"Project matches (sample from reviewed projects; {Math.Min(10, projects.Count)} of {projects.Count} retrieved shown):");
             if (projects.Count > 0)
             {
                 foreach (var p in projects.Take(10))
@@ -58,7 +58,7 @@ public static class StrategicRelationshipsReportGenerator
             }
             else
             {
-                b.P("  (No direct keyword match — see deep-dive briefs / Org Dossier in app)");
+                b.P("  (No matching projects found — see the Org Dossier.)");
             }
 
             b.P(string.Empty);
@@ -73,7 +73,7 @@ public static class StrategicRelationshipsReportGenerator
                 t.Definition.Type,
                 t.Projects.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
             }).ToList());
-        b.P("Counts are retrieved samples, not total matches. Retrieval is capped; details show at most 10 per target. Matches are keyword references in nonretired inventory, not a verified count of live pursuits.");
+        b.P("Counts are retrieved samples, not total matches. Retrieval is capped; details show at most 10 per target. Matches are name matches in the active project list, not a confirmed count of live pursuits.");
         b.P("Every target compounds: the relationship cost is one outreach campaign; the return is standing access to a multi-project pipeline. Track engagement actions in the BD Dashboard Priority Actions queue.");
 
         return b.Build();
