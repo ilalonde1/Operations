@@ -45,7 +45,9 @@ public partial class BdDirectorWindow : IDirectorHomeHost
                 .Where(p => p.Mailbox.Contains('@')).ToList();
             var me = _vm.People.FirstOrDefault(p => p.OwnerKeys.Any(k => k.Equals(_actor, StringComparison.OrdinalIgnoreCase)))?.DisplayName;
             _home.Load(board, asks, _vm.People.ToList(), roster, _actor, me, DateTimeOffset.UtcNow);
-            _home.LoadGrabs(await AppServices.Get<IPursuitGrabStore>().RecentGrabsAsync(_actor, ct).ConfigureAwait(true));
+            var grabs = AppServices.Get<IPursuitGrabStore>();
+            _home.LoadGrabs(await grabs.RecentGrabsAsync(_actor, ct).ConfigureAwait(true));
+            _home.LoadJoins(await grabs.PendingJoinsAsync(_actor, ct).ConfigureAwait(true));
             if (_rhythm is { Hour: { } hour })
             {
                 _home.HourTitle = hour.Title;
@@ -102,6 +104,10 @@ public partial class BdDirectorWindow : IDirectorHomeHost
     }
 
     public Task CompleteAskAsync(DirectorListItem item) => DirectorActions.CompleteAskAsync(this, item, _actor, _home, _lifetime.Token);
+
+    public Task AcceptJoinAsync(DirectorJoin join) => DirectorActions.AcceptJoinAsync(this, join, _actor, _home, _lifetime.Token);
+
+    public Task RejectJoinAsync(DirectorJoin join) => DirectorActions.RejectJoinAsync(this, join, _actor, _home, ReloadAsync, _lifetime.Token);
 
     public async Task KeepGrabAsync(DirectorGrab grab)
     {

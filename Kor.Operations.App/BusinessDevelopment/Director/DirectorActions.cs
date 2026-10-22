@@ -74,6 +74,42 @@ public static class DirectorActions
         }
     }
 
+    /// <summary>The owner confirms the tender that joined their forward pursuit is its RFP.</summary>
+    public static async Task AcceptJoinAsync(Window owner, DirectorJoin join, string actor, BdDirectorHomeViewModel home, CancellationToken ct)
+    {
+        try
+        {
+            await AppServices.Get<IPursuitGrabStore>().AcceptJoinAsync(join.Join.EngagementId, actor, ct).ConfigureAwait(true);
+            home.RemoveJoin(join);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Accepting the join on pursuit {Id} failed", join.Join.EngagementId);
+            MessageBox.Show(owner, "That did not save. Please try again.", "Joined pursuit", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>"Not this project": the tender becomes the grabber's own pursuit, taking its documents and review with it.</summary>
+    public static async Task RejectJoinAsync(Window owner, DirectorJoin join, string actor, BdDirectorHomeViewModel home, Func<Task> reload, CancellationToken ct)
+    {
+        var whose = join.GrabbedBy == "you" ? "a separate pursuit of yours" : $"{join.GrabbedBy}'s own pursuit";
+        if (MessageBox.Show(owner,
+                $"Not the RFP for {join.Project}?\n\nThe tender becomes {whose}, with its documents and Claude's review. Your pursuit of {join.Project} carries on waiting for its RFP.",
+                "Not this project", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+        try
+        {
+            if (await AppServices.Get<IPursuitGrabStore>().RejectJoinAsync(join.Join.EngagementId, actor, ct).ConfigureAwait(true) == 0)
+                MessageBox.Show(owner, "This was already settled. Refresh to see where it is now.", "Not this project", MessageBoxButton.OK, MessageBoxImage.Information);
+            home.RemoveJoin(join);
+            await reload().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Rejecting the join on pursuit {Id} failed", join.Join.EngagementId);
+            MessageBox.Show(owner, "That did not save. Please try again.", "Not this project", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     public static async Task CompleteAskAsync(Window owner, DirectorListItem item, string actor, BdDirectorHomeViewModel home, CancellationToken ct)
     {
         try

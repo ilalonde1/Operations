@@ -227,7 +227,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
             _contextSnapshot = Grabbable.ToArray();
 
             StatusMessage = result.Outcome != GrabOutcome.Grabbed ? $"“{row.Name}” was already taken — removed from the To grab list."
-                : result.JoinedOwner is { } owner ? $"“{row.Name}” is the RFP for {result.JoinedProject}, which {owner} is already pursuing: it joined that pursuit."
+                : result.JoinedOwner is { } owner ? $"“{row.Name}” joined {owner}'s pursuit of {result.JoinedProject}; {owner} confirms it on Today."
                 : $"Grabbed “{row.Name}” — now a Drafting pursuit in your Pursuits list.";
 
             OnPropertyChanged(nameof(HasGrabbable));

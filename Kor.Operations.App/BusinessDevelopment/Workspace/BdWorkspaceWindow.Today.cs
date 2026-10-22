@@ -54,6 +54,7 @@ public partial class BdWorkspaceWindow : IDirectorHomeHost
             var asks = await _services.GetRequiredService<IBdDirectorLedgerStore>().ListOpenAsksForAsync(actor, CancellationToken.None).ConfigureAwait(true);
             var name = string.IsNullOrWhiteSpace(HeaderBar.UserDisplayName) ? null : HeaderBar.UserDisplayName;
             _today.Load(board, asks, Array.Empty<BdDirectorPersonRow>(), Array.Empty<DirectorPerson>(), actor, name, now, ownOnly: true);
+            _today.LoadJoins(await _services.GetRequiredService<IPursuitGrabStore>().PendingJoinsAsync(actor, CancellationToken.None).ConfigureAwait(true));
 
             // Their live pursuits with no next step, or an overdue one: names from the board of every pursuit, steps from the record.
             var rows = await _services.GetRequiredService<IPursuitOverwatchStore>().ListAsync(CancellationToken.None).ConfigureAwait(true);
@@ -88,6 +89,10 @@ public partial class BdWorkspaceWindow : IDirectorHomeHost
     }
 
     public void OpenFollowUp(DirectorFollowUp pursuit) => NavigateToPursuit(pursuit.EngagementId);
+
+    public Task AcceptJoinAsync(DirectorJoin join) => DirectorActions.AcceptJoinAsync(this, join, Actor(), _today, CancellationToken.None);
+
+    public Task RejectJoinAsync(DirectorJoin join) => DirectorActions.RejectJoinAsync(this, join, Actor(), _today, LoadTodayAsync, CancellationToken.None);
 
     // Director-only: the prepared hour, team time and reassigning live in BD Director.
     public void BookTime(DirectorTeamCard person) { }

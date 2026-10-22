@@ -44,6 +44,24 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
         Changed(nameof(HasNewGrabs)); Changed(nameof(NewGrabsHeader));
     }
 
+    /// <summary>Tenders that joined the actor's forward pursuits and wait for their first look: accept, or "not this project".</summary>
+    public ObservableCollection<DirectorJoin> Joins { get; } = new();
+    public bool HasJoins => Joins.Count > 0;
+    public string JoinsHeader => Joins.Count == 1 ? "AN RFP JOINED YOUR PURSUIT" : $"RFPS JOINED YOUR PURSUITS  ·  {Joins.Count}";
+
+    public void LoadJoins(IEnumerable<PendingJoin> joins)
+    {
+        Joins.Clear();
+        foreach (var j in joins) Joins.Add(new DirectorJoin(j, _actor, _now));
+        Changed(nameof(HasJoins)); Changed(nameof(JoinsHeader));
+    }
+
+    public void RemoveJoin(DirectorJoin join)
+    {
+        Joins.Remove(join);
+        Changed(nameof(HasJoins)); Changed(nameof(JoinsHeader));
+    }
+
     /// <summary>A grab kept or given away leaves the list in place.</summary>
     public void RemoveGrab(DirectorGrab grab)
     {
@@ -557,7 +575,9 @@ public sealed class DirectorGrab
         Grab = grab;
         Card = card;
         var who = BdDirectorHomeViewModel.First(grab.OwnerName ?? grab.OwnerMailbox?.Split('@')[0] ?? "Someone");
-        Title = $"{who} grabbed {BdDirectorHomeViewModel.JobName(grab.Project)}";
+        Title = grab.JoinedProject is { } project
+            ? $"The RFP joined {who}'s pursuit of {BdDirectorHomeViewModel.JobName(project)}"
+            : $"{who} grabbed {BdDirectorHomeViewModel.JobName(grab.Project)}";
         var verdict = grab.IsForward ? "no RFP yet"
             : card?.Row.Recommendation is { } r ? $"Claude: {BdDirectorHomeViewModel.Verdict(r).ToLowerInvariant()}"
             : card?.Row.ReviewRunning == true ? "Claude is reading it" : "waiting for the documents";
@@ -582,6 +602,31 @@ public sealed class DirectorGrab
             : span.TotalDays < 2 ? "yesterday"
             : $"{when.ToLocalTime():ddd d MMM}";
     }
+}
+
+/// <summary>A tender that joined the actor's forward pursuit, shown until they accept it or say it is not this project.</summary>
+public sealed class DirectorJoin
+{
+    public DirectorJoin(PendingJoin join, string actor, DateTimeOffset now)
+    {
+        Join = join;
+        var project = BdDirectorHomeViewModel.JobName(join.Project ?? join.Tender);
+        Title = $"The RFP for {project} has posted";
+        var self = string.Equals(join.GrabbedBy, actor, StringComparison.OrdinalIgnoreCase);
+        var by = self ? "you" : BdDirectorHomeViewModel.First(join.GrabbedByName ?? join.GrabbedBy?.Split('@')[0] ?? "someone");
+        Sub = $"{BdDirectorHomeViewModel.ShortProject(join.Tender)}  ·  grabbed by {by}  ·  {DirectorGrab.Ago(join.JoinedAtUtc, now)}";
+        Explain = "It joined your pursuit automatically, so it is yours and its documents and Claude's review are on their way. "
+            + (self ? "If it is not this project, it becomes a separate pursuit of yours instead." : $"If it is not this project, it becomes {by}'s own pursuit instead.");
+        Project = project;
+        GrabbedBy = by;
+    }
+
+    public PendingJoin Join { get; }
+    public string Title { get; }
+    public string Sub { get; }
+    public string Explain { get; }
+    public string Project { get; }
+    public string GrabbedBy { get; }
 }
 
 /// <summary>One of the actor's open asks on Today, ticked off in place.</summary>

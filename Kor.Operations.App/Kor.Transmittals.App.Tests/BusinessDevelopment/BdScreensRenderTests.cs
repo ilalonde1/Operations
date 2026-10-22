@@ -391,6 +391,14 @@ public sealed class BdScreensRenderTests
             new DirectorFollowUp(902, "Arena roof assessment", "Town of Stony Plain", false, null, now.AddDays(-45)),
             new DirectorFollowUp(903, "Library expansion feasibility", "Strathcona County", false, null, null),
         });
+        // A tender Rory grabbed joined Islam's forward pursuit: Islam's first look (illustrative).
+        lead.LoadJoins(new[]
+        {
+            new PendingJoin(1171, 41500, "Request for Proposals - Lac Ste. Anne Seniors Lodge Replacement - Prime Consultant Services",
+                "Lac Ste. Anne Seniors Lodge Replacement", "rbeirne@korstructural.com", "Rory Beirne", now.AddMinutes(-40)),
+        });
+        Assert.Equal("The RFP for Lac Ste. Anne Seniors Lodge Replacement has posted", lead.Joins.Single().Title);
+        Assert.Contains("it becomes Rory's own pursuit", lead.Joins.Single().Explain, StringComparison.Ordinal);
         Assert.True(lead.Decisions.Count == 2 && lead.Decisions.All(d => d.Row.OwnerMailbox == "ishabana@korstructural.com") && !lead.HasNudge,
             $"EXPECTED Islam's 2 tenders and no team nudge; ACTUAL {lead.Decisions.Count} / nudge {lead.HasNudge}");
         Assert.Equal("NEEDS YOUR ATTENTION", lead.DecisionsHeader);

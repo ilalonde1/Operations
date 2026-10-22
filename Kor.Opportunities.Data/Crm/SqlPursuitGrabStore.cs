@@ -58,11 +58,34 @@ public interface IPursuitGrabStore
 
     /// <summary>The manager keeps a grab with its grabber: it leaves "New grabs". Logged, like every ownership change.</summary>
     Task KeepAsync(long engagementId, string manager, CancellationToken ct);
+
+    /// <summary>Joins onto the owner's pursuits that the owner has not yet accepted or rejected (Ian, 21 Oct 2026: automatic,
+    /// but obvious it is a join, and acceptable or rejectable the first time it comes up).</summary>
+    Task<IReadOnlyList<PendingJoin>> PendingJoinsAsync(string owner, CancellationToken ct);
+
+    /// <summary>The owner confirms the tender is this project's RFP. Logged.</summary>
+    Task AcceptJoinAsync(long engagementId, string by, CancellationToken ct);
+
+    /// <summary>
+    /// "Not this project": the tender leaves the forward pursuit and becomes the grabber's own pursuit, taking with it what
+    /// arrived for it after the join (portal files, fetch records, Claude's review and its run, the checklist, the review's
+    /// asks and the next step they set). Returns the new pursuit's id, or 0 when the join was already settled.
+    /// </summary>
+    Task<long> RejectJoinAsync(long engagementId, string by, CancellationToken ct);
 }
 
 /// <summary>A grab waiting for the manager's keep-or-redirect.</summary>
 public sealed record RecentGrab(long EngagementId, string Project, string? Buyer, string? OwnerMailbox, string? OwnerName,
-    DateTimeOffset GrabbedAtUtc, bool IsForward);
+    DateTimeOffset GrabbedAtUtc, bool IsForward)
+{
+    /// <summary>Set when this was a tender joining a forward pursuit: that pursuit's project.</summary>
+    public string? JoinedProject { get; init; }
+}
+
+/// <summary>A tender that joined someone's forward pursuit and is waiting for that owner's first look: accept, or "not this
+/// project", which makes the tender the grabber's own pursuit.</summary>
+public sealed record PendingJoin(long EngagementId, long OpportunityId, string Tender, string? Project, string? GrabbedBy,
+    string? GrabbedByName, DateTimeOffset JoinedAtUtc);
 
 /// <summary>A forward pursuit a tender matches: whose it is and which project.</summary>
 public sealed record ForwardMatch(long EngagementId, string ProjectName, string? OwnerMailbox, string? OwnerName, double Score)
@@ -193,17 +216,18 @@ BEGIN
 
     INSERT INTO opportunities.OpportunityAssignmentLog
         (OpportunityId, EngagementId, Action, ToStaffId, ByStaffId, Reason)
-    VALUES (@id, @eng, N'Grab', @owner, @me, N'The RFP joined the forward pursuit');
+    VALUES (@id, @eng, N'Join', @owner, @me, N'The RFP joined the forward pursuit');
 
     COMMIT TRANSACTION;
     SELECT @eng AS EngagementId;
 END";
 
-    // The latest grab of each live pursuit, still with its grabber, made by someone other than the manager, and not
+    // The latest grab or join of each live pursuit, still with its owner, made by someone other than the manager, and not
     // kept or reassigned since.
     internal const string RecentGrabsSql = @"
 SELECT g.EngagementId, COALESCE(o.Name, fwd.ProjectName, N'(unnamed)'), COALESCE(o.BuyerName, fwd.ProponentName), g.ToStaffId, who.DisplayName,
-       g.AtUtc, CAST(CASE WHEN e.OpportunityId IS NULL THEN 1 ELSE 0 END AS bit)
+       g.AtUtc, CAST(CASE WHEN e.OpportunityId IS NULL THEN 1 ELSE 0 END AS bit),
+       CASE WHEN g.Action = N'Join' THEN fwd.ProjectName END
 FROM opportunities.OpportunityAssignmentLog g
 JOIN opportunities.CrmEngagements e ON e.Id = g.EngagementId AND e.Stage IN (1, 3) AND e.OwnerStaffId = g.ToStaffId
 LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
@@ -211,13 +235,103 @@ OUTER APPLY (SELECT TOP (1) m.ProjectName, m.ProponentName
              FROM opportunities.CrmEngagementProjectLink l JOIN opportunities.MajorProjectsInventory m ON m.Id = l.MajorProjectsInventoryId
              WHERE l.EngagementId = e.Id AND l.MatchedBy = N'Grab') fwd
 OUTER APPLY (SELECT TOP (1) s.DisplayName FROM opportunities.BdStaff s WHERE s.Mailbox = g.ToStaffId COLLATE DATABASE_DEFAULT) who
-WHERE g.Action = N'Grab'
+WHERE g.Action IN (N'Grab', N'Join')
   AND g.AtUtc >= DATEADD(day, -14, SYSDATETIMEOFFSET())
   AND g.ToStaffId <> @manager
-  AND g.Id = (SELECT MAX(x.Id) FROM opportunities.OpportunityAssignmentLog x WHERE x.EngagementId = g.EngagementId AND x.Action = N'Grab')
+  AND g.Id = (SELECT MAX(x.Id) FROM opportunities.OpportunityAssignmentLog x WHERE x.EngagementId = g.EngagementId AND x.Action IN (N'Grab', N'Join'))
   AND NOT EXISTS (SELECT 1 FROM opportunities.OpportunityAssignmentLog k
                   WHERE k.EngagementId = g.EngagementId AND k.Action IN (N'Kept', N'Reassign') AND k.Id > g.Id)
 ORDER BY g.AtUtc DESC;";
+
+    // A join is settled by the first JoinAccepted or JoinRejected after it.
+    private const string JoinSettledSql = @"EXISTS (SELECT 1 FROM opportunities.OpportunityAssignmentLog k
+                  WHERE k.EngagementId = j.EngagementId AND k.Action IN (N'JoinAccepted', N'JoinRejected') AND k.Id > j.Id)";
+
+    internal const string PendingJoinsSql = @"
+SELECT j.EngagementId, j.OpportunityId, o.Name, fwd.ProjectName, j.ByStaffId, who.DisplayName, j.AtUtc
+FROM opportunities.OpportunityAssignmentLog j
+JOIN opportunities.CrmEngagements e ON e.Id = j.EngagementId AND e.OpportunityId = j.OpportunityId AND e.Stage IN (1, 3)
+JOIN opportunities.Opportunities o ON o.Id = j.OpportunityId
+OUTER APPLY (SELECT TOP (1) m.ProjectName
+             FROM opportunities.CrmEngagementProjectLink l JOIN opportunities.MajorProjectsInventory m ON m.Id = l.MajorProjectsInventoryId
+             WHERE l.EngagementId = e.Id AND l.MatchedBy = N'Grab') fwd
+OUTER APPLY (SELECT TOP (1) s.DisplayName FROM opportunities.BdStaff s WHERE s.Mailbox = j.ByStaffId COLLATE DATABASE_DEFAULT) who
+WHERE j.Action = N'Join'
+  AND e.OwnerStaffId = @owner
+  AND NOT " + JoinSettledSql + @"
+ORDER BY j.AtUtc DESC;";
+
+    private const string AcceptJoinSql = @"
+INSERT INTO opportunities.OpportunityAssignmentLog (OpportunityId, EngagementId, Action, ToStaffId, ByStaffId, Reason)
+SELECT TOP (1) j.OpportunityId, j.EngagementId, N'JoinAccepted', j.ToStaffId, @by, N'The RFP is this project''s'
+FROM opportunities.OpportunityAssignmentLog j
+WHERE j.EngagementId = @eng AND j.Action = N'Join' AND NOT " + JoinSettledSql + @"
+ORDER BY j.Id DESC;";
+
+    // "Not this project": split the tender back out as the grabber's own pursuit. What arrived for the tender after the
+    // join goes with it; what the forward pursuit had before (and anything a person wrote) stays.
+    internal const string RejectJoinSql = @"
+SET XACT_ABORT ON;
+SET NOCOUNT ON;
+
+BEGIN TRANSACTION;
+
+DECLARE @joinId bigint, @opp bigint, @grabber nvarchar(300), @joinedAt datetimeoffset, @owner nvarchar(300);
+SELECT TOP (1) @joinId = j.Id, @opp = j.OpportunityId, @grabber = j.ByStaffId, @joinedAt = j.AtUtc
+FROM opportunities.OpportunityAssignmentLog j WITH (UPDLOCK, HOLDLOCK)
+WHERE j.EngagementId = @eng AND j.Action = N'Join' AND NOT " + JoinSettledSql + @"
+ORDER BY j.Id DESC;
+SELECT @owner = OwnerStaffId FROM opportunities.CrmEngagements WITH (UPDLOCK, HOLDLOCK)
+WHERE Id = @eng AND OpportunityId = @opp AND Stage IN (1, 3);
+
+IF @joinId IS NULL OR @owner IS NULL OR @grabber IS NULL
+BEGIN
+    ROLLBACK TRANSACTION;
+    SELECT CAST(0 AS bigint);
+    RETURN;
+END
+
+UPDATE opportunities.CrmEngagements SET OpportunityId = NULL, UpdatedAtUtc = SYSDATETIMEOFFSET(), UpdatedBy = @by WHERE Id = @eng;
+
+DECLARE @new TABLE (Id bigint);
+INSERT INTO opportunities.CrmEngagements
+    (OpportunityId, Stage, OwnerStaffId, BuyerCanonicalOrgId, ExternalSource, ExternalSourceKey, CreatedBy, UpdatedBy)
+OUTPUT inserted.Id INTO @new
+SELECT @opp, 1, @grabber, o.BuyerCanonicalOrgId, N'Grab.Unjoined', o.OpportunityKey, @by, @by
+FROM opportunities.Opportunities o WHERE o.Id = @opp;
+DECLARE @newEng bigint = (SELECT TOP (1) Id FROM @new);
+
+UPDATE opportunities.Opportunities SET OwnerStaffId = @grabber, UpdatedAtUtc = SYSDATETIMEOFFSET(), UpdatedBy = @by WHERE Id = @opp;
+
+UPDATE opportunities.OpportunityFiles     SET EngagementId = @newEng WHERE EngagementId = @eng AND UploadedAtUtc >= @joinedAt;
+UPDATE opportunities.PursuitDocumentFetch SET EngagementId = @newEng WHERE EngagementId = @eng AND FetchedAtUtc >= @joinedAt;
+UPDATE opportunities.PursuitReview        SET EngagementId = @newEng WHERE EngagementId = @eng AND ReportedAtUtc >= @joinedAt;
+UPDATE opportunities.BdPromptRun          SET EngagementId = @newEng WHERE EngagementId = @eng AND Kind = N'rfp' AND CreatedAtUtc >= @joinedAt;
+UPDATE opportunities.PursuitRequirement   SET EngagementId = @newEng WHERE EngagementId = @eng AND CreatedAtUtc >= @joinedAt;
+
+-- The review's next step (it is one of the review's asks) goes with the review; a person's own next step stays.
+DECLARE @reviewAsks TABLE (Ask nvarchar(500));
+INSERT INTO @reviewAsks SELECT a.Ask FROM opportunities.BdAsk a
+WHERE a.EngagementId = @eng AND a.AskedAtUtc >= @joinedAt AND a.AskedBy LIKE N'Claude (RFP review%';
+UPDATE n SET NextActionNote = f.NextActionNote, NextActionDueUtc = f.NextActionDueUtc
+  FROM opportunities.CrmEngagements n JOIN opportunities.CrmEngagements f ON f.Id = @eng
+ WHERE n.Id = @newEng AND f.NextActionNote IN (SELECT Ask FROM @reviewAsks);
+UPDATE opportunities.CrmEngagements SET NextActionNote = NULL, NextActionDueUtc = NULL
+ WHERE Id = @eng AND NextActionNote IN (SELECT Ask FROM @reviewAsks);
+
+-- The review's asks follow the tender; the forward owner's become the grabber's, anyone else's stay theirs.
+UPDATE opportunities.BdAsk
+   SET EngagementId = @newEng, ToStaffKey = CASE WHEN ToStaffKey = @owner THEN @grabber ELSE ToStaffKey END
+ WHERE EngagementId = @eng AND AskedAtUtc >= @joinedAt AND AskedBy LIKE N'Claude (RFP review%';
+
+INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId) VALUES (@newEng, 1, @by);
+INSERT INTO opportunities.OpportunityAssignmentLog (OpportunityId, EngagementId, Action, FromStaffId, ToStaffId, ByStaffId, Reason)
+VALUES (@opp, @eng, N'JoinRejected', @owner, @grabber, @by, N'Not this project: the tender is its own pursuit');
+INSERT INTO opportunities.OpportunityAssignmentLog (OpportunityId, EngagementId, Action, ToStaffId, ByStaffId, Reason)
+VALUES (@opp, @newEng, N'Grab', @grabber, @grabber, N'Grabbed; the join to a forward pursuit was rejected');
+
+COMMIT TRANSACTION;
+SELECT @newEng;";
 
     private const string KeepSql = @"
 INSERT INTO opportunities.OpportunityAssignmentLog (OpportunityId, EngagementId, Action, ToStaffId, ByStaffId, Reason)
@@ -357,8 +471,42 @@ SELECT Name, ProjectProvince FROM opportunities.Opportunities WHERE Id = @id;";
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         while (await r.ReadAsync(ct).ConfigureAwait(false))
             rows.Add(new RecentGrab(r.GetInt64(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2), r.IsDBNull(3) ? null : r.GetString(3),
-                r.IsDBNull(4) ? null : r.GetString(4), r.GetDateTimeOffset(5), r.GetBoolean(6)));
+                r.IsDBNull(4) ? null : r.GetString(4), r.GetDateTimeOffset(5), r.GetBoolean(6)) { JoinedProject = r.IsDBNull(7) ? null : r.GetString(7) });
         return rows;
+    }
+
+    public async Task<IReadOnlyList<PendingJoin>> PendingJoinsAsync(string owner, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(PendingJoinsSql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@owner", SqlDbType.NVarChar, 300).Value = owner.Trim();
+        var rows = new List<PendingJoin>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+            rows.Add(new PendingJoin(r.GetInt64(0), r.GetInt64(1), r.GetString(2), r.IsDBNull(3) ? null : r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetString(4), r.IsDBNull(5) ? null : r.GetString(5), r.GetDateTimeOffset(6)));
+        return rows;
+    }
+
+    public async Task AcceptJoinAsync(long engagementId, string by, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(AcceptJoinSql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@eng", SqlDbType.BigInt).Value = engagementId;
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 150).Value = by.Trim();
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<long> RejectJoinAsync(long engagementId, string by, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(RejectJoinSql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@eng", SqlDbType.BigInt).Value = engagementId;
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 150).Value = by.Trim();
+        return ReadEngagementId(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false));
     }
 
     public async Task KeepAsync(long engagementId, string manager, CancellationToken ct)

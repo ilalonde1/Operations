@@ -338,6 +338,11 @@ public partial class OpportunitiesView : UserControl
         try
         {
             var engagement = await _vm.EnsureEngagementAsync(ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+            // The grab joined someone's forward pursuit for this project: say so, the same way the Bazaar does.
+            if (_vm.LastGrab is { JoinedOwner: { } owner } grab)
+                MessageBox.Show(OwnerWindow(),
+                    $"This tender looks like the RFP for {grab.JoinedProject}, which {owner} is already pursuing.\n\nIt has JOINED that pursuit, so it is {owner}'s. {owner} is asked to confirm it the first time they open Today; if it is not that project, it comes back to you as your own pursuit.",
+                    "Joined an existing pursuit", MessageBoxButton.OK, MessageBoxImage.Information);
             OpenPursuitInWorkspace(engagement.Id);
         }
         catch (Exception ex)

@@ -763,8 +763,13 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     public Task<CrmEngagement> EnsureEngagementAsync(string actor, CancellationToken ct)
     {
         var current = _selected ?? throw new InvalidOperationException("No opportunity selected.");
+        LastGrab = null;
         return EnsureEngagementForAsync(current, actor, ct);
     }
+
+    /// <summary>The grab the last <see cref="EnsureEngagementAsync"/> made, if it made one (null when the pursuit already
+    /// existed): the view says so when it joined someone's forward pursuit.</summary>
+    public GrabResult? LastGrab { get; private set; }
 
     /// <summary>Worker form that operates on an explicitly-captured row.
     /// Use this from write paths so a row-switch mid-await cannot redirect
@@ -799,6 +804,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         // to Pursuit", or logging the first activity/contact) produces an
         // identical, correctly-owned, logged pursuit.
         var grab = await _grabStore.GrabAsync(row.Model.Id, actor, ct).ConfigureAwait(true);
+        LastGrab = grab;
         if (grab.Outcome != GrabOutcome.Grabbed)
         {
             throw new InvalidOperationException(

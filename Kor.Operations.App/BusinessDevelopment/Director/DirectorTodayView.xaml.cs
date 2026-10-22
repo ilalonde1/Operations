@@ -18,6 +18,10 @@ public interface IDirectorHomeHost
     Task OpenPursuitAsync(DirectorCard card);
     /// <summary>Opens a pursuit to write its next step (BD Workspace Today).</summary>
     void OpenFollowUp(DirectorFollowUp pursuit);
+    /// <summary>The owner accepts a tender that joined their forward pursuit.</summary>
+    Task AcceptJoinAsync(DirectorJoin join);
+    /// <summary>The owner says a joined tender is not this project: it becomes the grabber's own pursuit.</summary>
+    Task RejectJoinAsync(DirectorJoin join);
     /// <summary>The manager keeps a new grab with its grabber (BD Director only; the Workspace shows no grabs).</summary>
     Task KeepGrabAsync(DirectorGrab grab) => Task.CompletedTask;
     /// <summary>The manager gives a new grab to someone else: the Pursuits side panel, open on it.</summary>
@@ -47,6 +51,16 @@ public partial class DirectorTodayView : UserControl
     }
 
     private void Hour_Click(object sender, RoutedEventArgs e) => Host?.OpenHour();
+
+    private async void AcceptJoin_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: DirectorJoin join } && Host is { } host) await host.AcceptJoinAsync(join).ConfigureAwait(true);
+    }
+
+    private async void RejectJoin_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: DirectorJoin join } && Host is { } host) await host.RejectJoinAsync(join).ConfigureAwait(true);
+    }
 
     private async void Keep_Click(object sender, RoutedEventArgs e)
     {

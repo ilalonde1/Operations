@@ -159,6 +159,12 @@ public sealed class PursuitLifecycleIntegrationTests
             Assert.Equal(1, await ScalarAsync<int>(con, "SELECT COUNT(*) FROM opportunities.CrmEngagements WHERE OpportunityId=@p0", oppId));
             Assert.Equal(GrabOutcome.AlreadyTaken, (await grabStore.GrabAsync(oppId, other, CancellationToken.None)).Outcome);
 
+            // The forward owner sees the join the first time it comes up, and accepting settles it.
+            Assert.Contains(await grabStore.PendingJoinsAsync(owner, CancellationToken.None), j => j.EngagementId == engId && j.OpportunityId == oppId && j.GrabbedBy == other);
+            await grabStore.AcceptJoinAsync(engId, owner, CancellationToken.None);
+            Assert.DoesNotContain(await grabStore.PendingJoinsAsync(owner, CancellationToken.None), j => j.EngagementId == engId);
+            Assert.Equal(0L, await grabStore.RejectJoinAsync(engId, owner, CancellationToken.None));
+
             await grabStore.KeepAsync(engId, manager, CancellationToken.None);
             Assert.DoesNotContain(await grabStore.RecentGrabsAsync(manager, CancellationToken.None), g => g.EngagementId == engId);
 
@@ -174,6 +180,85 @@ public sealed class PursuitLifecycleIntegrationTests
                 await ExecAsync(con, "DELETE FROM opportunities.CrmEngagementStageHistory WHERE EngagementId=@p0", engId);
                 await ExecAsync(con, "DELETE FROM opportunities.CrmEngagementProjectLink WHERE EngagementId=@p0", engId);
                 await ExecAsync(con, "DELETE FROM opportunities.CrmEngagements WHERE Id=@p0", engId);
+            }
+            if (mpiId > 0)
+            {
+                await ExecAsync(con, "DELETE FROM opportunities.OpportunityAssignmentLog WHERE MpiId=@p0", mpiId);
+                await ExecAsync(con, "DELETE FROM opportunities.MajorProjectsInventory WHERE Id=@p0", mpiId);
+            }
+            await CleanupAsync(cs, oppId);
+        }
+    }
+
+    /// <summary>
+    /// "Not this project": the tender leaves the forward pursuit as the grabber's own pursuit, and the review's ask and the next
+    /// step it set go with it, re-pointed to the grabber; the forward pursuit is left as it was before the join. Does NOT cover
+    /// files, fetch records, reviews or checklist rows moving (same statement shape, no fixture for them here).
+    /// </summary>
+    [Fact]
+    public async Task ForwardJoin_Rejected_TheTenderBecomesTheGrabbersOwnPursuit()
+    {
+        var cs = ConnectionString;
+        if (string.IsNullOrWhiteSpace(cs)) return; // no DB in this environment
+
+        var owner = "audittest-forward@korstructural.com";
+        var grabber = "audittest-grabber@korstructural.com";
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var lifecycle = new Kor.Opportunities.Data.MajorProjects.SqlPursuitLifecycleStore(cs);
+        var grabStore = new SqlPursuitGrabStore(cs);
+        long mpiId = 0, oppId = 0, engId = 0, newEng = 0;
+        await using var con = new SqlConnection(cs);
+        await con.OpenAsync();
+        try
+        {
+            await using (var insert = new SqlCommand(
+                "INSERT INTO opportunities.MajorProjectsInventory (Province, SourceKey, ProjectName) OUTPUT inserted.Id VALUES (N'AB', @k, @n);", con))
+            {
+                insert.Parameters.AddWithValue("@k", $"AUDITTEST-{tag}");
+                insert.Parameters.AddWithValue("@n", $"Testburg {tag} Library Expansion");
+                mpiId = (long)(await insert.ExecuteScalarAsync())!;
+            }
+            await lifecycle.GrabProjectAsync(mpiId, owner, CancellationToken.None);
+            engId = await ScalarAsync<long>(con, "SELECT EngagementId FROM opportunities.CrmEngagementProjectLink WHERE MajorProjectsInventoryId=@p0 AND MatchedBy=N'Grab'", mpiId);
+            oppId = (await new SqlOpportunityStore(cs).InsertAsync(new Opportunity
+            {
+                OpportunityKey = $"AUDITTEST-{Guid.NewGuid():N}", Name = $"RFP Testburg {tag} Library Expansion Prime Consultant",
+                BuyerName = "AUDITTEST Testburg", ProjectProvince = "AB", Status = OpportunityStatus.New,
+            }, grabber, CancellationToken.None)).Id;
+            Assert.Equal(engId, (await grabStore.GrabAsync(oppId, grabber, CancellationToken.None)).EngagementId);
+
+            // What a review files after the join: an ask for the pursuit's owner, which also became the next step.
+            await using (var ask = new SqlCommand(@"INSERT INTO opportunities.BdAsk (ToStaffKey, EngagementId, Ask, WhyNow, Minutes, DueUtc, AskedBy)
+VALUES (@to, @e, N'AUDITTEST pick references', N'test', 30, DATEADD(day, 3, SYSDATETIMEOFFSET()), N'Claude (RFP review run 0)');
+UPDATE opportunities.CrmEngagements SET NextActionNote = N'AUDITTEST pick references', NextActionDueUtc = DATEADD(day, 3, SYSDATETIMEOFFSET()) WHERE Id = @e;", con))
+            {
+                ask.Parameters.AddWithValue("@to", owner);
+                ask.Parameters.AddWithValue("@e", engId);
+                await ask.ExecuteNonQueryAsync();
+            }
+
+            newEng = await grabStore.RejectJoinAsync(engId, owner, CancellationToken.None);
+            Assert.True(newEng > 0 && newEng != engId, $"EXPECTED a new pursuit; ACTUAL {newEng}");
+            Assert.Equal(oppId, await ScalarAsync<long>(con, "SELECT OpportunityId FROM opportunities.CrmEngagements WHERE Id=@p0", newEng));
+            Assert.Equal(grabber, await ScalarAsync<string>(con, "SELECT OwnerStaffId FROM opportunities.CrmEngagements WHERE Id=@p0", newEng));
+            Assert.Equal(grabber, await ScalarAsync<string>(con, "SELECT OwnerStaffId FROM opportunities.Opportunities WHERE Id=@p0", oppId));
+            Assert.Equal(0, await ScalarAsync<int>(con, "SELECT COUNT(*) FROM opportunities.CrmEngagements WHERE Id=@p0 AND OpportunityId IS NOT NULL", engId));
+            Assert.Equal(owner, await ScalarAsync<string>(con, "SELECT OwnerStaffId FROM opportunities.CrmEngagements WHERE Id=@p0", engId));
+            Assert.Equal(grabber, await ScalarAsync<string>(con, "SELECT ToStaffKey FROM opportunities.BdAsk WHERE EngagementId=@p0", newEng));
+            Assert.Equal("AUDITTEST pick references", await ScalarAsync<string>(con, "SELECT NextActionNote FROM opportunities.CrmEngagements WHERE Id=@p0", newEng));
+            Assert.Equal(1, await ScalarAsync<int>(con, "SELECT COUNT(*) FROM opportunities.CrmEngagements WHERE Id=@p0 AND NextActionNote IS NULL", engId));
+            Assert.DoesNotContain(await grabStore.PendingJoinsAsync(owner, CancellationToken.None), j => j.EngagementId == engId);
+            Assert.Equal(0L, await grabStore.RejectJoinAsync(engId, owner, CancellationToken.None));
+        }
+        finally
+        {
+            foreach (var e in new[] { engId, newEng }.Where(e => e > 0))
+            {
+                await ExecAsync(con, "DELETE FROM opportunities.BdAsk WHERE EngagementId=@p0", e);
+                await ExecAsync(con, "DELETE FROM opportunities.OpportunityAssignmentLog WHERE EngagementId=@p0", e);
+                await ExecAsync(con, "DELETE FROM opportunities.CrmEngagementStageHistory WHERE EngagementId=@p0", e);
+                await ExecAsync(con, "DELETE FROM opportunities.CrmEngagementProjectLink WHERE EngagementId=@p0", e);
+                await ExecAsync(con, "DELETE FROM opportunities.CrmEngagements WHERE Id=@p0", e);
             }
             if (mpiId > 0)
             {
