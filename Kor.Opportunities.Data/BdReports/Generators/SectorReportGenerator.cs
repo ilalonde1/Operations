@@ -220,17 +220,7 @@ public static class SectorReportGenerator
                 .ToArray()).ToList());
     }
 
-    private static string CostOf(PursuitBriefRow p)
-    {
-        if (!string.IsNullOrWhiteSpace(p.EstimatedCostText))
-        {
-            return p.EstimatedCostText;
-        }
-
-        return p.EstimatedCostCad is { } cad
-            ? "$" + cad.ToString("N0", CultureInfo.InvariantCulture)
-            : string.Empty;
-    }
+    private static string CostOf(PursuitBriefRow p) => BdReportFormatting.Cost(p.EstimatedCostText, p.EstimatedCostCad, string.Empty);
 
     private static string MarketSignalBody(SectorIntelSignalRow signal)
     {

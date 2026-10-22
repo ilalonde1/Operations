@@ -163,6 +163,22 @@ public sealed class BdReportMeaningRegressionTests
         }
     }
 
+    // 2026-10-22, read off the Hospitals report: notes opened "PURSUE_URGENT — …" and costs read "159000000".
+    [Theory]
+    [InlineData("PURSUE_URGENT — B+H Architects confirmed.", "B+H Architects confirmed.")]
+    [InlineData("MONITOR: phase 2 open.", "phase 2 open.")]
+    [InlineData("Pursue the architect now.", "Pursue the architect now.")]
+    public void A_note_reaches_the_reader_without_its_rating_code(string raw, string expected)
+        => Assert.Equal(expected, BdReportFormatting.Abridge(raw, 500));
+
+    [Theory]
+    [InlineData("159000000", null, "$159,000,000")]
+    [InlineData("$474M total project estimate", null, "$474M total project estimate")]
+    [InlineData(null, "90000000", "$90,000,000")]
+    [InlineData(null, null, "cost unknown")]
+    public void A_cost_reads_as_dollars(string? text, string? cad, string expected)
+        => Assert.Equal(expected, BdReportFormatting.Cost(text, cad is null ? null : decimal.Parse(cad, System.Globalization.CultureInfo.InvariantCulture), "cost unknown"));
+
     // Covers the six audited Safe helpers, preserving complete text and marking clips.
     // Does not reconstruct omitted qualifications; a clip outside Safe would escape.
     [Theory]
@@ -177,7 +193,7 @@ public sealed class BdReportMeaningRegressionTests
         var safe = generator.GetMethod("Safe", BindingFlags.NonPublic | BindingFlags.Static)!;
         var dangerous = new string('A', 600) + " Do not approach yet; structural scope is already awarded.";
         var actual = (string)safe.Invoke(null, new object[] { dangerous, 110 })!;
-        Assert.EndsWith("[abridged]", actual);
+        Assert.EndsWith(BdReportFormatting.AbridgedMark, actual);
         Assert.Equal("Complete text", safe.Invoke(null, new object[] { "Complete text", 110 }));
     }
 

@@ -203,17 +203,7 @@ public static class ExecSummaryReportGenerator
             Array.Empty<SynthesisSection>()),
     };
 
-    private static string CostOf(PursuitBriefRow p)
-    {
-        if (!string.IsNullOrWhiteSpace(p.EstimatedCostText))
-        {
-            return p.EstimatedCostText;
-        }
-
-        return p.EstimatedCostCad is { } cad
-            ? "$" + cad.ToString("N0", CultureInfo.InvariantCulture)
-            : "cost unknown";
-    }
+    private static string CostOf(PursuitBriefRow p) => BdReportFormatting.Cost(p.EstimatedCostText, p.EstimatedCostCad, "cost unknown");
 
     private static string Safe(string? value, int max)
     {
