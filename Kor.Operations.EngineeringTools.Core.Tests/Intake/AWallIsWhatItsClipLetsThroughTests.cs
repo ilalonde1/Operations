@@ -83,5 +83,37 @@ public sealed class AWallIsWhatItsClipLetsThroughTests
         Assert.All(fates.Where(f => f.PathIndex < 2), f => Assert.Equal(PathReason.NoInk, f.Reason));
     }
 
+    /// <summary>
+    /// Step 172: the fill is an upright box 762 mm across, and its one clip is a 300 mm band slanted across it corner to
+    /// corner (31065's P2 west wall, 1.75 degrees off the page, read 1,401 mm thick). The wall is the band: 300 mm, its
+    /// length, its slant; the clip read as the wall's. (The knob is not flipped here: an environment variable is process
+    /// state and these classes run in parallel.)
+    /// </summary>
+    [Fact]
+    public void AFillClippedToASlantedBandIsTheBand()
+    {
+        var band = Clip(0, L, 4) with { Points = [(0, 0), (L, T - 300), (L, T), (0, 300)] };
+        var (g, fates) = WallFixture.Read([band, Wall(5)]);
+        var wall = Assert.Single(g.Walls);
+        Assert.InRange(wall.ThicknessMm, 295, 300);
+        Assert.InRange(Length(wall), 0.99 * L, 1.01 * L);
+        Assert.True(Math.Abs(wall.End.Y - wall.Start.Y) > 400, "the wall keeps the band's slant");
+        Assert.Equal(PathReason.ClipOfWall, Assert.Single(fates, f => f.PathIndex == 0).Reason);
+    }
+
+    /// <summary>
+    /// Step 172, the P1 sheet's way: the clip is set, forty paths are painted, then the fill. Not drawn just before it,
+    /// the band is still the fill's clip because its box IS the fill's box. A clip of another box is not.
+    /// </summary>
+    [Fact]
+    public void ASlantedBandWhoseBoxIsTheFillsIsItsClipWhereverItWasDrawn()
+    {
+        var band = Clip(0, L, 1) with { Points = [(0, 0), (L, T - 300), (L, T), (0, 300)] };
+        Assert.InRange(Assert.Single(WallFixture.Read([band, Wall(40)]).Geometry.Walls).ThicknessMm, 295, 300);
+
+        var elsewhere = band with { Points = [(0, 0), (L, T - 300), (L, T + 900), (0, 300)] };
+        Assert.Equal(T, Assert.Single(WallFixture.Read([elsewhere, Wall(40)]).Geometry.Walls).ThicknessMm, 1);
+    }
+
     private static double Length(WallPanel w) => Math.Sqrt(Math.Pow(w.End.X - w.Start.X, 2) + Math.Pow(w.End.Y - w.Start.Y, 2));
 }

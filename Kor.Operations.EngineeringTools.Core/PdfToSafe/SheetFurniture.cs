@@ -308,6 +308,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         public const double FurnitureMaxShare = 0.5;
 
+        /// <summary>A table's top rule broken by no more than this is one rule, for the region (step 171): 6 pt, about 2 mm,
+        /// the width of a double divider. Two separate tables closer than that become one region, which costs nothing: both are
+        /// furniture.</summary>
+        public const double TableRuleGapPts = 6.0;
+
         /// <summary>
         /// A title is a short line. The longest in the population is seven words ("NORTH TOWER CORE
         /// FOOTING BAR PLACING ORDER"); a sentence of notes that mentions DETAILS runs to eleven.
@@ -407,11 +412,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // furniture is never half the sheet
             if (border.Width > FurnitureMaxShare * page.WidthPts || border.Height > FurnitureMaxShare * page.HeightPts) return;
 
+            // A TABLE'S TOP RULE BROKEN AT ITS OWN DIVIDER IS STILL ITS TOP (intake step 171, 2026-10-21). 31065's PODIUM
+            // COLUMN SCHEDULE is two halves under one title, the top rule drawn 389-535 and 537-683 mm with the double divider
+            // in the 1.5 mm (4.3 pt) between; the border took the half under the title's left edge, and the other half's
+            // heavy-ruled GC5 cells were read as two 990 mm walls on L2..L6 (215 m3). The REGION - what the plan reader
+            // ignores - follows the top rule across a gap of up to TableRuleGapPts, either way; the schedule's own rows,
+            // read by ScheduleTableBorder, are untouched.
+            double minX = border.MinX, maxX = border.MaxX;
+            if (Environment.GetEnvironmentVariable("KOR_STEP171_OFF") != "1")
+            {
+                var top = rules.Horizontal.Where(r => Math.Abs(r.At - border.MaxY) <= ScheduleTableBorder.AbutPts).ToList();
+                for (bool grew = true; grew;)
+                {
+                    grew = false;
+                    foreach (var r in top)
+                    {
+                        if (r.Lo > maxX && r.Lo - maxX <= TableRuleGapPts && r.Hi > maxX) { maxX = r.Hi; grew = true; }
+                        if (r.Hi < minX && minX - r.Hi <= TableRuleGapPts && r.Lo < minX) { minX = r.Lo; grew = true; }
+                    }
+                }
+                if (maxX - minX > FurnitureMaxShare * page.WidthPts) { minX = border.MinX; maxX = border.MaxX; }
+            }
+
             regions.Add(new Region(
                 kind,
-                Math.Min(border.MinX, titleMinX),
+                Math.Min(minX, titleMinX),
                 border.MinY,
-                Math.Max(border.MaxX, titleMaxX),
+                Math.Max(maxX, titleMaxX),
                 Math.Max(border.MaxY, titleMinY + titleHeight)));
         }
 

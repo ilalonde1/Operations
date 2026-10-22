@@ -234,6 +234,33 @@ public sealed class SheetFurnitureIsNotStructureTests
     }
 
     /// <summary>
+    /// Step 171: a schedule in two halves under one title, its top rule broken for 4 pt at the double divider between
+    /// them (31065's PODIUM COLUMN SCHEDULE: 389-535 and 537-683 mm). The region is both halves; the half the title's
+    /// left edge does not sit over was read as walls (two 990 mm "walls" on L2..L6). A table 30 pt away is not joined.
+    /// </summary>
+    [Fact]
+    public void ATableWhoseTopRuleIsBrokenAtItsDividerIsOneRegion()
+    {
+        var words = new List<TT>
+        {
+            Tok("PODIUM", 1520, 700), Tok("COLUMN", 1600, 700), Tok("SCHEDULE", 1680, 700),
+            Tok("MARK", 1520, 680), Tok("MARK", 1760, 680),
+        };
+        var paths = new List<GP>
+        {
+            HRule(1495, 1740, 690), HRule(1744, 1990, 690),
+            HRule(1495, 1740, 668), HRule(1744, 1990, 668), HRule(1495, 1740, 640), HRule(1744, 1990, 640),
+            VRule(1495, 640, 690), VRule(1740, 640, 690), VRule(1744, 640, 690), VRule(1990, 640, 690),
+            HRule(2020, 2200, 690), HRule(2020, 2200, 640), VRule(2020, 640, 690), VRule(2200, 640, 690),
+        };
+
+        var region = Assert.Single(SheetFurniture.On(new PC(1, W, H, words, paths)).Regions);
+
+        Assert.Equal(1495, region.MinX, 0.5);
+        Assert.Equal(1990, region.MaxX, 0.5);
+    }
+
+    /// <summary>
     /// A title block's side is drawn box by box: twenty short verticals at one x, none of them
     /// the length of the sheet, all of them together the sheet's edge.
     /// </summary>

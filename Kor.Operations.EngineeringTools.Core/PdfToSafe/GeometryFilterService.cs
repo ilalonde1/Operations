@@ -429,6 +429,32 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             if (pts.Count == 4 && IsWallShape(pts, box.Length, box.Thickness, maxWallThicknessMm))
                             {
                                 int first = result.Walls.Count;
+                                // A FILL CLIPPED TO A SLANTED WALL IS THAT WALL, NOT ITS BOX (intake step 172, 2026-10-21). The drafter's
+                                // hatch is an upright rectangle shown only through a clip; 31065's P2 west wall runs 1.75 degrees off
+                                // the page's axes along the property line, 300 mm thick, and its clip is that band - but the fill's box
+                                // spans the whole drift, so the wall read 1,401 mm thick on P2, P1 and L1 (496 m3 against ~105). Where
+                                // the one clip drawn just before the fill is a band under three quarters of the box's thickness and as
+                                // long as the box, the wall is the clip's band. The P1 sheet sets that clip and paints forty paths before the
+                                // fill, so where no clip is drawn just before, the fill's clip is the one clip whose box IS the fill's box.
+                                double bx0 = pts.Min(p => p.X), bx1 = pts.Max(p => p.X), by0 = pts.Min(p => p.Y), by1 = pts.Max(p => p.Y);
+                                bool SameBox(List<(double X, double Y)> c) =>
+                                    Math.Abs(c.Min(p => p.X) - bx0) <= WallLimitSlackMm && Math.Abs(c.Max(p => p.X) - bx1) <= WallLimitSlackMm
+                                    && Math.Abs(c.Min(p => p.Y) - by0) <= WallLimitSlackMm && Math.Abs(c.Max(p => p.Y) - by1) <= WallLimitSlackMm;
+                                if (Environment.GetEnvironmentVariable("KOR_STEP172_OFF") != "1"
+                                    && (clipPieces.Where(c => c.PathOrdinal == sub.PathOrdinal - 1).ToList() is { Count: 1 } justBefore ? justBefore
+                                        : clipPieces.Where(c => c.Pts.Count >= 4 && SameBox(c.Pts)).ToList()) is { Count: 1 } ownClip
+                                    && ownClip[0].Pts.Count >= 4
+                                    && LoopGeometry.MinAreaBox(ownClip[0].Pts.Select(p => new DxfPoint(p.X, p.Y)).ToList()) is { } band
+                                    && band.Thickness < 0.75 * box.Thickness && band.Length >= 0.9 * box.Length
+                                    && band.Thickness >= minWallThicknessMm - WallFloorSlackMm)
+                                {
+                                    result.Walls.Add(Pier(band, 0, band.Length));
+                                    result.WallColors.Add(color);
+                                    result.WallIsAnnotation.Add(false);
+                                    clipOf[ownClip[0].Index] = first;
+                                    Fate(PathReason.BecameWall, first);
+                                    continue;
+                                }
                                 var clip = ClipPiecesOn(box, sub.PathOrdinal, clipPieces);
                                 var doorways = DoorwaysOn(box, pathIndex, paperFills);
                                 var piers = clip.Count == 0 && doorways.Count == 0
@@ -1987,6 +2013,44 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var pieces = built.OpenChains
                 .Where(c => c.Count >= 2 && ChainLength(c) >= SlabEdgeChainMinMm)
                 .ToList();
+            // A SHORT RUN JOINED TO A PIECE IS PART OF THE PIECE (intake step 170, 2026-10-21). The walk above follows each seed
+            // forward only, so one drawn run comes out in fragments by arrival order (audit F11), and the length floor then
+            // judged each fragment alone. 31065's south tower odd-floor view (S2.17.1, L7..L17) drew its west edge in runs of
+            // 1,977, 1,240 and 1,278 mm round two balcony boxes - every one under the 2 m floor, so the edge had holes where the
+            // boxes meet it and the floor read its 671 sq ft core; the even-floor view beside it closes at 6,982. A fragment
+            // sharing an END, within the join, with a kept piece or a closed ring is kept with it, transitively. Only at an
+            // end: a hatch line stops on the MIDDLE of its zone's boundary, and S1.11's load-zone hatching, kept that way,
+            // doubled 31065's build (11 -> 22 min on that one discarded sheet). A dash on its own still is not kept.
+            bool off170 = Environment.GetEnvironmentVariable("KOR_STEP170_OFF") == "1";
+            if (!off170)
+            {
+                var shortRuns = built.OpenChains.Where(c => c.Count >= 2 && !pieces.Contains(c)).ToList();
+                var keptEnds = loops.SelectMany(l => l.Points).Concat(pieces.SelectMany(c => new[] { c[0], c[^1] })).ToList();
+                bool AtKeptEnd(DxfPoint p) => keptEnds.Any(e => e.DistanceTo(p) <= SlabEdgeJoinMm);
+                for (bool grew = true; grew;)
+                {
+                    grew = false;
+                    foreach (var c in shortRuns.ToList())
+                        if (AtKeptEnd(c[0]) || AtKeptEnd(c[^1]))
+                        { pieces.Add(c); shortRuns.Remove(c); keptEnds.Add(c[0]); keptEnds.Add(c[^1]); grew = true; }
+                }
+                // AND A LINE DRAWN TWICE IS NOT LOST WITH THE WALK'S SPUR: S2.16.1 (L5 south) draws 1.35 m of its west edge
+                // twice, at 0.96 and 0.6 pt over each other; the walk went up one and back down the other into a balcony's
+                // box, the ring was simplified to the box, and the stretch was gone. A drawn line lying on a kept edge's own
+                // line, overlapping it but running past it, is offered as a piece. Hatching never lies along an edge.
+                var keptSegs = loops.SelectMany(l => l.Points.Select((p, i) => (A: p, B: l.Points[(i + 1) % l.Points.Count])))
+                    .Concat(pieces.SelectMany(c => c.Zip(c.Skip(1), (a, b) => (A: a, B: b)))).ToList();
+                bool OnKeptSeg(DxfPoint p) => keptSegs.Any(k => LoopGeometry.DistanceToSegment(p, k.A, k.B) <= SlabEdgeJoinMm);
+                foreach (var s in segments)
+                {
+                    bool along = keptSegs.Any(k =>
+                        LoopGeometry.PerpendicularDistance(s.Start, k.A, k.B) <= SlabEdgeJoinMm && LoopGeometry.PerpendicularDistance(s.End, k.A, k.B) <= SlabEdgeJoinMm
+                        && (LoopGeometry.DistanceToSegment(s.Start, k.A, k.B) <= SlabEdgeJoinMm || LoopGeometry.DistanceToSegment(s.End, k.A, k.B) <= SlabEdgeJoinMm));
+                    if (!along) continue;
+                    bool covered = new[] { 0.25, 0.5, 0.75 }.All(f => OnKeptSeg(new DxfPoint(s.Start.X + f * (s.End.X - s.Start.X), s.Start.Y + f * (s.End.Y - s.Start.Y))));
+                    if (!covered) pieces.Add(new[] { s.Start, s.End });
+                }
+            }
             // A STROKE ON THE GRID IS A PIECE OF THE EDGE (intake step 131, 2026-09-19). Step 78 offered the strokes along
             // a grid axis to the arrangement as drawn, and only the drawn lines' chains were bridged in line across a
             // column's box (step 78) and carried through a column two edges meet at (step 97). 30990's tower draws its
@@ -2018,7 +2082,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // The pieces go to the arrangement, not to the walk: a bridge in line with a room wall's piece turns the walk into
             // the room (the architect's set lost its 32,076 sq ft outline to them on six storeys, measured 2026-09-15), where
             // in the arrangement an extra edge is one more cell boundary and the outline's own cells still unite.
-            var inLine = BridgesInLine(pieceSegments, SlabEdgeExtendMm, SlabEdgeJoinMm);
+            // ON ONE LINE IS WITHIN AN INCH, NOT A MILLIMETRE (step 170): the same view resumes its west edge 4 mm off the
+            // line it stopped on - 0.04 mm on the paper at 1:100 - and the pair was judged two lines.
+            var inLine = BridgesInLine(pieceSegments, SlabEdgeExtendMm, off170 ? SlabEdgeJoinMm : SlabEdgeInLineMm);
 
             // ⛔ MEASURED AND REJECTED 2026-09-10: offering the small CLOSED loops to this pass too.
             // 31168's BLDG A L4-L14 view draws its tower corners as their own 5,133 x 5,186 mm
@@ -3145,6 +3211,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// <summary>Endpoints this close are one corner of a ring, in millimetres: the intake reads a
         /// PDF's own coordinates, which meet exactly where the drafter closed a polyline.</summary>
         public const double SlabEdgeJoinMm = 1.0;
+
+        /// <summary>Two pieces of a slab edge this far off each other's line are still one line (step 170): an inch, the
+        /// drafter's own precision at 1:100 (0.25 mm on the paper).</summary>
+        public const double SlabEdgeInLineMm = 25.4;
 
         /// <summary>Two chain ends this close are one edge broken by what crossed it: a hand's width, the DXF side's own bridge (6 in). The compiled default of dxf.bridge-tolerance (PdfIntakeOptions.SlabEdgeBridgeMm).</summary>
         public const double DefaultSlabEdgeBridgeMm = 6 * 25.4;
