@@ -69,7 +69,10 @@ public sealed class BdTrackingViewModel : INotifyPropertyChanged, Kor.Operations
 
     /// <summary>Bindable copies of the static option lists so XAML DataContext=VM works through.</summary>
     public IReadOnlyList<string> RegionOptions => Regions;
-    public IReadOnlyList<string> InitiatorOptionsList => InitiatorOptions;
+    // The people in the list, by full name, rebuilt on every load: a fixed first-name list offered "John" for two people and
+    // could not separate them (audit M5, 2026-10-21). The fixed list stays only as the before-load placeholder.
+    private IReadOnlyList<string> _initiatorOptions = InitiatorOptions;
+    public IReadOnlyList<string> InitiatorOptionsList => _initiatorOptions;
 
     /// <summary>All loaded rows. Filtered for display via FilteredEngagements.</summary>
     public ObservableCollection<BdTrackingEngagementRow> Engagements { get; } = new();
@@ -109,11 +112,11 @@ public sealed class BdTrackingViewModel : INotifyPropertyChanged, Kor.Operations
         }
     }
 
-    // The options are first names; the rows hold logins ("cmurtagh@…"), so a plain comparison matched nothing and every
-    // person filter showed an empty list (found 2026-10-21). Match the first name of the person the login belongs to.
-    private static bool IsInitiator(BdTrackingEngagementRow r, string firstName)
-        => string.Equals(r.Initiator, firstName, StringComparison.OrdinalIgnoreCase)
-        || r.InitiatorDisplay.StartsWith(firstName + " ", StringComparison.OrdinalIgnoreCase);
+    // The rows hold logins ("cmurtagh@…"); the choice is the person's full name, so match on the name the login resolves to
+    // (a raw comparison matched nothing and every person filter showed an empty list, found 2026-10-21).
+    private static bool IsInitiator(BdTrackingEngagementRow r, string name)
+        => string.Equals(r.InitiatorDisplay, name, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(r.Initiator, name, StringComparison.OrdinalIgnoreCase);
 
     private void RefreshFiltered()
     {
@@ -292,6 +295,16 @@ ORDER   BY e.Region, e.OwnerStaffId, BuyerDisplayName;";
 
             Engagements.Clear();
             foreach (var row in rows) Engagements.Add(row);
+            _initiatorOptions = new[] { AllInitiators }
+                .Concat(rows.Select(r => r.InitiatorDisplay).Where(n => n.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+            OnPropertyChanged(nameof(InitiatorOptionsList));
+            if (!_initiatorOptions.Contains(_selectedInitiator, StringComparer.OrdinalIgnoreCase))
+            {
+                _selectedInitiator = AllInitiators;
+                OnPropertyChanged(nameof(SelectedInitiator));
+            }
 
             // Round 37c: materialize the filtered view exactly once per load;
             // setters then mutate it directly via RefreshFiltered.

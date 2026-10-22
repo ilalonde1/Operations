@@ -86,8 +86,41 @@ public interface IPursuitOverwatchStore
         CancellationToken ct);
 }
 
+/// <summary>A reassignment whose new owner was never told: no "Take over…" item reached their My day after it.</summary>
+public sealed record UnnoticedReassignment(long EngagementId, string Project, string? Buyer, string ToOwner, string? FromOwner,
+    DateTimeOffset? DeadlineUtc, string? Reason);
+
 public sealed class SqlPursuitOverwatchStore : IPursuitOverwatchStore
 {
+    // Every notice adds a "Take over…" ask for the new owner (PursuitAssignmentNotice), so a reassignment of the last 14 days
+    // with no such ask after it is one whose notice never ran: the app closed between saving the move and telling the person
+    // (audit C20, 2026-10-21). Only the actor's own moves, still owned by the person they were given to.
+    private const string UnnoticedSql = @"
+SELECT g.EngagementId, COALESCE(o.Name, e.PotentialProjects, N'(unnamed)'), COALESCE(o.BuyerName, co.DisplayName),
+       g.ToStaffId, g.FromStaffId, o.SubmissionDeadlineUtc, g.Reason
+FROM opportunities.OpportunityAssignmentLog g
+JOIN opportunities.CrmEngagements e ON e.Id = g.EngagementId AND e.OwnerStaffId = g.ToStaffId AND e.Stage IN (1, 3)
+LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+LEFT JOIN opportunities.CanonicalOrg co ON co.Id = e.BuyerCanonicalOrgId
+WHERE g.Action = N'Reassign' AND g.ByStaffId = @by AND g.AtUtc >= DATEADD(day, -14, SYSDATETIMEOFFSET())
+  AND g.Id = (SELECT MAX(x.Id) FROM opportunities.OpportunityAssignmentLog x WHERE x.EngagementId = g.EngagementId AND x.Action = N'Reassign')
+  AND NOT EXISTS (SELECT 1 FROM opportunities.BdAsk a
+                  WHERE a.EngagementId = g.EngagementId AND a.ToStaffKey = g.ToStaffId AND a.Ask LIKE N'Take over %' AND a.AskedAtUtc >= g.AtUtc);";
+
+    public async Task<IReadOnlyList<UnnoticedReassignment>> UnnoticedReassignmentsAsync(string by, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(UnnoticedSql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 300).Value = by.Trim();
+        var rows = new List<UnnoticedReassignment>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+            rows.Add(new UnnoticedReassignment(r.GetInt64(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2), r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetString(4), r.IsDBNull(5) ? null : r.GetDateTimeOffset(5), r.IsDBNull(6) ? null : r.GetString(6)));
+        return rows;
+    }
+
     private const int CommandTimeoutSeconds = 30;
 
     // Active stages: Drafting(1), Submitted(3). Won(6)/Lost(7) are closed and
@@ -174,6 +207,9 @@ BEGIN
 END
 ELSE
 BEGIN
+    -- The tender the pursuit holds NOW, read under the row lock the UPDATE above took, not the caller's copy: a card
+    -- loaded before a join or a rejection carried the wrong one (audit C2, 2026-10-21).
+    SET @oppId = (SELECT OpportunityId FROM opportunities.CrmEngagements WHERE Id = @engId);
     IF @oppId IS NOT NULL
         UPDATE opportunities.Opportunities
            SET OwnerStaffId = @to,

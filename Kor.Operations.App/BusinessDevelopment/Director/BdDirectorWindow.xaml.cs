@@ -84,14 +84,23 @@ public partial class BdDirectorWindow : Window
         _initialized = true;
         // Resolve once for both adoption and reassignment, in the existing board's
         // precedence: signed-in identity, configured override, Windows user.
-        _actor = new[] { global::Kor.Operations.OperationsApp.SignedInUserUpn,
-                AppServices.Get<UserOptions>().UserUpnOverride, Environment.UserName }
-            .First(value => !string.IsNullOrWhiteSpace(value))!.Trim();
-        _vm.CurrentActorUpn = _actor;
-        _rhythm?.SetMe(_actor);
+        SetActor(ResolveActor());
         try { AppServices.Get<IBdUiOpenStore>().RecordOpen("BdDirector", _actor); }
         catch (Exception ex) { Log.Warning(ex, "BD Director open instrumentation failed."); }
         await ReloadAsync().ConfigureAwait(true);
+        await SendMissedNoticesAsync().ConfigureAwait(true);
+    }
+
+    // Signed-in identity, configured override, Windows user, in the board's precedence.
+    private static string ResolveActor() => new[] { global::Kor.Operations.OperationsApp.SignedInUserUpn,
+            AppServices.Get<UserOptions>().UserUpnOverride, Environment.UserName }
+        .First(value => !string.IsNullOrWhiteSpace(value))!.Trim();
+
+    private void SetActor(string actor)
+    {
+        _actor = actor;
+        _vm.CurrentActorUpn = actor;
+        _rhythm?.SetMe(actor);
     }
 
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await ReloadAsync().ConfigureAwait(true);
@@ -99,6 +108,9 @@ public partial class BdDirectorWindow : Window
     private async Task ReloadAsync()
     {
         if (_ledgerBusy || _reassignBusy) return;
+        // Opened before sign-in resolved, the window held the bare Windows login, which matches no stored owner; take the
+        // real identity as soon as there is one (audit C13, 2026-10-21, the same fault as the Workspace's Today).
+        if (!_actor.Contains('@') && ResolveActor() is { } resolved && resolved.Contains('@')) SetActor(resolved);
         try
         {
             var director = _vm.LoadAsync(_lifetime.Token);

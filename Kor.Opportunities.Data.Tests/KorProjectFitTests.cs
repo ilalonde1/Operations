@@ -30,6 +30,11 @@ public sealed class KorProjectFitTests
     [InlineData("Energy", "Ridge Wind Turbine Array", false)]
     [InlineData("Mining", "Copper Pit Expansion", false)]
     [InlineData("Transport", "Highway 1 Interchange Reconstruction", false)]
+    [InlineData("Civic", "Substation Road Community Hall", true)]
+    [InlineData("Transportation", "Airport Terminal Expansion", true)]
+    [InlineData("Industrial", "Waste Services Administration Building", true)]
+    [InlineData("Utilities", "Water Treatment Facility Expansion", false)]
+    [InlineData("Infrastructure", "Water Supply Pipeline to School Road", false)]
     public void Shows_buildings_and_keeps_energy_roads_and_plant_out(string? sector, string name, bool ours)
         => Assert.Equal(ours, KorProjectFit.IsKorProject(sector, name));
 }

@@ -31,8 +31,11 @@ public sealed class CrmEngagementRowView
     // a tender is out (Out for bid) or there is no RFP yet (Ian, 2026-10-21).
     public const string NotSubmitted = "Not submitted";
     // A permit or rezoning signal is an opportunity row too, but with no closing date: it is not out for bid.
+    // Past its closing date and still not submitted, it is not out for bid any more (audit C19, 2026-10-21).
     public string StageDisplay => Engagement.Stage == CrmEngagementStage.Drafting
-        ? (Engagement.OpportunityId.HasValue && Opportunity?.SubmissionDeadlineUtc is not null ? "Out for bid" : "No RFP yet")
+        ? (Engagement.OpportunityId.HasValue && Opportunity?.SubmissionDeadlineUtc is { } closes
+            ? (closes < DateTimeOffset.Now ? "Closed, not submitted" : "Out for bid")
+            : "No RFP yet")
         : CrmStageNames.Display(Engagement.Stage);
     public string OwnerDisplay => string.IsNullOrWhiteSpace(Engagement.OwnerStaffId) ? "—" : StaffDisplay.Short(Engagement.OwnerStaffId);
 

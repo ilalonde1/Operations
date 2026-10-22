@@ -22,7 +22,7 @@ public static class KorProjectFit
     private const RegexOptions Opts = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled;
 
     private static readonly Regex Energy = new(
-        @"\b(wind\s+(farm|park|project|power|energy|turbine\w*)|hydro(power)?\s+project|solar\s+project|substation|(oil|gas|crude|lng)\s+pipeline|power\s+(plant|project|station)|geothermal|biomass|bioenergy|lng)\b",
+        @"\b(wind\s+(farm|park|project|power|energy|turbine\w*)|hydro(power)?\s+project|solar\s+project|substation(?!\s+(road|street|avenue|drive|way))|(oil|gas|crude|lng)\s+pipeline|power\s+(plant|project|station)|geothermal|biomass|bioenergy|lng)\b",
         Opts);
 
     private static readonly Regex InfrastructureSector = new(
@@ -35,15 +35,19 @@ public static class KorProjectFit
         @"\b(centre|center|building|hall|facilit(y|ies)|housing|hangar|lab|school|hospital|village|office|workplace|library|museum|arena|pool|aquatic\w*|recreation|courthouse|clinic)\b",
         Opts);
 
-    // Named as a building, but plant: a waste centre, a composting facility at a landfill, a dam's release facility.
-    private static readonly Regex Plant = new(@"\b(waste|generators?|landfill|compost\w*|resource\s+recovery|dam)\b", Opts);
+    // Named as a building, but plant: a waste centre, a composting facility at a landfill, a dam's release facility, a
+    // water treatment facility, a pipeline to a school road.
+    private static readonly Regex Plant = new(@"\b(waste\w*|generators?|landfill|compost\w*|resource\s+recovery|dam|water\s+treatment|treatment\s+plant|pipelines?|water\s+supply)\b", Opts);
+
+    // A building whatever plant word it also carries ("Waste Services Administration Building"; audit, 2026-10-21).
+    private static readonly Regex PlainlyABuilding = new(@"\b(administration\s+building|office\s+building|community\s+hall|airport\s+terminal|terminal\s+building)\b", Opts);
 
     public static bool IsKorProject(string? sector, string? name)
     {
         var n = (name ?? "").Trim();
         if (Energy.IsMatch(n)) return false;
         if (InfrastructureSector.IsMatch((sector ?? "").Trim()))
-            return Building.IsMatch(n) && !Plant.IsMatch(n);
+            return PlainlyABuilding.IsMatch(n) || (Building.IsMatch(n) && !Plant.IsMatch(n));
         return true;
     }
 }

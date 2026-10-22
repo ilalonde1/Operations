@@ -177,18 +177,58 @@ public partial class BdDirectorWindow : IDirectorHomeHost
                 }, "Reassign", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "BD Director: reassigning {Id} failed", r.EngagementId);
+            MessageBox.Show(this, "Could not reassign. Refresh and try again.", "Reassign", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        // The move is saved from here on: a failure telling the person is reported as that, never as "could not reassign"
+        // (audit C20, 2026-10-21). If the window closes before the notice goes, SendMissedNoticesAsync sends it next time.
+        try
+        {
             var warning = await PursuitAssignmentNotice.SendAsync(
                 new PursuitAssignment(r.EngagementId, null, r.Project, r.Buyer, r.DeadlineUtc, to.Mailbox, to.Name, _actor, "Reassigned in BD Director.", from),
                 AppServices.Get<Kor.Operations.Graph.IGraphFacade>(), AppServices.Get<IBdDirectorLedgerStore>(),
                 AppServices.GetOptional<SqlPursuitReviewStore>(), _lifetime.Token).ConfigureAwait(true);
             _vm.Say($"\"{BdDirectorHomeViewModel.Short(r.Project)}\" is now {BdDirectorHomeViewModel.First(to.Name)}'s; they have been told.");
             if (warning is not null) MessageBox.Show(this, "Reassigned. " + warning, "Reassign", MessageBoxButton.OK, MessageBoxImage.Warning);
-            await ReloadAsync().ConfigureAwait(true);
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "BD Director: reassigning {Id} failed", r.EngagementId);
-            MessageBox.Show(this, "Could not reassign. Refresh and try again.", "Reassign", MessageBoxButton.OK, MessageBoxImage.Error);
+            Log.Warning(ex, "BD Director: telling the new owner of {Id} failed", r.EngagementId);
+            MessageBox.Show(this, $"Reassigned to {to.Name}, but telling them did not finish. It will be sent the next time BD Director opens.",
+                "Reassign", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        await ReloadAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Sends the notice for any of this person's reassignments whose new owner was never told (the window closed between
+    /// saving the move and sending). Runs once when BD Director opens; quiet unless something was sent or failed.
+    /// </summary>
+    private async Task SendMissedNoticesAsync()
+    {
+        try
+        {
+            if (AppServices.Get<IPursuitOverwatchStore>() is not SqlPursuitOverwatchStore store) return;
+            foreach (var m in await store.UnnoticedReassignmentsAsync(_actor, _lifetime.Token).ConfigureAwait(true))
+            {
+                var warning = await PursuitAssignmentNotice.SendAsync(
+                    new PursuitAssignment(m.EngagementId, null, m.Project, m.Buyer, m.DeadlineUtc, m.ToOwner, StaffDisplay.Short(m.ToOwner), _actor,
+                        m.Reason ?? "Reassigned in BD Director.", m.FromOwner),
+                    AppServices.Get<Kor.Operations.Graph.IGraphFacade>(), AppServices.Get<IBdDirectorLedgerStore>(),
+                    AppServices.GetOptional<SqlPursuitReviewStore>(), _lifetime.Token).ConfigureAwait(true);
+                _vm.Say($"Told {StaffDisplay.Short(m.ToOwner)} that \"{BdDirectorHomeViewModel.Short(m.Project)}\" is theirs (the notice had not gone)."
+                        + (warning is null ? "" : " " + warning));
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "BD Director: catching up missed reassignment notices failed");
         }
     }
 

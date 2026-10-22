@@ -74,7 +74,12 @@ UPDATE opportunities.MajorProjectsInventory
  WHERE Id = @id
    AND RetiredAtUtc IS NULL
    AND DismissedAtUtc IS NULL
-   AND OwnerStaffId IS NULL;
+   AND OwnerStaffId IS NULL
+   -- Not while a live pursuit still holds the project: released after a tender joined it, the project's pursuit carries
+   -- on, and a second grab made two live pursuits for one project (audit C6, 2026-10-21).
+   AND NOT EXISTS (SELECT 1 FROM opportunities.CrmEngagementProjectLink l
+                   JOIN opportunities.CrmEngagements e ON e.Id = l.EngagementId
+                   WHERE l.MajorProjectsInventoryId = @id AND l.MatchedBy = N'Grab' AND e.Stage IN (1, 3));
 
 IF @@ROWCOUNT = 0
 BEGIN
@@ -88,7 +93,8 @@ BEGIN
         (OpportunityId, Stage, OwnerStaffId, BuyerCanonicalOrgId, PotentialProjects, ExternalSource, ExternalSourceKey, CreatedBy, UpdatedBy)
     OUTPUT inserted.Id INTO @eng
     SELECT NULL, 1, @me, m.ProponentCanonicalOrgId, m.ProjectName, N'Grab.Forward',
-           N'MPI.' + CAST(m.Id AS nvarchar(20)) + N'.' + FORMAT(SYSUTCDATETIME(), N'yyyyMMddHHmmssfff'), @me, @me
+           -- A GUID, not the clock: two grabs of one project in the same millisecond collided on the unique key (audit M8).
+           N'MPI.' + CAST(m.Id AS nvarchar(20)) + N'.' + CONVERT(nvarchar(36), NEWID()), @me, @me
     FROM opportunities.MajorProjectsInventory m
     WHERE m.Id = @id;
     DECLARE @newEng bigint = (SELECT TOP 1 Id FROM @eng);
@@ -115,7 +121,12 @@ END";
       JOIN opportunities.CrmEngagementProjectLink l ON l.EngagementId = e.Id AND l.MatchedBy = N'Grab'
      WHERE l.MajorProjectsInventoryId = @id
        AND e.Stage = 1
-       AND e.OpportunityId IS NULL;
+       AND e.OpportunityId IS NULL
+       -- A pursuit linked to another project that is still held is that project's too: it stays (audit C7, 2026-10-21).
+       AND NOT EXISTS (SELECT 1 FROM opportunities.CrmEngagementProjectLink l2
+                       JOIN opportunities.MajorProjectsInventory m2 ON m2.Id = l2.MajorProjectsInventoryId
+                       WHERE l2.EngagementId = e.Id AND l2.MatchedBy = N'Grab' AND l2.MajorProjectsInventoryId <> @id
+                         AND m2.OwnerStaffId IS NOT NULL);
     INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId) SELECT Id, 8, @me FROM @closed;
 ";
 
@@ -275,8 +286,12 @@ END";
         _connectionString = connectionString;
     }
 
-    public Task<LifecycleOutcome> GrabProjectAsync(long mpiId, string staffUpn, CancellationToken ct)
-        => ExecuteAsync(GrabSql, mpiId, staffUpn, reason: null, ct);
+    // Under the firm-wide grab lock, so a tender grab deciding whether to join cannot interleave with it (audit C5).
+    public async Task<LifecycleOutcome> GrabProjectAsync(long mpiId, string staffUpn, CancellationToken ct)
+    {
+        await using var grabLock = await Crm.PursuitGrabLock.AcquireAsync(_connectionString, ct).ConfigureAwait(false);
+        return await ExecuteAsync(GrabSql, mpiId, staffUpn, reason: null, ct).ConfigureAwait(false);
+    }
 
     public Task<LifecycleOutcome> ReleaseProjectAsync(long mpiId, string staffUpn, CancellationToken ct)
         => ExecuteAsync(ReleaseSql, mpiId, staffUpn, reason: null, ct);

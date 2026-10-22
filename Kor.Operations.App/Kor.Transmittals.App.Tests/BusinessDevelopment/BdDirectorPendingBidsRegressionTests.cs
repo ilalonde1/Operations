@@ -72,7 +72,7 @@ public sealed class BdDirectorPendingBidsRegressionTests
         // A stage-1 pursuit row reads the way BD Director splits it (2026-10-21): no tender yet, or a tender out for bid.
         Assert.Equal("No RFP yet", new CrmEngagementRowView(new CrmEngagement { Stage = CrmEngagementStage.Drafting }, null).StageDisplay);
         Assert.Equal("Out for bid", new CrmEngagementRowView(new CrmEngagement { Stage = CrmEngagementStage.Drafting, OpportunityId = 1 },
-            new Opportunity { SubmissionDeadlineUtc = DateTimeOffset.Now }).StageDisplay);
+            new Opportunity { SubmissionDeadlineUtc = DateTimeOffset.Now.AddDays(5) }).StageDisplay);
         // A rezoning signal is an opportunity row with no closing date: not out for bid.
         Assert.Equal("No RFP yet", new CrmEngagementRowView(new CrmEngagement { Stage = CrmEngagementStage.Drafting, OpportunityId = 1 },
             new Opportunity()).StageDisplay);

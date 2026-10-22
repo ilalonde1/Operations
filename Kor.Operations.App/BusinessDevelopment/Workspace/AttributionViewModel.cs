@@ -69,7 +69,8 @@ public sealed class AttributionViewModel : ObservableObject, IAiContextProvider
         {
             if (_summary is null) return string.Empty;
             var unattributed = _summary.ByOwner.FirstOrDefault(o => o.Owner == "(unattributed)")?.Wins ?? 0;
-            if (unattributed > 0 || _summary.Lost == 0)
+            // Only when some wins really have no person (audit M6: it read "The 0 wins recorded so far..." otherwise).
+            if (unattributed > 0)
             {
                 return $"Wins by person fill in as grabbed pursuits are won. The {unattributed} wins recorded so far "
                      + "came from the fee proposal tracker, which did not record who led them.";
@@ -90,10 +91,11 @@ public sealed class AttributionViewModel : ObservableObject, IAiContextProvider
             _summary = summary;
 
             // Feed keys and logins in words (2026-10-21: "Deltek.CustomProposal", "M.FeeProposalTracking", "(unattributed)").
+            // Sources that read the same in words are one row ("Grab.Forward" and "Grab.APC" are both "Grabbed in the app"; M6).
             BySource.Clear();
-            foreach (var s in summary.BySource)
+            foreach (var g in summary.BySource.GroupBy(s => PlainSource(s.Source)).OrderByDescending(g => g.Sum(s => s.Wins)))
             {
-                BySource.Add(s with { Source = PlainSource(s.Source) });
+                BySource.Add(new AttributionSourceRow(g.Key, g.Sum(s => s.Wins), g.Sum(s => s.WonFee)));
             }
 
             ByOwner.Clear();

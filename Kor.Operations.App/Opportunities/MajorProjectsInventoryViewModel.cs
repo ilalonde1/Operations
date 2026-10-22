@@ -62,6 +62,8 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
 
         FilteredProjectsView = CollectionViewSource.GetDefaultView(Projects);
         FilteredProjectsView.Filter = ProjectFilterPredicate;
+        // The status line counts what is on screen, so it is rewritten whenever any filter refreshes the view (audit M4).
+        ((System.Collections.Specialized.INotifyCollectionChanged)FilteredProjectsView).CollectionChanged += (_, _) => UpdateStatus();
     }
 
     // Lifecycle view chips (migration 284). Active (default) hides removed
@@ -207,13 +209,19 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
                 return false;
             }
 
+            // The list may have been reloaded, and the person may have picked another row, while the action ran (audit M3,
+            // 2026-10-21): update the row with the same Id wherever it is now, and move the selection only if it is
+            // still on that row.
             var updated = localUpdate(row);
-            var index = Projects.IndexOf(row);
+            var index = Projects.ToList().FindIndex(p => p.Id == row.Id);
             if (index >= 0)
             {
                 Projects[index] = updated;
             }
-            Selected = updated;
+            if (Selected is null || Selected.Id == row.Id)
+            {
+                Selected = index >= 0 ? updated : null;
+            }
             FilteredProjectsView.Refresh();
             SetStatus(successMessage, isError: false);
             NotifyLifecycleChanged();
@@ -399,7 +407,6 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
                 ? Projects.FirstOrDefault(p => p.Id == selectedId.Value)
                 : Projects.FirstOrDefault();
             FilteredProjectsView.Refresh();
-            UpdateStatus();
 
             // Apply any filter values that were set before LoadAsync was
             // called (e.g. dashboard bar-chart drill-down). Setting the
@@ -407,6 +414,10 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
             // property setters; clear the slots so a subsequent reload via
             // the Refresh button doesn't re-stamp them.
             ApplyPendingFilters();
+
+            // The status counts the finished view, once loading is over (UpdateStatus waits out IsLoading).
+            IsLoading = false;
+            UpdateStatus();
         }
         catch (OperationCanceledException)
         {
@@ -456,17 +467,20 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
 
     private static bool IsKorProject(MajorProjectRow row) => KorProjectFit.IsKorProject(row.Sector, row.ProjectName);
 
+    // Counts the rows on screen (every filter applied), by province, and says how many "KOR markets only" took out of the
+    // whole list. It counted the whole list before, whatever province or view was picked (audit M4, 2026-10-21).
     private void UpdateStatus()
     {
-        var counted = KorMarketsOnly ? Projects.Where(IsKorProject).ToList() : Projects.ToList();
-        var byProvince = counted
+        if (IsLoading) return;
+        var shown = FilteredProjectsView.Cast<MajorProjectRow>().ToList();
+        var byProvince = shown
             .GroupBy(p => p.Province)
             .OrderBy(g => ProvinceOrder(g.Key))
             .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
             .Select(g => $"{g.Count():N0} {g.Key}");
-        var hidden = Projects.Count - counted.Count;
-        StatusMessage = $"{counted.Count:N0} projects · {string.Join(", ", byProvince)}"
-            + (hidden > 0 ? $"  ·  {hidden:N0} energy, road and plant projects hidden" : "");
+        var hidden = KorMarketsOnly ? Projects.Count(p => !IsKorProject(p)) : 0;
+        StatusMessage = $"{shown.Count:N0} shown" + (shown.Count > 0 ? $" · {string.Join(", ", byProvince)}" : "")
+            + (hidden > 0 ? $"  ·  {hidden:N0} energy, road and plant projects hidden from the list" : "");
     }
 
     private bool ProjectFilterPredicate(object obj)

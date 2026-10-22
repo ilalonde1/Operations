@@ -46,23 +46,31 @@ public partial class BdWorkspaceWindow : IDirectorHomeHost
         return actor;
     }
 
+    // Each load has a number; only the newest applies what it read, and it applies nothing until every read has succeeded,
+    // so Today is never half old and half new, and a failure says so on the screen (audit C14, 2026-10-21).
+    private int _todayGeneration;
+
     private async Task LoadTodayAsync()
     {
         var actor = Actor();
+        var generation = ++_todayGeneration;
         try
         {
             var now = DateTimeOffset.UtcNow;
             var reviews = _services.GetService<SqlPursuitReviewStore>();
             var board = reviews is null ? Array.Empty<TenderBoardRow>() : await reviews.ListBoardAsync(CancellationToken.None).ConfigureAwait(true);
             var asks = await _services.GetRequiredService<IBdDirectorLedgerStore>().ListOpenAsksForAsync(actor, CancellationToken.None).ConfigureAwait(true);
-            var name = string.IsNullOrWhiteSpace(HeaderBar.UserDisplayName) ? null : HeaderBar.UserDisplayName;
-            _today.Load(board, asks, Array.Empty<BdDirectorPersonRow>(), Array.Empty<DirectorPerson>(), actor, name, now, ownOnly: true);
-            _today.LoadJoins(await _services.GetRequiredService<IPursuitGrabStore>().PendingJoinsAsync(actor, CancellationToken.None).ConfigureAwait(true));
-
+            var joins = await _services.GetRequiredService<IPursuitGrabStore>().PendingJoinsAsync(actor, CancellationToken.None).ConfigureAwait(true);
             // Their live pursuits with no next step, or an overdue one: names from the board of every pursuit, steps from the record.
             var rows = await _services.GetRequiredService<IPursuitOverwatchStore>().ListAsync(CancellationToken.None).ConfigureAwait(true);
             var records = (await _services.GetRequiredService<ICrmEngagementStore>().ListAsync(CancellationToken.None).ConfigureAwait(true))
                 .ToDictionary(r => r.Id);
+            if (generation != _todayGeneration) return;
+
+            var name = string.IsNullOrWhiteSpace(HeaderBar.UserDisplayName) ? null : HeaderBar.UserDisplayName;
+            _today.Load(board, asks, Array.Empty<BdDirectorPersonRow>(), Array.Empty<DirectorPerson>(), actor, name, now, ownOnly: true);
+            _today.LoadJoins(joins);
+            _today.LoadProblem = "";
             _today.LoadFollowUps(rows
                 .Where(r => string.Equals(r.OwnerStaffId, actor, StringComparison.OrdinalIgnoreCase) && records.ContainsKey(r.EngagementId))
                 .Select(r => (row: r, rec: records[r.EngagementId]))
@@ -74,6 +82,8 @@ public partial class BdWorkspaceWindow : IDirectorHomeHost
         catch (Exception ex)
         {
             Log.Warning(ex, "BD Workspace: loading Today failed for {Actor}", actor);
+            if (generation == _todayGeneration)
+                _today.LoadProblem = "Today could not be brought up to date, so what is below may be out of date. Click Today again to retry.";
         }
     }
 

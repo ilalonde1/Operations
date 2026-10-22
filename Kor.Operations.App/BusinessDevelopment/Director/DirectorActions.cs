@@ -79,7 +79,9 @@ public static class DirectorActions
     {
         try
         {
-            await AppServices.Get<IPursuitGrabStore>().AcceptJoinAsync(join.Join.EngagementId, actor, ct).ConfigureAwait(true);
+            if (!await AppServices.Get<IPursuitGrabStore>().AcceptJoinAsync(join.Join.EngagementId, join.Join.OpportunityId, actor, ct).ConfigureAwait(true))
+                MessageBox.Show(owner, "This was already settled, or the pursuit has changed since this card loaded. Refresh to see where it is now.",
+                    "Joined pursuit", MessageBoxButton.OK, MessageBoxImage.Information);
             home.RemoveJoin(join);
         }
         catch (Exception ex)
@@ -98,8 +100,9 @@ public static class DirectorActions
                 "Not this project", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
         try
         {
-            if (await AppServices.Get<IPursuitGrabStore>().RejectJoinAsync(join.Join.EngagementId, actor, ct).ConfigureAwait(true) == 0)
-                MessageBox.Show(owner, "This was already settled. Refresh to see where it is now.", "Not this project", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (await AppServices.Get<IPursuitGrabStore>().RejectJoinAsync(join.Join.EngagementId, join.Join.OpportunityId, actor, ct).ConfigureAwait(true) == 0)
+                MessageBox.Show(owner, "This was already settled, or the pursuit has changed since this card loaded. Refresh to see where it is now.",
+                    "Not this project", MessageBoxButton.OK, MessageBoxImage.Information);
             home.RemoveJoin(join);
             await reload().ConfigureAwait(true);
         }

@@ -21,7 +21,7 @@ public sealed class PursuitLifecycleIntegrationTests
     private static string? ConnectionString =>
         Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB");
 
-    [Fact]
+    [DatabaseFact]
     public async Task Grab_ClaimsOpportunity_CreatesOwnedEngagement_LogsAndRecordsStage()
     {
         var cs = ConnectionString;
@@ -61,7 +61,7 @@ public sealed class PursuitLifecycleIntegrationTests
         }
     }
 
-    [Fact]
+    [DatabaseFact]
     public async Task Reassign_MovesOwner_GuardsStaleFrom_AndLogs()
     {
         var cs = ConnectionString;
@@ -108,7 +108,7 @@ public sealed class PursuitLifecycleIntegrationTests
     /// the forward owner whoever pressed Grab; letting the project go then leaves the pursuit alone because it has a tender.
     /// Does NOT cover the app's join prompt or the Worker's document fetch the join asks for.
     /// </summary>
-    [Fact]
+    [DatabaseFact]
     public async Task ForwardGrab_OpensAPursuit_TheTenderJoinsIt_AndKeepClearsNewGrabs()
     {
         var cs = ConnectionString;
@@ -161,9 +161,14 @@ public sealed class PursuitLifecycleIntegrationTests
 
             // The forward owner sees the join the first time it comes up, and accepting settles it.
             Assert.Contains(await grabStore.PendingJoinsAsync(owner, CancellationToken.None), j => j.EngagementId == engId && j.OpportunityId == oppId && j.GrabbedBy == other);
-            await grabStore.AcceptJoinAsync(engId, owner, CancellationToken.None);
+            // Audit C3: someone other than the owner, or a card showing another tender, settles nothing.
+            Assert.False(await grabStore.AcceptJoinAsync(engId, oppId, other, CancellationToken.None));
+            Assert.False(await grabStore.AcceptJoinAsync(engId, oppId + 1_000_000_000, owner, CancellationToken.None));
+            Assert.Equal(0L, await grabStore.RejectJoinAsync(engId, oppId, other, CancellationToken.None));
+            Assert.Contains(await grabStore.PendingJoinsAsync(owner, CancellationToken.None), j => j.EngagementId == engId);
+            Assert.True(await grabStore.AcceptJoinAsync(engId, oppId, owner, CancellationToken.None));
             Assert.DoesNotContain(await grabStore.PendingJoinsAsync(owner, CancellationToken.None), j => j.EngagementId == engId);
-            Assert.Equal(0L, await grabStore.RejectJoinAsync(engId, owner, CancellationToken.None));
+            Assert.Equal(0L, await grabStore.RejectJoinAsync(engId, oppId, owner, CancellationToken.None));
 
             await grabStore.KeepAsync(engId, manager, CancellationToken.None);
             Assert.DoesNotContain(await grabStore.RecentGrabsAsync(manager, CancellationToken.None), g => g.EngagementId == engId);
@@ -195,7 +200,7 @@ public sealed class PursuitLifecycleIntegrationTests
     /// step it set go with it, re-pointed to the grabber; the forward pursuit is left as it was before the join. Does NOT cover
     /// files, fetch records, reviews or checklist rows moving (same statement shape, no fixture for them here).
     /// </summary>
-    [Fact]
+    [DatabaseFact]
     public async Task ForwardJoin_Rejected_TheTenderBecomesTheGrabbersOwnPursuit()
     {
         var cs = ConnectionString;
@@ -252,7 +257,7 @@ UPDATE opportunities.CrmEngagements SET Stage = 3 WHERE Id = @e;", con))
                 await arrive.ExecuteNonQueryAsync();
             }
 
-            newEng = await grabStore.RejectJoinAsync(engId, owner, CancellationToken.None);
+            newEng = await grabStore.RejectJoinAsync(engId, oppId, owner, CancellationToken.None);
             Assert.True(newEng > 0 && newEng != engId, $"EXPECTED a new pursuit; ACTUAL {newEng}");
             Assert.Equal(newEng, await ScalarAsync<long>(con, "SELECT EngagementId FROM opportunities.OpportunityFiles WHERE FileName=N'AUDITTEST portal RFP.pdf' AND OpportunityId=@p0", oppId));
             Assert.Equal(engId, await ScalarAsync<long>(con, "SELECT EngagementId FROM opportunities.OpportunityFiles WHERE FileName=N'AUDITTEST owner drawing.pdf' AND OpportunityId=@p0", oppId));
@@ -271,7 +276,7 @@ UPDATE opportunities.CrmEngagements SET Stage = 3 WHERE Id = @e;", con))
             Assert.Equal("AUDITTEST pick references", await ScalarAsync<string>(con, "SELECT NextActionNote FROM opportunities.CrmEngagements WHERE Id=@p0", newEng));
             Assert.Equal(1, await ScalarAsync<int>(con, "SELECT COUNT(*) FROM opportunities.CrmEngagements WHERE Id=@p0 AND NextActionNote IS NULL", engId));
             Assert.DoesNotContain(await grabStore.PendingJoinsAsync(owner, CancellationToken.None), j => j.EngagementId == engId);
-            Assert.Equal(0L, await grabStore.RejectJoinAsync(engId, owner, CancellationToken.None));
+            Assert.Equal(0L, await grabStore.RejectJoinAsync(engId, oppId, owner, CancellationToken.None));
         }
         finally
         {
@@ -294,8 +299,70 @@ UPDATE opportunities.CrmEngagements SET Stage = 3 WHERE Id = @e;", con))
         }
     }
 
+    /// <summary>
+    /// Audit C6, 2026-10-21: a project released while a tender is joined to its pursuit cannot be grabbed again while that
+    /// pursuit lives (that made two live pursuits for one project), and rejecting the join afterwards gives the owner the
+    /// project back. Covers release, regrab and reject in that order; not dismiss-then-reject.
+    /// </summary>
+    [DatabaseFact]
+    public async Task ForwardRelease_WhileJoined_ProjectIsNotGrabbedTwice_AndRejectGivesItBack()
+    {
+        var cs = ConnectionString!;
+        var owner = "audittest-forward@korstructural.com";
+        var grabber = "audittest-grabber@korstructural.com";
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var lifecycle = new Kor.Opportunities.Data.MajorProjects.SqlPursuitLifecycleStore(cs);
+        var grabStore = new SqlPursuitGrabStore(cs);
+        long mpiId = 0, oppId = 0, engId = 0, newEng = 0;
+        await using var con = new SqlConnection(cs);
+        await con.OpenAsync();
+        try
+        {
+            await using (var insert = new SqlCommand(
+                "INSERT INTO opportunities.MajorProjectsInventory (Province, SourceKey, ProjectName) OUTPUT inserted.Id VALUES (N'AB', @k, @n);", con))
+            {
+                insert.Parameters.AddWithValue("@k", $"AUDITTEST-{tag}");
+                insert.Parameters.AddWithValue("@n", $"Releaseburg {tag} Arena Replacement");
+                mpiId = (long)(await insert.ExecuteScalarAsync())!;
+            }
+            await lifecycle.GrabProjectAsync(mpiId, owner, CancellationToken.None);
+            engId = await ScalarAsync<long>(con, "SELECT EngagementId FROM opportunities.CrmEngagementProjectLink WHERE MajorProjectsInventoryId=@p0 AND MatchedBy=N'Grab'", mpiId);
+            oppId = (await new SqlOpportunityStore(cs).InsertAsync(new Opportunity
+            {
+                OpportunityKey = $"AUDITTEST-{Guid.NewGuid():N}", Name = $"RFP Releaseburg {tag} Arena Replacement Prime Consultant",
+                BuyerName = "AUDITTEST Releaseburg", ProjectProvince = "AB", Status = OpportunityStatus.New,
+            }, grabber, CancellationToken.None)).Id;
+            Assert.Equal(engId, (await grabStore.GrabAsync(oppId, grabber, CancellationToken.None)).EngagementId);
+
+            Assert.Equal(Kor.Opportunities.Data.MajorProjects.LifecycleOutcome.Applied, await lifecycle.ReleaseProjectAsync(mpiId, owner, CancellationToken.None));
+            Assert.NotEqual(Kor.Opportunities.Data.MajorProjects.LifecycleOutcome.Applied, await lifecycle.GrabProjectAsync(mpiId, owner, CancellationToken.None));
+            Assert.Equal(1, await ScalarAsync<int>(con, "SELECT COUNT(*) FROM opportunities.CrmEngagementProjectLink WHERE MajorProjectsInventoryId=@p0 AND MatchedBy=N'Grab'", mpiId));
+
+            newEng = await grabStore.RejectJoinAsync(engId, oppId, owner, CancellationToken.None);
+            Assert.True(newEng > 0);
+            Assert.Equal(owner, await ScalarAsync<string>(con, "SELECT OwnerStaffId FROM opportunities.MajorProjectsInventory WHERE Id=@p0", mpiId));
+            Assert.Equal(1, await ScalarAsync<int>(con, "SELECT Stage FROM opportunities.CrmEngagements WHERE Id=@p0", engId));
+        }
+        finally
+        {
+            foreach (var e in new[] { engId, newEng }.Where(e => e > 0))
+            {
+                await ExecAsync(con, "DELETE FROM opportunities.OpportunityAssignmentLog WHERE EngagementId=@p0", e);
+                await ExecAsync(con, "DELETE FROM opportunities.CrmEngagementStageHistory WHERE EngagementId=@p0", e);
+                await ExecAsync(con, "DELETE FROM opportunities.CrmEngagementProjectLink WHERE EngagementId=@p0", e);
+                await ExecAsync(con, "DELETE FROM opportunities.CrmEngagements WHERE Id=@p0", e);
+            }
+            if (mpiId > 0)
+            {
+                await ExecAsync(con, "DELETE FROM opportunities.OpportunityAssignmentLog WHERE MpiId=@p0", mpiId);
+                await ExecAsync(con, "DELETE FROM opportunities.MajorProjectsInventory WHERE Id=@p0", mpiId);
+            }
+            await CleanupAsync(cs, oppId);
+        }
+    }
+
     /// <summary>A forward project with nothing joined, let go: its pursuit is archived (kept, out of live counts), not deleted.</summary>
-    [Fact]
+    [DatabaseFact]
     public async Task ForwardRelease_ArchivesThePursuitItsGrabOpened()
     {
         var cs = ConnectionString;

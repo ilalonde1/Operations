@@ -23,6 +23,15 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
+    /// <summary>Said at the top of Today when a load failed, so old or missing cards never pass for current (audit C14).</summary>
+    public string LoadProblem
+    {
+        get => _loadProblem;
+        set { if (_loadProblem == value) return; _loadProblem = value; Changed(); Changed(nameof(HasLoadProblem)); }
+    }
+    private string _loadProblem = "";
+    public bool HasLoadProblem => _loadProblem.Length > 0;
+
     public ObservableCollection<DirectorCard> Decisions { get; } = new();
     public ObservableCollection<DirectorWeekItem> Week { get; } = new();
     public ObservableCollection<DirectorListItem> MyList { get; } = new();
@@ -349,9 +358,13 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
     }
 
     /// <summary>Text without its citations: "(Schedule B 2.1; McCuaig FCA 3.1.1)" and "(RFP 6.1.6)" belong in the review, not on a card.</summary>
+    // Only real references go: a citation word, or a section number like 6.1.3. A bracket that is part of the question
+    // ("(3 comparable school projects)") stays, and "(see RFP 6.1)" goes (audit C15, 2026-10-21).
     internal static string Uncited(string text)
     {
-        var t = Regex.Replace(text, @"\s*\((RFP|Schedule|Appendix|Section|FCA|McCuaig|Addendum|Sch\.|s\.|p\.|pp\.|page|Part|Article|Clause|\d)[^()]*\)", "", RegexOptions.IgnoreCase);
+        var t = Regex.Replace(text,
+            @"\s*\((see\s+)?(RFP|Schedule|Appendix|Section|FCA|McCuaig|Addendum|Sch\.|s\.|p\.|pp\.|page|Part|Article|Clause)\b[^()]*\)|\s*\(\d+(\.\d+)+[^()]*\)",
+            "", RegexOptions.IgnoreCase);
         return Regex.Replace(t, @"\s+([.,;:?!])", "$1").Trim();
     }
 
@@ -449,11 +462,15 @@ public sealed class DirectorCard : INotifyPropertyChanged
         var sentences = Regex.Split(plain, @"(?<=[.?!])\s+(?=[A-Z])").Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
         var questions = sentences.Where(s => s.EndsWith('?'))
             .Select(s => Regex.Replace(s, @"^(First|Second|Third|Fourth|Finally|Also|And),?\s+", "", RegexOptions.IgnoreCase))
-            .Select(s => char.ToUpperInvariant(s[0]) + s[1..]).Take(3).ToList();
+            .Select(s => char.ToUpperInvariant(s[0]) + s[1..]).ToList();
         if (questions.Count > 0)
         {
-            PointsLead = questions.Count == 1 ? "It comes down to one question" : $"It comes down to {(questions.Count == 2 ? "two" : "three")} questions";
-            Points = questions;
+            // The lead says how many there are, and the card says how many more the review holds, rather than calling four
+            // questions "three" (audit C15, 2026-10-21).
+            var asked = questions.Count;
+            var count = asked switch { 1 => "one question", 2 => "two questions", 3 => "three questions", 4 => "four questions", 5 => "five questions", _ => $"{asked} questions" };
+            PointsLead = $"It comes down to {count}";
+            Points = asked <= 3 ? questions : questions.Take(3).Append($"…and {asked - 3} more in the review.").ToList();
         }
         else
         {

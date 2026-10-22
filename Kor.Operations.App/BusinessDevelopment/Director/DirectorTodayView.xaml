@@ -17,6 +17,11 @@
             <StackPanel Grid.ColumnSpan="3" Margin="0,0,0,28">
                 <TextBlock Text="{Binding Greeting}" Style="{StaticResource D.Title}"/>
                 <TextBlock Text="{Binding Subtitle}" FontSize="14" Foreground="{StaticResource D.Ink2}" Margin="0,4,0,0"/>
+                <!-- A failed load says so: the cards below are then the last good ones, not today's (audit C14, 2026-10-21). -->
+                <Border Margin="0,12,0,0" Padding="12,8" CornerRadius="6" Background="#FEF2F2" BorderBrush="#FCA5A5" BorderThickness="1"
+                        HorizontalAlignment="Left" Visibility="{Binding HasLoadProblem, Converter={StaticResource Vis}}">
+                    <TextBlock Text="{Binding LoadProblem}" Foreground="#991B1B" FontSize="13" TextWrapping="Wrap"/>
+                </Border>
             </StackPanel>
 
             <StackPanel Grid.Row="1">

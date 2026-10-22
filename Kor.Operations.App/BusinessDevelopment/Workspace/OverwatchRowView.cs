@@ -60,7 +60,9 @@ public sealed class OverwatchRowView
     public string OwnerDisplay => StaffDisplay.Short(Row.OwnerStaffId);
     /// <summary>The same words as My Pursuits and BD Director: "Drafting" was the enum's name, not anyone's (2026-10-21).</summary>
     public string StageDisplay => (CrmEngagementStage)Row.Stage == CrmEngagementStage.Drafting
-        ? (Row.OpportunityId.HasValue && Row.DeadlineUtc.HasValue ? "Out for bid" : "No RFP yet")
+        ? (Row.OpportunityId.HasValue && Row.DeadlineUtc is { } closes
+            ? (closes < DateTimeOffset.Now ? "Closed, not submitted" : "Out for bid")
+            : "No RFP yet")
         : CrmStageNames.Display((CrmEngagementStage)Row.Stage);
     public string ProjectName => Row.ProjectName == "(unnamed)" ? "No project named yet" : Row.ProjectName;
     public string Buyer => Row.Buyer;

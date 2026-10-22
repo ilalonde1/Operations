@@ -174,7 +174,8 @@ public sealed class BdCrmClarityRegressionTests
         // Ian, 21 Oct 2026: tracker win rates are wrong (most pursuits never closed); none is shown.
         Assert.DoesNotContain("rate", vm.AnalyticsHeadline, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("%", vm.AnalyticsHeadline, StringComparison.Ordinal);
-        Assert.Equal("Loaded 5 pursuits.", vm.StatusMessage);
+        // No signed-in person in this test, so "Mine" cannot apply and the footer says so (audit C18, 2026-10-21).
+        Assert.Equal("Could not tell who is signed in, so this shows everyone's pursuits (5 in the firm). Sign in again to see only yours.", vm.StatusMessage);
 
         rows.Add(new CrmEngagement { Id = 6, Stage = CrmEngagementStage.Won, ProposedFee = 90000m, ExternalSource = "Deltek.CustomProposal" });
         await vm.LoadAsync(CancellationToken.None);
@@ -191,7 +192,7 @@ public sealed class BdCrmClarityRegressionTests
         rows.RemoveRange(1, 3);
         await vm.LoadAsync(CancellationToken.None);
         Assert.StartsWith("1 pursuit  •", vm.AnalyticsHeadline);
-        Assert.Equal("Loaded 1 pursuit.", vm.StatusMessage);
+        Assert.Equal("Could not tell who is signed in, so this shows everyone's pursuits (1 in the firm). Sign in again to see only yours.", vm.StatusMessage);
         rows.Clear();
         await vm.LoadAsync(CancellationToken.None);
         Assert.Equal("No pursuits yet — promote an opportunity from the Opportunities window to start one.", vm.StatusMessage);

@@ -88,8 +88,12 @@ SELECT {AllColumns}
 FROM opportunities.IndustryEvents
 WHERE RetiredAtUtc IS NULL
   -- A one-day event has no EndDate: its StartDate is when it ends. Without the COALESCE, September events headed the
-  -- Events screen in late October (2026-10-21). An event with neither date stays listed.
-  AND (COALESCE(EndDate, StartDate) IS NULL OR COALESCE(EndDate, StartDate) >= CAST(SYSDATETIMEOFFSET() AS date))
+  -- Events screen in late October (2026-10-21). A conference or trade show missing its EndDate is given two more days
+  -- rather than vanishing on its first (audit C17). An event with neither date stays listed. ""Today"" is the SQL server's
+  -- date, and the server runs on Pacific time (checked 2026-10-21: offset -07:00), KOR's business day.
+  AND (COALESCE(EndDate, StartDate) IS NULL
+       OR COALESCE(EndDate, CASE WHEN EventType IN (N'conference', N'tradeshow', N'summit') THEN DATEADD(day, 2, StartDate) ELSE StartDate END)
+          >= CAST(SYSDATETIMEOFFSET() AS date))
 ORDER BY
     CASE WHEN StartDate IS NULL THEN 1 ELSE 0 END,
     StartDate,

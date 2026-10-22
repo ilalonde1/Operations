@@ -68,7 +68,11 @@ OUTPUT inserted.Id INTO @closed
  WHERE e.Stage = 1 AND e.OpportunityId IS NULL
    -- The same guard again, on the row being archived: a next step set between the two statements keeps the pursuit
    -- (audit C4, 2026-10-21).
-   AND NOT (e.NextActionDueUtc >= SYSDATETIMEOFFSET() OR e.UpdatedAtUtc >= @cutoff);
+   AND NOT (e.NextActionDueUtc >= SYSDATETIMEOFFSET() OR e.UpdatedAtUtc >= @cutoff)
+   -- Nor a pursuit that also holds another project someone still owns (audit C7).
+   AND NOT EXISTS (SELECT 1 FROM opportunities.CrmEngagementProjectLink l2
+                   JOIN opportunities.MajorProjectsInventory m2 ON m2.Id = l2.MajorProjectsInventoryId
+                   WHERE l2.EngagementId = e.Id AND l2.MatchedBy = N'Grab' AND m2.OwnerStaffId IS NOT NULL);
 INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId) SELECT Id, 8, N'system:reaper' FROM @closed;
 
 INSERT INTO opportunities.OpportunityAssignmentLog (MpiId, Action, FromStaffId, ByStaffId, Reason)

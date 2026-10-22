@@ -103,7 +103,7 @@
                 <TextBlock Text="Region:" Margin="0,4,6,0" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
                 <TextBlock Text="{Binding SelectedRegion}" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}" Margin="0,4,16,0"/>
                 <TextBlock Text="Initiator:" Margin="0,4,6,0" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
-                <ComboBox x:Name="InitiatorCombo" Width="120" SelectedValue="{Binding SelectedInitiator}" ItemsSource="{Binding InitiatorOptionsList}"/>
+                <ComboBox x:Name="InitiatorCombo" Width="180" SelectedValue="{Binding SelectedInitiator}" ItemsSource="{Binding InitiatorOptionsList}"/>
             </StackPanel>
 
             <Border Grid.Column="1" Style="{StaticResource Card}" Padding="14,8" Background="{StaticResource Panel.Background}">

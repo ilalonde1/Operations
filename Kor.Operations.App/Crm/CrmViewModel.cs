@@ -113,6 +113,14 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             || (e.AssignedStaffIds ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Any(s => string.Equals(s, actor, StringComparison.OrdinalIgnoreCase)));
 
+    // The footer says which population the list is, and is rewritten whenever "Mine" flips (audit M4), and says plainly when
+    // "Mine" could not be applied because the signed-in person is unknown (audit C18, 2026-10-21).
+    private string FooterText(int total) => !_mineOnly
+        ? $"Everyone's pursuits: {total:N0} in the firm."
+        : string.IsNullOrWhiteSpace(CurrentActorUpn)
+            ? $"Could not tell who is signed in, so this shows everyone's pursuits ({total:N0} in the firm). Sign in again to see only yours."
+            : $"Your pursuits. {total:N0} in the firm: turn off \"Mine\" to see everyone's.";
+
     // With no signed-in actor (render harness, a failed identity lookup) "Mine" cannot be decided, so it shows everyone's.
     private bool PassesMine(CrmEngagementRowView row)
         => !_mineOnly || string.IsNullOrWhiteSpace(CurrentActorUpn) || IsMine(row.Engagement, CurrentActorUpn);
@@ -133,25 +141,15 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             return false;
         }
 
-        if (!PassesMine(row))
-        {
-            return false;
-        }
+        return PassesMine(row) && PassesSearch(row);
+    }
 
-        if (!string.IsNullOrWhiteSpace(_searchText))
-        {
-            var q = _searchText.Trim();
-            var hit = Contains(row.OpportunityKey, q)
-                   || Contains(row.ProjectName, q)
-                   || Contains(row.Buyer, q)
-                   || Contains(row.OwnerDisplay, q);
-            if (!hit)
-            {
-                return false;
-            }
-        }
-
-        return true;
+    // Shared by the list and the stage pills, so a pill never counts rows the list cannot show (audit M4, 2026-10-21).
+    private bool PassesSearch(CrmEngagementRowView row)
+    {
+        if (string.IsNullOrWhiteSpace(_searchText)) return true;
+        var q = _searchText.Trim();
+        return Contains(row.OpportunityKey, q) || Contains(row.ProjectName, q) || Contains(row.Buyer, q) || Contains(row.OwnerDisplay, q);
 
         static bool Contains(string? s, string q)
             => !string.IsNullOrEmpty(s) && s.Contains(q, StringComparison.OrdinalIgnoreCase);
@@ -166,7 +164,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             if (SetField(ref _searchText, value ?? string.Empty))
             {
                 _searchDebouncer.Run(async () =>
-                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(RefreshEngagementsView));
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => { RebuildStageChips(); RefreshEngagementsView(); }));
             }
         }
     }
@@ -181,6 +179,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             {
                 RebuildStageChips();
                 RefreshEngagementsView();
+                if (Engagements.Count > 0) StatusMessage = FooterText(Engagements.Count);
             }
         }
     }
@@ -203,7 +202,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     {
         StageSummary.Clear();
         // The pills count what the list can show: with "Mine" on, they are your pursuits, not the firm's.
-        var rows = Engagements.Where(PassesMine).Select(r => r.Engagement).ToList();
+        var rows = Engagements.Where(r => PassesMine(r) && PassesSearch(r)).Select(r => r.Engagement).ToList();
 
         var liveCount = rows.Count(e => e.Stage is CrmEngagementStage.Drafting or CrmEngagementStage.Submitted);
         StageSummary.Add(new StageChip(
@@ -451,9 +450,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 
             StatusMessage = engagements.Count == 0
                 ? "No pursuits yet — promote an opportunity from the Opportunities window to start one."
-                : _mineOnly && !string.IsNullOrWhiteSpace(CurrentActorUpn)
-                    ? $"Your pursuits. {engagements.Count:N0} in the firm: turn off \"Mine\" to see everyone's."
-                    : $"Loaded {engagements.Count} pursuit{(engagements.Count == 1 ? "" : "s")}.";
+                : FooterText(engagements.Count);
         }
         catch (OperationCanceledException)
         {

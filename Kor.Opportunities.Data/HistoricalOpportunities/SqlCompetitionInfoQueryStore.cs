@@ -95,7 +95,10 @@ WHERE 1 = 1
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sb.ToString(), con) { CommandTimeout = CommandTimeoutSeconds };
-        cmd.Parameters.Add("@maxRows", SqlDbType.Int).Value = maxRows;
+        // With "KOR markets only" the cap applies AFTER the KOR-work filter, not before it: capping first could fill the
+        // cap with non-building rows and never reach an older school (audit C12, 2026-10-21). The read is then the whole
+        // filtered archive (10,194 rows on 2026-10-21), which this query handles in a second.
+        cmd.Parameters.Add("@maxRows", SqlDbType.Int).Value = f.KorRelevantOnly == true ? int.MaxValue : maxRows;
         if (!string.IsNullOrWhiteSpace(f.KeywordLike))
             cmd.Parameters.Add("@kw", SqlDbType.NVarChar, 200).Value = "%" + f.KeywordLike.Trim() + "%";
         if (f.Year.HasValue)
@@ -144,7 +147,7 @@ WHERE 1 = 1
 
         // "KOR markets only" means KOR's kind of work, by the same tested rule the lead lists use (KorBidFit; Ian, 2026-10-21:
         // the archive still showed road construction and tree planting under a keyword list of janitorial and snow removal).
-        return f.KorRelevantOnly == true ? rows.Where(r => KorBidFit.IsKorWork(r.Name)).ToList() : rows;
+        return f.KorRelevantOnly == true ? rows.Where(r => KorBidFit.IsKorWork(r.Name)).Take(maxRows).ToList() : rows;
     }
 
     public async Task<HistoricalOpportunityDetail?> GetDetailAsync(long historicalOpportunityId, CancellationToken ct)
