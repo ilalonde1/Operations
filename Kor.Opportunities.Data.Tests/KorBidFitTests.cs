@@ -10,9 +10,9 @@ namespace Kor.Opportunities.Data.Tests;
 // figures (precision 64/67, recall 64/68): a change that lets in road work or drops consultant work fails here.
 public sealed class KorBidFitTests
 {
-    private static IEnumerable<(long Id, bool Ours, string Title)> Labels()
+    private static IEnumerable<(long Id, bool Ours, string Title)> Labels(string file = "KorBidFitLabels-2026-10-20.tsv")
     {
-        using var stream = typeof(KorBidFitTests).Assembly.GetManifestResourceStream("Kor.Opportunities.Data.Tests.Fixtures.KorBidFitLabels-2026-10-20.tsv")!;
+        using var stream = typeof(KorBidFitTests).Assembly.GetManifestResourceStream("Kor.Opportunities.Data.Tests.Fixtures." + file)!;
         using var reader = new StreamReader(stream);
         while (reader.ReadLine() is { } line)
         {
@@ -34,6 +34,24 @@ public sealed class KorBidFitTests
         Assert.True(wrong.Count <= 3, "Shown but not KOR work:\n" + string.Join("\n", wrong));
         Assert.True(missed.Count <= 4, "KOR work the rule misses:\n" + string.Join("\n", missed));
         Assert.Equal(64, right);
+    }
+
+    // The tender archive (Market History) is a different population: its "consulting services" are as often payroll, IT or
+    // HR as buildings. 732 titles labelled by hand on 2026-10-21: every one the 2026-10-20 rule showed (432, of which 174
+    // were KOR work) and a fixed random 300 of the 9,760 it hid (1 was). Floors are the measured figures after the archive
+    // vocabulary (precision 175/187, recall 175/176). The 300 hidden ones are a sample: a miss outside it is not counted.
+    // Still shown wrongly: titles that say only "Consulting Services", and road design-builds named by their streets.
+    [Fact]
+    public void Shows_KOR_work_in_the_tender_archive_and_keeps_business_and_IT_consulting_out()
+    {
+        var rows = Labels("KorBidFitArchiveLabels-2026-10-21.tsv").ToList();
+        Assert.Equal(732, rows.Count);
+        var shown = rows.Where(r => KorBidFit.IsKorWork(r.Title)).ToList();
+        var wrong = shown.Where(r => !r.Ours).Select(r => $"{r.Id} {r.Title}").ToList();
+        var missed = rows.Where(r => r.Ours && !KorBidFit.IsKorWork(r.Title)).Select(r => $"{r.Id} {r.Title}").ToList();
+        Assert.True(wrong.Count <= 12, "Shown but not KOR work:\n" + string.Join("\n", wrong));
+        Assert.True(missed.Count <= 1, "KOR work the rule misses:\n" + string.Join("\n", missed));
+        Assert.Equal(175, shown.Count(r => r.Ours));
     }
 
     [Theory]

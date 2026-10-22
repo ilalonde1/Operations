@@ -2,10 +2,12 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Ingestion;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.Opportunities.Data.HistoricalOpportunities;
@@ -13,69 +15,6 @@ namespace Kor.Opportunities.Data.HistoricalOpportunities;
 public sealed class SqlCompetitionInfoQueryStore : ICompetitionInfoQueryStore
 {
     private const int CommandTimeoutSeconds = 30;
-
-    // Round 55: view-only noise filter — never affects ingestion. Applied
-    // ONLY when KorRelevantOnly is true. These are titles that the historical
-    // archive carries but KOR (structural engineering for buildings) is
-    // never going to bid on. Patterns are case-insensitive LIKEs against
-    // both Name and Commodities. Untick "KOR markets only" to bypass.
-    //
-    // Add a term here when a new noise pattern recurs in ss screenshots —
-    // safer to over-include than to add weak positive heuristics that risk
-    // dropping real structural work.
-    private static readonly string[] NoiseTerms =
-    {
-        "snow removal",
-        "snow plow",
-        "janitorial",
-        "janitor service",
-        "cleaning service",
-        "carpet cleaning",
-        "window cleaning",
-        "supply truck",
-        "utility truck",
-        "dump truck",
-        "garbage truck",
-        "vehicle parts",
-        "tire ",
-        "painting service",
-        "interior painting",
-        "exterior painting",
-        "spring painting",
-        "fall painting",
-        "landscaping",
-        "groundskeeping",
-        "lawn care",
-        "tree pruning",
-        "tree removal",
-        "catering",
-        "food service",
-        "uniform service",
-        "locksmith",
-        "pest control",
-        "fumigation",
-        "waste collection",
-        "recycling collection",
-        "security service",
-        "security guard",
-        "office supplies",
-        "office furniture",
-        "fitness equipment",
-        "playground equipment",
-        "it package",
-        "it services",
-        "it support",
-        "software license",
-        "software subscription",
-        "telecom",
-        "wireless service",
-        "cellular service",
-        "internet service",
-        "translation service",
-        "interpretation service",
-        "courier service",
-        "moving service",
-    };
 
     private readonly string _connectionString;
 
@@ -93,8 +32,8 @@ public sealed class SqlCompetitionInfoQueryStore : ICompetitionInfoQueryStore
         // Round 54: cap raised 5K → 15K. The grid is virtualized, but the
         // join + LIKE filter passes still pay per row. 15K keeps the UI
         // responsive while letting a relevance-filtered slice fit without
-        // truncation. The KOR-relevant filter on the VM side does most of
-        // the narrowing — this is the hard safety ceiling.
+        // truncation. "KOR markets only" narrows after the read (KorBidFit
+        // on the title, at the end) — this is the hard safety ceiling.
         var maxRows = Math.Min(f.MaxRows ?? 15_000, 15_000);
         var sb = new StringBuilder(@"
 SELECT TOP (@maxRows)
@@ -149,14 +88,6 @@ WHERE 1 = 1
             // ON/QC/MB long-tail.
             sb.AppendLine(@"  AND h.ProjectProvince IN (N'BC', N'AB', N'WA', N'OR', N'CA')");
 
-            // Round 55: noise-keyword exclusion list. Each term becomes an
-            // AND NOT LIKE on Name + Commodities (commodities sometimes
-            // carries the category text when the title is generic).
-            for (int i = 0; i < NoiseTerms.Length; i++)
-            {
-                sb.AppendLine(
-                    $"  AND h.Name NOT LIKE @noise{i} AND (h.Commodities IS NULL OR h.Commodities NOT LIKE @noise{i})");
-            }
         }
 
         sb.AppendLine(@"ORDER BY h.RfpReleaseDate DESC, h.Id DESC;");
@@ -182,13 +113,6 @@ WHERE 1 = 1
                 Value = f.MinEstimatedValue.Value,
             };
             cmd.Parameters.Add(p);
-        }
-        if (f.KorRelevantOnly == true)
-        {
-            for (int i = 0; i < NoiseTerms.Length; i++)
-            {
-                cmd.Parameters.Add($"@noise{i}", SqlDbType.NVarChar, 100).Value = "%" + NoiseTerms[i] + "%";
-            }
         }
 
         await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -218,7 +142,9 @@ WHERE 1 = 1
             });
         }
 
-        return rows;
+        // "KOR markets only" means KOR's kind of work, by the same tested rule the lead lists use (KorBidFit; Ian, 2026-10-21:
+        // the archive still showed road construction and tree planting under a keyword list of janitorial and snow removal).
+        return f.KorRelevantOnly == true ? rows.Where(r => KorBidFit.IsKorWork(r.Name)).ToList() : rows;
     }
 
     public async Task<HistoricalOpportunityDetail?> GetDetailAsync(long historicalOpportunityId, CancellationToken ct)
