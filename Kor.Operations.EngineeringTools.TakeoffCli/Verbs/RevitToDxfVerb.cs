@@ -36,6 +36,9 @@ internal static class RevitToDxfVerb
 
     private static readonly Regex Inches = new(@"(\d+(?:\.\d+)?)\s*""", RegexOptions.Compiled);
     private static readonly Regex Size = new(@"(\d+(?:\.\d+)?)\s*""\s*[xX]\s*(\d+(?:\.\d+)?)\s*""", RegexOptions.Compiled);
+    // A round column's type names its diameter: KOR's "24" Ø", a plan's "24" DIA". Until 2026-10-23 these fell through
+    // as "unsized" and went out as 12" squares - 71 of Halifax's 433 columns, every 24", 28" and 20" DIA in the schedule.
+    private static readonly Regex Round = new(@"(\d+(?:\.\d+)?)\s*""\s*(?:Ø|DIA\b|ROUND\b)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly (byte, byte, byte) Concrete = (0xD7, 0xD7, 0xD7);
 
     public static int Run(string[] args)
@@ -57,7 +60,7 @@ internal static class RevitToDxfVerb
                 foreach (var e in ex.EnumerateArray()) exclude.Add(e.GetInt64());
 
             var g = new ExtractedGeometry { ScaleDenominator = 96 };
-            int walls = 0, columns = 0, skipped = 0, unsized = 0;
+            int walls = 0, columns = 0, skipped = 0, unsized = 0, round = 0;
             if (level.TryGetProperty("walls", out var wallsFile))
                 foreach (var w in Elements(Path.Combine(baseDir, wallsFile.GetString()!)))
                 {
@@ -89,11 +92,22 @@ internal static class RevitToDxfVerb
                     (double W, double D) size = m.Success
                         ? (double.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) * 25.4, double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture) * 25.4)
                         : (0, 0);
+                    bool isRound = false;
+                    if (!m.Success)
+                    {
+                        var r = Round.Match(type);
+                        if (r.Success)
+                        {
+                            double d = double.Parse(r.Groups[1].Value, CultureInfo.InvariantCulture) * 25.4;
+                            size = (d, d); isRound = true; round++;
+                        }
+                    }
                     if (size.W <= 0) { unsized++; size = (300, 300); }
                     g.Columns.Add((cx.GetDouble(), c.GetProperty("y_mm").GetDouble()));
                     g.ColumnColors.Add(Concrete);
                     g.ColumnIsAnnotation.Add(false);
                     g.ColumnSizes.Add(size);
+                    g.ColumnIsRound.Add(isRound);
                     columns++;
                 }
             // Floors (2026-10-23, Halifax): a level may carry "floors": [{"points_mm": [[x, y], ...]}, ...] - closed
@@ -135,7 +149,7 @@ internal static class RevitToDxfVerb
             string path = Path.Combine(outDir, storey + ".dxf");
             DxfExporter.Export(g, path, korLayers: true);
             storeys++;
-            Console.WriteLine($"{storey,-8}: {walls} walls, {columns} columns, {floors} floor outline(s), {openings} opening(s) -> {path}" + (skipped > 0 ? $"  ({skipped} skipped by exclusion or without a line/point)" : "") + (unsized > 0 ? $"  ({unsized} without a size in their type name)" : ""));
+            Console.WriteLine($"{storey,-8}: {walls} walls, {columns} columns ({round} round), {floors} floor outline(s), {openings} opening(s) -> {path}" + (skipped > 0 ? $"  ({skipped} skipped by exclusion or without a line/point)" : "") + (unsized > 0 ? $"  ({unsized} without a size in their type name)" : ""));
         }
         Console.WriteLine($"{storeys} storey DXF(s) written. Next: takeoff dxf-to-etabs \"{outDir}\" <engineer.e2k> <revit.e2k>, then model-diff / model-yardstick.");
         return storeys > 0 ? 0 : 2;
