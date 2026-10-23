@@ -125,6 +125,12 @@ public sealed class ClearActionRow
     // Runnable on all at once only when the fix needs no per-machine input. A restart is runnable (it warns/confirms first);
     // an input-needed fix (start a named service) is not, so it shows the breakdown without a run-all button.
     public bool CanRun => Action.Fix.ParamLabel is null && UnionDeviceIds.Count > 0;
+    // Set while this fix is in flight on any of its reasons: the run button gives way to a "running" note, so the same run
+    // cannot be started twice (2026-10-22: pressed twice 43 s apart while the screen said only "Loading…").
+    public string? Fixing { get; init; }
+    public bool ShowRun => CanRun && Fixing is null;
+    public bool ShowFixing => Fixing is not null;
+    public string FixingText => "⏳ " + Fixing;
     public string RunLabel => AwayCount == 0 ? $"{Action.Fix.Title} · all {Action.Machines}" : $"{Action.Fix.Title} · {UnionDeviceIds.Count} ({AwayCount} away)";
     public string ExpandLabel => $"Show {Action.Reasons.Count} reasons ▾";
     public string CollapseLabel => "Hide reasons ▴";
@@ -143,6 +149,7 @@ public partial class NetworkOpsToClearView : UserControl
 {
     private static readonly ILogger Log = Serilog.Log.ForContext<NetworkOpsToClearView>();
     private readonly NetworkOpsClient _client;
+    private readonly Func<Task>? _afterQueue;   // the runs strip's read-now, so a queued run shows at once
     private readonly ObservableCollection<ToClearRow> _rows = new();
     private readonly ObservableCollection<ToClearCategoryRow> _categories = new();   // the at-a-glance rollup above the list
     private readonly ObservableCollection<ClearActionRow> _actions = new();          // "clear in one action": issues grouped by the fix that clears them, machines de-duplicated
@@ -150,9 +157,10 @@ public partial class NetworkOpsToClearView : UserControl
     private System.Windows.Threading.DispatcherTimer? _auto;
     private string? _selectedCategory;   // the category chip the worklist is filtered to (null = show all)
 
-    public NetworkOpsToClearView(NetworkOpsClient client)
+    public NetworkOpsToClearView(NetworkOpsClient client, Func<Task>? afterQueue = null)
     {
         _client = client;
+        _afterQueue = afterQueue;
         InitializeComponent();
         IssueList.ItemsSource = _rows;
         CategoryStrip.ItemsSource = _categories;
@@ -206,7 +214,12 @@ public partial class NetworkOpsToClearView : UserControl
             actions.SelectMany(a => a.Reasons.Select(r => r.RuleKey)), StringComparer.OrdinalIgnoreCase);
         _actions.Clear();
         foreach (var a in actions)
-            _actions.Add(new ClearActionRow { Action = a, ReasonRows = a.Reasons.Select(i => new ToClearRow { Issue = i, Fixing = NoteFor(i) }).ToList() });
+            _actions.Add(new ClearActionRow
+            {
+                Action = a,
+                ReasonRows = a.Reasons.Select(i => new ToClearRow { Issue = i, Fixing = NoteFor(i) }).ToList(),
+                Fixing = a.Reasons.Select(NoteFor).FirstOrDefault(n => n is not null),
+            });
         ActionSection.Visibility = _actions.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         // The per-issue list is now only what no consolidating action covers: critical one-offs, single-reason fixes, and
@@ -259,18 +272,7 @@ public partial class NetworkOpsToClearView : UserControl
                 MessageBox.Show(Window.GetWindow(this), $"{fix.Title} will interrupt {Machines(need.Count)}: {string.Join(", ", need)}.\n\nGo ahead?",
                     fix.Title, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes)
                 outcomes = await _client.RunFixManyAsync(fix.Id, ids, fix.PrefilledParam, confirmed: true, CancellationToken.None).ConfigureAwait(true);
-            var queued = outcomes.Count(o => o.ActionId is not null);
-            var refused = outcomes.Count(o => o.Refused is not null);
-            Log.Information("To clear: {Fix} on {Count} -> queued {Queued}, refused {Refused}", fix.Id, ids.Count, queued, refused);
-            if (queued > 0)
-            {
-                // Mark the issue "running" until it clears (the service re-checks after each fix). Disruptive fixes restart.
-                _fixing[row.Issue.RuleKey] = $"queued on {queued} — running ({(fix.Disruptive ? "restart pending" : "a few min")})";
-                Status($"Queued {fix.Title} on {Machines(queued)}{(refused > 0 ? $"; {refused} held (someone's using them — open the PC to confirm)" : "")}. Running now — the list clears each as it's fixed and re-checked (auto-refreshing).");
-            }
-            else
-                Status($"{fix.Title}: nothing queued ({refused} held/refused). Open a machine to confirm, or Ask Claude.");
-            await ReloadAsync().ConfigureAwait(true);
+            await AfterRunAsync(fix, outcomes, [row.Issue.RuleKey]).ConfigureAwait(true);
         }
         catch (Exception ex)
         {
@@ -298,25 +300,33 @@ public partial class NetworkOpsToClearView : UserControl
                 MessageBox.Show(Window.GetWindow(this), $"{fix.Title} will interrupt {Machines(need.Count)}: {string.Join(", ", need)}.\n\nGo ahead?",
                     fix.Title, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes)
                 outcomes = await _client.RunFixManyAsync(fix.Id, ids, fix.PrefilledParam, confirmed: true, CancellationToken.None).ConfigureAwait(true);
-            var queued = outcomes.Count(o => o.ActionId is not null);
-            var refused = outcomes.Count(o => o.Refused is not null);
-            Log.Information("To clear: action {Fix} over union of {Count} -> queued {Queued}, refused {Refused}", fix.Id, ids.Count, queued, refused);
-            if (queued > 0)
-            {
-                // Mark every reason this action covers as running, so each of its cards shows "fixing" until it clears.
-                foreach (var reason in row.Action.Reasons)
-                    _fixing[reason.RuleKey] = $"queued on {queued} — running ({(fix.Disruptive ? "restart pending" : "a few min")})";
-                Status($"Queued {fix.Title} on {Machines(queued)}{(refused > 0 ? $"; {refused} held (someone's using them — open the PC to confirm)" : "")}. One run clears every reason it covers on each (auto-refreshing).");
-            }
-            else
-                Status($"{fix.Title}: nothing queued ({refused} held/refused). Open a machine to confirm, or Ask Claude.");
-            await ReloadAsync().ConfigureAwait(true);
+            // Every reason this action covers is marked running, so each of its cards shows "fixing" until it clears.
+            await AfterRunAsync(fix, outcomes, row.Action.Reasons.Select(r => r.RuleKey).ToList()).ConfigureAwait(true);
         }
         catch (Exception ex)
         {
             Log.Warning(ex, "To clear: clear-by-action failed for {Fix}", fix.Id);
             Status("Could not run the fix: " + ex.Message);
         }
+    }
+
+    // After a fix is queued (one issue's, or one action's over several): mark what it covers as running, show the run in the
+    // strip at once, re-read the list, THEN say what happened -- after the re-read, which otherwise overwrites the line. Every
+    // machine not run is named with the service's own reason (already running, the DC goes on its own, not confirmed…),
+    // instead of the old blanket "held (someone's using them)".
+    private async Task AfterRunAsync(FixOption fix, IReadOnlyList<FixRunOutcome> outcomes, IReadOnlyList<string> ruleKeys)
+    {
+        var queued = outcomes.Count(o => o.ActionId is not null);
+        var notRun = outcomes.Where(o => o.ActionId is null).ToList();
+        Log.Information("To clear: {Fix} -> queued {Queued}, not run {NotRun}", fix.Id, queued, notRun.Count);
+        if (queued > 0)
+            foreach (var key in ruleKeys) _fixing[key] = $"queued on {queued} — running ({(fix.Disruptive ? "restart pending" : "a few min")}); progress at the top";
+        if (_afterQueue is not null) await _afterQueue().ConfigureAwait(true);
+        await ReloadAsync().ConfigureAwait(true);
+        var why = notRun.Count == 0 ? "" : $" {notRun.Count} not run — " + string.Join("; ", notRun
+            .GroupBy(o => o.NeedsConfirmation ? "not confirmed" : o.Refused ?? "refused")
+            .Select(g => $"{g.Key}: {string.Join(", ", g.Select(o => o.Name).Take(4))}{(g.Count() > 4 ? $" +{g.Count() - 4} more" : "")}"));
+        Status(queued > 0 ? $"Queued {fix.Title} on {Machines(queued)}; progress is in the strip at the top.{why}" : $"{fix.Title}: nothing queued.{why}");
     }
 
     // Park the issue by acknowledging it on the machines you choose. It becomes quiet (acknowledged) -> the fleet stops

@@ -115,18 +115,7 @@ internal sealed partial class NetworkOpsStore
             }
         }
 
-        var actions = new List<ChangeAction>();
-        await using (var cmd = Cmd(c, """
-            SELECT TOP (1000) d.Name, a.ActionId, a.Kind, a.RequestedBy, a.RequestedUtc, a.Status, a.Detail
-            FROM NetworkOps.Actions a JOIN NetworkOps.Devices d ON d.DeviceId = a.DeviceId
-            WHERE a.RequestedUtc >= @s ORDER BY a.ActionId;
-            """))
-        {
-            cmd.Parameters.Add("@s", SqlDbType.DateTime2).Value = sinceUtc;
-            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
-            while (await r.ReadAsync(ct).ConfigureAwait(false))
-                actions.Add(new ChangeAction(r.GetString(0), r.GetInt64(1), r.GetString(2), r.GetString(3), Utc(r, 4)!.Value, r.GetString(5), r.IsDBNull(6) ? null : r.GetString(6)));
-        }
+        var actions = await ActionsSinceAsync(c, sinceUtc, inFlightToo: false, ct).ConfigureAwait(false);
 
         int critical = 0, warning = 0, info = 0;
         await using (var cmd = Cmd(c, """
@@ -144,6 +133,34 @@ internal sealed partial class NetworkOpsStore
                 }
         }
         return new ChangesView(sinceUtc, DateTime.UtcNow, opened, cleared, actions, critical, warning, info);
+    }
+
+    /// <summary>The actions requested since a moment (the morning brief's "done" list), and with <paramref name="inFlightToo"/>
+    /// every action still Requested or Running however old -- what the runs strip (Core ActionRuns) is grouped from.</summary>
+    private static async Task<List<ChangeAction>> ActionsSinceAsync(SqlConnection c, DateTime sinceUtc, bool inFlightToo, CancellationToken ct)
+    {
+        var actions = new List<ChangeAction>();
+        await using var cmd = Cmd(c, """
+            SELECT TOP (1000) d.Name, a.ActionId, a.Kind, a.RequestedBy, a.RequestedUtc, a.Status, a.Detail, a.CompletedUtc
+            FROM NetworkOps.Actions a JOIN NetworkOps.Devices d ON d.DeviceId = a.DeviceId
+            WHERE a.RequestedUtc >= @s OR (@f = 1 AND a.Status IN ('Requested', 'Running')) ORDER BY a.ActionId;
+            """);
+        cmd.Parameters.Add("@s", SqlDbType.DateTime2).Value = sinceUtc;
+        cmd.Parameters.Add("@f", SqlDbType.Bit).Value = inFlightToo;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+            actions.Add(new ChangeAction(r.GetString(0), r.GetInt64(1), r.GetString(2), r.GetString(3), Utc(r, 4)!.Value, r.GetString(5),
+                r.IsDBNull(6) ? null : r.GetString(6), Utc(r, 7)));
+        return actions;
+    }
+
+    /// <summary>The runs in flight, and those finished within <see cref="ActionRuns.KeepFinished"/>, as Core groups them.</summary>
+    public async Task<IReadOnlyList<ActionRun>> ActionRunsAsync(CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        var now = DateTime.UtcNow;
+        // Back far enough that a long run finishing inside the keep window still has its first rows.
+        return ActionRuns.Group(await ActionsSinceAsync(c, now - ActionRuns.KeepFinished - TimeSpan.FromHours(3), inFlightToo: true, ct).ConfigureAwait(false), now);
     }
 
     public async Task<DeviceHistory> DeviceHistoryAsync(int deviceId, CancellationToken ct)
@@ -216,6 +233,28 @@ internal sealed partial class NetworkOpsStore
         cmd.Parameters.Add("@req", SqlDbType.NVarChar, -1).Value = requestJson;
         return (long)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
     }
+
+    /// <summary>Queue a catalog fix unless the same fix is already Requested or Running on that machine -- checked and inserted
+    /// in one statement, so two clicks (or the app and the MCP) cannot both get through. Null = one is already in flight.
+    /// (2026-10-22: "Install updates · all 28" pressed twice 43 s apart queued 58 installs.)</summary>
+    public async Task<long?> QueueFixOnceAsync(int deviceId, string kind, string by, string requestJson, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            INSERT NetworkOps.Actions (DeviceId, Kind, RequestedBy, Status, BeforeJson) OUTPUT inserted.ActionId
+            SELECT @d, @k, @by, 'Requested', @req
+            WHERE NOT EXISTS (SELECT 1 FROM NetworkOps.Actions WITH (UPDLOCK, HOLDLOCK)
+                              WHERE DeviceId = @d AND Kind = @k AND Status IN ('Requested', 'Running'));
+            """);
+        cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
+        cmd.Parameters.Add("@k", SqlDbType.VarChar, 48).Value = kind;
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 128).Value = by;
+        cmd.Parameters.Add("@req", SqlDbType.NVarChar, -1).Value = requestJson;
+        return await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false) is long id ? id : null;
+    }
+
+    /// <summary>The refusal a fix gets when the same fix is already in flight on the machine.</summary>
+    public const string AlreadyInFlight = "this fix is already queued or running on it";
 
     /// <summary>Which (device, fix kind) pairs have an action IN FLIGHT (Requested or Running), as "&lt;deviceId&gt;|&lt;kind&gt;".
     /// The To-clear worklist uses it to show an issue as already "fixing" -- real state, so it is not re-queued.</summary>

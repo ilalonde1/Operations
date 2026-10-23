@@ -336,7 +336,11 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                 await s.RecordRefusedActionAsync(id, fix.Id, by, request, refuse, ct);
                 return Results.Conflict(new { error = refuse, needsConfirmation = fix.Disruptive && !body.Confirmed });
             }
-            var runId = await s.QueueActionAsync(id, fix.Id, by, request, ct);
+            if (await s.QueueFixOnceAsync(id, fix.Id, by, request, ct) is not { } runId)
+            {
+                await s.RecordRefusedActionAsync(id, fix.Id, by, request, NetworkOpsStore.AlreadyInFlight, ct);
+                return Results.Conflict(new { error = NetworkOpsStore.AlreadyInFlight, needsConfirmation = false });
+            }
             return Results.Accepted($"/api/actions/{runId}", new { actionId = runId });
         });
         // ---- To clear (the "path to all-green" worklist): every LIVE finding across the PCs and the rack, grouped by issue,
@@ -349,12 +353,19 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         // Fix one issue on every machine that has it ("Fix on all N"): the generic fleet fan-out for any catalog fix. Each
         // machine is validated and queued exactly as the single-machine POST above, so a disruptive fix on an active PC is
         // refused per-machine unless confirmed, and every run (and refusal) is audited.
-        api.MapPost("/fixes/run-many", async (FixRunManyRequest body, HttpContext h, NetworkOpsStore s, IOptions<NetworkOpsOptions> o, CancellationToken ct) =>
+        api.MapPost("/fixes/run-many", async (FixRunManyRequest body, HttpContext h, NetworkOpsStore s, IOptions<NetworkOpsOptions> o,
+            Updates.UpdateScanner u, FleetView fleetView, CancellationToken ct) =>
         {
             var fix = Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Get(body.FixId);
             if (fix is null) return Results.BadRequest(new { error = $"'{body.FixId}' is not a fix NetworkOps knows" });
             if (Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Invalid(fix, body.Param) is { } bad) return Results.BadRequest(new { error = bad });
             var by = ApiAccess.UserOf(h.User);
+            // An install goes through the update batch rules (one install per machine, the DC on its own, APP01 never
+            // restarted), the same as the Updates view -- never the generic fan-out below.
+            if (fix.Id is Kor.Operations.NetworkOps.Core.Actions.FixCatalog.InstallUpdates or Kor.Operations.NetworkOps.Core.Actions.FixCatalog.InstallUpdatesRestart)
+                return Results.Ok((await Updates.UpdatesApi.InstallAsync(body.DeviceIds.Distinct().ToList(), fix.Id == Kor.Operations.NetworkOps.Core.Actions.FixCatalog.InstallUpdatesRestart,
+                        body.Confirmed, by, s, u, fleetView, ct))
+                    .Select(x => new FixRunOutcome(x.DeviceId, x.Name, x.ActionId, x.Refused, x.NeedsConfirmation)).ToList());
             var outcomes = new List<FixRunOutcome>();
             foreach (var id in body.DeviceIds.Distinct())
             {
@@ -374,10 +385,19 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                     continue;
                 }
                 var request = System.Text.Json.JsonSerializer.Serialize(new { param = body.Param, confirmed = body.Confirmed, presence = dev.Presence });
-                outcomes.Add(new FixRunOutcome(id, dev.Name, await s.QueueActionAsync(id, fix.Id, by, request, ct), null, false));
+                if (await s.QueueFixOnceAsync(id, fix.Id, by, request, ct) is { } actionId)
+                    outcomes.Add(new FixRunOutcome(id, dev.Name, actionId, null, false));
+                else
+                {
+                    await s.RecordRefusedActionAsync(id, fix.Id, by, request, NetworkOpsStore.AlreadyInFlight, ct);
+                    outcomes.Add(new FixRunOutcome(id, dev.Name, null, NetworkOpsStore.AlreadyInFlight, false));
+                }
             }
             return Results.Ok(outcomes);
         });
+        // Every run in flight, and those finished in the last hour, wherever they were started (this app, the MCP, the CLI):
+        // one line each with its progress, and each machine's state. What the Command Center's runs strip shows.
+        api.MapGet("/actions/runs", async (NetworkOpsStore s, CancellationToken ct) => Results.Ok(await s.ActionRunsAsync(ct)));
         // ---- the endpoint agent: install (or upgrade, which is installing again) and remove, queued and audited like a fix.
         api.MapPost("/devices/{id:int}/agent", async (int id, AgentRequest body, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
         {

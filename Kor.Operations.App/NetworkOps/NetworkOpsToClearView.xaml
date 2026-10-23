@@ -120,8 +120,13 @@
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="12,0,0,0">
                                                     <Button Content="{Binding RunLabel}" Style="{StaticResource Ops.Primary}"
-                                                            Click="RunAction_Click" Visibility="{Binding CanRun, Converter={StaticResource BoolToVis}}"
+                                                            Click="RunAction_Click" Visibility="{Binding ShowRun, Converter={StaticResource BoolToVis}}"
                                                             ToolTip="Run this one fix on every machine that needs it, clearing every reason it covers on each. Audited; the reasons clear as each machine is fixed and re-checked."/>
+                                                    <Border Background="#ECF6EC" BorderBrush="#BFE3BF" BorderThickness="1" CornerRadius="5" Padding="9,5" MaxWidth="260"
+                                                            Visibility="{Binding ShowFixing, Converter={StaticResource BoolToVis}}"
+                                                            ToolTip="This fix is queued and running; each machine's progress is in the strip at the top.">
+                                                        <TextBlock Text="{Binding FixingText}" FontSize="12" Foreground="#166534" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                    </Border>
                                                     <ToggleButton x:Name="ReasonsToggle" Style="{StaticResource Ops.Disclose}" Margin="0,4,0,0"
                                                                   ToolTip="Show each reason and its machines — fix, acknowledge or snooze one on its own."/>
                                                 </StackPanel>

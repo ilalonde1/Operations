@@ -9,7 +9,8 @@ namespace Kor.Operations.NetworkOps.Core.Learning;
 public sealed record ChangeFinding(string Device, string RuleKey, Severity Severity, string Title, string Evidence, DateTime FirstSeenUtc, DateTime? ClearedUtc);
 
 /// <summary>A fix or run requested in the window, and how it ended.</summary>
-public sealed record ChangeAction(string Device, long ActionId, string Kind, string RequestedBy, DateTime RequestedUtc, string Status, string? Detail);
+public sealed record ChangeAction(string Device, long ActionId, string Kind, string RequestedBy, DateTime RequestedUtc, string Status, string? Detail,
+    DateTime? CompletedUtc = null);
 
 /// <summary>
 /// What changed across the PCs and the rack since a moment -- the morning brief, from the database (GET /api/changes,

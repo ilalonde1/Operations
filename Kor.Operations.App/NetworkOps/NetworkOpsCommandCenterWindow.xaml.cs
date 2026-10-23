@@ -39,6 +39,7 @@ public partial class NetworkOpsCommandCenterWindow : Window, INetworkTabHost
         // issue grouped, with fix-on-all), so the fix level is in front of you on open. Set here, not in XAML, because the
         // tab's Checked handler creates the view into ToClearHost, which does not exist until the window's tree is built.
         ToClearTab.IsChecked = true;
+        RunsStrip.Attach(_vm.Client);
         await RefreshAsync(ResetToken()).ConfigureAwait(true);
         _autoRefreshTimer.Start();
     }
@@ -170,7 +171,7 @@ public partial class NetworkOpsCommandCenterWindow : Window, INetworkTabHost
     private void DeployTab_Checked(object sender, RoutedEventArgs e) => EnsureDeploy();
 
     // The To-clear worklist is a tab, created the first time it is opened (it reads the fleet on its own Loaded).
-    private void ToClearTab_Checked(object sender, RoutedEventArgs e) => ToClearHost.Content ??= new NetworkOpsToClearView(_vm.Client);
+    private void ToClearTab_Checked(object sender, RoutedEventArgs e) => ToClearHost.Content ??= new NetworkOpsToClearView(_vm.Client, RunsStrip.NudgeAsync);
 
     // The Network port map is a tab too (folded from a standalone window 2026-10-04). It is created the first time it is
     // shown; it reads the map on its own Loaded. Created with the navigator so a port tile still opens the one device page.

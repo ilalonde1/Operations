@@ -191,6 +191,35 @@ public sealed class NetworkOpsWindowsRenderTests
             tb.IsChecked = true;
         written += Render(toClearOverlap, new Size(1400, 1180), Path.Combine(dir, $"{label}-to-clear-overlap-expanded.png"));
 
+        // The same panel while its restart is in flight on one machine: the run button gives way to the "running" note,
+        // so it cannot be pressed twice (2026-10-22).
+        var toClearRunning = new NetworkOpsToClearView(reader);
+        toClearRunning.Apply(ToClear.Build([rebootSnap], new System.Collections.Generic.HashSet<string> { "2|restart-pc" }, DateTime.UtcNow));
+        written += Render(toClearRunning, new Size(1400, 600), Path.Combine(dir, $"{label}-to-clear-running.png"));
+
+        // The runs strip, as 2026-10-22 23:19 had it: 29 installs in flight (5 done, 2 offline, the rest running) and the
+        // second press 43 s later, every machine refused as already running. One run opened to its machines.
+        var t0 = DateTime.UtcNow.AddMinutes(-7);
+        var inFlight = new System.Collections.Generic.List<ChangeAction>
+        {
+            new("KOR-101", 1, "install-updates", "ilalonde@korstructural.com", t0, "Done", "Installed 1 of 1; no restart needed.", t0.AddSeconds(48)),
+            new("KOR-204", 2, "install-updates", "ilalonde@korstructural.com", t0, "Done", "Installed 2 of 2; RESTART NEEDED to finish (not restarted).", t0.AddMinutes(7)),
+            new("BOARDROOM", 3, "install-updates", "ilalonde@korstructural.com", t0, "Failed", "Offline: port 445 not answering on any address", t0.AddSeconds(6)),
+            new("KOR-1000", 4, "install-updates", "ilalonde@korstructural.com", t0, "Failed", "Offline: port 445 not answering on any address", t0.AddSeconds(10)),
+            new("KOR-207", 5, "install-updates", "ilalonde@korstructural.com", t0, "Running", null),
+            new("KOR-FS01 (file server)", 6, "install-updates", "ilalonde@korstructural.com", t0, "Running", null),
+            new("KOR-SPARE2", 7, "install-updates", "ilalonde@korstructural.com", t0, "Requested", null),
+        };
+        var second = Enumerable.Range(0, 7).Select(i => new ChangeAction(inFlight[i].Device, 100 + i, "install-updates", "ilalonde@korstructural.com",
+            t0.AddSeconds(43), "Refused", "this fix is already queued or running on it", t0.AddSeconds(43))).ToList();
+        var strip = new NetworkOpsRunsStrip();
+        strip.Apply(ActionRuns.Group(inFlight.Concat(second), DateTime.UtcNow), DateTime.UtcNow);
+        var stripHost = new System.Windows.Controls.Border { Background = Brushes.White, Child = strip };
+        written += Render(stripHost, new Size(1400, 420), Path.Combine(dir, $"{label}-runs-strip.png"));
+        foreach (var tb in Descendants<System.Windows.Controls.Primitives.ToggleButton>(stripHost).Take(1))
+            tb.IsChecked = true;
+        written += Render(stripHost, new Size(1400, 420), Path.Combine(dir, $"{label}-runs-strip-expanded.png"));
+
         // The KOR Remote viewer, connected to a PC with two monitors showing the second (the page itself is not drawn here).
         var viewer = new KorRemoteViewerModel(worst.Name, "kwurmlinger · active, idle 12 min");
         viewer.Apply(new BridgeState("desktop", [], worst.Name, 3, [new("655406", "Ctrl-Alt-Del")],

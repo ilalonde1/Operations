@@ -89,7 +89,11 @@ public sealed class NetworkOpsMcpActions
             Serilog.Log.ForContext("Area", "Mcp").Information("mcp run-fix {Fix} on {Host} by {By}: REFUSED ({Why})", fix.Id, host, by, refuse);
             return new { host, fixId = fix.Id, refused = refuse, needsConfirmation = fix.Disruptive && dev.PresenceState == "Active" && !confirmed };
         }
-        var actionId = await store.QueueActionAsync(deviceId, fix.Id, by, request, ct);
+        if (await store.QueueFixOnceAsync(deviceId, fix.Id, by, request, ct) is not { } actionId)
+        {
+            await store.RecordRefusedActionAsync(deviceId, fix.Id, by, request, NetworkOpsStore.AlreadyInFlight, ct);
+            return new { host, fixId = fix.Id, refused = NetworkOpsStore.AlreadyInFlight, needsConfirmation = false };
+        }
         Serilog.Log.ForContext("Area", "Mcp").Information("mcp run-fix {Fix} on {Host} by {By}: queued action {ActionId}", fix.Id, host, by, actionId);
         return new { host, fixId = fix.Id, actionId, message = $"Queued '{fix.Title}' on {host}, audited as action {actionId}. Read it back with networkops_device, or it clears on the next check." };
     }

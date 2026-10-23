@@ -224,6 +224,16 @@ public sealed class NetworkOpsClient
     /// <summary>The "path to all-green" worklist: every live finding grouped by issue, ranked, with the fix that clears each.</summary>
     public Task<ToClearView> GetToClearAsync(CancellationToken ct) => GetAsync<ToClearView>("api/to-clear", ct)!;
 
+    /// <summary>Every run in flight and those finished in the last hour, wherever started (the runs strip). Empty on a
+    /// service from before it existed.</summary>
+    public async Task<IReadOnlyList<ActionRun>> GetActionRunsAsync(CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Get, "api/actions/runs", null, ct).ConfigureAwait(false);
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound) return [];
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        return await res.Content.ReadFromJsonAsync<List<ActionRun>>(Json, ct).ConfigureAwait(false) ?? [];
+    }
+
     /// <summary>Run one fix on every machine that has the issue ("Fix on all N"): per-machine queued or refused.</summary>
     public async Task<IReadOnlyList<FixRunOutcome>> RunFixManyAsync(string fixId, IReadOnlyList<int> deviceIds, string? param, bool confirmed, CancellationToken ct)
     {

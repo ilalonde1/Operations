@@ -29,32 +29,49 @@ internal static class UpdatesApi
             var ids = (body.DeviceIds ?? []).Distinct().ToList();
             if (ids.Count == 0) return Results.BadRequest(new { error = "tick at least one machine" });
             if (ids.Count > 100) return Results.BadRequest(new { error = "at most 100 machines in one batch" });
-
-            var targets = (await u.TargetsAsync(ct)).ToDictionary(t => t.DeviceId);
-            var presence = (await fleetView.PcsAsync(ct)).Devices.ToDictionary(d => d.DeviceId);
-            var installs = await s.LastUpdateInstallsAsync(ct);
-            var by = ApiAccess.UserOf(h.User);
-            var outcomes = new List<UpdateInstallOutcome>();
-            foreach (var unknown in ids.Where(id => !targets.ContainsKey(id)))
-                outcomes.Add(new UpdateInstallOutcome(unknown, $"device {unknown}", null, "not a machine updates can be installed on", false));
-
-            var members = ids.Where(targets.ContainsKey).Select(id => new BatchMember(targets[id],
-                presence.GetValueOrDefault(id)?.PresenceState, presence.GetValueOrDefault(id)?.Presence,
-                installs.GetValueOrDefault(id) is { Status: "Requested" or "Running" })).ToList();
-            foreach (var d in UpdateBatch.Decide(members, body.Restart == "if-needed", body.Confirmed))
-            {
-                var request = JsonSerializer.Serialize(new { batch = ids.Count, restart = body.Restart, confirmed = body.Confirmed, presence = presence.GetValueOrDefault(d.DeviceId)?.Presence });
-                if (d.FixId is null)
-                {
-                    await s.RecordRefusedActionAsync(d.DeviceId, body.Restart == "if-needed" ? Core.Actions.FixCatalog.InstallUpdatesRestart : Core.Actions.FixCatalog.InstallUpdates,
-                        by, request, d.Refused!, ct);
-                    outcomes.Add(new UpdateInstallOutcome(d.DeviceId, d.Name, null, d.Refused, d.NeedsConfirmation));
-                }
-                else
-                    outcomes.Add(new UpdateInstallOutcome(d.DeviceId, d.Name, await s.QueueActionAsync(d.DeviceId, d.FixId, by, request, ct), null, false, d.Note));
-            }
-            return Results.Ok(outcomes);
+            return Results.Ok(await InstallAsync(ids, body.Restart == "if-needed", body.Confirmed, ApiAccess.UserOf(h.User), s, u, fleetView, ct));
         });
+    }
+
+    /// <summary>
+    /// Install updates on these machines under the batch rules (UpdateBatch): never a second install on a machine already
+    /// installing, the domain controller only on its own, APP01 never restarted, every restart confirmed. The ONE way an
+    /// install is queued -- the Updates view, and To clear's "Install updates" (POST /fixes/run-many hands install fixes
+    /// here), so the rules cannot be skipped by starting the same install from another button. (2026-10-22: To clear's
+    /// button went through the generic fan-out instead, queued DC01 inside a batch of 28, and queued all 28 twice.)
+    /// </summary>
+    internal static async Task<List<UpdateInstallOutcome>> InstallAsync(IReadOnlyList<int> ids, bool restartIfNeeded, bool confirmed, string by,
+        NetworkOpsStore s, UpdateScanner u, FleetView fleetView, CancellationToken ct)
+    {
+        var targets = (await u.TargetsAsync(ct)).ToDictionary(t => t.DeviceId);
+        var presence = (await fleetView.PcsAsync(ct)).Devices.ToDictionary(d => d.DeviceId);
+        var installs = await s.LastUpdateInstallsAsync(ct);
+        var outcomes = new List<UpdateInstallOutcome>();
+        foreach (var unknown in ids.Where(id => !targets.ContainsKey(id)))
+            outcomes.Add(new UpdateInstallOutcome(unknown, $"device {unknown}", null, "not a machine updates can be installed on", false));
+
+        var members = ids.Where(targets.ContainsKey).Select(id => new BatchMember(targets[id],
+            presence.GetValueOrDefault(id)?.PresenceState, presence.GetValueOrDefault(id)?.Presence,
+            installs.GetValueOrDefault(id) is { Status: "Requested" or "Running" })).ToList();
+        var restart = restartIfNeeded ? "if-needed" : "none";
+        foreach (var d in UpdateBatch.Decide(members, restartIfNeeded, confirmed))
+        {
+            var request = JsonSerializer.Serialize(new { batch = ids.Count, restart, confirmed, presence = presence.GetValueOrDefault(d.DeviceId)?.Presence });
+            var refused = d.Refused;
+            long? actionId = null;
+            // The batch read above is a moment old; the insert itself refuses a second install that slipped in since.
+            if (d.FixId is not null && (actionId = await s.QueueFixOnceAsync(d.DeviceId, d.FixId, by, request, ct)) is null)
+                refused = NetworkOpsStore.AlreadyInFlight;
+            if (actionId is null)
+            {
+                await s.RecordRefusedActionAsync(d.DeviceId, restartIfNeeded ? Core.Actions.FixCatalog.InstallUpdatesRestart : Core.Actions.FixCatalog.InstallUpdates,
+                    by, request, refused!, ct);
+                outcomes.Add(new UpdateInstallOutcome(d.DeviceId, d.Name, null, refused, d.NeedsConfirmation));
+            }
+            else
+                outcomes.Add(new UpdateInstallOutcome(d.DeviceId, d.Name, actionId, null, false, d.Note));
+        }
+        return outcomes;
     }
 
     /// <summary>Every PC and Windows server: what its last search found, what is due, and its last install.</summary>
