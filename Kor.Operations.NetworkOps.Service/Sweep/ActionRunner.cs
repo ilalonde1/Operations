@@ -18,7 +18,7 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, AgentInstaller installer, Mesh.MeshInstaller mesh, Mesh.MeshState meshState,
     Updates.UpdateScanner updates, AgentHub agents, IOptions<NetworkOpsOptions> options, ILogger<ActionRunner> log) : BackgroundService
 {
-    // Update installs each pull hundreds of MB through the office's internet line: a batch of 30 runs a few at a time.
+    // Update installs run UpdateInstallParallel at a time (12): most of a batch downloads from peers on the LAN (see the option).
     private readonly SemaphoreSlim _installs = new(Math.Max(1, options.Value.UpdateInstallParallel));
 
     protected override async Task ExecuteAsync(CancellationToken ct)

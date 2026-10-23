@@ -46,8 +46,10 @@ public sealed class NetworkOpsOptions
     /// <summary>Machines searched at once. A search is 30 s to a few minutes and talks to Microsoft, not to APP01.</summary>
     public int UpdateScanParallel { get; set; } = 8;
 
-    /// <summary>Installs running at once: each downloads hundreds of MB through the office's internet line.</summary>
-    public int UpdateInstallParallel { get; set; } = 4;
+    /// <summary>Installs running at once. 4 until 2026-10-22, to spare the internet line -- but Delivery Optimization's LAN
+    /// sharing is on by default and working (29 of 31 PCs took part of October's updates from peers), so after the first few
+    /// most of a batch downloads over the office LAN. At 4, a batch of 29 took about 2 hours; Ian: "why does it take so long".</summary>
+    public int UpdateInstallParallel { get; set; } = 12;
 
     /// <summary>Hosts that may only be patched in a batch of their own (the only domain controller: DNS, DHCP and sign-in go with it).</summary>
     public List<string> UpdateAloneHosts { get; set; } = ["KOR-DC01"];
