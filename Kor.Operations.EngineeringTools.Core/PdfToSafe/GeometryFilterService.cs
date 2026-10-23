@@ -56,6 +56,38 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         /// <summary>
+        /// The corners of a closed outline: consecutive repeats and the repeated closing point dropped, then
+        /// every vertex whose two edges run straight on (a turn under one degree) — a split point where the
+        /// exporter broke a face at something touching it, not a corner. A mitre (45°) and a notch (90°) stay.
+        /// </summary>
+        internal static List<(double X, double Y)> WallRing(IReadOnlyList<(double X, double Y)> pts)
+        {
+            var ring = new List<(double X, double Y)>();
+            foreach (var p in pts)
+                if (ring.Count == 0 || Math.Abs(p.X - ring[^1].X) + Math.Abs(p.Y - ring[^1].Y) > WallRingSamePointMm) ring.Add(p);
+            if (ring.Count > 1 && Math.Abs(ring[0].X - ring[^1].X) + Math.Abs(ring[0].Y - ring[^1].Y) <= WallRingSamePointMm) ring.RemoveAt(ring.Count - 1);
+            bool dropped = true;
+            while (dropped && ring.Count > 3)
+            {
+                dropped = false;
+                for (int i = 0; i < ring.Count; i++)
+                {
+                    var a = ring[(i + ring.Count - 1) % ring.Count];
+                    var b = ring[i];
+                    var c = ring[(i + 1) % ring.Count];
+                    double turn = Math.Abs(Math.IEEERemainder(Math.Atan2(c.Y - b.Y, c.X - b.X) - Math.Atan2(b.Y - a.Y, b.X - a.X), 2 * Math.PI));
+                    if (turn < WallRingStraightRad) { ring.RemoveAt(i); dropped = true; break; }
+                }
+            }
+            return ring;
+        }
+
+        /// <summary>A repeated point is the same point: a hundredth of a millimetre, floating point, not drafting.</summary>
+        private const double WallRingSamePointMm = 0.01;
+        /// <summary>One degree: a split point on a straight face turns by rounding only; a mitre turns tens of degrees.</summary>
+        private const double WallRingStraightRad = Math.PI / 180;
+
+        /// <summary>
         /// Half an inch of slack on the wall limits, the DXF side's own allowance: a wall drawn at
         /// exactly 4" or exactly 48" measures a hair under after the export's arithmetic, and a
         /// limit is a statement about walls, not about floating point.
@@ -426,7 +458,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             // four points are a wall's shape when the faces are parallel and the ends are
                             // square or mitred: a taper's box passed these limits and became a wall (audit
                             // F1, 2026-09-08); a mitred end is a wall's (step 38, 31170's P1 perimeter)
-                            if (pts.Count == 4 && IsWallShape(pts, box.Length, box.Thickness, maxWallThicknessMm))
+                            // REVIT'S OWN PDF EXPORT DRAWS A WALL AS A LINE PATH ENDING ON ITS START, SPLIT WHERE
+                            // SOMETHING TOUCHES IT (intake step 174, 2026-10-22): 31170-01's drafted sheets carried
+                            // every wall as five or six points, one of them collinear on a face, and the four-point
+                            // test refused all 42. The wall is judged on its corners, however the exporter split it;
+                            // the outline it keeps is still the one drawn.
+                            var ring = Environment.GetEnvironmentVariable("KOR_STEP174_OFF") == "1" ? pts.ToList() : WallRing(pts);
+                            if (ring.Count == 4 && IsWallShape(ring, box.Length, box.Thickness, maxWallThicknessMm))
                             {
                                 int first = result.Walls.Count;
                                 // A FILL CLIPPED TO A SLANTED WALL IS THAT WALL, NOT ITS BOX (intake step 172, 2026-10-21). The drafter's

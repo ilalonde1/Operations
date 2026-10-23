@@ -163,6 +163,8 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["GeometryFilterService.cs:WallFloorSlackMm"] = Tolerance("half an inch under the wall floor: a six-inch wall is drawn at 142-150 mm on 31065; an eighth refused 60 of its walls (step 63)"),
         ["GeometryFilterService.cs:RectangleCornerCos"] = Tolerance("a corner is square within 3 degrees"),
         ["GeometryFilterService.cs:RectangleFillShare"] = Tolerance("a rectangle fills its own box"),
+        ["GeometryFilterService.cs:WallRingSamePointMm"] = Tolerance("a repeated point is the same point: a hundredth of a millimetre, floating point (step 174)"),
+        ["GeometryFilterService.cs:WallRingStraightRad"] = Tolerance("one degree: an exporter's split point on a straight face turns by rounding only; a mitre turns tens of degrees (step 174)"),
         ["GeometryFilterService.cs:CellAbutMm"] = Tolerance("an inch of drafting"),
         ["GeometryFilterService.cs:PieceLateralMm"] = Tolerance("a pen's width"),
         ["GeometryFilterService.cs:FaceParallelCos"] = Tolerance("parallel within a degree"),

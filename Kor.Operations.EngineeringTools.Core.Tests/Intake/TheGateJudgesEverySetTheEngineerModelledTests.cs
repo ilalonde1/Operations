@@ -217,4 +217,24 @@ public sealed class TheGateJudgesEverySetTheEngineerModelledTests
         // and the jobs worth running are still known from the yardstick column alone
         Assert.Equal(["31202-01"], CorpusGate.JobsWithAYardstick([Row("31202-01", null)]));
     }
+
+    /// <summary>
+    /// THE SAME STICK FILE READ FROM A MIRROR IS JUDGED, NOT EXCUSED (2026-10-23). The gate's first run over the VPN
+    /// read every set from a local mirror of the share, and because the bank's paths begin with \\Kor-fs01 and the
+    /// mirror's with a Temp folder, all 52 judged sets were classed RE-ISSUED and nothing stopped the bank - a loss of
+    /// 240,000 sq ft would have been waved through. Identity is the file's name and size (CorpusDiff.SameStickFile).
+    /// </summary>
+    [Fact]
+    public void ASetReadFromAMirrorOfTheSameStickFileIsJudged()
+    {
+        var before = new[] { Row("31039-01", 300_000, 400_000) with { Pdf = @"\\Kor-fs01\Projects\Projects\03 Residential\31039-01 (x)\05 Stickfile\31039-01 2026-09-14 Stickfile.pdf" } };
+        var after = new[] { Row("31039-01", 60_000, 400_000) with { Pdf = @"C:\Users\x\AppData\Local\Temp\kor-corpus-mirror\Projects\03 Residential\31039-01 (x)\05 Stickfile\31039-01 2026-09-14 Stickfile.pdf" } };
+
+        var report = CorpusGate.Judge(before, after);
+
+        var v = Assert.Single(report.Verdicts);
+        Assert.False(v.ReIssued, "the same name at the same size is the same drawings, wherever they were read from");
+        Assert.True(v.Lost, "it fell 240,000 sq ft from the same file: a loss the rule must answer for");
+        Assert.Single(report.Losses);
+    }
 }

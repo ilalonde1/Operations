@@ -124,4 +124,30 @@ public sealed class WhatMovedBetweenTwoRunsIsClassedByTheFirstThingThatChangedTe
         Assert.Equal(30, r.Of(CorpusDiff.Change.NewModel).Sum(m => m.Columns));
         Assert.Equal(-10, r.Of(CorpusDiff.Change.LostModel).Sum(m => m.Columns));
     }
+
+    /// <summary>
+    /// THE SAME STICK FILE READ FROM A MIRROR IS THE SAME STICK FILE (2026-10-23). The first gate run over the VPN
+    /// read the 52 judged sets from a local mirror of the share; every path began with the mirror root instead of
+    /// \\Kor-fs01, all 52 were classed RE-ISSUED, and the gate had measured the rule for an hour and then declined to
+    /// answer. Identity is the file's name and its size, wherever it was read from; a different name, or the same
+    /// name at another size, is still a re-issue.
+    ///
+    /// WHAT THIS COVERS: the same name and size under another root, and under the office's archive folder. WHAT IT
+    /// DOES NOT: a file rewritten under the same name at the same byte count (the case named in the test above).
+    /// </summary>
+    [Fact]
+    public void TheSameStickFileReadFromAMirrorIsNotAReIssue()
+    {
+        var onTheShare = Row("same", true, 36, 39, 1271, 733, 35) with { Pdf = @"\\Kor-fs01\Projects\Projects\03 Residential\same (x)\05 Stickfile\same 2026-09-14 Stickfile.pdf" };
+        var fromTheMirror = onTheShare with { Pdf = @"C:\Users\x\AppData\Local\Temp\kor-corpus-mirror\Projects\03 Residential\same (x)\05 Stickfile\same 2026-09-14 Stickfile.pdf" };
+        Assert.Equal(CorpusDiff.Change.SameCounts, CorpusDiff.Classify(onTheShare, fromTheMirror));
+
+        // moved under its own name into the office's archive folder: the same drawings
+        var archived = onTheShare with { Pdf = @"\\Kor-fs01\Projects\Projects\03 Residential\same (x)\05 Stickfile\06 Old Structural Stickfiles\same 2026-09-14 Stickfile.pdf" };
+        Assert.Equal(CorpusDiff.Change.SameCounts, CorpusDiff.Classify(onTheShare, archived));
+
+        // a different name, or the same name at another size, is still a re-issue
+        Assert.Equal(CorpusDiff.Change.ReIssued, CorpusDiff.Classify(onTheShare, fromTheMirror with { Pdf = @"C:\mirror\same 2026-09-22 Stickfile.pdf" }));
+        Assert.Equal(CorpusDiff.Change.ReIssued, CorpusDiff.Classify(onTheShare, fromTheMirror with { Bytes = onTheShare.Bytes + 1 }));
+    }
 }

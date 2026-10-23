@@ -151,8 +151,9 @@ public static class CorpusGate
                 // of 292 sets changed file in that fortnight, so this is not rare enough to leave to judgement. It
                 // is REPORTED, loudly, and it does not stop the bank - because the alternative is a gate that goes
                 // red for the drafting office's work and gets ignored.
-                ReIssued = was is not null && now is not null
-                    && (!string.Equals(was.Pdf, now.Pdf, StringComparison.OrdinalIgnoreCase) || was.Bytes != now.Bytes),
+                // by NAME and size, not by path (2026-10-23): a mirror of the share reads the same drawings, and the
+                // first gate run from one flagged all 52 judged sets re-issued on their path (CorpusDiff.SameStickFile)
+                ReIssued = was is not null && now is not null && !CorpusDiff.SameStickFile(was, now),
             });
         }
         // the losses first and worst-first; then everything else by the SIZE of its move, either way (a gain of 1,000

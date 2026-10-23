@@ -16,6 +16,7 @@ public static class TakeoffVerbs
         ("corpus-census", CorpusCensusVerb.Matches, CorpusCensusVerb.Run),
         ("model-render", ModelRenderVerb.Matches, ModelRenderVerb.Run),
         ("model-diff", ModelDiffVerb.Matches, ModelDiffVerb.Run),
+        ("revit-to-dxf", RevitToDxfVerb.Matches, RevitToDxfVerb.Run),
         ("model-yardstick", ModelYardstickVerb.Matches, ModelYardstickVerb.Run),
         ("grid-names", GridNamesVerb.Matches, GridNamesVerb.Run),
         ("model-to-page", ModelToPageVerb.Matches, ModelToPageVerb.Run),

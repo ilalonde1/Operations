@@ -86,9 +86,9 @@ public static class CorpusDiff
     public static Change Classify(CorpusAnalyzer.SetRow x, CorpusAnalyzer.SetRow y)
     {
         // A DIFFERENT DRAWING SET EXPLAINS ITSELF, and it is asked FIRST so nothing downstream reads as a
-        // regression. The stick file is identified by the path the census chose and by its size: a re-issue
+        // regression. The stick file is identified by its name and its size (SameStickFile): a re-issue
         // changes both, and a file rewritten at the same size with the same name is the one case this misses.
-        if (!string.Equals(x.Pdf, y.Pdf, StringComparison.OrdinalIgnoreCase) || x.Bytes != y.Bytes) return Change.ReIssued;
+        if (!SameStickFile(x, y)) return Change.ReIssued;
         if (!x.HasModel && y.HasModel) return Change.NewModel;
         if (x.HasModel && !y.HasModel) return Change.LostModel;
         if (!x.HasModel) return Change.SameCounts;
@@ -97,5 +97,30 @@ public static class CorpusDiff
         if ((x.SheetsPlaced ?? 0) != (y.SheetsPlaced ?? 0)) return Change.Placement;
         if ((x.Columns ?? 0) != (y.Columns ?? 0) || (x.Walls ?? 0) != (y.Walls ?? 0) || (x.StoreysWithPlate ?? 0) != (y.StoreysWithPlate ?? 0)) return Change.Composition;
         return Change.SameCounts;
+    }
+
+    /// <summary>
+    /// THE SAME STICK FILE IS THE SAME NAME AT THE SAME SIZE, WHEREVER IT WAS READ FROM (2026-10-23). Until tonight
+    /// the identity was the full path the census chose, and the first gate run from a local mirror of the share (the
+    /// VPN rule: never walk the share) flagged all 52 judged sets RE-ISSUED - every path began with the mirror root
+    /// instead of \\Kor-fs01 - and answered nothing about the rule it had just spent an hour measuring. A file the
+    /// office moves into "06 Old Structural Stickfiles" under its own name is the same drawings too. WHAT THIS STILL
+    /// MISSES, said out loud: a file rewritten under the same name at the same byte count. Rows are only ever compared
+    /// within one job, so a name shared across jobs cannot collide.
+    ///
+    /// The name is the LITERAL last path segment, not Path.GetFileName: .NET reads a two-segment path such as
+    /// \\fs\reissued.pdf as a UNC root (server + share) and returns an EMPTY file name for it, so two different names
+    /// both compared as "" and the test above (ASetThatReadADifferentStickFileIsClassedAsReIssuedBeforeAnythingElse)
+    /// caught the first draft of this method classing a re-issue as the same file (2026-10-23 03:40).
+    /// </summary>
+    public static bool SameStickFile(CorpusAnalyzer.SetRow x, CorpusAnalyzer.SetRow y)
+        => x.Bytes == y.Bytes && string.Equals(Leaf(x.Pdf), Leaf(y.Pdf), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The text after the last path separator, whatever the path's shape; the whole string where it has none.</summary>
+    private static string Leaf(string? path)
+    {
+        if (string.IsNullOrEmpty(path)) return string.Empty;
+        int i = path.LastIndexOfAny(['\\', '/']);
+        return i < 0 ? path : path[(i + 1)..];
     }
 }
