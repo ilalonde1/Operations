@@ -53,6 +53,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public bool IsClipping { get; init; }
         /// <summary>The page path this subpath came from, in content order; -1 when unknown (fixtures).</summary>
         public int PathOrdinal { get; init; } = -1;
+        /// <summary>Drawn with at least one curve (step 173). See VectorPageReader.GeomPath.</summary>
+        public bool HasCurve { get; init; }
     }
 
     /// <summary>A cut wall's outline, centreline and thickness, all in millimetres.</summary>
@@ -235,6 +237,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<bool> ColumnIsTendonAnchor { get; } = new();
         /// <summary>A RECTANGLE NO SCHEDULE DECLARES, LONGER THAN 24 IN AND TWICE AS LONG AS WIDE, IS A WALL PIER (intake step 99). Parallel to <see cref="Columns"/>: true when the column stood down as a pier and a wall panel was added for it.</summary>
         public List<bool> ColumnIsWallPier { get; } = new();
+        /// <summary>A COLUMN DRAWN WITH A CURVE IS ROUND (intake step 173). Parallel to <see cref="Columns"/>: true when the
+        /// column's filled outline was drawn with Bezier curves and is square to within a tenth; the DXF carries it as an
+        /// ARC, so the classifier's arc rule - the only sound basis for round - models it a circle, not a square.</summary>
+        public List<bool> ColumnIsRound { get; } = new();
         /// <summary>
         /// Optional cross-section hints parallel to <see cref="Lines"/>. Populated when a
         /// slab polygon is reclassified as a wall/beam and its intended beam section is

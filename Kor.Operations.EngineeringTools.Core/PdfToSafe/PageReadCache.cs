@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO.Compression;
@@ -16,7 +16,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe;
 /// </summary>
 public sealed class PageReadCache(string? root = null)
 {
-    private const byte Version = 1;
+    private const byte Version = 2;   // 2: each content subpath says whether it was drawn with a curve (step 173)
     private static readonly object[] Gates = Enumerable.Range(0, 64).Select(_ => new object()).ToArray();
     private static readonly uint[] CrcTable = MakeCrcTable();
 
@@ -83,7 +83,7 @@ public sealed class PageReadCache(string? root = null)
         {
             w.Write(sub.PathOrdinal); w.Write(sub.SubpathOrdinal); WritePoints(w, sub.Points);
             w.Write(sub.HasCloseCommand); w.Write(sub.IsFilled); w.Write(sub.IsStroked);
-            w.Write(sub.LineWidth); WriteColor(w, sub.Color); w.Write(sub.IsClipping);
+            w.Write(sub.LineWidth); WriteColor(w, sub.Color); w.Write(sub.IsClipping); w.Write(sub.HasCurve);
         }
         w.Write(raw.AnnotationPaths.Count);
         foreach (var path in raw.AnnotationPaths)
@@ -131,7 +131,7 @@ public sealed class PageReadCache(string? root = null)
             var points = ReadPoints(r);
             if (points.Count < 2) throw new InvalidDataException("A raw content subpath must have at least two points.");
             subpaths.Add(new RawContentSubpath(pathOrdinal, subpathOrdinal, points,
-                r.ReadBoolean(), r.ReadBoolean(), r.ReadBoolean(), r.ReadDouble(), ReadColor(r), r.ReadBoolean()));
+                r.ReadBoolean(), r.ReadBoolean(), r.ReadBoolean(), r.ReadDouble(), ReadColor(r), r.ReadBoolean()) { HasCurve = r.ReadBoolean() });
         }
         count = ReadCount(r, 56);
         var annotations = new List<GeomPath>(count);
@@ -190,7 +190,7 @@ public sealed class PageReadCache(string? root = null)
             var x = a.Subpaths[i]; var y = b.Subpaths[i];
             if (x.PathOrdinal != y.PathOrdinal || x.SubpathOrdinal != y.SubpathOrdinal || !PointsEqual(x.Points, y.Points)
                 || x.HasCloseCommand != y.HasCloseCommand || x.IsFilled != y.IsFilled || x.IsStroked != y.IsStroked
-                || !Bits(x.LineWidth, y.LineWidth) || x.Color != y.Color || x.IsClipping != y.IsClipping) return false;
+                || !Bits(x.LineWidth, y.LineWidth) || x.Color != y.Color || x.IsClipping != y.IsClipping || x.HasCurve != y.HasCurve) return false;
         }
         for (int i = 0; i < a.AnnotationPaths.Count; i++)
         {

@@ -199,6 +199,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var xColumns = new List<(double X, double Y)>();
             // Parallel to xColumns: bounding-box sizes for footprint rectangles.
             var xColumnSizes = new List<(double W, double D)>();
+            var xColumnRound = new List<bool>();
             // Parallel to each of the three, the colour the shape was drawn in. Carried whether or
             // not it is used, so the three lists cannot fall out of step with it.
             var xSlabColours = new List<(byte R, byte G, byte B)>();
@@ -249,6 +250,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     xColumns.Add((px, py));
                     xColumnSizes.Add(i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (400.0, 400.0));
+                    xColumnRound.Add(i < geometry.ColumnIsRound.Count && geometry.ColumnIsRound[i]);
                     xColumnColours.Add(i < geometry.ColumnColors.Count ? geometry.ColumnColors[i] : black);
                     xColumnMarkup.Add(i < geometry.ColumnIsAnnotation.Count && geometry.ColumnIsAnnotation[i]);
                 }
@@ -641,12 +643,25 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var opening in xVoids)
                 WritePolyline(CarriedVoidLayer, 6, opening, true);
 
-            // Columns: footprint rectangles from the parallel xColumnSizes list.
+            // Columns: footprint rectangles from the parallel xColumnSizes list; a column drawn round
+            // is written as a full-circle ARC (step 173), the curve the classifier's round rule needs.
             for (int i = 0; i < xColumns.Count; i++)
             {
                 var (px, py) = xColumns[i];
                 double hw = xColumnSizes[i].W / 2.0;
                 double hd = xColumnSizes[i].D / 2.0;
+                if (xColumnRound[i])
+                {
+                    string arcLayer = layerByColour
+                        ? ColourLayer(xColumnColours[i], xColumnMarkup[i])
+                        : StructuralOrAssumedLayer("COLUMN", xColumnColours[i], xColumnMarkup[i]);
+                    G(0, "ARC"); G(8, arcLayer);
+                    G(62, NearestAci(xColumnColours[i]).ToString(ic));
+                    Num(10, px); Num(20, py); Num(30, 0);
+                    Num(40, (hw + hd) / 2.0);
+                    Num(50, 0); Num(51, 360);
+                    continue;
+                }
                 var rect = new List<(double X, double Y)>
                 {
                     (px - hw, py - hd), (px + hw, py - hd),

@@ -436,6 +436,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         result.ColumnColors.Add(color);
                         result.ColumnIsAnnotation.Add(sub.IsAnnotation);
                         result.ColumnSizes.Add(declaredOnAxes ? (bboxW, bboxH) : (obox!.Length, obox.Thickness));
+                        result.ColumnIsRound.Add(DrawnRound(sub, pts, bboxW, bboxH));
                         columnByShape.Add(false);
                         Fate(PathReason.BecameColumnByDeclaredSize, result.Columns.Count - 1);
                         continue;
@@ -601,6 +602,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         result.ColumnColors.Add(color);
                         result.ColumnIsAnnotation.Add(sub.IsAnnotation);
                         result.ColumnSizes.Add((bboxW, bboxH));
+                        result.ColumnIsRound.Add(DrawnRound(sub, pts, bboxW, bboxH));
                         columnByShape.Add(true);
                         Fate(PathReason.BecameColumnByShape, result.Columns.Count - 1);
                     }
@@ -904,6 +906,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (i < result.ColumnColors.Count) result.ColumnColors.RemoveAt(i);
                 if (i < result.ColumnIsAnnotation.Count) result.ColumnIsAnnotation.RemoveAt(i);
                 if (i < result.ColumnSizes.Count) result.ColumnSizes.RemoveAt(i);
+                if (i < result.ColumnIsRound.Count) result.ColumnIsRound.RemoveAt(i);
                 // and the by-shape flags, which the quadrant pass reads next by the SURVIVORS' indexes: left
                 // uncompacted, three removed cells ahead of two declared columns handed the pair the cells'
                 // flags and the pair went as a target's quadrants (Codex audit 2026-09-13, F1)
@@ -982,6 +985,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (i < result.ColumnColors.Count) result.ColumnColors.RemoveAt(i);
                 if (i < result.ColumnIsAnnotation.Count) result.ColumnIsAnnotation.RemoveAt(i);
                 if (i < result.ColumnSizes.Count) result.ColumnSizes.RemoveAt(i);
+                if (i < result.ColumnIsRound.Count) result.ColumnIsRound.RemoveAt(i);
             }
             if (fates is null) return;
             for (int k = firstFate; k < fates.Count; k++)
@@ -2060,6 +2064,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // end: a hatch line stops on the MIDDLE of its zone's boundary, and S1.11's load-zone hatching, kept that way,
             // doubled 31065's build (11 -> 22 min on that one discarded sheet). A dash on its own still is not kept.
             bool off170 = Environment.GetEnvironmentVariable("KOR_STEP170_OFF") == "1";
+            var addedBy170 = new HashSet<object>(ReferenceEqualityComparer.Instance);   // the pieces this step offered, so a refused arrangement can be built without them
             if (!off170)
             {
                 var shortRuns = built.OpenChains.Where(c => c.Count >= 2 && !pieces.Contains(c)).ToList();
@@ -2070,23 +2075,42 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     grew = false;
                     foreach (var c in shortRuns.ToList())
                         if (AtKeptEnd(c[0]) || AtKeptEnd(c[^1]))
-                        { pieces.Add(c); shortRuns.Remove(c); keptEnds.Add(c[0]); keptEnds.Add(c[^1]); grew = true; }
+                        { pieces.Add(c); addedBy170.Add(c); shortRuns.Remove(c); keptEnds.Add(c[0]); keptEnds.Add(c[^1]); grew = true; }
                 }
                 // AND A LINE DRAWN TWICE IS NOT LOST WITH THE WALK'S SPUR: S2.16.1 (L5 south) draws 1.35 m of its west edge
                 // twice, at 0.96 and 0.6 pt over each other; the walk went up one and back down the other into a balcony's
                 // box, the ring was simplified to the box, and the stretch was gone. A drawn line lying on a kept edge's own
-                // line, overlapping it but running past it, is offered as a piece. Hatching never lies along an edge.
+                // line and running past it offers the stretch NO kept edge covers - only that: offered whole, its overlap
+                // with the kept edge is two edges on one stretch, which the arrangement refuses (31037's L2 hold-down plan,
+                // 20,339 sq ft lost to "an unresolved crossing or contact" in the corpus gate, 2026-10-22). Hatching never
+                // lies along an edge.
                 var keptSegs = loops.SelectMany(l => l.Points.Select((p, i) => (A: p, B: l.Points[(i + 1) % l.Points.Count])))
                     .Concat(pieces.SelectMany(c => c.Zip(c.Skip(1), (a, b) => (A: a, B: b)))).ToList();
-                bool OnKeptSeg(DxfPoint p) => keptSegs.Any(k => LoopGeometry.DistanceToSegment(p, k.A, k.B) <= SlabEdgeJoinMm);
                 foreach (var s in segments)
                 {
-                    bool along = keptSegs.Any(k =>
-                        LoopGeometry.PerpendicularDistance(s.Start, k.A, k.B) <= SlabEdgeJoinMm && LoopGeometry.PerpendicularDistance(s.End, k.A, k.B) <= SlabEdgeJoinMm
-                        && (LoopGeometry.DistanceToSegment(s.Start, k.A, k.B) <= SlabEdgeJoinMm || LoopGeometry.DistanceToSegment(s.End, k.A, k.B) <= SlabEdgeJoinMm));
-                    if (!along) continue;
-                    bool covered = new[] { 0.25, 0.5, 0.75 }.All(f => OnKeptSeg(new DxfPoint(s.Start.X + f * (s.End.X - s.Start.X), s.Start.Y + f * (s.End.Y - s.Start.Y))));
-                    if (!covered) pieces.Add(new[] { s.Start, s.End });
+                    double len = s.Start.DistanceTo(s.End);
+                    if (len <= SlabEdgeJoinMm) continue;
+                    double ux = (s.End.X - s.Start.X) / len, uy = (s.End.Y - s.Start.Y) / len;
+                    var on = keptSegs.Where(k => LoopGeometry.PerpendicularDistance(k.A, s.Start, s.End) <= SlabEdgeJoinMm
+                                                 && LoopGeometry.PerpendicularDistance(k.B, s.Start, s.End) <= SlabEdgeJoinMm)
+                        .Select(k =>
+                        {
+                            double a = (k.A.X - s.Start.X) * ux + (k.A.Y - s.Start.Y) * uy, b = (k.B.X - s.Start.X) * ux + (k.B.Y - s.Start.Y) * uy;
+                            return (Lo: Math.Max(0, Math.Min(a, b)), Hi: Math.Min(len, Math.Max(a, b)));
+                        })
+                        .Where(iv => iv.Hi - iv.Lo > SlabEdgeJoinMm)
+                        .OrderBy(iv => iv.Lo).ToList();
+                    if (on.Count == 0) continue;                       // not along a kept edge at all
+                    double at = 0;
+                    foreach (var (lo, hi) in on.Append((Lo: len, Hi: len)))
+                    {
+                        if (lo - at > SlabEdgeJoinMm)
+                        {
+                            var stretch = new[] { new DxfPoint(s.Start.X + ux * at, s.Start.Y + uy * at), new DxfPoint(s.Start.X + ux * lo, s.Start.Y + uy * lo) };
+                            pieces.Add(stretch); addedBy170.Add(stretch);
+                        }
+                        at = Math.Max(at, hi);
+                    }
                 }
             }
             // A STROKE ON THE GRID IS A PIECE OF THE EDGE (intake step 131, 2026-09-19). Step 78 offered the strokes along
@@ -2213,9 +2237,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // round each box and holding nothing on 31202 L6); every end within four feet of a column carried in
             // any direction (31065 L1 lost ten columns to notches, 31202 L6 its 19,670 sq ft to the neighbourhood
             // gate); a column on a cell's boundary holding no cell (31202 L6 fragmented to 13,868 + 1,868).
-            var carried = new List<DxfSegment>();
             var endsAtColumn = new Dictionary<DxfPoint, List<DxfPoint>>();   // column centre -> the edge ends that run into it
-            foreach (var c in pieces)
+            var carried = CarriedThroughColumns(pieces, endsAtColumn);
+            List<DxfSegment> CarriedThroughColumns(IEnumerable<IReadOnlyList<DxfPoint>> fromPieces, Dictionary<DxfPoint, List<DxfPoint>> endsAt)
+            {
+            var carriedHere = new List<DxfSegment>();
+            foreach (var c in fromPieces)
                 foreach (var (end, prev) in new[] { (c[0], c[1]), (c[^1], c[^2]) })
                 {
                     double dx = end.X - prev.X, dy = end.Y - prev.Y, len = Math.Sqrt(dx * dx + dy * dy);
@@ -2236,13 +2263,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         if (along < bestAlong) { bestAlong = along; centre = new DxfPoint(cx, cy); }
                     }
                     if (bestAlong < double.MaxValue && end.DistanceTo(centre) > SlabEdgeJoinMm)
-                        (endsAtColumn.TryGetValue(centre, out var at) ? at : endsAtColumn[centre] = new List<DxfPoint>()).Add(end);
+                        (endsAt.TryGetValue(centre, out var at) ? at : endsAt[centre] = new List<DxfPoint>()).Add(end);
                 }
             // TWO edges meeting at a column are joined through it; a lone line running into a column (a room wall, a
             // beam) is left as drawn - a spur from it into the floor makes junctions the drawing does not have
-            foreach (var (centre, ends) in endsAtColumn)
+            foreach (var (centre, ends) in endsAt)
                 if (ends.Count >= 2)
-                    foreach (var end in ends) carried.Add(new DxfSegment("SLABEDGE", end, centre));
+                    foreach (var end in ends) carriedHere.Add(new DxfSegment("SLABEDGE", end, centre));
+            return carriedHere;
+            }
             // the trace says which columns took two ends and which were run into by one end alone (the edge-beside-a-column
             // class, 30838's 12/F and 31138's tower: the other edge starts at the column's far corner and runs away from it)
             FaceTrace?.Invoke($"slab pass: ends at columns (step 97; centre ft: ends): " + string.Join(" ", endsAtColumn.OrderByDescending(e => e.Value.Count)
@@ -2252,6 +2281,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var l in built.Loops)
                 for (int i = 0; i < l.Points.Count; i++)
                     arranged.Add(new DxfSegment("SLABEDGE", l.Points[i], l.Points[(i + 1) % l.Points.Count]));
+            // STEP 170 ONLY ADDS, SO IT MAY NEVER COST A FLOOR (2026-10-22). Its pieces and its in-line bridges can leave the
+            // arrangement a crossing it refuses, and a refused arrangement is a storey with no floor: 31037's L2 hold-down
+            // plan lost its 20,339 sq ft that way in the corpus gate (with the in-line tolerance at an inch, and still at
+            // 6 mm). The arrangement as it was before the step is kept beside it, and a refusal of the one is answered by
+            // building the other.
+            List<DxfSegment>? arrangedBefore170 = null;
+            if (!off170)
+            {
+                var basePieces = pieces.Where(c => !addedBy170.Contains(c)).ToList();
+                var baseSegments = basePieces.SelectMany(c => c.Zip(c.Skip(1), (a, b) => new DxfSegment("SLABEDGE", a, b))).ToList();
+                var baseInLine = BridgesInLine(baseSegments, SlabEdgeExtendMm, SlabEdgeJoinMm);
+                if (addedBy170.Count > 0 || baseInLine.Count != inLine.Count)
+                {
+                    arrangedBefore170 = baseSegments.Concat(baseInLine).Concat(bareStrokes)
+                        .Concat(CarriedThroughColumns(basePieces, new Dictionary<DxfPoint, List<DxfPoint>>())).ToList();
+                    foreach (var l in built.Loops)
+                        for (int i = 0; i < l.Points.Count; i++)
+                            arrangedBefore170.Add(new DxfSegment("SLABEDGE", l.Points[i], l.Points[(i + 1) % l.Points.Count]));
+                }
+            }
             // The drawing's own closed paths, not a mark-up's: an engineer's mark-up polygon over the whole sheet is a
             // slab on the mark-up route and says nothing about where the plan's floor is. WHAT THIS DOES NOT: a closed
             // viewport rectangle round the plan is a drawn "slab" today too, and a union inside it defers to it as it did.
@@ -2566,6 +2615,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                                   var c = new DxfPoint((f.X0 + f.X1) / 2, (f.Y0 + f.Y1) / 2);
                                   return $"{f.Treads} {(f.X1 - f.X0) / 304.8:0.0}x{(f.Y1 - f.Y0) / 304.8:0.0} ({c.X / 304.8:0},{c.Y / 304.8:0})[{NearestColumnFootprintFt(c):0.0},{(result.Walls.Count == 0 ? -1 : result.Walls.Min(w => LoopGeometry.DistanceToSegment(c, new DxfPoint(w.Start.X, w.Start.Y), new DxfPoint(w.End.X, w.End.Y))) / 304.8):0.0}]";
                               })));
+            var loopsBeforeArrangement = loops.ToList();
+            List<PlanLoop>? loopsWith170 = null;
+            int unflooredWith170 = 0;
+            double flooredWith170 = 0;
+            int ColumnsOnNoFloor(List<PlanLoop> candidateLoops)
+            {
+                var floorRings = candidateLoops.Where(l => l.Area >= minSlabAreaMm2).ToList();
+                return result.Columns.Count(c => !floorRings.Any(f => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), f.Points)));
+            }
+            double FloorArea(List<PlanLoop> candidateLoops) => candidateLoops.Where(l => l.Area >= minSlabAreaMm2 && StandsIn(l)).Sum(l => l.Area);
+            arrangeAgain:
             if (!walkFoundAFloor && arranged.Count >= 3)
             {
                 try
@@ -2892,8 +2952,39 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
                 catch (InvalidOperationException refused)
                 {
+                    if (arrangedBefore170 is not null)
+                    {
+                        FaceTrace?.Invoke($"slab pass: the arrangement with step 170's {addedBy170.Count} piece(s) was refused ({refused.Message}); built again as before the step");
+                        loops.Clear(); loops.AddRange(loopsBeforeArrangement);
+                        arranged = arrangedBefore170;
+                        arrangedBefore170 = null;
+                        goto arrangeAgain;
+                    }
                     result.SlabEdgeArrangementRefused = refused.Message;
                 }
+            }
+            // AND IT MAY NOT TRADE A FLOOR FOR ANOTHER (2026-10-22). Its extra lines on a page whose floor already closed can
+            // carve that floor into zones, and a zone with no call-out of its own is then not modelled: 30993's L4 south
+            // lost 8,538 sq ft of the floor her model carries. So the page is always built again as it was before the
+            // step, and the step's reading is kept only where it floors more: more of the columns on a floor, or as many
+            // and more floor (by more than a square metre). Asking only where a column fell off was not enough: 31032's
+            // L2 lost the east half of its floor with no column read on that half, and the step's strip went through.
+            if (arrangedBefore170 is not null)
+            {
+                loopsWith170 = loops.ToList(); unflooredWith170 = ColumnsOnNoFloor(loops); flooredWith170 = FloorArea(loops);
+                loops.Clear(); loops.AddRange(loopsBeforeArrangement);
+                arranged = arrangedBefore170;
+                arrangedBefore170 = null;
+                goto arrangeAgain;
+            }
+            else if (loopsWith170 is not null)
+            {
+                int unflooredBefore = ColumnsOnNoFloor(loops);
+                double flooredBefore = FloorArea(loops);
+                bool stepFloorsMore = unflooredWith170 < unflooredBefore
+                    || (unflooredWith170 == unflooredBefore && flooredWith170 > flooredBefore + 1e6);
+                FaceTrace?.Invoke($"slab pass: with step 170 {unflooredWith170} column(s) on no floor and {flooredWith170 / 92903:N0} sq ft of floor, without {unflooredBefore} and {flooredBefore / 92903:N0}; kept the {(stepFloorsMore ? "step's" : "earlier")} reading");
+                if (stepFloorsMore) { loops.Clear(); loops.AddRange(loopsWith170); }
             }
 
             // big enough to be a floor, and with something standing in it - and not a shaft's own box: a ring that lies
@@ -3250,9 +3341,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// PDF's own coordinates, which meet exactly where the drafter closed a polyline.</summary>
         public const double SlabEdgeJoinMm = 1.0;
 
-        /// <summary>Two pieces of a slab edge this far off each other's line are still one line (step 170): an inch, the
-        /// drafter's own precision at 1:100 (0.25 mm on the paper).</summary>
-        public const double SlabEdgeInLineMm = 25.4;
+        /// <summary>Two pieces of a slab edge this far off each other's line are still one line (step 170): 6 mm, over the
+        /// 4 mm 31065 S2.17.1 resumes its edge off its own line (0.04 mm on the paper at 1:100). An inch was the first cut,
+        /// and on 31037's L2 hold-down plan it bridged lines that are not one line into crossings the arrangement refused,
+        /// losing the storey's 20,339 sq ft (corpus gate, 2026-10-22).</summary>
+        public const double SlabEdgeInLineMm = 6.0;
 
         /// <summary>Two chain ends this close are one edge broken by what crossed it: a hand's width, the DXF side's own bridge (6 in). The compiled default of dxf.bridge-tolerance (PdfIntakeOptions.SlabEdgeBridgeMm).</summary>
         public const double DefaultSlabEdgeBridgeMm = 6 * 25.4;
@@ -3403,6 +3496,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double ux = box.AxisEnd.X - box.AxisStart.X, uy = box.AxisEnd.Y - box.AxisStart.Y;
             double len = Math.Sqrt(ux * ux + uy * uy);
             return (box.AxisStart.X + ux / len * t, box.AxisStart.Y + uy / len * t);
+        }
+
+        /// <summary>
+        /// A COLUMN DRAWN WITH A CURVE IS ROUND (intake step 173, 2026-10-21). 31065's 450 mm round columns (C16, C18,
+        /// C20 - "450 Ø" on the sheet) were written to the DXF as squares, priced 27% over each. Roundness
+        /// is taken from how the column was drawn, as the DXF side takes it from arcs: its outline used Bezier curves,
+        /// it is square to a tenth, and it fills about pi/4 of its box. A chamfered or radiused square fills more and
+        /// stays square - the shape test alone made 160 of those into circles on 31168 once.
+        /// </summary>
+        internal static bool DrawnRound(RawSubpath sub, List<(double X, double Y)> pts, double w, double h)
+        {
+            if (Environment.GetEnvironmentVariable("KOR_STEP173_OFF") == "1" || !sub.HasCurve || pts.Count < 8) return false;
+            double big = Math.Max(w, h);
+            if (big <= 0 || Math.Abs(w - h) > 0.1 * big) return false;
+            double fill = Math.Abs(PolygonProcessor.PolygonAreaMm2(pts)) / (w * h);
+            return fill is > 0.72 and < 0.85;
         }
 
         /// <summary>The wall between two stations on its axis, as its own four-cornered panel.</summary>

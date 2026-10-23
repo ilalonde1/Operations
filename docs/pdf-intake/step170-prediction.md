@@ -54,3 +54,32 @@ Each looked at, rendered over the page: the plate follows the drawn outline, bal
 3. `takeoff corpus-gate --bisect KOR_STEP170_OFF` on the corpus, judged on her plate area, thickness and openings.
 
 ⛔ Run where the drawings are local. Never over the VPN.
+
+## Judged by the corpus gate, 2026-10-22 (run a6b41b9e, committed 8fa0d9d6)
+
+Against last night's run, 25 sets gained plate and 10 lost; the bisect named step 170 for 31037-01 (25,390 -> 5,934 sq
+ft of her 64,395), 30849-01 (84,233 -> 71,260 of 123,638) and 30993-01 (510,530 -> 503,998 of 560,266).
+
+31037's L2 hold-down plan (page 24): the step's pieces and in-line bridges took the arrangement from 3,815 to 5,057
+lines and PlanarRings refused it ("Centroid snapping left an unresolved crossing or contact"), so the storey had no
+floor. Each clause off in turn: only the in-line tolerance off let it close; at 6 mm it still refused. So:
+
+- **In line within 6 mm**, not an inch (31065 needs 4 mm).
+- **A line drawn twice offers only the stretch no kept edge covers**, never the overlap.
+- **The step may never cost a floor:** the arrangement as it was before the step is kept beside it, and a refusal is
+  answered by building that one (`arrangeAgain`). 31037 L2 back to 20,339 sq ft; 31065's three witness pages unchanged.
+
+Re-judged on 30849-01 and 30993-01 before re-banking (below).
+
+## Judged again, 2026-10-22 (run e7605731, the corrections above plus steps 171-173)
+
+31037-01 25,391, 30849-01 88,446 (+4,213), 30993-01 510,640: the three losses above are closed. 31009-01 gains its
+L8 floor (0 -> about 15,000 sq ft; hers 14,026). Step 170 still took plate on two sets, each rebuilt whole on and off:
+
+- **31032-01 L2**: 30,906 -> 27,759 sq ft; rendered, the step's floor is a strip and the east half is gone.
+- **31101-01 L1**: -52 sq ft and her one opening.
+
+The selection above only built the earlier reading where the step's left a column on no floor, and no column stands on
+31032 L2's lost half. **So both readings are now always built, and the step's is kept only where it floors more:
+fewer columns on no floor, or as many and more floor area (by over a square metre).** 31065 S2.17.1 keeps the step's
+(12,825 sq ft, 0 columns off, against 7,011 and 21).

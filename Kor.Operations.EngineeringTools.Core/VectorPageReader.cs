@@ -51,6 +51,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             public bool IsClipping { get; init; }
             /// <summary>Which path of the page this subpath came from, in content order; -1 when unknown.</summary>
             public int PathOrdinal { get; init; } = -1;
+            /// <summary>The subpath was drawn with at least one curve (a cubic Bezier): a round column is
+            /// one, and its tessellation alone cannot say so (step 173).</summary>
+            public bool HasCurve { get; init; }
             public double Width       => MaxX - MinX;
             public double Height      => MaxY - MinY;
             public double DiagonalLen => Math.Sqrt(Width * Width + Height * Height);
@@ -68,7 +71,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             int PathOrdinal, int SubpathOrdinal,
             IReadOnlyList<(double X, double Y)> Points,
             bool HasCloseCommand, bool IsFilled, bool IsStroked,
-            double LineWidth, (byte R, byte G, byte B) Color, bool IsClipping);
+            double LineWidth, (byte R, byte G, byte B) Color, bool IsClipping)
+        {
+            /// <summary>Drawn with at least one curve (step 173); kept by the page cache from version 2.</summary>
+            public bool HasCurve { get; init; }
+        }
 
         /// <summary>
         /// The fixed PDF walk at one curve tessellation. Words and annotation geometry retain the
@@ -233,7 +240,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
                     paths.Add(new RawSubpath(pathOrdinal, subpathOrdinal, pts,
                         sub.Commands.OfType<PdfSubpath.Close>().Any(), isFilled, isStroked,
-                        lineWidth, pathColor, pdfPath.IsClipping));
+                        lineWidth, pathColor, pdfPath.IsClipping) { HasCurve = sub.Commands.OfType<PdfSubpath.CubicBezierCurve>().Any() });
                 }
             }
 
@@ -274,7 +281,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 }
 
                 paths.Add(ToGeomPath(pts, isClosed, sub.IsFilled, sub.IsStroked, sub.Color, sub.LineWidth, isAnnotation: false)
-                    with { IsClipping = sub.IsClipping, PathOrdinal = sub.PathOrdinal });
+                    with { IsClipping = sub.IsClipping, PathOrdinal = sub.PathOrdinal, HasCurve = sub.HasCurve });
                 keptSubpathOrdinals?.Add(sub.SubpathOrdinal);
             }
 
