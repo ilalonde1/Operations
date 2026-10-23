@@ -1,6 +1,7 @@
 <UserControl x:Class="Kor.Operations.App.NetworkOps.NetworkOpsToClearView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:nops="clr-namespace:Kor.Operations.App.NetworkOps"
              FontFamily="Mulish, Segoe UI">
     <UserControl.Resources>
         <ResourceDictionary>
@@ -10,7 +11,7 @@
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
             <!-- The reasons disclosure on an action row: a link-styled toggle whose label flips Show/Hide with its state. -->
             <Style x:Key="Ops.Disclose" TargetType="ToggleButton">
-                <Setter Property="Foreground" Value="#2F5496"/>
+                <Setter Property="Foreground" Value="{x:Static nops:NetworkOpsBrushes.Link}"/>
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="BorderThickness" Value="0"/>
                 <Setter Property="Cursor" Value="Hand"/>
@@ -100,7 +101,7 @@
                         <ItemsControl x:Name="ActionStrip">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#F4F8FB" BorderBrush="#D3DEE8" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,7">
+                                    <Border Background="{x:Static nops:NetworkOpsBrushes.ActionTint}" BorderBrush="{x:Static nops:NetworkOpsBrushes.ActionEdge}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,7">
                                         <StackPanel>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
@@ -122,10 +123,10 @@
                                                     <Button Content="{Binding RunLabel}" Style="{StaticResource Ops.Primary}"
                                                             Click="RunAction_Click" Visibility="{Binding ShowRun, Converter={StaticResource BoolToVis}}"
                                                             ToolTip="Run this one fix on every machine that needs it, clearing every reason it covers on each. Audited; the reasons clear as each machine is fixed and re-checked."/>
-                                                    <Border Background="#ECF6EC" BorderBrush="#BFE3BF" BorderThickness="1" CornerRadius="5" Padding="9,5" MaxWidth="260"
+                                                    <Border Background="{x:Static nops:NetworkOpsBrushes.FixingTint}" BorderBrush="{x:Static nops:NetworkOpsBrushes.FixingEdge}" BorderThickness="1" CornerRadius="5" Padding="9,5" MaxWidth="260"
                                                             Visibility="{Binding ShowFixing, Converter={StaticResource BoolToVis}}"
                                                             ToolTip="This fix is queued and running; each machine's progress is in the strip at the top.">
-                                                        <TextBlock Text="{Binding FixingText}" FontSize="12" Foreground="#166534" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                        <TextBlock Text="{Binding FixingText}" FontSize="12" Foreground="{x:Static nops:NetworkOpsBrushes.FixingText}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                                     </Border>
                                                     <ToggleButton x:Name="ReasonsToggle" Style="{StaticResource Ops.Disclose}" Margin="0,4,0,0"
                                                                   ToolTip="Show each reason and its machines — fix, acknowledge or snooze one on its own."/>
@@ -158,9 +159,9 @@
                                                                     <Button Content="{Binding FixLabel}" Style="{StaticResource Ops.Primary}" Click="Fix_Click" Margin="0,0,0,6"
                                                                             Visibility="{Binding ShowFix, Converter={StaticResource BoolToVis}}"
                                                                             ToolTip="Fix just this reason, on its machines."/>
-                                                                    <Border Background="#ECF6EC" BorderBrush="#BFE3BF" BorderThickness="1" CornerRadius="5" Padding="9,5" Margin="0,0,0,6"
+                                                                    <Border Background="{x:Static nops:NetworkOpsBrushes.FixingTint}" BorderBrush="{x:Static nops:NetworkOpsBrushes.FixingEdge}" BorderThickness="1" CornerRadius="5" Padding="9,5" Margin="0,0,0,6"
                                                                             Visibility="{Binding ShowFixing, Converter={StaticResource BoolToVis}}">
-                                                                        <TextBlock Text="{Binding FixingText}" FontSize="12" Foreground="#166534" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                                        <TextBlock Text="{Binding FixingText}" FontSize="12" Foreground="{x:Static nops:NetworkOpsBrushes.FixingText}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                                                     </Border>
                                                                     <Button Content="Ask Claude" Style="{StaticResource Ops.Primary}" Click="Ask_Click" Margin="0,0,0,6"
                                                                             Visibility="{Binding ShowAskPrimary, Converter={StaticResource BoolToVis}}"
@@ -244,10 +245,10 @@
                                         <Button Content="{Binding FixLabel}" Style="{StaticResource Ops.Primary}" Click="Fix_Click" Margin="0,0,0,6"
                                                 Visibility="{Binding ShowFix, Converter={StaticResource BoolToVis}}"
                                                 ToolTip="Queue this fix on every machine that has the issue. Each run is audited; this list clears each as it's fixed and re-checked."/>
-                                        <Border Background="#ECF6EC" BorderBrush="#BFE3BF" BorderThickness="1" CornerRadius="5" Padding="9,5" Margin="0,0,0,6"
+                                        <Border Background="{x:Static nops:NetworkOpsBrushes.FixingTint}" BorderBrush="{x:Static nops:NetworkOpsBrushes.FixingEdge}" BorderThickness="1" CornerRadius="5" Padding="9,5" Margin="0,0,0,6"
                                                 Visibility="{Binding ShowFixing, Converter={StaticResource BoolToVis}}"
                                                 ToolTip="This fix is queued and running on the affected machines. The issue drops off once they clear and re-check.">
-                                            <TextBlock Text="{Binding FixingText}" FontSize="12" Foreground="#166534" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding FixingText}" FontSize="12" Foreground="{x:Static nops:NetworkOpsBrushes.FixingText}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                         </Border>
                                         <!-- Ask Claude is the PRIMARY verb only when there is no one-click fix; otherwise it tucks into More. -->
                                         <Button Content="Ask Claude" Style="{StaticResource Ops.Primary}" Click="Ask_Click" Margin="0,0,0,6"

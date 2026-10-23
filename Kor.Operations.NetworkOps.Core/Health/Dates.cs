@@ -9,4 +9,7 @@ namespace Kor.Operations.NetworkOps.Core.Health;
 public static class Dates
 {
     public static string Day(DateTime d) => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    /// <summary>A clock time ("23:12", or "23:12:05" for a status line's "updated at"); the caller converts UTC to local first.</summary>
+    public static string Clock(DateTime d, bool seconds = false) => d.ToString(seconds ? "HH:mm:ss" : "HH:mm", CultureInfo.InvariantCulture);
 }

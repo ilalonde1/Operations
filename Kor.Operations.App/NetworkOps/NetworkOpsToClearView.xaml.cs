@@ -253,7 +253,7 @@ public partial class NetworkOpsToClearView : UserControl
         else if (_rows.Count == 0) { EmptyText.Text = "Everything to clear is up in “Clear in one action”."; EmptyText.Visibility = Visibility.Visible; }
         else EmptyText.Visibility = Visibility.Collapsed;
 
-        Status($"Updated {DateTime.Now:HH:mm:ss} · {(green ? "all green 🎉" : $"{v.Issues} to clear{fixingNote}")} · refreshes every 20s");
+        Status($"Updated {Kor.Operations.NetworkOps.Core.Health.Dates.Clock(DateTime.Now, seconds: true)} · {(green ? "all green 🎉" : $"{v.Issues} to clear{fixingNote}")} · refreshes every 20s");
     }
 
     private async void Fix_Click(object sender, RoutedEventArgs e)

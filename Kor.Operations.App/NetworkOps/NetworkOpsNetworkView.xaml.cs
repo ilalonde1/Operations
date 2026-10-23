@@ -94,7 +94,7 @@ public partial class NetworkOpsNetworkView : UserControl
                 HeadlineText.Text = "The map is being built";
                 SublineText.Text = "The service has just started: the map comes with its first rack sweep, within 5 minutes. This window checks again every 30 seconds.";
             }
-            StatusText.Text = $"Waiting for the map (checked {DateTime.Now:HH:mm:ss}).";
+            StatusText.Text = $"Waiting for the map (checked {Kor.Operations.NetworkOps.Core.Health.Dates.Clock(DateTime.Now, seconds: true)}).";
             _retry ??= new System.Windows.Threading.DispatcherTimer(TimeSpan.FromSeconds(30), System.Windows.Threading.DispatcherPriority.Background,
                 async (_, _) => await Guard(LoadAsync).ConfigureAwait(true), Dispatcher);
             _retry.Start();

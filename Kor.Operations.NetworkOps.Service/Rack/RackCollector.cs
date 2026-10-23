@@ -16,7 +16,7 @@ namespace Kor.Operations.NetworkOps.Service.Rack;
 //   UniFi      SSH as `netops`, whose ONLY permitted command prints the controller's status
 //   Internet   from APP01 itself: public IP, DNS, pings through the firewall
 //   CoreSwitch SNMPv3 SHA/DES (all the EdgeSwitch firmware offers)
-//   Ups        the in-process UPS watcher's latest reading
+//   Ups        the in-process UPS watcher's latest reading, plus one SNMPv3 GET of the card's firmware and battery dates
 //   Mesh       a server NetworkOps cannot read itself (no admin rights there): only whether its Mesh agent is connected,
 //              from the last MeshCentral read -- enough to show it and Connect to it, and it says its health is not read
 //   MeshServer KOR-MESH01: MeshCentral itself answering, and how many agents it has connected
@@ -41,7 +41,7 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
                 "Internet" => await InternetAsync(cap.Token).ConfigureAwait(false),
                 "CoreSwitch" => await CoreSwitchAsync(d, previousFacts, cap.Token).ConfigureAwait(false),
                 "Firewall" => await FirewallAsync(d, previousFacts, cap.Token).ConfigureAwait(false),
-                "Ups" => Ups(d),
+                "Ups" => await UpsAsync(d, cap.Token).ConfigureAwait(false),
                 "WindowsServer" => await ServerAsync(d, cap.Token).ConfigureAwait(false),
                 // A printer: read-only SNMP v1 "public" (SnmpChannel.GetV1Async says why v1 here), no password stored.
                 "Printer" => PrinterRules.Evaluate(await SnmpChannel.GetV1Async(d.Address, "public", PrinterRules.Oids, [PrinterRules.ErrorState],
@@ -222,13 +222,26 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
             : RackResult.Unreachable($"{run.Status}: {run.Error}");
     }
 
-    private RackResult Ups(RackDevice d)
+    private async Task<RackResult> UpsAsync(RackDevice d, CancellationToken ct)
     {
         if (!power.Configured) return RackResult.Unreachable("the UPS watcher is not running");
         var view = power.Views().FirstOrDefault(v => v.Latest.Ups.Equals(d.UpsName, StringComparison.OrdinalIgnoreCase));
         if (view is null) return RackResult.Unreachable("no reading yet");
         if (!view.Latest.Reachable) return RackResult.Unreachable(view.Latest.Error ?? "not answering");
         if (DateTime.UtcNow - view.Latest.AtUtc > TimeSpan.FromMinutes(3)) return RackResult.Unreachable($"no answer since {view.Latest.AtUtc.ToLocalTime():HH:mm}");
-        return UpsRules.Evaluate(view.Latest);
+        // The card's firmware and battery dates, read here (every rack sweep) rather than by the watcher (every few seconds):
+        // they change on a firmware update or a battery swap. A failed read still judges the power state from the watcher.
+        UpsCardInfo? card = null;
+        if (options.Value.Ups.FirstOrDefault(c => c.Name.Equals(d.UpsName, StringComparison.OrdinalIgnoreCase)) is { } cfg)
+        {
+            try
+            {
+                var values = await SnmpChannel.GetAsync(cfg.Address, Snmp(cfg.AuthSha256, des: false), UpsMibs.CardOidsFor(cfg.Mib), TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
+                card = UpsCardInfo.Parse(cfg.Mib, values);
+            }
+            // silent-catch OK: the card facts are extra; the watcher's reading is still judged, and the facts keep their last values.
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { card = null; }
+        }
+        return UpsRules.Evaluate(view.Latest, card, DateTime.UtcNow);
     }
 }

@@ -331,6 +331,10 @@ public static class Knowledge
             ["Book the service visit (for the copier: the Canon dealer)"], "More jams and faults as worn parts go on."),
         E("ups.replace-battery", "The UPS asks for a new battery.", ["Age (3-5 years)", "A failed self-test"], ["Order and fit the battery the UPS names"],
             "A dead battery is how the 10 Sep 2026 outage dropped both servers."),
+        E("ups.battery-due", "The UPS card's own recommended replacement date for the battery is near or past (the date behind its \"battery near end of life\" emails).",
+            ["Battery age: the card sets the date from when the battery was fitted (typically 3-5 years)"],
+            ["Order the battery part shown", "After fitting it, enter the new install date on the card's own web page, which resets the recommended date"],
+            "The battery is what keeps the servers up long enough to shut down cleanly; an old one gives less time than the runtime figure says."),
         E("ups.short-runtime", "On a full battery the UPS would last under 15 minutes at the current load.", ["An ageing battery", "More load than before"],
             ["Check the battery age; rebalance the load between the two UPSes"], "Less time for a clean shutdown in an outage."),
 

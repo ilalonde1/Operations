@@ -133,7 +133,12 @@ public static class RackComponents
                 with { Info = [.. PcComponents.Rows(("Public address", F("wan.public-ip"))), .. EachInfo(readings, "ping.ms", "ping.loss.pct")] });
 
         var ups = Pick("charge.pct", "runtime.min", "load.pct");
-        if (One("charge.pct") is { } charge) tiles.Add(Make("charge", "Battery", $"{N(charge)}% charged", "", charge, open, k => k is "ups.battery-low" or "ups.replace-battery" or "ups.on-battery") with { Info = ups });
+        // The battery tile carries the card's own dates and the part to order, and the firmware (UpsCardInfo, rack sweep).
+        var replaceBy = F("ups.battery-replace-by");
+        var upsCard = PcComponents.Rows(("Battery installed", F("ups.battery-installed")), ("Replace by (the card's date)", replaceBy), ("Battery to order", F("ups.battery-part")),
+            ("Network card", F("ups.card")), ("Card firmware", F("ups.card-firmware")), ("UPS firmware", F("ups.firmware")));
+        if (One("charge.pct") is { } charge) tiles.Add(Make("charge", "Battery", $"{N(charge)}% charged", replaceBy.Length > 0 ? $"replace by {replaceBy}" : "", charge, open,
+            k => k is "ups.battery-low" or "ups.replace-battery" or "ups.on-battery" or "ups.battery-due") with { Info = [.. ups, .. upsCard] });
         if (One("runtime.min") is { } runtime) tiles.Add(Make("runtime", "Runtime", $"{N(runtime)} min", "on battery, at this load", null, open, k => k == "ups.short-runtime") with { Info = ups });
         if (One("load.pct") is { } load) tiles.Add(Make("load", "Load", $"{N(load)}%", "", load, open, k => k is "ups.bypass" or "ups.output-off") with { Info = ups });
 

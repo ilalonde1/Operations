@@ -495,7 +495,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             _resolutions = await _client.GetResolutionsAsync(ct).ConfigureAwait(true);
             ApplyHistory(history);
             Explain();
-            StatusMessage = $"Updated {DateTime.Now:HH:mm:ss} · refreshes every minute.";
+            StatusMessage = $"Updated {Kor.Operations.NetworkOps.Core.Health.Dates.Clock(DateTime.Now, seconds: true)} · refreshes every minute.";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

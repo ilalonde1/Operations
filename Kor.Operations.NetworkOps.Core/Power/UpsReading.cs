@@ -96,6 +96,21 @@ public static class UpsMibs
             Error: MissingError(v, OidsFor(PowerNet)));
     }
 
+    // ---- the card's identity and battery dates: read by the rack sweep (minutes), not the power watcher (seconds) -- they
+    // change on a firmware update or a battery swap. Every OID here was read off the live cards 2026-10-22.
+    public const string SysDescr = "1.3.6.1.2.1.1.1.0";                          // APC: "... MB:v4.2.9 PF:v2.5.5.1 ... MN:AP9641 ..."
+    public const string ApcUpsFirmware = "1.3.6.1.4.1.318.1.1.1.1.2.1.0";         // upsAdvIdentFirmwareRevision: "UPS 08.2 (ID1025)"
+    public const string ApcBatteryLastReplaced = "1.3.6.1.4.1.318.1.1.1.2.1.3.0"; // upsBasicBatteryLastReplaceDate: "08/31/2022"
+    public const string ApcBatteryReplaceBy = "1.3.6.1.4.1.318.1.1.1.2.2.21.0";   // upsAdvBatteryRecommendedReplaceDate: "04/21/2027"
+    public const string ApcBatteryPart = "1.3.6.1.4.1.318.1.1.1.2.2.19.0";        // upsAdvBatteryReplacementSKU: "APCRBC155"
+    public const string UpsMibUpsFirmware = "1.3.6.1.2.1.33.1.1.3.0";             // upsIdentUPSSoftwareVersion: "01.12.0024"
+    public const string UpsMibAgentFirmware = "1.3.6.1.2.1.33.1.1.4.0";           // upsIdentAgentSoftwareVersion (the card): "2.1.2"
+    public const string EatonBatteryLastReplaced = "1.3.6.1.4.1.534.1.2.6.0";     // xupsBatteryLastReplacedDate: "10/01/2026"
+
+    public static IReadOnlyList<string> CardOidsFor(string mib) => mib == PowerNet
+        ? [SysDescr, ApcUpsFirmware, ApcBatteryLastReplaced, ApcBatteryReplaceBy, ApcBatteryPart]
+        : [SysDescr, UpsMibUpsFirmware, UpsMibAgentFirmware, EatonBatteryLastReplaced];
+
     private static string? MissingError(IReadOnlyDictionary<string, string> v, IReadOnlyList<string> oids)
     {
         var missing = oids.Count(o => !v.ContainsKey(o));

@@ -1,6 +1,6 @@
 #nullable enable
-using System.Globalization;
 using Kor.Operations.NetworkOps.Core.Actions;
+using Kor.Operations.NetworkOps.Core.Health;
 
 namespace Kor.Operations.NetworkOps.Core.Learning;
 
@@ -28,7 +28,7 @@ public sealed record ActionRun(string Kind, string Title, string RequestedBy, Da
     {
         var parts = new List<string> { Title };
         if (InFlight) parts.Add($"{Total - Running - Queued} of {Total} finished");
-        else parts.Add($"finished {FinishedUtc!.Value.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture)}");
+        else parts.Add($"finished {Dates.Clock(FinishedUtc!.Value.ToLocalTime())}");
         if (Done > 0) parts.Add($"{Done} done");
         if (Failed > 0) parts.Add($"{Failed} failed");
         if (Refused > 0) parts.Add($"{Refused} not run");

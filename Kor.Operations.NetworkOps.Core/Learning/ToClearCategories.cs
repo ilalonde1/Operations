@@ -30,6 +30,7 @@ public static class ToClearCategories
         ("Updates",          ["updates-due", "server.unpatched", "not-patched", "update-install-failing", "agent-outdated", "agent-silent"]),
         ("Network & SAN",    ["esxi.iscsi", "esxi.vm-nic", "link-fault", "fw.", "server.nic-public", "esxi.vm-off", "esxi.vm-tools"]),
         ("Printers",         ["printer."]),
+        ("UPS & power",      ["ups."]),
     ];
 
     /// <summary>The category a rule key belongs to: the first catalog entry whose key matches it as the whole key, the part

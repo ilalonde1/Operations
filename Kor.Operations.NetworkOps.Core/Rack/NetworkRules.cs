@@ -455,9 +455,27 @@ public static class DownLinks
 
 public static class UpsRules
 {
-    public static RackResult Evaluate(UpsReading r)
+    /// <param name="card">What the card says about itself and its battery (the rack sweep's slower read); null when that read
+    /// failed, so the power state is still judged.</param>
+    public static RackResult Evaluate(UpsReading r, UpsCardInfo? card = null, DateTime? nowUtc = null)
     {
         var b = new RackBuilder();
+        if (card is not null)
+        {
+            foreach (var (k, v) in card.Facts()) b.Fact(k, v);
+            // The card's own recommended replace date -- what its "battery near end of life" mail is about.
+            if (card.BatteryReplaceBy is { } by)
+            {
+                var left = by - (nowUtc ?? DateTime.UtcNow);
+                var detail = $"the card recommends replacing it by {Dates.Day(by)}" +
+                             (card.BatteryInstalled is { } i ? $" (installed {Dates.Day(i)})" : "") +
+                             (card.BatteryPart is { } p ? $" · order {p}" : "");
+                if (left <= UpsCardInfo.ReplaceWindow)
+                    b.Raise("ups.battery-due", Severity.Warning, left < TimeSpan.Zero ? "UPS battery is past its replacement date" : "UPS battery is due for replacement this month", detail);
+                else if (left <= UpsCardInfo.OrderWindow)
+                    b.Raise("ups.battery-due", Severity.Info, $"UPS battery: order a replacement (due {by:MMM yyyy})", detail);
+            }
+        }
         if (r.MinutesRemaining is { } m) b.Metric("runtime.min", m);
         if (r.ChargePercent is { } c) b.Metric("charge.pct", c);
         if (r.LoadPercent is { } l) b.Metric("load.pct", l);

@@ -239,7 +239,7 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
             // The background jobs behind the readings: a failing or hung one shows on the Service tile, not only in a mail.
             try { ApplyJobs(await _client.GetJobsAsync(ct).ConfigureAwait(true)); }
             catch (Exception ex) when (ex is not OperationCanceledException) { ApplyJobs(null, $"the job list could not be read: {ex.Message}"); }
-            StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. {Rack.Count} rack devices, {snapshot.Devices.Count} PCs, " +
+            StatusMessage = $"Loaded at {Kor.Operations.NetworkOps.Core.Health.Dates.Clock(DateTime.Now, seconds: true)}. {Rack.Count} rack devices, {snapshot.Devices.Count} PCs, " +
                             $"{snapshot.OpenFindings.Count + (RackSnapshot?.OpenFindings.Count ?? 0)} open findings, {snapshot.Patterns.Count} fleet patterns.";
             _lastSuccessfulRefreshAt = DateTimeOffset.Now;
             IsConnectionLost = false;
@@ -249,7 +249,7 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
             // In words, not exception type names; and the retry is promised only when auto-refresh will actually retry.
             StatusMessage = $"Could not load: {ex.Message}";
             var since = _lastSuccessfulRefreshAt.HasValue
-                ? $"last good data from {_lastSuccessfulRefreshAt.Value.LocalDateTime:HH:mm:ss}"
+                ? $"last good data from {Kor.Operations.NetworkOps.Core.Health.Dates.Clock(_lastSuccessfulRefreshAt.Value.LocalDateTime, seconds: true)}"
                 : "no data has loaded yet";
             ConnectionLostMessage = _client.IsConfigured
                 ? $"Connection lost — {since}. {ex.Message}{(AutoRefresh ? " Trying again every 15 seconds." : " Refresh to try again.")}"

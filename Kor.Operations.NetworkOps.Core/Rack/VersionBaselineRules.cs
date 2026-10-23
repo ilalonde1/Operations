@@ -16,8 +16,8 @@ public sealed record VersionBaselineRow(string Product, string? MinSecureBuild, 
 /// os.caption, fw.model) plus the baseline rows from the store. Run once per device in the rack sweep (Evaluate), with the
 /// table's own freshness checked once per sweep (BaselineHealth).
 ///
-/// COVERS: VMware ESXi, Veeam B&amp;R, Windows Server and pfSense Plus -- each compared by build number (ESXi, Windows) or
-/// dotted version (Veeam, pfSense). Below the min secure build => version.insecure (Critical, carries the CVE); past the
+/// COVERS: VMware ESXi, Veeam B&amp;R, Windows Server, pfSense Plus and the UPS network cards (APC NMC3, Eaton Network-M3;
+/// added 2026-10-22) -- each compared by build number (ESXi, Windows) or dotted version (Veeam, pfSense, the cards). Below the min secure build => version.insecure (Critical, carries the CVE); past the
 /// end-of-support date => version.end-of-support (Warning); one of those four products with NO baseline row =>
 /// version.no-baseline (Info, so a new product is reviewed not skipped); any row not reviewed in StaleDays, or an empty
 /// table => baseline.stale (so the list cannot rot silently -- the explicit requirement).
@@ -96,6 +96,9 @@ public static class VersionBaselineRules
             ? (m.Value, $"{cap} (build {b})", b) : null,
         f => Get(f, "fw.model") is { } fm && PfSense.Match(fm) is { Success: true } m
             ? ("pfSense Plus", fm, m.Groups[1].Value) : null,
+        // A UPS network card (UpsCardInfo, 2026-10-22): "APC AP9641" / "Eaton Gigabit Network Card 3", dotted firmware.
+        f => Get(f, "ups.card") is { } card && Get(f, "ups.card-firmware") is { } cfw && Dotted.Match(cfw) is { Success: true } m
+            ? ($"{card} card firmware", $"{card} firmware {cfw}", m.Value) : null,
     ];
 
     private static string? Get(IReadOnlyDictionary<string, string> f, string key) => f.TryGetValue(key, out var v) ? v : null;

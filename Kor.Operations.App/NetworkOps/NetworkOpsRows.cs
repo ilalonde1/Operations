@@ -308,13 +308,24 @@ internal static class NetworkOpsText
 }
 
 // The palette FileSync's Command Center already uses, so the two pages mean the same thing by a colour.
-internal static class NetworkOpsBrushes
+// Public so XAML can name them ({x:Static nops:NetworkOpsBrushes.Link}) instead of repeating hex values.
+public static class NetworkOpsBrushes
 {
     public static readonly Brush Critical = Freeze(Color.FromRgb(0xC1, 0x1E, 0x1E));
     public static readonly Brush Attention = Freeze(Color.FromRgb(0xE5, 0xA8, 0x00));
     public static readonly Brush Watch = Freeze(Color.FromRgb(0x60, 0x9B, 0xD1));
     public static readonly Brush Healthy = Freeze(Color.FromRgb(0x22, 0x8B, 0x22));
     public static readonly Brush Unknown = Freeze(Color.FromRgb(0x80, 0x80, 0x80));
+
+    /// <summary>Links and anything "in progress": the console's link blue.</summary>
+    public static readonly Brush Link = Freeze(Color.FromRgb(0x2F, 0x54, 0x96));
+    /// <summary>A grouped action or run card ("Clear in one action", the runs strip): its tint and edge.</summary>
+    public static readonly Brush ActionTint = Freeze(Color.FromRgb(0xF4, 0xF8, 0xFB));
+    public static readonly Brush ActionEdge = Freeze(Color.FromRgb(0xD3, 0xDE, 0xE8));
+    /// <summary>The "⏳ running" note that stands in for a fix button while the fix is in flight.</summary>
+    public static readonly Brush FixingTint = Freeze(Color.FromRgb(0xEC, 0xF6, 0xEC));
+    public static readonly Brush FixingEdge = Freeze(Color.FromRgb(0xBF, 0xE3, 0xBF));
+    public static readonly Brush FixingText = Freeze(Color.FromRgb(0x16, 0x65, 0x34));
 
     public static Brush For(HealthState s) => s switch
     {

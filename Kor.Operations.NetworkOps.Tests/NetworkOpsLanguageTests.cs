@@ -28,9 +28,9 @@ public sealed class NetworkOpsLanguageTests(ITestOutputHelper output)
     private const int PluralsBaseline = 7;   // 13 -> 7: the To-clear view's "machine(s)" (step 1)
     private const int DashesBaseline = 59;
     private const int ShoutingBaseline = 22;
-    private const int DateFormatsBaseline = 32;  // 34 -> 32: Core.Health.Dates (step 2)
-    private const int ColoursBaseline = 57;
-    private const int OtherCategoryBaseline = 67;  // 68 -> 67: not-patched filed under Updates (step 2)
+    private const int DateFormatsBaseline = 28;  // 34 -> 32: Core.Health.Dates (step 2); 32 -> 28: Dates.Clock for the status lines (10-22)
+    private const int ColoursBaseline = 48;      // 57 -> 48: NetworkOpsBrushes names the action/fixing/link colours (10-22)
+    private const int OtherCategoryBaseline = 61;  // 68 -> 67: not-patched filed under Updates (step 2); 67 -> 61: "UPS & power" (10-22)
     private const int DeadCategoryEntriesBaseline = 3;
 
     // Words of 4+ capitals that are names, not shouting.

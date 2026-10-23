@@ -43,7 +43,6 @@ public partial class NetworkOpsRunsStrip : UserControl
 {
     private static readonly ILogger Log = Serilog.Log.ForContext<NetworkOpsRunsStrip>();
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(8);
-    private static readonly Brush InFlightBrush = Frozen(Color.FromRgb(0x2F, 0x54, 0x96));   // the console's link blue: "going", not a verdict
     private readonly ObservableCollection<RunRow> _rows = new();
     private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
     private readonly HashSet<string> _dismissed = new(StringComparer.Ordinal);
@@ -92,10 +91,10 @@ public partial class NetworkOpsRunsStrip : UserControl
             {
                 Key = key,
                 Line = r.Line(nowUtc),
-                Started = $"started {r.StartedUtc.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture)} by {r.RequestedBy}",
+                Started = $"started {Kor.Operations.NetworkOps.Core.Health.Dates.Clock(r.StartedUtc.ToLocalTime())} by {r.RequestedBy}",
                 InFlight = r.InFlight,
                 // Green only when every machine finished Done; anything failed or not run is amber, so green is never a guess.
-                Accent = r.InFlight ? InFlightBrush : r.Done == r.Total ? NetworkOpsBrushes.Healthy : NetworkOpsBrushes.Attention,
+                Accent = r.InFlight ? NetworkOpsBrushes.Link :r.Done == r.Total ? NetworkOpsBrushes.Healthy : NetworkOpsBrushes.Attention,
                 Machines = r.Machines.OrderBy(m => m.Status switch { "Running" => 0, "Requested" => 1, "Done" => 3, _ => 2 })
                     .ThenBy(m => m.Device, StringComparer.OrdinalIgnoreCase)
                     .Select(m => new RunMachineRow(m.Device, ActionRun.MachineLine(m, nowUtc))).ToList(),
@@ -111,8 +110,6 @@ public partial class NetworkOpsRunsStrip : UserControl
         row.IsExpanded = (sender as System.Windows.Controls.Primitives.ToggleButton)?.IsChecked == true;
         if (row.IsExpanded) _expanded.Add(row.Key); else _expanded.Remove(row.Key);
     }
-
-    private static Brush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
 
     private void Dismiss_Click(object sender, RoutedEventArgs e)
     {
