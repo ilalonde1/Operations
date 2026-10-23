@@ -114,10 +114,28 @@ internal static class RevitToDxfVerb
                     g.Slabs.Add(ring);
                     floors++;
                 }
+            // Openings (2026-10-23, Halifax): "openings": [{"points_mm": [[x, y], ...]}, ...] - shafts and stair wells read
+            // off the architect's background (arch_openings.py). They go out as rings on the SLAB-EDGE layer, inside the
+            // plate's ring: that is how drafting says "hole" and what SplitSlabsAndOpenings reads (the carried-opening
+            // layer is for a markup-only read and is ignored here - tried first, 252 segments "on no structural layer").
+            int openings = 0;
+            if (level.TryGetProperty("openings", out var opEl) && opEl.ValueKind == JsonValueKind.Array)
+                foreach (var o in opEl.EnumerateArray())
+                {
+                    if (!o.TryGetProperty("points_mm", out var optsEl) || optsEl.ValueKind != JsonValueKind.Array) continue;
+                    var ring = new List<(double X, double Y)>();
+                    foreach (var p in optsEl.EnumerateArray())
+                        if (p.ValueKind == JsonValueKind.Array && p.GetArrayLength() >= 2)
+                            ring.Add((p[0].GetDouble(), p[1].GetDouble()));
+                    if (ring.Count >= 3 && Math.Abs(ring[0].X - ring[^1].X) < 1e-6 && Math.Abs(ring[0].Y - ring[^1].Y) < 1e-6) ring.RemoveAt(ring.Count - 1);
+                    if (ring.Count < 3) { skipped++; continue; }
+                    g.Slabs.Add(ring);
+                    openings++;
+                }
             string path = Path.Combine(outDir, storey + ".dxf");
             DxfExporter.Export(g, path, korLayers: true);
             storeys++;
-            Console.WriteLine($"{storey,-8}: {walls} walls, {columns} columns, {floors} floor outline(s) -> {path}" + (skipped > 0 ? $"  ({skipped} skipped by exclusion or without a line/point)" : "") + (unsized > 0 ? $"  ({unsized} without a size in their type name)" : ""));
+            Console.WriteLine($"{storey,-8}: {walls} walls, {columns} columns, {floors} floor outline(s), {openings} opening(s) -> {path}" + (skipped > 0 ? $"  ({skipped} skipped by exclusion or without a line/point)" : "") + (unsized > 0 ? $"  ({unsized} without a size in their type name)" : ""));
         }
         Console.WriteLine($"{storeys} storey DXF(s) written. Next: takeoff dxf-to-etabs \"{outDir}\" <engineer.e2k> <revit.e2k>, then model-diff / model-yardstick.");
         return storeys > 0 ? 0 : 2;
