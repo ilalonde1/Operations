@@ -124,4 +124,24 @@ public sealed class NetworkOpsMcpTools
         var rows = await services.GetRequiredService<Kor.Operations.NetworkOps.Service.Jobs.JobHealth>().StatusAsync(ct);
         return new { needsAttention = rows.Count(r => r.NeedsAttention), jobs = rows };
     }
+
+    [McpServerTool(Name = "networkops_runs"), Description(
+        "Every fix, install or deploy RUN in flight, and those finished in the last hour, wherever it was started (the " +
+        "Command Center, this MCP, the CLI): one progress line each (\"Install updates (no restart) · 12 of 29 finished · " +
+        "10 done · 2 failed · 17 running · 25 min\") and each machine's state. The same list as the Command Center's runs " +
+        "strip. Use it to answer \"is it done?\" -- not the per-machine device pages.")]
+    public static async Task<object> Runs(IServiceProvider services, CancellationToken ct)
+    {
+        var runs = await services.GetRequiredService<NetworkOpsStore>().ActionRunsAsync(ct);
+        var now = DateTime.UtcNow;
+        return new
+        {
+            inFlight = runs.Count(r => r.InFlight),
+            runs = runs.Select(r => new
+            {
+                line = r.Line(now), r.Kind, r.RequestedBy, r.StartedUtc, r.InFlight,
+                machines = r.Machines.Select(m => new { m.Device, m.ActionId, state = ActionRun.MachineLine(m, now) }),
+            }),
+        };
+    }
 }
