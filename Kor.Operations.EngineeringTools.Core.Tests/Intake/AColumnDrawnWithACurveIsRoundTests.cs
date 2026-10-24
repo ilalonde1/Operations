@@ -6,13 +6,14 @@ using Xunit;
 namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 
 /// <summary>
-/// A column drawn with a curve is round (intake step 173, 2026-10-21). 31065 draws its 450 mm round columns (C16, C18,
-/// C20, "450 Ø") as filled Bezier circles; the PDF walk flattened them to polygons with no word of the curve, the DXF
+/// A column drawn with a curve is round (intake step 173, 2026-10-21; corrected 2026-10-24). 31065 draws its 450 mm round
+/// columns (C16, C18, C20, "450 Ø") as square fills shown through a circular Bezier clip; the PDF walk flattened curves with no word of them, the DXF
 /// carried every column as a four-point rectangle, and the model priced each as a 450 mm square - 27% over.
 /// </summary>
 /// <remarks>
 /// WHAT THIS COVERS: the reader's test - curve-drawn, square to a tenth, filling about pi/4 of its box - for a circle,
-/// the same polygon not drawn with a curve, and a radiused square drawn with curves; and the whole hand-off, reader flag
+/// the same polygon not drawn with a curve, and a radiused square drawn with curves; a square fill shown through a round
+/// clip of its own box (31065's real drawing), through a square clip, and through a clip that is not its own; and the whole hand-off, reader flag
 /// to a full-circle ARC in the DXF to the classifier's arc rule, ending in a round footprint. WHAT IT DOES NOT: the page
 /// walk's own setting of the flag from a real PDF (the six-set gate on 31065 is that), nor the e2k writer's circular
 /// section (E2kGeometryComposer's own tests). A fault it would NOT catch: a round column drawn as a stroked ring with no
@@ -46,6 +47,30 @@ public sealed class AColumnDrawnWithACurveIsRoundTests
         Assert.True(Assert.Single(WallFixture.Read([Filled(Circle(225), curve: true)]).Geometry.ColumnIsRound));
         Assert.False(Assert.Single(WallFixture.Read([Filled(Circle(225), curve: false)]).Geometry.ColumnIsRound));
         Assert.False(Assert.Single(WallFixture.Read([Filled(RadiusedSquare(), curve: true)]).Geometry.ColumnIsRound));
+    }
+
+    private static List<(double X, double Y)> Square(double h)
+        => [(-h, -h), (h, -h), (h, h), (-h, h)];
+
+    private static RawSubpath Clip(List<(double X, double Y)> pts, bool curve, int ordinal)
+        => new(pts, true, (0, 0, 0), false, false, 0, false) { IsClipping = true, HasCurve = curve, PathOrdinal = ordinal };
+
+    /// <summary>
+    /// 31065 S2.16.1's C18 as the PDF holds it (pdf-at, 2026-10-24): a grey 449 x 444 mm SQUARE fill painted through an
+    /// 86-point circular clip drawn just before it, the same box, the clip a polygon with no curve in it. Step 173 as first
+    /// written read only the fill, and only curves, and turned none of the building's round columns round.
+    /// </summary>
+    [Fact]
+    public void ASquareFillShownThroughARoundClipOfItsOwnBoxIsRoundAndThroughASquareOrAStrangersClipIsNot()
+    {
+        RawSubpath Fill(int ordinal) => Filled(Square(224.5), curve: false) with { PathOrdinal = ordinal };
+        Assert.True(Assert.Single(WallFixture.Read([Clip(Circle(225, 86), curve: true, 0), Fill(1)]).Geometry.ColumnIsRound));
+        // as 31065 really draws it: the clip is a polygon, no curve in it
+        Assert.True(Assert.Single(WallFixture.Read([Clip(Circle(225, 86), curve: false, 0), Fill(1)]).Geometry.ColumnIsRound));
+        Assert.False(Assert.Single(WallFixture.Read([Clip(Square(225), curve: false, 0), Fill(1)]).Geometry.ColumnIsRound));
+        Assert.False(Assert.Single(WallFixture.Read([Clip(Circle(225, 8), curve: false, 0), Fill(1)]).Geometry.ColumnIsRound));       // an octagon
+        Assert.False(Assert.Single(WallFixture.Read([Clip(RadiusedSquare(), curve: false, 0), Fill(1)]).Geometry.ColumnIsRound));
+        Assert.False(Assert.Single(WallFixture.Read([Clip(Circle(2000, 86), curve: true, 0), Fill(1)]).Geometry.ColumnIsRound));
     }
 
     [Fact]

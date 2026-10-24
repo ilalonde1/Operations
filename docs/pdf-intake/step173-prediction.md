@@ -36,3 +36,24 @@ The DXF side already models a column round when - and only when - it was drawn w
 
 1. 31065-01 whole: column volume against Revit; the C16/C18/C20 placements round in the e2k.
 2. The six-set gate and the corpus gate, `--bisect KOR_STEP173_OFF`.
+
+## Judged on its witness, 2026-10-24 - and corrected
+
+As first committed (f5a74e04) the step turned **none** of 31065's round columns round: a build of the committed reader
+wrote 0 ARCs in 51 DXFs and no circular section. Traced on S2.16.1 (`pdf-at` at C18): the column is a grey 449 x 444 mm
+**square** fill painted through a clip drawn just before it with the same box, and the clip is an 86-point **polygon** -
+no Bezier anywhere. The premise "31065 draws a filled Bezier circle" was never true; the step was verified only on
+synthetic tests.
+
+Corrected: a filled column is round when its own outline passes the curve test (as before), or when its clip - found as
+step 172 finds a wall's, the one clip drawn just before it, else the one clip with its box - is drawn with a curve or IS a
+circle (`IsCircle`: square to a tenth, 16 or more corners, every corner within 5% of one radius, that radius half the box,
+filling 0.72-0.85 of it). An octagon, a square clip, a clip that is not the column's, and a radiused square drawn by its
+corner arcs alone stay square (tests).
+
+31065-01 whole, one build (develop + this), `KOR_STEP173_OFF` on and off: 82 round columns in the DXFs, 3 circular
+sections in the e2k; columns 971 -> 957 m3; slab 9,080 and wall 3,730 m3 identical both ways. Revit has 814 m3 of column.
+Most of what remains is the pricing convention the takeoff states ([HEIGHT_FROM_STOREY]: a column is priced over the full
+rise, through the slab; Revit cuts it at the slab) - not measured member by member.
+
+Reach on the other corpus sets: NOT yet known. The corpus gate with `--bisect KOR_STEP173_OFF` measures it.

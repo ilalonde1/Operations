@@ -436,7 +436,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         result.ColumnColors.Add(color);
                         result.ColumnIsAnnotation.Add(sub.IsAnnotation);
                         result.ColumnSizes.Add(declaredOnAxes ? (bboxW, bboxH) : (obox!.Length, obox.Thickness));
-                        result.ColumnIsRound.Add(DrawnRound(sub, pts, bboxW, bboxH));
+                        result.ColumnIsRound.Add(DrawnRound(sub, pts, bboxW, bboxH, clipPieces, rawSubpaths));
                         columnByShape.Add(false);
                         Fate(PathReason.BecameColumnByDeclaredSize, result.Columns.Count - 1);
                         continue;
@@ -602,7 +602,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         result.ColumnColors.Add(color);
                         result.ColumnIsAnnotation.Add(sub.IsAnnotation);
                         result.ColumnSizes.Add((bboxW, bboxH));
-                        result.ColumnIsRound.Add(DrawnRound(sub, pts, bboxW, bboxH));
+                        result.ColumnIsRound.Add(DrawnRound(sub, pts, bboxW, bboxH, clipPieces, rawSubpaths));
                         columnByShape.Add(true);
                         Fate(PathReason.BecameColumnByShape, result.Columns.Count - 1);
                     }
@@ -3512,6 +3512,53 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (big <= 0 || Math.Abs(w - h) > 0.1 * big) return false;
             double fill = Math.Abs(PolygonProcessor.PolygonAreaMm2(pts)) / (w * h);
             return fill is > 0.72 and < 0.85;
+        }
+
+        /// <summary>
+        /// A COLUMN SHOWN THROUGH A ROUND CLIP IS ROUND (step 173, corrected 2026-10-24). 31065's sheets do not fill a
+        /// circle: C18 on S2.16.1 is a grey 449 x 444 mm SQUARE fill painted through an 86-point circular clip drawn just
+        /// before it, with the same box - the export's way of drawing a wall through its clip (step 172) - and the clip is a
+        /// polygon, no Bezier in it: step 173 as first written turned none of the building's round columns round. The
+        /// column's clip is found as step 172 finds a wall's: the one clip drawn just before the fill, else the one clip
+        /// whose box is the fill's; it is round when drawn with a curve as a fill is, or when it is a circle (<see cref="IsCircle"/>).
+        /// </summary>
+        internal static bool DrawnRound(RawSubpath sub, List<(double X, double Y)> pts, double w, double h,
+            IReadOnlyList<(int Index, int PathOrdinal, List<(double X, double Y)> Pts)> clipPieces, IReadOnlyList<RawSubpath> rawSubpaths)
+        {
+            if (DrawnRound(sub, pts, w, h)) return true;
+            if (Environment.GetEnvironmentVariable("KOR_STEP173_OFF") == "1" || sub.IsAnnotation || !sub.IsFilled || clipPieces.Count == 0) return false;
+            double x0 = pts.Min(p => p.X), x1 = pts.Max(p => p.X), y0 = pts.Min(p => p.Y), y1 = pts.Max(p => p.Y);
+            double slack = 0.05 * Math.Max(x1 - x0, y1 - y0);
+            bool SameBox(List<(double X, double Y)> c) =>
+                Math.Abs(c.Min(p => p.X) - x0) <= slack && Math.Abs(c.Max(p => p.X) - x1) <= slack
+                && Math.Abs(c.Min(p => p.Y) - y0) <= slack && Math.Abs(c.Max(p => p.Y) - y1) <= slack;
+            var own = clipPieces.Where(c => sub.PathOrdinal >= 1 && c.PathOrdinal == sub.PathOrdinal - 1).ToList() is { Count: 1 } justBefore
+                ? justBefore : clipPieces.Where(c => c.Pts.Count >= 8 && SameBox(c.Pts)).ToList();
+            if (own.Count != 1 || !SameBox(own[0].Pts)) return false;
+            var clip = rawSubpaths[own[0].Index];
+            var cp = own[0].Pts;
+            return DrawnRound(clip, cp, cp.Max(p => p.X) - cp.Min(p => p.X), cp.Max(p => p.Y) - cp.Min(p => p.Y)) || IsCircle(cp);
+        }
+
+        /// <summary>
+        /// An outline that IS a circle, however it was drawn: square to a tenth, at least 16 corners, every corner within
+        /// 5% of one radius from its centre, that radius half the box, filling about pi/4 of it. 31065's round-column clips are polygons, not curves (C18, S2.16.1: 86 points, no
+        /// Bezier, every corner 222-224 mm from the centre). An octagon has too few corners; a chamfered or radiused square
+        /// has corners at two distances - the 31168 squares that a looser shape test once made round fail it.
+        /// </summary>
+        internal static bool IsCircle(List<(double X, double Y)> pts)
+        {
+            var corners = pts.Distinct().ToList();
+            if (corners.Count < 16) return false;
+            double x0 = corners.Min(p => p.X), x1 = corners.Max(p => p.X), y0 = corners.Min(p => p.Y), y1 = corners.Max(p => p.Y);
+            double w = x1 - x0, h = y1 - y0, big = Math.Max(w, h);
+            if (big <= 0 || Math.Abs(w - h) > 0.1 * big) return false;
+            double cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+            var radii = corners.Select(p => Math.Sqrt((p.X - cx) * (p.X - cx) + (p.Y - cy) * (p.Y - cy))).ToList();
+            double mean = radii.Average();
+            // a radiused square drawn by its corner arcs alone has corners at one distance too - but not half its box
+            double fill = Math.Abs(PolygonProcessor.PolygonAreaMm2(pts)) / (w * h);
+            return radii.All(r => Math.Abs(r - mean) <= 0.05 * mean) && Math.Abs(mean - big / 2) <= 0.05 * big / 2 && fill is > 0.72 and < 0.85;
         }
 
         /// <summary>The wall between two stations on its axis, as its own four-cornered panel.</summary>
