@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAD Detail Button</title>
+<!--
+  Explainer for Nelson Yu: what the "Import CAD Detail" button in Revit does, what it was checked
+  against, what it means for the typical-details catalogue and for sheets, and what we need from him.
+  Written in his words (the big sheet, typical details, KOR.ctb, pens). Numbers come from the 190-detail
+  run of 2026-10-23 (KOR.Drafter tools/cad/c2r190, import190-summary.txt); every one is reproducible.
+  Same design tokens as KOR-StandardDetails-Nelson-Playback-2026-10-21.html. Render with tools\Format-BdWebPdf.ps1.
+  Pictures beside this file: *-S302-11.png and *-D301-01.png (CAD plot | Revit via the button | Revit native).
+-->
+<style>
+  :root {
+    --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+    --line:#E5E4E1; --slate:#3F5364; --slate-deep:#2C3A47;
+    --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono:"Cascadia Code", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+      --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B;
+      --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+  }
+  :root[data-theme="dark"] { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+    --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B;
+    --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:9.4pt; line-height:1.36; -webkit-font-smoothing:antialiased; }
+  .page { max-width:8.1in; margin:0 auto; }
+
+  .top { background:linear-gradient(180deg,var(--slate-deep),var(--slate)); color:#EAF0F5;
+    border-bottom:2.5px solid var(--accent); padding:11px 20px; }
+  .top .ey { font-family:var(--mono); font-size:7.2pt; letter-spacing:.2em; text-transform:uppercase; color:#FFB59F; }
+  .top h1 { margin:.15rem 0 .1rem; font-size:16pt; color:#fff; letter-spacing:-.01em; }
+  .top .meta { font-size:8.6pt; color:#CBD8E2; }
+
+  .body { padding:10px 20px 0; }
+  .why { margin:0 0 6px; font-size:9.3pt; max-width:46rem; }
+
+  h2 { font-family:var(--mono); font-size:7.6pt; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); margin:11px 0 .35rem; font-weight:700; }
+
+  table { width:100%; border-collapse:collapse; font-size:8.7pt; }
+  th { text-align:left; font-weight:650; color:var(--ink-faint); font-size:7.6pt; letter-spacing:.06em;
+    text-transform:uppercase; padding:.2rem .5rem; border-bottom:1.5px solid var(--line); }
+  td { padding:.28rem .5rem; border-bottom:1px solid var(--line); vertical-align:top; color:var(--ink-soft); }
+  td:first-child { color:var(--ink); font-weight:650; white-space:nowrap; }
+  tr:nth-child(even) td { background:var(--surface-2); }
+  .path { font-family:var(--mono); font-size:7.7pt; color:var(--accent-ink); }
+  .num { font-family:var(--mono); font-size:8.2pt; color:var(--ink); }
+
+  p.note { margin:.3rem 0 0; font-size:8.8pt; color:var(--ink-soft); }
+  p.note b { color:var(--ink); }
+
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin-top:10px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.5rem .7rem; }
+  .card.out { border-left:3px solid var(--good); background:color-mix(in srgb, var(--good) 7%, var(--surface)); }
+  .card h3 { margin:0 0 .25rem; font-family:var(--mono); font-size:7.5pt; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent-ink); }
+  .card.out h3 { color:var(--good); }
+  .card ol { margin:0; padding-left:1.1rem; }
+  .card li { font-size:8.6pt; color:var(--ink-soft); margin-bottom:.25rem; }
+  .card li b { color:var(--ink); }
+
+  figure { margin:.5rem 0 0; }
+  figure img { width:100%; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  figcaption { font-size:8.2pt; color:var(--ink-soft); margin-top:.2rem; }
+  figcaption b { color:var(--ink); }
+
+  @page { size:Letter; margin:9mm 11mm; }
+  @media print {
+    :root { --ground:#fff; --surface:#fff; --surface-2:#F5F3F1; --ink:#1C2530; --ink-soft:#55636F;
+      --ink-faint:#8A97A2; --line:#E5E4E1; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A; }
+    body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; color-scheme:light; }
+    .page { max-width:none; }
+    table, .pair, .card, figure { break-inside:avoid; }
+    h2 { break-after:avoid; }
+    .pb { break-before:page; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div class="ey">KOR Structural · Drafting standards</div>
+    <h1>The CAD Detail button — one master, drawn once</h1>
+    <div class="meta">For Nelson Yu · from Ian Lalonde · 23 October</div>
+  </div>
+
+  <div class="body">
+    <p class="why">You told me converting doesn't work in either direction, so the typical details are drawn twice.
+       This is the thing I built to take the Revit half of that away: a button in Revit that brings a detail in from
+       the CAD master and prints the way KOR.ctb plots it. You keep drawing in CAD exactly as you do now.</p>
+
+    <h2>What happens when you press it</h2>
+    <table>
+      <tr><th>Step</th><th>What</th><th>Notes</th></tr>
+      <tr><td>1. Open a drafting view</td><td>In the job, in whatever Revit year the job is in.</td><td>It only ever lands in a drafting view — never on a plan or a sheet.</td></tr>
+      <tr><td>2. Pick the detail</td><td>The file dialog opens on <span class="path">I:\Kor Structural\002 Typical Details\Typical Details Blocks</span>. Choose the detail's drawing.</td><td>The same blocks you keep today; nothing is copied anywhere else.</td></tr>
+      <tr><td>3. AutoCAD reads it the way the plotter does</td><td>In the background, on your own PC, a copy is prepared: every line moves onto a layer named for its printed pen (<span class="path">KOR 0.3</span>, <span class="path">KOR 0.3 SCREEN 15</span>), wide polylines become filled bars, hidden and dashed lines keep their dashes, no-plot layers stay unprinted, blocks keep their layer-0 and BYBLOCK meaning.</td><td>Needs AutoCAD on the PC. Takes a few seconds.</td></tr>
+      <tr><td>4. Revit imports the copy</td><td>Into your view, at the detail's scale, each pen given its Revit line weight and its black or grey.</td><td>No yellow text, no magenta concrete, no flat line weights.</td></tr>
+      <tr><td>5. Put it on a sheet</td><td>Like any drafting view: drag it onto the sheet, number and title as usual.</td><td>That is how all 190 were printed for the comparison below.</td></tr>
+    </table>
+
+    <h2>What it was checked against — all 190 typical details</h2>
+    <p class="note">Every detail on the big sheet was brought in (190 of 190, none refused), printed from a Revit sheet, and compared
+       with the CAD plot of the same block under KOR.ctb — not by eye only, by measuring, on 23 October. 181 of the 190 match on
+       everything measured; the other 9 differ in text only, and those are the three questions at the end.</p>
+    <table>
+      <tr><th>What</th><th>Result</th><th>What it means</th></tr>
+      <tr><td>Linework</td><td class="num">190 of 190 details: every line within 1/1000" of CAD's</td><td>Nothing moved, nothing missing, nothing extra.</td></tr>
+      <tr><td>Dashes</td><td class="num">190 of 190: all 2,098 dashed and hidden lines (in 148 details) dashed at CAD's length</td><td>Until today Revit printed them solid — the last fault found, fixed 23 October. Where a dash begins along a line is Revit's choice, so the dashes do not always start at the same point as CAD's; same line to the eye.</td></tr>
+      <tr><td>Bars and fills</td><td class="num">filled bars and screened concrete on both prints</td><td>The 13% magenta concrete prints as the same light grey; rebar dots are dots, not rings.</td></tr>
+      <tr><td>Text</td><td class="num">181 of 190 details word-for-word; 9 differ</td><td>The differences are the font (CAD's SHX letters become a Revit font), the Ø symbol, and word spacing — see "Need from you".</td></tr>
+    </table>
+
+    <figure>
+      <img src="KOR-StandardDetails-Nelson-CadDetailButton-2026-10-23-S302-11.png" alt="S302-11 coupler sleeves: CAD plot, Revit via the button, Revit native">
+      <figcaption><b>S302 detail 11, coupler sleeves, one window at 10 px per point.</b> Left: the CAD plot. Middle: Revit, via the button.
+        Right: a Revit-native rebuild (an experiment, not the button) — its hidden lines are solid, which is why it is not the one going to you.</figcaption>
+    </figure>
+
+    <h2>What this means for the typical-details catalogue</h2>
+    <p class="note"><b>The CAD master stays the master.</b> The catalogue in the KOR app lists every typical detail with its CAD block, who
+       approved it (Jim) and when; the Revit copy is no longer something anyone draws — the button makes it from the CAD block, in
+       the job's own Revit year, when a job needs it. So: one change, in CAD, approved once, and the Revit side follows. The
+       Typical Details Container in R23 and the details merged into the Concrete Tower template stop being things to keep up to date.
+       Cover sheets are a different matter — engineers change those per job — and nothing here touches them.</p>
+
+    <h2>What Revit cannot do, so you know before you look</h2>
+    <table>
+      <tr><th>Limit</th><th>Where you'd see it</th><th>Size</th></tr>
+      <tr><td>Font sizes round to ½ pt</td><td>Revit's PDF print rounds text height; 2.5 mm text prints at the nearest half point.</td><td>Under 0.1 pt on lettering; invisible on paper, measurable with a ruler on the file.</td></tr>
+      <tr><td>SHX fonts</td><td>CAD's stroke fonts (simplex, romans) are drawn in a Revit TrueType font instead.</td><td>The letters are the same words at the same size; the strokes look slightly different.</td></tr>
+      <tr><td>Splines</td><td>A curve drawn as a spline comes in as short straight pieces.</td><td>Within 1/1000"; you cannot see it at any plotted scale.</td></tr>
+      <tr><td>Linetypes with a symbol in them</td><td>The W.W.M. linetype draws an X along the line in CAD; Revit's line patterns carry dashes only, so the X marks are not there.</td><td>One line in one detail of the 190 (D504-20, built-up pool deck).</td></tr>
+    </table>
+
+    <div class="pair">
+      <div class="card">
+        <h3>Need from you</h3>
+        <ol>
+          <li><b>Sit with Ian at KOR-302N for twenty minutes.</b> Three details printed both ways on the desk: D301-01 (basement wall — grey concrete, hidden bars), S302-11 (the coupler), one wood-frame detail. Say what is wrong.</li>
+          <li><b>Pick the Revit font</b> for CAD's SHX text. Whatever you choose is applied to every detail the button brings in.</li>
+          <li><b>Confirm the pen table.</b> KOR.ctb's widths are mapped onto Revit's line weights 1–16; Ian brings the mapping on one page.</li>
+        </ol>
+      </div>
+      <div class="card out">
+        <h3>Then</h3>
+        <ol>
+          <li>The button goes onto your PC (KOR-307-N), alongside the tools you already have. Nothing is removed.</li>
+          <li>You try it on a live job in its own Revit year and tell Ian what you hit.</li>
+          <li>The catalogue's approve step with Jim is switched on for CAD changes, so a detail changed in CAD is the one everybody gets.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>
