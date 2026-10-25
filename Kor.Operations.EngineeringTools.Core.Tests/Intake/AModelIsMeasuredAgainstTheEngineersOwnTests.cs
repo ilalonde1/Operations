@@ -85,6 +85,36 @@ public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
         }
     }
 
+    /// <summary>
+    /// The engineer's model judges, not ours inside it (2026-10-25): 31168's yardstick holds 302 objects of 438 under this
+    /// tool's own names, an engineer's model built from our output. Columns named KC.. in the yardstick are left out and the
+    /// comparison says how many; the engineer's own columns still judge.
+    /// </summary>
+    [Fact]
+    public void ObjectsNamedAsThisToolNamesItsOwnAreLeftOutOfTheEngineersModel()
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"kor-yard-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var ours = new List<(string, double, double, string)> { ("C1", 0, 0, "P2"), ("C2", 6000, 0, "P2"), ("C3", 12000, 0, "P2") };
+            // the engineer drew E1; KC7 and KC8 are ours, carried into the engineer's file
+            var theirs = new List<(string, double, double, string)> { ("E1", 0, 0, "P2"), ("KC7", 6000, 0, "P2"), ("KC8", 12000, 0, "P2") };
+            string m = Path.Combine(root, "ours.e2k"), y = Path.Combine(root, "theirs.e2k");
+            File.WriteAllText(m, E2k("MM", [("P2", 3000)], ours));
+            File.WriteAllText(y, E2k("MM", [("P2", 3000)], theirs));
+
+            var c = ModelYardstick.Compare(m, y);
+
+            Assert.Equal(1, c.TheirsCompared);                                   // E1 alone
+            Assert.Contains(c.Notes, n => n.Contains("2 object(s) named as this tool names its own", StringComparison.Ordinal));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
     [Fact]
     public void WithGridsOnBothSidesTheFrameIsTheirNamesAndSaysSo()
     {
@@ -293,7 +323,7 @@ public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
             var plate = Assert.Single(c.Plates);
             Assert.Equal(plate.TheirsSqFt, plate.OursSqFt, 1);                  // the tower she modelled, not both
             Assert.InRange(plate.OursSqFt, 860, 862);                           // 80 sq m
-            Assert.Contains(c.Notes, n => n.Contains("sq ft of our plates stand beyond her model's footprint", StringComparison.Ordinal) && n.Contains("L3 861", StringComparison.Ordinal));
+            Assert.Contains(c.Notes, n => n.Contains("sq ft of our plates stand beyond the engineer's model's footprint", StringComparison.Ordinal) && n.Contains("L3 861", StringComparison.Ordinal));
         }
         finally
         {

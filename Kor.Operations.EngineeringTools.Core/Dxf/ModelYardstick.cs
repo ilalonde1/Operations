@@ -138,7 +138,7 @@ public static class ModelYardstick
         /// </summary>
         public IReadOnlyList<(string Storey, string YardstickStorey, double OursIn, double TheirsIn)> Thickness { get; init; } = [];
 
-        /// <summary>Our plate area beyond her model's footprint on its storey, in sq ft: counted, named in a note, judged by nothing.</summary>
+        /// <summary>Our plate area beyond the engineer's model's footprint on its storey, in sq ft: counted, named in a note, judged by nothing.</summary>
         public double PlatesBeyondSqFt { get; init; }
     }
 
@@ -153,16 +153,33 @@ public static class ModelYardstick
 
     public static Comparison Compare(string modelE2k, string yardstickE2k) => Compare(modelE2k, yardstickE2k, DefaultStoreyQualifierWords);
 
+    /// <summary>A connectivity or assign line of an object named as this tool names its own: K, a kind letter, a number.</summary>
+    private static readonly Regex GeneratedObject = new(@"^\s*(?<kind>LINE|AREA)(?:ASSIGN)?\s+""(?<name>K[A-Z]\d+)""", RegexOptions.Compiled);
+
     /// <summary>The words a storey is named with for what it carries (step 102): her L17 MECH is our L17. The row dxf.pdf.yardstick-storey-qualifier-words extends these; MEZZ is a level of its own and never here.</summary>
     public static readonly IReadOnlyList<string> DefaultStoreyQualifierWords = ["MECH", "MECHANICAL", "ROOF", "PH", "PENTHOUSE", "AMENITY", "MAIN", "UPPER", "LOWER", "EMR", "TYP", "TYPICAL"];
 
     public static Comparison Compare(string modelE2k, string yardstickE2k, IReadOnlyList<string> storeyQualifierWords)
     {
         var model = E2kDocument.Load(modelE2k);
-        var yard = E2kDocument.Load(yardstickE2k);
+        // THE ENGINEER'S MODEL, NOT OURS INSIDE IT (2026-10-25). A yardstick built by an engineer starting from a model this
+        // tool generated still carries our objects under our names - 31168's has 302 of its 438 objects named KC/KW/KF/... -
+        // and judging a model against them judges it against itself (Ian: "or even worse if you're judging against the
+        // original projects we did"). Objects named the way this tool names them, and their assigns, are left out of the
+        // yardstick, and the comparison says how many.
+        var yardLines = File.ReadAllLines(yardstickE2k);
+        var generated = new HashSet<string>(yardLines
+            .Select(l => GeneratedObject.Match(l))
+            .Where(m => m.Success && m.Groups["kind"].Value is "LINE" or "AREA")
+            .Select(m => m.Groups["name"].Value), StringComparer.Ordinal);
+        var yard = E2kDocument.Parse(generated.Count == 0 ? yardLines
+            : yardLines.Where(l => GeneratedObject.Match(l) is not { Success: true } m || !generated.Contains(m.Groups["name"].Value)));
         double mu = (model.LengthUnitInInches() ?? 1.0) * 25.4;   // mm per model unit; an unreadable unit reads as inches and says so
         double yu = (yard.LengthUnitInInches() ?? 1.0) * 25.4;
         var notes = new List<string>();
+        if (generated.Count > 0)
+            notes.Add($"the engineer's model holds {generated.Count} object(s) named as this tool names its own (KC, KW, KF...) - " +
+                      "built from our output, they were LEFT OUT: only what the engineer drew judges this model");
         if (model.LengthUnitInInches() is null) notes.Add("model's unit unreadable; taken as inches");
         if (yard.LengthUnitInInches() is null) notes.Add("yardstick's unit unreadable; taken as inches");
 
@@ -256,7 +273,7 @@ public static class ModelYardstick
         }
         int oursBeyond = beyondByStorey.Values.Sum();
         if (oursBeyond > 0)
-            notes.Add($"{oursBeyond} of our columns stand beyond her model's footprint on their storey (more than {FootprintMarginMm / 1000:0.#} m past her outermost column) and are not judged: {string.Join(", ", beyondByStorey.Where(kv => kv.Value > 0).OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {kv.Value}"))}");
+            notes.Add($"{oursBeyond} of our columns stand beyond the engineer's model's footprint on their storey (more than {FootprintMarginMm / 1000:0.#} m past the engineer's outermost column) and are not judged: {string.Join(", ", beyondByStorey.Where(kv => kv.Value > 0).OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {kv.Value}"))}");
 
         var pairs = new List<(string Storey, string Theirs, (double X, double Y) P, (double X, double Y) Q)>();
         foreach (var s in judged)
@@ -448,7 +465,7 @@ public static class ModelYardstick
         var platesBeyond = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         var plates = PlatesOnSharedStoreys(model, yard, storeyFigures, PlateJudged, platesBeyond);
         if (platesBeyond.Count > 0)
-            notes.Add($"{platesBeyond.Values.Sum():N0} sq ft of our plates stand beyond her model's footprint on their storey (a plate whose centroid is more than {FootprintMarginMm / 1000:0.#} m past her outermost column) and are not judged: {string.Join(", ", platesBeyond.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {kv.Value:N0}"))}");
+            notes.Add($"{platesBeyond.Values.Sum():N0} sq ft of our plates stand beyond the engineer's model's footprint on their storey (a plate whose centroid is more than {FootprintMarginMm / 1000:0.#} m past the engineer's outermost column) and are not judged: {string.Join(", ", platesBeyond.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {kv.Value:N0}"))}");
 
         var onlyModel = ours.Keys.Where(s => TheirsFor(s) is null).OrderBy(s => s, StringComparer.Ordinal).ToList();
         var onlyYard = theirs.Keys.Where(s => !matchedTheirs.Contains(s) && !matchedTheirs.Any(m => m.Split('+').Contains(s, StringComparer.OrdinalIgnoreCase))).OrderBy(s => s, StringComparer.Ordinal).ToList();
