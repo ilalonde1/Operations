@@ -96,6 +96,11 @@ internal static class CorpusGateVerb
         }
 
         var after = CorpusAnalyzer.ReadSets(ledger);
+        // --jobs JUDGES THOSE SETS, NOT THE BANK (2026-10-24). The bank's other sets were not built, so each read "judged at
+        // the bank, not judged now" and the bisect then re-read every one of them: a two-knob check of 30933 walked the
+        // corpus and called both knobs guilty on sets that had not moved.
+        if (jobs is not null)
+            before = before.Where(b => wanted.Contains(b.Job, StringComparer.OrdinalIgnoreCase)).ToList();
         var report = CorpusGate.Judge(before, after);
         Console.WriteLine();
         Console.Write(CorpusGate.Summary(report));
@@ -123,8 +128,13 @@ internal static class CorpusGateVerb
                     {
                         var one = CorpusAnalyzer.Run(census, work, options, rulesDb, 1, force: true, _ => { }, lost.Job, yardsticks, reuseBuilds: false, recompose: false);
                         double? got = one.Sets.FirstOrDefault(s => s.Job.Equals(lost.Job, StringComparison.OrdinalIgnoreCase))?.PlatesOursSqFt;
-                        bool restored = got is { } g && lost.BeforeSqFt is { } b && g >= b - Math.Max(CorpusGate.PlateLossFloorSqFt, CorpusGate.PlateLossShare * (lost.HersSqFt ?? 0));
-                        Console.WriteLine($"      {knob,-22} -> {(got is { } v ? v.ToString("N0", CultureInfo.InvariantCulture) : "-"),12} sq ft {(restored ? "  <== this rule took it" : "")}");
+                        // THE KNOB TOOK IT WHEN THE SET IS NO LONGER LOST, judged by the gate's own judge (2026-10-24). The plate
+                        // area alone could not name the rule behind an openings or thickness loss (30933: step 174, openings 24
+                        // -> 22, found by hand), and said "this rule took it" of a set with no plate before or after.
+                        var rejudged = CorpusGate.Judge(before.Where(b => b.Job.Equals(lost.Job, StringComparison.OrdinalIgnoreCase)).ToList(), one.Sets);
+                        var still = rejudged.Losses.FirstOrDefault();
+                        bool restored = got is not null && still is null;
+                        Console.WriteLine($"      {knob,-22} -> {(got is { } v ? v.ToString("N0", CultureInfo.InvariantCulture) : "-"),12} sq ft {(restored ? "  <== this rule took it" : still is not null ? "  still lost: " + still.Why : "")}");
                     }
                     finally { Environment.SetEnvironmentVariable(knob, null); }
                 }
@@ -140,7 +150,7 @@ internal static class CorpusGateVerb
             // attribute it.
             // ⚠ ONE literal, not a concatenation: the guard reads this line as source text and a `" + "` between
             // two knobs hides everything after it.
-            Console.WriteLine("  to find which rule took them: --bisect KOR_STEP130_OFF,KOR_STEP131_OFF,KOR_STEP133_OFF,KOR_STEP134_OFF,KOR_STEP135_OFF,KOR_STEP136_OFF,KOR_STEP137_OFF,KOR_STEP138_OFF,KOR_STEP139_OFF,KOR_STEP140_OFF,KOR_STEP144_OFF,KOR_STEP145_OFF,KOR_STEP149_OFF,KOR_STEP150_OFF,KOR_STEP151_OFF,KOR_STEP152_OFF,KOR_STEP153_OFF,KOR_STEP154_OFF,KOR_STEP155_OFF,KOR_STEP156_OFF,KOR_STEP157_OFF,KOR_STEP158_OFF,KOR_STEP159_OFF,KOR_STEP160_OFF,KOR_STEP161_OFF,KOR_STEP162_OFF,KOR_STEP163_OFF,KOR_STEP164_OFF,KOR_STEP165_OFF,KOR_STEP166_OFF,KOR_STEP167_OFF,KOR_STEP168_OFF,KOR_STEP169_OFF,KOR_STEP170_OFF,KOR_STEP171_OFF,KOR_STEP172_OFF,KOR_STEP173_OFF,KOR_STEP174_OFF");
+            Console.WriteLine("  to find which rule took them: --bisect KOR_STEP130_OFF,KOR_STEP131_OFF,KOR_STEP133_OFF,KOR_STEP134_OFF,KOR_STEP135_OFF,KOR_STEP136_OFF,KOR_STEP137_OFF,KOR_STEP138_OFF,KOR_STEP139_OFF,KOR_STEP140_OFF,KOR_STEP144_OFF,KOR_STEP145_OFF,KOR_STEP149_OFF,KOR_STEP150_OFF,KOR_STEP151_OFF,KOR_STEP152_OFF,KOR_STEP153_OFF,KOR_STEP154_OFF,KOR_STEP155_OFF,KOR_STEP156_OFF,KOR_STEP157_OFF,KOR_STEP158_OFF,KOR_STEP159_OFF,KOR_STEP160_OFF,KOR_STEP161_OFF,KOR_STEP162_OFF,KOR_STEP163_OFF,KOR_STEP164_OFF,KOR_STEP165_OFF,KOR_STEP166_OFF,KOR_STEP167_OFF,KOR_STEP168_OFF,KOR_STEP169_OFF,KOR_STEP170_OFF,KOR_STEP171_OFF,KOR_STEP172_OFF,KOR_STEP173_OFF,KOR_STEP174_OFF,KOR_STEP175_OFF,KOR_STEP176_OFF,KOR_STEP177_OFF");
         }
         if (outCsv is not null)
         {

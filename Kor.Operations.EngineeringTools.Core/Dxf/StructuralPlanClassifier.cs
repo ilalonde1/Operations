@@ -181,6 +181,12 @@ public sealed record PlanClassificationOptions
     public double RingOnPlateEdgeFraction { get; init; } = 0.5;
 
     /// <summary>
+    /// How large a ring drawn inside a hole already cut must be, as a share of that hole, to be part of it - a cab in its
+    /// shaft - rather than a hole of its own standing in a larger ring. See `dxf.nested-ring-tile-share` (step 177).
+    /// </summary>
+    public double NestedRingTileShare { get; init; } = 0.15;
+
+    /// <summary>
     /// How far a straightened outline may sit from the trace it came from, in inches. A floor
     /// recovered by flood fill is traced off pixels and arrives as a staircase; this is what
     /// turns it back into walls. See `dxf.recovered-outline-tolerance`.
@@ -621,6 +627,22 @@ public static class StructuralPlanClassifier
         return (prepared, unroled, partitionSegments, duplicateEdges);
     }
 
+    /// <summary>Every closed polyline on a slab-edge layer, as drawn (step 175): its edges in the order read, kept only where
+    /// each ends where the next begins and the last returns to the first - anything else is not one outline.</summary>
+    private static IEnumerable<PlanLoop> DrawnClosedOutlines(IEnumerable<DxfSegment> all, PlanClassificationOptions options)
+    {
+        foreach (var outline in all.Where(s => s.ClosedOutlineId != 0 && RoleOf(s.Layer, options) == RoleSlab).GroupBy(s => s.ClosedOutlineId))
+        {
+            var edges = outline.ToList();
+            if (edges.Count < 3) continue;
+            bool joined = true;
+            for (int i = 0; i < edges.Count && joined; i++)
+                joined = edges[i].End.DistanceTo(edges[(i + 1) % edges.Count].Start) <= 1e-6;
+            if (!joined) continue;
+            yield return new PlanLoop(RoleSlab, edges.Select(e => e.Start).ToList(), closedExactly: true);
+        }
+    }
+
     /// <summary>
     /// Closed first, then pooled: each layer family of the role is built on its own, and only what
     /// is left open is pooled across the role's families for a second chance. Returns the loops and
@@ -905,6 +927,33 @@ public static class StructuralPlanClassifier
 
                 loops.AddRange(named.Select(x => x.Loop));
                 stillOpen = rescued.OpenChains.ToList();
+            }
+
+            // A SLAB EDGE THE DRAWING CLOSED IS CLOSED (intake step 175, 2026-10-24, Ian's go). The walk above re-traces a
+            // slab edge from its segments and does not ask whether the drawing already finished it: 31032's L2 plate is
+            // one closed, valid 5,735 sq ft polyline, and re-walked among the other linework it "would not close", was
+            // then refused for having no thickness printed inside it, and the storey lost 3,076 sq ft. A closed slab
+            // polyline the walk produced NOTHING for - no ring the same as it, none overlapping it - is taken as drawn,
+            // whole, when it does not cross itself and is a plate's size. Where the walk found the outline, or found
+            // anything there, nothing changes: this only fills what the walk lost.
+            if (role == RoleSlab && Environment.GetEnvironmentVariable("KOR_STEP175_OFF") != "1")
+            {
+                foreach (var drawn in DrawnClosedOutlines(all, options))
+                {
+                    if (drawn.Area < options.MinSlabArea) continue;
+                    if (LoopGeometry.SplitSelfCrossings(drawn.Points, options.OutlineSelfTouchTolerance).Count != 1) continue;
+                    // the walk found THIS outline: a ring of its area, give or take 2%, standing where it stands. Not "any ring
+                    // inside it" - 31032's S2.06 walk closes two 4-corner rings of 67 and 77 sq ft inside the 5,735 sq ft
+                    // outline (a shaft, a stair), which a floor holds as openings, and that test stood the step down there
+                    var dc = drawn.Centroid();
+                    if (loops.Any(l => Math.Abs(l.Area - drawn.Area) <= 0.02 * drawn.Area
+                                       && LoopGeometry.PointInPolygon(l.Centroid(), drawn.Points) && LoopGeometry.PointInPolygon(dc, l.Points))) continue;
+                    loops.Add(drawn);
+                    stillOpen.RemoveAll(c => c.All(p => drawn.Points.Select((q, i) => LoopGeometry.DistanceToSegment(p, q, drawn.Points[(i + 1) % drawn.Points.Count]))
+                                                                  .Min() <= options.JoinTolerance));
+                    result.Flags.Add($"slab edges: an outline of {options.SqFt(drawn.Area)} sq ft the drawing draws closed, which re-traced " +
+                                     "from its segments would not close, was taken as drawn.");
+                }
             }
 
             byRole.Add((role, loops, stillOpen));
@@ -3001,6 +3050,29 @@ public static class StructuralPlanClassifier
             var container = slabs.FirstOrDefault(s => LoopGeometry.PointInPolygon(centre, s.Points));
             if (container is not null)
             {
+                // A RING INSIDE A HOLE ALREADY CUT IS PART OF THAT HOLE (intake step 177, 2026-10-24). Rings come largest
+                // first, so a shaft is cut before what is drawn inside it. 31138 draws its elevator shaft closed and each of
+                // its two cabs closed inside it; once a closed outline counted as drawn (step 175) the cabs were cut as two
+                // more openings over the shaft's - the same hole cut three times on every storey, where her model cuts it once.
+                // ONLY A RING THAT TILES THE HOLE: each cab runs along the shaft's own edge on three of its four sides. Any ring
+                // with its centre in a hole was the first cut, and took 12 of her 37 openings on 31170-arch, whose real shafts
+                // stand inside larger rings it cuts - sharing little or none of their edge. Shared as a ring on the plate's own
+                // edge is judged (dxf.ring-on-plate-edge-fraction, KorStandards). AND A SHARE OF IT: 31065's P2 cuts a 1,734 sq ft
+                // ring the writer later refuses (a column stands in it), and two real holes of 63 and 97 sq ft run along its edge
+                // inside it - one of hers. A cab is 25-100% of its shaft (31202's core slot ends: 24.6%); those were 4-6%
+                // (dxf.nested-ring-tile-share, 0.15).
+                var hole = Environment.GetEnvironmentVariable("KOR_STEP177_OFF") == "1"
+                    ? null : result.Openings.FirstOrDefault(o => LoopGeometry.PointInPolygon(centre, o.Points)
+                                                                 && loop.Area >= options.NestedRingTileShare * o.Area
+                                                                 && FractionOnBoundary(loop, o, options.MinWallThickness) >= options.RingOnPlateEdgeFraction);
+                if (hole is not null)
+                {
+                    result.Flags.Add(
+                        $"{loop.Layer}: a ring of {options.SqFt(loop.Area)} sq ft inside the {options.SqFt(hole.Area)} sq ft " +
+                        "opening already cut was NOT cut again — it is drawn inside that hole (a cab in a shaft, a flight in a stair), not a second one.");
+                    continue;
+                }
+
                 // TWO FACES OF ONE BOUNDARY ARE NOT A FLOOR WITH A HOLE IN IT.
                 //
                 // A slab edge drawn as an outer and an inner line -- the two faces of the perimeter
@@ -3052,7 +3124,6 @@ public static class StructuralPlanClassifier
                         "than a hole. A hole has floor on every side of it.");
                     continue;
                 }
-
                 // A SLAB EDGE DRAWN TWICE AT MORE THAN A WALL'S THICKNESS.
                 //
                 // The band above catches an inner face a WALL's thickness inside the outer one,

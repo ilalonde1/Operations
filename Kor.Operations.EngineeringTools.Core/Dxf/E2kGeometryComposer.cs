@@ -1409,23 +1409,10 @@ public static class E2kGeometryComposer
                 // by the ground they share, not by their vertices: two readings of one floor differ at their edges (31202's L1:
                 // the foundation plan's ring and the L1 plan's, each beyond the other somewhere, 22 of 55 vertices inside), so
                 // the smaller's ground is sampled on a grid and the share of it inside the other is the measure - nine tenths
-                static double GroundShared(IReadOnlyList<DxfPoint> a, IReadOnlyList<DxfPoint> b)
-                {
-                    double x0 = a.Min(p => p.X), x1 = a.Max(p => p.X), y0 = a.Min(p => p.Y), y1 = a.Max(p => p.Y);
-                    if (x1 <= x0 || y1 <= y0) return 0;
-                    int inA = 0, inBoth = 0;
-                    for (int i = 0; i < 40; i++)
-                        for (int j = 0; j < 40; j++)
-                        {
-                            var q = new DxfPoint(x0 + (x1 - x0) * (i + 0.5) / 40, y0 + (y1 - y0) * (j + 0.5) / 40);
-                            if (!LoopGeometry.PointInPolygon(q, a)) continue;
-                            inA++;
-                            if (LoopGeometry.PointInPolygon(q, b)) inBoth++;
-                        }
-                    return inA == 0 ? 0 : (double)inBoth / inA;
-                }
+                // (LoopGeometry.GroundShared; DxfToEtabsService's step 176 has already taken out the smaller of two such
+                // plates from different sheets, so what reaches here is a reading of the same sheet's floor)
                 if (placedPlatePolygons.TryGetValue(slabStory.Name, out var earlier)
-                    && earlier.Any(e => GroundShared(shiftedPts, e) >= 0.9 || GroundShared(e, shiftedPts) >= 0.9))
+                    && earlier.Any(e => LoopGeometry.GroundShared(shiftedPts, e) >= 0.9 || LoopGeometry.GroundShared(e, shiftedPts) >= 0.9))
                 {
                     flags.Add($"{placement.SourceSheet}: a plate of {slab.Area / 144:N0} sq ft on {slabStory.Name} lies inside one already written from another reading of the storey and was not modelled - one floor, not two. TO FIX: nothing, unless this storey genuinely has a second slab inside the first - a mezzanine or a pit lid - in which case say so in the workbook and both are kept for this job.");
                     continue;

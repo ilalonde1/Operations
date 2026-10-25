@@ -351,6 +351,7 @@ public static class DxfToEtabsService
         "dxf.slab-callout-min-thickness",
         "dxf.slab-callout-max-thickness",
         "dxf.ring-on-plate-edge-fraction",
+        "dxf.nested-ring-tile-share",
         "dxf.recovered-outline-tolerance",
         "dxf.slab-chain-join-fraction",
         "dxf.drawn-ring-beats-fill-fraction",
@@ -483,6 +484,7 @@ public static class DxfToEtabsService
             ["dxf.slab-callout-min-thickness"] = classification.SlabCalloutMinThickness,
             ["dxf.slab-callout-max-thickness"] = classification.SlabCalloutMaxThickness,
             ["dxf.ring-on-plate-edge-fraction"] = classification.RingOnPlateEdgeFraction,
+            ["dxf.nested-ring-tile-share"] = classification.NestedRingTileShare,
             ["dxf.recovered-outline-tolerance"] = classification.RecoveredOutlineTolerance,
             ["dxf.slab-chain-join-fraction"] = classification.SlabChainJoinFraction,
             ["dxf.drawn-ring-beats-fill-fraction"] = classification.DrawnRingBeatsFillFraction,
@@ -550,6 +552,7 @@ public static class DxfToEtabsService
             SlabCalloutMinThickness = settings.ValueOr("dxf.slab-callout-min-thickness", options.SlabCalloutMinThickness),
             SlabCalloutMaxThickness = settings.ValueOr("dxf.slab-callout-max-thickness", options.SlabCalloutMaxThickness),
             RingOnPlateEdgeFraction = settings.ValueOr("dxf.ring-on-plate-edge-fraction", options.RingOnPlateEdgeFraction),
+            NestedRingTileShare = settings.ValueOr("dxf.nested-ring-tile-share", options.NestedRingTileShare),
             RecoveredOutlineTolerance = settings.ValueOr("dxf.recovered-outline-tolerance", options.RecoveredOutlineTolerance),
             SlabChainJoinFraction = settings.ValueOr("dxf.slab-chain-join-fraction", options.SlabChainJoinFraction),
             DrawnRingBeatsFillFraction = settings.ValueOr("dxf.drawn-ring-beats-fill-fraction", options.DrawnRingBeatsFillFraction),
@@ -3211,10 +3214,18 @@ public static class DxfToEtabsService
             // overall plan draws whole, and a balcony or a step on the part plan pokes a few vertices past the overall's
             // drawn edge, so "wholly inside" let three plates of 7,500-11,001 sq ft stand on L1 beside the 32,076 sq ft
             // floor. Nine of ten vertices inside (on the edge is in) is the same floor read again on a part plan.
+            // ...AND ONE WHOSE GROUND IS (step 176, 2026-10-24). Vertices miss a part plan drawn off the overall plan's grid:
+            // 31032's L1 stair partial plan (S2.03.1_3) closes a 2,143 sq ft plate 2.6 m off the floor it is part of, few of
+            // its corners inside the 11,610 sq ft floor - so it stood, was written first, and the writer's own test (step
+            // 113b), which measures shared ground and keeps the FIRST reading, then dropped the floor. Nine tenths of the
+            // smaller's ground inside the larger is the same floor read again, and the larger is the floor - the measure
+            // 113b uses, the choice this rule always made.
+            bool step176 = Environment.GetEnvironmentVariable("KOR_STEP176_OFF") != "1";
             foreach (var (sheet, slab) in plates.OrderBy(x => x.Slab.Area).ToList())
             {
                 var container = plates.FirstOrDefault(o => o.Sheet.Sheet != sheet.Sheet && o.Slab.Area > slab.Area
-                                                             && slab.Points.Count(pt => LoopGeometry.InsideOrOn(pt, o.Slab.Points, reach)) * 10 >= slab.Points.Count * 9);   // on the edge is in (step 82): a shared edge answers with rounding noise
+                                                             && (slab.Points.Count(pt => LoopGeometry.InsideOrOn(pt, o.Slab.Points, reach)) * 10 >= slab.Points.Count * 9   // on the edge is in (step 82): a shared edge answers with rounding noise
+                                                                 || (step176 && LoopGeometry.GroundShared(slab.Points, o.Slab.Points) >= 0.9)));
                 if (container.Slab is null) continue;
                 sheet.Geometry.Slabs.Remove(slab);
                 notSecondFloors++;

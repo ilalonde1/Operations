@@ -438,10 +438,14 @@ public static class DxfPlanReader
             return new DxfPoint(x + px * cos - py * sin, y + px * sin + py * cos);
         }
 
+        var outlineOfThisInsert = new Dictionary<int, int>();   // each insert of a block is its own outline
         foreach (var s in body)
         {
             string on = s.Layer is "0" or "" ? layer : s.Layer;
-            segments.Add(new DxfSegment(on, Place(s.Start), Place(s.End)) { FromCurve = s.FromCurve, OfClosedOutline = s.OfClosedOutline });
+            int id = s.ClosedOutlineId == 0 ? 0
+                : outlineOfThisInsert.TryGetValue(s.ClosedOutlineId, out int placed) ? placed
+                : outlineOfThisInsert[s.ClosedOutlineId] = NextClosedOutlineId();
+            segments.Add(new DxfSegment(on, Place(s.Start), Place(s.End)) { FromCurve = s.FromCurve, OfClosedOutline = s.OfClosedOutline, ClosedOutlineId = id });
         }
 
         return next;
@@ -720,14 +724,19 @@ public static class DxfPlanReader
         return i;
     }
 
+    private static int closedOutlines;   // process-wide, so two files' outlines never share a number
+
+    internal static int NextClosedOutlineId() => Interlocked.Increment(ref closedOutlines);
+
     private static void EmitPolyline(string layer, List<DxfPoint> points, bool closed, List<DxfSegment> into)
     {
         bool outline = closed && points.Count > 2;
+        int id = outline ? NextClosedOutlineId() : 0;
         for (int k = 0; k < points.Count - 1; k++)
             if (points[k].DistanceTo(points[k + 1]) > 1e-9)
-                into.Add(new DxfSegment(layer, points[k], points[k + 1]) { OfClosedOutline = outline });
+                into.Add(new DxfSegment(layer, points[k], points[k + 1]) { OfClosedOutline = outline, ClosedOutlineId = id });
 
         if (closed && points.Count > 2 && points[^1].DistanceTo(points[0]) > 1e-9)
-            into.Add(new DxfSegment(layer, points[^1], points[0]) { OfClosedOutline = true });
+            into.Add(new DxfSegment(layer, points[^1], points[0]) { OfClosedOutline = true, ClosedOutlineId = id });
     }
 }

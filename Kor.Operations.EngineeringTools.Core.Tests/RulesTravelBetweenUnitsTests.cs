@@ -56,6 +56,7 @@ public class RulesTravelBetweenUnitsTests
         ["DefaultSlabThicknessInches"] = "stated in inches on purpose, for the report's wording",
         ["SameGroundAreaTolerance"] = "a fraction of an area",
         ["RingOnPlateEdgeFraction"] = "a fraction of a ring's length",
+        ["NestedRingTileShare"] = "a share of a hole's area",
         ["SlabCalloutMinThickness"] = "compared against a number PRINTED on the drawing, which says " +
                                       "its own unit — inches whatever the geometry counts in",
         ["SlabCalloutMaxThickness"] = "the same: a printed dimension, not a model length",

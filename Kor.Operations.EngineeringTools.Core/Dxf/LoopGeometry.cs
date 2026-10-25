@@ -96,6 +96,27 @@ public static class LoopGeometry
     }
 
     /// <summary>
+    /// How much of <paramref name="a"/>'s ground lies inside <paramref name="b"/>, 0 to 1: a's box sampled on a 40 x 40 grid,
+    /// the share of the samples inside a that are inside b too. Two readings of one floor differ at their edges, so they
+    /// are compared by the ground they share, not by their vertices (step 113b, 31202's L1: 22 of 55 vertices inside).
+    /// </summary>
+    public static double GroundShared(IReadOnlyList<DxfPoint> a, IReadOnlyList<DxfPoint> b)
+    {
+        double x0 = a.Min(p => p.X), x1 = a.Max(p => p.X), y0 = a.Min(p => p.Y), y1 = a.Max(p => p.Y);
+        if (x1 <= x0 || y1 <= y0) return 0;
+        int inA = 0, inBoth = 0;
+        for (int i = 0; i < 40; i++)
+            for (int j = 0; j < 40; j++)
+            {
+                var q = new DxfPoint(x0 + (x1 - x0) * (i + 0.5) / 40, y0 + (y1 - y0) * (j + 0.5) / 40);
+                if (!PointInPolygon(q, a)) continue;
+                inA++;
+                if (PointInPolygon(q, b)) inBoth++;
+            }
+        return inA == 0 ? 0 : (double)inBoth / inA;
+    }
+
+    /// <summary>
     /// ON THE EDGE IS IN (step 82, 2026-09-15). <see cref="PointInPolygon"/> answers for a point ON the polygon's
     /// boundary with rounding noise - which side of the ray test a shared edge falls on depends on the last bits of
     /// the coordinates, which is to say on where the origin is. A ring that shares an edge with the floor it lies in

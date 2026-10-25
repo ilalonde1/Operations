@@ -36,6 +36,10 @@ public sealed record DxfSegment(string Layer, DxfPoint Start, DxfPoint End)
     /// drawn as loose lines - a dashed edge, a face cut at a T - is still joined.
     /// </summary>
     public bool OfClosedOutline { get; init; }
+
+    /// <summary>Which closed polyline this edge belongs to: one number per polyline as read (and per block insert), 0 for
+    /// an edge of no closed outline. The edges of one outline, in the order drawn, are that outline (step 175).</summary>
+    public int ClosedOutlineId { get; init; }
 }
 
 /// <summary>Annotation read from the drawing at the point where the drafter placed it.</summary>

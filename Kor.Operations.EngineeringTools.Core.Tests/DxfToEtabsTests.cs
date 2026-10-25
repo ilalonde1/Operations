@@ -38,6 +38,32 @@ public class DxfPlanReaderTests
     private static string Number(double value)
         => value.ToString(CultureInfo.InvariantCulture);
 
+    private static string LwPolyline(string layer, bool closed, params (double X, double Y)[] points)
+        => $"0\nLWPOLYLINE\n8\n{layer}\n90\n{points.Length}\n70\n{(closed ? 1 : 0)}\n"
+           + string.Join("\n", points.Select(p => $"10\n{Number(p.X)}\n20\n{Number(p.Y)}"));
+
+    /// <summary>
+    /// Step 175 (2026-10-24): the edges of one closed polyline carry one outline number, each closed polyline its own, and
+    /// an open polyline or a line none - so the slab reader can take an outline the drawing closed as drawn. WHAT THIS
+    /// COVERS: two closed LWPOLYLINEs, an open one and a LINE. WHAT IT DOES NOT: a block inserted twice (each insert is
+    /// renumbered in ReadInsert), nor what the classifier does with the outline. A fault it would NOT catch: an old-style
+    /// POLYLINE/VERTEX outline numbered wrongly, which goes through the same EmitPolyline.
+    /// </summary>
+    [Fact]
+    public void EachClosedPolylineIsOneNumberedOutline()
+    {
+        var segs = DxfPlanReader.ReadSegments(DxfWith(
+            LwPolyline("SLAB", true, (0, 0), (10, 0), (10, 10), (0, 10)),
+            LwPolyline("SLAB", true, (20, 0), (30, 0), (30, 10)),
+            LwPolyline("SLAB", false, (40, 0), (50, 0), (50, 10)),
+            Line("SLAB", 60, 0, 70, 0)));
+
+        var outlines = segs.Where(s => s.ClosedOutlineId != 0).GroupBy(s => s.ClosedOutlineId).ToList();
+        Assert.Equal(2, outlines.Count);
+        Assert.Equal(new[] { 3, 4 }, outlines.Select(g => g.Count()).OrderBy(n => n));
+        Assert.Equal(3, segs.Count(s => s.ClosedOutlineId == 0));   // the open polyline's two edges and the line
+    }
+
     [Fact]
     public void ReadsLinesWithLayers()
     {
