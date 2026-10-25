@@ -635,6 +635,7 @@ public static class E2kGeometryComposer
         var readThickness = new List<(string Storey, string Sheet, double ThicknessInches, int? Page)>();
         var placedOpenings = new PlacedMembers(0.01);   // one opening per place per storey: the same centroid, as the 1/100-unit key was
         int spandrelCounter = 0, openingCounter = 0;
+        var headersOfTwoThicknesses = new List<string>();   // a header between walls of two thicknesses takes the thinner: ASSUMED
 
         // Which building each member was drawn for, so a model of one building can be cut out
         // of the site afterwards. The finished file cannot answer this: a shared storey is
@@ -1325,6 +1326,8 @@ public static class E2kGeometryComposer
                 areaAssigns.Add(
                     $"  AREAASSIGN  \"{name}\"  \"{headerStorey}\"  SECTION \"{headerSection}\"  SPANDREL  \"{spandrel}\"  " +
                     "OBJMESHTYPE \"DEFAULT\"  CARDINALPOINT \"MIDDLE\"");
+                if (opening.ThickerWall > opening.Thickness + 0.25 * inch)
+                    headersOfTwoThicknesses.Add($"{name} on {headerStorey} ({opening.Thickness / inch:0.#}\" of {opening.Thickness / inch:0.#}\" and {opening.ThickerWall / inch:0.#}\")");
             }
 
             if (!options.IncludeFloors) continue;
@@ -1908,6 +1911,13 @@ public static class E2kGeometryComposer
                 flags.Add($"ASSUMED: {throughAdded.Count} opening(s) cut on the storeys above and below at the same place were cut through the " +
                           "storey between, whose drawing did not cut them (a stair drawn dashed, a shaft not marked): " + string.Join(", ", throughAdded) + ".");
         }
+
+        // A doorway between walls of two thicknesses: the drawing does not say how thick the header over it is. It takes the
+        // thinner wall's (WallNetwork) - Ian 2026-10-24, on Halifax's 20" against 24": "20\" I guess?? Like any other
+        // ambiguity - note it".
+        if (headersOfTwoThicknesses.Count > 0)
+            flags.Add($"ASSUMED: {headersOfTwoThicknesses.Count} doorway header(s) stand between walls of two thicknesses and take the " +
+                      "thinner; the drawing does not say. TO CHECK: the header's thickness with the engineer. " + string.Join(", ", headersOfTwoThicknesses) + ".");
 
         // A storey can hold a floor and still have most of its structure standing under open air.
         // "Has a plate" is the only question asked until now, and 31168 answers it yes on LEVEL 2

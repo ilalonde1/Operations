@@ -192,6 +192,9 @@ public sealed record WallAxis(DxfPoint Start, DxfPoint End, double Thickness, st
 public sealed record WallOpening(DxfPoint Start, DxfPoint End, double Thickness, string Layer)
 {
     public double Span => Start.DistanceTo(End);
+    /// <summary>The thicker of the two walls the opening stands between (0 when not known). <see cref="Thickness"/> is the
+    /// thinner, which the header takes - an assumption, reported where the two differ (Ian 2026-10-24: "20\" I guess??").</summary>
+    public double ThickerWall { get; init; }
 }
 
 /// <summary>

@@ -1305,6 +1305,30 @@ public class E2kDocumentTests
     }
 
     /// <summary>
+    /// A header between walls of two thicknesses takes the thinner and SAYS SO (Ian 2026-10-24, Halifax: a 37.7" core
+    /// doorway between a 20" and a 24" wall, on 22 storeys: "20\" I guess?? Like any other ambiguity - note it"). WHAT THIS
+    /// COVERS: the ASSUMED note naming the header, its storey and both walls; none for walls of one thickness. WHAT IT DOES
+    /// NOT: how the doorway is found (WallNetwork's own tests). A fault it would NOT catch: a header whose walls the reader
+    /// paired wrongly, so both thicknesses are wrong together.
+    /// </summary>
+    [Fact]
+    public void AHeaderBetweenWallsOfTwoThicknessesTakesTheThinnerAndIsNotedAsAssumed()
+    {
+        string[] Flags(double thicker)
+        {
+            var doc = E2kDocument.Parse(Reference);
+            var story = doc.ReadStories().Single(s => s.Name == "LEVEL 3");
+            var g = new PlanGeometrySet();
+            g.WallOpenings.Add(new WallOpening(new DxfPoint(100, 100), new DxfPoint(100, 137.7), 20, "JBP_V-WALL") { ThickerWall = thicker });
+            return E2kGeometryComposer.Compose(doc, new[] { new StoryPlacement(story, g, "a.dxf") }).Flags.ToArray();
+        }
+        string note = Assert.Single(Flags(24), f => f.StartsWith("ASSUMED: 1 doorway header"));
+        Assert.Contains("LEVEL 3", note);
+        Assert.Contains("20\" of 20\" and 24\"", note);
+        Assert.DoesNotContain(Flags(20), f => f.Contains("doorway header"));
+    }
+
+    /// <summary>
     /// A COLUMN'S ANG IS ITS LONG FACE'S BEARING (2026-10-24). ETABS turns local axis 2 by ANG from global X and a
     /// rectangle's D lies along local 2, so a 12x30 drawn long north-south is ANG 90 - as the engineer's 31170-01 carries
     /// 234 of its 274. 8333a93e wrote bearing - 90 and turned every oblong column a quarter turn; 1,506 of 1,506 stood 90

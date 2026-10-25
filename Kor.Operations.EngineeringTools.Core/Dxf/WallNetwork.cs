@@ -312,7 +312,7 @@ public static class WallNetwork
             if (LoopGeometry.Beyond(minSpan, best.D) || LoopGeometry.Beyond(best.D, maxSpan)) continue;   // a 24" doorway meets a 24" floor in every frame
             if (!used.Add((i, j))) continue;
 
-            found.Add(new WallOpening(best.P, best.Q, Math.Min(a.Thickness, b.Thickness), a.Layer));
+            found.Add(new WallOpening(best.P, best.Q, Math.Min(a.Thickness, b.Thickness), a.Layer) { ThickerWall = Math.Max(a.Thickness, b.Thickness) });
         }
 
         // One doorway, one opening.
