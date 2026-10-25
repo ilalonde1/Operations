@@ -1346,7 +1346,7 @@ public sealed class E2kDocument
     /// stands on L21 and then L09 down to L03, and that is how she drew it.
     /// </remarks>
     /// <returns>The number of assigns added.</returns>
-    public int ModelDoubleHeightMembersOnBothFloors()
+    public int ModelDoubleHeightMembersOnBothFloors(double sameColumnReach = 0)
     {
         var order = ReadStories().Select(s => s.Name).ToList();
         var rank = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -1399,6 +1399,48 @@ public sealed class E2kDocument
             if (!stacks.TryGetValue(at, out var rows)) stacks[at] = rows = new Dictionary<int, string>();
             foreach (string storey in storeys)
                 if (rank.TryGetValue(storey, out int r)) rows[r] = obj;
+        }
+
+        // ONE COLUMN READ OFF TWO SHEETS IS ONE STACK (intake step 180, 2026-10-25). A stack was its exact position, and two
+        // sheets rarely register to the millimetre: 31065's ramp-edge columns stand on P2 and P1 51 mm from where L2's sheet
+        // puts them, so P2-P1 and L2 were two stacks, L1 between them was never a gap, and the L1 segment the engineer's model carries
+        // (C600x900, 74 mm off ours) existed only while the carry-down happened to reach it. Two COLUMN stacks within the
+        // reach a generated column is "the one already modelled" (dxf.already-modelled-tolerance) that share no storey are one
+        // column; two that share a storey are two columns and stay apart. Walls are left as they were.
+        if (sameColumnReach > 0 && Environment.GetEnvironmentVariable("KOR_STEP180_OFF") != "1")
+        {
+            static (double X, double Y)? PointOf(string key)
+            {
+                // a column line names its joint twice, top and bottom: one place however many times it is listed
+                var places = key.Split('|').Distinct(StringComparer.Ordinal).ToList();
+                if (places.Count != 1) return null;
+                var p = places[0].Split(',');
+                return p.Length == 2 && double.TryParse(p[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double x)
+                                     && double.TryParse(p[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double y)
+                    ? (x, y) : null;
+            }
+            var columnStacks = stacks
+                .Where(s => s.Value.Values.All(o => o.StartsWith("KC", StringComparison.Ordinal)) && PointOf(s.Key) is not null)
+                .Select(s => (Key: s.Key, At: PointOf(s.Key)!.Value))
+                .ToList();
+            var merged = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < columnStacks.Count; i++)
+            {
+                if (merged.Contains(columnStacks[i].Key)) continue;
+                var into = stacks[columnStacks[i].Key];
+                for (int j = i + 1; j < columnStacks.Count; j++)
+                {
+                    var (key, at) = columnStacks[j];
+                    if (merged.Contains(key)) continue;
+                    double dx = at.X - columnStacks[i].At.X, dy = at.Y - columnStacks[i].At.Y;
+                    if (dx * dx + dy * dy > sameColumnReach * sameColumnReach) continue;
+                    var other = stacks[key];
+                    if (other.Keys.Any(into.ContainsKey)) continue;
+                    foreach (var (row, obj) in other) into[row] = obj;
+                    merged.Add(key);
+                }
+            }
+            foreach (string key in merged) stacks.Remove(key);
         }
 
         // WHAT HOLDS A MEMBER UP: a plate on the storey its base lands on, under its own position.

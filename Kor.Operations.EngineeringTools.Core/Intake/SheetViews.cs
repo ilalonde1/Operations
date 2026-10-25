@@ -334,8 +334,10 @@ public static class SheetViews
                 g.ColumnColors.Add(i < geometry.ColumnColors.Count ? geometry.ColumnColors[i] : ((byte)0, (byte)0, (byte)0));
                 g.ColumnSizes.Add(i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (0, 0));
                 g.ColumnIsRound.Add(i < geometry.ColumnIsRound.Count && geometry.ColumnIsRound[i]);
+                g.ColumnTurnDegrees.Add(i < geometry.ColumnTurnDegrees.Count ? geometry.ColumnTurnDegrees[i] : 0);   // step 178: its turn goes with it
                 g.ColumnIsAnnotation.Add(i < geometry.ColumnIsAnnotation.Count && geometry.ColumnIsAnnotation[i]);
                 g.ColumnIsTendonAnchor.Add(i < geometry.ColumnIsTendonAnchor.Count && geometry.ColumnIsTendonAnchor[i]);   // a stood-down anchor stays stood down in its view (Codex 2026-09-13, F2)
+                g.ColumnIsWallPier.Add(i < geometry.ColumnIsWallPier.Count && geometry.ColumnIsWallPier[i]);   // and a wall pier stays a wall (step 99; found by EveryListParallelToTheColumnsGoesWithThemIntoTheView)
             }
 
             var wallIndex = new Dictionary<int, int>();

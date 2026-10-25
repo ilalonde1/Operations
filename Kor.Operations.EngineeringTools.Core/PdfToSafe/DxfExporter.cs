@@ -200,6 +200,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // Parallel to xColumns: bounding-box sizes for footprint rectangles.
             var xColumnSizes = new List<(double W, double D)>();
             var xColumnRound = new List<bool>();
+            var xColumnTurn = new List<double>();   // step 178: the bearing of the width side, degrees
             // Parallel to each of the three, the colour the shape was drawn in. Carried whether or
             // not it is used, so the three lists cannot fall out of step with it.
             var xSlabColours = new List<(byte R, byte G, byte B)>();
@@ -251,6 +252,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     xColumns.Add((px, py));
                     xColumnSizes.Add(i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (400.0, 400.0));
                     xColumnRound.Add(i < geometry.ColumnIsRound.Count && geometry.ColumnIsRound[i]);
+                    xColumnTurn.Add(i < geometry.ColumnTurnDegrees.Count ? geometry.ColumnTurnDegrees[i] : 0);
                     xColumnColours.Add(i < geometry.ColumnColors.Count ? geometry.ColumnColors[i] : black);
                     xColumnMarkup.Add(i < geometry.ColumnIsAnnotation.Count && geometry.ColumnIsAnnotation[i]);
                 }
@@ -662,10 +664,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     Num(50, 0); Num(51, 360);
                     continue;
                 }
+                // turned as drawn (step 178): the width side along the column's bearing, the depth across it
+                double t = xColumnTurn[i] * Math.PI / 180, ux = Math.Cos(t), uy = Math.Sin(t);
                 var rect = new List<(double X, double Y)>
                 {
-                    (px - hw, py - hd), (px + hw, py - hd),
-                    (px + hw, py + hd), (px - hw, py + hd)
+                    (px - hw * ux + hd * uy, py - hw * uy - hd * ux), (px + hw * ux + hd * uy, py + hw * uy - hd * ux),
+                    (px + hw * ux - hd * uy, py + hw * uy + hd * ux), (px - hw * ux - hd * uy, py - hw * uy + hd * ux)
                 };
                 WritePolyline(
                     layerByColour

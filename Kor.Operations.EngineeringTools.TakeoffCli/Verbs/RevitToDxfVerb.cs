@@ -108,6 +108,14 @@ internal static class RevitToDxfVerb
                     g.ColumnIsAnnotation.Add(false);
                     g.ColumnSizes.Add(size);
                     g.ColumnIsRound.Add(isRound);
+                    // TURNED AS THE MANIFEST SAYS (step 178, 2026-10-25, agreed with the Virtual Drafter): rotation_deg is the
+                    // long face's bearing from X, written only for a turned rectangle. ColumnTurnDegrees is the bearing of the
+                    // side ColumnSizes calls width - the type's first number ("18x30": W 18) - so a width shorter than the depth
+                    // turns a quarter more. Absent, the column is square to the grid: turn 0, its width along X, as before.
+                    double turn = 0;
+                    if (!isRound && c.TryGetProperty("rotation_deg", out var rot) && rot.ValueKind == JsonValueKind.Number)
+                        turn = ((size.W < size.D ? rot.GetDouble() + 90 : rot.GetDouble()) % 180 + 180) % 180;
+                    g.ColumnTurnDegrees.Add(turn);
                     columns++;
                 }
             // Floors (2026-10-23, Halifax): a level may carry "floors": [{"points_mm": [[x, y], ...]}, ...] - closed

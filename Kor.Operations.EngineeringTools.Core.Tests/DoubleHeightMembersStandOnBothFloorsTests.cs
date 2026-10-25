@@ -62,6 +62,33 @@ public class DoubleHeightMembersStandOnBothFloorsTests
         Assert.Equal(3, on.Count);
     }
 
+    /// <summary>
+    /// Step 180: one column read off two sheets that register 2 in apart is one stack. 31065's ramp-edge columns stand on
+    /// P2-P1 51 mm from L2's, so the storey between was never seen as a gap. WHAT THIS COVERS: two stacks 2 in apart with no
+    /// storey in common close their one-storey gap at a 6 in reach; with no reach, or 12 in apart, they stay two. WHAT IT
+    /// DOES NOT: walls (keyed by both ends, not merged); two stacks that share a storey (kept apart by the code - a
+    /// three-storey model cannot pose that case without one stack holding a gap of its own, which the old rule fills).
+    /// </summary>
+    [Fact]
+    public void OneColumnReadOffTwoSheetsAFewInchesApartIsOneStack()
+    {
+        string[] Two(double dx, params string[] extra) => new List<string>
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"LEVEL 2\"  HEIGHT 120", "  STORY \"LEVEL 1\"  HEIGHT 120", "  STORY \"LEVEL P1\"  HEIGHT 120", "  STORY \"Base\"  HEIGHT 0",
+            "$ POINT COORDINATES", "  POINT \"KP1\"  100  200", $"  POINT \"KP2\"  {100 + dx}  200",
+            "$ LINE CONNECTIVITIES", "  LINE  \"KC1\"  COLUMN  \"KP1\"  \"KP1\"  1", "  LINE  \"KC2\"  COLUMN  \"KP2\"  \"KP2\"  1",
+            "$ LINE ASSIGNS",
+            "  LINEASSIGN  \"KC1\"  \"LEVEL P1\"  SECTION \"KOR-C24x24\"",
+            "  LINEASSIGN  \"KC2\"  \"LEVEL 2\"  SECTION \"KOR-C24x24\"",
+        }.Concat(extra).ToArray();
+        int Filled(string[] lines, double reach) => E2kDocument.Parse(lines).ModelDoubleHeightMembersOnBothFloors(reach);
+
+        Assert.Equal(1, Filled(Two(2), 6));      // one column, read 2 in apart: LEVEL 1 between is filled
+        Assert.Equal(0, Filled(Two(2), 0));      // no reach: two stacks, as before
+        Assert.Equal(0, Filled(Two(12), 6));     // a foot apart: two columns
+    }
+
     /// <summary>The filled assign copies the real one, so it carries the same section.</summary>
     [Fact]
     public void TheFilledStoreyCarriesTheSameSectionAsTheFloorAbove()

@@ -241,6 +241,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// column's filled outline was drawn with Bezier curves and is square to within a tenth; the DXF carries it as an
         /// ARC, so the classifier's arc rule - the only sound basis for round - models it a circle, not a square.</summary>
         public List<bool> ColumnIsRound { get; } = new();
+        /// <summary>A COLUMN DRAWN TURNED IS TURNED (intake step 178, 2026-10-25). Parallel to <see cref="Columns"/>: the bearing,
+        /// in degrees from the page's X axis, of the side <see cref="ColumnSizes"/> calls its width; 0 for a column square to
+        /// the page. The DXF draws the footprint at this turn, and the classifier's oriented box reads it back as the column's
+        /// angle - before this every column went out square to the page, whatever grid it stood on.</summary>
+        public List<double> ColumnTurnDegrees { get; } = new();
         /// <summary>
         /// Optional cross-section hints parallel to <see cref="Lines"/>. Populated when a
         /// slab polygon is reclassified as a wall/beam and its intended beam section is

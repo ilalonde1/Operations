@@ -437,6 +437,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         result.ColumnIsAnnotation.Add(sub.IsAnnotation);
                         result.ColumnSizes.Add(declaredOnAxes ? (bboxW, bboxH) : (obox!.Length, obox.Thickness));
                         result.ColumnIsRound.Add(DrawnRound(sub, pts, bboxW, bboxH, clipPieces, rawSubpaths));
+                        result.ColumnTurnDegrees.Add(0);   // the page's turn is not read yet (step 181, parked): every PDF column is square to the page, as before
                         columnByShape.Add(false);
                         Fate(PathReason.BecameColumnByDeclaredSize, result.Columns.Count - 1);
                         continue;
@@ -602,6 +603,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         result.ColumnColors.Add(color);
                         result.ColumnIsAnnotation.Add(sub.IsAnnotation);
                         result.ColumnSizes.Add((bboxW, bboxH));
+                        result.ColumnTurnDegrees.Add(0);   // the page's turn is not read yet (step 181, parked)
                         result.ColumnIsRound.Add(DrawnRound(sub, pts, bboxW, bboxH, clipPieces, rawSubpaths));
                         columnByShape.Add(true);
                         Fate(PathReason.BecameColumnByShape, result.Columns.Count - 1);
@@ -907,6 +909,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (i < result.ColumnIsAnnotation.Count) result.ColumnIsAnnotation.RemoveAt(i);
                 if (i < result.ColumnSizes.Count) result.ColumnSizes.RemoveAt(i);
                 if (i < result.ColumnIsRound.Count) result.ColumnIsRound.RemoveAt(i);
+                if (i < result.ColumnTurnDegrees.Count) result.ColumnTurnDegrees.RemoveAt(i);
                 // and the by-shape flags, which the quadrant pass reads next by the SURVIVORS' indexes: left
                 // uncompacted, three removed cells ahead of two declared columns handed the pair the cells'
                 // flags and the pair went as a target's quadrants (Codex audit 2026-09-13, F1)
@@ -986,6 +989,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (i < result.ColumnIsAnnotation.Count) result.ColumnIsAnnotation.RemoveAt(i);
                 if (i < result.ColumnSizes.Count) result.ColumnSizes.RemoveAt(i);
                 if (i < result.ColumnIsRound.Count) result.ColumnIsRound.RemoveAt(i);
+                if (i < result.ColumnTurnDegrees.Count) result.ColumnTurnDegrees.RemoveAt(i);
             }
             if (fates is null) return;
             for (int k = firstFate; k < fates.Count; k++)
@@ -3161,12 +3165,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var segs = lines.Select(i => new DxfSegment("LINE", new DxfPoint(result.Lines[i][0].X, result.Lines[i][0].Y), new DxfPoint(result.Lines[i][^1].X, result.Lines[i][^1].Y))).ToList();
                 var parent = Enumerable.Range(0, segs.Count).ToArray();
                 int Root(int n) { while (parent[n] != n) { parent[n] = parent[parent[n]]; n = parent[n]; } return n; }
+                // A RUN IS A STRAIGHT LINE, NOT EVERYTHING JOINED TO IT (intake step 179, 2026-10-25). Pieces sharing an end were
+                // one run whatever angle they met at, so a run was the whole network of linework a piece touched, round every
+                // corner - and one leader's arrowhead at any piece took all of it. 31065's L1 south plan lost 231 pieces that way,
+                // the slab's dashed edge over the ramp among them, and the tower's floor never closed (13,657 sq ft with them).
+                // A section cut is pieces in line with each other: two that share an end join only when they run the same way.
+                bool step179 = Environment.GetEnvironmentVariable("KOR_STEP179_OFF") != "1";
+                bool SameWay(DxfSegment a, DxfSegment b)
+                {
+                    double ax = a.End.X - a.Start.X, ay = a.End.Y - a.Start.Y, bx = b.End.X - b.Start.X, by = b.End.Y - b.Start.Y;
+                    double la = Math.Sqrt(ax * ax + ay * ay), lb = Math.Sqrt(bx * bx + by * by);
+                    return la > 0 && lb > 0 && Math.Abs(ax * by - ay * bx) / (la * lb) <= Math.Sin(2 * Math.PI / 180);
+                }
                 var byEnd = new Dictionary<DxfPoint, int>();
+                var atEnd = new Dictionary<DxfPoint, List<int>>();
                 for (int i = 0; i < segs.Count; i++)
                     foreach (var end in new[] { segs[i].Start, segs[i].End })
                     {
-                        if (byEnd.TryGetValue(end, out int other)) parent[Root(i)] = Root(other);
-                        else byEnd[end] = i;
+                        if (!byEnd.ContainsKey(end)) byEnd[end] = i;
+                        var here = atEnd.TryGetValue(end, out var l) ? l : atEnd[end] = new List<int>();
+                        foreach (int other in here)
+                            if (!step179 || SameWay(segs[i], segs[other])) parent[Root(i)] = Root(other);
+                        here.Add(i);
                     }
                 foreach (var bridge in BridgesInLine(segs, SlabEdgeExtendMm, SlabEdgeJoinMm))
                     if (byEnd.TryGetValue(bridge.Start, out int a) && byEnd.TryGetValue(bridge.End, out int b)) parent[Root(a)] = Root(b);
@@ -3526,18 +3546,30 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             IReadOnlyList<(int Index, int PathOrdinal, List<(double X, double Y)> Pts)> clipPieces, IReadOnlyList<RawSubpath> rawSubpaths)
         {
             if (DrawnRound(sub, pts, w, h)) return true;
-            if (Environment.GetEnvironmentVariable("KOR_STEP173_OFF") == "1" || sub.IsAnnotation || !sub.IsFilled || clipPieces.Count == 0) return false;
+            if (Environment.GetEnvironmentVariable("KOR_STEP173_OFF") == "1") return false;
+            if (OwnClip(sub, pts, clipPieces, minCornersAlone: 8) is not { } own) return false;
+            var clip = rawSubpaths[own.Index];
+            var cp = own.Pts;
+            return DrawnRound(clip, cp, cp.Max(p => p.X) - cp.Min(p => p.X), cp.Max(p => p.Y) - cp.Min(p => p.Y)) || IsCircle(cp);
+        }
+
+        /// <summary>
+        /// The clip a filled shape is painted through (steps 173, 178): the one clip drawn just before it, else the one clip
+        /// of at least <paramref name="minCornersAlone"/> corners whose box is the fill's - as step 172 finds a wall's clip.
+        /// Its box must be the fill's, within a twentieth. Null when the fill has no clip of its own.
+        /// </summary>
+        internal static (int Index, int PathOrdinal, List<(double X, double Y)> Pts)? OwnClip(RawSubpath sub, List<(double X, double Y)> pts,
+            IReadOnlyList<(int Index, int PathOrdinal, List<(double X, double Y)> Pts)> clipPieces, int minCornersAlone)
+        {
+            if (sub.IsAnnotation || !sub.IsFilled || clipPieces.Count == 0 || pts.Count == 0) return null;
             double x0 = pts.Min(p => p.X), x1 = pts.Max(p => p.X), y0 = pts.Min(p => p.Y), y1 = pts.Max(p => p.Y);
             double slack = 0.05 * Math.Max(x1 - x0, y1 - y0);
             bool SameBox(List<(double X, double Y)> c) =>
                 Math.Abs(c.Min(p => p.X) - x0) <= slack && Math.Abs(c.Max(p => p.X) - x1) <= slack
                 && Math.Abs(c.Min(p => p.Y) - y0) <= slack && Math.Abs(c.Max(p => p.Y) - y1) <= slack;
             var own = clipPieces.Where(c => sub.PathOrdinal >= 1 && c.PathOrdinal == sub.PathOrdinal - 1).ToList() is { Count: 1 } justBefore
-                ? justBefore : clipPieces.Where(c => c.Pts.Count >= 8 && SameBox(c.Pts)).ToList();
-            if (own.Count != 1 || !SameBox(own[0].Pts)) return false;
-            var clip = rawSubpaths[own[0].Index];
-            var cp = own[0].Pts;
-            return DrawnRound(clip, cp, cp.Max(p => p.X) - cp.Min(p => p.X), cp.Max(p => p.Y) - cp.Min(p => p.Y)) || IsCircle(cp);
+                ? justBefore : clipPieces.Where(c => c.Pts.Count >= minCornersAlone && SameBox(c.Pts)).ToList();
+            return own.Count == 1 && SameBox(own[0].Pts) ? own[0] : null;
         }
 
         /// <summary>

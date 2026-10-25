@@ -2736,7 +2736,7 @@ public static class DxfToEtabsService
         // both floors ... otherwise they're just hanging from L2" — and the same for walls. One
         // empty storey between two the member occupies is that case; anything wider is a member the
         // reader missed, and is left alone rather than invented. See the method.
-        int doubled = doc.ModelDoubleHeightMembersOnBothFloors();
+        int doubled = doc.ModelDoubleHeightMembersOnBothFloors(sameColumnReach: composeOptions.AlreadyModelledTolerance);
         if (doubled > 0)
             warnings.Add(
                 $"{doubled} double-height member(s) were modelled on both floors they pass, not only " +

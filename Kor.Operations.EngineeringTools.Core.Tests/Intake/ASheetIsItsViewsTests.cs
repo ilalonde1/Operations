@@ -125,6 +125,52 @@ public sealed class ASheetIsItsViewsTests
     }
 
     /// <summary>
+    /// EVERY LIST THAT RUNS PARALLEL TO THE COLUMNS GOES WITH THEM INTO THE VIEW (2026-10-25). The split copies each
+    /// per-column list by hand, and three have been left behind: the tendon-anchor flag (Codex 2026-09-13, F2 - a stood-down
+    /// anchor written as a column again), the round flag (step 173, f5a74e04), and the turn (step 178 - 31065's 8-degree
+    /// columns written square in every view while the sheet read them turned). This finds the class, not the instance:
+    /// every public List property of ExtractedGeometry named Column*, filled for every column, must come out of the split
+    /// the length of each view's columns. WHAT IT DOES NOT: check the values are the right column's (the anchor test above
+    /// does that for one list); lists of other members (walls, slabs, lines).
+    /// </summary>
+    [Theory]
+    [InlineData("Column", "Columns")]
+    [InlineData("Wall", "Walls")]
+    [InlineData("Slab", "Slabs")]
+    [InlineData("Line", "Lines")]
+    public void EveryListParallelToAMemberListGoesWithItIntoTheView(string prefix, string members)
+    {
+        var g = Geometry();
+        var all = (System.Collections.IList)typeof(ExtractedGeometry).GetProperty(members)!.GetValue(g)!;
+        // named here with the reason they are not one-per-member: each view rightly takes all of them
+        var notParallel = new Dictionary<string, string> { ["WallTypeTags"] = "every assembly-code tag on the sheet, whether or not a wall took it" };
+        var lists = typeof(ExtractedGeometry).GetProperties()
+            .Where(p => p.Name.StartsWith(prefix, StringComparison.Ordinal) && p.Name != members && !notParallel.ContainsKey(p.Name)
+                        && p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(List<>))
+            .ToList();
+        Assert.NotEmpty(lists);
+        foreach (var p in lists)
+        {
+            var list = (System.Collections.IList)p.GetValue(g)!;
+            var t = p.PropertyType.GetGenericArguments()[0];
+            while (list.Count < all.Count) list.Add(t.IsValueType ? Activator.CreateInstance(t) : null);
+        }
+        var parts = SheetViews.Split(g, SheetViews.Titles(TwoPlans()), MmPerPt, "S2.20.1", NoTitleBlock, "p22");
+        Assert.Equal(2, parts.Count);
+        var missing = new List<string>();
+        foreach (var part in parts)
+        {
+            int n = ((System.Collections.IList)typeof(ExtractedGeometry).GetProperty(members)!.GetValue(part.Geometry)!).Count;
+            foreach (var p in lists)
+            {
+                int got = ((System.Collections.IList)p.GetValue(part.Geometry)!).Count;
+                if (got != n) missing.Add($"{p.Name}: {got} in the view, {n} {members.ToLowerInvariant()}");
+            }
+        }
+        Assert.True(missing.Count == 0, "the split did not carry: " + string.Join("; ", missing.Distinct()));
+    }
+
+    /// <summary>
     /// A NOTE PRINTED IN A VIEW IS THAT VIEW'S (intake step 118, 2026-09-18). The slab callout leaves the page as a TEXT
     /// at its position, and the split carried none: on 31138's S2.26 the «8" SLAB» printed in each of the two plans
     /// reached neither, and both plates stayed the 12-in default while the one-plan sheets read theirs. WHAT THIS
