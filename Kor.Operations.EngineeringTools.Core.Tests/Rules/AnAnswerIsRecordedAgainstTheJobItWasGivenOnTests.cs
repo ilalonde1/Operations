@@ -125,6 +125,32 @@ public sealed class AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests : IDisposab
         Assert.DoesNotContain(RuleSettings.CarriedRules(_connection, HerJob), c => c.Topic == TopicOfTheAnsweredRule());
     }
 
+    /// <summary>
+    /// ONLY THE CALLER'S KIND OF RULE IS CARRIED (2026-10-25). A wood drafting choice confirmed on one job is a
+    /// 'drafting' ruling (KOR.Drafter migration 109), and it is not offered as a question on an ETABS model.
+    /// </summary>
+    [Fact]
+    public void ARuleOfAnotherKindIsNotOfferedToThisOne()
+    {
+        Assert.False(string.IsNullOrWhiteSpace(_connection),
+            $"{RuleSettings.ConnectionEnvironmentVariable} is not set; the loop reads and writes KorStandards and never skips.");
+
+        RuleSettings.ImportQuestionAnswers(AnsweredWorkbookFor(HerJob), "andrean", _connection);
+        Assert.Contains(RuleSettings.CarriedRules(_connection, AnotherJob), c => c.Topic == TopicOfTheAnsweredRule());
+
+        using (var connection = new SqlConnection(_connection))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE analysis.Ruling SET Scope = 'drafting' WHERE Topic = @topic";
+            command.Parameters.AddWithValue("@topic", TopicOfTheAnsweredRule());
+            command.ExecuteNonQuery();
+        }
+
+        Assert.DoesNotContain(RuleSettings.CarriedRules(_connection, AnotherJob), c => c.Topic == TopicOfTheAnsweredRule());
+        Assert.Contains(RuleSettings.CarriedRules(_connection, AnotherJob, scope: "drafting"), c => c.Topic == TopicOfTheAnsweredRule());
+    }
+
     [Fact]
     public void ARejectionIsRememberedSoSheIsNotAskedToGiveItAgain()
     {

@@ -127,8 +127,13 @@ public static class RuleSettings
     ///
     /// A rule REJECTED on this job is not carried and not offered. A rule already confirmed here
     /// is not offered either: it has stopped being a question.
+    ///
+    /// ONLY THE CALLER'S KIND OF RULE (2026-10-25, raised by the Virtual Drafter session before its
+    /// migration 109): a wood drafting choice confirmed on one job is a 'drafting' ruling, and it is
+    /// not a question for an ETABS model. The rulings offered are the caller's scope and the job
+    /// answers the questionnaire records under 'job:'.
     /// </remarks>
-    public static IReadOnlyList<PriorAnswer> CarriedRules(string? connectionString, string? job)
+    public static IReadOnlyList<PriorAnswer> CarriedRules(string? connectionString, string? job, string scope = "etabs-modelling")
     {
         var found = new List<PriorAnswer>();
         connectionString ??= Environment.GetEnvironmentVariable(ConnectionEnvironmentVariable);
@@ -147,11 +152,13 @@ JOIN     analysis.Ruling r ON r.Id = a.RulingId
 WHERE    a.Decision = 'confirmed'
   AND    a.Job <> @job
   AND    r.RetiredAtUtc IS NULL
+  AND    (r.Scope = @scope OR r.Scope LIKE 'job:%')
   AND    NOT EXISTS (SELECT 1 FROM analysis.RuleApplication mine
                       WHERE mine.RulingId = a.RulingId AND mine.Job = @job)
 ORDER BY r.Topic, a.DecidedAtUtc DESC
 """;
             command.Parameters.AddWithValue("@job", job);
+            command.Parameters.AddWithValue("@scope", scope);
             command.CommandTimeout = 15;
 
             using var reader = command.ExecuteReader();
