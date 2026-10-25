@@ -1198,9 +1198,13 @@ public static class E2kGeometryComposer
                     frameProps[(w, d)] = sectionName;
                 }
 
-                // ETABS measures ANG from local axis 2, which lies along global Y for an
-                // unrotated column; the section's D is its long face.
-                double angle = Normalise(column.AxisAngleDegrees - 90.0);
+                // ANG IS THE LONG FACE'S BEARING. ETABS turns a column's local axis 2 by ANG from global X, and a
+                // rectangle's D - the long face here - lies along local 2; so a column long north-south is ANG 90.
+                // 8333a93e (2026-08-06) wrote AxisAngle - 90 on the belief that local 2 lies along Y, and turned every
+                // oblong column a quarter turn: against the engineer's models 1,506 of 1,506 oblong columns at the same
+                // place and storey stood 90 degrees off (31065 380, 31138 196, 31130 270, 31202 660; 2026-10-24), and
+                // her own 31170-01 carries 234 of its 274 12x30s, drawn long north-south, at ANG 90.
+                double angle = Normalise(column.AxisAngleDegrees);
 
                 // A column is one plan point, rising one storey from the storey it is assigned to.
                 // "same for columns" — one column from floor to floor of its own tower, spanning

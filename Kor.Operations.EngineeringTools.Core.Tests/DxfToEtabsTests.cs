@@ -1305,6 +1305,33 @@ public class E2kDocumentTests
     }
 
     /// <summary>
+    /// A COLUMN'S ANG IS ITS LONG FACE'S BEARING (2026-10-24). ETABS turns local axis 2 by ANG from global X and a
+    /// rectangle's D lies along local 2, so a 12x30 drawn long north-south is ANG 90 - as the engineer's 31170-01 carries
+    /// 234 of its 274. 8333a93e wrote bearing - 90 and turned every oblong column a quarter turn; 1,506 of 1,506 stood 90
+    /// degrees off her models on four buildings. WHAT THIS COVERS: the angle the composer writes for a long north-south,
+    /// a long east-west and a skewed oblong column, with D the long face. WHAT IT DOES NOT: the classifier's reading of the
+    /// bearing from linework, nor a round column (whose ANG means nothing). A fault it would NOT catch: a footprint whose
+    /// Width and Depth arrive swapped, with the bearing of the short face.
+    /// </summary>
+    [Fact]
+    public void AColumnsAngIsTheBearingOfItsLongFace()
+    {
+        var doc = E2kDocument.Parse(Reference);
+        var story = doc.ReadStories().Single(s => s.Name == "LEVEL 3");
+        var g = new PlanGeometrySet();
+        g.Columns.Add(new ColumnFootprint(new DxfPoint(100, 100), 12, 30, "JBP_V_COL", AxisAngleDegrees: 90));   // long north-south
+        g.Columns.Add(new ColumnFootprint(new DxfPoint(300, 100), 12, 30, "JBP_V_COL", AxisAngleDegrees: 0));    // long east-west
+        g.Columns.Add(new ColumnFootprint(new DxfPoint(500, 100), 12, 30, "JBP_V_COL", AxisAngleDegrees: 30));
+        E2kGeometryComposer.Compose(doc, new[] { new StoryPlacement(story, g, "a.dxf") });
+
+        var angles = doc.LinesOf("LINE ASSIGNS").Where(l => l.Contains("\"KC"))
+            .Select(l => double.Parse(System.Text.RegularExpressions.Regex.Match(l, @"\bANG\s+(\S+)").Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture))
+            .ToList();
+        Assert.Equal(new[] { 90.0, 0.0, 30.0 }, angles);
+        Assert.Contains(doc.LinesOf("FRAME SECTIONS"), l => l.Contains("Concrete Rectangular") && l.Contains(" D 30 B 12"));
+    }
+
+    /// <summary>
     /// Audit F10 (step 61, 2026-09-13): "one place" is decided by distance. The first cut bounded X and Y
     /// apart - a square two inches a side - so a second reading 0.75" east and 0.75" north (1.06" away)
     /// of a column was the same column, while one 1.01" due east was not. Both are more than an inch
