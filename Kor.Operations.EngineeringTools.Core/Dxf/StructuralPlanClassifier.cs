@@ -2872,6 +2872,30 @@ public static class StructuralPlanClassifier
     }
 
     /// <summary>
+    /// The share of a plate each printed thickness stands for (step 182): the plate's box sampled on a 60 x 60 grid, each
+    /// sample inside the plate given to the call-out nearest it, largest share first. Null when no sample lands inside.
+    /// The same partition the takeoff prices a zoned plate by (PlanGeometry.VoronoiCellShares, on the page's pixels),
+    /// here on the DXF ring itself.
+    /// </summary>
+    internal static List<(double Inches, double Share)>? GroundByNearestCallout(PlanLoop slab, IReadOnlyList<(double Inches, string Text, DxfPoint At)> printed)
+    {
+        if (printed.Count == 0) return null;
+        var (x0, y0, x1, y1) = slab.Bounds();
+        var votes = new Dictionary<double, int>();
+        int inside = 0;
+        for (int i = 0; i < 60; i++)
+            for (int j = 0; j < 60; j++)
+            {
+                var q = new DxfPoint(x0 + (x1 - x0) * (i + 0.5) / 60, y0 + (y1 - y0) * (j + 0.5) / 60);
+                if (!LoopGeometry.PointInPolygon(q, slab.Points)) continue;
+                inside++;
+                var near = printed.MinBy(t => q.DistanceTo(t.At));
+                votes[near.Inches] = votes.GetValueOrDefault(near.Inches) + 1;
+            }
+        return inside == 0 ? null : votes.Select(v => (v.Key, (double)v.Value / inside)).OrderByDescending(v => v.Item2).ToList();
+    }
+
+    /// <summary>
     /// THE THICKNESS THE DRAWING PRINTS INSIDE THE PLATE, as a pass over the slabs (intake step 120, 2026-09-18): run once
     /// where it always ran, and once more at the end for the plates the later rules make - the floor taken from the walls'
     /// outer edge, the panel fill, the recovery - which were never priced: 31087's P1 prints «10" SLAB» twelve times and
@@ -2898,7 +2922,7 @@ public static class StructuralPlanClassifier
         // a 14 inch slab. Assigning the outer plate's number to both is the wrong answer twice.
         if (result.Tags.Count > 0 && result.Slabs.Count > 0)
         {
-            var claimed = new Dictionary<PlanLoop, List<(double Inches, string Text)>>();
+            var claimed = new Dictionary<PlanLoop, List<(double Inches, string Text, DxfPoint At)>>();
             // THE FIELD THICKNESSES THIS SHEET PRINTS ANYWHERE (intake step 140, 2026-09-23) - see the
             // fallback below. Collected here because a call-out that lands in NO plate never reaches the
             // loop's end, and that is exactly the call-out this rule is for.
@@ -2941,7 +2965,7 @@ public static class StructuralPlanClassifier
                 if (smallest is null) continue;
 
                 if (!claimed.TryGetValue(smallest, out var list)) claimed[smallest] = list = new();
-                list.Add((inches, tag.Text.Replace('\n', ' ').Replace('\r', ' ').Trim()));
+                list.Add((inches, tag.Text.Replace('\n', ' ').Replace('\r', ' ').Trim(), tag.Point));
             }
 
             var priced = new List<PlanLoop>(result.Slabs.Count);
@@ -3005,6 +3029,23 @@ public static class StructuralPlanClassifier
                 // question (31168's 14" slab and 56" mat, one call-out each, keep the default and the flag).
                 var byCount = printed.GroupBy(t => t.Inches).Select(g => (Inches: g.Key, Count: g.Count(), Text: g.First().Text))
                     .OrderByDescending(g => g.Count).ThenBy(g => g.Inches).ToList();
+                // A TIE IS BROKEN BY THE GROUND EACH CALL-OUT STANDS FOR (intake step 182, 2026-10-25). 31065's L1 north
+                // plate (19,352 sq ft) prints 300, 500, 600 and 900 the same number of times and drew no outline between
+                // them, so it kept the 12" default - where the engineer's model carries a 900 mm field under most of the
+                // floor. Each point of the plate goes to the call-out nearest it; the thickness whose call-outs stand for
+                // more than half the plate is the plate's, ASSUMED and said with its share. Under half, still the question.
+                var tieGround = distinct.Count > 1 && byCount[0].Count == byCount[1].Count && Environment.GetEnvironmentVariable("KOR_STEP182_OFF") != "1"
+                    ? GroundByNearestCallout(slab, printed) : null;
+                if (tieGround is { } ground && ground[0].Share > 0.5)
+                {
+                    priced.Add(new PlanLoop(slab.Layer, slab.Points, slab.ClosedExactly) { ThicknessInchesFromTag = ground[0].Inches });
+                    result.Flags.Add(
+                        $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft prints {distinct.Count} thickness call-outs " +
+                        $"equally often and draws no outline between them; ASSUMED {In(ground[0].Inches)}\", the call-out nearest " +
+                        $"{ground[0].Share:P0} of it ({string.Join(", ", ground.Select(g => $"{In(g.Inches)}\" {g.Share:P0}"))}). " +
+                        "The zones themselves are not modelled: check the thicker regions with the engineer.");
+                    continue;
+                }
                 if (distinct.Count > 1 && byCount[0].Count == byCount[1].Count)
                 {
                     priced.Add(slab);
@@ -3013,7 +3054,8 @@ public static class StructuralPlanClassifier
                         $"{distinct.Count} different thickness call-outs inside it and no separate " +
                         $"outline to tell them apart ({string.Join(", ", distinct.Select(d => In(d) + "\""))}), " +
                         "so its thickness was NOT read from the drawing. Draw the thicker region as its " +
-                        "own outline and it will be.");
+                        "own outline and it will be." +
+                        (tieGround is null ? "" : $" Nearest call-out by share of the plate: {string.Join(", ", tieGround.Select(g => $"{In(g.Inches)}\" {g.Share:P0}"))}."));
                     continue;
                 }
 

@@ -154,6 +154,23 @@ public class PlateThicknessFromTheDrawingTests
     }
 
     /// <summary>
+    /// A TIE IS BROKEN BY THE GROUND EACH CALL-OUT STANDS FOR (step 182, 2026-10-25). 31065's L1 north plate prints four
+    /// thicknesses equally often; «900 SLAB» stands in the open field and the others by the zones they name. The call-out
+    /// nearest most of the plate is the plate's, ASSUMED. The two-call-out tie above splits the plate exactly in half and
+    /// stays the question. WHAT THIS DOES NOT COVER: the zones themselves, which are still one plate.
+    /// </summary>
+    [Fact]
+    public void ATieIsBrokenByTheCallOutNearestMostOfThePlate()
+    {
+        var set = StructuralPlanClassifier.Classify(
+            Ring(0, 0, 3000, 2400).ToList(), Options(), sheet: null,
+            tags: new[] { Tag("36\" SLAB", 1500, 1200), Tag("12\" SLAB", 150, 150) });
+
+        Assert.Equal(36, Assert.Single(set.Slabs).ThicknessInchesFromTag);
+        Assert.Contains(set.Flags, f => f.Contains("ASSUMED 36\"", StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// THE ONE THE DRAWING SAYS MORE OFTEN IS THE PLATE'S (step 118, 2026-09-18). A plan prints its field thickness
     /// beside every bay and a thickened zone without an outline of its own once: 31202's L13, «8" P/T SLAB» four times
     /// and «5"» once, read no thickness under the two-numbers rule. The thickness under most of the floor is the
