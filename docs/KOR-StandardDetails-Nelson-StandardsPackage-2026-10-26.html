@@ -3,6 +3,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Standard Details Package</title>
 <!--
+  2026-10-26 16:10: counts and wood text updated (legend copies 117, off-sheet 10, catalogue 578 / 518 placeable, wood per
+  KorStandards migration 115). The "Not in the file yet" row names the 56 R25-only details; rewrite it when Ian settles them -
+  the package does not go to Nelson before that (Ian: "it needs to be COMPLETE").
   For Nelson Yu: the new drafters' standard-details file, what to look at first, the decisions that are his, and
   the limits. Ian (26 Oct): "just the deliverables please with ACCESS to supporting detailed documentation" - so
   this one page plus a link to the folder, no attachments. Numbers: fresh read of the file 26 Oct (781 drafting
@@ -119,9 +122,10 @@
         <li><b>Look at the 11 sheets that changed (about 30 minutes).</b> Folder file 2: each of your sheets on top, the
           same sheet in the new file underneath. On these 11 sheets, 59 details now come from your CAD blocks; the number
           and title in each position are yours and sit where you put them.</li>
-        <li><b>Answer the 55 (about an hour).</b> Folder file 1: 55 of the 190 CAD typical details have a Revit version in
-          your templates that is drawn differently. One tick each: CAD is right, Revit is newer, or both wrong. Until you
-          have answered, those details stay out of the drafters' palette.</li>
+        <li><b>Answer the 61 (about an hour and a quarter).</b> Folder file 1: 55 of the 190 CAD typical details have a Revit
+          version in your templates that is drawn differently, and 6 details drafters had match only a view on no sheet in
+          your templates, drawn differently. One tick each. Until you have answered, those details stay out of the
+          drafters' palette.</li>
       </ol>
     </div>
 
@@ -130,6 +134,8 @@
       <tr><th>What</th><th>How many</th><th>Where it came from</th></tr>
       <tr><td>Your own drafting views</td><td class="num">550</td><td>Your Concrete Tower R24 template, every one that sits on one of your sheets (550 of 550 on a sheet).</td></tr>
       <tr><td>Details from your CAD blocks</td><td class="num">190 + 41</td><td>All 190 typical details on the big sheet, brought in by the CAD Detail button; 41 more copies of them fill positions on your sheets.</td></tr>
+      <tr><td>Your notes and schedules, placeable</td><td class="num">117</td><td>A detail-view copy of each of your 118 legends (one is empty), named "&lt;legend&gt; - DETAIL VIEW", each printing identically to the legend. The palette cannot place a legend; it can place these.</td></tr>
+      <tr><td>Details drafters had, from your off-sheet views</td><td class="num">10</td><td>12 details the old catalogue offered exist in your templates only as views on no sheet; the identical ones were copied in (three numbers shared one drawing).</td></tr>
       <tr><td>Sheets and legends</td><td class="num">90 · 118</td><td>Yours, as in the template.</td></tr>
       <tr><td>The file</td><td colspan="2"><span class="path">\\Kor-fs01\Drafting\KOR-Standards\template\MASTER\KOR-Standard-Details-R24.rvt</span><br>
         Revit 2024. The previous master (<span class="path">KOR-Standards-Master-R25.rvt</span>) stays beside it, untouched.</td></tr>
@@ -151,23 +157,25 @@
       <tr><td>The 55 that differ</td><td>CAD and Revit versions drawn differently, one page each (folder file 1).</td><td>CAD right / Revit newer / both wrong, per page.</td></tr>
       <tr><td>The Revit font for CAD's SHX text</td><td>9 of the 190 differ in text only. One, D503-13 (romans.shx), prints thin and crowded in Revit: worth fixing in the CAD block itself.</td><td>Pick the font; say whether D503-13 is redrawn.</td></tr>
       <tr><td>One title moved</td><td>On D3.05, S3.05 and 1E3.05, "Diagonally reinforced header section" ran into detail 1 at your title position (the CAD drawing is a little larger), so it was moved under its drawing.</td><td>Keep it, or say where it goes.</td></tr>
-      <tr><td>The wood "framing over" sheet</td><td>See below.</td><td>Which version becomes the standard.</td></tr>
+      <tr><td>The wood "framing over" sheet</td><td>Decided as assumed, below.</td><td>Confirm, or overrule.</td></tr>
+      <tr><td>An old firm name</td><td>Your off-sheet view "Typical Shearwall Details" still reads "confirm with JOHN BRYSON &amp; PARTNERS" at the mechanical-hole note; the old catalogue's version read "KOR STRUCTURAL".</td><td>Fix the view in your template.</td></tr>
     </table>
 
-    <h2>Wood framing: the one wood question</h2>
+    <h2>Wood framing: the one way, decided as assumed - you confirm</h2>
     <p class="note">Ian has settled how wood framing is drawn. His words, 25 October:</p>
     <blockquote>"I think the issue is that until recently we were told woodframe couldn't be done in revit" ·
-      "If we CAN then 2D cad is redundant"</blockquote>
+      "If we CAN then 2D cad is redundant" · "I don't want THREE versions ... make some decisions and we simply note them
+      as assumed and need confirmation."</blockquote>
     <p class="note">So framing plans show modelled members (beams, joists, posts, hold-downs, walls), with 2D for
-       annotation only. Standard details, the typical sections and connections, stay 2D and are not affected. What it
-       does not settle is <b>which version of the "Level N showing Level N+1 framing over" sheet becomes the standard</b>.
-       Today there are three:</p>
-    <table>
-      <tr><th>Where</th><th>What the sheet is</th><th>Scale · legends</th></tr>
-      <tr><td>The standard file (S2.13)</td><td>Legends only, no plan view; none of the WD framing view templates your Wood Framing View Setup (July 2025) names.</td><td class="num">— · 8</td></tr>
-      <tr><td>Edgar, 31165-01</td><td>Ceiling plan of level N laid over the plan of level N+1 ("002 - WD STRUCT FRAMING OVER"). Closest to your setup document, but one template for all levels where the document says one per level.</td><td class="num">1/8" · 7</td></tr>
-      <tr><td>Sherwood, 31207-01</td><td>Two plans of a concrete-foundation view type; 21 per-level wood templates, no names shared with Edgar's.</td><td class="num">3/16" · 1</td></tr>
-    </table>
+       annotation only. Standard details, the typical sections and connections, stay 2D and are not affected. For the
+       <b>"Level N showing Level N+1 framing over" sheet</b> the office now has one way, recorded on 26 October as assumed
+       with your name against it: a ceiling plan of level N carries the framing over, beside the engineering plan of
+       level N+1, two plan views a sheet, at 1/8" = 1'-0" (the scale of the office concrete plans); the view type is
+       <b>## - WD_STRUCTURAL WITH FRAMING OVER</b> and the per-level templates <b>## - WD_Structural with Framing Over
+       Level N</b>, the names in your Wood Framing View Setup (July 2025), to be generated into the office template; the
+       naming prefix is "## -" throughout. That is Edgar's make (31165-01) under your own names, chosen over Sherwood's
+       (two plans of a foundation view type at 3/16", 21 per-level templates) and over the standard file's S2.13, which is
+       legends with no plan view.</p>
 
     <h2>What Revit does differently, so you know before you look</h2>
     <table>
@@ -175,8 +183,8 @@
       <tr><td>Small circles print as many-sided polygons</td><td>Revit's PDF print, not the conversion: the file holds true circles. Bolt holes in D201-07, about 3 mm on paper.</td></tr>
       <tr><td>Dense hatch in a thin band prints solid</td><td>4 details: D201-07 and D503-15 (HSS walls), D502-30 and D502-31 (paver band at slab level).</td></tr>
       <tr><td>Symbols inside a linetype</td><td>The W.W.M. line's X marks are not drawn in Revit; one line in D504-20.</td></tr>
-      <tr><td>Not in the file yet</td><td>Your general notes (38 CAD note blocks) and the 69 cover-sheet details; about 33 wood typical details that exist only in the office wood master (S1.11–S1.16).</td></tr>
-      <tr><td>Placing in Revit 2026</td><td>The file is Revit 2024, so a drafter in 2026 waits nearly two minutes each time the palette places a detail while Revit upgrades it in memory. No prompt; the file is never changed.</td></tr>
+      <tr><td>Not in the file yet</td><td>56 details the old catalogue offered exist in none of your templates, only in the August R25 file (37 wood, 16 steel, 3 others). Being settled with Ian: brought in from that file, or ruled job work.</td></tr>
+      <tr><td>Placing in Revit 2026</td><td>The file is Revit 2024. A drafter in 2026 waits about two minutes the first time the palette places a detail after a template update (a message says so); after that a placement takes seconds. No prompt; the file is never changed.</td></tr>
     </table>
 
     <div class="folder">
@@ -186,7 +194,8 @@
       <ul>
         <li><b>1</b> — the 55 details drawn differently in CAD and Revit, one page each, with the answer line. Each page also
           says where that Revit version stands in the new file: not in it (32), replaced on your sheet by a CAD detail (13),
-          or in it beside the CAD one (10).</li>
+          or in it beside the CAD one (10). Plus 6 pages: details drafters had whose only match in your templates is an
+          off-sheet view drawn differently.</li>
         <li><b>2</b> — your 11 changed sheets, yours above the new file's.</li>
         <li><b>3</b> — all 190 CAD details, the CAD plot beside the Revit print, with the measured check on each.</li>
       </ul>
