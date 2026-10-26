@@ -51,7 +51,10 @@ public static class CorpusAnalyzer
         // next full run's diff was read by eye, a day later (run 43, 89% -> 47% of her plates). A figure the work is
         // judged on is a COLUMN: it diffs, it sorts, it gates. Plates and thickness are sums over the shared storeys.
         double? PlatesOursSqFt = null, double? PlatesHersSqFt = null, int? PlatesUnderHalf = null, int? PlatesOverHalfAgain = null, double? PlatesBeyondSqFt = null,
-        int? ThicknessStoreys = null, int? ThicknessAgree = null, int? OpeningsHers = null, int? OpeningsHersWeHave = null);
+        int? ThicknessStoreys = null, int? ThicknessAgree = null, int? OpeningsHers = null, int? OpeningsHersWeHave = null,
+        // the storeys we plate that her model does not name, and our plate on them (item 5, 2026-10-26): every figure
+        // above is over the storeys both models name, so a storey only we have was judged by nothing
+        int? StoreysPlatedOnlyOurs = null, double? PlatesOnlyOursSqFt = null);
 
     /// <summary>How many days older than the drawing a yardstick may be and still be read as the drawing's model.</summary>
     public const int CurrentYardstickDays = 180;
@@ -386,6 +389,7 @@ public static class CorpusAnalyzer
                 ThicknessStoreys = c.Thickness.Count(t => t.OursIn > 0 && t.TheirsIn > 0),
                 ThicknessAgree = c.Thickness.Count(t => t.OursIn > 0 && t.TheirsIn > 0 && Math.Abs(t.OursIn - t.TheirsIn) <= 0.5),
                 OpeningsHers = c.Openings.Theirs, OpeningsHersWeHave = c.TheirsOpeningsHad.Had,
+                StoreysPlatedOnlyOurs = c.PlatedOnlyInModel.Count, PlatesOnlyOursSqFt = c.PlatedOnlyInModel.Sum(p => p.SqFt),
             };
         }
         catch (Exception ex) when (ex is IOException or FormatException or InvalidOperationException)
@@ -504,7 +508,7 @@ public static class CorpusAnalyzer
 
     private static string Q(object? v) => v is null ? "" : "\"" + Convert.ToString(v, CultureInfo.InvariantCulture)!.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
 
-    private static readonly string SetHeader = "run_id,run_at_utc,tool_built_at_utc,job,category,set_kind,pdf,issue_date,issue_date_from_name,bytes,pages,plan_sheets,sheets_written,sheets_failed,sheets_not_plan,assembly_cards,storeys_read,has_model,model_error,sheets_placed,storeys_built,walls,columns,floors,storeys_with_plate,seconds,error,yardstick,yardstick_storeys,shared_storeys,frame_from_grids,frame_support,ours_compared,ours_median_mm,ours_within_100,theirs_compared,theirs_within_100,yardstick_note,yardstick_edb,yardstick_written,yardstick_age_days,plates_ours_sqft,plates_hers_sqft,plates_under_half,plates_over_half_again,plates_beyond_sqft,thickness_storeys,thickness_agree,openings_hers,openings_hers_we_have";
+    private static readonly string SetHeader = "run_id,run_at_utc,tool_built_at_utc,job,category,set_kind,pdf,issue_date,issue_date_from_name,bytes,pages,plan_sheets,sheets_written,sheets_failed,sheets_not_plan,assembly_cards,storeys_read,has_model,model_error,sheets_placed,storeys_built,walls,columns,floors,storeys_with_plate,seconds,error,yardstick,yardstick_storeys,shared_storeys,frame_from_grids,frame_support,ours_compared,ours_median_mm,ours_within_100,theirs_compared,theirs_within_100,yardstick_note,yardstick_edb,yardstick_written,yardstick_age_days,plates_ours_sqft,plates_hers_sqft,plates_under_half,plates_over_half_again,plates_beyond_sqft,thickness_storeys,thickness_agree,openings_hers,openings_hers_we_have,storeys_plated_only_ours,plates_only_ours_sqft";
     private static readonly string SheetHeader = "run_id,job,page,sheet_number,sheet_type,title,level,scale_note,scale_denominator,slabs,columns,walls,lines,dxf_files,self_check,placed,storeys,flags,failure";
 
     public static void WriteSetCsv(string path, IReadOnlyList<SetRow> rows)
@@ -553,7 +557,8 @@ public static class CorpusAnalyzer
                 Q(s.StoreysBuilt), Q(s.Walls), Q(s.Columns), Q(s.Floors), Q(s.StoreysWithPlate), Q(s.Seconds), Q(s.Error),
                 Q(s.Yardstick), Q(s.YardstickStoreys), Q(s.SharedStoreys), Q(s.FrameFromGrids), Q(s.FrameSupport), Q(s.OursCompared), Q(s.OursMedianMm), Q(s.OursWithin100), Q(s.TheirsCompared), Q(s.TheirsWithin100), Q(s.YardstickNote),
                 Q(s.YardstickEdb), Q(s.YardstickWritten?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), Q(s.YardstickAgeDays),
-                Q(s.PlatesOursSqFt), Q(s.PlatesHersSqFt), Q(s.PlatesUnderHalf), Q(s.PlatesOverHalfAgain), Q(s.PlatesBeyondSqFt), Q(s.ThicknessStoreys), Q(s.ThicknessAgree), Q(s.OpeningsHers), Q(s.OpeningsHersWeHave));
+                Q(s.PlatesOursSqFt), Q(s.PlatesHersSqFt), Q(s.PlatesUnderHalf), Q(s.PlatesOverHalfAgain), Q(s.PlatesBeyondSqFt), Q(s.ThicknessStoreys), Q(s.ThicknessAgree), Q(s.OpeningsHers), Q(s.OpeningsHersWeHave),
+                Q(s.StoreysPlatedOnlyOurs), Q(s.PlatesOnlyOursSqFt));
 
     public static void WriteSheetCsv(string path, IReadOnlyList<SheetRow> rows)
     {
@@ -594,7 +599,9 @@ public static class CorpusAnalyzer
             f.Count > 40 ? S(f[38]) : null, f.Count > 40 && f[39].Length > 0 ? DateOnly.Parse(f[39], CultureInfo.InvariantCulture) : null, f.Count > 40 ? I(f[40]) : null,
             // the steering figures (2026-09-22); a ledger banked before them has 41 fields and reads as nulls
             f.Count > 49 ? D(f[41]) : null, f.Count > 49 ? D(f[42]) : null, f.Count > 49 ? I(f[43]) : null, f.Count > 49 ? I(f[44]) : null,
-            f.Count > 49 ? D(f[45]) : null, f.Count > 49 ? I(f[46]) : null, f.Count > 49 ? I(f[47]) : null, f.Count > 49 ? I(f[48]) : null, f.Count > 49 ? I(f[49]) : null);
+            f.Count > 49 ? D(f[45]) : null, f.Count > 49 ? I(f[46]) : null, f.Count > 49 ? I(f[47]) : null, f.Count > 49 ? I(f[48]) : null, f.Count > 49 ? I(f[49]) : null,
+            // the storeys only ours plate (item 5, 2026-10-26); a ledger banked before them has 50 fields and reads as nulls
+            f.Count > 51 ? I(f[50]) : null, f.Count > 51 ? D(f[51]) : null);
     }
 
     internal static IEnumerable<SheetRow> ReadSheetRows(string path, Guid runId)

@@ -30,6 +30,12 @@ namespace Kor.Operations.EngineeringTools.Intake;
 /// those sets (seven of the 57 on 2026-10-26); a frame that is wrong on ONE storey of a set whose median registers,
 /// which this per-set figure cannot see; and a set whose frame was out at the bank and is still out, however its
 /// figures move.
+///
+/// THE STOREYS ONLY WE PLATE (item 5, 2026-10-26): every figure above is over storeys both models name, so a storey we
+/// plate that her model does not name was judged by nothing - 21 of 57 sets plated their wood storeys in concrete so.
+/// They are now named in every Summary, and MORE of them than at the bank stops it. Not covered: a bank that predates the
+/// figure (run 45 does) judges no rise; a storey she names but does not plate is "shared", and judged by the over-read
+/// only if she has area there; the same NUMBER of only-ours storeys with more area on them is not a loss.
 /// </summary>
 public static class CorpusGate
 {
@@ -74,8 +80,16 @@ public static class CorpusGate
         // it is EVIDENCE MISSING, and evidence missing can conceal any loss at all. It stops the bank like a loss.
         bool WasJudged = false, bool IsJudged = false,
         double? BeforeHersSqFt = null, int? OverHalfAgainBefore = null, int? OverHalfAgainAfter = null,
-        double? MedianMmBefore = null, double? MedianMmAfter = null)
+        double? MedianMmBefore = null, double? MedianMmAfter = null,
+        int? OnlyOursBefore = null, int? OnlyOursAfter = null, double? OnlyOursSqFtAfter = null)
     {
+        /// <summary>
+        /// More storeys carrying our plate that her model does not name than at the bank (item 5, 2026-10-26): a rule
+        /// writing floors she does not have, on storeys no other figure here judges. By storey NAME, so a frame that does
+        /// not register does not void it. A bank that predates the figure (null) judges nothing by it.
+        /// </summary>
+        public bool MoreOnlyOurs => OnlyOursBefore is { } b && OnlyOursAfter is { } a && a > b;
+
         /// <summary>The frame did not register at the bank: our columns' median distance from hers past the line.</summary>
         public bool FrameUnregisteredBefore => MedianMmBefore is { } m && m > FrameUnregisteredMedianMm;
 
@@ -134,7 +148,7 @@ public static class CorpusGate
         public bool ReIssued { get; init; }
 
         /// <summary>What would have stopped the bank had the drawings not changed under it.</summary>
-        public bool WouldHaveLost => LostPlate || LostThickness || LostOpenings || EvidenceMissing || OverRead || LostFrame;
+        public bool WouldHaveLost => LostPlate || LostThickness || LostOpenings || EvidenceMissing || OverRead || LostFrame || MoreOnlyOurs;
 
         public bool Lost => WouldHaveLost && !ReIssued;
 
@@ -147,6 +161,7 @@ public static class CorpusGate
             LostThickness ? $"her thicknesses we agree with fell {ThicknessAgreeBefore} -> {ThicknessAgreeAfter?.ToString(CultureInfo.InvariantCulture) ?? "none"}" : null,
             LostOpenings ? $"her openings we have fell {OpeningsWeHaveBefore} -> {OpeningsWeHaveAfter?.ToString(CultureInfo.InvariantCulture) ?? "none"}" : null,
             OverRead ? $"storeys over half again her area {OverHalfAgainBefore ?? 0} -> {OverHalfAgainAfter ?? 0}" : null,
+            MoreOnlyOurs ? $"storeys we plate that her model does not name {OnlyOursBefore} -> {OnlyOursAfter}" : null,
         }.Where(s => s is not null));
     }
 
@@ -185,7 +200,8 @@ public static class CorpusGate
                 wasJudged, isJudged,
                 wasJudged ? was!.PlatesHersSqFt : null,
                 wasJudged ? was!.PlatesOverHalfAgain : null, isJudged ? now!.PlatesOverHalfAgain : null,
-                wasJudged ? was!.OursMedianMm : null, isJudged ? now!.OursMedianMm : null)
+                wasJudged ? was!.OursMedianMm : null, isJudged ? now!.OursMedianMm : null,
+                wasJudged ? was!.StoreysPlatedOnlyOurs : null, isJudged ? now!.StoreysPlatedOnlyOurs : null, isJudged ? now!.PlatesOnlyOursSqFt : null)
             {
                 // A SET THAT READ A DIFFERENT STICK FILE IS NOT A LOSS (2026-09-23). The gate judges a RULE, and a
                 // re-issued drawing set moves for reasons no rule can be blamed for: 31039-01 fell from 35 plates
@@ -290,6 +306,20 @@ public static class CorpusGate
             foreach (var v in blind)
                 sb.AppendLine(CultureInfo.InvariantCulture,
                     $"    {v.Job}: median {v.MedianMmBefore?.ToString("N0", CultureInfo.InvariantCulture) ?? "-"} -> {v.MedianMmAfter?.ToString("N0", CultureInfo.InvariantCulture) ?? "-"} mm");
+        }
+        // THE STOREYS ONLY WE PLATE, named now whatever the bank holds (item 5): every figure above is over the storeys both
+        // models name, so these are judged by nothing else - 21 of 57 sets plated their wood storeys so, unseen, until 10-26
+        var onlyOurs = r.Verdicts.Where(v => v.OnlyOursAfter is > 0).OrderByDescending(v => v.OnlyOursSqFtAfter ?? 0).ToList();
+        int measured = r.Verdicts.Count(v => v.OnlyOursAfter is not null);
+        if (measured > 0)
+        {
+            sb.AppendLine(string.Create(CultureInfo.InvariantCulture,
+                $"  storeys we plate that her model does not name: {onlyOurs.Count} of {measured} set(s) measured now, {onlyOurs.Sum(v => v.OnlyOursAfter ?? 0)} storey(s), ") +
+                string.Create(CultureInfo.InvariantCulture, $"{onlyOurs.Sum(v => v.OnlyOursSqFtAfter ?? 0):N0} sq ft") +
+                (r.Verdicts.Any(v => v.OnlyOursBefore is not null) ? ":" : " - the bank predates this figure, so a rise is not judged against it:"));
+            foreach (var v in onlyOurs)
+                sb.AppendLine(string.Create(CultureInfo.InvariantCulture,
+                    $"    {v.Job}: {v.OnlyOursAfter} storey(s), {v.OnlyOursSqFtAfter ?? 0:N0} sq ft{(v.OnlyOursBefore is { } b ? $" (was {b})" : "")}"));
         }
         // Said whether or not anything lost: a set whose drawings changed under the gate is not evidence either way,
         // and a reader who does not know that will read its movement as the rule's doing.

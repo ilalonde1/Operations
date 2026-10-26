@@ -35,7 +35,9 @@ public sealed class TheCorpusLedgerRoundTripsTests
                 YardstickEdb: @"\\Kor-fs01\Projects\x\31168-01 Wind SLS_Model_SG_01.EDB", YardstickWritten: new DateOnly(2023, 9, 8), YardstickAgeDays: -2,
                 // and the figures the work is steered by (2026-09-22): her plate area, her thicknesses, her openings
                 PlatesOursSqFt: 332631.5, PlatesHersSqFt: 403049.25, PlatesUnderHalf: 3, PlatesOverHalfAgain: 2, PlatesBeyondSqFt: 1480,
-                ThicknessStoreys: 11, ThicknessAgree: 8, OpeningsHers: 64, OpeningsHersWeHave: 63);
+                ThicknessStoreys: 11, ThicknessAgree: 8, OpeningsHers: 64, OpeningsHersWeHave: 63,
+                // and the storeys only ours plate (item 5, 2026-10-26)
+                StoreysPlatedOnlyOurs: 4, PlatesOnlyOursSqFt: 21204.5);
             var sheet = new CorpusAnalyzer.SheetRow(run, "31168-01", 2, "S2.02", "plan", "S2.02 - LEVEL P3 PLAN / FOUNDATIONS PLAN, BLDG A & B", "P3", "1/8\" = 1'-0\"", 96,
                 0, 71, 35, 13641, "S2.02_1_LEVEL P3 PLAN FOUNDATIONS PLAN BLDG A - & B.dxf", null, false, null, "walls: 6 outline(s) would not close; 7 wall panel(s) read", null);
             string sets = Path.Combine(root, "set.csv"), sheets = Path.Combine(root, "sheets.csv");
@@ -44,7 +46,9 @@ public sealed class TheCorpusLedgerRoundTripsTests
 
             // the readers are private to the analyzer; the CSV parser they share is not, and its inverse is the writer's quoting
             var fields = CorpusAnalyzer.Csv.Parse(File.ReadAllLines(sets)[1]);
-            Assert.Equal(50, fields.Count);                                     // 27 of the set, 11 of its yardstick, 3 of its provenance, 9 of her figures
+            Assert.Equal(52, fields.Count);                                     // 27 of the set, 11 of its yardstick, 3 of its provenance, 9 of her figures, 2 only ours
+            Assert.Equal("4", fields[50]);
+            Assert.Equal("21204.5", fields[51]);
             Assert.Equal("332631.5", fields[41]);                                 // her plate area we read: a column, not a line of prose to re-parse
 
             // AND EVERY ONE OF HER FIGURES COMES BACK AS ITSELF (2026-09-22, after Codex's audit asked whether the
@@ -60,6 +64,8 @@ public sealed class TheCorpusLedgerRoundTripsTests
             Assert.Equal(set.ThicknessStoreys, back.ThicknessStoreys);
             Assert.Equal(set.ThicknessAgree, back.ThicknessAgree);
             Assert.Equal(set.OpeningsHers, back.OpeningsHers);
+            Assert.Equal(set.StoreysPlatedOnlyOurs, back.StoreysPlatedOnlyOurs);
+            Assert.Equal(set.PlatesOnlyOursSqFt, back.PlatesOnlyOursSqFt);
             Assert.Equal(set.OpeningsHersWeHave, back.OpeningsHersWeHave);
             Assert.Equal(set.Yardstick, back.Yardstick);
             Assert.Equal(set.YardstickAgeDays, back.YardstickAgeDays);

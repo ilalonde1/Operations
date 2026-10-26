@@ -68,6 +68,12 @@ public static class ModelYardstick
         int OursBeyondHerModel, int OursOnHerWalls,
         IReadOnlyList<string> Notes)
     {
+        /// <summary>
+        /// Our storeys carrying floor plate that the engineer's model does not name at all, with our plate area on each (sq
+        /// ft) - the plate no other figure here judges, because every other figure is over the storeys both models name.
+        /// </summary>
+        public IReadOnlyList<(string Storey, double SqFt)> PlatedOnlyInModel { get; init; } = [];
+
         /// <summary>Our columns on shared storeys with none of theirs within 300 mm, counted by the section we gave them — what we read that the engineer did not model, named by its size.</summary>
         public IReadOnlyList<(string Section, int Count)> OursUnmatchedBySection { get; init; } = [];
         /// <summary>Their columns on shared storeys with none of ours within 300 mm, by their section — what the engineer modelled that we did not read.</summary>
@@ -468,6 +474,15 @@ public static class ModelYardstick
             notes.Add($"{platesBeyond.Values.Sum():N0} sq ft of our plates stand beyond the engineer's model's footprint on their storey (a plate whose centroid is more than {FootprintMarginMm / 1000:0.#} m past the engineer's outermost column) and are not judged: {string.Join(", ", platesBeyond.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {kv.Value:N0}"))}");
 
         var onlyModel = ours.Keys.Where(s => TheirsFor(s) is null).OrderBy(s => s, StringComparer.Ordinal).ToList();
+        // THE STOREYS WE PLATE THAT HER MODEL DOES NOT HAVE (item 5, 2026-10-26). Everything above judges the storeys both
+        // models name, and a storey is "hers" here only if she put a column on it - so 21 of the gate's 57 sets plated their
+        // wood storeys in concrete, 1,000-57,000 sq ft a storey, and nothing judged it. Matched against EVERY storey she
+        // names, columns or none, full name first and then stripped within one building, as TheirsFor does.
+        var herNames = yard.ReadStories().Select(s => s.Name).ToList();
+        bool SheNames(string storey) => herNames.Any(n => n.Equals(storey, StringComparison.OrdinalIgnoreCase))
+            || herNames.Any(n => Stripped(n, storeyQualifierWords) == Stripped(storey, storeyQualifierWords) && Building(n) == Building(storey));
+        var platedOnlyOurs = ourPlateArea.Where(kv => kv.Value.SqFt > 0 && !SheNames(kv.Key))
+            .OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value.SqFt)).ToList();
         var onlyYard = theirs.Keys.Where(s => !matchedTheirs.Contains(s) && !matchedTheirs.Any(m => m.Split('+').Contains(s, StringComparer.OrdinalIgnoreCase))).OrderBy(s => s, StringComparer.Ordinal).ToList();
 
         return new Comparison(
@@ -500,6 +515,7 @@ public static class ModelYardstick
             Plates = plates,
             Thickness = ThicknessOnSharedStoreys(model, yard, storeyFigures, PlateJudged),
             PlatesBeyondSqFt = platesBeyond.Values.Sum(),
+            PlatedOnlyInModel = platedOnlyOurs,
         };
     }
 
@@ -708,6 +724,9 @@ public static class ModelYardstick
             : c.ShiftMm is { } s ? $"frames matched by column registration ({s.X:N0}, {s.Y:N0}) mm, no shared grid labels ({c.SharedXLabels} X / {c.SharedYLabels} Y): {c.FrameSupport} of {c.OursCompared} of our columns within 100 mm of one of theirs"
             : "frames not matched: no shared grid labels and no columns on a shared storey";
         sb.AppendLine(frame);
+        if (c.PlatedOnlyInModel.Count > 0)
+            sb.AppendLine(CultureInfo.InvariantCulture,
+                $"storeys we plate that her model does not name, not judged by anything below: {c.PlatedOnlyInModel.Count}, {c.PlatedOnlyInModel.Sum(p => p.SqFt):N0} sq ft ({string.Join(", ", c.PlatedOnlyInModel.Select(p => $"{p.Storey} {p.SqFt:N0}"))})");
         sb.AppendLine(CultureInfo.InvariantCulture, $"storeys: ours {c.ModelStoreys}, theirs {c.YardstickStoreys}, shared {c.Storeys.Count}; only ours: {(c.StoreysOnlyInModel.Count == 0 ? "-" : string.Join(" ", c.StoreysOnlyInModel))}; only theirs: {(c.StoreysOnlyInYardstick.Count == 0 ? "-" : string.Join(" ", c.StoreysOnlyInYardstick))}");
         if (c.OursCompared > 0)
         {

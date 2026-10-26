@@ -25,14 +25,15 @@ public sealed class TheGateJudgesEverySetTheEngineerModelledTests
 {
     private static CorpusAnalyzer.SetRow Row(string job, double? oursSqFt, double hersSqFt = 100_000,
         int? thicknessAgree = 8, int? thicknessStoreys = 10, int? openingsWeHave = 20, int? openingsHers = 30, string? yardstick = "hers.e2k",
-        int? overHalfAgain = 0, double? medianMm = 20)
+        int? overHalfAgain = 0, double? medianMm = 20, int? onlyOurs = null, double? onlyOursSqFt = null)
         => new(Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow, job, "03 Residential", "structural", job + ".pdf",
             "2026-01-01", false, 1, 1, 1, 1, 0, 0, 0, 1, true, null, 1, 1, 0, 0, 0, 0, 1.0, null,
             Yardstick: yardstick, OursMedianMm: oursSqFt is null ? null : medianMm,
             PlatesOursSqFt: oursSqFt, PlatesHersSqFt: oursSqFt is null ? null : hersSqFt, PlatesUnderHalf: 0,
             PlatesOverHalfAgain: oursSqFt is null ? null : overHalfAgain, PlatesBeyondSqFt: 0,
             ThicknessStoreys: oursSqFt is null ? null : thicknessStoreys, ThicknessAgree: oursSqFt is null ? null : thicknessAgree,
-            OpeningsHers: oursSqFt is null ? null : openingsHers, OpeningsHersWeHave: oursSqFt is null ? null : openingsWeHave);
+            OpeningsHers: oursSqFt is null ? null : openingsHers, OpeningsHersWeHave: oursSqFt is null ? null : openingsWeHave,
+            StoreysPlatedOnlyOurs: onlyOurs, PlatesOnlyOursSqFt: onlyOursSqFt);
 
     /// <summary>
     /// A SET WHOSE DRAWINGS CHANGED UNDER THE GATE DOES NOT STOP THE BANK, AND IS SAID OUT LOUD (2026-09-23).
@@ -258,6 +259,39 @@ public sealed class TheGateJudgesEverySetTheEngineerModelledTests
         // the line sits in the corpus's gap: 781 mm (31093, the worst that registers) judged; 1,364 (31048) not
         Assert.False(CorpusGate.Judge([Row("31093-01", 10_000, medianMm: 781)], [Row("31093-01", 9_000, medianMm: 781)]).Verdicts[0].NotJudgedByPosition);
         Assert.True(CorpusGate.Judge([Row("31048-01", 10_000, medianMm: 1_364)], [Row("31048-01", 9_000, medianMm: 1_364)]).Verdicts[0].NotJudgedByPosition);
+    }
+
+    /// <summary>
+    /// THE STOREYS ONLY WE PLATE ARE NAMED, AND MORE OF THEM STOPS THE BANK (item 5, 2026-10-26). 31162 plated its wood
+    /// storeys L3 to L5 in concrete - the sheet's legend box, 7,068 sq ft each - and no figure judged them, because every
+    /// figure is over the storeys both models name. Its own figures; the frame is out on purpose, to show a storey's name
+    /// is judged where its position is not.
+    ///
+    /// COVERS: a rise against the bank stops it, even through a frame that does not register; the AFTER is named set by
+    /// set whatever the bank holds; a bank that predates the figure judges no rise and says so. DOES NOT: whether a storey
+    /// she does not model SHOULD be plated (a tower she left out is ours to read).
+    /// </summary>
+    [Fact]
+    public void TheStoreysOnlyWePlateAreNamedAndMoreOfThemStopsTheBank()
+    {
+        var rose = CorpusGate.Judge(
+            [Row("31162-01", 46_045, 39_961, onlyOurs: 0, onlyOursSqFt: 0, medianMm: 1_200)],
+            [Row("31162-01", 46_045, 39_961, onlyOurs: 3, onlyOursSqFt: 21_204, medianMm: 1_200)]);
+        var lost = Assert.Single(rose.Losses);
+        Assert.True(lost.NotJudgedByPosition);
+        Assert.True(lost.MoreOnlyOurs);
+        Assert.Contains("storeys we plate that her model does not name 0 -> 3", lost.Why, StringComparison.Ordinal);
+        Assert.Contains("31162-01: 3 storey(s), 21,204 sq ft (was 0)", CorpusGate.Summary(rose), StringComparison.Ordinal);
+
+        // a bank from before the figure: named, not judged
+        var old = CorpusGate.Judge([Row("31162-01", 46_045, 39_961)], [Row("31162-01", 46_045, 39_961, onlyOurs: 3, onlyOursSqFt: 21_204)]);
+        Assert.Empty(old.Losses);
+        string summary = CorpusGate.Summary(old);
+        Assert.Contains("1 of 1 set(s) measured now, 3 storey(s), 21,204 sq ft - the bank predates this figure", summary, StringComparison.Ordinal);
+
+        // and fewer is not a loss: step 184 takes them away
+        Assert.Empty(CorpusGate.Judge([Row("31162-01", 46_045, 39_961, onlyOurs: 3, onlyOursSqFt: 21_204)],
+                                      [Row("31162-01", 46_045, 39_961, onlyOurs: 0, onlyOursSqFt: 0)]).Losses);
     }
 
     /// <summary>
