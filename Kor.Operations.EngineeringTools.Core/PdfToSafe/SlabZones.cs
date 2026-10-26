@@ -215,17 +215,46 @@ public static class SlabZones
                 }
                 if (takeInto is not null) break;
             }
+            // AND NO ZONE ENDS INSIDE ANOTHER, WHATEVER THE ARRANGEMENT DID: 30993 L2 (south) wrote ten zones of 2-8 sq ft -
+            // column boxes printing nothing, given the nearest call-out - lying wholly inside a 12,307 sq ft zone, 30 sq ft of
+            // plate written twice (and an opening of the engineer's covered). They joined other lines, so no face held them
+            // as a hole and the wrap test above did not see them. A zone standing inside another is taken into it, as a
+            // wrapped one is, and the union made again
+            // (measured: all ten were the SAME thickness as the zone round them - its own cells standing in a hole of it;
+            // written as an outer ring, the big zone already covers them, so they are dropped. One of ANOTHER thickness inside
+            // another was never seen on the witness floors - 30993 L2, 31168 L1 C, 31065 L1N, 31130 L16 all tile without
+            // handling it - so it is not handled here: the tiling check below refuses such a floor and it is written whole.)
+            if (takeInto is null)
+                foreach (var small in zones.OrderBy(z => z.Ring.Area).ToList())
+                {
+                    var at = InteriorPoint(small.Ring);
+                    if (zones.Any(z => !ReferenceEquals(z, small) && z.Ring.Area > small.Ring.Area
+                                       && (z.Printed, z.IsMetric) == (small.Printed, small.IsMetric) && LoopGeometry.PointInPolygon(at, z.Ring.Points)))
+                        zones.Remove(small);
+                }
             if (takeInto is null) break;
-            if (attempt >= 20) { why = "zones wrap others and would not come apart"; return null; }
+            if (attempt >= 60) { why = "zones wrap others and would not come apart"; return null; }
             var inHole = Enumerable.Range(0, n).Where(i => inFloor[i] && label[i] != takeInto
                 && LoopGeometry.PointInPolygon(InteriorPoint(planar.Faces[i].Outer), wrappedHole!.Points)).ToList();
+            if (inHole.Count == 0) { why = "a zone stands inside another and no cell of it could be found to take in"; return null; }
             islandsTakenIn.Add($"{inHole.Sum(i => Math.Abs(planar.Faces[i].Outer.Area)) / 92903.04:0} sq ft of {label[inHole[0]]!.Value.Printed:0.#} wrapped");
             foreach (int i in inHole) label[i] = takeInto;
             labels = Enumerable.Range(0, n).Where(i => inFloor[i] && label[i] is not null).Select(i => label[i]!.Value).Distinct().ToList();
             if (labels.Count < 2) { why = "taking in what its zones wrapped left one thickness"; return null; }
         }
-        why = $"{zones.Count} zone(s), {labels.Count} thickness(es) ({counts}; {n} face(s))"
-              + (islandsTakenIn.Count == 0 ? "" : $"; {islandsTakenIn.Count} island(s) inside one cell taken into it: {string.Join(", ", islandsTakenIn.Distinct().Take(6))}");
+        // THE ZONES TILE THE FLOOR, OR THERE ARE NO ZONES: every fault this step has had broke this one property - zones
+        // overlapping (30993 L2, 30 sq ft written twice), a whole floor's zones gone, a zone past the ring. Checked here,
+        // so a later change that breaks the take-in or the cut fails closed - the floor stays whole and the reason says why -
+        // instead of writing a plate twice. Within 0.05%: the ring's own rounding (measured: 31065 L1N and 30993 L2 exact,
+        // 31130 L16 1 sq ft on 9,082) - and NOT 0.2%, which the fault it is for (30993's 30 sq ft on 26,424, 0.11%) passed
+        double tiled = zones.Sum(z => z.Ring.Area);
+        if (Math.Abs(tiled - floor.Area) > 0.0005 * floor.Area)
+        {
+            why = $"its zones came to {tiled / 92903.04:0} sq ft of the floor's {floor.Area / 92903.04:0} - they do not tile it, so the floor is kept whole";
+            return null;
+        }
+        why = $"{zones.Count} zone(s), {labels.Count} thickness(es), {tiled / 92903.04:0} of the floor's {floor.Area / 92903.04:0} sq ft ({counts}; {n} face(s))"
+              + (islandsTakenIn.Count == 0 ? "" : $"; {islandsTakenIn.Count} island(s) or zone(s) taken into the zone round them:{string.Join(", ", islandsTakenIn.Distinct().Take(6))}");
         return zones;
     }
 

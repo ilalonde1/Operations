@@ -40,6 +40,39 @@ public sealed class AFloorTheDrawingZonesIsModelledAsItsZonesTests
         out string why, IReadOnlyList<(string, double, double, double, double)>? words = null)
         => SlabZones.Cut(floor, lines.ToList(), says.ToList(), 1.0, 200, 48 * 25.4, Gap, out why, words: words);
 
+    /// <summary>The zones tile the floor: their areas sum to its area, and no zone's middle stands inside another zone.</summary>
+    private static void AssertTheZonesTileTheFloor(PlanLoop floor, IReadOnlyList<SlabZones.Zone> zones)
+    {
+        Assert.Equal(floor.Area, zones.Sum(z => z.Ring.Area), floor.Area * 0.002);
+        foreach (var z in zones)
+            Assert.DoesNotContain(zones, o => !ReferenceEquals(o, z) && LoopGeometry.PointInPolygon(SlabZones.InteriorPoint(z.Ring), o.Ring.Points));
+    }
+
+    /// <summary>
+    /// A ZONE INSIDE ANOTHER IS NOT WRITTEN TWICE (30993 L2 south, 2026-10-26): ten zones of 2-8 sq ft - cells of the big
+    /// zone's own thickness standing in a hole of it - were written beside it, 30 sq ft of plate twice. The floor here:
+    /// a 900 field, a 500 bay boxed off, and in the field a box within a box: the ring between them prints 500, the core
+    /// inside it prints 900, the field's own thickness. The field's cells wrap the ring, the core stands in the ring's
+    /// hole, and written as the field's outer ring the field already covers the core - so the core is not written again.
+    /// ⚠ A PROPERTY TEST, NOT A REPRODUCTION: with the same-thickness drop removed this synthetic floor still passes - the
+    /// island rule absorbs the box-in-box before the union is made - so it does not prove the fix. The fix is proven on the
+    /// real witness instead (30993 L2 south through SlabPassTraceProbe: drop removed, the tiling check refuses the floor
+    /// "26,454 of 26,424 - they do not tile it"; drop restored, 26,424 of 26,424), 2026-10-26.
+    /// </summary>
+    [Fact]
+    public void AZoneInsideAnotherIsNotWrittenTwice()
+    {
+        static IEnumerable<(IReadOnlyList<DxfPoint>, double)> Box(double x0, double y0, double x1, double y1)
+            => [Solid(x0, y0, x1, y0), Solid(x1, y0, x1, y1), Solid(x1, y1, x0, y1), Solid(x0, y1, x0, y0)];
+        var lines = Ring(20000, 10000).Append(Solid(14000, 0, 14000, 10000))
+            .Concat(Box(3000, 2000, 9000, 8000)).Concat(Box(5000, 4000, 7000, 6000)).ToList();
+        var zones = Cut(Floor(20000, 10000), lines,
+            [Says(900, 1500, 9000), Says(500, 17000, 5000), Says(500, 4000, 5000), Says(900, 6000, 5000)], out string why);
+
+        Assert.True(zones is not null, why);
+        AssertTheZonesTileTheFloor(Floor(20000, 10000), zones!);
+    }
+
     [Fact]
     public void ALineOfTheOutlinesPenDividesTwoThicknesses()
     {
@@ -144,7 +177,8 @@ public sealed class AFloorTheDrawingZonesIsModelledAsItsZonesTests
         Assert.True(zones is not null, why);
         Assert.Equal(12000.0 * 10000, zones!.Where(z => z.Printed == 900).Sum(z => z.Ring.Area), 1e6);
         Assert.DoesNotContain(zones, z => z.Printed == 200);
-        Assert.Contains("island(s) inside one cell taken into it", why, StringComparison.Ordinal);
+        Assert.Contains("taken into the zone round them", why, StringComparison.Ordinal);
+        AssertTheZonesTileTheFloor(Floor(20000, 10000), zones);
     }
 
     [Fact]
