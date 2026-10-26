@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Standard Details Package</title>
+<!--
+  For Nelson Yu: the new drafters' standard-details file, what to look at first, the decisions that are his, and
+  the limits. Ian (26 Oct): "just the deliverables please with ACCESS to supporting detailed documentation" - so
+  this one page plus a link to the folder, no attachments. Numbers: fresh read of the file 26 Oct (781 drafting
+  views = 190 CAD + 41 CAD copies on sheets + 550 his own); look evidence KOR.Drafter
+  tools/catalogue/runs/2026-10-26-look-findings.md; wood ruling = KorStandards migration 112 (Ian's words).
+  Same tokens as KOR-StandardDetails-Nelson-CadDetailButton-2026-10-23.html. Render with tools\Format-BdWebPdf.ps1.
+  ⚠ AFTER RENDERING: Edge turns the folder href into a launch link to "kor-fs01/..." that opens nothing. Rewrite it as
+  /S /URI (file://Kor-fs01/Drafting/KOR-Standards/for-review/2026-10-26%20Nelson%20standards%20package/) with
+  PyMuPDF insert_link kind LINK_URI, and check the raw xref object (get_links() reports any file:// URI as LAUNCH).
+  Never a UNC launch path through PyMuPDF: it writes backslashes unescaped ("\f" became a form feed).
+-->
+<style>
+  :root {
+    --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+    --line:#E5E4E1; --slate:#3F5364; --slate-deep:#2C3A47;
+    --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono:"Cascadia Code", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+      --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B;
+      --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+  }
+  :root[data-theme="dark"] { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+    --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B;
+    --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:9.4pt; line-height:1.36; -webkit-font-smoothing:antialiased; }
+  .page { max-width:8.1in; margin:0 auto; }
+
+  .top { background:linear-gradient(180deg,var(--slate-deep),var(--slate)); color:#EAF0F5;
+    border-bottom:2.5px solid var(--accent); padding:11px 20px; }
+  .top .ey { font-family:var(--mono); font-size:7.2pt; letter-spacing:.2em; text-transform:uppercase; color:#FFB59F; }
+  .top h1 { margin:.15rem 0 .1rem; font-size:16pt; color:#fff; letter-spacing:-.01em; }
+  .top .meta { font-size:8.6pt; color:#CBD8E2; }
+
+  .body { padding:10px 20px 0; }
+  .why { margin:0 0 6px; font-size:9.3pt; max-width:46rem; }
+
+  h2 { font-family:var(--mono); font-size:7.6pt; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); margin:11px 0 .35rem; font-weight:700; }
+
+  table { width:100%; border-collapse:collapse; font-size:8.7pt; }
+  th { text-align:left; font-weight:650; color:var(--ink-faint); font-size:7.6pt; letter-spacing:.06em;
+    text-transform:uppercase; padding:.2rem .5rem; border-bottom:1.5px solid var(--line); }
+  td { padding:.28rem .5rem; border-bottom:1px solid var(--line); vertical-align:top; color:var(--ink-soft); }
+  td:first-child { color:var(--ink); font-weight:650; }
+  tr:nth-child(even) td { background:var(--surface-2); }
+  .path { font-family:var(--mono); font-size:7.7pt; color:var(--accent-ink); word-break:break-all; }
+  .num { font-family:var(--mono); font-size:8.2pt; color:var(--ink); white-space:nowrap; }
+  a { color:var(--accent-ink); }
+
+  p.note { margin:.3rem 0 0; font-size:8.8pt; color:var(--ink-soft); }
+  p.note b { color:var(--ink); }
+
+  .first { background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:8px; padding:.5rem .75rem; margin-top:8px; }
+  .first h3 { margin:0 0 .25rem; font-family:var(--mono); font-size:7.5pt; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent-ink); }
+  .first ol { margin:0; padding-left:1.1rem; }
+  .first li { font-size:8.8pt; color:var(--ink-soft); margin-bottom:.22rem; }
+  .first li b { color:var(--ink); }
+
+  figure { margin:.5rem 0 0; }
+  figure img { width:100%; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  figcaption { font-size:8.2pt; color:var(--ink-soft); margin-top:.2rem; }
+  figcaption b { color:var(--ink); }
+
+  blockquote { margin:.3rem 0 .2rem; padding:.3rem .7rem; border-left:3px solid var(--slate);
+    background:var(--surface-2); font-size:8.8pt; color:var(--ink); }
+
+  .folder { margin-top:10px; background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    padding:.5rem .75rem; }
+  .folder h3 { margin:0 0 .25rem; font-family:var(--mono); font-size:7.5pt; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--good); }
+  .folder ul { margin:.25rem 0 0; padding-left:1.1rem; }
+  .folder li { font-size:8.6pt; color:var(--ink-soft); }
+
+  @page { size:Letter; margin:9mm 11mm; }
+  @media print {
+    :root { --ground:#fff; --surface:#fff; --surface-2:#F5F3F1; --ink:#1C2530; --ink-soft:#55636F;
+      --ink-faint:#8A97A2; --line:#E5E4E1; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A; }
+    body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; color-scheme:light; }
+    .page { max-width:none; }
+    table, .first, figure, .folder, blockquote { break-inside:avoid; }
+    h2 { break-after:avoid; }
+    .pb { break-before:page; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div class="ey">KOR Structural · Drafting standards</div>
+    <h1>Your standard details, in one Revit file</h1>
+    <div class="meta">For Nelson Yu · from Ian Lalonde · 26 October</div>
+  </div>
+
+  <div class="body">
+    <p class="why">The standard details drafters place from Revit now come from your masters: your CAD typical-detail
+       blocks and your Concrete Tower R24 template, in one file. Where a sheet of yours held a Revit copy of a CAD
+       detail, it now holds the detail drawn from your CAD block, so a change you make in CAD is the one everybody
+       gets. Everything else on your sheets is yours, untouched. This page is what you need to look at; the detail
+       behind it is in the folder at the end.</p>
+
+    <div class="first">
+      <h3>First: about an hour and a half, in two sittings</h3>
+      <ol>
+        <li><b>Look at the 11 sheets that changed (about 30 minutes).</b> Folder file 2: each of your sheets on top, the
+          same sheet in the new file underneath. On these 11 sheets, 59 details now come from your CAD blocks; the number
+          and title in each position are yours and sit where you put them.</li>
+        <li><b>Answer the 55 (about an hour).</b> Folder file 1: 55 of the 190 CAD typical details have a Revit version in
+          your templates that is drawn differently. One tick each: CAD is right, Revit is newer, or both wrong. Until you
+          have answered, those details stay out of the drafters' palette.</li>
+      </ol>
+    </div>
+
+    <h2>What is in the file</h2>
+    <table>
+      <tr><th>What</th><th>How many</th><th>Where it came from</th></tr>
+      <tr><td>Your own drafting views</td><td class="num">550</td><td>Your Concrete Tower R24 template, every one that sits on one of your sheets (550 of 550 on a sheet).</td></tr>
+      <tr><td>Details from your CAD blocks</td><td class="num">190 + 41</td><td>All 190 typical details on the big sheet, brought in by the CAD Detail button; 41 more copies of them fill positions on your sheets.</td></tr>
+      <tr><td>Sheets and legends</td><td class="num">90 · 118</td><td>Yours, as in the template.</td></tr>
+      <tr><td>The file</td><td colspan="2"><span class="path">\\Kor-fs01\Drafting\KOR-Standards\template\MASTER\KOR-Standard-Details-R24.rvt</span><br>
+        Revit 2024. The previous master (<span class="path">KOR-Standards-Master-R25.rvt</span>) stays beside it, untouched.</td></tr>
+    </table>
+    <p class="note">How it was checked: every one of the 190 printed from Revit beside its CAD plot under KOR.ctb and
+       looked at; 181 of 190 match word for word and line for line, the other 9 differ in text only (font, the
+       diameter symbol, spacing). Dashed and hidden lines: 190 of 190 dashed at CAD's length.</p>
+
+    <figure>
+      <img src="KOR-StandardDetails-Nelson-StandardsPackage-2026-10-26-D3.06.png" alt="Sheet D3.06: Nelson's on the left, the new file's on the right">
+      <figcaption><b>D3.06, shear wall typical details.</b> Left: your sheet. Right: the same sheet in the new file. Five
+        details now come from your CAD blocks (black); the zone and shear wall notes and the two embedment tables are
+        yours, unchanged. All 11 changed sheets are in folder file 2.</figcaption>
+    </figure>
+
+    <h2 class="pb">Decisions that are yours</h2>
+    <table>
+      <tr><th>Question</th><th>What we found</th><th>Your answer</th></tr>
+      <tr><td>The 55 that differ</td><td>CAD and Revit versions drawn differently, one page each (folder file 1).</td><td>CAD right / Revit newer / both wrong, per page.</td></tr>
+      <tr><td>The Revit font for CAD's SHX text</td><td>9 of the 190 differ in text only. One, D503-13 (romans.shx), prints thin and crowded in Revit: worth fixing in the CAD block itself.</td><td>Pick the font; say whether D503-13 is redrawn.</td></tr>
+      <tr><td>One title moved</td><td>On D3.05, S3.05 and 1E3.05, "Diagonally reinforced header section" ran into detail 1 at your title position (the CAD drawing is a little larger), so it was moved under its drawing.</td><td>Keep it, or say where it goes.</td></tr>
+      <tr><td>The wood "framing over" sheet</td><td>See below.</td><td>Which version becomes the standard.</td></tr>
+    </table>
+
+    <h2>Wood framing: the one wood question</h2>
+    <p class="note">Ian has settled how wood framing is drawn. His words, 25 October:</p>
+    <blockquote>"I think the issue is that until recently we were told woodframe couldn't be done in revit" ·
+      "If we CAN then 2D cad is redundant"</blockquote>
+    <p class="note">So framing plans show modelled members (beams, joists, posts, hold-downs, walls), with 2D for
+       annotation only. Standard details, the typical sections and connections, stay 2D and are not affected. What it
+       does not settle is <b>which version of the "Level N showing Level N+1 framing over" sheet becomes the standard</b>.
+       Today there are three:</p>
+    <table>
+      <tr><th>Where</th><th>What the sheet is</th><th>Scale · legends</th></tr>
+      <tr><td>The standard file (S2.13)</td><td>Legends only, no plan view; none of the WD framing view templates your Wood Framing View Setup (July 2025) names.</td><td class="num">— · 8</td></tr>
+      <tr><td>Edgar, 31165-01</td><td>Ceiling plan of level N laid over the plan of level N+1 ("002 - WD STRUCT FRAMING OVER"). Closest to your setup document, but one template for all levels where the document says one per level.</td><td class="num">1/8" · 7</td></tr>
+      <tr><td>Sherwood, 31207-01</td><td>Two plans of a concrete-foundation view type; 21 per-level wood templates, no names shared with Edgar's.</td><td class="num">3/16" · 1</td></tr>
+    </table>
+
+    <h2>What Revit does differently, so you know before you look</h2>
+    <table>
+      <tr><th>Limit</th><th>Where you'd see it</th></tr>
+      <tr><td>Small circles print as many-sided polygons</td><td>Revit's PDF print, not the conversion: the file holds true circles. Bolt holes in D201-07, about 3 mm on paper.</td></tr>
+      <tr><td>Dense hatch in a thin band prints solid</td><td>4 details: D201-07 and D503-15 (HSS walls), D502-30 and D502-31 (paver band at slab level).</td></tr>
+      <tr><td>Symbols inside a linetype</td><td>The W.W.M. line's X marks are not drawn in Revit; one line in D504-20.</td></tr>
+      <tr><td>Not in the file yet</td><td>Your general notes (38 CAD note blocks) and the 69 cover-sheet details; about 33 wood typical details that exist only in the office wood master (S1.11–S1.16).</td></tr>
+      <tr><td>Placing in Revit 2026</td><td>The file is Revit 2024, so a drafter in 2026 waits nearly two minutes each time the palette places a detail while Revit upgrades it in memory. No prompt; the file is never changed.</td></tr>
+    </table>
+
+    <div class="folder">
+      <h3>The detail behind this page</h3>
+      <p class="note">One folder, nothing attached:
+        <a class="path" href="file://///Kor-fs01/Drafting/KOR-Standards/for-review/2026-10-26%20Nelson%20standards%20package/">\\Kor-fs01\Drafting\KOR-Standards\for-review\2026-10-26 Nelson standards package</a></p>
+      <ul>
+        <li><b>1</b> — the 55 details drawn differently in CAD and Revit, one page each, with the answer line.</li>
+        <li><b>2</b> — your 11 changed sheets, yours above the new file's.</li>
+        <li><b>3</b> — all 190 CAD details, the CAD plot beside the Revit print, with the measured check on each.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body></html>
