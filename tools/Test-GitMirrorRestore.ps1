@@ -39,6 +39,33 @@
 #     unbacked disk.
 #   - LFS payloads, submodule contents, or hooks/config inside the bare.
 #
+# PACK HEALTH (added 2026-10-26) is reported but DELIBERATELY DOES NOT AFFECT THE VERDICT.
+# RESTORABLE means "a clone of this gives back the repo", and a bloated pack set still does that.
+# Reported per bare: loose object count and size, pack count, total pack size, largest single pack,
+# and the ratio between the two. Two invariants are worth watching:
+#   RATIO - a maintained repo's whole pack set is barely larger than its biggest pack, so anything
+#     at 2x or more is carrying redundant copies of the same objects.
+#   LooseUnpacked (count minus prune-packable) - loose objects that NO pack holds. Diagnostic, and
+#     only meaningful ALONGSIDE the size: git leaves objects loose on purpose until gc.auto fires
+#     (6700 loose objects, or 50 packs), so a few hundred unpacked objects is correct behaviour.
+#     A nonzero figure attached to TENS OF MB, not growing toward a pack, is repack not running.
+# Flagged at ratio >= 2, packs > 20, or loose size >= 25 MB. Deliberately NOT flagged on object
+# counts - see the note at the thresholds for the false positive that cost.
+#
+# Why it is here: on 2026-10-26 a push printed "remote: error: task 'geometric-repack' failed" and
+# the message does not say WHICH bare. These numbers said it immediately - FS01 was 5 packs /
+# 163 MB / ratio 1.0, KOR-302N was 23 packs / 2381 MB / ratio 15.0 with 14 near-identical 158 MB
+# packs dated 08-01..08-02 and 1222 loose objects (129 MB). Same two refs, same HEAD, 15x the disk.
+# Maintenance there has never succeeded; it was not disk space (784 GB free). The decider was
+# LooseUnpacked: FS01 sat at 0 of 215 (every loose object already packed, a fresh small pack landing
+# after each push) while 302N sat at 851 of 1237 and climbing, with no new pack for hours.
+#   - It does NOT say which bare failed on its own. It reports numbers; a human compares them.
+#   - It does NOT repair anything, on purpose. The repair is `git repack -adf` (or
+#     `git maintenance run --task=geometric-repack`), and it MUST run ON THAT HOST: rewriting a
+#     multi-GB pack set across SMB/VPN is how the task fails in the first place.
+#   - Prefer these numbers to -Fsck for routine checks. count-objects is a few directory listings;
+#     fsck READS EVERY OBJECT, so -Fsck against 302N's bare pulls ~2.4 GB over the link.
+#
 # SAME-CLASS FAULT IT WOULD MISS: a bare whose HEAD points at a branch that exists but is the WRONG
 # one - say HEAD -> refs/heads/gh-pages on a repo whose code lives on main. It clones, it checks out,
 # the tree is clean, and every count here passes, while the restore hands someone the wrong branch.
@@ -51,15 +78,17 @@
 # defaults to C:\korbk-verify for that reason; do not point it somewhere deep.
 #
 # ⚠ IT CLONES, SO IT MOVES THE WHOLE REPO. Over the VPN that is not free: pointed at
-# \\KOR-302N\C$ unscoped it starts pulling KOR.Drafter's ~164 MB bare across the link, which is
-# nobody's intention for a health check. On a remote host, either run it ON that host or scope it
-# with -Name. Against FS01 all five together are ~200 MB and take a few minutes.
+# \\KOR-302N\C$ unscoped it starts pulling KOR.Drafter's bare across the link - which as of
+# 2026-10-26 is 2.4 GB, not the 164 MB the repo actually is - and that is nobody's intention for a
+# health check. On a remote host, either run it ON that host, scope it with -Name, or use -NoClone.
+# Against FS01 all five together are ~200 MB and take a few minutes.
 #
 # Usage:
 #   .\tools\Test-GitMirrorRestore.ps1
 #   .\tools\Test-GitMirrorRestore.ps1 -Root '\\KOR-FS01\E$\IT\git' -Fsck
 #   .\tools\Test-GitMirrorRestore.ps1 -Name KOR.Drafter.git
 #   .\tools\Test-GitMirrorRestore.ps1 -Root '\\KOR-302N\C$' -Name 'KOR.RevitTools/repo.git'
+#   .\tools\Test-GitMirrorRestore.ps1 -Root '\\KOR-302N\C$' -NoClone     # pack health, no transfer
 [CmdletBinding()]
 param(
     [string]$Root = '\\KOR-FS01\E$\IT\git',
@@ -72,7 +101,11 @@ param(
     [string[]]$Name,
     [switch]$Fsck,
     # Leave the clones behind for inspection instead of removing them.
-    [switch]$KeepClones
+    [switch]$KeepClones,
+    # Report HEAD and pack health only - do not clone. This is the cheap routine check: it reads
+    # directory listings, not objects, so it is safe to point at a remote host over the link, which
+    # a cloning run is NOT. Restorability is then NOT tested, and the verdict says so.
+    [switch]$NoClone
 )
 
 $ErrorActionPreference = 'Stop'
@@ -99,8 +132,10 @@ function Get-MirrorLabel($dir) {
 if ($Name) { $bares = @($bares | Where-Object { $Name -contains $_.Name -or $Name -contains (Get-MirrorLabel $_) }) }
 if (-not $bares) { throw "No bare repositories found under $Root (looked for <Repo>.git and <Repo>\repo.git, each needing a HEAD file)" }
 
-if (Test-Path -LiteralPath $WorkRoot) { Remove-Item -LiteralPath $WorkRoot -Recurse -Force }
-New-Item -ItemType Directory -Force -Path $WorkRoot | Out-Null
+if (-not $NoClone) {
+    if (Test-Path -LiteralPath $WorkRoot) { Remove-Item -LiteralPath $WorkRoot -Recurse -Force }
+    New-Item -ItemType Directory -Force -Path $WorkRoot | Out-Null
+}
 
 $results = @()
 
@@ -110,9 +145,57 @@ foreach ($bare in $bares) {
         Mirror = $label; Head = ''; HeadTargetExists = $false; Cloned = $false
         Commits = 0; TrackedInClone = 0; TrackedInBare = 0; WorkingTreeClean = $false
         Fsck = ''; Verdict = 'FAIL'; Note = ''
+        Loose = 0; LooseUnpacked = 0; LooseMB = 0.0; Packs = 0; PackMB = 0.0; LargestPackMB = 0.0
+        PackRatio = 0.0; PackHealth = ''; PackNote = ''
     }
 
     try {
+        # 0. Pack health first, so it is reported even for a bare whose HEAD is broken (that path
+        #    returns early below). Cheap: count-objects -v is a handful of directory listings and
+        #    reads no object content. It never changes $row.Verdict - see the header.
+        $co = @{}
+        foreach ($coLine in (git --git-dir="$($bare.FullName)" count-objects -v 2>$null)) {
+            if ($coLine -match '^([a-z-]+):\s*(\d+)$') { $co[$Matches[1]] = [int64]$Matches[2] }
+        }
+        # count-objects reports sizes in KiB.
+        $row.Loose   = [int]$co['count']
+        $row.LooseMB = [math]::Round($co['size'] / 1024, 1)
+        $row.Packs   = [int]$co['packs']
+        $row.PackMB  = [math]::Round($co['size-pack'] / 1024, 1)
+        # Loose objects NOT in any pack. count-objects' prune-packable is the loose objects that a
+        # pack ALREADY holds (waiting to be pruned), so count minus prune-packable is what no pack
+        # has absorbed yet. This is the sharpest signal that repack is not running: a bare whose
+        # maintenance works shows prune-packable == count, i.e. zero here, within minutes of a push.
+        $row.LooseUnpacked = [int]$co['count'] - [int]$co['prune-packable']
+
+        $packDir = Join-Path $bare.FullName 'objects\pack'
+        $largest = (Get-ChildItem -LiteralPath $packDir -Filter '*.pack' -ErrorAction SilentlyContinue |
+                    Measure-Object -Property Length -Maximum).Maximum
+        $row.LargestPackMB = if ($largest) { [math]::Round($largest / 1MB, 1) } else { 0.0 }
+        $row.PackRatio = if ($row.LargestPackMB -gt 0) {
+            [math]::Round($row.PackMB / $row.LargestPackMB, 1)
+        } else { 0.0 }
+
+        # Thresholds are SIZE-based on purpose. An earlier version of this flagged on object COUNT
+        # (loose > 500, unpacked > 100) and immediately called a perfectly healthy 1.1 MB bare
+        # broken: git deliberately leaves objects loose until gc.auto's own thresholds - 6700 loose
+        # objects (gc.auto) or 50 packs (gc.autoPackLimit) - so a few hundred unpacked objects is
+        # git working as designed, not maintenance failing. What is never by design is a pack set
+        # several times the size of its own largest pack, or loose objects measured in tens of MB.
+        $packFlags = @()
+        if ($row.PackRatio -ge 2) {
+            $packFlags += "pack set is $($row.PackRatio)x its largest pack ($($row.PackMB) MB total vs $($row.LargestPackMB) MB) - redundant copies"
+        }
+        if ($row.Packs -gt 20) { $packFlags += "$($row.Packs) packs (git's own gc.autoPackLimit is 50, but geometric repack should never leave this many)" }
+        if ($row.LooseMB -ge 25) {
+            $packFlags += "$($row.LooseMB) MB of loose objects, $($row.LooseUnpacked) of $($row.Loose) of them in NO pack"
+        }
+        $row.PackHealth = if ($packFlags) { 'MAINTENANCE' } else { 'ok' }
+        if ($packFlags) {
+            $row.PackNote = "maintenance owed (restore still works): " + ($packFlags -join '; ') +
+                            ". Fix by running 'git repack -adf' ON THAT HOST - never across the link."
+        }
+
         # 1. HEAD, and whether its target branch is real. This is the fault ls-remote cannot see.
         $headRaw = (Get-Content -LiteralPath (Join-Path $bare.FullName 'HEAD') -Raw).Trim()
         $row.Head = $headRaw -replace '^ref:\s*', ''
@@ -121,6 +204,12 @@ foreach ($bare in $bares) {
         if (-not $row.HeadTargetExists) {
             $row.Note = "HEAD points at $($row.Head), which does not exist in this bare. A clone will " +
                         "check out NOTHING. Fix: git --git-dir='$($bare.FullName)' symbolic-ref HEAD refs/heads/<real branch>"
+            $results += [pscustomobject]$row
+            continue
+        }
+
+        if ($NoClone) {
+            $row.Verdict = 'NOT TESTED'
             $results += [pscustomobject]$row
             continue
         }
@@ -171,20 +260,39 @@ foreach ($bare in $bares) {
 
 $results | Format-Table Mirror, Head, Cloned, Commits, TrackedInClone, TrackedInBare, WorkingTreeClean, Verdict -AutoSize
 
+Write-Host "Pack health (does NOT affect the verdict - a bloated pack set still restores):"
+$results | Format-Table Mirror, Loose, LooseUnpacked, LooseMB, Packs, PackMB, LargestPackMB, PackRatio, PackHealth -AutoSize
+
 foreach ($r in $results | Where-Object { $_.Note }) {
     Write-Host ""
     Write-Host "$($r.Mirror): $($r.Note)" -ForegroundColor Yellow
 }
 
-if (-not $KeepClones -and (Test-Path -LiteralPath $WorkRoot)) {
+foreach ($r in $results | Where-Object { $_.PackNote }) {
+    Write-Host ""
+    Write-Host "$($r.Mirror): $($r.PackNote)" -ForegroundColor DarkYellow
+}
+
+if (-not $NoClone -and -not $KeepClones -and (Test-Path -LiteralPath $WorkRoot)) {
     Remove-Item -LiteralPath $WorkRoot -Recurse -Force
 }
 
-$pass = @($results | Where-Object { $_.Verdict -eq 'RESTORABLE' }).Count
 $total = $results.Count
 Write-Host ""
+
+if ($NoClone) {
+    $broken = @($results | Where-Object { -not $_.HeadTargetExists }).Count
+    $owed   = @($results | Where-Object { $_.PackHealth -eq 'MAINTENANCE' }).Count
+    Write-Host "-NoClone: RESTORABILITY WAS NOT TESTED on any of these $total mirrors." -ForegroundColor Yellow
+    Write-Host "HEAD target missing on $broken of $total; maintenance owed on $owed of $total." -ForegroundColor $(if ($broken -eq 0) { 'Green' } else { 'Red' })
+    Write-Host "Run without -NoClone, from a machine near the mirrors, to actually prove a restore."
+    exit $(if ($broken -gt 0) { 1 } else { 0 })
+}
+
+$pass = @($results | Where-Object { $_.Verdict -eq 'RESTORABLE' }).Count
 Write-Host "$pass of $total mirrors restorable." -ForegroundColor $(if ($pass -eq $total) { 'Green' } else { 'Red' })
 Write-Host "Checked: HEAD target exists, clone succeeds, tracked count matches the bare's HEAD tree, working tree clean$(if ($Fsck) { ', git fsck' })."
+Write-Host "Reported, not gated: pack health. MAINTENANCE means disk waste and failing repack tasks, not an unrestorable mirror."
 Write-Host "NOT checked: that a mirror matches its SOURCE (use git ls-remote for that), nor whether the volume is backed up."
 
 if ($pass -ne $total) { exit 1 }
