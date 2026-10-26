@@ -1,0 +1,64 @@
+# Calgary land-use district candidates. Evaluated before promotion into the gate.
+# Bare DC rejected: 9 false gains (8 timber-sale titles, 1 rec-site operator).
+# Contextual DC phrases preserve the Calgary signal without those collisions.
+# Final pre-promotion diff: 13,069 observations, 18,571 reject titles;
+# zero keep losses and zero reject-title gains. Calgary first 400: 6 -> 238.
+# R-CG retained as the explicit infill exception: 52 gains / 600 sampled rows,
+# zero gains among other R-only districts. A district code does not prove a
+# specific built form. R-C1/R-C1s/R-C2/R-1s/R-G/R-Gm are deliberately absent.
+# Codes checked against https://www.calgary.ca/planning/land-use/districts.html
+M-CG
+M-C1
+M-C2
+M-G
+M-1
+M-2
+M-H1
+M-H2
+M-H3
+M-X1
+M-X2
+H-GO
+MU-1
+MU-2
+I-G
+I-B
+I-E
+I-C
+I-R
+I-O
+I-H
+C-N1
+C-N2
+C-C1
+C-C2
+C-COR1
+C-COR2
+C-COR3
+C-O
+C-R1
+C-R2
+C-R3
+CC-MH
+CC-MHX
+CC-X
+CC-COR
+CC-ET
+CC-EIR
+CC-EMU
+CC-EPR
+CC-ERR
+CC-ER
+CR20-C20/R20
+S-UN
+S-SPR
+S-CS
+S-R
+S-CI
+S-CRI
+S-URP
+S-FUD
+S-TUC
+accommodate DC
+direct control
+R-CG

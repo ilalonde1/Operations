@@ -1,0 +1,501 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KorConcrete Review</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head><body>
+<style>
+  .kicker { break-after: avoid; }
+  code { font-family: var(--mono); font-size: .86em; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: .03em .32em; }
+  .fixes { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin: 1rem 0; }
+  .fix { background: var(--crit-bg); border-left: 4px solid var(--crit); border-radius: 8px; padding: .75rem .95rem; }
+  .fix b { display: block; font-size: 1.05rem; margin-bottom: .2rem; }
+  .fix span { font-size: .92rem; color: var(--ink-soft); }
+  td.ok { color: var(--good); font-weight: 600; }
+  td:first-child { white-space: normal; }
+  @media (max-width: 760px) { .fixes { grid-template-columns: 1fr; } }
+  @media print {
+    html { font-size: 12.5px !important; }
+    body { font-size: 1rem; line-height: 1.45; }
+    .fix b { font-size: 1.05rem; }
+    .fix span { font-size: .95rem; }
+    .toc { display: none !important; }
+    .hero__lede { max-width: none; }
+    main { padding-top: 2mm; }
+    section { padding: .55rem 0 !important; margin: 0 !important; border: 0 !important; }
+    h2 { font-size: 1.2rem !important; margin: .1rem 0 .45rem !important; }
+    h3 { margin: .7rem 0 .3rem !important; font-size: 1rem !important; }
+    .kicker { margin: 0 !important; }
+    .fixes { grid-template-columns: 1fr 1fr !important; gap: .5rem; }
+    .fix { break-inside: avoid; }
+    .table-wrap, .box { max-width: none !important; }
+    th, td { padding: .3rem .45rem !important; }
+    table { font-size: .88rem !important; }
+    ul.plain li { margin: .15rem 0 !important; }
+    .box { margin: .5rem 0 !important; padding: .6rem .8rem !important; }
+  }
+</style>
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Review and fit · 20 October 2026</p>
+    <h1>KorConcrete 0.134.4</h1>
+    <p class="hero__lede">Where Griffin Dow's concrete design app sits on KOR's drawing-to-model tools, a worked example, and a full security review. <strong>Well built. Two things to fix before the team uses it.</strong></p>
+    <div class="hero__meta">
+      <span>For Griffin Dow</span>
+      <span>Prepared by Ian Lalonde, Operations/IT</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">The review</p>
+    <ol>
+      <li><a href="#summary">Summary</a></li>
+      <li><a href="#stack">Where KorConcrete sits</a></li>
+      <li><a href="#scope">What was reviewed</a></li>
+      <li><a href="#f1">Finding 1: the install folder</a></li>
+      <li><a href="#f2">Finding 2: terminal servers</a></li>
+      <li><a href="#sound">What is sound</a></li>
+      <li><a href="#minor">Minor housekeeping</a></li>
+      <li><a href="#model">Testing with a real model</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="summary">
+      <p class="kicker">Summary</p>
+      <h2>Sound, with two small fixes before rollout</h2>
+      <p>The update chain, the local engine's protection and the installer all hold up, including under live attack on a test install.</p>
+      <div class="fixes">
+        <div class="fix"><b>1. Lock the install folder and sign the installer</b><span>Today 23 staff accounts can replace the installer, and the installer is what carries your update-signing key.</span></div>
+        <div class="fix"><b>2. Keep it off KOR-RDS01 for now</b><span>Until the app's front page stops serving the token, one user on a shared server could drive another user's engine.</span></div>
+      </div>
+      <p>Everything else is either sound or minor housekeeping, listed below.</p>
+    </section>
+
+    <section id="stack">
+      <p class="kicker">Where KorConcrete sits</p>
+      <h2>On top of Ian's tools: drawings in, designed members out</h2>
+      <p>Ian's tools cover the steps <em>before</em> KorConcrete: getting from the drawings to an ETABS model, and moving design forces into S-Concrete files without retyping them. KorConcrete does the design itself. Together they form one chain, and the one real test so far shows the hand-off between them working, apart from units.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Step</th><th>What happens</th><th>Whose tool</th></tr></thead>
+        <tbody>
+          <tr><td>1. Drawings in</td><td>A PDF of the architect's plans, marked up by the engineer or not, goes in. Storeys, walls, columns, slabs and openings are read off the drawings, using KOR's own modelling rules held in the KorStandards database.</td><td>Ian's: <code>takeoff stickfile</code></td></tr>
+          <tr><td>2. ETABS model out</td><td>An ETABS <code>.e2k</code> with every storey, wall and column placed, every wall labelled as a pier (<code>KPIER…</code>), a picture of every storey, and a written list of the assumptions it made, for the engineer to check.</td><td>Ian's</td></tr>
+          <tr><td>3. Analysis</td><td>The engineer opens the model in ETABS, checks it, applies loads and runs it, then exports the pier forces.</td><td>ETABS, the engineer</td></tr>
+          <tr><td>4. Design</td><td>KorConcrete reads the same <code>.e2k</code> and the pier forces and designs each wall and column to CSA A23.3-19.</td><td><strong>Griffin's: KorConcrete</strong></td></tr>
+          <tr><td>5. Paper trail</td><td>Both tools read and write S-Concrete <code>.SCO</code> files. Ian's writes the demands into an engineer's existing file without touching the section or bars, and builds one column schedule across a project's files.</td><td>Both</td></tr>
+        </tbody>
+      </table></div>
+      <h3>The example: Omar's hotel</h3>
+      <p>Omar marked up the architect's PDF of 143 E 3rd Hotel by hand. Ian's tool turned that PDF, with nothing else, into an ETABS model of 41 storeys: 616 wall panels in 63 labelled piers, 384 column placements, and floors with their stair and shaft openings cut. Omar is reviewing the model now. Fed straight into KorConcrete, it read all 40 storeys that carry walls and our pier labels on each, so the hand-off works. The two unit faults it found are under <em>Testing with a real model</em>, at the end.</p>
+      <h3>Where the two overlap, and the question for you</h3>
+      <ul class="plain">
+        <li><strong>S-Concrete.</strong> Ian's tool was built on the assumption that S-Concrete stays the checker, and it removes the typing around it. KorConcrete replaces the checker. If the team moves to KorConcrete, Ian's <code>.SCO</code> writer becomes a bridge for old projects rather than the main road.</li>
+        <li><strong>Columns.</strong> KorConcrete's <code>.e2k</code> import reads walls (piers), not frames, so columns do not reach it through the model today. Ian's model carries the columns. Reading them would complete the chain.</li>
+        <li><strong>The engineer's method.</strong> On 30961-01, Ian proved that the hand-made <code>.SCO</code> files match the engineer's Calculator sheet on 1,665 of 1,665 demands. Three inputs sit <em>before</em> that sheet: secondary loads added by hand, live-load reduction, and Rd/Ro scaling of the seismic forces. Reading KorConcrete's code, it builds the NBCC combinations from the ETABS pier forces, and it takes each of those inputs as a number the engineer types in. Live-load reduction is one factor per pier and storey, applied to the live load. Any ETABS case can be scaled by a factor per storey. Rd and Ro go into the chapter 21 ductility, shear-cap and overstrength checks. Its code makes no mention of secondary loads or tributary areas. <strong>That is where the two ends join:</strong> the model already knows the floors, the walls and the columns, so it is the natural place to work those numbers out instead of typing them.</li>
+      </ul>
+    </section>
+
+    <section id="scope">
+      <p class="kicker">Scope</p>
+      <h2>What was reviewed, and how</h2>
+      <p>Every part of the product was reviewed.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Part</th><th>How it was reviewed</th></tr></thead>
+        <tbody>
+          <tr><td>Installer (<code>Install KorConcrete.exe</code>)</td><td>Unpacked (Inno Setup 6.7.0); the setup script read in full; every installed file hashed and compared with the signed 0.134.4 update package</td></tr>
+          <tr><td>Launcher (<code>KorConcrete.ps1</code>, <code>Splash.cs</code>, <code>KorConcrete.vbs</code>)</td><td>Read in full</td></tr>
+          <tr><td>Splash program (<code>KorConcreteSplash.exe</code>)</td><td>Every string in the program traced back to <code>Splash.cs</code></td></tr>
+          <tr><td>Engine (<code>KorConcrete-backend.exe</code>)</td><td>Unpacked; all 42 of your own modules disassembled and searched for risky calls (subprocess, pickle, eval, file and registry writes, network); the security module and every file-handling route read; all 38 routes listed</td></tr>
+          <tr><td>Bundled libraries</td><td>Version of every web-facing and file-parsing library read from the package</td></tr>
+          <tr><td>User interface</td><td>Both script bundles searched for outside calls and raw-HTML insertion</td></tr>
+          <tr><td>Live behaviour</td><td>Engine run on a test PC and attacked: missing and wrong tokens, forged Host headers, cross-site requests, path tricks, folder-name escapes</td></tr>
+          <tr><td>Install folder on FS01</td><td>Permissions on the folder and the installer read; group membership counted</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="f1">
+      <p class="kicker">Finding 1 · fix before rollout</p>
+      <h2>Staff can write to the install folder</h2>
+      <p><strong>What:</strong> <code>\\Kor-fs01\Library\03 Programs\KorConcrete</code> gives <em>Full Control</em> to <code>BMZ_FS_Library_RW</code>. That group contains <code>BMZ_ROL_Staff</code>, which is <strong>23 enabled user accounts</strong>. <code>Install KorConcrete.exe</code> itself is unsigned.</p>
+      <p><strong>Why it matters:</strong> your update chain trusts one public key, and that key arrives inside the installer. Anyone who can replace the installer can ship their own key, and from then on their own "signed" updates. The signature protects updates only as well as the folder protects the installer.</p>
+      <div class="box box--tip">
+        <p class="box__label">Fix</p>
+        <ul class="plain">
+          <li>Give write access to that folder to you and IT only. Everyone else reads. IT can make this change.</li>
+          <li>Sign the installer with a code-signing certificate, so Windows shows <em>KOR Structural</em> as the publisher and refuses a tampered copy.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="f2">
+      <p class="kicker">Finding 2 · your question</p>
+      <h2>Terminal servers</h2>
+      <p><strong>What:</strong> the app's front page (<code>GET /</code>) hands the engine's token to anyone who asks for it. That is by design, so the app window can use it.</p>
+      <p><strong>On a single-user PC this is harmless.</strong> Only that user's own programs can reach 127.0.0.1, and they already run as that user.</p>
+      <p><strong>On a terminal server it is not.</strong> Every logged-in user shares the same 127.0.0.1. One user could read another user's token and drive their engine, including <code>/section/import-path</code>, which accepts a network (UNC) path. Pointing it at a network path makes the victim's session sign in to that address.</p>
+      <div class="box box--tip">
+        <p class="box__label">Fix</p>
+        <p>Have the launcher pass the token to the app window directly, for example in the address after a <code>#</code>, which the browser never sends to the server. The engine then never serves the token.</p>
+      </div>
+      <div class="box box--dont">
+        <p class="box__label">Until then</p>
+        <p>Do not install it on KOR-RDS01. The answer to your question is yes: KOR has a terminal server, KOR-RDS01.</p>
+      </div>
+    </section>
+
+    <section id="sound">
+      <p class="kicker">Tested</p>
+      <h2>What is sound</h2>
+      <h3>Update chain</h3>
+      <ul class="plain">
+        <li>Each update carries an RSA-3072 signature over its version, SHA-256 and size.</li>
+        <li>Size and hash are checked before anything is unpacked.</li>
+        <li>File names inside the zip are checked before extraction.</li>
+        <li>The app never downgrades, and it rolls back an update that fails to start.</li>
+      </ul>
+      <h3>Engine protection, tested live on 0.134.4</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Test</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Request with no token, or a wrong one</td><td class="ok">Refused, 401</td></tr>
+          <tr><td>Forged Host header (DNS-rebinding attack)</td><td class="ok">Refused, 421</td></tr>
+          <tr><td>Cross-site request from another website</td><td class="ok">No site is allowed. Your security layer runs first, so the browser never gets a readable answer</td></tr>
+          <tr><td>Path tricks to read files (<code>..</code>, <code>%2f</code>, <code>%5c</code>)</td><td class="ok">Refused; no file reached</td></tr>
+          <tr><td>Folder-name escapes in a design id (<code>..\..\</code>, <code>C:\</code>)</td><td class="ok">Refused by your name check; nothing written outside the data folder</td></tr>
+          <tr><td>Network listening</td><td class="ok">127.0.0.1 only; not reachable from other machines</td></tr>
+        </tbody>
+      </table></div>
+      <p>Also confirmed: the token is 64 random hex characters, new on every start, and compared in constant time; security headers (CSP, no-sniff, no framing, no referrer) are on every response; exports come back to the window as data, and the engine never writes to a path it is given.</p>
+      <h3>Installer</h3>
+      <ul class="plain">
+        <li>It requests no admin rights and installs to the user's own profile (<code>%LOCALAPPDATA%\Programs\KorConcrete</code>).</li>
+        <li>Its only registry change is the per-user <code>.korcol</code> file association.</li>
+        <li>Its only run steps are opening the app after install and stopping the engine on uninstall.</li>
+        <li>All 179 of 179 files it installs are byte-identical to the signed 0.134.4 update package. The splash program and the icon are the two additions, and the splash program matches its source.</li>
+      </ul>
+      <h3>Libraries: all current, and past their known security fixes</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Library</th><th>Version</th><th>Library</th><th>Version</th></tr></thead>
+        <tbody>
+          <tr><td>FastAPI</td><td>0.141.1</td><td>python-multipart</td><td>0.0.32</td></tr>
+          <tr><td>Starlette</td><td>1.6.0</td><td>pydantic</td><td>2.13.4</td></tr>
+          <tr><td>uvicorn</td><td>0.52.1</td><td>numpy</td><td>2.5.2</td></tr>
+          <tr><td>h11</td><td>0.16.0</td><td>openpyxl</td><td>3.1.5</td></tr>
+        </tbody>
+      </table></div>
+      <h3>User interface and other code</h3>
+      <ul class="plain">
+        <li>Neither script bundle calls an outside address. The only web addresses in them are XML namespace names and React's error-help page.</li>
+        <li>The code-clause navigator writes raw HTML only from text built into the app, and your CSP blocks any injected script regardless.</li>
+        <li><code>pickle</code> is used only to build a hash, never to load data.</li>
+        <li>The only program the engine starts is a copy of itself, for the compiled-kernel self-check.</li>
+      </ul>
+    </section>
+
+    <section id="minor">
+      <p class="kicker">Small</p>
+      <h2>Minor housekeeping</h2>
+      <ul class="plain">
+        <li><strong>Development setting:</strong> the engine still allows cross-site requests from your development server (<code>localhost:5173</code>). It does nothing today, because the token check runs first, but it should be removed from the packaged build.</li>
+        <li><strong>Spreadsheet parsing:</strong> openpyxl reads Excel files with Python's built-in XML parser, which does not fetch external entities. Adding the <code>defusedxml</code> package, which openpyxl uses automatically when present, hardens it further.</li>
+        <li><strong>Signing passphrase:</strong> your email says Ian also knows it; your security report says only you do. Worth settling which is true, and writing down who holds it and where the private key is backed up.</li>
+      </ul>
+    </section>
+
+    <section id="model">
+      <p class="kicker">Not security · found while testing</p>
+      <h2>Testing with a real model</h2>
+      <p>We fed an ETABS model built by Ian's drawing tools straight into your engine, through the same calls your window makes. The model was Omar's 143 E 3rd Hotel: 41 storeys, units LB/MM, walls carrying pier labels. Your engine read all 40 storeys that carry walls, and our pier labels on each of them. Two things go wrong with the units:</p>
+      <ul class="plain">
+        <li><strong>Lengths are read as feet.</strong> A 3,239 × 305 mm wall on L19 (KPIER28) assembles as 987,177 × 92,903, which is 304.8 times too large. The <code>.e2k</code> importer assumes feet whatever the file's <code>UNITS</code> line says. Most KOR models are in inches, and the drawing-tool models are in millimetres.</li>
+        <li><strong>Concrete strength.</strong> The model's <code>FC 6.2000124</code> is in lb/mm², which is 27.6 MPa. The engine reads it as "6.2 MPa" and then sets it to 5 MPa.</li>
+      </ul>
+      <div class="box box--auto">
+        <p class="box__label">With those fixed</p>
+        <p>The two tools connect end to end: a marked-up PDF becomes an ETABS model, the engineer runs the analysis, and KorConcrete designs the walls from the pier forces.</p>
+      </div>
+    </section>
+  </main>
+</div>
+</body></html>
