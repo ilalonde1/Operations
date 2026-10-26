@@ -89,7 +89,22 @@ RULES = [
     #    had been read ten minutes earlier, which is the whole point of putting it in a gate.
     #    PowerShell has no pipefail, so the check is different: capture the output and read
     #    $LASTEXITCODE, which is the only thing that carries the script's real outcome.
+    #    TIGHTENED 2026-10-25: the script name had to appear only SOMEWHERE before a pipe, so naming
+    #    one as an ARGUMENT tripped it. `Select-String -Path '...\build\publish.ps1' | ForEach-Object`
+    #    was denied for reading the file, which teaches the habit of routing around the gate - worse
+    #    than the fault it guards. So the name must now stand where a command stands, the same idiom
+    #    rules 6 and 7 already use.
+    #    CHECKS: publish*/deploy*.ps1 in command position (the start, or after ; & | ( { or a newline,
+    #      optionally via &), or passed to -File/-FilePath/-Command, and then piped.
+    #    ALLOWS: the same name as an argument to a reader (-Path/-LiteralPath/-Include/-Pattern,
+    #      Get-Content, cat, Test-Path, Get-AuthenticodeSignature), and any command that sets
+    #      pipefail or reads $LASTEXITCODE.
+    #    DOES NOT CATCH: a run through a variable or Invoke-Expression (`$s = '.\publish.ps1'; & $s |
+    #      tail`), where the name is nowhere near the pipe; a wrapper not named publish*/deploy*; or a
+    #      script that swallows its own failure and exits 0, which no exit-code check can see.
     (re.compile(r"(?is)^(?!.*(?:pipefail|LASTEXITCODE)).*?"
+                r"(?:(?:^|[;&|({\n])\s*(?:&\s*)?|-(?:File|FilePath|Command)\s+)"
+                r"['\"]?(?:[A-Za-z]:)?[^\s'\";|&]*"
                 r"\b(?:publish|deploy)[A-Za-z0-9._-]*\.ps1\b[^|;\n]*\|(?!\|)"),
      "A publish/deploy script piped without reading its exit code: the pipe's result replaces the "
      "script's, so a failed deploy reads as a successful one (2026-10-19: eight green build lines "

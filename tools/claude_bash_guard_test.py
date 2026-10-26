@@ -96,6 +96,17 @@ CASES = [
     (r"$out = .\build\publi" + r"sh.ps1 2>&1; $c = $LASTEXITCODE; $out | Select-Object -Last 5", "allow"),
     (r".\build\publi" + r"sh.ps1", "allow"),
     ("Get-ChildItem . | Select-Object -First 3", "allow"),
+    # rule 9, tightened 2026-10-25: the name must stand where a COMMAND stands. It used to be enough
+    # for the name to appear anywhere before a pipe, so READING the script was denied - which teaches
+    # routing around the gate rather than reading the exit code.
+    (r"Select-String -Path 'C:\x\build\publi" + r"sh.ps1' -Pattern 'Kor-fs01' | ForEach-Object { $_ }", "allow"),
+    (r"Get-Content .\build\publi" + r"sh.ps1 | Select-Object -First 5", "allow"),
+    (r"Get-AuthenticodeSignature .\deplo" + r"y-bridge.ps1 | Format-List", "allow"),
+    # ...while every form that actually RUNS it is still denied, including the two the old pattern
+    # caught only by accident of the name being adjacent to the pipe.
+    (r"& 'C:\x\build\publi" + r"sh.ps1' | Out-String", "deny"),
+    (r"powershell -File build\publi" + r"sh.ps1 | Select-Object -Last 5", "deny"),
+    (r"cd C:\x; .\deplo" + r"y-opportunities.ps1 | Select-Object -Last 5", "deny"),
 ]
 
 
