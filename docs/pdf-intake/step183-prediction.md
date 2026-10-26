@@ -70,10 +70,18 @@ thickness does not compare) and by the drawing where the yardstick cannot judge:
 | 31065 L2 | 200 whole | + 900 3,097 sq ft | drawing: three dashed «900 SLAB» areas (looked); engineer's L2 lacks the south tower | follows the drawing |
 | 31202 L13 | 8" whole | 8" field + three 12" areas, each outlined and printed (looked) | engineer: 10" throughout | follows the drawing; drawing and engineer differ |
 | 31065 P1, 31130 P2/L1/L19, 31138 L1/L5/P1/P3, 31202 L5 | | | within +-3% volume | marginal |
-| 31130 L16, L17 | 12"/9" | 18" 7,802 / 18" 2,783 | engineer 18" 4,330 / 164 | **OPEN: larger 18" than the engineer's; look at the drawings** |
+| 31130 L16, L17 | 12"/9" | 18" 7,802 / 18" 2,783 | engineer 18" 4,330 / 164 | **WORSE - cause found, not fixed** (below) |
 | 31168 L1, L2 | | zoned | yardstick is this tool's own output (0db1608d) | not judged |
 
 Halifax (Revit route): byte-identical. Core fast 1,675 of 1,675; AFloorTheDrawingZonesIsModelledAsItsZonesTests 14 of 14.
+
+**31130 L16 / L17, looked at after the commit (S2.19.1, p43):** the drawing zones L16 east as 10" west, 18" centre (two
+«18" SLAB»), 12" east, 10" south strip - the engineer's 10" 3,561 / 12" 1,147 / 18" 4,330 sq ft agrees with it. The 18"
+centre is bounded by THIN SOLID lines, a third pen: neither the outline's pen nor dashed, so the cut does not read them,
+the west 10", the 18" centre and the south 10" stay one zone, and 2 «18"» against 2 «10"» goes to 18" by ground share
+(volume 467 -> 576 m3, the engineer's 317). The next rule, NOT yet written because hatching and dimensions are thin solid
+lines too: a solid line of any pen that separates two different printed thicknesses inside the floor is a zone
+boundary - measured on the six sets before it lands.
 
 Faults found by this measurement and fixed before commit (each now a test): zones replacing the floor broke every
 "plate inside a floor" reader (31138 L1 doubled); PlanGeometryTransform.Move dropped Zones (e2k unchanged though the
