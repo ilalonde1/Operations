@@ -87,6 +87,13 @@ public sealed class PlanLoop
     /// </summary>
     public double? ThicknessInchesFromTag { get; init; }
 
+    /// <summary>
+    /// The thickness zones the drawing divides this floor into (step 183), each with the thickness printed in it; empty for a
+    /// floor of one thickness. The floor stays one plate for everything that asks where a floor is - one floor read twice,
+    /// what stands under it, a plate inside another - and the composer writes it as these.
+    /// </summary>
+    public IReadOnlyList<PlanLoop> Zones { get; init; } = [];
+
     public double SignedArea
     {
         get

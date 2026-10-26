@@ -168,6 +168,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<List<(double X, double Y)>> VoidRegions { get; } = new();
         /// <summary>The carried openings that are voids by their words (step 168), on their own layer.</summary>
         public List<List<(double X, double Y)>> CarriedVoids { get; } = new();
+        /// <summary>The thickness zones a floor is drawn in (step 183, SlabZones): written on their own layer
+        /// (DxfExporter.SlabZoneLayer), where the classifier replaces the floor they tile by them. Empty where no floor
+        /// prints two thicknesses its lines divide.</summary>
+        public List<List<(double X, double Y)>> SlabZones { get; } = new();
         /// <summary>
         /// The stair flights on the sheet (intake step 105): each a run of five or more paper-filled tread rectangles of one
         /// size stacked at their own depth - 31202 draws a tread as a 1,187 x 280 mm paper fill, eight to a flight. The box

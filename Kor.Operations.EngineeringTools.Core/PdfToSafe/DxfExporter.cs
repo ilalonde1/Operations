@@ -17,6 +17,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// <summary>The layer a carried opening the page's words call a void (OPEN TO BELOW) goes on (step 168): the composer
         /// cuts it with a column standing in it - the words, not an X round the column, said it is open.</summary>
         public const string CarriedVoidLayer = "KOR_C_OPENING-VOID";
+        /// <summary>The layer a floor's thickness zones go on (step 183): the classifier replaces the floor they tile by them.
+        /// Not a slab-edge layer - on one, zones sharing an edge were read back as a single ring.</summary>
+        public const string SlabZoneLayer = "KOR_C_SLABZONE";
 
         /// <summary>
         /// The layers this exporter writes for what is NOT a member: linework left as lines (BEAM),
@@ -25,7 +28,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         public static readonly IReadOnlySet<string> NonMemberLayers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "BEAM", "GRID", "KOR_MATCHLINE", "KOR_WALLTYPE", "KOR_PARTITION", "TEXT", CarriedOpeningLayer, CarriedVoidLayer,
+            "BEAM", "GRID", "KOR_MATCHLINE", "KOR_WALLTYPE", "KOR_PARTITION", "TEXT", CarriedOpeningLayer, CarriedVoidLayer, SlabZoneLayer,
         };
 
         // Encoding.GetEncoding(1252) in Export needs the code-page provider, which .NET does not
@@ -301,6 +304,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var pts = FilterPts(Ctr(o));
                 if (pts.Count >= 3) xVoids.Add(pts);
             }
+            // a floor's thickness zones (step 183), on a layer of their own
+            var xZones = new List<List<(double X, double Y)>>();
+            foreach (var z in geometry.SlabZones)
+            {
+                var pts = FilterPts(Ctr(z));
+                if (pts.Count >= 3) xZones.Add(pts);
+            }
 
             var xText = new List<(string Text, double X, double Y, double HeightMm, double RotationDeg, bool Hidden, double FitWidthMm)>();
             foreach (var annotation in geometry.TextAnnotations)
@@ -554,8 +564,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var declaredSuffixes = !layerByColour && Environment.GetEnvironmentVariable("KOR_STEP152_OFF") != "1" && markupElementTypes is not null
                 ? markupElementTypes.Values.Select(DeclaredSuffix).Where(s => s.Length > 0).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToList()
                 : new List<string>();
-            bool hasCarried = xCarried.Count > 0, hasVoids = xVoids.Count > 0;
-            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + 4 * declaredSuffixes.Count +(hasText ? 1 : 0) + (hasHiddenNotes ? 1 : 0) + (hasGrid ? 1 : 0) + (hasFootings ? 1 : 0) + (hasMatch ? 1 : 0) + (hasCarried ? 1 : 0) + (hasVoids ? 1 : 0);
+            bool hasCarried = xCarried.Count > 0, hasVoids = xVoids.Count > 0, hasZones = xZones.Count > 0;
+            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + 4 * declaredSuffixes.Count +(hasText ? 1 : 0) + (hasHiddenNotes ? 1 : 0) + (hasGrid ? 1 : 0) + (hasFootings ? 1 : 0) + (hasMatch ? 1 : 0) + (hasCarried ? 1 : 0) + (hasVoids ? 1 : 0) + (hasZones ? 1 : 0);
 
             G(0, "TABLE"); G(2, "LAYER"); G(70, layerCount.ToString(ic));
             void WL(string n, int c) { G(0, "LAYER"); G(2, n); G(70, "0"); G(62, c.ToString()); G(6, "CONTINUOUS"); }
@@ -583,6 +593,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (hasMatch) WL(matchLayer, 6);
             if (hasCarried) WL(CarriedOpeningLayer, 6);
             if (hasVoids) WL(CarriedVoidLayer, 6);
+            if (hasZones) WL(SlabZoneLayer, 4);
             G(0, "ENDTAB");
             G(0, "ENDSEC");
 
@@ -644,6 +655,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 WritePolyline(CarriedOpeningLayer, 6, opening, true);
             foreach (var opening in xVoids)
                 WritePolyline(CarriedVoidLayer, 6, opening, true);
+            foreach (var zone in xZones)
+                WritePolyline(SlabZoneLayer, 4, zone, true);
 
             // Columns: footprint rectangles from the parallel xColumnSizes list; a column drawn round
             // is written as a full-circle ARC (step 173), the curve the classifier's round rule needs.

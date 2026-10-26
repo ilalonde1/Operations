@@ -735,6 +735,10 @@ public static class StructuralPlanClassifier
                                               || s.Layer.Equals(PdfToSafe.DxfExporter.CarriedVoidLayer, StringComparison.OrdinalIgnoreCase);
         var carried = all.Where(IsCarried).ToList();
         if (carried.Count > 0) all = all.Where(s => !IsCarried(s)).ToList();
+        // a floor's thickness zones (step 183): out of every other reading - an unroled line finishes a slab edge - used at the end
+        static bool IsZone(DxfSegment s) => s.Layer.Equals(PdfToSafe.DxfExporter.SlabZoneLayer, StringComparison.OrdinalIgnoreCase);
+        var zoneSegments = all.Where(IsZone).ToList();
+        if (zoneSegments.Count > 0) all = all.Where(s => !IsZone(s)).ToList();
         segments = all;
 
         // The line this sheet was cut on, if it was. A slab edge that runs off the page at a match
@@ -2173,6 +2177,13 @@ public static class StructuralPlanClassifier
             }
         }
 
+        // A FLOOR THE DRAWING ZONES BY THICKNESS IS MODELLED AS ITS ZONES (step 183, 2026-10-25; PdfToSafe.SlabZones). The page
+        // read writes each zone of a floor whose lines divide two thicknesses or more as a closed outline on its own layer;
+        // here, after every floor is final and priced, a floor the zones tile - two or more, their areas the floor's within
+        // 2% - is replaced by them, and each is priced by what is printed inside it. Openings stay as they are.
+        if (zoneSegments.Count > 0 && Environment.GetEnvironmentVariable("KOR_STEP183_OFF") != "1")
+            ReplaceFloorsByTheirZones(result, options, zoneSegments);
+
         return result;
     }
 
@@ -2869,6 +2880,91 @@ public static class StructuralPlanClassifier
         if (box.Thickness <= 0 || box.Length <= 0) return false;
         double minSide = 4.0 / options.UnitInInches;                    // 4 in, in the drawing's unit
         return box.Thickness >= minSide && box.Length <= 5 * box.Thickness && loop.Area >= 0.9 * box.Length * box.Thickness;
+    }
+
+    /// <summary>
+    /// Replaces each floor its thickness zones tile by the zones, and prices them (step 183). A zone is a closed outline on the
+    /// zone layer; the zones of a floor are those whose inside lies in it, and they tile it when there are two or more and
+    /// their areas sum to the floor's within 2%. What was said about the floor's thickness - refused for the call-outs it
+    /// prints, or a tie broken by ground (step 182) - is withdrawn with it: the zones say it now.
+    /// </summary>
+    private static void ReplaceFloorsByTheirZones(PlanGeometrySet result, PlanClassificationOptions options, IReadOnlyList<DxfSegment> zoneSegments)
+    {
+        var zones = new List<PlanLoop>();
+        foreach (var outline in zoneSegments.Where(s => s.ClosedOutlineId != 0).GroupBy(s => s.ClosedOutlineId))
+        {
+            var edges = outline.ToList();
+            if (edges.Count < 3) continue;
+            bool joined = true;
+            for (int i = 0; i < edges.Count && joined; i++)
+                joined = edges[i].End.DistanceTo(edges[(i + 1) % edges.Count].Start) <= 1e-6;
+            if (joined) zones.Add(new PlanLoop(RoleSlab, edges.Select(e => e.Start).ToList(), closedExactly: true));
+        }
+        if (zones.Count < 2) return;
+
+        var replaced = new List<(PlanLoop Floor, List<PlanLoop> Zones)>();
+        foreach (var floor in result.Slabs)
+        {
+            var mine = zones.Where(z => LoopGeometry.PointInPolygon(PdfToSafe.SlabZones.InteriorPoint(z), floor.Points)).ToList();
+            if (mine.Count < 2) continue;
+            double sum = mine.Sum(z => z.Area);
+            if (Math.Abs(sum - floor.Area) > 0.02 * floor.Area)
+            {
+                result.Flags.Add($"{floor.Layer}: a floor plate of {options.SqFt(floor.Area)} sq ft carries {mine.Count} thickness zones whose areas " +
+                                 $"come to {options.SqFt(sum)} sq ft, not the floor's; the floor was kept whole (step 183).");
+                continue;
+            }
+            replaced.Add((floor, mine.Select(z => new PlanLoop(floor.Layer, z.Points, closedExactly: true)).ToList()));
+        }
+        if (replaced.Count == 0) return;
+
+        // THE FLOOR STAYS ONE PLATE, CARRYING ITS ZONES: replaced by them, every later reader that asks whether a plate lies
+        // inside a floor - one floor read on two sheets, a plate inside another - asked it of the zones, and another sheet's
+        // partial reading of the floor, inside none of them, was modelled again (31138 L1, +6,816 sq ft). The composer
+        // writes the zones; everything before it sees the floor.
+        foreach (var (floor, mine) in replaced)
+        {
+            // each zone priced by the call-outs standing in it, AMONG THE SHEET'S OTHER PLATES, as the floor was: a call-out
+            // belongs to the smallest plate holding it, and 31130 L14's «16"» stand inside rings of their own drawn in a pen the
+            // zoning does not divide by - priced among the zones alone they went to the floor's zone, 10,590 sq ft of 16" where
+            // the floor is the 9" field printed in it and the engineer's model carries 3,452 sq ft of 16"
+            var zoneSet = new PlanGeometrySet();
+            zoneSet.Slabs.AddRange(mine);
+            zoneSet.Slabs.AddRange(result.Slabs.Where(s => !ReferenceEquals(s, floor)));
+            zoneSet.Openings.AddRange(result.Openings);   // a tag standing in a hole says nothing about the floor round it
+            zoneSet.Tags.AddRange(result.Tags);
+            PriceSlabsByTheCalloutsInsideThem(zoneSet, options);
+            zoneSet.Slabs.RemoveRange(mine.Count, zoneSet.Slabs.Count - mine.Count);
+            // A ZONE THAT PRINTS NOTHING TAKES THE CALL-OUT NEAREST IT, as the page read made it: priced only by what stands
+            // inside, it fell to the 12" default (31130 P2, 6,182 sq ft; 31138 L1, 6,422) - a zone the reader drew round
+            // ground that printed nothing, given to the nearest thickness, and then given none
+            var printed = result.Tags
+                .Select(t => (t.Point, Parsed: SlabThicknessCallout.MatchAnyOrderText(t.Text)))
+                .Where(t => t.Parsed is { } v && v.ExactIn >= 4 && v.ExactIn <= 120 && LoopGeometry.PointInPolygon(t.Point, floor.Points)
+                            // not one a smaller plate of the sheet holds: it is that plate's, as the pricing gave it
+                            && !result.Slabs.Any(s => !ReferenceEquals(s, floor) && s.Area < floor.Area && LoopGeometry.PointInPolygon(t.Point, s.Points))
+                            && !result.Openings.Any(o => LoopGeometry.PointInPolygon(t.Point, o.Points)))
+                .Select(t => (t.Point, Inches: t.Parsed!.Value.ExactIn)).ToList();
+            var priced = zoneSet.Slabs.Select(z => z.ThicknessInchesFromTag is not null || printed.Count == 0 ? z
+                : new PlanLoop(z.Layer, z.Points, z.ClosedExactly)
+                {
+                    ThicknessInchesFromTag = printed.MinBy(t => t.Point.DistanceTo(PdfToSafe.SlabZones.InteriorPoint(z))).Inches,
+                }).ToList();
+            // the floor's own thickness, for whatever reads it whole: the zone of the most ground's
+            double? field = priced.GroupBy(z => z.ThicknessInchesFromTag).OrderByDescending(g => g.Sum(z => z.Area)).First().Key;
+            int at = result.Slabs.IndexOf(floor);
+            result.Slabs[at] = new PlanLoop(floor.Layer, floor.Points, floor.ClosedExactly) { ThicknessInchesFromTag = field ?? floor.ThicknessInchesFromTag, Zones = priced };
+            string said = $"{floor.Layer}: a floor plate of {options.SqFt(floor.Area)} sq ft ";
+            result.Flags.RemoveAll(f => f.StartsWith(said, StringComparison.Ordinal)
+                                        && (f.Contains("different thickness call-outs", StringComparison.Ordinal) || f.Contains("equally often", StringComparison.Ordinal)));
+            result.Flags.Add($"{floor.Layer}: a floor plate of {options.SqFt(floor.Area)} sq ft the drawing zones by thickness is modelled as its " +
+                             $"{priced.Count} zones, each the thickness printed in it: " +
+                             string.Join(", ", priced.GroupBy(z => z.ThicknessInchesFromTag)
+                                 .OrderByDescending(g => g.Sum(z => z.Area))
+                                 .Select(g => $"{(g.Key is double t ? t.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "\"" : "default")} {options.SqFt(g.Sum(z => z.Area))} sq ft")) +
+                             ". The zones are bounded by the floor's own pen, its walls and its dashed lines; where a part of the floor prints " +
+                             "nothing it took the zone beside it - ASSUMED, check the boundaries against the drawing.");
+        }
     }
 
     /// <summary>

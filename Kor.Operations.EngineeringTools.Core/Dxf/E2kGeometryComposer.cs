@@ -1438,22 +1438,36 @@ public static class E2kGeometryComposer
                 placedSlabs.Add(slabStory.Name, where);
                 (placedPlatePolygons.TryGetValue(slabStory.Name, out var written) ? written : placedPlatePolygons[slabStory.Name] = new()).Add(shiftedPts);
 
-                // Claimed only once the plate is certain to be written.
-                if (!slabProps.TryGetValue(thickness, out string? propName))
+                // A FLOOR THE DRAWING ZONES BY THICKNESS IS WRITTEN AS ITS ZONES (step 183, 2026-10-25): every test above is
+                // the floor's, whole - one floor read twice, the plate already written, what stands under it - and only the
+                // writing is the zones', each its own area at the thickness printed in it. Judged zone by zone, a partial
+                // reading of the floor from another sheet lay inside none of them and was written again (31138 L1, +6,816 sq ft).
+                var parts = slab.Zones.Count > 0 ? slab.Zones : [slab];
+                foreach (var part in parts)
                 {
-                    propName = doc.FindShellProperty("Slab", thickness);
+                    var partRing = ReferenceEquals(part, slab) ? ring : LoopGeometry.RemoveSpurs(part.Points);
+                    var partNames = ReferenceEquals(part, slab) ? names
+                        : partRing.Select(p => PointAt(p.X + options.OffsetX, p.Y + options.OffsetY)).Distinct().ToList();
+                    if (partNames.Count < 3) { flags.Add($"{placement.SourceSheet}: a thickness zone collapsed to fewer than three joints and was skipped."); continue; }
+                    double partThickness = ReferenceEquals(part, slab) ? thickness
+                        : part.ThicknessInchesFromTag is { } zoneTag && options.ModelUnitInInches > 0 ? zoneTag / options.ModelUnitInInches : thickness;
+
+                // Claimed only once the plate is certain to be written.
+                if (!slabProps.TryGetValue(partThickness, out string? propName))
+                {
+                    propName = doc.FindShellProperty("Slab", partThickness);
                     if (propName is not null) reusedSections.Add(propName);
-                    else newSlabProps[thickness] = propName = $"KOR-S{Trim(thickness, trimFormat)}{slabGrade}";
-                    slabProps[thickness] = propName;
+                    else newSlabProps[partThickness] = propName = $"KOR-S{Trim(partThickness, trimFormat)}{slabGrade}";
+                    slabProps[partThickness] = propName;
                 }
 
                 string name = NextName("F", ref floorCounter);
                 buildingOfObject[name] = placement.SheetBuildingTags;
                 sourceSheetOfObject[name] = placement.SourceSheet;
                 storeysWithPlates.Add(slabStory.Name);
-                string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
-                string offsets = string.Join("  ", names.Select(_ => "0"));
-                areaLines.Add($"  AREA \"{name}\"  FLOOR  {names.Count}  {joints}  {offsets}");
+                string joints = string.Join("  ", partNames.Select(n => $"\"{n}\""));
+                string offsets = string.Join("  ", partNames.Select(_ => "0"));
+                areaLines.Add($"  AREA \"{name}\"  FLOOR  {partNames.Count}  {joints}  {offsets}");
                 // A plate priced from the call-out printed inside it counts as READ, and it has to,
                 // or the report contradicts the model: 44 plates carried a thickness off the
                 // drawing while the summary said "every one of the 106 floor plate(s) in this
@@ -1461,7 +1475,7 @@ public static class E2kGeometryComposer
                 // engineer who checks one plate and finds 7 inches stops believing the rest.
                 //
                 // Page is null for these: they came from the drawing, not from a page of a PDF.
-                if (slab.ThicknessInchesFromTag is { } printed)
+                if (part.ThicknessInchesFromTag is { } printed)
                     readThickness.Add((slabStory.Name, placement.SourceSheet, printed, null));
                 else if (placement.SlabThickness is not null && placement.SlabThicknessInches is { } sourceThickness)
                     readThickness.Add((slabStory.Name, placement.SourceSheet, sourceThickness, placement.SlabThicknessPage));
@@ -1485,9 +1499,10 @@ public static class E2kGeometryComposer
                 if (!platesByStorey.TryGetValue(slabStory.Name, out var onThisStorey))
                     platesByStorey[slabStory.Name] = onThisStorey = new List<(string, string, Extent)>();
 
-                var plateExtent = Extent.At(slab.Points[0].X + options.OffsetX, slab.Points[0].Y + options.OffsetY);
-                foreach (var p in slab.Points) plateExtent = plateExtent.With(p.X + options.OffsetX, p.Y + options.OffsetY);
+                var plateExtent = Extent.At(part.Points[0].X + options.OffsetX, part.Points[0].Y + options.OffsetY);
+                foreach (var p in part.Points) plateExtent = plateExtent.With(p.X + options.OffsetX, p.Y + options.OffsetY);
                 onThisStorey.Add((name, propName, plateExtent));
+                }
             }
 
             // Shafts and stair openings, cut out of the plate rather than left for the engineer.

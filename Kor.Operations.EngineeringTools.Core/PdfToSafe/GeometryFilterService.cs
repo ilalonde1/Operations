@@ -259,7 +259,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double slabEdgeBridgeMm = DefaultSlabEdgeBridgeMm,
             double minSlabAreaMm2 = DefaultMinSlabAreaMm2,
             IReadOnlyList<string>? voidWords = null,
-            IReadOnlyList<string>? slabWords = null)
+            IReadOnlyList<string>? slabWords = null,
+            double dashGapMm = Intake.FootingOutlines.DefaultDashGapMm)
         {
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
             furniture ??= SheetFurniture.Set.Empty;
@@ -690,7 +691,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             result.StairFlights.AddRange(StairFlights(deferredPaper.Where(i => !doorwayOf.ContainsKey(i)).Select(i => rawSubpaths[i].Points),
                                                      result.Lines.Where((l, i) => !result.LineIsAnnotation[i]), result.TreadLines));
 
-            SlabEdgesFromLoops(result, fates, firstFate, slabEdgeBridgeMm, minSlabAreaMm2, minWallThicknessMm, maxWallThicknessMm, voidWords ?? PdfIntakeOptions.DefaultVoidWords, slabWords ?? PdfIntakeOptions.DefaultSlabWords);
+            SlabEdgesFromLoops(result, fates, firstFate, slabEdgeBridgeMm, minSlabAreaMm2, minWallThicknessMm, maxWallThicknessMm, voidWords ?? PdfIntakeOptions.DefaultVoidWords, slabWords ?? PdfIntakeOptions.DefaultSlabWords, dashGapMm);
 
             if (fates is not null && (deferredPaper.Count > 0 || deferredNoInk.Count > 0))
             {
@@ -1937,7 +1938,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         internal static void SlabEdgesFromLoops(ExtractedGeometry result, IList<PathFate>? fates, int firstFate,
             double slabEdgeBridgeMm = DefaultSlabEdgeBridgeMm, double minSlabAreaMm2 = DefaultMinSlabAreaMm2,
             double minWallThicknessMm = PdfIntakeOptions.DefaultMinWallThicknessMm, double maxWallThicknessMm = PdfIntakeOptions.DefaultMaxWallThicknessMm,
-            IReadOnlyList<string>? voidWords = null, IReadOnlyList<string>? slabWords = null)
+            IReadOnlyList<string>? voidWords = null, IReadOnlyList<string>? slabWords = null,
+            double dashGapMm = Intake.FootingOutlines.DefaultDashGapMm)
         {
             voidWords ??= PdfIntakeOptions.DefaultVoidWords; slabWords ??= PdfIntakeOptions.DefaultSlabWords;
             result.FirstEdgeSlab = result.Slabs.Count;
@@ -3042,6 +3044,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 result.Slabs.Add(loop.Points.Select(p => (p.X, p.Y)).ToList());
                 result.SlabColors.Add(((byte)0, (byte)0, (byte)0));
                 result.SlabIsAnnotation.Add(false);
+                // A FLOOR THE DRAWING ZONES BY THICKNESS IS MODELLED AS ITS ZONES (step 183, SlabZones): the floor stays as it is;
+                // its zones go beside it, on their own layer, and the classifier replaces the floor by the zones that tile it
+                if (Environment.GetEnvironmentVariable("KOR_STEP183_OFF") != "1")
+                {
+                    var zoneCallouts = result.TextAnnotations
+                        .Select(t => (t, p: QuantityTakeoff.SlabThicknessCallout.MatchAnyOrderText(t.Text)))
+                        .Where(x => x.p is not null)
+                        .Select(x => new SlabZones.Callout(new DxfPoint(x.t.X, x.t.Y), x.p!.Value.Exact, x.p.Value.IsMetric)).ToList();
+                    var zoneLines = result.Lines.Select((l, i) => ((IReadOnlyList<DxfPoint>)l.Select(p => new DxfPoint(p.X, p.Y)).ToList(), i < result.LineWidths.Count ? result.LineWidths[i] : 0.0)).ToList();
+                    // and the strokes along a grid axis in a pen not the grid's - kept apart from the lines, offered to the slab
+                    // pass's arrangement above as the drawing's own: 31130 L14 runs the north side of its west 16" area along a
+                    // grid line, dashed, and without it the area stood open to the floor round it. No pen is known for them, so
+                    // they are offered as dashes only, never as the outline's solid lines
+                    zoneLines.AddRange(result.StrokesOnGrid.Where(s => s.Count == 2)
+                        .Select(s => ((IReadOnlyList<DxfPoint>)s.Select(p => new DxfPoint(p.X, p.Y)).ToList(), -1.0)));
+                    SlabZones.Trace = FaceTrace;
+                    var zones = SlabZones.Cut(loop, zoneLines, zoneCallouts, SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm, dashGapMm, out string zoneWhy, wallEdges, result.PageWordBoxes);
+                    SlabZones.Trace = null;
+                    FaceTrace?.Invoke($"slab pass: step 183: floor {loop.Area / 92903.04:0} sq ft - {zoneWhy}" + (zones is null ? "" :
+                        ": " + string.Join(" | ", zones.Select(z => $"{(z.IsMetric ? $"{z.Printed:0}" : $"{z.Printed:0.#}\"")} {z.Ring.Area / 92903.04:0} sq ft"))));
+                    if (zones is not null)
+                        foreach (var z in zones) result.SlabZones.Add(z.Ring.Points.Select(p => (p.X, p.Y)).ToList());
+                }
                 // the X regions inside this plate, written as loops of their own: the DXF side reads a ring inside a floor
                 // as an opening (StructuralPlanClassifier), and the composer cuts it from the plate (step 104)
                 foreach (var x in xMarks)

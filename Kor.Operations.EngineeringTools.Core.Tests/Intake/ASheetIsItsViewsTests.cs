@@ -143,7 +143,11 @@ public sealed class ASheetIsItsViewsTests
         var g = Geometry();
         var all = (System.Collections.IList)typeof(ExtractedGeometry).GetProperty(members)!.GetValue(g)!;
         // named here with the reason they are not one-per-member: each view rightly takes all of them
-        var notParallel = new Dictionary<string, string> { ["WallTypeTags"] = "every assembly-code tag on the sheet, whether or not a wall took it" };
+        var notParallel = new Dictionary<string, string>
+        {
+            ["WallTypeTags"] = "every assembly-code tag on the sheet, whether or not a wall took it",
+            ["SlabZones"] = "a floor's thickness zones (step 183), rings of their own carried by the view their centroid is in",
+        };
         var lists = typeof(ExtractedGeometry).GetProperties()
             .Where(p => p.Name.StartsWith(prefix, StringComparison.Ordinal) && p.Name != members && !notParallel.ContainsKey(p.Name)
                         && p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(List<>))

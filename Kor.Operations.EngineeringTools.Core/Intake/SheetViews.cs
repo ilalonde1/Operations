@@ -326,6 +326,8 @@ public static class SheetViews
                 if (Owner(o.Average(p => p.X), o.Average(p => p.Y)) == k) g.CarriedOpenings.Add(o);
             foreach (var o in geometry.CarriedVoids)
                 if (Owner(o.Average(p => p.X), o.Average(p => p.Y)) == k) g.CarriedVoids.Add(o);
+            foreach (var z in geometry.SlabZones)
+                if (Owner(Centroid(z).X, Centroid(z).Y) == k) g.SlabZones.Add(z);   // as its floor goes: by its centroid
 
             for (int i = 0; i < geometry.Columns.Count; i++)
             {

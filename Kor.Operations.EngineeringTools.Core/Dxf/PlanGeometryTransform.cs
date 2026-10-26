@@ -59,10 +59,13 @@ public static class PlanGeometryTransform
         return moved;
     }
 
+    // EVERY PROPERTY OF THE PLATE MOVES WITH IT: its thickness zones (step 183) were left behind here, and every zoned floor
+    // of 31065 reached the composer whole - its report said "modelled as its zones", its e2k was byte-identical without them
     private static PlanLoop Move(PlanLoop loop, Frame frame) =>
         new(loop.Layer, loop.Points.Select(frame.Apply).ToList(), loop.ClosedExactly)
         {
             ThicknessInchesFromTag = loop.ThicknessInchesFromTag,
+            Zones = loop.Zones.Select(z => Move(z, frame)).ToList(),
         };
 
     private static double Normalise(double degrees)

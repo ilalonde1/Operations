@@ -1712,6 +1712,8 @@ public static class DxfToEtabsService
                         var trimmed = LoopGeometry.ClipToSideOf(slab.Points, seam.Start, seam.End, anchor);
                         if (trimmed.Count < 3 || Math.Abs(trimmed.Count - slab.Points.Count) == 0) continue;
 
+                        // its thickness zones (step 183) are not carried: they tile the floor before the trim, not after it,
+                        // and the trimmed floor is written whole at the thickness of its largest zone
                         var reshaped = new PlanLoop(slab.Layer, trimmed, closedExactly: false)
                         {
                             ThicknessInchesFromTag = slab.ThicknessInchesFromTag,
