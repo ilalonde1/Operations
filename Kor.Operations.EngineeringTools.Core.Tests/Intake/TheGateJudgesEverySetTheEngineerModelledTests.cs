@@ -25,10 +25,10 @@ public sealed class TheGateJudgesEverySetTheEngineerModelledTests
 {
     private static CorpusAnalyzer.SetRow Row(string job, double? oursSqFt, double hersSqFt = 100_000,
         int? thicknessAgree = 8, int? thicknessStoreys = 10, int? openingsWeHave = 20, int? openingsHers = 30, string? yardstick = "hers.e2k",
-        int? overHalfAgain = 0)
+        int? overHalfAgain = 0, double? medianMm = 20)
         => new(Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow, job, "03 Residential", "structural", job + ".pdf",
             "2026-01-01", false, 1, 1, 1, 1, 0, 0, 0, 1, true, null, 1, 1, 0, 0, 0, 0, 1.0, null,
-            Yardstick: yardstick,
+            Yardstick: yardstick, OursMedianMm: oursSqFt is null ? null : medianMm,
             PlatesOursSqFt: oursSqFt, PlatesHersSqFt: oursSqFt is null ? null : hersSqFt, PlatesUnderHalf: 0,
             PlatesOverHalfAgain: oursSqFt is null ? null : overHalfAgain, PlatesBeyondSqFt: 0,
             ThicknessStoreys: oursSqFt is null ? null : thicknessStoreys, ThicknessAgree: oursSqFt is null ? null : thicknessAgree,
@@ -216,6 +216,48 @@ public sealed class TheGateJudgesEverySetTheEngineerModelledTests
         Assert.Empty(old.Judged);
         // and the jobs worth running are still known from the yardstick column alone
         Assert.Equal(["31202-01"], CorpusGate.JobsWithAYardstick([Row("31202-01", null)]));
+    }
+
+    /// <summary>
+    /// A FRAME THAT DOES NOT REGISTER IS NOT JUDGED BY POSITION, AND SAYS SO (2026-10-26). 30986-02 stopped the
+    /// 21fb2b10 gate - her plate area fell 3,728 sq ft, her thicknesses we agree with 2 -> 1 - and the group bisect
+    /// named step 179, which, looked at, had read P1 as a whole floor: better, judged through a frame whose columns
+    /// stand a median 3.1 m then 3.3 m off hers. These are its own figures from the two ledgers.
+    ///
+    /// COVERS: plate, thickness, openings and over-read all refused where either run's frame is out; the set named in
+    /// the Summary and kept out of the totals; a frame that registered at the bank and does not now stops the bank;
+    /// the line itself sits at the gap. DOES NOT: whether 1,000 mm is the right line for sets not yet in the corpus.
+    /// </summary>
+    [Fact]
+    public void ASetWhoseFrameDoesNotRegisterIsNotJudgedByPositionAndIsNamed()
+    {
+        var before = new[] { Row("30986-02", 19_710, 57_527, thicknessAgree: 2, thicknessStoreys: 2, openingsWeHave: 7, medianMm: 3_057), Row("31138-01", 224_136, 309_507) };
+        var after = new[] { Row("30986-02", 15_982, 57_527, thicknessAgree: 1, thicknessStoreys: 2, openingsWeHave: 11, overHalfAgain: 1, medianMm: 3_317), Row("31138-01", 224_136, 309_507) };
+
+        var report = CorpusGate.Judge(before, after);
+
+        Assert.Empty(report.Losses);
+        var v = Assert.Single(report.Verdicts, x => x.Job == "30986-02");
+        Assert.True(v.NotJudgedByPosition);
+        Assert.False(v.LostPlate);
+        Assert.False(v.LostThickness);
+        Assert.False(v.OverRead);
+        Assert.Equal(224_136, report.BeforeSqFt, 0);                           // the totals are 31138's alone
+        string summary = CorpusGate.Summary(report);
+        Assert.Contains("1 of the 2 set(s) judged both times are NOT JUDGED on plate, thickness, openings or over-read", summary, StringComparison.Ordinal);
+        Assert.Contains("30986-02: median 3,057 -> 3,317 mm", summary, StringComparison.Ordinal);
+
+        // the same set with a frame that registered at the bank and does not now: a loss, not a refusal
+        var broke = CorpusGate.Judge(
+            [Row("30986-02", 19_710, 57_527, medianMm: 150)],
+            [Row("30986-02", 19_710, 57_527, medianMm: 3_317)]);
+        var lost = Assert.Single(broke.Losses);
+        Assert.True(lost.LostFrame);
+        Assert.Contains("the frame stopped registering", lost.Why, StringComparison.Ordinal);
+
+        // the line sits in the corpus's gap: 781 mm (31093, the worst that registers) judged; 1,364 (31048) not
+        Assert.False(CorpusGate.Judge([Row("31093-01", 10_000, medianMm: 781)], [Row("31093-01", 9_000, medianMm: 781)]).Verdicts[0].NotJudgedByPosition);
+        Assert.True(CorpusGate.Judge([Row("31048-01", 10_000, medianMm: 1_364)], [Row("31048-01", 9_000, medianMm: 1_364)]).Verdicts[0].NotJudgedByPosition);
     }
 
     /// <summary>

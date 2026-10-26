@@ -23,6 +23,13 @@ namespace Kor.Operations.EngineeringTools.Intake;
 /// stair well is a gain here and a fault on the page - the render and the six-set gate answer that); the
 /// openings she flags as slivers. A same-class fault it would not catch: a rule that trades her plate area for
 /// someone else's on the same storey, area for area.
+///
+/// A SET WHOSE FRAME DOES NOT REGISTER (2026-10-26, <see cref="FrameUnregisteredMedianMm"/>) is judged on nothing read
+/// by position - which is plate, thickness, openings and over-read, everything but whether it built - and is named so,
+/// with the frame registering at the bank and not now a loss of its own. What that leaves unjudged: a real loss on
+/// those sets (seven of the 57 on 2026-10-26); a frame that is wrong on ONE storey of a set whose median registers,
+/// which this per-set figure cannot see; and a set whose frame was out at the bank and is still out, however its
+/// figures move.
 /// </summary>
 public static class CorpusGate
 {
@@ -43,6 +50,20 @@ public static class CorpusGate
     /// </summary>
     public const double OverReadShare = 1.5;
 
+    /// <summary>
+    /// THE MEDIAN DISTANCE, OUR COLUMN TO HERS, PAST WHICH A SET'S FRAME DOES NOT REGISTER AND NOTHING THAT IS JUDGED BY
+    /// POSITION CAN BE (2026-10-26). Her plate area we read is our plates whose centre falls in her footprint; the
+    /// thickness agreement is over those plates; her openings we have are matched centre to centre. A frame metres out
+    /// moves all of them: the group bisect of the 21fb2b10 gate named step 179 for 30986-02's plate and thickness loss,
+    /// and looking at it showed step 179 had read P1 as a whole floor - better - judged through a frame 3.3 m out.
+    ///
+    /// The line is where the corpus has a gap, not a round number: across the run 45 bank (48 sets with a figure) and
+    /// the 21fb2b10 gate (46), the medians run continuously from 0 to 304 mm, then 434, 641 and 781, then nothing until
+    /// 1,364 - and the same seven sets sit above that gap in both (30819, 30986-02, 31005, 31048, 31098, 31183, 70057).
+    /// The share within 100 mm does not separate them: 31048 has 37% within, 30993 - which registers - 33%.
+    /// </summary>
+    public const double FrameUnregisteredMedianMm = 1_000;
+
     /// <summary>One set's verdict: what it was at the bank, what it is now, and whether that is a loss.</summary>
     public sealed record Verdict(
         string Job, double? BeforeSqFt, double? AfterSqFt, double? HersSqFt,
@@ -52,8 +73,27 @@ public static class CorpusGate
         // is not judged now - it failed to build, its yardstick would not load, its row is gone - is not "unchanged",
         // it is EVIDENCE MISSING, and evidence missing can conceal any loss at all. It stops the bank like a loss.
         bool WasJudged = false, bool IsJudged = false,
-        double? BeforeHersSqFt = null, int? OverHalfAgainBefore = null, int? OverHalfAgainAfter = null)
+        double? BeforeHersSqFt = null, int? OverHalfAgainBefore = null, int? OverHalfAgainAfter = null,
+        double? MedianMmBefore = null, double? MedianMmAfter = null)
     {
+        /// <summary>The frame did not register at the bank: our columns' median distance from hers past the line.</summary>
+        public bool FrameUnregisteredBefore => MedianMmBefore is { } m && m > FrameUnregisteredMedianMm;
+
+        /// <summary>The frame does not register now.</summary>
+        public bool FrameUnregisteredAfter => MedianMmAfter is { } m && m > FrameUnregisteredMedianMm;
+
+        /// <summary>
+        /// Plate, thickness, openings and over-read are all read by position, so where either run's frame does not
+        /// register none of them is a verdict: a move there is the frame's, not the rule's.
+        /// </summary>
+        public bool NotJudgedByPosition => FrameUnregisteredBefore || FrameUnregisteredAfter;
+
+        /// <summary>
+        /// A frame that registered at the bank and does not now is a LOSS, not a refusal: otherwise a rule that wrecked
+        /// the column reading would push a set past the line and hide every other loss on it behind "not judged".
+        /// </summary>
+        public bool LostFrame => MedianMmBefore is not null && !FrameUnregisteredBefore && FrameUnregisteredAfter;
+
         /// <summary>The change in her square feet we read, or null where the set was not judged both times.</summary>
         public double? MovedSqFt => BeforeSqFt is { } b && AfterSqFt is { } a && !double.IsNaN(b) && !double.IsNaN(a) ? a - b : null;
 
@@ -76,25 +116,25 @@ public static class CorpusGate
         }
 
         /// <summary>A fall past the tolerance: the thing that stops a bank.</summary>
-        public bool LostPlate => MovedSqFt is { } m && m < -Tolerance;
+        public bool LostPlate => !NotJudgedByPosition && MovedSqFt is { } m && m < -Tolerance;
 
         /// <summary>Her thicknesses we agreed with and no longer do - a figure that goes missing counts as gone.</summary>
-        public bool LostThickness => ThicknessAgreeBefore is { } b && (ThicknessAgreeAfter ?? 0) < b;
+        public bool LostThickness => !NotJudgedByPosition && ThicknessAgreeBefore is { } b && (ThicknessAgreeAfter ?? 0) < b;
 
         /// <summary>Her openings we had and no longer have (the gate computed them and judged nothing by them until now).</summary>
-        public bool LostOpenings => OpeningsWeHaveBefore is { } b && (OpeningsWeHaveAfter ?? 0) < b;
+        public bool LostOpenings => !NotJudgedByPosition && OpeningsWeHaveBefore is { } b && (OpeningsWeHaveAfter ?? 0) < b;
 
         /// <summary>A figure we cannot compare because the set stopped being judged: it hides everything else.</summary>
         public bool EvidenceMissing => WasJudged && !IsJudged;
 
         /// <summary>More storeys carrying half again her area than before: a rule adding what she does not have.</summary>
-        public bool OverRead => (OverHalfAgainAfter ?? 0) > (OverHalfAgainBefore ?? 0);
+        public bool OverRead => !NotJudgedByPosition && (OverHalfAgainAfter ?? 0) > (OverHalfAgainBefore ?? 0);
 
         /// <summary>The set read a DIFFERENT stick file in the two runs, so no rule is answerable for what moved.</summary>
         public bool ReIssued { get; init; }
 
         /// <summary>What would have stopped the bank had the drawings not changed under it.</summary>
-        public bool WouldHaveLost => LostPlate || LostThickness || LostOpenings || EvidenceMissing || OverRead;
+        public bool WouldHaveLost => LostPlate || LostThickness || LostOpenings || EvidenceMissing || OverRead || LostFrame;
 
         public bool Lost => WouldHaveLost && !ReIssued;
 
@@ -102,6 +142,7 @@ public static class CorpusGate
         public string Why => !WouldHaveLost ? "" : (ReIssued ? "RE-ISSUED, so no rule is answerable: " : "") + string.Join(", ", new[]
         {
             EvidenceMissing ? "judged at the bank, not judged now" : null,
+            LostFrame ? $"the frame stopped registering: our columns' median distance from hers {MedianMmBefore:N0} -> {MedianMmAfter:N0} mm (line {FrameUnregisteredMedianMm:N0})" : null,
             LostPlate ? $"her plate area fell {-(MovedSqFt ?? 0):N0} sq ft (tolerance {Tolerance:N0})" : null,
             LostThickness ? $"her thicknesses we agree with fell {ThicknessAgreeBefore} -> {ThicknessAgreeAfter?.ToString(CultureInfo.InvariantCulture) ?? "none"}" : null,
             LostOpenings ? $"her openings we have fell {OpeningsWeHaveBefore} -> {OpeningsWeHaveAfter?.ToString(CultureInfo.InvariantCulture) ?? "none"}" : null,
@@ -143,7 +184,8 @@ public static class CorpusGate
                 (isJudged ? now!.OpeningsHers : null) ?? (wasJudged ? was!.OpeningsHers : null),
                 wasJudged, isJudged,
                 wasJudged ? was!.PlatesHersSqFt : null,
-                wasJudged ? was!.PlatesOverHalfAgain : null, isJudged ? now!.PlatesOverHalfAgain : null)
+                wasJudged ? was!.PlatesOverHalfAgain : null, isJudged ? now!.PlatesOverHalfAgain : null,
+                wasJudged ? was!.OursMedianMm : null, isJudged ? now!.OursMedianMm : null)
             {
                 // A SET THAT READ A DIFFERENT STICK FILE IS NOT A LOSS (2026-09-23). The gate judges a RULE, and a
                 // re-issued drawing set moves for reasons no rule can be blamed for: 31039-01 fell from 35 plates
@@ -159,7 +201,9 @@ public static class CorpusGate
         // the losses first and worst-first; then everything else by the SIZE of its move, either way (a gain of 1,000
         // before a gain of 100 - ascending put them the other way round, Codex's audit 2026-09-22)
         var ordered = verdicts.OrderByDescending(v => v.Lost).ThenBy(v => v.Lost ? v.MovedSqFt ?? double.MinValue : -Math.Abs(v.MovedSqFt ?? 0)).ToList();
-        var both = ordered.Where(v => v.BeforeSqFt is not null && v.AfterSqFt is not null).ToList();
+        // the totals are her figures judged both times THROUGH A FRAME THAT REGISTERS - a set read metres out adds noise,
+        // not evidence, and the Summary names the sets left out
+        var both = ordered.Where(v => v.BeforeSqFt is not null && v.AfterSqFt is not null && !v.NotJudgedByPosition).ToList();
         return new Report(ordered,
             both.Sum(v => v.BeforeSqFt ?? 0), both.Sum(v => v.AfterSqFt ?? 0), both.Sum(v => v.HersSqFt ?? 0),
             both.Sum(v => v.ThicknessAgreeBefore ?? 0), both.Sum(v => v.ThicknessAgreeAfter ?? 0), both.Sum(v => v.ThicknessStoreys ?? 0),
@@ -227,12 +271,26 @@ public static class CorpusGate
             string share = v.ShareNow is { } s ? $"{100 * s:F0}%" : "-";
             string moved = v.MovedSqFt is { } m ? (m >= 0 ? "+" : "") + m.ToString("N0", CultureInfo.InvariantCulture) : "";
             sb.AppendLine(CultureInfo.InvariantCulture,
-                $"  {(v.Lost ? "LOST " : v.ReIssued ? "REISS" : "     ")}{v.Job,-13}{was,12} -> {now,12} ({share,4}) {moved,10}   {v.ThicknessAgreeBefore,3} -> {v.ThicknessAgreeAfter,3} of {v.ThicknessStoreys,3}   {v.OpeningsWeHaveBefore,4} -> {v.OpeningsWeHaveAfter,4} of {v.OpeningsHers,4}");
+                $"  {(v.Lost ? "LOST " : v.ReIssued ? "REISS" : v.NotJudgedByPosition ? "FRAME" : "     ")}{v.Job,-13}{was,12} -> {now,12} ({share,4}) {moved,10}   {v.ThicknessAgreeBefore,3} -> {v.ThicknessAgreeAfter,3} of {v.ThicknessStoreys,3}   {v.OpeningsWeHaveBefore,4} -> {v.OpeningsWeHaveAfter,4} of {v.OpeningsHers,4}");
         }
         sb.AppendLine(CultureInfo.InvariantCulture,
             $"  totals: her plates we read {r.BeforeSqFt:N0} -> {r.AfterSqFt:N0} sq ft of {r.HersSqFt:N0} " +
             $"({(r.HersSqFt > 0 ? 100 * r.BeforeSqFt / r.HersSqFt : 0):F0}% -> {(r.HersSqFt > 0 ? 100 * r.AfterSqFt / r.HersSqFt : 0):F0}%); " +
-            $"thickness {r.ThicknessAgreeBefore} -> {r.ThicknessAgreeAfter} of {r.ThicknessStoreys}; her openings we have {r.OpeningsWeHaveBefore} -> {r.OpeningsWeHaveAfter} of {r.OpeningsHers}");
+            $"thickness {r.ThicknessAgreeBefore} -> {r.ThicknessAgreeAfter} of {r.ThicknessStoreys}; her openings we have {r.OpeningsWeHaveBefore} -> {r.OpeningsWeHaveAfter} of {r.OpeningsHers}" +
+            $" (the {r.Judged.Count(v => !v.NotJudgedByPosition)} of {r.Judged.Count} set(s) judged both times whose frame registers)");
+        // Said whether or not anything lost, like the re-issued sets: a set the gate cannot see is not a set it passed.
+        var blind = r.Verdicts.Where(v => v.NotJudgedByPosition && !v.LostFrame).ToList();
+        if (blind.Count > 0)
+        {
+            sb.AppendLine(string.Create(CultureInfo.InvariantCulture,
+                $"  {blind.Count} of the {r.Judged.Count} set(s) judged both times are NOT JUDGED on plate, thickness, openings or over-read: the frame does not register") +
+                string.Create(CultureInfo.InvariantCulture,
+                $" (our columns' median distance from hers over {FrameUnregisteredMedianMm:N0} mm at the bank or now), so a move there is the frame's.") +
+                " Their only judges are the render and the six-set gate:");
+            foreach (var v in blind)
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"    {v.Job}: median {v.MedianMmBefore?.ToString("N0", CultureInfo.InvariantCulture) ?? "-"} -> {v.MedianMmAfter?.ToString("N0", CultureInfo.InvariantCulture) ?? "-"} mm");
+        }
         // Said whether or not anything lost: a set whose drawings changed under the gate is not evidence either way,
         // and a reader who does not know that will read its movement as the rule's doing.
         var reissued = r.Verdicts.Where(v => v.ReIssued).ToList();
