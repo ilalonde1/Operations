@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wood Frame One Way</title>
+<!-- For Ian. Every wood-frame finding with its evidence, 2026-10-26. Same design system as KOR-WoodFrame-OneStandard-2026-10-25. Render with tools/Format-BdWebPdf.ps1. -->
+<style>
+  :root {
+    --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+    --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+    --accent:#FF5B35; --accent-ink:#C6360F;
+    --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --crit:#C0392B;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono:"Cascadia Code", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+      --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87;
+      --line:#29323B; --line-strong:#38434E; --slate:#7E97AC; --slate-deep:#C4D3DF;
+      --accent:#FF7150; --accent-ink:#FF9276; }
+  }
+  :root[data-theme="dark"] { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+    --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B; --line-strong:#38434E;
+    --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:10.3pt; line-height:1.38; -webkit-font-smoothing:antialiased; }
+  .page { max-width: 8.1in; margin: 0 auto; padding: 0; }
+
+  .top { background: linear-gradient(180deg,var(--slate-deep),var(--slate));
+    color:#EAF0F5; border-bottom:2.5px solid var(--accent); padding: 13px 22px; }
+  .top h1 { margin:0; font-size:19pt; font-weight:700; letter-spacing:-.01em; color:#fff; }
+  .top .ey { font-family:var(--mono); font-size:7.5pt; letter-spacing:.2em; text-transform:uppercase; color:#FFB59F; }
+  .top p { margin:.2rem 0 0; font-size:9.6pt; color:#CBD8E2; max-width:46rem; }
+
+  .body { padding: 13px 22px 0; }
+  h2 { font-family:var(--mono); font-size:8pt; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); margin: 8px 0 .5rem; font-weight:700; }
+  p.lede { margin:0 0 .6rem; font-size:9.6pt; color:var(--ink-soft); }
+
+  table { border-collapse:collapse; width:100%; font-size:8.9pt; margin-bottom:12px; }
+  th { text-align:left; font-family:var(--mono); font-size:7.6pt; letter-spacing:.06em; text-transform:uppercase;
+       color:var(--ink-soft); border-bottom:1.5px solid var(--line-strong); padding:.3rem .45rem; font-weight:700; }
+  td { padding:.3rem .45rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr td:first-child { font-weight:650; color:var(--ink); width:8.4rem; }
+  tr:nth-child(even) td { background:var(--surface-2); }
+  td.target { background: color-mix(in srgb, var(--good) 8%, var(--surface)) !important; }
+
+  .flow { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin:0 0 12px; }
+  .step { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.5rem .65rem;
+    border-left:3px solid var(--accent); }
+  .step .n { font-family:var(--mono); font-weight:700; color:var(--accent-ink); font-size:8.3pt; }
+  .step h3 { margin:.1rem 0 .2rem; font-size:10.6pt; }
+  .step p { margin:0; font-size:8.7pt; color:var(--ink-soft); line-height:1.36; }
+  .step .st { display:inline-block; margin-top:.3rem; font-family:var(--mono); font-size:7.4pt; letter-spacing:.06em;
+    text-transform:uppercase; padding:.08em .45em; border-radius:4px; }
+  .st.done { background:var(--good-bg); color:var(--good); }
+  .st.next { background: color-mix(in srgb, var(--warn) 14%, var(--surface)); color:var(--warn); }
+
+  .strip { display:grid; grid-template-columns: 1fr 1fr; gap:.6rem; margin-bottom:12px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.6rem .75rem; }
+  .card.gate { border-left:3px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+  .card.good { border-left:3px solid var(--good); background: color-mix(in srgb, var(--good) 7%, var(--surface)); }
+  .card .lead { color:var(--ink); font-weight:650; font-size:9.6pt; margin:0; }
+  .card p { margin:.25rem 0 0; font-size:8.8pt; color:var(--ink-soft); line-height:1.4; }
+  .card ul { margin:.3rem 0 0; padding-left:1.1rem; font-size:8.8pt; color:var(--ink-soft); }
+  .card li { margin:.12rem 0; }
+  .big { font-size:17pt; font-weight:700; color:var(--accent-ink); line-height:1.1; }
+  .foot { padding: 8px 22px 14px; font-size:7.8pt; color:var(--ink-faint); font-family:var(--mono); line-height:1.45; }
+
+  @media (max-width: 640px) {
+    .page { padding: 0 16px; } .top, .body, .foot { padding-left:0; padding-right:0; }
+    .flow, .strip { grid-template-columns: 1fr; }
+    table { display:block; overflow-x:auto; }
+  }
+  @page { size: Letter; margin: 10mm 11mm; }
+  @media print {
+    :root { --ground:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F3F1;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2; --line:#E5E4E1; --line-strong:#D3D2CE;
+      --slate:#3F5364; --slate-deep:#2C3A47; --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A; }
+    body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; color-scheme:light; }
+    .page { max-width:none; }
+    .flow, .step, table, tr, .strip, .card { break-inside:avoid; }
+    h2 { break-after:avoid; page-break-after:avoid; }
+  }
+</style>
+</head>
+<body><div class="page">
+<div class="top">
+  <div class="ey">KOR Structural · Wood frame · for Ian · 26 October 2026</div>
+  <h1>Wood frame: the one way, and the findings behind it</h1>
+  <p>What was measured on the two wood jobs, the office template and the PDF-to-ETABS route, what each finding means, what has been fixed, and the one way the office now drafts wood frame &mdash; decided 26 October, recorded in KorStandards as assumed, for Nelson, Jason and Jim to confirm or overrule. Every number below was read from the files themselves.</p>
+</div>
+<div class="body">
+
+<h2>Where it stands, in one paragraph</h2>
+<p class="lede">KOR had three ways of drafting wood frame &mdash; Sherwood's, Edgar's and the office template's &mdash; and on one job the model and the drawings disagree on 177 beams. As of 26 October there is one way: 26 choices covering every group, recorded in KorStandards (migration 115) as the office's, each marked <b>assumed</b> with the name of who confirms or overrules it. The five wood model families have files and sit in the catalogue as candidate parts; the PDF route no longer turns wood floors into concrete. One decision is still yours: how Lindsay and Jason hear about the Edgar beams.</p>
+
+<h2>The one way &mdash; decided 26 October, assumed; confirm or overrule</h2>
+<table style="page-break-inside:auto;break-inside:auto">
+<tr><th>Item</th><th>The office way</th><th>Why this one</th><th>Confirms</th></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>Framing sheet</td><td>"LEVEL N SHOWING LEVEL N+1 FRAMING OVER" = a ceiling plan of level N carrying the framing over (view type <b>## - WD_STRUCTURAL WITH FRAMING OVER</b>, template <b>## - WD_Structural with Framing Over Level N</b>), beside the engineering plan of N+1; <b>1/8" = 1'-0"</b>; the schedule as the template's legend parts.</td><td>Nelson's written view standard (July 2025) and Edgar's sheets; the office template already holds the legend parts; 1/8" is the office plan scale. Sherwood's 3/16" plans-of-the-level-above and its one combined legend set aside.</td><td>Nelson</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>Typical floors</td><td>Drawn once, on one sheet titled for all of them.</td><td>As the office concrete sets do (LEVEL 3-20); every level still exists in the model. Edgar's every-level set aside.</td><td>Nelson, Jason</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>Framing modelled</td><td>Beams at their real sections (the master-schedule type the mark names), joists as members; span symbols and marks drawn as annotation; one Structural Usage per kind (beams 3, joists 4).</td><td>Migration 112 (modelled, not drawn); a placeholder cannot be quantified or checked against its mark; a fixed usage keeps schedules and filters stable. Sherwood's placeholders and span-symbol-only joists set aside.</td><td>Jason, Lindsay</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>Wood floors</td><td>Modelled (WFL floor slabs).</td><td>The element the framing-over sheet and the ETABS route hang on (110, 114, step 184). Edgar's no-floor set aside.</td><td>Jason</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>Levels</td><td>One level set from one base point; a member is referenced to the storey of the floor it carries, its top 2&frac14;" under as a member offset.</td><td>Revit levels = the sections sheet = ETABS storeys; closes finding 2. Sherwood's T.O.F level per storey set aside.</td><td>Jason, Lindsay</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>Naming</td><td>The office prefix <b>## -</b> on families, view types and view templates; "KOR_" and "KOR -" copies purged and never loaded.</td><td>The template's own convention (## - DIMENSION, ## - HD, ## - Wood Wall).</td><td>Nelson</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>Family set</td><td><b>## - Beam Lumber, ## - Beam Engineered Wood, ## - TJI, ## - Solid Wood Columns, ## - HD</b>, in the catalogue as parts (113), renamed to the prefix on approval; walls "## - Wood Wall - 2x4 / 2x6 / 2x8"; a wall, post or hold-down is one element base to roof.</td><td>The five files saved from Edgar R24 on 26 October &mdash; every member kind has one.</td><td>Nelson drafts, Jim approves</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>Mark text</td><td>One text type, <b>T1</b>, for every mark.</td><td>Sherwood's pink and red variants print black and only multiply types.</td><td>Nelson</td></tr>
+</table>
+<p>The full list &mdash; 40 settings, each with its reason and who confirms it &mdash; is migration 115 in KOR.Drafter <code>db/</code>. A job may confirm another way for itself; that overrides the office's for that job only. <b>Still yours &mdash; Edgar beams (finding 1):</b> whether and how Lindsay and Jason hear that 177 B23 beams are modelled as the wrong product.</p>
+
+<h2>A · The model and the drawings disagree</h2>
+<table style="page-break-inside:auto;break-inside:auto">
+<tr><th>Finding</th><th>What was measured</th><th>What it means</th></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>1 · 177 beams are the wrong product (Edgar, 31165-01)</td><td>607 beam marks on Edgar's framing plans paired with the beam under each. 564 sit on a beam of the right size; 197 sit on a different product. 177 of those are marked <b>B23</b> &mdash; 3&frac12;" &times; 11&#8542;" 1.55E <b>Timberstrand</b> on the schedule &mdash; on beams modelled as 3&frac12;" &times; 11&#8542;" 2.2E <b>Parallam</b>.</td><td>The marks followed a substitution (Jason's B20 drafted as B23); the model did not. Anything taken off the model &mdash; quantities, schedules, a supplier list &mdash; carries Parallam where the drawings say Timberstrand. Where the substitution came from was not asked.</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>2 · Levels measured from two places (Edgar)</td><td>2 of 12 level types are measured from a different base point, 93 ft from the other. 2,366 of 7,544 framing members are attached to Level 1 and raised to their floor by whole-storey offsets.</td><td>The sheets look right. Anything that reads a level's height or a member's level from the model &mdash; an ETABS export, a schedule by level &mdash; gets it wrong.</td></tr>
+</table>
+
+<h2>B · No two wood jobs are drafted alike</h2>
+<table style="page-break-inside:auto;break-inside:auto">
+<tr><th>Finding</th><th>What was measured</th><th>What it means</th></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>3 · The framing sheet is made three ways</td><td>"LEVEL N SHOWING LEVEL N+1 FRAMING OVER", read off each model:<br><b>Office template (v2):</b> sheet S2.13 holds 6 schedule legends and <b>no plan view</b>.<br><b>Edgar:</b> a ceiling plan of level N (view type "002 - WD STRUCT FRAMING OVER") stacked on a plan of N+1 ("002 - WD FLOORS AND COL OVER"), 1/8" scale, the schedule split into 7 legends.<br><b>Sherwood:</b> two plans of type "001 - CONCRETE FOUNDATIONS PLAN", 3/16" scale, one combined legend.</td><td>Same sheet title, three different drawings. The office template has the legends but not the views, so a drafter starting from it has to invent the rest &mdash; which is how the two jobs diverged.</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>4 · The written view standard is not in the template</td><td>Nelson's folder holds "Wood Framing View Setup" (July 2025). It names a view type "## - WD_STRUCTURAL WITH FRAMING OVER" and a view template per level, "## - WD_Structural with Framing Over Level N". The office template v2 carries 28 view templates and <b>none</b> of those. Edgar uses one template for every level; Sherwood uses 21 per-level templates of its own ("KOR - Wood frame - &hellip;"), none sharing a name with Edgar's.</td><td>There <i>is</i> a written standard for the view &mdash; it never reached the template. Edgar's drafter followed it most closely.</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>5 · View templates multiply</td><td>Edgar's model holds 107 view templates, 38 of them for wood or framing, under three naming prefixes ("## -", "KOR_", "KOR -") &mdash; e.g. both "## - WD_STRUCTURAL WITH FRAMING OVER" and "KOR_WD_Structural with Framing Over".</td><td>Duplicates come from loading again from another job. Two templates with one purpose drift apart, and a sheet can look different depending on which one a drafter picked.</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>6 · No standard wood model family</td><td>The office template carries no wood beam or joist family to load (searched by name for beam, joist, lumber, TJI, Parallam, Timberstrand); it does carry a solid-wood post and a hold-down family. The office library (009_REVIT CUSTOMED) holds only older BMZ_ wood families, which neither job uses. Edgar's 2,085 beams use 7 families and 15 types; Sherwood's 911 beams are one placeholder type with the size in the mark. The same post family is "## - Solid Wood Columns" on Sherwood and "KOR_Solid Wood Columns" on Edgar; Edgar carries two hold-down families ("## - HD" and "KOR_HD").</td><td>With nothing standard to load, every job builds its own, and schedules and tags split across the copies.</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>7 · Joists modelled on one job, drawn on the other</td><td>Sherwood: 0 joist members, 212 span symbols. Edgar: 5,459 joist members plus span symbols. The office wood master: drawn in 2D as detail items.</td><td>Only one of the three can be quantified or exported from the model.</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>8 · The office wood master predates modelling</td><td>The office wood master (00 Templates) is a concrete-only model with the wood drawn in 2D on the plan; the 3D sits in linked files. The catalogue's 148 wood-frame details are linework and arrows.</td><td>The firm was told wood frame could not be done in Revit; the master reflects that. Wood framing is now ruled modelled, not drawn (KorStandards 112, your decision).</td></tr>
+</table>
+
+<h2>C · The PDF-to-ETABS route</h2>
+<table style="page-break-inside:auto;break-inside:auto">
+<tr><th>Finding</th><th>What was measured</th><th>Status</th></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>9 · Wood floors were modelled as concrete</td><td>On 21 of the 57 projects in the PDF check (judged against each engineer's own ETABS model), the plan sheets "LEVEL N SHOWING LEVEL N+1 FRAMING OVER" made concrete slabs on wood storeys &mdash; 1,000 to 57,000 sq ft each at the 12" default. In 19 of the 21 the engineer's model stops at Level 1 to 3.</td><td><b>Fixed</b> (Operations 9670a49e). On 24 projects: 69 of 69 storeys now right, 0 of the engineer's slabs lost, the six reference projects and Halifax unchanged. 16 first wood floors above a podium are left as read and named, because nothing yet tells them from the podium slab.</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>10 · Why it was not seen</td><td>The checker only compared storeys both models have. A storey that only ours has &mdash; a wood storey with a false slab &mdash; was never judged.</td><td>Queued: count and name every storey only we have.</td></tr>
+<tr style="page-break-inside:avoid;break-inside:avoid"><td>11 · A legend box read as a floor</td><td>On 31162 the wood storeys' "slab" was the legend and notes box along the bottom of every framing sheet (56.7 &times; 11.6 m, on a slab layer). 20 of 56 projects have a storey whose slab misses 80% or more of its walls and columns.</td><td>Open: a check that finds every case comes first, then the fix.</td></tr>
+</table>
+
+<h2>D · What exists now</h2>
+<div class="strip">
+<div class="card good"><p class="lead">Decisions in KorStandards</p><p>42 wood drafting rulings (migrations 109, 111, 112, 115), and the office's one way on top: 26 choices, 14 alternatives set aside (115) &mdash; each a choice with its alternatives. Both jobs recorded against them, 20 of 21 groups each. The ETABS convention for wood floors is migrations 110 and 114.</p></div>
+<div class="card good"><p class="lead">The families have files</p><p>The four wood families that existed only inside Edgar's model &mdash; engineered-wood beam, TJI joist, solid-wood post, hold-down &mdash; are saved out as Revit 2024 files (the template's version), beside KOR_Beam Lumber. Every member kind now has a candidate .rfa.</p></div>
+<div class="card good"><p class="lead">The checks that found these</p><p>Every mark against its beam and the schedule (found finding 1 in seconds); each job's drafting choices measured; each framing sheet read off the model; the PDF route checked on all 57 projects.</p></div>
+<div class="card gate"><p class="lead">Not yet built</p><p>Beams placed at their real sections from the schedule, joists as members, and the framing sheet itself &mdash; each waits on the family set or the framing-sheet standard above.</p></div>
+</div>
+
+</div>
+<div class="foot">Measured 25&ndash;26 Oct 2026 from the drafted Revit models of 31207-01 Sherwood and 31165-01 Edgar (read detached, never saved), the office template v2 and the office wood master, through the KOR Drafter Bridge and the KorStandards database; the PDF route on the 57-project corpus gate by the PDF ingestor. Tools: KOR.Drafter reference_model.py, wood_marks_vs_model.py, wood_conventions.py; Operations corpus-gate, own_vs_extended.py. Evidence files: C:/KOR.Drafter-work/wood/&lt;job&gt;/ and the KOR.Drafter docs/CLOSING-DELIVERABLE.md board.</div>
+</div></body></html>
