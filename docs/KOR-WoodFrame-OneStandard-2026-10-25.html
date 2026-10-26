@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wood Frame — One Standard</title>
+<!--
+  For KOR drafters and engineers (Ian decides when, and to whom). Design system copied from
+  KOR-StandardDetails-How-It-Works-Lindsay-2026-09-28.html so the set reads as one family. Render with
+  tools\Format-BdWebPdf.ps1.
+
+  Every number was measured on 2026-10-25 from the drafted Revit models through the KOR Drafter Bridge
+  (KOR.Drafter tools/reference_model.py, wood_conventions.py, wood_marks_vs_model.py) and KorStandards.
+  Jobs: 31207-01 Sherwood North Rd; 31165-01 Edgar (7883 199 St); the office wood master =
+  00 Templates\Wood_Framing\Sample_Concrete & Wood_Model_R25.rvt (read through an upgraded copy).
+  It is about how the firm has had no single standard for MODELLED wood - not about any person.
+-->
+<style>
+  :root {
+    --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+    --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+    --accent:#FF5B35; --accent-ink:#C6360F;
+    --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --crit:#C0392B;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono:"Cascadia Code", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+      --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87;
+      --line:#29323B; --line-strong:#38434E; --slate:#7E97AC; --slate-deep:#C4D3DF;
+      --accent:#FF7150; --accent-ink:#FF9276; }
+  }
+  :root[data-theme="dark"] { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+    --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B; --line-strong:#38434E;
+    --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:10.3pt; line-height:1.38; -webkit-font-smoothing:antialiased; }
+  .page { max-width: 8.1in; margin: 0 auto; padding: 0; }
+
+  .top { background: linear-gradient(180deg,var(--slate-deep),var(--slate));
+    color:#EAF0F5; border-bottom:2.5px solid var(--accent); padding: 13px 22px; }
+  .top h1 { margin:0; font-size:19pt; font-weight:700; letter-spacing:-.01em; color:#fff; }
+  .top .ey { font-family:var(--mono); font-size:7.5pt; letter-spacing:.2em; text-transform:uppercase; color:#FFB59F; }
+  .top p { margin:.2rem 0 0; font-size:9.6pt; color:#CBD8E2; max-width:46rem; }
+
+  .body { padding: 13px 22px 0; }
+  h2 { font-family:var(--mono); font-size:8pt; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); margin: 8px 0 .5rem; font-weight:700; }
+  p.lede { margin:0 0 .6rem; font-size:9.6pt; color:var(--ink-soft); }
+
+  table { border-collapse:collapse; width:100%; font-size:8.9pt; margin-bottom:12px; }
+  th { text-align:left; font-family:var(--mono); font-size:7.6pt; letter-spacing:.06em; text-transform:uppercase;
+       color:var(--ink-soft); border-bottom:1.5px solid var(--line-strong); padding:.3rem .45rem; font-weight:700; }
+  td { padding:.3rem .45rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr td:first-child { font-weight:650; color:var(--ink); width:8.4rem; }
+  tr:nth-child(even) td { background:var(--surface-2); }
+  td.target { background: color-mix(in srgb, var(--good) 8%, var(--surface)) !important; }
+
+  .flow { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin:0 0 12px; }
+  .step { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.5rem .65rem;
+    border-left:3px solid var(--accent); }
+  .step .n { font-family:var(--mono); font-weight:700; color:var(--accent-ink); font-size:8.3pt; }
+  .step h3 { margin:.1rem 0 .2rem; font-size:10.6pt; }
+  .step p { margin:0; font-size:8.7pt; color:var(--ink-soft); line-height:1.36; }
+  .step .st { display:inline-block; margin-top:.3rem; font-family:var(--mono); font-size:7.4pt; letter-spacing:.06em;
+    text-transform:uppercase; padding:.08em .45em; border-radius:4px; }
+  .st.done { background:var(--good-bg); color:var(--good); }
+  .st.next { background: color-mix(in srgb, var(--warn) 14%, var(--surface)); color:var(--warn); }
+
+  .strip { display:grid; grid-template-columns: 1fr 1fr; gap:.6rem; margin-bottom:12px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.6rem .75rem; }
+  .card.gate { border-left:3px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+  .card.good { border-left:3px solid var(--good); background: color-mix(in srgb, var(--good) 7%, var(--surface)); }
+  .card .lead { color:var(--ink); font-weight:650; font-size:9.6pt; margin:0; }
+  .card p { margin:.25rem 0 0; font-size:8.8pt; color:var(--ink-soft); line-height:1.4; }
+  .card ul { margin:.3rem 0 0; padding-left:1.1rem; font-size:8.8pt; color:var(--ink-soft); }
+  .card li { margin:.12rem 0; }
+  .big { font-size:17pt; font-weight:700; color:var(--accent-ink); line-height:1.1; }
+  .foot { padding: 8px 22px 14px; font-size:7.8pt; color:var(--ink-faint); font-family:var(--mono); line-height:1.45; }
+
+  @media (max-width: 640px) {
+    .page { padding: 0 16px; } .top, .body, .foot { padding-left:0; padding-right:0; }
+    .flow, .strip { grid-template-columns: 1fr; }
+    table { display:block; overflow-x:auto; }
+  }
+  @page { size: Letter; margin: 10mm 11mm; }
+  @media print {
+    :root { --ground:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F3F1;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2; --line:#E5E4E1; --line-strong:#D3D2CE;
+      --slate:#3F5364; --slate-deep:#2C3A47; --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A; }
+    body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; color-scheme:light; }
+    .page { max-width:none; }
+    .flow, .step, table, tr, .strip, .card { break-inside:avoid; }
+    h2 { break-after:avoid; page-break-after:avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div class="ey">KOR Structural · Wood frame · October 2026</div>
+    <h1>Wood frame: one standard, modelled</h1>
+    <p>We compared how three wood-frame models were drafted, line by line. Every one does it differently, and
+       the drawings pay for it. This is what we found, why it happens, and how one standard &mdash; held in the
+       Standard Details catalogue and placed by the Virtual Drafter &mdash; fixes it.</p>
+  </div>
+
+  <div class="body">
+    <h2>What we compared</h2>
+    <p class="lede">Two recent jobs and the office wood template, each read element by element from the Revit model:
+       <b>Sherwood North Rd (31207-01)</b>, <b>Edgar, 199 St (31165-01)</b>, and the <b>office wood master</b> in
+       00 Templates. All counts below are from those models, measured on 25 October 2026.</p>
+
+    <h2>Three models, three ways</h2>
+    <table>
+      <tr><th>&nbsp;</th><th>Sherwood</th><th>Edgar</th><th>Office wood master</th></tr>
+      <tr><td>Joists</td><td>Not modelled &mdash; drawn as 212 span symbols</td><td class="target">Modelled: 5,459 joist members, plus span symbols</td><td>Drawn in 2D as detail items</td></tr>
+      <tr><td>Beams</td><td>911 beams, all one placeholder type; the mark carries the size</td><td class="target">2,085 beams at real sections &mdash; but in 7 families and 15 types</td><td>Drawn in 2D on the plan; the model sits in a linked file (not reviewed here)</td></tr>
+      <tr><td>Hold-downs</td><td>One family (## - HD)</td><td>Two families for the same thing (## - HD 114, KOR_HD 12)</td><td>Drawn in 2D as detail items</td></tr>
+      <tr><td>Framing drawn in</td><td>The plan of the level above</td><td>A ceiling plan of the level</td><td>The plan of the level itself</td></tr>
+      <tr><td>Typical floors</td><td>Drawn once for levels 3&ndash;5</td><td>Every level drawn, even where identical</td><td>Every level drawn</td></tr>
+      <tr><td>Mark text</td><td>Colour-coded types (pink, red) that all print black</td><td>One plain type (T1), bar a few opaque variants</td><td>Mixed &mdash; a looped style on 459 of 763 beam marks</td></tr>
+      <tr><td>Schedules on sheet</td><td>One combined legend</td><td>Seven separate legends</td><td>Seven separate legends</td></tr>
+    </table>
+
+    <h2>What it costs</h2>
+    <div class="strip">
+      <div class="card gate">
+        <div class="big">177 beams</div>
+        <p class="lead">On one job, the model and the drawings disagree.</p>
+        <p>Of 607 beam marks on Edgar's framing plans, 564 sit on a beam of the right size &mdash; but 197 sit on
+           the wrong <i>product</i>. 177 are marked B23 (Timberstrand) on beams modelled as Parallam of the same size.
+           The marks followed a substitution; the model did not. Anything taken off the model carries the old member.</p>
+      </div>
+      <div class="card gate">
+        <div class="big">7 families</div>
+        <p class="lead">For what are mostly the same members.</p>
+        <p>Edgar's beams use KOR_Beam Lumber, KOR_Beam Lumber1, KOR - Beam Lumber, ##_KOR - Beam Lumber,
+           KOR_Beam Engineered Wood, ## - Beam Engineered Wood and a copy of it. Duplicates like these typically
+           come from loading a family again from another job, and schedules, tags and quantities can split across them.</p>
+      </div>
+      <div class="card">
+        <p class="lead">No standard exists to follow.</p>
+        <p>The office standards template carries no wood beam or joist framing family. The Standard Details
+           catalogue's wood palette holds drafting symbols, not modelled beam or joist types. With nothing standard to
+           load, every job builds its own.</p>
+      </div>
+      <div class="card">
+        <p class="lead">Models drift in ways nobody sees.</p>
+        <p>On Edgar, two of twelve levels use a level type measured from a different base point &mdash; 93 ft
+           apart &mdash; and 2,366 of 7,544 framing members hang off Level 1 with offsets of whole storeys. It looks
+           right on the sheet; anything that reads level heights or member levels from the model gets it wrong.</p>
+      </div>
+    </div>
+
+    <h2>Why it happens</h2>
+    <p class="lede">Until recently the firm was told wood frame could not be done in Revit. The office wood master shows
+       it: the framing is drawn in 2D on top of a concrete-only model. When jobs began modelling wood, there was no
+       agreed family set, no agreed way to place it, and nothing to check against &mdash; so each drafter and each
+       engineer made the convenient choice for that job. None of the differences above is a mistake on its own.
+       Together they mean no two wood jobs are drawn alike.</p>
+
+    <h2>How it gets fixed</h2>
+    <div class="flow">
+      <div class="step"><span class="n">1 · MODELLED</span><h3>Wood is modelled</h3>
+        <p>Beams at their real sections, joists as members, posts, hold-downs and walls as elements. On a framing
+           plan, 2D is annotation only &mdash; marks, span symbols, tags. Standard details (sections, connections)
+           are 2D by nature and stay as they are.</p><span class="st done">Decided</span></div>
+      <div class="step"><span class="n">2 · ONE FAMILY SET</span><h3>One standard family set</h3>
+        <p>The wood model families and types go into the Standard Details catalogue &mdash; one beam type per
+           master-schedule entry, size <i>and</i> product. Reviewed and approved like every standard detail.
+           Duplicates and job copies are retired, not loaded.</p><span class="st next">Being set up</span></div>
+      <div class="step"><span class="n">3 · DRAWN FROM IT</span><h3>The Virtual Drafter draws from it</h3>
+        <p>It places only standard types, and takes each beam's type from its mark through the master schedule.
+           It never copies a job's own families &mdash; so what it produces is clean by construction.</p><span class="st next">In progress</span></div>
+      <div class="step"><span class="n">4 · DECISIONS KEPT</span><h3>Each job's choices are recorded</h3>
+        <p>How a job is drafted is recorded once, in the firm's standards database, and confirmed by its drafter or
+           engineer &mdash; never re-decided by whoever opens the file next.</p><span class="st done">Running</span></div>
+      <div class="step"><span class="n">5 · CHECKED</span><h3>Model and drawings checked against each other</h3>
+        <p>An automatic check pairs every beam mark with its beam and compares it with the schedule. It found the
+           177 above in seconds, and can run on every job before issue.</p><span class="st done">Built</span></div>
+      <div class="step"><span class="n">6 · ONE FIX</span><h3>Fixed once, for everyone</h3>
+        <p>When a family or a type is wrong, it is corrected once, in the catalogue, and every job picks it up &mdash;
+           the same rule Standard Details already runs on for details.</p><span class="st next">With step 2</span></div>
+    </div>
+
+    <h2>What we ask of you</h2>
+    <div class="strip">
+      <div class="card good">
+        <p class="lead">Engineers</p>
+        <ul>
+          <li>Mark beams from the <b>master beam schedule</b>. A new member is added to the schedule, not invented on a plan.</li>
+          <li>A change of member or product goes through the schedule, so the mark, the schedule and the model move together.</li>
+          <li>When the system asks you to confirm how a job is drafted, a one-line answer is enough.</li>
+        </ul>
+      </div>
+      <div class="card good">
+        <p class="lead">Drafters</p>
+        <ul>
+          <li>Model the framing; don't draw it in 2D.</li>
+          <li>Use the standard families once published. Don't load a family from another job or duplicate one to change it.</li>
+          <li>If a type you need isn't there, ask for it to be added to the catalogue rather than making a local copy.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    Measured 25 Oct 2026 from the drafted Revit models of 31207-01 and 31165-01 and the office wood master (read
+    through an upgraded copy &mdash; the template itself was not changed), with the KOR Drafter tools and the KorStandards
+    database. Counts: Sherwood 911 beams / 0 joist members / 212 span symbols; Edgar 2,085 beams in 7 families and
+    15 types, 5,459 joist members, 607 beam marks paired (564 right size, 197 another product, 177 of them B23),
+    2,366 of 7,544 framing members referenced to Level 1 from a higher storey. "No wood beam or joist family" in the
+    standards template: no family named for beams, joists, lumber, TJI, Parallam or Timberstrand other than one steel
+    HSS beam (KOR-Standards-Master-R25, read 25 Oct).
+  </div>
+</div>
+</body>
+</html>
