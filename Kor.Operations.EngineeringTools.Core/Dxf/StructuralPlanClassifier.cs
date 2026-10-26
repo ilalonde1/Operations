@@ -187,6 +187,13 @@ public sealed record PlanClassificationOptions
     public double NestedRingTileShare { get; init; } = 0.15;
 
     /// <summary>
+    /// Whether a framing-over sheet whose own storey its building draws as the framing over the level below - a wood
+    /// floor - gives that storey no floor plate or opening. See <see cref="WoodFramedFloors"/> and
+    /// `dxf.wood-framed-floor-carries-no-concrete` (step 184).
+    /// </summary>
+    public bool WoodFramedFloorCarriesNoConcrete { get; init; } = true;
+
+    /// <summary>
     /// How far a straightened outline may sit from the trace it came from, in inches. A floor
     /// recovered by flood fill is traced off pixels and arrives as a staircase; this is what
     /// turns it back into walls. See `dxf.recovered-outline-tolerance`.

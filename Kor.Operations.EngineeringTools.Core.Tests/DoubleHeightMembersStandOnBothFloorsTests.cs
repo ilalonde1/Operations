@@ -161,6 +161,83 @@ public class DoubleHeightMembersStandOnBothFloorsTests
     /// after "K" alone caught KF as well as KW and KC, and put a slab on the storey between two
     /// floors — FloorPlatesAreTheSizeTheEngineerMadeThem caught it in the first full run.
     /// </summary>
+    /// <summary>
+    /// A WOOD FLOOR HOLDS A MEMBER UP THOUGH IT IS NO PLATE (step 184, 2026-10-26). Step 184 writes no concrete plate on a
+    /// floor the set frames in wood; read as "no floor", the carry-down took every wood member above it for hanging and
+    /// carried it onto the plate a storey lower - 171 invented members on 18 storeys of the 21 wood-frame sets, measured on
+    /// the finished files. The same column, carried without the wood floor and left where it was drawn with it.
+    /// </summary>
+    [Fact]
+    public void AWoodFloorHoldsAMemberUpThoughItIsNoPlate()
+    {
+        string[] Lines() => new[]
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"LEVEL 3\"  HEIGHT 120",
+            "  STORY \"LEVEL 2\"  HEIGHT 120",
+            "  STORY \"LEVEL 1\"  HEIGHT 120",
+            "  STORY \"Base\"  HEIGHT 0",
+            "$ POINT COORDINATES",
+            "  POINT \"KP1\"  0  0",
+            "  POINT \"KP2\"  100  0",
+            "  POINT \"KP3\"  100  100",
+            "  POINT \"KP4\"  0  100",
+            "  POINT \"KP5\"  50  50",
+            "$ LINE CONNECTIVITIES",
+            "  LINE  \"KC1\"  COLUMN  \"KP5\"  \"KP5\"  1",
+            "$ AREA CONNECTIVITIES",
+            "  AREA  \"KF1\"  FLOOR  4  \"KP1\"  \"KP2\"  \"KP3\"  \"KP4\"",
+            "$ LINE ASSIGNS",
+            "  LINEASSIGN  \"KC1\"  \"LEVEL 3\"  SECTION \"KOR-C12x12\"",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KF1\"  \"LEVEL 1\"  SECTION \"KOR-S8\"",
+        };
+
+        var carried = E2kDocument.Parse(Lines());
+        carried.ModelDoubleHeightMembersOnBothFloors();
+        Assert.Equal(new[] { "LEVEL 2", "LEVEL 3" }, carried.StoreysByObject()["KC1"].OrderBy(s => s, StringComparer.Ordinal).ToArray());
+
+        var held = E2kDocument.Parse(Lines());
+        held.ModelDoubleHeightMembersOnBothFloors(woodFloored: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "LEVEL 2" });
+        Assert.Equal(new[] { "LEVEL 3" }, held.StoreysByObject()["KC1"].ToArray());
+    }
+
+    /// <summary>
+    /// ... BUT A WOOD FLOOR IS NOT A LANDING (step 184, replay 3). Taken as one, 31082's roof wall KW228 was carried down
+    /// through L5 - whose plate does not reach it - onto the wood L4. The carry-down is for a member reaching a SLAB; a
+    /// member over no plate above a wood floor is left where it was drawn, as it was before step 184 took the plate away.
+    /// </summary>
+    [Fact]
+    public void AWoodFloorIsNotALandingForAMemberCarriedDown()
+    {
+        var doc = E2kDocument.Parse(new[]
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"LEVEL 3\"  HEIGHT 120",
+            "  STORY \"LEVEL 2\"  HEIGHT 120",
+            "  STORY \"LEVEL 1\"  HEIGHT 120",
+            "  STORY \"Base\"  HEIGHT 0",
+            "$ POINT COORDINATES",
+            "  POINT \"KP1\"  0  0",
+            "  POINT \"KP2\"  100  0",
+            "  POINT \"KP3\"  100  100",
+            "  POINT \"KP4\"  0  100",
+            "  POINT \"KP5\"  500  500",
+            "$ LINE CONNECTIVITIES",
+            "  LINE  \"KC1\"  COLUMN  \"KP5\"  \"KP5\"  1",
+            "$ AREA CONNECTIVITIES",
+            "  AREA  \"KF1\"  FLOOR  4  \"KP1\"  \"KP2\"  \"KP3\"  \"KP4\"",
+            "$ LINE ASSIGNS",
+            "  LINEASSIGN  \"KC1\"  \"LEVEL 3\"  SECTION \"KOR-C12x12\"",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KF1\"  \"LEVEL 2\"  SECTION \"KOR-S8\"",      // a plate on LEVEL 2, nowhere near the column
+        });
+
+        doc.ModelDoubleHeightMembersOnBothFloors(woodFloored: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "LEVEL 1" });
+
+        Assert.Equal(new[] { "LEVEL 3" }, doc.StoreysByObject()["KC1"].ToArray());
+    }
+
     [Fact]
     public void AStackOfFloorPlatesIsNeverFilled()
     {

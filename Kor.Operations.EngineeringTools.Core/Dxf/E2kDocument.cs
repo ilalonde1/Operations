@@ -1346,7 +1346,7 @@ public sealed class E2kDocument
     /// stands on L21 and then L09 down to L03, and that is how she drew it.
     /// </remarks>
     /// <returns>The number of assigns added.</returns>
-    public int ModelDoubleHeightMembersOnBothFloors(double sameColumnReach = 0)
+    public int ModelDoubleHeightMembersOnBothFloors(double sameColumnReach = 0, IReadOnlySet<string>? woodFloored = null)
     {
         var order = ReadStories().Select(s => s.Name).ToList();
         var rank = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -1512,6 +1512,14 @@ public sealed class E2kDocument
         // The midpoint is the one point that represents the member rather than an accident of which
         // corner the panel happens to list first, and it is what the composer already uses to ask
         // whether a wall is one the engineer has drawn.
+        // A WOOD FLOOR HOLDS A MEMBER UP THOUGH IT IS NO PLATE (step 184, 2026-10-26). Step 184 writes no concrete plate on a
+        // floor the set frames in wood; read as "no floor", every wood member above it was hanging, and the carry-down below
+        // carried it onto whatever plate stood a storey lower - 171 invented members on 18 storeys of the 21 wood-frame sets,
+        // measured on the finished files (own members unchanged on every storey). So a member standing on a wood floor is
+        // not hanging. But a wood floor is not a LANDING: taken as one, it carried 31082's roof wall KW228 down through L5,
+        // whose plate does not reach it, onto the wood L4 - the carry-down is for a member reaching a slab.
+        bool Hanging(int row, string obj)
+            => !(woodFloored is not null && row < order.Count && woodFloored.Contains(order[row])) && !Supported(row, obj);
         bool Supported(int row, string obj)
         {
             if (!planOf.TryGetValue(obj, out var pts) || pts.Count == 0) return false;
@@ -1574,7 +1582,7 @@ public sealed class E2kDocument
             // moves the base to the row after that, so THAT is the row which has to carry a plate.
             for (int row = bottom + 1;
                  row < lowest && row <= bottom + 1
-                 && !Supported(row, obj)                    // it is hanging today
+                 && Hanging(row, obj)                       // it is hanging today (a wood floor holds it)
                  && row + 1 < order.Count && Supported(row + 1, obj);   // and this reaches a floor
                  row++)
             {

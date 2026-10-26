@@ -352,6 +352,7 @@ public static class DxfToEtabsService
         "dxf.slab-callout-max-thickness",
         "dxf.ring-on-plate-edge-fraction",
         "dxf.nested-ring-tile-share",
+        "dxf.wood-framed-floor-carries-no-concrete",
         "dxf.recovered-outline-tolerance",
         "dxf.slab-chain-join-fraction",
         "dxf.drawn-ring-beats-fill-fraction",
@@ -485,6 +486,7 @@ public static class DxfToEtabsService
             ["dxf.slab-callout-max-thickness"] = classification.SlabCalloutMaxThickness,
             ["dxf.ring-on-plate-edge-fraction"] = classification.RingOnPlateEdgeFraction,
             ["dxf.nested-ring-tile-share"] = classification.NestedRingTileShare,
+            ["dxf.wood-framed-floor-carries-no-concrete"] = classification.WoodFramedFloorCarriesNoConcrete ? 1 : 0,
             ["dxf.recovered-outline-tolerance"] = classification.RecoveredOutlineTolerance,
             ["dxf.slab-chain-join-fraction"] = classification.SlabChainJoinFraction,
             ["dxf.drawn-ring-beats-fill-fraction"] = classification.DrawnRingBeatsFillFraction,
@@ -553,6 +555,7 @@ public static class DxfToEtabsService
             SlabCalloutMaxThickness = settings.ValueOr("dxf.slab-callout-max-thickness", options.SlabCalloutMaxThickness),
             RingOnPlateEdgeFraction = settings.ValueOr("dxf.ring-on-plate-edge-fraction", options.RingOnPlateEdgeFraction),
             NestedRingTileShare = settings.ValueOr("dxf.nested-ring-tile-share", options.NestedRingTileShare),
+            WoodFramedFloorCarriesNoConcrete = settings.FlagOr("dxf.wood-framed-floor-carries-no-concrete", options.WoodFramedFloorCarriesNoConcrete),
             RecoveredOutlineTolerance = settings.ValueOr("dxf.recovered-outline-tolerance", options.RecoveredOutlineTolerance),
             SlabChainJoinFraction = settings.ValueOr("dxf.slab-chain-join-fraction", options.SlabChainJoinFraction),
             DrawnRingBeatsFillFraction = settings.ValueOr("dxf.drawn-ring-beats-fill-fraction", options.DrawnRingBeatsFillFraction),
@@ -1562,6 +1565,16 @@ public static class DxfToEtabsService
                 + "closes a slab edge on its own.");
         }
 
+        // A FLOOR THE SET FRAMES IN WOOD CARRIES NO CONCRETE PLATE (step 184): the framing-over sheets whose own storey
+        // their building draws as the framing over the level below. Their walls and columns stand; their floor does not.
+        var woodFramed = classification.WoodFramedFloorCarriesNoConcrete && Environment.GetEnvironmentVariable("KOR_STEP184_OFF") != "1"
+            ? WoodFramedFloors.SheetsOf(files.ToDictionary(f => f, f => sheetInfoByFile[f], StringComparer.OrdinalIgnoreCase), PlanSheetNaming.Vocabulary)
+                .ToDictionary(w => w.File, StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, WoodFramedFloors.Framed>(StringComparer.OrdinalIgnoreCase);
+        var woodFloorsDropped = new List<string>();
+        // ... and the storeys those floors are, so the carry-down below knows a wood floor holds its members up
+        var woodFloorStoreys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (string file in files)
         {
             var sheet = sheetInfoByFile[file];
@@ -1674,6 +1687,18 @@ public static class DxfToEtabsService
                 classification with { ExpectedSlabCount = expected, MatchLineLayerPatterns = matchLineLayers },
                 sheet,
                 tags);
+
+            if (woodFramed.TryGetValue(file, out var wood))
+            {
+                woodFloorStoreys.UnionWith(storeysOfSheet[file]);
+                if (geometry.Slabs.Count + geometry.Openings.Count > 0)
+                {
+                    woodFloorsDropped.Add($"{Path.GetFileNameWithoutExtension(file)} ({wood.OwnStorey}: {geometry.Slabs.Count} outline(s), "
+                        + $"{geometry.Openings.Count} opening(s); framed by {wood.FramedBy})");
+                    geometry.Slabs.Clear();
+                    geometry.Openings.Clear();
+                }
+            }
 
             // as drawn, before the seam takes anything off it
             // Keyed the way the placement loop looks it up: by sheet NAME, not by path. Keyed by
@@ -1977,6 +2002,13 @@ public static class DxfToEtabsService
                     "from here on; if they are furniture, a detail bubble or a bollard drawn on a column " +
                     "layer, nothing is wrong and this line is a record of what was left out.");
         }
+
+        if (woodFloorsDropped.Count > 0)
+            warnings.Add(
+                $"{woodFloorsDropped.Count} plan sheet(s) draw a floor this set frames in wood - the floor shown as the framing " +
+                "over the level below - and gave it no concrete plate or opening; their walls and columns stand (step 184, " +
+                "dxf.wood-framed-floor-carries-no-concrete): " + string.Join("; ", woodFloorsDropped) +
+                ". A wood storey that also has a concrete plan takes its concrete from that plan.");
 
         if (readButNotPlaced.Count > 0)
             unplacedNote =
@@ -2738,7 +2770,7 @@ public static class DxfToEtabsService
         // both floors ... otherwise they're just hanging from L2" — and the same for walls. One
         // empty storey between two the member occupies is that case; anything wider is a member the
         // reader missed, and is left alone rather than invented. See the method.
-        int doubled = doc.ModelDoubleHeightMembersOnBothFloors(sameColumnReach: composeOptions.AlreadyModelledTolerance);
+        int doubled = doc.ModelDoubleHeightMembersOnBothFloors(sameColumnReach: composeOptions.AlreadyModelledTolerance, woodFloored: woodFloorStoreys);
         if (doubled > 0)
             warnings.Add(
                 $"{doubled} double-height member(s) were modelled on both floors they pass, not only " +
