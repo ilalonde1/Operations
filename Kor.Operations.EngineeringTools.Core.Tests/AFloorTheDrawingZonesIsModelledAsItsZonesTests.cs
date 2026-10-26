@@ -99,6 +99,24 @@ public sealed class AFloorTheDrawingZonesIsModelledAsItsZonesTests
         Assert.Equal(20000.0 * 10000 - 20000.0 * 5000, zones.Single(z => z.Printed == 600).Ring.Area, 2e6);
     }
 
+    /// <summary>
+    /// A SHORT STROKE IN THE OUTLINE'S OWN PEN IS A PIECE OF A BOUNDARY: 31130 L16's tower-above outline steps down 0.9 m,
+    /// one short stroke of the outline's pen, which taken only as a dash (no run to join) was dropped - the outline stood
+    /// open at the step and the 18" centre ran into the 10" round it.
+    /// </summary>
+    [Fact]
+    public void AShortStepInTheOutlinesPenClosesTheBoundary()
+    {
+        // a boundary of the outline's pen across the floor at y 6000, stepping down to y 5100 at x 10000 by one 900 mm stroke
+        var lines = Ring(20000, 10000)
+            .Append(Solid(0, 6000, 10000, 6000)).Append(Solid(10000, 6000, 10000, 5100)).Append(Solid(10000, 5100, 20000, 5100)).ToList();
+        var zones = Cut(Floor(20000, 10000), lines, [Says(900, 5000, 8000), Says(300, 15000, 2000)], out string why);
+
+        Assert.True(zones is not null, why);
+        Assert.Equal(2, zones!.Count);
+        Assert.Equal(10000.0 * 4000 + 10000.0 * 4900, zones.Single(z => z.Printed == 900).Ring.Area, 1e6);
+    }
+
     [Fact]
     public void AStrayDashPastABreakEndsTheLine()
     {

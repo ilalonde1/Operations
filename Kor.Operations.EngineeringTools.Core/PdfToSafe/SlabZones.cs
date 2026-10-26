@@ -69,14 +69,22 @@ public static class SlabZones
 
         var zoneLines = new List<DxfSegment>();
         var strokes = new List<(DxfPoint A, DxfPoint B)>();
+        int shortOfThePen = 0;
         foreach (var (line, width) in lines)
         {
+            bool ofThePen = Math.Abs(Math.Round(width, 2) - pen) <= 0.01;
+            // A SHORT STROKE IN THE OUTLINE'S OWN PEN IS A PIECE OF A BOUNDARY, not only a dash: 31130 L16's tower-above
+            // outline steps down 0.9 m twice, each step one short stroke of the outline's pen, and taken only as dashes -
+            // no run to join - they were dropped and the outline stood open at each step (looked at, S2.19.1). Offered as both.
+            // ⚠ A dash pattern drawn IN the outline's pen (some offices dash the tower-above line) would come in as many short
+            // pieces - harmless where they stay in line, but counted, so a floor where the count jumps is looked at first
             if (IsDash(line))
             {
                 if (Inside(new DxfPoint((line[0].X + line[1].X) / 2, (line[0].Y + line[1].Y) / 2))) strokes.Add((line[0], line[1]));
-                continue;
+                if (!ofThePen) continue;
+                shortOfThePen++;
             }
-            if (Math.Abs(Math.Round(width, 2) - pen) > 0.01) continue;
+            if (!ofThePen) continue;
             for (int k = 1; k < line.Count; k++)
             {
                 var (a, b) = (line[k - 1], line[k]);
@@ -97,7 +105,7 @@ public static class SlabZones
             .Select(i => new DxfSegment("RING", floor.Points[i], floor.Points[(i + 1) % floor.Points.Count]))).ToList();
         foreach (var (a, b) in DashedLines(strokes, dashGapMm, words ?? []))
             zoneLines.Add(new DxfSegment("ZONE", CarriedOn(b, a, solid, 4 * dashGapMm), CarriedOn(a, b, solid, 4 * dashGapMm)));
-        string counts = $"pen {pen:0.00}, {onPen} stroke(s) on it inside, {walls} wall edge(s), {zoneLines.Count - onPen - walls} dashed line(s) of {strokes.Count} short stroke(s)";
+        string counts = $"pen {pen:0.00}, {onPen} stroke(s) on it inside ({shortOfThePen} short), {walls} wall edge(s),{zoneLines.Count - onPen - walls} dashed line(s) of {strokes.Count} short stroke(s)";
         var ring = Enumerable.Range(0, floor.Points.Count).Select(i => new DxfSegment("ZONE", floor.Points[i], floor.Points[(i + 1) % floor.Points.Count]));
 
         // KOR_STEP183_PROBE="x0,y0,x1,y1" (mm): every zone line and dash inside that box, to the trace - the instrument for a
@@ -176,29 +184,45 @@ public static class SlabZones
             return null;
         }
 
-        // like faces united; a union that wraps another zone is cut through the zone it wraps, above and below
+        // like faces united; a union that wraps another zone is cut through the zone it wraps, above and below. WHERE IT
+        // CANNOT BE CUT - one cell round it, or no cut parting it - WHAT IT WRAPS IS TAKEN INTO IT, as an island in one cell
+        // is, and the union is made again: 31168 L1 (building C) stood down whole, 36,356 sq ft, for one such island the
+        // moment the outline's short steps came in (2026-10-26), where its eighteen zones had been read the build before
         var zones = new List<Zone>();
-        foreach (var l in labels)
+        for (int attempt = 0; ; attempt++)
         {
-            var pending = new List<HashSet<int>> { Enumerable.Range(0, n).Where(i => inFloor[i] && label[i] == l).ToHashSet() };
-            for (int pass = 0; pending.Count > 0; pass++)
+            zones.Clear();
+            (double Printed, bool IsMetric)? takeInto = null; PlanLoop? wrappedHole = null;
+            foreach (var l in labels)
             {
-                var group = pending[^1]; pending.RemoveAt(pending.Count - 1);
-                foreach (var region in planar.RecoverSurfaces(_ => false, (i, _) => group.Contains(i)).Slabs)
+                var pending = new List<HashSet<int>> { Enumerable.Range(0, n).Where(i => inFloor[i] && label[i] == l).ToHashSet() };
+                for (int pass = 0; pending.Count > 0 && takeInto is null; pass++)
                 {
-                    var wrapped = region.Holes.FirstOrDefault(h => Enumerable.Range(0, n).Any(i => inFloor[i] && label[i] != l
-                        && LoopGeometry.PointInPolygon(InteriorPoint(planar.Faces[i].Outer), h.Points)));
-                    // a sliver of no area between two lines a hair apart is no zone (31130 L14: "16" 0 sq ft")
-                    if (wrapped is null) { if (Math.Abs(region.Outer.Area) >= 92903.04) zones.Add(new Zone(region.Outer, l.Printed, l.IsMetric)); continue; }
-                    if (pass > 8) { why = "a zone wraps another and would not come apart"; return null; }
-                    double y = wrapped.Centroid().Y;
-                    var mine = group.Where(i => LoopGeometry.PointInPolygon(InteriorPoint(planar.Faces[i].Outer), region.Outer.Points)).ToList();
-                    var above = mine.Where(i => InteriorPoint(planar.Faces[i].Outer).Y >= y).ToHashSet();
-                    var below = mine.Where(i => !above.Contains(i)).ToHashSet();
-                    if (above.Count == 0 || below.Count == 0) { why = "a zone wraps another in a single cell"; return null; }
-                    pending.Add(above); pending.Add(below);
+                    var group = pending[^1]; pending.RemoveAt(pending.Count - 1);
+                    foreach (var region in planar.RecoverSurfaces(_ => false, (i, _) => group.Contains(i)).Slabs)
+                    {
+                        var wrapped = region.Holes.FirstOrDefault(h => Enumerable.Range(0, n).Any(i => inFloor[i] && label[i] != l
+                            && LoopGeometry.PointInPolygon(InteriorPoint(planar.Faces[i].Outer), h.Points)));
+                        // a sliver of no area between two lines a hair apart is no zone (31130 L14: "16" 0 sq ft")
+                        if (wrapped is null) { if (Math.Abs(region.Outer.Area) >= 92903.04) zones.Add(new Zone(region.Outer, l.Printed, l.IsMetric)); continue; }
+                        double y = wrapped.Centroid().Y;
+                        var mine = group.Where(i => LoopGeometry.PointInPolygon(InteriorPoint(planar.Faces[i].Outer), region.Outer.Points)).ToList();
+                        var above = mine.Where(i => InteriorPoint(planar.Faces[i].Outer).Y >= y).ToHashSet();
+                        var below = mine.Where(i => !above.Contains(i)).ToHashSet();
+                        if (pass > 8 || above.Count == 0 || below.Count == 0) { takeInto = l; wrappedHole = wrapped; break; }
+                        pending.Add(above); pending.Add(below);
+                    }
                 }
+                if (takeInto is not null) break;
             }
+            if (takeInto is null) break;
+            if (attempt >= 20) { why = "zones wrap others and would not come apart"; return null; }
+            var inHole = Enumerable.Range(0, n).Where(i => inFloor[i] && label[i] != takeInto
+                && LoopGeometry.PointInPolygon(InteriorPoint(planar.Faces[i].Outer), wrappedHole!.Points)).ToList();
+            islandsTakenIn.Add($"{inHole.Sum(i => Math.Abs(planar.Faces[i].Outer.Area)) / 92903.04:0} sq ft of {label[inHole[0]]!.Value.Printed:0.#} wrapped");
+            foreach (int i in inHole) label[i] = takeInto;
+            labels = Enumerable.Range(0, n).Where(i => inFloor[i] && label[i] is not null).Select(i => label[i]!.Value).Distinct().ToList();
+            if (labels.Count < 2) { why = "taking in what its zones wrapped left one thickness"; return null; }
         }
         why = $"{zones.Count} zone(s), {labels.Count} thickness(es) ({counts}; {n} face(s))"
               + (islandsTakenIn.Count == 0 ? "" : $"; {islandsTakenIn.Count} island(s) inside one cell taken into it: {string.Join(", ", islandsTakenIn.Distinct().Take(6))}");

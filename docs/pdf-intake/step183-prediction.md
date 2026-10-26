@@ -75,7 +75,20 @@ thickness does not compare) and by the drawing where the yardstick cannot judge:
 
 Halifax (Revit route): byte-identical. Core fast 1,675 of 1,675; AFloorTheDrawingZonesIsModelledAsItsZonesTests 14 of 14.
 
-**31130 L16 / L17, looked at after the commit (S2.19.1, p43):** the drawing zones L16 east as 10" west, 18" centre (two
+**31130 L16 FIXED, 2026-10-26 (step 183 continued, commit after 9327444e):** the cause was NOT a third pen. The 18" centre
+is bounded by the tower-above outline in the outline's OWN pen; it steps down 0.9 m twice, each step one short stroke, and
+short strokes were taken only as dashes - no run to join - and dropped, so the outline stood open. A short stroke of the
+outline's pen is now a boundary piece too (counted per floor, "(N short)", in the trace - a dash pattern drawn in the
+outline pen is the same-class fault it could bring in). L16 east: 10" 3,643 / 18" 4,189 / 12" 1,039 sq ft; the engineer's
+3,561 / 4,330 / 1,147. Volume 576 -> 508 m3. Rejected the same night: the slab pass's inner rings as boundaries (L1N's
+900 field went to 300). The six-set run of it found a regression - 31168 L1 (building C) stood down whole, "a zone wraps
+another in a single cell" - so a zone that cannot be cut round what it wraps now takes it in and the union is made again
+(its 21 zones back). Six sets vs 21fb2b10: 31170-arch identical; L16 as above; 31138 L5 12" 33 -> 2,461 (the engineer's
+4,313); 31168 A-L1 a 12" zone from its two printed «12"»; the rest within a few hundred sq ft. Halifax byte-identical
+(1898f6b4...). Core fast 1,677 of 1,677. The wrap-retry has no unit test of its own - 31168 L1 C on the six sets is its
+witness.
+
+**31130 L16 / L17, looked at after the commit (S2.19.1, p43) - the first reading, since corrected above:** the drawing zones L16 east as 10" west, 18" centre (two
 «18" SLAB»), 12" east, 10" south strip - the engineer's 10" 3,561 / 12" 1,147 / 18" 4,330 sq ft agrees with it. The 18"
 centre is bounded by THIN SOLID lines, a third pen: neither the outline's pen nor dashed, so the cut does not read them,
 the west 10", the 18" centre and the south 10" stay one zone, and 2 «18"» against 2 «10"» goes to 18" by ground share
