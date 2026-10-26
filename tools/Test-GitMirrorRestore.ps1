@@ -11,6 +11,15 @@
 # ls-remote reads refs. The fault was in HEAD, which ls-remote does not show. So the check that
 # finds this class is to CLONE THE THING AND COUNT WHAT CAME OUT.
 #
+# AND THE FIRST VERSION OF THIS SCRIPT MISSED HALF THE CLASS, which is the failure mode rule 11
+# warns about: a broad name on a narrow check. It globbed *.git directly under one root, so it saw
+# the five flat bares on FS01 and none of the nested ones on KOR-302N (C:\<Repo>\repo.git). Both
+# 302N mirrors had the same fault. The real count across both locations was 6 of 7 bares broken -
+# only VentureBrain, whose branch genuinely is master, would have restored.
+# So discovery now covers both layouts, and -Root must still be pointed at each HOST separately:
+#   flat:   E:\IT\git\KOR.RevitTools.git      (FS01; the name carries the repo)
+#   nested: C:\KOR.RevitTools\repo.git        (302N; the name is always repo.git)
+#
 # CHECKS, per bare:
 #   - HEAD is a symbolic ref whose target branch actually exists
 #   - a real `git clone` of it succeeds
@@ -41,15 +50,24 @@
 # core.longpaths is unset on these machines. That was the harness, not the mirror. -WorkRoot
 # defaults to C:\korbk-verify for that reason; do not point it somewhere deep.
 #
+# ⚠ IT CLONES, SO IT MOVES THE WHOLE REPO. Over the VPN that is not free: pointed at
+# \\KOR-302N\C$ unscoped it starts pulling KOR.Drafter's ~164 MB bare across the link, which is
+# nobody's intention for a health check. On a remote host, either run it ON that host or scope it
+# with -Name. Against FS01 all five together are ~200 MB and take a few minutes.
+#
 # Usage:
 #   .\tools\Test-GitMirrorRestore.ps1
 #   .\tools\Test-GitMirrorRestore.ps1 -Root '\\KOR-FS01\E$\IT\git' -Fsck
 #   .\tools\Test-GitMirrorRestore.ps1 -Name KOR.Drafter.git
+#   .\tools\Test-GitMirrorRestore.ps1 -Root '\\KOR-302N\C$' -Name 'KOR.RevitTools/repo.git'
 [CmdletBinding()]
 param(
     [string]$Root = '\\KOR-FS01\E$\IT\git',
-    # Short on purpose - see the MAX_PATH note above.
-    [string]$WorkRoot = 'C:\korbk-verify',
+    # Short on purpose - see the MAX_PATH note above. %TEMP% is ~40 chars, which leaves room for a
+    # 117-char internal path; the session scratchpad is ~140 and does not. Do not point this deeper,
+    # and do not point it at a C:\ root - the harness protects those from removal, so the script
+    # could not clean up after itself.
+    [string]$WorkRoot = (Join-Path $env:TEMP 'korbk-verify'),
     # Limit to one or more bares, by folder name.
     [string[]]$Name,
     [switch]$Fsck,
@@ -63,9 +81,23 @@ if (-not (Test-Path -LiteralPath $Root)) {
     throw "Mirror root not reachable: $Root"
 }
 
-$bares = Get-ChildItem -LiteralPath $Root -Directory | Where-Object { $_.Name -like '*.git' }
-if ($Name) { $bares = $bares | Where-Object { $Name -contains $_.Name } }
-if (-not $bares) { throw "No bare repositories (*.git) found under $Root" }
+# Both layouts: FS01 keeps flat <Repo>.git under one folder; 302N keeps nested <Repo>\repo.git.
+# A bare is identified by having a HEAD file, so a working checkout's .git is not mistaken for one.
+$flat = @(Get-ChildItem -LiteralPath $Root -Directory | Where-Object { $_.Name -like '*.git' })
+$nested = @(Get-ChildItem -LiteralPath $Root -Directory | Where-Object { $_.Name -notlike '*.git' } |
+            ForEach-Object { Join-Path $_.FullName 'repo.git' } |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_ 'HEAD') } |
+            ForEach-Object { Get-Item -LiteralPath $_ })
+$bares = @($flat + $nested | Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'HEAD') })
+
+# A nested bare is always called repo.git, so label it by the repo folder that holds it.
+function Get-MirrorLabel($dir) {
+    if ($dir.Name -eq 'repo.git') { return (Split-Path $dir.Parent.FullName -Leaf) + '/repo.git' }
+    return $dir.Name
+}
+
+if ($Name) { $bares = @($bares | Where-Object { $Name -contains $_.Name -or $Name -contains (Get-MirrorLabel $_) }) }
+if (-not $bares) { throw "No bare repositories found under $Root (looked for <Repo>.git and <Repo>\repo.git, each needing a HEAD file)" }
 
 if (Test-Path -LiteralPath $WorkRoot) { Remove-Item -LiteralPath $WorkRoot -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $WorkRoot | Out-Null
@@ -73,8 +105,9 @@ New-Item -ItemType Directory -Force -Path $WorkRoot | Out-Null
 $results = @()
 
 foreach ($bare in $bares) {
+    $label = Get-MirrorLabel $bare
     $row = [ordered]@{
-        Mirror = $bare.Name; Head = ''; HeadTargetExists = $false; Cloned = $false
+        Mirror = $label; Head = ''; HeadTargetExists = $false; Cloned = $false
         Commits = 0; TrackedInClone = 0; TrackedInBare = 0; WorkingTreeClean = $false
         Fsck = ''; Verdict = 'FAIL'; Note = ''
     }
@@ -96,7 +129,8 @@ foreach ($bare in $bares) {
         $row.TrackedInBare = @(git --git-dir="$($bare.FullName)" ls-tree -r --name-only HEAD 2>$null).Count
 
         # 3. The actual restore.
-        $dest = Join-Path $WorkRoot ($bare.Name -replace '\.git$', '')
+        # Label, not $bare.Name: every nested bare is called repo.git, so names would collide.
+        $dest = Join-Path $WorkRoot (($label -replace '/repo\.git$', '' -replace '\.git$', '') -replace '[^A-Za-z0-9._-]', '_')
         git clone --quiet "$($bare.FullName)" "$dest" 2>&1 | Out-Null
         $cloneExit = $LASTEXITCODE
         $row.Cloned = ($cloneExit -eq 0) -and (Test-Path -LiteralPath (Join-Path $dest '.git'))
