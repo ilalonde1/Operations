@@ -79,6 +79,9 @@ public static class RuleSettings
     /// <summary>The units a rule declares when its value is a semicolon-separated list of strings.</summary>
     public const string TextUnits = "layers";
 
+    /// <summary>The units a ruling written for people and the drafter carries ("an X is an opening"): never a setting a build applies, so the loader leaves it out and counts it (2026-10-27).</summary>
+    public const string RulingForPeopleUnits = "rule";
+
     /// <summary>
     /// Every units string that means "this value is a list of names, not a number".
     ///
@@ -104,7 +107,7 @@ public static class RuleSettings
     /// </summary>
     public static IReadOnlyDictionary<string, RuleSetting> Load(string? connectionString = null)
     {
-        var (settings, _) = TryLoad(connectionString);
+        var (settings, _, _) = TryLoad(connectionString);
         return settings;
     }
 
@@ -309,6 +312,16 @@ ORDER BY r.Topic, a.DecidedAtUtc DESC
     public static IReadOnlyDictionary<string, RuleSetting> LoadRequired(
         string? connectionString,
         IEnumerable<string> requiredKeys)
+        => LoadRequired(connectionString, requiredKeys, out _);
+
+    /// <summary>
+    /// <see cref="LoadRequired(string?, IEnumerable{string})"/>, and how many rulings written for people (units
+    /// <see cref="RulingForPeopleUnits"/>) the view served and this load left out - for the report to say.
+    /// </summary>
+    public static IReadOnlyDictionary<string, RuleSetting> LoadRequired(
+        string? connectionString,
+        IEnumerable<string> requiredKeys,
+        out int rulingsForPeopleLeftOut)
     {
         connectionString ??= Environment.GetEnvironmentVariable(ConnectionEnvironmentVariable);
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -316,7 +329,8 @@ ORDER BY r.Topic, a.DecidedAtUtc DESC
                 $"KorStandards is required for DXF-to-ETABS generation. Set {ConnectionEnvironmentVariable} " +
                 "or pass --rules-db.");
 
-        var (settings, invalid) = TryLoad(connectionString);
+        var (settings, invalid, leftOut) = TryLoad(connectionString);
+        rulingsForPeopleLeftOut = leftOut;
         if (invalid.Count > 0)
             throw new InvalidOperationException("KorStandards rule settings could not be read: " +
                                                 string.Join("; ", invalid));
@@ -335,13 +349,32 @@ ORDER BY r.Topic, a.DecidedAtUtc DESC
         return settings;
     }
 
-    private static (IReadOnlyDictionary<string, RuleSetting> Settings, IReadOnlyList<string> Invalid) TryLoad(string? connectionString = null)
+    /// <summary>What one row of the view is to a build: a setting, a ruling written for people, or a row that stops the run.</summary>
+    internal enum RowKind { Setting, ForPeople, Unreadable, EmptyList }
+
+    /// <summary>
+    /// The loader's decision for one row, by its value and units. A ruling for people (<see cref="RulingForPeopleUnits"/>) is
+    /// left out. A rule declared as a list is not expected to parse as a number, and refusing it for that would stop the run;
+    /// an empty list matches nothing and does stop it. Anything else that will not parse stops it too: a size the tool cannot
+    /// read is a rule it cannot apply, and continuing would mean silently using the constant compiled into the code instead.
+    /// </summary>
+    internal static RowKind KindOf(object settingValue, string units, out double value)
+    {
+        value = double.NaN;
+        if (units.Equals(RulingForPeopleUnits, StringComparison.OrdinalIgnoreCase)) return RowKind.ForPeople;
+        if (IsListUnits(units))
+            return (Convert.ToString(settingValue, CultureInfo.InvariantCulture) ?? string.Empty).Trim().Length == 0 ? RowKind.EmptyList : RowKind.Setting;
+        return TryParseSettingValue(settingValue, units, out value) ? RowKind.Setting : RowKind.Unreadable;
+    }
+
+    private static (IReadOnlyDictionary<string, RuleSetting> Settings, IReadOnlyList<string> Invalid, int RulingsForPeople) TryLoad(string? connectionString = null)
     {
         var settings = new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase);
         var invalid = new List<string>();
+        int rulingsForPeople = 0;
 
         connectionString ??= Environment.GetEnvironmentVariable(ConnectionEnvironmentVariable);
-        if (string.IsNullOrWhiteSpace(connectionString)) return (settings, invalid);
+        if (string.IsNullOrWhiteSpace(connectionString)) return (settings, invalid, 0);
 
         try
         {
@@ -363,23 +396,16 @@ ORDER BY r.Topic, a.DecidedAtUtc DESC
                 string units = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
                 string text = Convert.ToString(reader.GetValue(1), CultureInfo.InvariantCulture) ?? string.Empty;
 
-                // A rule declared as a list is not expected to parse as a number, and refusing it
-                // for that would stop the run. Anything else that will not parse still does: a
-                // size the tool cannot read is a rule it cannot apply, and continuing would mean
-                // silently using the constant compiled into the code instead.
-                bool isList = IsListUnits(units);
-                double value = double.NaN;
-                if (!isList && !TryParseSettingValue(reader.GetValue(1), units, out value))
-                {
-                    invalid.Add($"{key}='{reader.GetValue(1)}'");
-                    continue;
-                }
-
-                if (isList && text.Trim().Length == 0)
-                {
-                    invalid.Add($"{key}='' (a list rule with nothing in it matches nothing)");
-                    continue;
-                }
+                // A RULING WRITTEN FOR PEOPLE IS NOT A SETTING (2026-10-27). The view also serves the engineer's and the
+                // drafter's rulings - "an X is an opening", "top-to-bottom; columns right-to-left" - with units 'rule' and
+                // prose for a value (KOR.Drafter migrations 131, 132, 134; one from 119). They are for the people and the
+                // drafter that read them, and no build applies one; refusing them as unreadable numbers stopped EVERY
+                // rules-required build, keys it never reads included (found by the full suite at d92e50b1). They are left
+                // out and counted; every other row is as strict as before - a setting that will not parse still stops the run.
+                var kind = KindOf(reader.GetValue(1), units, out double value);
+                if (kind == RowKind.ForPeople) { rulingsForPeople++; continue; }
+                if (kind == RowKind.Unreadable) { invalid.Add($"{key}='{reader.GetValue(1)}'"); continue; }
+                if (kind == RowKind.EmptyList) { invalid.Add($"{key}='' (a list rule with nothing in it matches nothing)"); continue; }
 
                 // The view unions conventions and rulings, and a ruling is the engineer speaking,
                 // so it wins where both carry the same key.
@@ -402,10 +428,10 @@ ORDER BY r.Topic, a.DecidedAtUtc DESC
         catch (Exception ex)
         {
             invalid.Add(ex.Message);
-            return (new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase), invalid);
+            return (new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase), invalid, rulingsForPeople);
         }
 
-        return (settings, invalid);
+        return (settings, invalid, rulingsForPeople);
     }
 
     /// <summary>The value for a key, or the built-in one where the database does not carry it.</summary>

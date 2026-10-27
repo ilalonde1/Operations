@@ -169,6 +169,20 @@ public class RulingCoverageTests
         ["section-properties-stay-engineer"] = "Scope. The tool writes sections it creates and reuses hers.",
         ["tool-engineer-scope-split"] = "Scope. A working agreement, not code.",
         ["revit-diff-is-the-prize"] = "Direction, not a rule this tool can obey today.",
+
+        // Jim's model and drawing rulings, KOR.Drafter migration 134 (2026-10-27, from the Halifax review call). They govern
+        // how the engineer's PDF MARKUP is read into the model - the Virtual Drafter's markup reader, which hands this
+        // converter the DXF. Measured the same day on Halifax LEVEL 1 / P1: each fault Jim found was already in the DXF this
+        // converter was given (pit outline on the wall layer, core walls drawn without door gaps, every rectangular column
+        // long north-south, the skewed wall as three stubs), so this code neither obeys nor breaks them yet.
+        ["a-pit-edge-is-not-a-wall"] = "Markup reading (134). The converter models what the wall layer carries; no test asserts a pit edge is kept off it.",
+        ["a-red-outline-is-the-slab-edge"] = "Markup reading (134). No test asserts a red markup outline becomes the storey's slab edge.",
+        ["an-x-in-the-markup-is-an-opening"] = "Markup reading (134). No test asserts an X across a markup region becomes an opening, nor that its box edges are kept off the wall layer.",
+        ["columns-centred-unless-noted"] = "Markup reading and transitions (134). The converter places a column where its outline stands; no test asserts centring on the column below or the flush side.",
+        ["core-door-openings-match-the-floor-above"] = "Markup reading (134). The converter keeps the gaps the DXF draws; no test asserts core door holes are matched to the floor above and run down.",
+        ["header-depth-as-the-engineer-marks"] = "Markup reading (134). No test asserts a header takes the depth the engineer marks.",
+        ["levels-from-the-engineers-section"] = "Input (134). The converter takes the levels file it is given (Halifax: levels.csv, which matches his section); no test asserts the file is the section's.",
+        ["wall-on-the-face-the-engineer-marks"] = "Markup reading (134). The converter places a wall on the DXF outline's centre line; no test asserts the outside face on the marked line.",
     };
 
     [Fact]

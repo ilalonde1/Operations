@@ -799,10 +799,13 @@ public static class DxfToEtabsService
         // The rules, from KorStandards where the run is production. An answer from the engineer is
         // banked there with its confidence, and this is where it becomes behaviour.
         var builtIn = BuiltInRuleValues(request.Classification, request.Compose);
+        int rulingsForPeople = 0;
         var banked = request.RequireRuleSettings
-            ? RuleSettings.LoadRequired(request.RuleSettingsConnection, RequiredRuleKeys)
+            ? RuleSettings.LoadRequired(request.RuleSettingsConnection, RequiredRuleKeys, out rulingsForPeople)
             : new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase);
         warnings.AddRange(RuleSettings.Describe(banked, builtIn));
+        if (rulingsForPeople > 0)
+            warnings.Add($"{rulingsForPeople} ruling(s) written for people and the drafter (units '{RuleSettings.RulingForPeopleUnits}') are in KorStandards and were left out of this build's settings - no build applies them.");
 
         // THE WORDS THIS OFFICE USES, BEFORE ANY SHEET NAME IS READ.
         //
