@@ -7,7 +7,8 @@ namespace Kor.Operations.NetworkOps.Cli;
 // The verbs a Claude session uses, all through NetworkOps on APP01 (AppServer.cs) -- nothing goes from this PC to the
 // machine being read:
 //
-//   netops run        --script x.ps1 --hosts A,B [--timeout 90] [--purpose "why"] [--run <prompt run id>] [--out dir]
+//   netops run        --script x.ps1 --hosts A,B [--timeout 90] [--purpose "why"] [--approved-by "who, when"] [--run <prompt run id>] [--out dir]
+//                     KOR-1001 and KOR-302N (Core/Actions/ProtectedHosts) are refused by APP01 without --approved-by.
 //   netops last-check --hosts A,B                the last full health check NetworkOps stored, as returned
 //   netops check      --hosts A,B                a fresh full health check now (stored; the Command Center sees it)
 //   netops knowledge  [--search words] [--all]   banked knowledge cards (accepted; --all adds proposed/rejected)
@@ -24,7 +25,7 @@ namespace Kor.Operations.NetworkOps.Cli;
 //   netops network    [--search KOR-207|markb|192.168.1.73]  the port map: every switch, port, device and person
 //   netops add-pc     --hosts NAME           a PC outside the domain: its one-time code and the command to run on it
 //   netops token                             a NetworkOps access token on stdout (for the MCP endpoint / any HTTP client)
-//   netops copy        --hosts A --from <folder> --to <folder> --purpose "why" [--files *.rvt] [--overwrite] [--wait 120]
+//   netops copy        --hosts A --from <folder> --to <folder> --purpose "why" [--files *.rvt] [--overwrite] [--wait 120] [--approved-by "who, when"]
 //                                                robocopy run ON machine A (Core/Copy/CopyScript), audited as a run;
 //                                                never deletes; prints the proof (counts + bytes both sides, hash sample)
 //   netops copy-status --hosts A --copy <copy id>   read a copy back: its result, or that it is still running
@@ -40,7 +41,7 @@ internal static class SessionVerbs
     public static async Task<int> RunAsync(string verb, string[] args)
     {
         string? hostsArg = null, script = null, outDir = null, purpose = null, search = null, fixId = null, param = null, finding = null, since = null;
-        string? from = null, to = null, files = null, copyId = null;
+        string? from = null, to = null, files = null, copyId = null, approvedBy = null;
         long? promptRun = null, id = null;
         var timeout = 90;
         var wait = Kor.Operations.NetworkOps.Core.Copy.CopyScript.DefaultWaitSeconds;
@@ -71,6 +72,7 @@ internal static class SessionVerbs
                 case "--to" when i + 1 < args.Length: to = args[++i]; break;
                 case "--files" when i + 1 < args.Length: files = args[++i]; break;
                 case "--copy" when i + 1 < args.Length: copyId = args[++i]; break;
+                case "--approved-by" when i + 1 < args.Length: approvedBy = args[++i]; break;
                 case "--overwrite": overwrite = true; break;
                 case "--wait" when i + 1 < args.Length && int.TryParse(args[i + 1], out var w): wait = w; i++; break;
                 default: Console.Error.WriteLine($"Unknown argument for {verb}: {args[i]}"); return 2;
@@ -135,12 +137,12 @@ internal static class SessionVerbs
             {
                 // One machine, never "all": a copy is one machine's robocopy, run where the files are.
                 if (hosts.Count != 1 || hostsArg.Contains(',') || hostsArg is "all" or "rack") { Console.Error.WriteLine("--hosts takes ONE machine for a copy."); return 2; }
-                return await CopyAsync(server, hosts[0].Name, verb, from, to, files, overwrite, wait, copyId, purpose, timeout, ct);
+                return await CopyAsync(server, hosts[0].Name, verb, from, to, files, overwrite, wait, copyId, purpose, approvedBy, timeout, ct);
             }
 
             var code = verb switch
             {
-                "run" => await RunScriptAsync(server, hosts.Select(h => h.Name).ToList(), script, timeout, purpose, promptRun, outDir, ct),
+                "run" => await RunScriptAsync(server, hosts.Select(h => h.Name).ToList(), script, timeout, purpose, promptRun, approvedBy, outDir, ct),
                 "last-check" => await LastCheckAsync(server, hosts.Select(h => h.Name).ToList(), ct),
                 "check" => await CheckAsync(server, hosts.Select(h => h.Name).ToList(), ct),
                 "fix" => await FixAsync(server, hosts, fixId, param, finding, purpose, confirmed, timeout, ct),
@@ -162,14 +164,14 @@ internal static class SessionVerbs
         catch (Microsoft.Identity.Client.MsalException ex) { Console.Error.WriteLine($"netops: sign-in failed ({ex.ErrorCode}): {ex.Message}"); return 1; }
     }
 
-    private static async Task<int> RunScriptAsync(AppServer server, IReadOnlyList<string> hosts, string? script, int timeout, string? purpose, long? promptRun, string? outDir, CancellationToken ct)
+    private static async Task<int> RunScriptAsync(AppServer server, IReadOnlyList<string> hosts, string? script, int timeout, string? purpose, long? promptRun, string? approvedBy, string? outDir, CancellationToken ct)
     {
         if (script is null || !File.Exists(script)) { Console.Error.WriteLine("--script <file.ps1> is required and must exist."); return 2; }
         var body = await File.ReadAllTextAsync(script, ct);
         var results = new System.Collections.Concurrent.ConcurrentBag<RemoteRunResult>();
         await Parallel.ForEachAsync(hosts, new ParallelOptions { MaxDegreeOfParallelism = 8, CancellationToken = ct }, async (h, c) =>
         {
-            try { results.Add(await server.PostAsync<RemoteRunResult>($"/api/devices/{Uri.EscapeDataString(h)}/run", new RemoteRunRequest(body, timeout, purpose, promptRun), c)); }
+            try { results.Add(await server.PostAsync<RemoteRunResult>($"/api/devices/{Uri.EscapeDataString(h)}/run", new RemoteRunRequest(body, timeout, purpose, promptRun, approvedBy), c)); }
             catch (AppServerException ex) { results.Add(new RemoteRunResult(0, h, false, "-", 0, null, ex.Message)); }
         });
         var ordered = results.OrderBy(r => r.Device, StringComparer.OrdinalIgnoreCase).ToList();
@@ -190,7 +192,7 @@ internal static class SessionVerbs
     // A copy is a run: the script is built here from Core/Copy (the same builder the MCP tool uses) and goes through the
     // same POST /run, so it is audited as a run-command with the copy id, both paths and the purpose in its purpose line.
     private static async Task<int> CopyAsync(AppServer server, string host, string verb, string? from, string? to, string? files, bool overwrite,
-        int wait, string? copyId, string? purpose, int timeout, CancellationToken ct)
+        int wait, string? copyId, string? purpose, string? approvedBy, int timeout, CancellationToken ct)
     {
         string script, audit;
         if (verb == "copy")
@@ -207,7 +209,7 @@ internal static class SessionVerbs
             script = Kor.Operations.NetworkOps.Core.Copy.CopyScript.Status(copyId!);
             audit = $"copy status {copyId}{(purpose is null ? "" : $" -- {purpose}")}";
         }
-        var r = await server.PostAsync<RemoteRunResult>($"/api/devices/{Uri.EscapeDataString(host)}/run", new RemoteRunRequest(script, timeout, audit, null), ct);
+        var r = await server.PostAsync<RemoteRunResult>($"/api/devices/{Uri.EscapeDataString(host)}/run", new RemoteRunRequest(script, timeout, audit, null, approvedBy), ct);
         Console.WriteLine($"=== {r.Device} copy {copyId} [{(r.Ok ? "Ok" : "Failed")}] {r.Ms} ms via APP01 ({r.Route}), audited as action {r.ActionId}{(r.Error is null ? "" : $" -- {r.Error}")}");
         if (r.OutputJson is not null) Console.WriteLine(Pretty(r.OutputJson));
         // Exit 0 only for a finished copy that proved itself; 3 = still running (read it back with copy-status).

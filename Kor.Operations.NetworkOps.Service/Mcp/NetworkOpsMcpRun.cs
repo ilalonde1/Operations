@@ -35,13 +35,9 @@ public sealed class NetworkOpsMcpRun
             return "one named machine per call -- a fleet-wide run is the Command Center's, not a session's";
         if (string.IsNullOrWhiteSpace(purpose) || purpose.Trim().Length < MinPurposeChars)
             return $"say why, in a purpose of at least {MinPurposeChars} characters: it is the audit line";
-        if (o.SessionProtectedHosts.Any(p => p.Equals(host, StringComparison.OrdinalIgnoreCase)) && string.IsNullOrWhiteSpace(approvedBy))
-            return $"{host} is protected: name who approved this one action (approvedBy), or leave it alone";
-        return null;
+        // The same rule the server applies to every run (SessionApi.RunAsync); checked here too so a refusal costs no lookup.
+        return Core.Actions.ProtectedHosts.Refusal(o.SessionProtectedHosts, host, approvedBy);
     }
-
-    internal static string AuditPurpose(string purpose, string? approvedBy)
-        => string.IsNullOrWhiteSpace(approvedBy) ? purpose.Trim() : $"{purpose.Trim()} [approved by: {approvedBy.Trim()}]";
 
     private static async Task<object?> RefuseAsync(IServiceProvider services, string host, string via, string why, string by, CancellationToken ct)
     {
@@ -52,11 +48,12 @@ public sealed class NetworkOpsMcpRun
         return new { host, refused = why };
     }
 
-    private static async Task<object> RunAsync(IServiceProvider services, string host, string script, int? timeoutSeconds, string via, string purpose, CancellationToken ct)
+    private static async Task<object> RunAsync(IServiceProvider services, string host, string script, int? timeoutSeconds, string via, string purpose,
+        string? approvedBy, CancellationToken ct)
     {
         var (run, error, _) = await SessionApi.RunAsync(services.GetRequiredService<NetworkOpsStore>(), services.GetRequiredService<Agents.MachineRunner>(),
             services.GetRequiredService<IOptions<NetworkOpsOptions>>().Value, services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("NetworkOps.Mcp.Run"),
-            host, script, timeoutSeconds, By(services), via, purpose, null, ct);
+            host, script, timeoutSeconds, By(services), via, purpose.Trim(), null, approvedBy, ct);
         return run is null
             ? new { host, error }
             : new { host = run.Device, actionId = run.ActionId, ok = run.Ok, route = run.Route, ms = run.Ms, output = Parse(run.OutputJson), error = run.Error };
@@ -86,7 +83,7 @@ public sealed class NetworkOpsMcpRun
         var options = services.GetRequiredService<IOptions<NetworkOpsOptions>>().Value;
         var by = By(services);
         if (Refusal(options, host, purpose, approvedBy) is { } why) return (await RefuseAsync(services, host, "mcp run", why, by, ct))!;
-        return await RunAsync(services, host, script, timeoutSeconds, "mcp networkops_run", AuditPurpose(purpose, approvedBy), ct);
+        return await RunAsync(services, host, script, timeoutSeconds, "mcp networkops_run", purpose, approvedBy, ct);
     }
 
     [McpServerTool(Name = "networkops_copy"), Description(
@@ -114,8 +111,8 @@ public sealed class NetworkOpsMcpRun
             return (await RefuseAsync(services, host, "mcp copy", why, by, ct))!;
         var id = CopyScript.NewId();
         var wait = Math.Clamp(waitSeconds ?? CopyScript.DefaultWaitSeconds, 0, CopyScript.MaxWaitSeconds);
-        var audit = $"copy {id}: {source} -> {destination}{(files is null ? "" : $" ({files})")}{(overwrite == true ? " OVERWRITE" : "")} -- {AuditPurpose(purpose, approvedBy)}";
-        return await RunAsync(services, host, CopyScript.Start(id, source, destination, files, overwrite == true, wait), wait + 45, "mcp networkops_copy", audit, ct);
+        var audit = $"copy {id}: {source} -> {destination}{(files is null ? "" : $" ({files})")}{(overwrite == true ? " OVERWRITE" : "")} -- {purpose.Trim()}";
+        return await RunAsync(services, host, CopyScript.Start(id, source, destination, files, overwrite == true, wait), wait + 45, "mcp networkops_copy", audit, approvedBy, ct);
     }
 
     [McpServerTool(Name = "networkops_copy_status"), Description(
@@ -132,6 +129,6 @@ public sealed class NetworkOpsMcpRun
         var purpose = $"copy status {copyId}";
         if ((Refusal(options, host, purpose, approvedBy) ?? (CopyScript.IsId(copyId) ? null : "that is not a copy id")) is { } why)
             return (await RefuseAsync(services, host, "mcp copy-status", why, by, ct))!;
-        return await RunAsync(services, host, CopyScript.Status(copyId), 60, "mcp networkops_copy_status", AuditPurpose(purpose, approvedBy), ct);
+        return await RunAsync(services, host, CopyScript.Status(copyId), 60, "mcp networkops_copy_status", purpose, approvedBy, ct);
     }
 }

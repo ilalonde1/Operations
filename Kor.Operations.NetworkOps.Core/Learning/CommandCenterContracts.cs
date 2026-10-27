@@ -104,7 +104,9 @@ public sealed record KnowledgeCard(long CardId, string Title, string AppliesTo, 
 
 /// <param name="Purpose">One line on why, for the audit.</param>
 /// <param name="PromptRunId">The prompt run the session is working, when it has one.</param>
-public sealed record RemoteRunRequest(string Script, int? TimeoutSeconds, string? Purpose, long? PromptRunId);
+/// <param name="ApprovedBy">Who approved this one action, in their words ("operations-ee 02:14, Ian's proxy"): required on
+/// a protected machine (Actions/ProtectedHosts), recorded in the audited purpose.</param>
+public sealed record RemoteRunRequest(string Script, int? TimeoutSeconds, string? Purpose, long? PromptRunId, string? ApprovedBy = null);
 
 /// <param name="Route">agent | network</param>
 public sealed record RemoteRunResult(long ActionId, string Device, bool Ok, string Route, int Ms, string? OutputJson, string? Error);

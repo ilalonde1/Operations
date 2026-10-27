@@ -27,7 +27,7 @@ internal static class SessionApi
             IOptions<NetworkOpsOptions> o, ILoggerFactory loggers, CancellationToken ct) =>
         {
             var (run, error, notFound) = await RunAsync(s, runner, o.Value, loggers.CreateLogger("NetworkOps.Api.Session"), name, body.Script,
-                body.TimeoutSeconds, ApiAccess.UserOf(h.User), "netops run (Claude session)", body.Purpose, body.PromptRunId, ct);
+                body.TimeoutSeconds, ApiAccess.UserOf(h.User), "netops run (Claude session)", body.Purpose, body.PromptRunId, body.ApprovedBy, ct);
             return run is not null ? Results.Ok(run) : notFound ? Results.NotFound(new { error }) : Results.BadRequest(new { error });
         });
 
@@ -52,16 +52,26 @@ internal static class SessionApi
     /// </summary>
     internal static async Task<(RemoteRunResult? Run, string? Error, bool NotFound)> RunAsync(NetworkOpsStore s, Agents.MachineRunner runner,
         NetworkOpsOptions o, ILogger log, string name, string? script, int? timeoutSeconds, string by, string via, string? purpose, long? promptRunId,
-        CancellationToken ct)
+        string? approvedBy, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(script)) return (null, "there is no script to run", false);
         if (script.Length > MaxScriptChars) return (null, $"the script is longer than {MaxScriptChars:N0} characters", false);
         if (await s.DeviceByNameAsync(name, ct) is not { } dev) return (null, $"NetworkOps has no machine called {name}", true);
         if (Sweep.ActionRunner.HostOf(o, dev.Name) is not { } host)
             return (null, $"{dev.Name} is not a Windows server APP01 can run scripts on", false);
+        // The protected machines, judged on the RESOLVED name (a prefix like "KOR-302" cannot slip past), before anything
+        // starts; the refusal is itself an audited row.
+        purpose = Core.Actions.ProtectedHosts.AuditPurpose(purpose, approvedBy);
+        if (Core.Actions.ProtectedHosts.Refusal(o.SessionProtectedHosts, dev.Name, approvedBy) is { } refused)
+        {
+            await s.RecordRefusedActionAsync(dev.DeviceId, Core.Actions.FixCatalog.RunCommand, by,
+                System.Text.Json.JsonSerializer.Serialize(new { via, purpose }), refused, ct);
+            log.LogWarning("RUN on {Host} for {By} via {Via}: REFUSED ({Why})", dev.Name, by, via, refused);
+            return (null, refused, false);
+        }
 
         var timeout = TimeSpan.FromSeconds(Math.Clamp(timeoutSeconds ?? DefaultTimeoutSeconds, 10, MaxTimeoutSeconds));
-        var request = System.Text.Json.JsonSerializer.Serialize(new { param = script, via, purpose, promptRun = promptRunId });
+        var request = System.Text.Json.JsonSerializer.Serialize(new { param = script, via, purpose, promptRun = promptRunId, approvedBy });
         var actionId = await s.StartActionAsync(dev.DeviceId, Core.Actions.FixCatalog.RunCommand, by, request, ct);
         var route = runner.ViaAgent(host) ? "agent" : "network";
         var clock = System.Diagnostics.Stopwatch.StartNew();

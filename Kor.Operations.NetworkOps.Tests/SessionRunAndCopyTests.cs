@@ -1,3 +1,4 @@
+using Kor.Operations.NetworkOps.Core.Actions;
 using Kor.Operations.NetworkOps.Core.Copy;
 using Kor.Operations.NetworkOps.Service;
 using Kor.Operations.NetworkOps.Service.Mcp;
@@ -51,7 +52,69 @@ public sealed class SessionRunAndCopyTests
 
     [Fact]
     public void The_approval_is_written_into_the_audit_line()
-        => Assert.Equal("why it ran [approved by: Ian 22:45]", NetworkOpsMcpRun.AuditPurpose(" why it ran ", "Ian 22:45"));
+    {
+        Assert.Equal("why it ran [approved by: Ian 22:45]", ProtectedHosts.AuditPurpose(" why it ran ", "Ian 22:45"));
+        Assert.Equal("why it ran", ProtectedHosts.AuditPurpose("why it ran", null));
+    }
+
+    // ---- the protected machines on EVERY road (2026-10-27: until then only the MCP tools checked; `netops run` through
+    // APP01 and `netops run --direct` both stepped around it). One rule in Core; each road must call it before it runs.
+
+    [Theory]
+    [InlineData("KOR-302N")]
+    [InlineData("kor-1001")]
+    [InlineData("KOR-302N (Revit bridge)")]
+    public void A_protected_machine_is_refused_without_an_approval_and_runs_with_one(string name)
+    {
+        Assert.NotNull(ProtectedHosts.Refusal(ProtectedHosts.Default, name, null));
+        Assert.NotNull(ProtectedHosts.Refusal(ProtectedHosts.Default, name, "  "));
+        Assert.Null(ProtectedHosts.Refusal(ProtectedHosts.Default, name, "operations-ee 04:30, Ian's proxy"));
+    }
+
+    [Theory]
+    [InlineData("KOR-104N")]
+    [InlineData("KOR-FS01 (file server)")]
+    [InlineData("KOR-302")]   // a different machine, not a prefix match of KOR-302N
+    public void Other_machines_need_no_approval(string name)
+        => Assert.Null(ProtectedHosts.Refusal(ProtectedHosts.Default, name, null));
+
+    [Fact]
+    public void The_service_and_the_mcp_tools_use_the_one_list()
+        => Assert.Equal(ProtectedHosts.Default, new NetworkOpsOptions().SessionProtectedHosts);
+
+    private static string Src(params string[] parts)
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !Directory.Exists(Path.Combine(root.FullName, "Kor.Operations.NetworkOps.Service"))) root = root.Parent;
+        Assert.NotNull(root);
+        return File.ReadAllText(Path.Combine([root!.FullName, .. parts]));
+    }
+
+    [Fact]
+    public void The_APP01_road_refuses_before_it_starts_anything()
+    {
+        // SessionApi.RunAsync is every APP01 run: netops run, netops copy, and the MCP tools.
+        var src = Src("Kor.Operations.NetworkOps.Service", "Api", "SessionApi.cs");
+        var check = src.IndexOf("ProtectedHosts.Refusal(o.SessionProtectedHosts, dev.Name, approvedBy)", StringComparison.Ordinal);
+        Assert.True(check > 0 && check < src.IndexOf("StartActionAsync(", StringComparison.Ordinal), "the refusal comes before the action starts");
+        Assert.Contains("body.ApprovedBy", src);
+        // The MCP tools hand the approval to it rather than deciding alone: the three tools, and their one call into it.
+        Assert.Equal(4, System.Text.RegularExpressions.Regex.Matches(Src("Kor.Operations.NetworkOps.Service", "Mcp", "NetworkOpsMcpRun.cs"), @"approvedBy, ct\);").Count);
+    }
+
+    [Fact]
+    public void The_direct_road_refuses_before_it_runs_and_logs_every_run()
+    {
+        var src = Src("Kor.Operations.NetworkOps.Cli", "Program.cs");
+        var check = src.IndexOf("ProtectedHosts.Refusal(Kor.Operations.NetworkOps.Core.Actions.ProtectedHosts.Default, h, approvedBy)", StringComparison.Ordinal);
+        var run = src.IndexOf("case \"run\":", StringComparison.Ordinal);
+        Assert.True(check > 0 && check < run, "the refusal comes before the run");
+        Assert.Contains("DirectRunLog.Write(", src);
+        // The CLI's APP01 verbs send the approval.
+        var verbs = Src("Kor.Operations.NetworkOps.Cli", "SessionVerbs.cs");
+        Assert.Contains("new RemoteRunRequest(body, timeout, purpose, promptRun, approvedBy)", verbs);
+        Assert.Contains("new RemoteRunRequest(script, timeout, audit, null, approvedBy)", verbs);
+    }
 
     [Theory]
     [InlineData(null, @"C:\b")]

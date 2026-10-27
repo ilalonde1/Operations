@@ -59,7 +59,7 @@ public sealed class NetworkOpsOptions
 
     /// <summary>Machines a session's MCP run or copy is refused on unless it names who approved that one action (Ian,
     /// 2026-10-23: "Dont touch 1001 or 302n" -- Ian's own PC, and the licensed Revit box other sessions hold by turns).</summary>
-    public List<string> SessionProtectedHosts { get; set; } = ["KOR-1001", "KOR-302N"];
+    public List<string> SessionProtectedHosts { get; set; } = [.. Core.Actions.ProtectedHosts.Default];
 
     /// <summary>The Veeam server's name as its NetworkOps agent knows it: the copy jobs and SureBackup restore tests are
     /// read there (Rack/veeam-detail.ps1), because the REST API does not show them. Empty switches the read off.</summary>

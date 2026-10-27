@@ -30,7 +30,8 @@ if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
     Console.WriteLine("  netops last-check --hosts A,B | netops check --hosts A,B | netops knowledge [--search words] [--all]");
     Console.WriteLine("From this PC straight to the machine (on the LAN):");
     Console.WriteLine("  netops census|hardware|health [--hosts A,B|all] [--timeout s] [--out dir] [--parallel n]");
-    Console.WriteLine("  netops run --direct --script f.ps1 [--hosts A,B|all] [--timeout s] [--repeat n]");
+    Console.WriteLine("  netops run --direct --script f.ps1 [--hosts A,B|all] [--timeout s] [--repeat n] [--purpose \"why\"] [--approved-by \"who, when\"]");
+    Console.WriteLine("  (KOR-1001 and KOR-302N are refused without --approved-by on every road; direct runs are logged locally)");
     return 2;
 }
 
@@ -49,7 +50,7 @@ if (verb == "mcp")
 if (Kor.Operations.NetworkOps.Cli.SessionVerbs.Handles(verb, args))
     return await Kor.Operations.NetworkOps.Cli.SessionVerbs.RunAsync(verb, args);
 
-string? hostsArg = null, script = null, outDir = null;
+string? hostsArg = null, script = null, outDir = null, approvedBy = null, purpose = null;
 var timeout = 600;
 var parallel = 16;
 var repeat = 1;
@@ -64,6 +65,8 @@ for (var i = 1; i < args.Length; i++)
         case "--parallel" when i + 1 < args.Length && int.TryParse(args[i + 1], out var p): parallel = p; i++; break;
         case "--repeat" when i + 1 < args.Length && int.TryParse(args[i + 1], out var n) && n >= 1: repeat = n; i++; break;
         case "--direct": break;   // `run --direct`: this PC straight to the machine (the route below)
+        case "--approved-by" when i + 1 < args.Length: approvedBy = args[++i]; break;
+        case "--purpose" when i + 1 < args.Length: purpose = args[++i]; break;
         default: Console.Error.WriteLine($"Unknown argument: {args[i]}"); return 2;
     }
 }
@@ -72,6 +75,26 @@ var hosts = hostsArg is null || hostsArg.Equals("all", StringComparison.OrdinalI
     ? ActiveDirectoryFleet.Workstations()
     : hostsArg.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 if (hosts.Count == 0) { Console.Error.WriteLine("No hosts."); return 2; }
+
+// `run --direct` runs whatever its script does, from this PC, with no APP01 audit: the protected machines get the same
+// refusal as the APP01 road (Core/Actions/ProtectedHosts), and every direct run leaves a line in a local log.
+if (verb == "run")
+{
+    var all = hostsArg is null || hostsArg.Equals("all", StringComparison.OrdinalIgnoreCase);
+    var refused = hosts.Select(h => (Host: h, Why: Kor.Operations.NetworkOps.Core.Actions.ProtectedHosts.Refusal(Kor.Operations.NetworkOps.Core.Actions.ProtectedHosts.Default, h, approvedBy)))
+        .Where(x => x.Why is not null).ToList();
+    if (refused.Count > 0 && !all)
+    {
+        foreach (var r in refused) Console.Error.WriteLine($"netops: REFUSED (exit 6): {r.Why}");
+        return 6;
+    }
+    if (refused.Count > 0)   // "all": leave the protected machines out, and say so
+    {
+        hosts = hosts.Where(h => refused.All(r => r.Host != h)).ToList();
+        Console.Error.WriteLine($"netops: left out (protected, no --approved-by): {string.Join(", ", refused.Select(r => r.Host))}");
+    }
+    Kor.Operations.NetworkOps.Cli.DirectRunLog.Write(hosts, script, Kor.Operations.NetworkOps.Core.Actions.ProtectedHosts.AuditPurpose(purpose, approvedBy));
+}
 
 var options = new ParallelOptions { MaxDegreeOfParallelism = parallel };
 
