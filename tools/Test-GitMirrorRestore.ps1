@@ -96,6 +96,23 @@
 # health check. On a remote host, either run it ON that host, scope it with -Name, or use -NoClone.
 # Against FS01 all five together are ~200 MB and take a few minutes.
 #
+# ===========================================================================================
+# THE MORNING MIRROR WATCH - run this one line, every morning:
+#
+#     .\tools\Test-GitMirrorRestore.ps1 -Root '\\KOR-FS01\E$\IT\git' -NoClone
+#
+# It takes under a minute, moves no objects, and is safe over the VPN. Read the PackRatio column:
+#     ratio 1.0            = healthy. The whole pack set is one pack's worth. Expected state.
+#     ratio above 1.0      = THE LOCK IS BACK on a mirror that is pushed to. Growth from here is
+#                            roughly ONE FULL-SIZE PACK PER PUSH, so hours matter, not days.
+#                            The PackNote line will say whether the midx is the holder.
+#     ratio 0.00           = not a verdict. The largest pack rounded below 0.1 MB so no ratio could
+#                            be computed. Only happens on trivially small bares; read Packs instead.
+# "maintenance owed on N of M" at the end is the number to glance at. 0 of 5 is the good morning.
+# ⚠ This watches HEALTH, not restorability - it clones nothing. Prove a restore separately, without
+#   -NoClone, from a machine near the mirrors.
+# ===========================================================================================
+#
 # Usage:
 #   .\tools\Test-GitMirrorRestore.ps1
 #   .\tools\Test-GitMirrorRestore.ps1 -Root '\\KOR-FS01\E$\IT\git' -Fsck
