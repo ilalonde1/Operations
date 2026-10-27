@@ -24,6 +24,10 @@ namespace Kor.Operations.NetworkOps.Cli;
 //   netops network    [--search KOR-207|markb|192.168.1.73]  the port map: every switch, port, device and person
 //   netops add-pc     --hosts NAME           a PC outside the domain: its one-time code and the command to run on it
 //   netops token                             a NetworkOps access token on stdout (for the MCP endpoint / any HTTP client)
+//   netops copy        --hosts A --from <folder> --to <folder> --purpose "why" [--files *.rvt] [--overwrite] [--wait 120]
+//                                                robocopy run ON machine A (Core/Copy/CopyScript), audited as a run;
+//                                                never deletes; prints the proof (counts + bytes both sides, hash sample)
+//   netops copy-status --hosts A --copy <copy id>   read a copy back: its result, or that it is still running
 //
 // --hosts takes a PC or a rack device (KOR-217, KOR-FS01: a rack name matches up to its bracket), "all" (every PC) or
 // "rack" (every rack device): one resolver (Core/Learning/HostNames.Resolve) for every verb.
@@ -31,16 +35,19 @@ namespace Kor.Operations.NetworkOps.Cli;
 internal static class SessionVerbs
 {
     public static bool Handles(string verb, string[] args)
-        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" or "history" or "readings" or "action" or "trigger" or "updates" or "changes" or "network" or "add-pc" or "token" or "jobs" || (verb == "run" && !args.Contains("--direct"));
+        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" or "history" or "readings" or "action" or "trigger" or "updates" or "changes" or "network" or "add-pc" or "token" or "jobs" or "copy" or "copy-status" || (verb == "run" && !args.Contains("--direct"));
 
     public static async Task<int> RunAsync(string verb, string[] args)
     {
         string? hostsArg = null, script = null, outDir = null, purpose = null, search = null, fixId = null, param = null, finding = null, since = null;
+        string? from = null, to = null, files = null, copyId = null;
         long? promptRun = null, id = null;
         var timeout = 90;
+        var wait = Kor.Operations.NetworkOps.Core.Copy.CopyScript.DefaultWaitSeconds;
         var all = false;
         var confirmed = false;
         var scan = false;
+        var overwrite = false;
         for (var i = 1; i < args.Length; i++)
         {
             switch (args[i])
@@ -60,10 +67,17 @@ internal static class SessionVerbs
                 case "--id" when i + 1 < args.Length && long.TryParse(args[i + 1], out var n): id = n; i++; break;
                 case "--since" when i + 1 < args.Length: since = args[++i]; break;
                 case "--scan": scan = true; break;
+                case "--from" when i + 1 < args.Length: from = args[++i]; break;
+                case "--to" when i + 1 < args.Length: to = args[++i]; break;
+                case "--files" when i + 1 < args.Length: files = args[++i]; break;
+                case "--copy" when i + 1 < args.Length: copyId = args[++i]; break;
+                case "--overwrite": overwrite = true; break;
+                case "--wait" when i + 1 < args.Length && int.TryParse(args[i + 1], out var w): wait = w; i++; break;
                 default: Console.Error.WriteLine($"Unknown argument for {verb}: {args[i]}"); return 2;
             }
         }
 
+        if (verb is "copy" or "copy-status") timeout = verb == "copy" ? Math.Clamp(wait, 0, Kor.Operations.NetworkOps.Core.Copy.CopyScript.MaxWaitSeconds) + 45 : 60;
         using var server = new AppServer(TimeSpan.FromSeconds(Math.Max(timeout, 60) + 60));
         using var cts = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
@@ -117,6 +131,13 @@ internal static class SessionVerbs
             foreach (var u in unknown) Console.WriteLine($"=== {u}: NetworkOps does not know this machine");
             if (hosts.Count == 0) return 1;
 
+            if (verb is "copy" or "copy-status")
+            {
+                // One machine, never "all": a copy is one machine's robocopy, run where the files are.
+                if (hosts.Count != 1 || hostsArg.Contains(',') || hostsArg is "all" or "rack") { Console.Error.WriteLine("--hosts takes ONE machine for a copy."); return 2; }
+                return await CopyAsync(server, hosts[0].Name, verb, from, to, files, overwrite, wait, copyId, purpose, timeout, ct);
+            }
+
             var code = verb switch
             {
                 "run" => await RunScriptAsync(server, hosts.Select(h => h.Name).ToList(), script, timeout, purpose, promptRun, outDir, ct),
@@ -157,6 +178,46 @@ internal static class SessionVerbs
             Console.WriteLine($"wrote {path}");
         }
         return ordered.All(r => r.Ok) ? 0 : 1;
+    }
+
+    // A copy is a run: the script is built here from Core/Copy (the same builder the MCP tool uses) and goes through the
+    // same POST /run, so it is audited as a run-command with the copy id, both paths and the purpose in its purpose line.
+    private static async Task<int> CopyAsync(AppServer server, string host, string verb, string? from, string? to, string? files, bool overwrite,
+        int wait, string? copyId, string? purpose, int timeout, CancellationToken ct)
+    {
+        string script, audit;
+        if (verb == "copy")
+        {
+            if (string.IsNullOrWhiteSpace(purpose) || purpose.Trim().Length < 10) { Console.Error.WriteLine("--purpose \"why\" is required (10+ characters): it is the audit line."); return 2; }
+            if (Kor.Operations.NetworkOps.Core.Copy.CopyScript.Invalid(from, to, files) is { } why) { Console.Error.WriteLine($"netops copy: {why}"); return 2; }
+            copyId = Kor.Operations.NetworkOps.Core.Copy.CopyScript.NewId();
+            script = Kor.Operations.NetworkOps.Core.Copy.CopyScript.Start(copyId, from!, to!, files, overwrite, wait);
+            audit = $"copy {copyId}: {from} -> {to}{(files is null ? "" : $" ({files})")}{(overwrite ? " OVERWRITE" : "")} -- {purpose.Trim()}";
+        }
+        else
+        {
+            if (!Kor.Operations.NetworkOps.Core.Copy.CopyScript.IsId(copyId)) { Console.Error.WriteLine("--copy <copy id> is required (as netops copy printed it)."); return 2; }
+            script = Kor.Operations.NetworkOps.Core.Copy.CopyScript.Status(copyId!);
+            audit = $"copy status {copyId}{(purpose is null ? "" : $" -- {purpose}")}";
+        }
+        var r = await server.PostAsync<RemoteRunResult>($"/api/devices/{Uri.EscapeDataString(host)}/run", new RemoteRunRequest(script, timeout, audit, null), ct);
+        Console.WriteLine($"=== {r.Device} copy {copyId} [{(r.Ok ? "Ok" : "Failed")}] {r.Ms} ms via APP01 ({r.Route}), audited as action {r.ActionId}{(r.Error is null ? "" : $" -- {r.Error}")}");
+        if (r.OutputJson is not null) Console.WriteLine(Pretty(r.OutputJson));
+        // Exit 0 only for a finished copy that proved itself; 3 = still running (read it back with copy-status).
+        (string? State, bool? Ok) state = r.OutputJson is null ? (null, null) : StateOf(r.OutputJson);
+        return !r.Ok ? 1 : state.State == "running" ? 3 : state.Ok == true ? 0 : 1;
+    }
+
+    private static (string? State, bool? Ok) StateOf(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var e = doc.RootElement.ValueKind == JsonValueKind.Array && doc.RootElement.GetArrayLength() > 0 ? doc.RootElement[0] : doc.RootElement;
+            if (e.ValueKind != JsonValueKind.Object) return (null, null);
+            return (e.TryGetProperty("State", out var s) ? s.GetString() : null, e.TryGetProperty("Ok", out var o) && o.ValueKind is JsonValueKind.True or JsonValueKind.False ? o.GetBoolean() : null);
+        }
+        catch (JsonException) { return (null, null); }
     }
 
     private static async Task<int> LastCheckAsync(AppServer server, IReadOnlyList<string> hosts, CancellationToken ct)

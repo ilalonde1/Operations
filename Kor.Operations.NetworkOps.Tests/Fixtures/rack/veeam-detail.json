@@ -1,0 +1,18 @@
+[
+  {
+    "Result": "read 5 jobs and 2 SureBackup sessions",
+    "Jobs": [
+      { "Name": "Vcenter", "Type": "VMware Backup", "Enabled": true, "Result": "Success", "State": "Stopped", "Start": "2026-10-27T03:10:26.2934520Z", "End": "2026-10-27T03:24:39.1186170Z" },
+      { "Name": "Kor-FS01", "Type": "VMware Backup", "Enabled": true, "Result": "None", "State": "Working", "Start": "2026-10-27T04:00:10.9912230Z", "End": null },
+      { "Name": "Kor-VMs-New", "Type": "VMware Backup", "Enabled": true, "Result": "Success", "State": "Stopped", "Start": "2026-10-27T03:00:20.5189750Z", "End": "2026-10-27T03:10:03.4772370Z" },
+      { "Name": "Kor-FS01 Offsite", "Type": "Backup Copy", "Enabled": true, "Result": "Success", "State": "Stopped", "Start": "2026-10-26T10:23:40.0197490Z", "End": "2026-10-26T11:25:33.7867930Z" },
+      { "Name": "Kor-Replication", "Type": "Backup Copy", "Enabled": true, "Result": "Success", "State": "Stopped", "Start": "2026-10-27T03:24:52.0876100Z", "End": "2026-10-27T03:55:04.7326750Z" }
+    ],
+    "SureBackup": [
+      { "Job": "SureBackup - Kor-Core", "Result": "Failed", "State": "Stopped", "Start": "2026-10-26T10:23:36.8009320Z", "End": "2026-10-26T10:36:37.0000000Z",
+        "Vms": [ { "Name": "Kor-DC01", "Result": "Failed" }, { "Name": "Kor-FS01", "Result": "NotRunning" }, { "Name": "Kor-APP01", "Result": "NotRunning" }, { "Name": "Kor-RDS01", "Result": "NotRunning" } ] },
+      { "Job": "SureBackup - Kor-Core", "Result": "Failed", "State": "Stopped", "Start": "2026-10-25T10:38:31.1748110Z", "End": "2026-10-25T10:51:40.0000000Z",
+        "Vms": [ { "Name": "Kor-DC01", "Result": "Failed" }, { "Name": "Kor-FS01", "Result": "NotRunning" }, { "Name": "Kor-APP01", "Result": "NotRunning" }, { "Name": "Kor-RDS01", "Result": "NotRunning" } ] }
+    ]
+  }
+]

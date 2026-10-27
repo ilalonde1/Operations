@@ -57,6 +57,14 @@ public sealed class NetworkOpsOptions
     /// <summary>Hosts never restarted from here (APP01 runs NetworkOps: it cannot restart itself and watch it come back).</summary>
     public List<string> UpdateNoRestartHosts { get; set; } = ["KOR-APP01"];
 
+    /// <summary>Machines a session's MCP run or copy is refused on unless it names who approved that one action (Ian,
+    /// 2026-10-23: "Dont touch 1001 or 302n" -- Ian's own PC, and the licensed Revit box other sessions hold by turns).</summary>
+    public List<string> SessionProtectedHosts { get; set; } = ["KOR-1001", "KOR-302N"];
+
+    /// <summary>The Veeam server's name as its NetworkOps agent knows it: the copy jobs and SureBackup restore tests are
+    /// read there (Rack/veeam-detail.ps1), because the REST API does not show them. Empty switches the read off.</summary>
+    public string VeeamDetailHost { get; set; } = "KOR-BK01";
+
     /// <summary>How many PCs one rollout run installs or upgrades, one at a time, stopping at the first failure.</summary>
     public int AgentRolloutBatch { get; set; } = 5;
 

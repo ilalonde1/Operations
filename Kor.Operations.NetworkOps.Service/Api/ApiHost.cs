@@ -65,7 +65,8 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddMcpServer().WithHttpTransport()
             .WithTools<Mcp.NetworkOpsMcpTools>()      // reads
-            .WithTools<Mcp.NetworkOpsMcpActions>();   // audited actions
+            .WithTools<Mcp.NetworkOpsMcpActions>()    // audited actions
+            .WithTools<Mcp.NetworkOpsMcpRun>();       // audited run + copy on one named machine
         builder.WebHost.ConfigureKestrel(k =>
         {
             k.AddServerHeader = false;

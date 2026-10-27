@@ -26,37 +26,9 @@ internal static class SessionApi
         api.MapPost("/devices/{name}/run", async (string name, RemoteRunRequest body, HttpContext h, NetworkOpsStore s, Agents.MachineRunner runner,
             IOptions<NetworkOpsOptions> o, ILoggerFactory loggers, CancellationToken ct) =>
         {
-            if (string.IsNullOrWhiteSpace(body.Script)) return Results.BadRequest(new { error = "there is no script to run" });
-            if (body.Script.Length > MaxScriptChars) return Results.BadRequest(new { error = $"the script is longer than {MaxScriptChars:N0} characters" });
-            if (await s.DeviceByNameAsync(name, ct) is not { } dev) return Results.NotFound(new { error = $"NetworkOps has no machine called {name}" });
-            if (Sweep.ActionRunner.HostOf(o.Value, dev.Name) is not { } host)
-                return Results.BadRequest(new { error = $"{dev.Name} is not a Windows server APP01 can run scripts on" });
-
-            var timeout = TimeSpan.FromSeconds(Math.Clamp(body.TimeoutSeconds ?? DefaultTimeoutSeconds, 10, MaxTimeoutSeconds));
-            var by = ApiAccess.UserOf(h.User);
-            var request = System.Text.Json.JsonSerializer.Serialize(new { param = body.Script, via = "netops run (Claude session)", purpose = body.Purpose, promptRun = body.PromptRunId });
-            var actionId = await s.StartActionAsync(dev.DeviceId, Core.Actions.FixCatalog.RunCommand, by, request, ct);
-            var route = runner.ViaAgent(host) ? "agent" : "network";
-            var clock = System.Diagnostics.Stopwatch.StartNew();
-            Transport.OnTargetRun run;
-            try { run = await runner.RunAsync(host, body.Script, timeout, wantsIdle: false, ct); }
-            catch (OperationCanceledException)
-            {
-                // The request aborted or the service is stopping mid-run: close the action, or it sits "Running" forever
-                // (session-run rows are not the queued-fix rows the abandoned-fix sweep reopens at startup).
-                await s.CompleteActionAsync(actionId, false, "aborted (the request was cancelled or the service stopped)", null);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                await s.CompleteActionAsync(actionId, false, ex.Message, null);
-                return Results.Ok(new RemoteRunResult(actionId, dev.Name, false, route, (int)clock.ElapsedMilliseconds, null, ex.Message));
-            }
-            var ok = run.Status == Transport.OnTargetStatus.Ok;
-            await s.CompleteActionAsync(actionId, ok, ok ? Sweep.ActionRunner.ResultLine(run.OutputJson) ?? "ran" : $"{run.Status}: {run.Error}", run.OutputJson);
-            loggers.CreateLogger("NetworkOps.Api.Session").LogInformation("RUN {Id} on {Host} for {By} via {Route}: {Status} in {Ms} ms{Purpose}",
-                actionId, dev.Name, by, route, run.Status, clock.ElapsedMilliseconds, body.Purpose is null ? "" : $" ({body.Purpose})");
-            return Results.Ok(new RemoteRunResult(actionId, dev.Name, ok, route, (int)clock.ElapsedMilliseconds, run.OutputJson, ok ? null : $"{run.Status}: {run.Error}"));
+            var (run, error, notFound) = await RunAsync(s, runner, o.Value, loggers.CreateLogger("NetworkOps.Api.Session"), name, body.Script,
+                body.TimeoutSeconds, ApiAccess.UserOf(h.User), "netops run (Claude session)", body.Purpose, body.PromptRunId, ct);
+            return run is not null ? Results.Ok(run) : notFound ? Results.NotFound(new { error }) : Results.BadRequest(new { error });
         });
 
         api.MapGet("/devices/{name}/last-check", async (string name, NetworkOpsStore s, CancellationToken ct) =>
@@ -70,6 +42,48 @@ internal static class SessionApi
         // Banked knowledge: accepted cards (what prompts carry); ?all=true adds proposed and rejected ones.
         api.MapGet("/knowledge", async (string? search, bool? all, NetworkOpsStore s, CancellationToken ct) =>
             (await s.KnowledgeCardsAsync(acceptedOnly: all != true, ct)).Where(c => Matches(c, search)).ToList());
+    }
+
+    /// <summary>
+    /// THE one ad-hoc run: a script on one named machine through its agent (or APP01's network route), audited as a
+    /// run-command action before it starts and closed with its output. POST /devices/{name}/run (netops run) and the MCP
+    /// networkops_run / networkops_copy tools all come here, so a run cannot be audited one way from the CLI and another
+    /// from a session. Returns the result, or why it did not run (notFound = no machine of that name).
+    /// </summary>
+    internal static async Task<(RemoteRunResult? Run, string? Error, bool NotFound)> RunAsync(NetworkOpsStore s, Agents.MachineRunner runner,
+        NetworkOpsOptions o, ILogger log, string name, string? script, int? timeoutSeconds, string by, string via, string? purpose, long? promptRunId,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(script)) return (null, "there is no script to run", false);
+        if (script.Length > MaxScriptChars) return (null, $"the script is longer than {MaxScriptChars:N0} characters", false);
+        if (await s.DeviceByNameAsync(name, ct) is not { } dev) return (null, $"NetworkOps has no machine called {name}", true);
+        if (Sweep.ActionRunner.HostOf(o, dev.Name) is not { } host)
+            return (null, $"{dev.Name} is not a Windows server APP01 can run scripts on", false);
+
+        var timeout = TimeSpan.FromSeconds(Math.Clamp(timeoutSeconds ?? DefaultTimeoutSeconds, 10, MaxTimeoutSeconds));
+        var request = System.Text.Json.JsonSerializer.Serialize(new { param = script, via, purpose, promptRun = promptRunId });
+        var actionId = await s.StartActionAsync(dev.DeviceId, Core.Actions.FixCatalog.RunCommand, by, request, ct);
+        var route = runner.ViaAgent(host) ? "agent" : "network";
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        Transport.OnTargetRun run;
+        try { run = await runner.RunAsync(host, script, timeout, wantsIdle: false, ct); }
+        catch (OperationCanceledException)
+        {
+            // The request aborted or the service is stopping mid-run: close the action, or it sits "Running" forever
+            // (session-run rows are not the queued-fix rows the abandoned-fix sweep reopens at startup).
+            await s.CompleteActionAsync(actionId, false, "aborted (the request was cancelled or the service stopped)", null);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await s.CompleteActionAsync(actionId, false, ex.Message, null);
+            return (new RemoteRunResult(actionId, dev.Name, false, route, (int)clock.ElapsedMilliseconds, null, ex.Message), null, false);
+        }
+        var ok = run.Status == Transport.OnTargetStatus.Ok;
+        await s.CompleteActionAsync(actionId, ok, ok ? Sweep.ActionRunner.ResultLine(run.OutputJson) ?? "ran" : $"{run.Status}: {run.Error}", run.OutputJson);
+        log.LogInformation("RUN {Id} on {Host} for {By} via {Route} ({Via}): {Status} in {Ms} ms{Purpose}",
+            actionId, dev.Name, by, route, via, run.Status, clock.ElapsedMilliseconds, purpose is null ? "" : $" ({purpose})");
+        return (new RemoteRunResult(actionId, dev.Name, ok, route, (int)clock.ElapsedMilliseconds, run.OutputJson, ok ? null : $"{run.Status}: {run.Error}"), null, false);
     }
 
     /// <summary>Every word of the search appears somewhere in the card (title, applies-to, symptom, cause, check, fix, tags).</summary>

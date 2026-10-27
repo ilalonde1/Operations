@@ -153,6 +153,85 @@ public sealed class RackRulesTests
         Assert.Contains(r.Findings, f => f.RuleKey == "veeam.stale:Kor-VMs-New" && f.Severity == Severity.Critical);
     }
 
+    // ---------------------------------------------------------------- Veeam detail (read ON BK01)
+    // The REST API does not list Backup Copy jobs or SureBackup (2026-10-26: "offsite not running" was its blind spot,
+    // and three failed restore tests went unseen). veeam-detail.json is what Rack/veeam-detail.ps1 returns, built from
+    // the read-only run of 27 Oct 2026 (action 11278): two copy jobs Success, SureBackup - Kor-Core Failed with Kor-DC01
+    // failing and the other three not tested.
+
+    private static DateTime At(string utc) => DateTime.Parse(utc, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal);
+
+    [Fact]
+    public void The_restore_test_that_failed_three_nights_is_a_critical_finding_naming_each_vm()
+    {
+        var r = VeeamRules.Evaluate(Fx("veeam-jobs.json"), Fx("veeam-repos.json"), At("2026-10-27T05:00:00Z"), detailJson: Fx("veeam-detail.json"), detailReadUtc: At("2026-10-27T05:00:00Z"));
+        var f = Assert.Single(r.Findings, x => x.RuleKey == "veeam.surebackup-failed:SureBackup - Kor-Core");
+        Assert.Equal(Severity.Critical, f.Severity);
+        Assert.Contains("Kor-DC01 Failed", f.Evidence);
+        Assert.Contains("Kor-FS01 not tested", f.Evidence);
+        Assert.Contains("restore test failed", r.Summary);
+    }
+
+    [Fact]
+    public void Copy_jobs_the_api_hides_are_counted_and_judged_and_the_api_jobs_are_not_judged_twice()
+    {
+        var at = At("2026-10-27T05:00:00Z");
+        var without = VeeamRules.Evaluate(Fx("veeam-jobs.json"), Fx("veeam-repos.json"), at);
+        var with = VeeamRules.Evaluate(Fx("veeam-jobs.json"), Fx("veeam-repos.json"), at, detailJson: Fx("veeam-detail.json"), detailReadUtc: at);
+        // Exactly the two copy jobs are added: the three backup jobs the API lists are skipped in the detail.
+        Assert.Equal(without.Metrics.Single(m => m.Metric == "jobs.count").Value + 2, with.Metrics.Single(m => m.Metric == "jobs.count").Value);
+        Assert.DoesNotContain(with.Findings, x => x.RuleKey is "veeam.failed:Kor-FS01 Offsite" or "veeam.stale:Kor-FS01 Offsite" or "veeam.failed:Kor-Replication");
+
+        var failedCopy = Fx("veeam-detail.json").Replace("\"Name\": \"Kor-FS01 Offsite\", \"Type\": \"Backup Copy\", \"Enabled\": true, \"Result\": \"Success\"",
+                                                           "\"Name\": \"Kor-FS01 Offsite\", \"Type\": \"Backup Copy\", \"Enabled\": true, \"Result\": \"Failed\"");
+        Assert.NotEqual(Fx("veeam-detail.json"), failedCopy);   // the replace landed
+        var r = VeeamRules.Evaluate(Fx("veeam-jobs.json"), Fx("veeam-repos.json"), at, detailJson: failedCopy, detailReadUtc: at);
+        Assert.Contains(r.Findings, x => x.RuleKey == "veeam.failed:Kor-FS01 Offsite" && x.Severity == Severity.Critical && x.Title.StartsWith("Backup Copy job"));
+    }
+
+    [Fact]
+    public void A_copy_job_that_stops_running_is_the_silent_failure()
+        => Assert.Contains(VeeamRules.Evaluate(Fx("veeam-jobs.json"), Fx("veeam-repos.json"), At("2026-10-29T05:00:00Z"), detailJson: Fx("veeam-detail.json"), detailReadUtc: At("2026-10-29T05:00:00Z")).Findings,
+            x => x.RuleKey == "veeam.stale:Kor-FS01 Offsite" && x.Severity == Severity.Critical);
+
+    [Fact]
+    public void A_restore_test_running_now_is_not_a_verdict_the_one_before_is()
+    {
+        var running = Fx("veeam-detail.json").Replace("\"Result\": \"Failed\", \"State\": \"Stopped\", \"Start\": \"2026-10-26", "\"Result\": \"None\", \"State\": \"Working\", \"Start\": \"2026-10-26");
+        Assert.NotEqual(Fx("veeam-detail.json"), running);
+        var r = VeeamRules.Evaluate(Fx("veeam-jobs.json"), Fx("veeam-repos.json"), At("2026-10-26T10:30:00Z"), detailJson: running, detailReadUtc: At("2026-10-26T10:30:00Z"));
+        Assert.Contains(r.Findings, x => x.RuleKey == "veeam.surebackup-failed:SureBackup - Kor-Core" && x.Evidence.Contains("25 Oct"));
+    }
+
+    [Fact]
+    public void A_restore_test_that_stopped_running_is_raised()
+        => Assert.Contains(VeeamRules.Evaluate(Fx("veeam-jobs.json"), Fx("veeam-repos.json"), At("2026-11-05T05:00:00Z"), detailJson: Fx("veeam-detail.json"), detailReadUtc: At("2026-11-05T05:00:00Z")).Findings,
+            x => x.RuleKey == "veeam.surebackup-stale:SureBackup - Kor-Core");
+
+    [Fact]
+    public void Blind_for_hours_is_raised_and_a_short_gap_is_not()
+    {
+        var at = At("2026-10-27T05:00:00Z");
+        var read = VeeamRules.Evaluate(Fx("veeam-jobs.json"), Fx("veeam-repos.json"), at, detailJson: Fx("veeam-detail.json"), detailReadUtc: at);
+        Assert.True(read.Facts.ContainsKey("veeam.detail.read"));
+        var soon = VeeamRules.Evaluate(Fx("veeam-jobs.json"), Fx("veeam-repos.json"), at.AddHours(2), read.Facts, detailError: "agent offline");
+        Assert.DoesNotContain(soon.Findings, x => x.RuleKey == "veeam.detail-unread");
+        Assert.Equal(read.Facts["veeam.detail.read"], soon.Facts["veeam.detail.read"]);   // carried, so the clock keeps running
+        var later = VeeamRules.Evaluate(Fx("veeam-jobs.json"), Fx("veeam-repos.json"), at.AddHours(VeeamRules.DetailUnreadHours + 1), soon.Facts, detailError: "agent offline");
+        Assert.Contains(later.Findings, x => x.RuleKey == "veeam.detail-unread" && x.Evidence.Contains("agent offline"));
+        // Never read at all (a fresh service), and it fails: raised at once.
+        Assert.Contains(VeeamRules.Evaluate(Fx("veeam-jobs.json"), Fx("veeam-repos.json"), at, detailError: "agent offline").Findings, x => x.RuleKey == "veeam.detail-unread");
+    }
+
+    [Fact]
+    public void The_detail_script_only_reads()
+    {
+        var s = VeeamRules.DetailScript;
+        Assert.Contains("Get-VBRJob", s);
+        foreach (var verb in new[] { "Start-VBR", "Stop-VBR", "Set-VBR", "Remove-VBR", "Enable-VBR", "Disable-VBR", "Add-VBR", "New-VBR", ".Start(", ".Stop(" })
+            Assert.DoesNotContain(verb, s, StringComparison.OrdinalIgnoreCase);
+    }
+
     // ---------------------------------------------------------------- UniFi, internet, core switch, UPS
 
     [Fact]

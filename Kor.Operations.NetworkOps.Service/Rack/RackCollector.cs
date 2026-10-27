@@ -22,9 +22,17 @@ namespace Kor.Operations.NetworkOps.Service.Rack;
 //   MeshServer KOR-MESH01: MeshCentral itself answering, and how many agents it has connected
 // No collector writes to any device. A device that cannot be read comes back Unreachable with the reason.
 internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerState power, Mesh.MeshState mesh, MacDirectory? macs = null,
-    Network.NetworkMapService? map = null)
+    Network.NetworkMapService? map = null, Agents.MachineRunner? runner = null)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
+
+    /// <summary>How often the Veeam detail (copy jobs, restore tests) is read ON BK01: a Veeam PowerShell session costs
+    /// ~13 s there, and both change once a night. Between reads the last answer is judged again against the clock.</summary>
+    public static readonly TimeSpan VeeamDetailEvery = TimeSpan.FromMinutes(60);
+    private string? _veeamDetail;
+    private DateTime _veeamDetailUtc;
+    private string? _veeamDetailError;
+    private DateTime _veeamDetailTriedUtc;
 
     public async Task<RackResult> CollectAsync(RackDevice d, IReadOnlyDictionary<string, string> previousFacts, CancellationToken ct)
     {
@@ -128,7 +136,37 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
                 : si.RootElement.TryGetProperty("version", out var ver) ? ver.GetString() : null;
         }
         catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException || (ex is TaskCanceledException && !ct.IsCancellationRequested)) { }
-        return VeeamRules.Evaluate(jobs, repos, DateTime.UtcNow, previousFacts, serverVersion: serverVersion);
+        await ReadVeeamDetailAsync(ct).ConfigureAwait(false);
+        return VeeamRules.Evaluate(jobs, repos, DateTime.UtcNow, previousFacts, serverVersion: serverVersion,
+            detailJson: _veeamDetail, detailReadUtc: _veeamDetail is null ? null : _veeamDetailUtc, detailError: _veeamDetail is null ? _veeamDetailError : null);
+    }
+
+    /// <summary>
+    /// What the REST API does not show -- Backup Copy jobs and SureBackup restore tests -- read ON BK01 through its
+    /// NetworkOps agent (Rack/veeam-detail.ps1, Get-* only), at most every <see cref="VeeamDetailEvery"/>. A failed read
+    /// keeps the last good answer for up to <see cref="VeeamRules.DetailUnreadHours"/> h, then the rules say it is blind.
+    /// Not an audited action: it is the collector's own read, like the REST call beside it.
+    /// </summary>
+    private async Task ReadVeeamDetailAsync(CancellationToken ct)
+    {
+        var o = options.Value;
+        if (runner is null || string.IsNullOrWhiteSpace(o.VeeamDetailHost)) { _veeamDetail = null; _veeamDetailError = "the detail read is switched off (VeeamDetailHost is empty)"; return; }
+        if (DateTime.UtcNow - _veeamDetailTriedUtc < VeeamDetailEvery) return;
+        _veeamDetailTriedUtc = DateTime.UtcNow;
+        string? error;
+        try
+        {
+            var run = await runner.RunAsync(o.VeeamDetailHost, VeeamRules.DetailScript, TimeSpan.FromSeconds(90), wantsIdle: false, ct).ConfigureAwait(false);
+            if (run.Status == OnTargetStatus.Ok && run.OutputJson is { Length: > 0 } json && json.Contains("\"Jobs\"", StringComparison.Ordinal))
+            {
+                _veeamDetail = json; _veeamDetailUtc = DateTime.UtcNow; _veeamDetailError = null;
+                return;
+            }
+            error = $"{run.Status}: {run.Error ?? "no job list came back"}";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { error = ex.Message; }
+        _veeamDetailError = error;
+        if (DateTime.UtcNow - _veeamDetailUtc > TimeSpan.FromHours(VeeamRules.DetailUnreadHours)) _veeamDetail = null;   // too old to judge by
     }
 
     private async Task<RackResult> UniFiAsync(RackDevice d, CancellationToken ct)
