@@ -26,9 +26,11 @@ replies and peer messages. What it does NOT: whether the look covered everything
 Complete text tells the session what everything is, the hook cannot count pages it does not know; whether the
 look was at the RIGHT file; whether it was understood (10-27: I opened the final model's Level 1, saw P1's solid
 west wall and nearly called it a fault); claims phrased without a CLAIM word; changes made by other sessions or
-by tools that are not Bash/PowerShell/Edit/Write; a DB write made by a script FILE that imports standards_db and
-writes, run as `python tools/x.py` - nothing in that command says it writes (writes through `db.run/record/withdraw`
-in the command ARE seen, migration 140, Standard Details' case). Same-class fault it would miss: a reply saying "the drawings are
+by tools that are not Bash/PowerShell/Edit/Write; a DB write by a script FILE that does NOT go through
+KOR.Drafter tools/standards_db.py (raw sqlcmd, its own pyodbc) - nothing in its command or output says it writes.
+Writes through standards_db ARE seen: in the command (db.run/record/withdraw, migration 140) and, from any script,
+in the OUTPUT line standards_db.run() prints, "KORSTANDARDS WRITE <table> (<n> statements)" (KOR.Drafter 91007ba,
+migrations 141-143, Standard Details' case; a rolled-back write prints it too - the line says the batch held writes). Same-class fault it would miss: a reply saying "the drawings are
 right" after rendering page 1 of 26 - one Read of a PNG satisfies the drawing rule.
 
 stdin  : the Stop payload (transcript_path, stop_hook_active) or the PreToolUse payload (tool_name SendMessage)
@@ -61,7 +63,7 @@ def load_rules():
     try:
         sys.path.insert(0, DRAFTER_TOOLS)
         import standards_db  # noqa: E402
-        rows = standards_db.rows("SELECT Kind, ChangeTools, ChangePattern, LookTools, LookPattern, Complete "
+        rows = standards_db.rows("SELECT Kind, ChangeTools, ChangePattern, LookTools, LookPattern, OutputPattern, Complete "
                                  "FROM oversight.LookRule WHERE RetiredAtUtc IS NULL")
         if rows:
             os.makedirs(os.path.dirname(CACHE), exist_ok=True)
@@ -75,14 +77,30 @@ def load_rules():
         return []
 
 
+def result_text(c):
+    """A tool_result's text: a string, or a list of text parts."""
+    cc = c.get("content")
+    if isinstance(cc, str):
+        return cc
+    if isinstance(cc, list):
+        return "\n".join(p.get("text", "") for p in cc if isinstance(p, dict) and p.get("type") == "text")
+    return ""
+
+
 def tool_calls(path):
-    """Every tool call in the transcript, in order: (name, text) - a command, or a file path."""
+    """Every tool call AND tool result in the transcript, in order: (name, text) - a command or file path for a call;
+    ("__output__", its text) for a result (migration 141: a write may announce itself only in its output)."""
     out = []
     with open(path, encoding="utf-8") as f:
         for line in f:
             try:
                 entry = json.loads(line)
             except ValueError:
+                continue
+            if entry.get("type") == "user" and isinstance(entry.get("message", {}).get("content"), list):
+                for c in entry["message"]["content"]:
+                    if isinstance(c, dict) and c.get("type") == "tool_result":
+                        out.append(("__output__", result_text(c)))
                 continue
             if entry.get("type") != "assistant":
                 continue
@@ -118,8 +136,14 @@ def unlooked(calls, rules):
     for r in rules:
         ctools = set(r["ChangeTools"].split("|")); ltools = set(r["LookTools"].split("|"))
         cpat = re.compile(r["ChangePattern"], re.I); lpat = re.compile(r["LookPattern"], re.I)
+        opat = re.compile(r["OutputPattern"]) if r.get("OutputPattern") else None
         last_change = last_look = None; change_text = ""
         for i, (name, text) in enumerate(calls):
+            if name == "__output__":
+                # a change announced in a tool's OUTPUT (141); outputs are never looks - a look is something done
+                if opat and opat.search(text):
+                    last_change, change_text = i, "output: " + opat.search(text).group(0) + " " + text[opat.search(text).end():opat.search(text).end() + 60].strip()
+                continue
             # a commit MESSAGE describes work, it does not do it: "git commit -m 'e2k_book.py: ...'" is not a drawing
             # run (the first dry run on the 10-27 transcript flagged exactly that)
             text = COMMIT_MSG.sub("-m ''", text)

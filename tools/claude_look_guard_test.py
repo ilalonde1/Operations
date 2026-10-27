@@ -50,6 +50,19 @@ MISSES["standards_db write with no SQL keyword"] = (
 MISSES["standards_db.record of a job decision"] = (
     [B("python -c \"import standards_db as db; db.record('31180-01', 'wood.x=y', 'assumed', 'VD', 'why')\"")],
     "Recorded - done.", "db-write")
+# Standard Details' second case: a script FILE writes through standards_db.run(), which announces it in its OUTPUT
+# ("KORSTANDARDS WRITE <table> (<n> statements)") - the command alone says nothing (migration 141, OutputPattern)
+O = lambda text: ("__output__", text)
+MISSES["script file announcing a write in its output"] = (
+    [B("python tools/catalogue/place_detail.py --job 31180-01 --detail KOR-D-01014"),
+     O("placed on S1.05\nKORSTANDARDS WRITE detail.DetailPlacement (2 statements)")],
+    "Placement recorded - done.", "db-write")
+# the REAL line standards_db.run() printed (Standard Details, KOR.Drafter 91007ba, a live rolled-back write) and its
+# dynamic-SQL form, whose "table" has a space in it
+MISSES["the real marker line from standards_db (91007ba)"] = (
+    [B("python record_mistakes.py"), O("KORSTANDARDS WRITE detail.Detail (1 statements)")], "Recorded - done.", "db-write")
+MISSES["the dynamic-SQL marker line"] = (
+    [B("python gen_x.py --apply"), O("ok\nKORSTANDARDS WRITE (dynamic SQL) (3 statements)")], "Applied - done.", "db-write")
 # --- ALLOWED: the same sequences with the look done
 LOOKED = {
     "drawing run, then the PNG read": (
@@ -69,6 +82,18 @@ LOOKED["standards_db write, then its rows() read-back"] = (
     [B("python -c \"import standards_db as db; db.record('31180-01', 'wood.x=y', 'assumed', 'VD', 'why')\""),
      B("python -c \"import standards_db as db; print(db.rows('SELECT Decision FROM analysis.RuleApplication WHERE Job=1'))\"")],
     "Recorded and read back - done.")
+LOOKED["script write announced, then its rows read back"] = (
+    [B("python tools/catalogue/place_detail.py --job 31180-01 --detail KOR-D-01014"),
+     O("KORSTANDARDS WRITE detail.DetailPlacement (2 statements)"),
+     B("python oq.py -q \"SELECT COUNT(*) FROM KorStandards.detail.DetailPlacement WHERE Job='31180-01'\"")],
+    "Placement recorded and read back - done.")
+LOOKED["output merely MENTIONING the write line is not a write (reading migration 141)"] = (
+    [B("cat db/141_AWriteAnnouncesItselfInItsOutput.sql"),
+     O('    standards_db.run() prints "KORSTANDARDS WRITE <first table> (<n> statements)" whenever its SQL holds a write')],
+    "Read it - done.")
+LOOKED["a script that announces nothing is not a db write"] = (
+    [B("python tools/catalogue/place_detail.py --no-record --detail KOR-D-01014"), O("placed on S1.05 (not recorded)")],
+    "Placed - done.")
 # --- ALLOWED: a commit whose MESSAGE names a drawing tool is not a drawing run (10-27 dry run's false positive)
 LOOKED["commit message naming e2k_book.py"] = (
     [B("python tools/e2k_book.py m.e2k b.pdf"), R(r"C:\x\b.png"),
