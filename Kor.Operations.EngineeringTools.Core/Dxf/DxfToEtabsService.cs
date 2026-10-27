@@ -490,7 +490,7 @@ public static class DxfToEtabsService
             ["dxf.nested-ring-tile-share"] = classification.NestedRingTileShare,
             ["dxf.wood-framed-floor-carries-no-concrete"] = classification.WoodFramedFloorCarriesNoConcrete ? 1 : 0,
             ["dxf.legend-frame-is-not-a-floor"] = classification.LegendFrameIsNotAFloor ? 1 : 0,
-            ["dxf.legend-frame-min-sqft"] = classification.LegendFrameMinSqFt,
+            ["dxf.legend-frame-min-sqft"] = classification.LegendFrameMinSqft,
             ["dxf.recovered-outline-tolerance"] = classification.RecoveredOutlineTolerance,
             ["dxf.slab-chain-join-fraction"] = classification.SlabChainJoinFraction,
             ["dxf.drawn-ring-beats-fill-fraction"] = classification.DrawnRingBeatsFillFraction,
@@ -561,7 +561,7 @@ public static class DxfToEtabsService
             NestedRingTileShare = settings.ValueOr("dxf.nested-ring-tile-share", options.NestedRingTileShare),
             WoodFramedFloorCarriesNoConcrete = settings.FlagOr("dxf.wood-framed-floor-carries-no-concrete", options.WoodFramedFloorCarriesNoConcrete),
             LegendFrameIsNotAFloor = settings.FlagOr("dxf.legend-frame-is-not-a-floor", options.LegendFrameIsNotAFloor),
-            LegendFrameMinSqFt = settings.ValueOr("dxf.legend-frame-min-sqft", options.LegendFrameMinSqFt),
+            LegendFrameMinSqft = settings.ValueOr("dxf.legend-frame-min-sqft", options.LegendFrameMinSqft),
             RecoveredOutlineTolerance = settings.ValueOr("dxf.recovered-outline-tolerance", options.RecoveredOutlineTolerance),
             SlabChainJoinFraction = settings.ValueOr("dxf.slab-chain-join-fraction", options.SlabChainJoinFraction),
             DrawnRingBeatsFillFraction = settings.ValueOr("dxf.drawn-ring-beats-fill-fraction", options.DrawnRingBeatsFillFraction),
@@ -2181,7 +2181,7 @@ public static class DxfToEtabsService
         // plates is counted and left. The removal this pass first did cost four KOR sets their walls.
         warnings.AddRange(SettleFloorsAcrossSheets(parsed, StandDownReachInches / modelUnitInInches, modelUnitInInches * modelUnitInInches / 144.0,
             legendFrameIsNotAFloor: classification.LegendFrameIsNotAFloor && Environment.GetEnvironmentVariable("KOR_STEP185_OFF") != "1",
-            legendFrameMinSqFt: classification.LegendFrameMinSqFt));
+            legendFrameMinSqFt: classification.LegendFrameMinSqft));
 
         // What this job's own drawings say a wall is, before anything is written. A portfolio rule
         // cannot tell a 42" tower core from two faces paired across a parkade corridor; the job's

@@ -243,6 +243,8 @@ public sealed class CompiledDefaultsAreTheBankedRowsTests
             "Compiled numbers that are neither a banked rule nor declared NotARule: " + string.Join(", ", orphans));
     }
 
+    // A CAPITAL THAT STARTS A WORD AFTER ANOTHER CAPITAL IS A WORD OF ITS OWN (2026-10-27): "NotAFloor" read "not-afloor", and
+    // dxf.legend-frame-is-not-a-floor stood orphaned. Measured before the change over all 70 numeric options: 1 derived key moves.
     private static string Kebab(string pascal)
-        => Regex.Replace(pascal, "(?<=[a-z0-9])(?=[A-Z])", "-").ToLowerInvariant();
+        => Regex.Replace(pascal, "(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "-").ToLowerInvariant();
 }

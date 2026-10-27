@@ -204,7 +204,7 @@ public sealed record PlanClassificationOptions
     /// The smallest legend frame, in sq ft, step 185 takes out: the smallest looked at was 653 (31053 L1); the 2-100 sq ft
     /// rectangles beyond a building are pads and symbols not looked at, and are left as read. See `dxf.legend-frame-min-sqft`.
     /// </summary>
-    public double LegendFrameMinSqFt { get; init; } = 500;
+    public double LegendFrameMinSqft { get; init; } = 500;
 
     /// <summary>
     /// How far a straightened outline may sit from the trace it came from, in inches. A floor
