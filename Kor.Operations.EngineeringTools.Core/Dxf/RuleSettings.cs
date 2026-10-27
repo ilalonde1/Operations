@@ -143,9 +143,27 @@ public static class RuleSettings
         {
             using var connection = new SqlConnection(connectionString);
             connection.Open();
+            return CarriedRules(connection, null, job, scope);
+        }
+        catch
+        {
+            return new List<PriorAnswer>();
+        }
+    }
 
-            using var command = connection.CreateCommand();
-            command.CommandText = """
+    /// <summary>
+    /// <see cref="CarriedRules(string?, string?, string)"/> on a connection the caller already holds, inside its
+    /// transaction where it has one — so a caller that has written in a transaction reads what it wrote.
+    /// </summary>
+    public static IReadOnlyList<PriorAnswer> CarriedRules(
+        SqlConnection connection, SqlTransaction? transaction, string? job, string scope = "etabs-modelling")
+    {
+        var found = new List<PriorAnswer>();
+        if (string.IsNullOrWhiteSpace(job)) return found;
+
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
 SELECT   r.Topic, a.Job, a.DecidedBy, r.Ruling, a.DecidedAtUtc, r.SettingKey, r.SettingValue
 FROM     analysis.RuleApplication a
 JOIN     analysis.Ruling r ON r.Id = a.RulingId
@@ -157,32 +175,27 @@ WHERE    a.Decision = 'confirmed'
                       WHERE mine.RulingId = a.RulingId AND mine.Job = @job)
 ORDER BY r.Topic, a.DecidedAtUtc DESC
 """;
-            command.Parameters.AddWithValue("@job", job);
-            command.Parameters.AddWithValue("@scope", scope);
-            command.CommandTimeout = 15;
+        command.Parameters.AddWithValue("@job", job);
+        command.Parameters.AddWithValue("@scope", scope);
+        command.CommandTimeout = 15;
 
-            using var reader = command.ExecuteReader();
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            while (reader.Read())
-            {
-                string topic = reader.GetString(0);
-                // The most recent confirmation of a topic is the one worth showing; a list of every
-                // job that ever agreed is a wall of text she will not read.
-                if (!seen.Add(topic)) continue;
-
-                found.Add(new PriorAnswer(
-                    topic,
-                    reader.GetString(1),
-                    reader.IsDBNull(2) ? "unattributed" : reader.GetString(2),
-                    reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
-                    reader.GetDateTime(4),
-                    reader.IsDBNull(5) ? null : reader.GetString(5),
-                    reader.IsDBNull(6) ? null : Convert.ToString(reader.GetValue(6), CultureInfo.InvariantCulture)));
-            }
-        }
-        catch
+        using var reader = command.ExecuteReader();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        while (reader.Read())
         {
-            return new List<PriorAnswer>();
+            string topic = reader.GetString(0);
+            // The most recent confirmation of a topic is the one worth showing; a list of every
+            // job that ever agreed is a wall of text she will not read.
+            if (!seen.Add(topic)) continue;
+
+            found.Add(new PriorAnswer(
+                topic,
+                reader.GetString(1),
+                reader.IsDBNull(2) ? "unattributed" : reader.GetString(2),
+                reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                reader.GetDateTime(4),
+                reader.IsDBNull(5) ? null : reader.GetString(5),
+                reader.IsDBNull(6) ? null : Convert.ToString(reader.GetValue(6), CultureInfo.InvariantCulture)));
         }
 
         return found;
@@ -203,23 +216,34 @@ ORDER BY r.Topic, a.DecidedAtUtc DESC
         {
             using var connection = new SqlConnection(connectionString);
             connection.Open();
-
-            using var command = connection.CreateCommand();
-            command.CommandText =
-                "SELECT r.SettingKey FROM analysis.RuleApplication a " +
-                "JOIN analysis.Ruling r ON r.Id = a.RulingId " +
-                "WHERE a.Decision = 'rejected' AND a.Job = @job AND r.SettingKey IS NOT NULL AND r.RetiredAtUtc IS NULL";
-            command.Parameters.AddWithValue("@job", job);
-            command.CommandTimeout = 15;
-
-            using var reader = command.ExecuteReader();
-            while (reader.Read()) withheld.Add(reader.GetString(0));
+            return WithheldFor(connection, null, job);
         }
         catch
         {
             return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         }
+    }
 
+    /// <summary>
+    /// <see cref="WithheldFor(string?, string?)"/> on a connection the caller already holds, inside its
+    /// transaction where it has one.
+    /// </summary>
+    public static IReadOnlyCollection<string> WithheldFor(SqlConnection connection, SqlTransaction? transaction, string? job)
+    {
+        var withheld = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(job)) return withheld;
+
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            "SELECT r.SettingKey FROM analysis.RuleApplication a " +
+            "JOIN analysis.Ruling r ON r.Id = a.RulingId " +
+            "WHERE a.Decision = 'rejected' AND a.Job = @job AND r.SettingKey IS NOT NULL AND r.RetiredAtUtc IS NULL";
+        command.Parameters.AddWithValue("@job", job);
+        command.CommandTimeout = 15;
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read()) withheld.Add(reader.GetString(0));
         return withheld;
     }
 
@@ -481,6 +505,35 @@ ORDER BY r.Topic, a.DecidedAtUtc DESC
         if (string.IsNullOrWhiteSpace(engineer))
             throw new ArgumentException("Engineer is required.", nameof(engineer));
 
+        using var connection = new SqlConnection(connectionString);
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        var result = ImportQuestionAnswers(workbookPath, engineer, connection, transaction, sourcePath);
+        transaction.Commit();
+        return result;
+    }
+
+    /// <summary>
+    /// <see cref="ImportQuestionAnswers(string, string, string?, string?)"/> inside the caller's transaction, which
+    /// the caller commits or rolls back. Nothing here commits.
+    /// </summary>
+    /// <remarks>
+    /// So a test can import a real answer, read back what it did, and roll it all away: the import
+    /// retires the office convention for the same setting, and a test that commits that has left a
+    /// required rule missing for every build that reads the store until its cleanup runs — and for
+    /// good if the test host is killed first (2026-10-26).
+    /// </remarks>
+    public static RuleImportResult ImportQuestionAnswers(
+        string workbookPath,
+        string engineer,
+        SqlConnection connection,
+        SqlTransaction transaction,
+        string? sourcePath = null)
+    {
+        if (string.IsNullOrWhiteSpace(engineer))
+            throw new ArgumentException("Engineer is required.", nameof(engineer));
+
         var skipped = new List<string>();
         var answers = ReadQuestionAnswers(workbookPath, skipped);
         int written = 0, settings = 0, applied = 0;
@@ -489,10 +542,6 @@ ORDER BY r.Topic, a.DecidedAtUtc DESC
         // record that she settled it HERE goes to the job, and that pairing is the whole of what
         // makes the next job able to say "31138-01 answered this, and here is who and when".
         string? job = JobIn(workbookPath);
-
-        using var connection = new SqlConnection(connectionString);
-        connection.Open();
-        using var transaction = connection.BeginTransaction();
 
         foreach (var answer in answers)
         {
@@ -509,7 +558,6 @@ ORDER BY r.Topic, a.DecidedAtUtc DESC
             }
         }
 
-        transaction.Commit();
         return new RuleImportResult(answers.Count + skipped.Count, answers.Count, written, settings, skipped)
         {
             Job = job,

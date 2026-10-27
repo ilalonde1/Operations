@@ -66,11 +66,31 @@ public sealed class AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests : IDisposab
 
     private readonly List<string> _temporary = [];
 
-    public AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests() => Clean();
+    // EVERYTHING THIS TEST WRITES IS WRITTEN HERE AND ROLLED BACK (2026-10-26). The import retires
+    // the office convention for the setting it answers - dxf.max-pier-thickness, a REQUIRED rule -
+    // and until today it committed that and put the row back in Clean() afterwards. For the seconds
+    // between, every build reading the store in parallel saw the rule missing; a killed test host
+    // would have left it missing for good. Now nothing commits: another connection waits on the
+    // row for those seconds instead of reading it retired, and a dead host's transaction is rolled
+    // back by the server.
+    private readonly SqlConnection? _db;
+    private readonly SqlTransaction? _tx;
+
+    public AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests()
+    {
+        // Rows a run before the transaction left behind, if a host was killed mid-test.
+        Clean();
+        if (string.IsNullOrWhiteSpace(_connection)) return;
+        _db = new SqlConnection(_connection);
+        _db.Open();
+        _tx = _db.BeginTransaction();
+    }
 
     public void Dispose()
     {
-        Clean();
+        if (_tx?.Connection is not null) _tx.Rollback();
+        _tx?.Dispose();
+        _db?.Dispose();
         // KOR_KEEP_ANSWER_WORKBOOKS=1 leaves them on disk. A workbook this test wrote is the only
         // evidence of what the importer was actually handed, and deleting it is why the first
         // failure here had to be guessed at.
@@ -84,7 +104,7 @@ public sealed class AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests : IDisposab
         Assert.False(string.IsNullOrWhiteSpace(_connection),
             $"{RuleSettings.ConnectionEnvironmentVariable} is not set; the loop reads and writes KorStandards and never skips.");
 
-        var import = RuleSettings.ImportQuestionAnswers(AnsweredWorkbookFor(HerJob), "andrean", _connection);
+        var import = RuleSettings.ImportQuestionAnswers(AnsweredWorkbookFor(HerJob), "andrean", _db!, _tx!);
 
         Assert.Equal(HerJob, import.Job);
         Assert.True(import.AnswersFound >= 1,
@@ -109,9 +129,9 @@ public sealed class AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests : IDisposab
         Assert.False(string.IsNullOrWhiteSpace(_connection),
             $"{RuleSettings.ConnectionEnvironmentVariable} is not set; the loop reads and writes KorStandards and never skips.");
 
-        RuleSettings.ImportQuestionAnswers(AnsweredWorkbookFor(HerJob), "andrean", _connection);
+        RuleSettings.ImportQuestionAnswers(AnsweredWorkbookFor(HerJob), "andrean", _db!, _tx!);
 
-        var carried = RuleSettings.CarriedRules(_connection, AnotherJob);
+        var carried = RuleSettings.CarriedRules(_db!, _tx, AnotherJob);
         var mine = Assert.Single(carried, c => c.Topic == TopicOfTheAnsweredRule());
 
         Assert.Equal(HerJob, mine.Job);
@@ -122,7 +142,7 @@ public sealed class AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests : IDisposab
 
         // A job is not shown its own decision as somebody else's precedent. It has stopped being a
         // question there.
-        Assert.DoesNotContain(RuleSettings.CarriedRules(_connection, HerJob), c => c.Topic == TopicOfTheAnsweredRule());
+        Assert.DoesNotContain(RuleSettings.CarriedRules(_db!, _tx, HerJob), c => c.Topic == TopicOfTheAnsweredRule());
     }
 
     /// <summary>
@@ -135,20 +155,19 @@ public sealed class AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests : IDisposab
         Assert.False(string.IsNullOrWhiteSpace(_connection),
             $"{RuleSettings.ConnectionEnvironmentVariable} is not set; the loop reads and writes KorStandards and never skips.");
 
-        RuleSettings.ImportQuestionAnswers(AnsweredWorkbookFor(HerJob), "andrean", _connection);
-        Assert.Contains(RuleSettings.CarriedRules(_connection, AnotherJob), c => c.Topic == TopicOfTheAnsweredRule());
+        RuleSettings.ImportQuestionAnswers(AnsweredWorkbookFor(HerJob), "andrean", _db!, _tx!);
+        Assert.Contains(RuleSettings.CarriedRules(_db!, _tx, AnotherJob), c => c.Topic == TopicOfTheAnsweredRule());
 
-        using (var connection = new SqlConnection(_connection))
+        using (var command = _db!.CreateCommand())
         {
-            connection.Open();
-            using var command = connection.CreateCommand();
+            command.Transaction = _tx;
             command.CommandText = "UPDATE analysis.Ruling SET Scope = 'drafting' WHERE Topic = @topic";
             command.Parameters.AddWithValue("@topic", TopicOfTheAnsweredRule());
             command.ExecuteNonQuery();
         }
 
-        Assert.DoesNotContain(RuleSettings.CarriedRules(_connection, AnotherJob), c => c.Topic == TopicOfTheAnsweredRule());
-        Assert.Contains(RuleSettings.CarriedRules(_connection, AnotherJob, scope: "drafting"), c => c.Topic == TopicOfTheAnsweredRule());
+        Assert.DoesNotContain(RuleSettings.CarriedRules(_db!, _tx, AnotherJob), c => c.Topic == TopicOfTheAnsweredRule());
+        Assert.Contains(RuleSettings.CarriedRules(_db!, _tx, AnotherJob, scope: "drafting"), c => c.Topic == TopicOfTheAnsweredRule());
     }
 
     [Fact]
@@ -157,23 +176,87 @@ public sealed class AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests : IDisposab
         Assert.False(string.IsNullOrWhiteSpace(_connection),
             $"{RuleSettings.ConnectionEnvironmentVariable} is not set; the loop reads and writes KorStandards and never skips.");
 
-        RuleSettings.ImportQuestionAnswers(AnsweredWorkbookFor(HerJob), "andrean", _connection);
+        RuleSettings.ImportQuestionAnswers(AnsweredWorkbookFor(HerJob), "andrean", _db!, _tx!);
 
         string? key = ScalarString("SELECT TOP 1 SettingKey FROM analysis.Ruling WHERE Topic = @topic");
         Assert.False(string.IsNullOrWhiteSpace(key), "the answered rule carries no setting key, so nothing could be withheld.");
 
-        Assert.DoesNotContain(key!, RuleSettings.WithheldFor(_connection, AnotherJob));
+        Assert.DoesNotContain(key!, RuleSettings.WithheldFor(_db!, _tx, AnotherJob));
 
         Reject(AnotherJob);
 
-        Assert.Contains(key!, RuleSettings.WithheldFor(_connection, AnotherJob));
+        Assert.Contains(key!, RuleSettings.WithheldFor(_db!, _tx, AnotherJob));
 
         // And it is no longer offered there. A rule she has refused must not come back next run
         // wearing the same provenance it came with the first time.
-        Assert.DoesNotContain(RuleSettings.CarriedRules(_connection, AnotherJob), c => c.Topic == TopicOfTheAnsweredRule());
+        Assert.DoesNotContain(RuleSettings.CarriedRules(_db!, _tx, AnotherJob), c => c.Topic == TopicOfTheAnsweredRule());
 
         // The job where she confirmed it is untouched.
-        Assert.DoesNotContain(key!, RuleSettings.WithheldFor(_connection, HerJob));
+        Assert.DoesNotContain(key!, RuleSettings.WithheldFor(_db!, _tx, HerJob));
+    }
+
+    /// <summary>
+    /// THE OFFICE RULE THIS TEST DISPLACES IS NEVER SEEN DISPLACED (2026-10-26). While the import is
+    /// uncommitted, another connection cannot read the convention as retired - it waits, or reads it
+    /// live - and once the transaction is rolled back the convention is live with the value it had and
+    /// nothing under this test's topic remains.
+    /// </summary>
+    /// <remarks>
+    /// Red on the code before today: the import committed its own transaction, so the second
+    /// connection read the convention retired and the rollback here had nothing to undo.
+    /// </remarks>
+    [Fact]
+    public void TheOfficeRuleItDisplacesIsNeverSeenDisplaced()
+    {
+        Assert.False(string.IsNullOrWhiteSpace(_connection),
+            $"{RuleSettings.ConnectionEnvironmentVariable} is not set; the loop reads and writes KorStandards and never skips.");
+
+        string before = ConventionAsAnotherConnectionSeesIt();
+        Assert.StartsWith("live ", before, StringComparison.Ordinal);
+
+        RuleSettings.ImportQuestionAnswers(AnsweredWorkbookFor(HerJob), "andrean", _db!, _tx!);
+
+        // Inside the transaction the import DID retire it - otherwise this proves nothing.
+        Assert.NotNull(ScalarString(
+            "SELECT TOP 1 RetiredReason FROM analysis.FormatConvention " +
+            "WHERE SettingKey = (SELECT TOP 1 SettingKey FROM analysis.Ruling WHERE Topic = @topic) AND RetiredAtUtc IS NOT NULL"));
+
+        string during = ConventionAsAnotherConnectionSeesIt();
+        Assert.True(during == before || during == "waited",
+            $"another connection read the office rule as '{during}' while this test's import was uncommitted; it was '{before}'.");
+
+        _tx!.Rollback();
+
+        Assert.Equal(before, ConventionAsAnotherConnectionSeesIt());
+        using var other = new SqlConnection(_connection);
+        other.Open();
+        using var count = other.CreateCommand();
+        count.CommandText = "SELECT COUNT(*) FROM analysis.Ruling WHERE Topic = @topic";
+        count.Parameters.AddWithValue("@topic", TopicOfTheAnsweredRule());
+        Assert.Equal(0, (int)count.ExecuteScalar()!);
+    }
+
+    /// <summary>
+    /// The max-pier convention as a separate connection reads it: "live &lt;value&gt;", "retired &lt;value&gt;",
+    /// or "waited" when the row is locked by an uncommitted write for longer than two seconds.
+    /// </summary>
+    private string ConventionAsAnotherConnectionSeesIt()
+    {
+        using var other = new SqlConnection(_connection);
+        other.Open();
+        using var command = other.CreateCommand();
+        command.CommandText =
+            "SET LOCK_TIMEOUT 2000; " +
+            "SELECT TOP 1 CASE WHEN RetiredAtUtc IS NULL THEN 'live ' ELSE 'retired ' END + CONVERT(nvarchar(50), SettingValue) " +
+            "FROM analysis.FormatConvention WHERE SettingKey = 'dxf.max-pier-thickness' ORDER BY RetiredAtUtc";
+        try
+        {
+            return Convert.ToString(command.ExecuteScalar()) ?? "absent";
+        }
+        catch (SqlException e) when (e.Number == 1222)
+        {
+            return "waited";
+        }
     }
 
     /// <summary>
@@ -229,9 +312,8 @@ public sealed class AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests : IDisposab
 
     private void Reject(string job)
     {
-        using var connection = new SqlConnection(_connection);
-        connection.Open();
-        using var command = connection.CreateCommand();
+        using var command = _db!.CreateCommand();
+        command.Transaction = _tx;
         command.CommandText =
             "INSERT INTO analysis.RuleApplication (RulingId, Job, Decision, DecidedBy, Because) " +
             "SELECT Id, @job, 'rejected', 'andrean', 'Not on this building.' " +
@@ -243,9 +325,8 @@ public sealed class AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests : IDisposab
 
     private string? ScalarString(string sql)
     {
-        using var connection = new SqlConnection(_connection);
-        connection.Open();
-        using var command = connection.CreateCommand();
+        using var command = _db!.CreateCommand();
+        command.Transaction = _tx;
         command.CommandText = sql;
         command.Parameters.AddWithValue("@topic", TopicOfTheAnsweredRule());
         object? value = command.ExecuteScalar();
@@ -266,6 +347,9 @@ public sealed class AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests : IDisposab
     ///
     /// Any test that imports an answer takes on this obligation. The ruling is one row and easy to
     /// see; the convention it silently stood down is the one that gets left behind.
+    ///
+    /// Since 2026-10-26 this test commits nothing (see <c>_tx</c>), so this runs only before each
+    /// test, for rows a run from before that change could have left.
     /// </remarks>
     private void Clean()
     {
