@@ -27,19 +27,30 @@ function Sum(`$root) { `$f = @(Get-ChildItem -LiteralPath `$root -Recurse -File 
 function Row(`$name) { `$m = `$text | Select-String -Pattern ('^\s*' + `$name + '\s*:\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)') | Select-Object -Last 1
   if (`$m) { `$g = `$m.Matches[0].Groups; [pscustomobject]@{ Total = [long]`$g[1].Value; Copied = [long]`$g[2].Value; Skipped = [long]`$g[3].Value; Mismatch = [long]`$g[4].Value; Failed = [long]`$g[5].Value; Extras = [long]`$g[6].Value } } }
 `$s = Sum `$src; `$d = Sum `$dst
-# A sample proof: up to 10 files that exist on both sides, hashed on both.
+# Pair every source file with its destination copy. Robocopy keeps the time (/COPY:DAT), so a copied file has the
+# same size and time on both sides; one that differs was KEPT (already there, no overwrite) or failed to copy.
+# The proof: up to 10 same-size-same-time pairs, hashed on both sides -- a copy that only looks right fails here.
+`$root = (Resolve-Path -LiteralPath `$src).ProviderPath.TrimEnd('\')
+`$same = @(); `$differ = @()
+Get-ChildItem -LiteralPath `$src -Recurse -File -Filter `$files -Force -ErrorAction SilentlyContinue | ForEach-Object {
+  `$rel = `$_.FullName.Substring(`$root.Length).TrimStart('\')
+  `$o = Get-Item -LiteralPath (Join-Path `$dst `$rel) -Force -ErrorAction SilentlyContinue
+  if (`$o -and `$o.Length -eq `$_.Length -and `$o.LastWriteTimeUtc -eq `$_.LastWriteTimeUtc) { `$same += [pscustomobject]@{ S = `$_.FullName; D = `$o.FullName; R = `$rel } }
+  elseif (`$o) { `$differ += `$rel } }
+# Objects, not arrays: Get-Random unrolls an array of arrays into single strings (9 of 9 "matched" for 3 files, 27 Oct).
+# A hash that cannot be read is a mismatch, never a match: two empty hashes compare equal.
 `$checked = 0; `$bad = @()
-if (`$s.Files -gt 0) {
-  Get-ChildItem -LiteralPath `$src -Recurse -File -Filter `$files -Force -ErrorAction SilentlyContinue | Get-Random -Count 10 | ForEach-Object {
-    `$rel = `$_.FullName.Substring((Resolve-Path -LiteralPath `$src).ProviderPath.TrimEnd('\').Length).TrimStart('\')
-    `$other = Join-Path `$dst `$rel
-    if (Test-Path -LiteralPath `$other) { `$checked++
-      if ((Get-FileHash -LiteralPath `$_.FullName -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath `$other -Algorithm SHA256).Hash) { `$bad += `$rel } } }
-}
+@(`$same | Get-Random -Count 10) | ForEach-Object { `$checked++
+  `$h1 = (Get-FileHash -LiteralPath `$_.S -Algorithm SHA256 -ErrorAction SilentlyContinue).Hash
+  `$h2 = (Get-FileHash -LiteralPath `$_.D -Algorithm SHA256 -ErrorAction SilentlyContinue).Hash
+  if (-not `$h1 -or `$h1 -ne `$h2) { `$bad += `$_.R } }
 `$meaning = if (`$exit -ge 8) { 'FAILED: some files could not be copied (see the log)' } elseif (`$exit -band 1) { 'copied' } elseif (`$exit -eq 0) { 'nothing to copy: the destination already had every file' } else { 'done, with extra or mismatched files at the destination (see the log)' }
-`$ok = (`$exit -lt 8) -and (`$bad.Count -eq 0)
+# With overwrite, every file should now match its source; without it, a differing file was kept on purpose.
+`$ok = (`$exit -lt 8) -and (`$bad.Count -eq 0) -and (-not `$$Overwrite -or `$differ.Count -eq 0)
+`$keptText = if (`$differ.Count -gt 0) { "; `$(`$differ.Count) already at the destination and different, `$(if (`$$Overwrite) { 'NOT replaced' } else { 'kept (no overwrite)' })" } else { '' }
 [pscustomobject]@{
-  Result = "`$(if (`$ok) { 'OK' } else { 'FAILED' }): `$meaning; robocopy exit `$exit; source `$(`$s.Files) files / `$(`$s.Bytes) bytes, destination `$(`$d.Files) files / `$(`$d.Bytes) bytes; hash sample `$(`$checked - `$bad.Count) of `$checked match"
+  Result = "`$(if (`$ok) { 'OK' } else { 'FAILED' }): `$meaning; robocopy exit `$exit; source `$(`$s.Files) files / `$(`$s.Bytes) bytes, destination `$(`$d.Files) files / `$(`$d.Bytes) bytes; hash sample `$(`$checked - `$bad.Count) of `$checked match`$keptText"
+  Kept = `$differ.Count; KeptSample = @(`$differ | Select-Object -First 10)
   State = 'done'; Ok = `$ok; CopyId = $(Lit $CopyId); Host = `$env:COMPUTERNAME
   Source = `$src; Destination = `$dst; Files = `$files; Overwrite = `$$Overwrite
   RobocopyExit = `$exit; Meaning = `$meaning
