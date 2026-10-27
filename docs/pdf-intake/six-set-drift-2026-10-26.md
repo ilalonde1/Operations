@@ -43,6 +43,43 @@ All of 9055a41e, 9670a49e (step 184) and 86a2e160 moved 0 storeys on the six set
 - **A fault the bank had, still there:** 31168 C-L3's floor short of its columns.
 - **Never judged:** the member moves listed as "not looked at" above.
 
+## The member moves, judged (operations-ee's item 1, 2026-10-26 evening)
+
+**How.** Each move was judged with `tools/CorpusGateBisect/judge_drift_moves.py members|zones`; the raw output is
+[six-set-drift-2026-10-26-members.txt](six-set-drift-2026-10-26-members.txt). The engineer's model was moved into our frame by
+model-yardstick's column registration. Registration held on the judged storeys: for example, 50 of our 51 columns land on hers
+on 31170 L3, and 24 of 40 on 31138 L2.
+
+**Model-diff's counts overstate moves.** A member re-placed by 100 mm reads as one lost and one gained, so "walls 6" was 3 walls
+moved. The tool pairs each lost member with a gained one of its kind within 1,000 mm and scores the pair against her model.
+Renders and overlays are in [six-set-drift-2026-10-26/](six-set-drift-2026-10-26/).
+
+| Storey @ commit | What actually moved | Verdict |
+|---|---|---|
+| 31170 L3–L7 @ 8ed10d03 | 3 walls per storey, each moved 76–127 mm. Against hers, 13 pairs are the same within 50 mm and 2 are further by more than 50 mm; none are lost or gained. | **Neutral.** |
+| 31138 L2 @ 8ed10d03 | 12 duplicate columns removed: each had a twin 29–695 mm away, which still stands. One column per spot is what hers has (her 25 columns, our 52 before and 40 after). For 5 of the 12, the twin kept is nearer hers: 152 → 30, 634 → 30, 411 → 74, 528 → 1 and 77 → 59 mm. For 3, it is further: 0 → 342, 2 → 255 and 2 → 498 mm. The other 4 are not near hers either way. It also added 1 wall 6.6 m from any of hers. Overlay: `ov-31138-L2-8ed.png`. | **Fix (the bank had duplicates), with a fault: 3 of 12 kept the wrong twin.** |
+| 31065 L2 @ 8ed10d03 | 1 of 8 columns was a duplicate whose twin kept is further from hers (89 → 402 mm). The other 7 were removed on the second tower, 46–58 m from anything of hers; at L2 her model covers one tower only. | **Wrong twin on 1.** The 7: **undecided, outside her model.** |
+| 31202 ROOF @ d2cec177 | Mostly storey re-spanning (model-diff's "where the members went"): upper-roof walls no longer reach ROOF, and penthouse walls and columns now run down into it. Neither the walls before nor the walls after are within about 2 m of her 11 core walls. That fault is older than this commit, and the swap is the same either side. Of 3 columns carried down, 1 lands on hers and 2 (at y ≈ 61 m) are 15 m from any of hers. Overlay: `ov-31202-ROOF-d2c.png`. | **Mixed: 1 column fixed, 2 columns added that she lacks.** The roof walls stay a standing fault. |
+| 31065 L1 / P1 / P2 @ 8fa0d9d6 | Walls re-trimmed ("a slanted wall's clip"). 24 re-placed: 5 closer to hers, 3 further, 16 the same. Unpaired: L1 lost 2 columns and 2 short walls, each 1.0–2.1 m from any of hers (fix); P2 gained 2 walls (8.3 m and 0.7 m long), 7.3 m and 4.9 m from any of hers. | **Fix overall; the 2 P2 walls are regression candidates.** |
+| 31130 L1 / P2 / L0-P1 @ 8fa0d9d6 | The same re-trimming. 30 re-placed: 16 closer to hers, 7 further, 7 the same. The unpaired moves are short walls 0.2–1.5 m long, 0.3–1.5 m from hers, plus 1 column lost that is 6.2 m from any of hers. | **Fix overall.** |
+| 31065 L1 @ 674b2890 | 12 columns now stop at L2 instead of running down through L1. Her L1 has no column within 1.9–5.0 m of any of them. | **Fix.** |
+| 31065 P1 @ 674b2890 | 1 column gained 10 mm from hers. | **Fix.** |
+| 31138 L2 @ 674b2890 | The column on hers (30 mm) is swapped for one 604 mm away (634 mm from hers). | **Regression.** |
+| 31138 L20 @ 674b2890 | 1 column gained 5.9 m from any of hers. | **Regression candidate.** |
+
+**The four undecided step-183 zones** (`judge_drift_moves.py zones`: does the zone's centroid fall inside one of her plates, and at what thickness):
+
+| Zone | Where it sits | Verdict |
+|---|---|---|
+| 31065 P1 5.9" (1,726 sq ft) | Inside her 9.8" plate. The bank had 9.8" there. | **Regression.** |
+| 31130 L2 9" (4,290 sq ft) | Inside her 36" plate. | **Regression** (thinner than hers). |
+| 31065 L2 35.4" (826 + 2,271 sq ft) | Outside every plate of hers. | **Undecided**: a part of the set her model does not cover at L2. |
+| 31130 L20 18" (6,818 sq ft) | Her model has no L20 (her top is L18 ROOF). | **Undecided.** |
+
+The same check confirms the two step-183 regressions named above. 31138 L21's 24" zone sits inside her 8" plate. On 31202 L13, the 12" zones (8,738 sq ft) sit inside her 10" plates; 1 of the 5 also overlaps her 12" plate (1,128 sq ft).
+
+**A new class, found at two commits.** When the same column is drawn twice, the build keeps one of the two. That is right; hers has one. But nothing decides which of the two is kept: 31138 L2 has 3 of 12 further from hers, 31065 L2 has 1, and 674b2890 swapped one more on 31138 L2. The invariant: the column kept is the one the drawing's grid and the storeys above and below agree on. This is not fixed. It is raised to operations-ee as a candidate for its own step.
+
 ## What this does not cover
 
 Plate position at the same size, member sections, beams, loads, and storeys the engineer named another way.
