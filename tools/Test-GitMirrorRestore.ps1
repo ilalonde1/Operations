@@ -60,9 +60,22 @@
 # LooseUnpacked: FS01 sat at 0 of 215 (every loose object already packed, a fresh small pack landing
 # after each push) while 302N sat at 851 of 1237 and climbing, with no new pack for hours.
 #   - It does NOT say which bare failed on its own. It reports numbers; a human compares them.
-#   - It does NOT repair anything, on purpose. The repair is `git repack -adf` (or
-#     `git maintenance run --task=geometric-repack`), and it MUST run ON THAT HOST: rewriting a
-#     multi-GB pack set across SMB/VPN is how the task fails in the first place.
+#   - It does NOT repair anything, on purpose.
+#
+# ⛔ THE CAUSE, FOUND THE SAME DAY ON BOTH HOSTS, AND IT IS NOT SIZE:
+# a stale `multi-pack-index` held open by some process. Every push's repack then writes a fresh
+# FULL-SIZE pack and dies before deleting the old ones, so the bare grows by roughly the whole
+# repo PER PUSH. On FS01 that was 6 packs / 163 MB at 16:13 and 20 packs / 1471 MB by 19:29 - about
+# 1.3 GB in eight hours, watched live (163 MB packs written at 19:07, 19:13 and 19:23). On 302N the
+# same thing ran from 08-01 and left fourteen near-identical 158 MB packs.
+# THE FIX IS ONE COMMAND AND IT IS NOT A REPACK: rename the multi-pack-index aside. It is a derived
+# file git rebuilds, and maintenance then consolidates by itself - FS01 went 20 packs -> 7 -> 1 pack
+# / 164 MB within minutes, wrote a fresh midx, and pruned loose objects 232 -> 4, untouched after.
+# So this script now probes that file whenever it flags a bare, and says whether it is the known lock.
+#   - ⚠ "Run `git repack -adf` on that host" was the advice here before, and it was wrong twice over:
+#     THERE IS NO GIT ON KOR-FS01 OR KOR-302N (0 of 5 install paths each), and the cause was a locked
+#     file, so a repack would have died on the same handle. Pushing to an SMB path needs no git on
+#     the far end - the PUSHING git does all the work - which is why nobody noticed it was missing.
 #   - Prefer these numbers to -Fsck for routine checks. count-objects is a few directory listings;
 #     fsck READS EVERY OBJECT, so -Fsck against 302N's bare pulls ~2.4 GB over the link.
 #
@@ -192,8 +205,24 @@ foreach ($bare in $bares) {
         }
         $row.PackHealth = if ($packFlags) { 'MAINTENANCE' } else { 'ok' }
         if ($packFlags) {
-            $row.PackNote = "maintenance owed (restore still works): " + ($packFlags -join '; ') +
-                            ". Fix by running 'git repack -adf' ON THAT HOST - never across the link."
+            $midxPath = Join-Path $packDir 'multi-pack-index'
+            $midxNote = ''
+            if (Test-Path -LiteralPath $midxPath) {
+                # The known cause (both hosts, 2026-10-26): a stale multi-pack-index held open by
+                # some process, so every repack writes a fresh full-size pack and then dies before
+                # deleting the old ones. Check it here, because it turns a vague "maintenance owed"
+                # into the one action that fixes it.
+                $mi = Get-Item -LiteralPath $midxPath
+                try {
+                    $h = [IO.File]::Open($midxPath, 'Open', 'Write', 'None'); $h.Close()
+                    $midxNote = " multi-pack-index is writable (mtime $($mi.LastWriteTime.ToString('MM-dd HH:mm'))), so this is NOT the known lock."
+                } catch {
+                    $midxNote = " *** multi-pack-index CANNOT BE OPENED FOR WRITE (mtime $($mi.LastWriteTime.ToString('MM-dd HH:mm')))" +
+                                " - this is the known cause. Rename it aside (it is a derived file git rebuilds) and maintenance" +
+                                " consolidates by itself on the next push. Growth is ~one full-size pack PER PUSH until then."
+                }
+            }
+            $row.PackNote = "maintenance owed (restore still works): " + ($packFlags -join '; ') + "." + $midxNote
         }
 
         # 1. HEAD, and whether its target branch is real. This is the fault ls-remote cannot see.
