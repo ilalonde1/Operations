@@ -85,6 +85,8 @@ Renders and overlays are in [six-set-drift-2026-10-26/](six-set-drift-2026-10-26
 
 **A new class, found at two commits.** When the same column is drawn twice, the build keeps one of the two. That is right; hers has one. But nothing decides which of the two is kept: 31138 L2 has 3 of 12 further from hers, 31065 L2 has 1, and 674b2890 swapped one more on 31138 L2. The invariant: the column kept is the one the drawing's grid and the storeys above and below agree on. This is not fixed. It is raised to operations-ee as a candidate for its own step.
 
+**The check exists (rule 11), the fix does not yet:** `tools/CorpusGateBisect/column_stack_near_miss.py`. A column whose stack above or below misses it by 100–700 mm is a near-miss, and against the engineer's model it is a WRONG TWIN when it misses hers by about what the stack misses. On the six sets (506be566): 11 WRONG TWIN across 31138 L2 (3 of the 4 known instances), 31065 L2, 31130 L14 and 31170-arch L7. It misses two instances: the known 31065 L2 one, with no column above or below it, and 31138's fourth, which reads OFF HERS. The tool's header says what it covers and what it does not. The fix comes in daylight, with this as its gate.
+
 ## What this does not cover
 
 Plate position at the same size, member sections, beams, loads, and storeys the engineer named another way.
