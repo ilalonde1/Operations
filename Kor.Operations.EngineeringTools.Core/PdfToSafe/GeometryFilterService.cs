@@ -2093,31 +2093,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var keptSegs = loops.SelectMany(l => l.Points.Select((p, i) => (A: p, B: l.Points[(i + 1) % l.Points.Count])))
                     .Concat(pieces.SelectMany(c => c.Zip(c.Skip(1), (a, b) => (A: a, B: b)))).ToList();
                 foreach (var s in segments)
-                {
-                    double len = s.Start.DistanceTo(s.End);
-                    if (len <= SlabEdgeJoinMm) continue;
-                    double ux = (s.End.X - s.Start.X) / len, uy = (s.End.Y - s.Start.Y) / len;
-                    var on = keptSegs.Where(k => LoopGeometry.PerpendicularDistance(k.A, s.Start, s.End) <= SlabEdgeJoinMm
-                                                 && LoopGeometry.PerpendicularDistance(k.B, s.Start, s.End) <= SlabEdgeJoinMm)
-                        .Select(k =>
-                        {
-                            double a = (k.A.X - s.Start.X) * ux + (k.A.Y - s.Start.Y) * uy, b = (k.B.X - s.Start.X) * ux + (k.B.Y - s.Start.Y) * uy;
-                            return (Lo: Math.Max(0, Math.Min(a, b)), Hi: Math.Min(len, Math.Max(a, b)));
-                        })
-                        .Where(iv => iv.Hi - iv.Lo > SlabEdgeJoinMm)
-                        .OrderBy(iv => iv.Lo).ToList();
-                    if (on.Count == 0) continue;                       // not along a kept edge at all
-                    double at = 0;
-                    foreach (var (lo, hi) in on.Append((Lo: len, Hi: len)))
-                    {
-                        if (lo - at > SlabEdgeJoinMm)
-                        {
-                            var stretch = new[] { new DxfPoint(s.Start.X + ux * at, s.Start.Y + uy * at), new DxfPoint(s.Start.X + ux * lo, s.Start.Y + uy * lo) };
-                            pieces.Add(stretch); addedBy170.Add(stretch);
-                        }
-                        at = Math.Max(at, hi);
-                    }
-                }
+                    foreach (var stretch in StretchesNoKeptEdgeCovers(s.Start, s.End, keptSegs, SlabEdgeJoinMm))
+                    { pieces.Add(stretch); addedBy170.Add(stretch); }
             }
             // A STROKE ON THE GRID IS A PIECE OF THE EDGE (intake step 131, 2026-09-19). Step 78 offered the strokes along
             // a grid axis to the arrangement as drawn, and only the drawn lines' chains were bridged in line across a
@@ -3391,6 +3368,48 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// and on 31037's L2 hold-down plan it bridged lines that are not one line into crossings the arrangement refused,
         /// losing the storey's 20,339 sq ft (corpus gate, 2026-10-22).</summary>
         public const double SlabEdgeInLineMm = 6.0;
+
+        /// <summary>
+        /// A LINE DRAWN TWICE OFFERS THE STRETCH NO KEPT EDGE COVERS (step 170, repaired f5a74e04): the parts of a drawn
+        /// stroke, on a kept edge's own line, that no kept edge already covers - only those, since a stretch offered twice is
+        /// two edges on one line, which the arrangement refuses (31037 L2). AND A STROKE THAT CONTINUES A KEPT EDGE IN LINE,
+        /// END TO END, IS OFFERED WHOLE (2026-10-26): it overlaps nothing, so it was read as "not along a kept edge at all"
+        /// and dropped, and 31168's building C level 3 (S2.40.1, looked at) lost the outline's east side - a ring open by
+        /// 25 in, its floor 23,199 sq ft cut back to the 11,885 of the line inside it, six columns on no floor. A stroke
+        /// collinear with no kept edge, or touching one only across its line, is not offered here.
+        /// </summary>
+        internal static List<DxfPoint[]> StretchesNoKeptEdgeCovers(DxfPoint start, DxfPoint end, IReadOnlyList<(DxfPoint A, DxfPoint B)> keptSegs, double joinMm)
+        {
+            var offered = new List<DxfPoint[]>();
+            double len = start.DistanceTo(end);
+            if (len <= joinMm) return offered;
+            double ux = (end.X - start.X) / len, uy = (end.Y - start.Y) / len;
+            var inLine = keptSegs.Where(k => LoopGeometry.PerpendicularDistance(k.A, start, end) <= joinMm
+                                             && LoopGeometry.PerpendicularDistance(k.B, start, end) <= joinMm).ToList();
+            var on = inLine
+                .Select(k =>
+                {
+                    double a = (k.A.X - start.X) * ux + (k.A.Y - start.Y) * uy, b = (k.B.X - start.X) * ux + (k.B.Y - start.Y) * uy;
+                    return (Lo: Math.Max(0, Math.Min(a, b)), Hi: Math.Min(len, Math.Max(a, b)));
+                })
+                .Where(iv => iv.Hi - iv.Lo > joinMm)
+                .OrderBy(iv => iv.Lo).ToList();
+            if (on.Count == 0)
+            {
+                // overlapping nothing: offered whole where it continues a kept edge in line, end to end; else not along one at all
+                if (inLine.Any(k => LoopGeometry.DistanceToSegment(start, k.A, k.B) <= joinMm || LoopGeometry.DistanceToSegment(end, k.A, k.B) <= joinMm))
+                    offered.Add([start, end]);
+                return offered;
+            }
+            double at = 0;
+            foreach (var (lo, hi) in on.Append((Lo: len, Hi: len)))
+            {
+                if (lo - at > joinMm)
+                    offered.Add([new DxfPoint(start.X + ux * at, start.Y + uy * at), new DxfPoint(start.X + ux * lo, start.Y + uy * lo)]);
+                at = Math.Max(at, hi);
+            }
+            return offered;
+        }
 
         /// <summary>Two chain ends this close are one edge broken by what crossed it: a hand's width, the DXF side's own bridge (6 in). The compiled default of dxf.bridge-tolerance (PdfIntakeOptions.SlabEdgeBridgeMm).</summary>
         public const double DefaultSlabEdgeBridgeMm = 6 * 25.4;

@@ -83,3 +83,42 @@ The selection above only built the earlier reading where the step's left a colum
 31032 L2's lost half. **So both readings are now always built, and the step's is kept only where it floors more:
 fewer columns on no floor, or as many and more floor area (by over a square metre).** 31065 S2.17.1 keeps the step's
 (12,825 sq ft, 0 columns off, against 7,011 and 21).
+
+## A stroke continuing a kept edge in line - found 2026-10-26; parked as e0fe5872, then LANDED the same night under the existing policy
+
+**Landed, 2026-10-26 ~21:40 PDT, by operations-ee's decision (A).** The 31170-arch L5 "regression" below is one case of a
+class already on develop: a storey's plates overlap. On develop, the same set's L1 and L6 carry part-plan plates 86-87% inside
+the 32,076 sq ft floor, and the 24-set replay holds 67 such pairs. The build reports each one as "left as read for the
+engineer", and that is the decided policy. With this fix, L5 is in the same state as L1 and L6, and it is counted, not
+hidden: `tools/CorpusGateBisect/storey_plate_overlap.py` on the six sets gives 18 overlapping pairs without the fix and
+19 with it. The one added is 31170-arch L5, KF10 at 8,245 sq ft over KF6 at 32,076: 79% inside, 1,705 sq ft past it.
+Whether a storey's plates may overlap at all (absorb a part plan, clip a match-line overlap, keep one of a floor read twice)
+is (B), for Ian and Griffin to decide; that check is its gate. The record of the find, unchanged, follows.
+
+**The witness.** 31168 building C level 3 (S2.40.1, p30, looked at): the slab runs to the outer outline, printing 14" in the
+west bays and the south strip. We wrote only the 11,885 sq ft inside the heavy inner line, which leaves 6 columns on no
+floor. 8fa0d9d6 wrote 23,199 sq ft; f5a74e04 lost it.
+
+**The class, in one sentence:** f5a74e04's drawn-twice rule offers only the stretch of a stroke past a kept edge it
+OVERLAPS, so a stroke that continues a kept edge in line, end to end, overlaps nothing, reads as "not along a kept edge
+at all", and is dropped. An outline drawn as several strokes in a line loses its continuations. The trace showed 9 such
+strokes on p30, e.g. (84434,51397)-(84434,52860) continuing the kept (84434,52860)-(84434,55299). Its end at
+(84434,52860) is the dangling end the ring was open at, 25 in from closing.
+
+**The check:** `ALineDrawnTwiceOffersTheStretchNoKeptEdgeCoversTests` (rule extracted to
+`GeometryFilterService.StretchesNoKeptEdgeCovers`). Without the continuation clause it fails 1 of 5 (the continuation);
+with it, 5 of 5. Core fast 1,692 of 1,692. Halifax 1898f6b4 identical.
+
+**Six sets against 506be566:** 31065 identical. Fixed: 31168 C-L3 11,885 -> 23,199 sq ft (the drawing's floor) and
+31130 L15 18,878 -> 20,236 (the right tower's notch closed, its columns now on a floor; looked at). Small: 31138 L2
++185 sq ft and 1 wall; 31202 L4, L7-L13 thickness re-splits.
+
+**REGRESSION, the reason it is parked:** 31170-arch L5 32,076 -> 40,320 sq ft. The architectural part plan A423 (LEVEL 5
+PLAN (SW), p57) now closes a floor of 8,248 sq ft, reaching past the overall plan's edge. It shares under nine-tenths of
+its ground with the L5 floor, so steps 103 and 176 (DxfToEtabsService, "the same floor read again on a part plan") no
+longer absorb it, and it stands as a second plate over the first (rendered). Before the fix, A423 already read 8,159 sq ft
+and was absorbed.
+
+**So the continuation rule is right, and landing it needs the part-plan absorption to hold first.** A part plan's floor
+over an overall plan's floor is the same floor, even where the part plan reaches past its edge. That is the next rule to
+measure (on 31170-arch's A422-A425 at every level, and on the corpus), before this branch lands.
