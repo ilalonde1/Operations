@@ -97,8 +97,9 @@ def walk(wt, out, commits):
         print(c, "done", flush=True)
 
 
-def state(path):
-    """storey -> {'plate': sq ft, 'thick': {inches: sq ft}, 'open': [n, sq ft]}"""
+def state(path, drop_ours=False):
+    """storey -> {'plate': sq ft, 'thick': {inches: sq ft}, 'open': [n, sq ft]}. drop_ours for the engineer's model: objects this
+    tool named (K-letter-digits, ModelYardstick.GeneratedObject) are not hers."""
     u = 1.0; pts = {}; areas = {}; thick = {}
     st = collections.defaultdict(lambda: {"plate": 0.0, "thick": collections.Counter(), "open": [0, 0.0]})
     lines = open(path, encoding="utf-8", errors="replace").read().splitlines()
@@ -109,7 +110,9 @@ def state(path):
             if len(q) > 1: u = TO_MM.get(q[1].upper(), 1.0)
         elif m := re.match(r'(?:SHELLPROP|SLABPROP|SLAB)\s+"([^"]+)".*?\b(?:SLABTHICKNESS|THICKNESS|TH)\s+(\S+)', s): thick[m.group(1)] = float(m.group(2)) * u
         elif m := re.match(r'POINT\s+"([^"]+)"\s+(\S+)\s+(\S+)', s): pts[m.group(1)] = (float(m.group(2)) * u, float(m.group(3)) * u)
-        elif m := re.match(r'AREA\s+"([^"]+)"\s+FLOOR\s+(\d+)\s+(.*)', s): areas[m.group(1)] = re.findall(r'"([^"]+)"', m.group(3))[:int(m.group(2))]
+        elif m := re.match(r'AREA\s+"([^"]+)"\s+FLOOR\s+(\d+)\s+(.*)', s):
+            if drop_ours and re.fullmatch(r"K[A-Z]\d+", m.group(1)): continue    # this tool's own plate in a yardstick (31168's KF84)
+            areas[m.group(1)] = re.findall(r'"([^"]+)"', m.group(3))[:int(m.group(2))]
 
     def sqft(obj):
         p = [pts[q] for q in areas.get(obj, []) if q in pts]
@@ -166,7 +169,7 @@ def attribute(out, commits, yard):
         if not base:
             print(f"{job}: no build at the base {base_c}"); continue
         y = os.path.join(yard, job.split("-arch")[0] + ".e2k")
-        hers = {norm(k): v for k, v in state(y).items()} if os.path.exists(y) else {}
+        hers = {norm(k): v for k, v in state(y, drop_ours=True).items()} if os.path.exists(y) else {}
         seq = [(c, e2k_in(os.path.join(out, job, c))) for c in walked]
         seq = [(c, p) for c, p in seq if p]
         if not seq:
