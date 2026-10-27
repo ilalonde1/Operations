@@ -34,9 +34,15 @@ EXE = os.path.join(REPO, CLI)
 YARD = os.path.join(MIRROR, "yardsticks")
 
 
+OURS = re.compile(r"K[A-Z]\d+")   # this tool's own object names (ModelYardstick.GeneratedObject): never the engineer's
+
+
 def model(path):
-    """(units-to-mm, points, LINE columns, AREA panels, AREA floors, slab thickness in inches, lines)"""
+    """(units-to-mm, points, LINE columns, AREA panels, AREA floors, slab thickness in inches, lines). Read from the
+    yardstick, objects this tool named (K..) are dropped: 31168's yardstick holds our earlier output, and its 22,663 sq ft
+    C-LEVEL 3 outline plate (KF84) read as the engineer's on 2026-10-26 until this."""
     u = 1.0; pts = {}; cols = {}; panels = {}; floors = {}; thick = {}
+    drop = os.path.normcase(os.path.abspath(path)).startswith(os.path.normcase(os.path.abspath(YARD)))
     lines = open(path, encoding="utf-8", errors="replace").read().splitlines()
     for s in lines:
         s = s.strip()
@@ -49,6 +55,8 @@ def model(path):
             (panels if m.group(2) == "PANEL" else floors)[m.group(1)] = re.findall(r'"([^"]+)"', m.group(4))[:int(m.group(3))]
         elif m := re.match(r'(?:SHELLPROP|SLABPROP|SLAB)\s+"([^"]+)".*?\b(?:SLABTHICKNESS|THICKNESS|TH)\s+(\S+)', s): thick[m.group(1)] = float(m.group(2))
     pts = {k: (x * u, y * u) for k, (x, y) in pts.items()}
+    if drop:
+        cols, panels, floors = ({k: v for k, v in d.items() if not OURS.fullmatch(k)} for d in (cols, panels, floors))
     return u, pts, cols, panels, floors, {k: v * u / 25.4 for k, v in thick.items()}, lines
 
 
