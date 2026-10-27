@@ -166,6 +166,14 @@ public static class ModelYardstick
     public static readonly IReadOnlyList<string> DefaultStoreyQualifierWords = ["MECH", "MECHANICAL", "ROOF", "PH", "PENTHOUSE", "AMENITY", "MAIN", "UPPER", "LOWER", "EMR", "TYP", "TYPICAL"];
 
     public static Comparison Compare(string modelE2k, string yardstickE2k, IReadOnlyList<string> storeyQualifierWords)
+        => Compare(modelE2k, yardstickE2k, storeyQualifierWords, turn: null);
+
+    /// <summary>
+    /// <paramref name="turn"/>: the degrees the engineer's model stands turned from ours (theirs = turn(ours) + shift). Her
+    /// points are turned back by it before anything is judged, so every figure below - columns, plates, walls, openings -
+    /// meets ours by a translation, as it always has. Null: no turn known yet; the registration may find one and call back.
+    /// </summary>
+    private static Comparison Compare(string modelE2k, string yardstickE2k, IReadOnlyList<string> storeyQualifierWords, (double Deg, int Support, int Plain)? turn)
     {
         var model = E2kDocument.Load(modelE2k);
         // THE ENGINEER'S MODEL, NOT OURS INSIDE IT (2026-10-25). A yardstick built by an engineer starting from a model this
@@ -174,6 +182,7 @@ public static class ModelYardstick
         // original projects we did"). Objects named the way this tool names them, and their assigns, are left out of the
         // yardstick, and the comparison says how many.
         var yardLines = File.ReadAllLines(yardstickE2k);
+        if (turn is { } t0) yardLines = TurnedPoints(yardLines, -t0.Deg);
         var generated = new HashSet<string>(yardLines
             .Select(l => GeneratedObject.Match(l))
             .Where(m => m.Success && m.Groups["kind"].Value is "LINE" or "AREA")
@@ -248,9 +257,26 @@ public static class ModelYardstick
         if (!fromGrids && shared.Count > 0)
         {
             var (regShift, regSupport) = Register(shared);
+            int oursTotal = shared.Sum(s => s.OurPts.Count);
+
+            // THE ENGINEER'S MODEL CAN STAND TURNED FROM THE DRAWINGS (2026-10-26). 30986-02 and 31098 are modelled a quarter
+            // turn round (270 deg), 31183 five degrees (355): a translation registers 1-3 of our columns a storey there, and
+            // the gate left all three unjudged while our read was right - turned back, 54 of 96, 337 of 636 and 379 of 694 of
+            // our columns stand on hers (docs/pdf-intake/frames-unregistered-2026-10-26.md). Only where the translation is
+            // NOT already convincing (under half of our columns) is a turn looked for, so a registered set is untouched; and a
+            // turn is taken only when it places at least twice the columns and a third of ours.
+            if (turn is null && regSupport * 2 < oursTotal)
+            {
+                var best = BestTurn(shared);
+                if (best.Support >= 2 * Math.Max(regSupport, 1) && best.Support * 3 >= oursTotal)
+                    return Compare(modelE2k, yardstickE2k, storeyQualifierWords, (best.Deg, best.Support, regSupport));
+            }
+
             shift = regShift;
             support = regSupport;
-            int oursTotal = shared.Sum(s => s.OurPts.Count);
+            if (turn is { } t1)
+                notes.Add($"the engineer's model stands turned from the drawings: rotated {t1.Deg:0.#} deg before registration " +
+                          $"({t1.Support} of {oursTotal} of our columns within 100 mm of one of hers turned; {t1.Plain} by translation alone)");
             notes.Add($"frame from column registration, no shared grid labels ({dx.Count} X / {dy.Count} Y): {regSupport} of {oursTotal} of our columns within 100 mm of one of theirs after it");
         }
         else if (fromGrids)
@@ -939,6 +965,48 @@ public static class ModelYardstick
             if (better) { shift = candidate; support = sup; spread = spr; }
         }
         return (shift, Math.Max(support, 0));
+    }
+
+    /// <summary>
+    /// The turn (0.5 deg steps) that, with the translation the pairs then vote for, places the most of our columns within
+    /// 100 mm of one of hers: our points are turned by it, so theirs = turn(ours) + shift. Turn 0 is not tried - that is
+    /// <see cref="Register"/> itself.
+    /// </summary>
+    internal static (double Deg, int Support) BestTurn(
+        IReadOnlyList<(string Ours, string Theirs, IReadOnlyList<(double X, double Y)> OurPts, IReadOnlyList<(double X, double Y)> TheirPts)> shared)
+    {
+        var support = new int[720];
+        for (int step = 1; step < 720; step++)
+        {
+            double deg = step * 0.5, r = deg * Math.PI / 180, c = Math.Cos(r), s = Math.Sin(r);
+            var turned = shared.Select(sh => (sh.Ours, sh.Theirs,
+                (IReadOnlyList<(double X, double Y)>)sh.OurPts.Select(p => (p.X * c - p.Y * s, p.X * s + p.Y * c)).ToList(), sh.TheirPts)).ToList();
+            support[step] = Register(turned).Support;
+        }
+        // THE MIDDLE OF THE BEST RUN OF TURNS, NOT ITS FIRST STEP: a half degree moves a column 8 m out by 70 mm, inside the
+        // 100 mm a column is "on" hers, so a small plan places all its columns at 269.5, 270 and 270.5 alike, and the first
+        // of them is the edge of the truth, not the truth.
+        int max = support.Max();
+        if (max <= 0) return (0, 0);
+        int first = Array.IndexOf(support, max), last = first;
+        while (last + 1 < 720 && support[last + 1] == max) last++;
+        return ((first + last) * 0.25, max);   // the middle step, in degrees (a step is half a degree)
+    }
+
+    /// <summary>The e2k's lines with every POINT's plan coordinates turned about the origin by <paramref name="deg"/>; all else as it was.</summary>
+    internal static string[] TurnedPoints(string[] lines, double deg)
+    {
+        double r = deg * Math.PI / 180, c = Math.Cos(r), s = Math.Sin(r);
+        var point = new Regex(@"^(\s*POINT\s+""[^""]+""\s+)(-?[\d.eE+]+)(\s+)(-?[\d.eE+]+)(.*)$");
+        return lines.Select(l =>
+        {
+            var m = point.Match(l);
+            if (!m.Success
+                || !double.TryParse(m.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double x)
+                || !double.TryParse(m.Groups[4].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double y)) return l;
+            return m.Groups[1].Value + (x * c - y * s).ToString("R", CultureInfo.InvariantCulture) + m.Groups[3].Value
+                   + (x * s + y * c).ToString("R", CultureInfo.InvariantCulture) + m.Groups[5].Value;
+        }).ToArray();
     }
 
     private static double Median(List<double> values)

@@ -1,0 +1,7 @@
+out.e2k -> 30819-01.e2k 5 shared storey(s) with columns in both
+  L2       ours   20 hers    2 | translation only:    2 within 100 mm | best:    2 at   0.0 deg, scale 1, offset (-26,119, -6,768)
+  L3       ours   17 hers    2 | translation only:    2 within 100 mm | best:    2 at   0.0 deg, scale 1, offset (-26,119, -6,768)
+  L5       ours    8 hers    2 | translation only:    1 within 100 mm | best:    1 at   0.0 deg, scale 1, offset (-38,248, -36,204)
+  L6       ours   12 hers    4 | translation only:    1 within 100 mm | best:    2 at   3.5 deg, scale 1, offset (-23,590, -5,611)
+  ROOF     ours   11 hers    4 | translation only:    1 within 100 mm | best:    2 at   3.5 deg, scale 1, offset (-23,585, -5,642)
+docs/pdf-intake/frames-unregistered-2026-10-26/30819-01.png

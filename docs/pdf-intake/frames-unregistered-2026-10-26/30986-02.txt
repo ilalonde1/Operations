@@ -1,0 +1,6 @@
+out.e2k -> 30986-02.e2k 4 shared storey(s) with columns in both
+  L1       ours   34 hers   22 | translation only:    2 within 100 mm | best:   13 at 270.0 deg, scale 1, offset (96,297, 70,902)
+  L2       ours   22 hers   29 | translation only:    2 within 100 mm | best:   16 at 270.0 deg, scale 1, offset (96,296, 70,902)
+  L3       ours   19 hers   18 | translation only:    1 within 100 mm | best:   14 at 270.0 deg, scale 1, offset (96,296, 70,901)
+  P1       ours   21 hers   20 | translation only:    2 within 100 mm | best:   13 at 269.5 deg, scale 1, offset (96,731, 71,119)
+docs/pdf-intake/frames-unregistered-2026-10-26/30986-02.png

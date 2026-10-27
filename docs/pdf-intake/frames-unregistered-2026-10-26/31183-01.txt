@@ -1,0 +1,18 @@
+out.e2k -> 31183-01.e2k 16 shared storey(s) with columns in both
+  L1       ours   69 hers   55 | translation only:    2 within 100 mm | best:   42 at 355.0 deg, scale 1, offset (947, 33,138)
+  L10      ours   52 hers   25 | translation only:    2 within 100 mm | best:   24 at 355.0 deg, scale 1, offset (946, 33,140)
+  L11      ours   52 hers   25 | translation only:    2 within 100 mm | best:   24 at 355.0 deg, scale 1, offset (946, 33,140)
+  L12      ours   52 hers   25 | translation only:    2 within 100 mm | best:   24 at 355.0 deg, scale 1, offset (946, 33,140)
+  L13      ours   52 hers   25 | translation only:    2 within 100 mm | best:   24 at 355.0 deg, scale 1, offset (946, 33,140)
+  L14      ours   19 hers   19 | translation only:    2 within 100 mm | best:   19 at 355.0 deg, scale 1, offset (943, 33,140)
+  L15      ours   19 hers   19 | translation only:    2 within 100 mm | best:   19 at 355.0 deg, scale 1, offset (3,426, 61,512)
+  L16      ours   19 hers   19 | translation only:    2 within 100 mm | best:   19 at 355.0 deg, scale 1, offset (3,426, 61,512)
+  L3       ours   54 hers   36 | translation only:    2 within 100 mm | best:   30 at 355.0 deg, scale 1, offset (946, 33,140)
+  L4       ours   30 hers   29 | translation only:    2 within 100 mm | best:   27 at 355.0 deg, scale 1, offset (946, 33,139)
+  L5       ours   30 hers   29 | translation only:    2 within 100 mm | best:   27 at 355.0 deg, scale 1, offset (946, 33,139)
+  L6       ours   30 hers   29 | translation only:    2 within 100 mm | best:   27 at 355.0 deg, scale 1, offset (946, 33,139)
+  L7       ours   26 hers   25 | translation only:    1 within 100 mm | best:   24 at 355.0 deg, scale 1, offset (946, 33,140)
+  L8       ours   52 hers   25 | translation only:    2 within 100 mm | best:   24 at 355.0 deg, scale 1, offset (946, 33,140)
+  L9       ours   52 hers   25 | translation only:    2 within 100 mm | best:   24 at 355.0 deg, scale 1, offset (946, 33,140)
+  P1       ours   86 hers   54 | translation only:    3 within 100 mm | best:   40 at 355.0 deg, scale 1, offset (947, 33,138)
+docs/pdf-intake/frames-unregistered-2026-10-26/31183-01.png

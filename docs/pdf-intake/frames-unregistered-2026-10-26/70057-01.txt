@@ -1,0 +1,5 @@
+out.e2k -> 70057-01.e2k 3 shared storey(s) with columns in both
+  L2       ours   13 hers   75 | translation only:    4 within 100 mm | best:    4 at   0.0 deg, scale 1, offset (-18,980, -42,153)
+  L3       ours    8 hers   75 | translation only:    2 within 100 mm | best:    2 at   0.0 deg, scale 1, offset (94,204, -33,818)
+  L4       ours    8 hers   75 | translation only:    2 within 100 mm | best:    2 at   0.0 deg, scale 1, offset (94,204, -33,818)
+docs/pdf-intake/frames-unregistered-2026-10-26/70057-01.png

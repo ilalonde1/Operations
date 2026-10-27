@@ -16,8 +16,10 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// GRIDS, ours in mm — the frame found from the columns, the support stated (4 of 5: one of ours
 /// has no partner), residuals both ways (theirs -> ours: 4 of 6, two of theirs never read); a
 /// storey named LEVEL P2 by them and P2 by us meeting; the same pair with grids on both sides met
-/// by name instead; a storey prefixed for one building meeting only that building's. WHAT IT DOES NOT: rotation between the frames (translation only); walls and
-/// plates; the real 81 exports (the corpus run's ledger has those, one row per job).
+/// by name instead; a storey prefixed for one building meeting only that building's; the engineer's model turned
+/// from ours (270 and 355 deg, 2026-10-26) turned back before it judges. WHAT IT DOES NOT: a model MIRRORED from ours, or
+/// turned where the grids give the frame (the grids are taken as they stand); walls and plates; the real 81 exports (the
+/// corpus run's ledger has those, one row per job).
 /// </remarks>
 [Collection(SheetNamingVocabularyCollection.Name)]   // PlanSheetNaming.Parse reads the shared vocabulary (step 69 tag assertions)
 public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
@@ -78,6 +80,41 @@ public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
             Assert.Equal(6, c.TheirsCompared); Assert.Equal(4, c.TheirsWithin100);   // E6 and E7 are theirs alone
             Assert.Contains(c.Notes, n => n.Contains("column registration", StringComparison.Ordinal) && n.Contains("4 of 5", StringComparison.Ordinal));
             Assert.Contains("4 of 5", ModelYardstick.Summary(c), StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// THE ENGINEER'S MODEL CAN STAND TURNED FROM THE DRAWINGS (2026-10-26): 30986-02 and 31098 are modelled a quarter turn
+    /// round, 31183 five degrees, and a translation alone met 1-3 of our columns a storey there. Her points are turned back
+    /// by the angle the columns agree on, every column of ours then stands on hers, and the comparison says it turned.
+    /// </summary>
+    [Theory]
+    [InlineData(270.0)]
+    [InlineData(355.0)]
+    public void AModelTurnedFromTheDrawingsIsTurnedBackBeforeItJudges(double deg)
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"kor-yard-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            // an irregular plan, so no other turn fits it as well: a quarter turn of a square bay would
+            var plan = new (double X, double Y)[] { (0, 0), (7200, 0), (16100, 0), (0, 5400), (9800, 6100), (16100, 8300), (3100, 12500), (12700, 14200) };
+            double r = deg * Math.PI / 180, sx = 96300, sy = 70900;
+            var ours = plan.Select((p, i) => ($"C{i}", p.X, p.Y, "L2")).ToList();
+            var theirs = plan.Select((p, i) => ($"E{i}", p.X * Math.Cos(r) - p.Y * Math.Sin(r) + sx, p.X * Math.Sin(r) + p.Y * Math.Cos(r) + sy, "L2")).ToList();
+            string m = Path.Combine(root, "ours.e2k"), y = Path.Combine(root, "theirs.e2k");
+            File.WriteAllText(m, E2k("MM", [("L2", 3000)], ours));
+            File.WriteAllText(y, E2k("MM", [("L2", 3000)], theirs));
+
+            var c = ModelYardstick.Compare(m, y);
+
+            Assert.Equal(8, c.OursCompared);
+            Assert.Equal(8, c.OursWithin100);
+            Assert.Contains(c.Notes, n => n.Contains($"rotated {deg:0.#} deg", StringComparison.Ordinal));
         }
         finally
         {
