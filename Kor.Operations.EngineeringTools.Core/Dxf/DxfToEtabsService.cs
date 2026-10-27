@@ -3319,6 +3319,8 @@ public static class DxfToEtabsService
         {
             var here = parsed.Where(p => p.Stories.Contains(storey)).ToList();
             if (legendFrameIsNotAFloor)
+            {
+                var taken = new List<PlanLoop>();
                 foreach (var p in here)
                     foreach (var slab in p.Geometry.Slabs.ToList())
                     {
@@ -3326,10 +3328,30 @@ public static class DxfToEtabsService
                         p.Geometry.Slabs.Remove(slab);
                         if (sample is { } s) foreach (var q in here) q.Geometry.Walls.Remove(s);
                         legendFrames++;
+                        taken.Add(slab);
                         var lo = (X: slab.Points.Min(pt => pt.X), Y: slab.Points.Min(pt => pt.Y));
                         listed.Add($"{storey}: a {SqFt(slab.Area)} sq ft rectangle on {p.Sheet.FileName} at ({lo.X:N0}, {lo.Y:N0}) stands beyond the building and holds no column, no opening and " +
                                    "exactly one stroke - the sheet's legend frame and its key's sample, not a floor; taken out with the stroke (dxf.legend-frame-is-not-a-floor)");
                     }
+                // THE SAME FRAME DRAWN AGAIN ON ANOTHER SHEET OF THE STOREY, WITHOUT ITS STROKE (2026-10-27). 31066-01's building 2
+                // sheets (S2.15, S2.20) draw building 1's frame at the very same place; building 2's key stroke was the same wall
+                // as building 1's and was modelled once, so its copy of the frame holds none, is no frame by the test above, and
+                // was written - deduplicated against building 1's copy before, alone once that was taken. A plate at the very
+                // rectangle of a frame taken on this storey (every corner within the reach, the same area within 1%) is that
+                // frame. Found by tools/CorpusGateBisect/legend_frame_twins.py: 2 twins, on 31066 L2 and ROOF, of 56 sets.
+                foreach (var frame in taken)
+                    foreach (var p in here)
+                        foreach (var slab in p.Geometry.Slabs.ToList())
+                        {
+                            if (Math.Abs(slab.Area - frame.Area) > 0.01 * frame.Area
+                                || !slab.Points.All(a => frame.Points.Any(b => Math.Abs(a.X - b.X) <= reach && Math.Abs(a.Y - b.Y) <= reach))) continue;
+                            p.Geometry.Slabs.Remove(slab);
+                            legendFrames++;
+                            var lo = (X: slab.Points.Min(pt => pt.X), Y: slab.Points.Min(pt => pt.Y));
+                            listed.Add($"{storey}: a {SqFt(slab.Area)} sq ft rectangle on {p.Sheet.FileName} at ({lo.X:N0}, {lo.Y:N0}) is the legend frame taken on this storey, drawn again on another sheet " +
+                                       "without its stroke - not a floor; taken out (dxf.legend-frame-is-not-a-floor)");
+                        }
+            }
             var plates = here.SelectMany(p => p.Geometry.Slabs.Select(s => (Sheet: p, Slab: s))).ToList();
             if (plates.Count == 0) continue;
 

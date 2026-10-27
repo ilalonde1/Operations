@@ -90,7 +90,17 @@ written on L3, and some samples are already dropped downstream).
 The comparison is tools/CorpusGateBisect/step185_replay_diff.py (its header states the wall-pairing limit).
 
 **Follow-up recorded, not fixed (operations-ee): a no-stroke copy of the template frame survives as a plate - 31066-01's
-building 2 sheets S2.15 (L2) and S2.20 (ROOF) - a remaining instance of the class.**
+building 2 sheets S2.15 (L2) and S2.20 (ROOF) - a remaining instance of the class.** FIXED 2026-10-27, below.
+
+## The same frame drawn again without its stroke (2026-10-27, migration 130)
+
+Building 2's key stroke on 31066 was the same wall as building 1's and was modelled once, so building 2's copy of the frame
+holds no stroke - no frame by the one-stroke test - and was written once building 1's copy was taken. A plate on the same storey
+at the very rectangle of a frame taken there (every corner within the reach, 6 in; the area within 1%) is that frame and is taken
+too. Check tools/CorpusGateBisect/legend_frame_twins.py: RED on f98c7cf2, 2 twins (31066 L2, ROOF) of 56 sets. Test
+TheSameLegendFrameDrawnAgainOnAnotherSheetWithoutItsStrokeGoesToo: red without the rule, green with it; a bare rectangle
+elsewhere stays. Gate gate57-twin against f98c7cf2: 55 of 56 byte-identical; 31066 changed by exactly its 2 twin plates; the
+check GREEN (0). Migration 130 restates 126's row to say so (rehearsed in a rolled-back transaction, applied by operations-ee).
 
 ## Predicted
 

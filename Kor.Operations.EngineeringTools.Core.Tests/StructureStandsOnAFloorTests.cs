@@ -173,4 +173,33 @@ public sealed class StructureStandsOnAFloorTests
         Assert.Equal(on ? 1 : 0, warnings.Count(w => w.Contains("the sheet's legend frame and its key's sample, not a floor", StringComparison.Ordinal)));
         if (on) Assert.Contains(warnings, w => w.Contains("4,861 sq ft rectangle on S2.03_1_LEVEL 2 PLAN.dxf", StringComparison.Ordinal));
     }
+
+    /// <summary>
+    /// THE SAME FRAME ON ANOTHER SHEET OF THE STOREY, WITHOUT ITS STROKE, GOES WITH IT (2026-10-27). 31066-01's building 2 sheets
+    /// draw building 1's legend frame at the very same place; building 2's key stroke was the same wall as building 1's and was
+    /// modelled once, so its copy holds none. Once building 1's frame is taken, the copy at the very rectangle is that frame - and
+    /// a bare rectangle anywhere else still stays (the 40112 roof's rule).
+    /// </summary>
+    [Fact]
+    public void TheSameLegendFrameDrawnAgainOnAnotherSheetWithoutItsStrokeGoesToo()
+    {
+        var one = new PlanGeometrySet();
+        one.Slabs.Add(Box(0, 0, 1200, 800));
+        one.Walls.Add(Wall(0, 0, 1200, 0)); one.Columns.Add(Column(600, 400));
+        var frame = Box(0, -1200, 1000, -500); one.Slabs.Add(frame);
+        one.Walls.Add(Wall(50, -550, 200, -550));                                             // building 1's key stroke
+        var two = new PlanGeometrySet();
+        var copy = Box(0, -1200, 1000, -500); two.Slabs.Add(copy);                              // building 2's copy, no stroke
+        var bare = Box(1300, -1200, 2300, -500); two.Slabs.Add(bare);                           // a bare rectangle elsewhere
+
+        var warnings = DxfToEtabsService.SettleFloorsAcrossSheets(
+            [Sheet("S2.07_1_BUILDING 1 - LEVEL 2.dxf", "L2", one), Sheet("S2.15_1_BUILDING 2 - LEVEL 2.dxf", "L2", two)],
+            Reach, SqFtPerUnit, legendFrameIsNotAFloor: true);
+
+        Assert.DoesNotContain(frame, one.Slabs);
+        Assert.DoesNotContain(copy, two.Slabs);
+        Assert.Contains(bare, two.Slabs);
+        Assert.Contains(warnings, w => w.Contains("on S2.15_1_BUILDING 2 - LEVEL 2.dxf", StringComparison.Ordinal)
+                                       && w.Contains("drawn again on another sheet", StringComparison.Ordinal));
+    }
 }
