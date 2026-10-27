@@ -109,6 +109,12 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_look_guard.py\"",
             "timeout": 30,
             "statusMessage": "Checking every change was LOOKED at before telling a peer it is done"
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_instrument_guard.py\"",
+            "timeout": 30,
+            "statusMessage": "Checking a reported zero came from an instrument tested on a known answer"
           }
         ]
       },
@@ -162,6 +168,12 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_look_guard.py\"",
             "timeout": 30,
             "statusMessage": "Checking every change was LOOKED at before any claim it is done"
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_instrument_guard.py\"",
+            "timeout": 30,
+            "statusMessage": "Checking a reported zero came from an instrument tested on a known answer"
           }
         ]
       }
