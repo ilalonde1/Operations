@@ -42,6 +42,14 @@ MISSES = {
         [B("git commit -q -m x -- a.py && git push -q fs01 HEAD")],
         "Pushed and done.", "push"),
 }
+# Standard Details' case (10-27 15:3x): a KorStandards write through KOR.Drafter tools/standards_db.py carries no SQL
+# keyword in the command - db.run(<a .sql file>) or db.record(...) - and slipped past 138's db-write rule
+MISSES["standards_db write with no SQL keyword"] = (
+    [B("cd /c/x/KOR.Drafter/tools && python -c \"import standards_db as db; db.run(open('../db/140_x.sql').read())\"")],
+    "Migration rehearsed - done.", "db-write")
+MISSES["standards_db.record of a job decision"] = (
+    [B("python -c \"import standards_db as db; db.record('31180-01', 'wood.x=y', 'assumed', 'VD', 'why')\"")],
+    "Recorded - done.", "db-write")
 # --- ALLOWED: the same sequences with the look done
 LOOKED = {
     "drawing run, then the PNG read": (
@@ -57,6 +65,10 @@ LOOKED = {
     "push, then the remote read back in the same command": (
         [B("git push -q fs01 HEAD && git fetch -q fs01 && git log --oneline -1 fs01/main")], "Pushed - done."),
 }
+LOOKED["standards_db write, then its rows() read-back"] = (
+    [B("python -c \"import standards_db as db; db.record('31180-01', 'wood.x=y', 'assumed', 'VD', 'why')\""),
+     B("python -c \"import standards_db as db; print(db.rows('SELECT Decision FROM analysis.RuleApplication WHERE Job=1'))\"")],
+    "Recorded and read back - done.")
 # --- ALLOWED: a commit whose MESSAGE names a drawing tool is not a drawing run (10-27 dry run's false positive)
 LOOKED["commit message naming e2k_book.py"] = (
     [B("python tools/e2k_book.py m.e2k b.pdf"), R(r"C:\x\b.png"),

@@ -26,7 +26,9 @@ replies and peer messages. What it does NOT: whether the look covered everything
 Complete text tells the session what everything is, the hook cannot count pages it does not know; whether the
 look was at the RIGHT file; whether it was understood (10-27: I opened the final model's Level 1, saw P1's solid
 west wall and nearly called it a fault); claims phrased without a CLAIM word; changes made by other sessions or
-by tools that are not Bash/PowerShell/Edit/Write. Same-class fault it would miss: a reply saying "the drawings are
+by tools that are not Bash/PowerShell/Edit/Write; a DB write made by a script FILE that imports standards_db and
+writes, run as `python tools/x.py` - nothing in that command says it writes (writes through `db.run/record/withdraw`
+in the command ARE seen, migration 140, Standard Details' case). Same-class fault it would miss: a reply saying "the drawings are
 right" after rendering page 1 of 26 - one Read of a PNG satisfies the drawing rule.
 
 stdin  : the Stop payload (transcript_path, stop_hook_active) or the PreToolUse payload (tool_name SendMessage)
