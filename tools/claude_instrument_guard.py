@@ -16,19 +16,27 @@ Three of its instances in one day, each of which read as somebody else's failure
   - a publish gate printed "Imperial: 0", which reads as "Imperial drafters get nothing"; the loop broke on the
     first matching unit, so the count was an artefact of the order the units were listed in.
 
-THE RULE. If the text reports a ZERO or a nil result, and this session WROTE OR EDITED a script (.py/.ps1), then
-the transcript must show that instrument self-tested AFTER its last edit - a known-positive, a seeded failure, an
-expected count. Otherwise the reply is refused and told to test the instrument first. A zero from a tool this
-session did not write is not this class and is not touched.
+THE RULE. If the text reports a ZERO or a nil result, the instrument is the .py/.ps1 that this session edited and
+most recently RAN; that script must have run again after its last edit with KNOWN-ANSWER evidence in its OWN
+output - a known-positive, a seeded failure, an expected count. Otherwise the reply is refused and told to test
+the instrument first. A zero from a tool this session did not write is not this class and is not touched.
+
+Tightened 2026-10-27 after Virtual Drafter dry-ran the first version over a 73,337-record transcript: it allowed
+a nil because the words "self-test" appeared in UNRELATED output that happened to land after a script edit, and
+because the claim text itself could say "self-test" and pass. It was catching forgetting, not a word in passing.
+Evidence now counts only inside a run of the same script, the claim-text escape is gone, and a script that was
+written but never run no longer arms it - it cannot have produced the nil.
 
 What it COVERS: a nil finding claimed in a final reply or a peer message, where the measuring script was authored
-or changed in this same session and never shown to produce a non-nil answer.
+or changed in this same session, was run, and was never shown to return an answer already known.
 What it does NOT: a zero from an INLINE command rather than a written script (the "0 of 8" from an equality test
 against a short sha was typed straight into PowerShell, and this guard would not have seen it); whether the
 self-test was a good one; whether a NON-zero number is right - an instrument can be wrong in the other direction;
 claims phrased without a nil word; other sessions' instruments.
 Same-class fault it would MISS: a scan self-tested on a positive it was always going to match - a self-test that
-cannot fail is the class one level up, and no hook here can tell the two apart.
+cannot fail is the class one level up, and no hook here can tell the two apart. It also guesses WHICH script
+produced the nil by taking the one most recently run, so a nil from an older instrument, reported after a
+different script ran, is attributed to the wrong one.
 
 stdin  : the Stop payload (transcript_path, stop_hook_active) or the PreToolUse payload (tool_name SendMessage)
 stdout : nothing (allow); Stop -> {"decision": "block", ...}; PreToolUse -> permissionDecision "deny"
@@ -48,13 +56,17 @@ NIL_CLAIM = re.compile(
     r"|\bnothing (?:was |is |had )?(?:found|changed|deleted|written|returned|touched)\b"
     r"|\bnobody (?:did|had|touched)\b", re.I)
 
-# Evidence that the instrument was exercised on an answer already known.
+# Evidence that the instrument was exercised on an answer already KNOWN. Checked only in the OUTPUT of a run of
+# that same script - not anywhere in the transcript. Virtual Drafter's dry run over 73,337 records found the
+# earlier version allowing a nil because the words "self-test" appeared in unrelated output that happened to land
+# after a script edit: it caught forgetting, not a word in passing.
 SELF_TEST = re.compile(
     r"self-?test|known[- ]positive|known[- ]negative|negative sample|seeded|seedbadrow"
-    r"|must fail|expected 1|expect 1|expect \d+ of \d+|sanity", re.I)
+    r"|must fail|expected \d+|expect \d+ of \d+|\d+ of \d+ (?:known|samples?|positives?)", re.I)
 
 SCRIPT = re.compile(r"\.(?:py|ps1)$", re.I)
 WRITE_TOOLS = {"Write", "Edit", "NotebookEdit"}
+RUN_TOOLS = {"Bash", "PowerShell"}
 
 
 def entries(path):
@@ -88,29 +100,52 @@ def text_of(rec):
     return "\n".join(parts)
 
 
+def results_by_id(recs):
+    out = {}
+    for rec in recs:
+        for b in blocks(rec):
+            if isinstance(b, dict) and b.get("type") == "tool_result":
+                c = b.get("content")
+                if isinstance(c, list):
+                    c = "\n".join(x.get("text", "") for x in c if isinstance(x, dict))
+                out[b.get("tool_use_id")] = c if isinstance(c, str) else ""
+    return out
+
+
 def verdict(recs, claim_text):
     """Returns a refusal string, or None to allow."""
     if not NIL_CLAIM.search(claim_text or ""):
         return None
 
-    last_edit_at, last_script = -1, None
+    outputs = results_by_id(recs)
+    edits = {}   # basename -> index of its last edit
+    runs = []    # (index, basename, output) for each run of a script, in order
     for i, rec in enumerate(recs):
         for b in blocks(rec):
             if not isinstance(b, dict) or b.get("type") != "tool_use":
                 continue
-            if b.get("name") in WRITE_TOOLS:
-                p = (b.get("input") or {}).get("file_path") or ""
+            name, inp = b.get("name"), (b.get("input") or {})
+            if name in WRITE_TOOLS:
+                p = inp.get("file_path") or ""
                 if SCRIPT.search(p):
-                    last_edit_at, last_script = i, os.path.basename(p)
+                    edits[os.path.basename(p)] = i
+            elif name in RUN_TOOLS:
+                cmd = inp.get("command") or ""
+                for base in edits:
+                    if base in cmd:
+                        runs.append((i, base, outputs.get(b.get("id"), "")))
 
-    if last_script is None:
-        return None  # the measurement is not an instrument this session built
-
-    for rec in recs[last_edit_at + 1:]:
-        if SELF_TEST.search(text_of(rec)):
-            return None
-    if SELF_TEST.search(claim_text):
+    # The instrument is the edited script most recently RUN - a script written but never run cannot have
+    # produced the nil, and keying on the last RUN is a closer guess at which one did than "any edit".
+    armed = [r for r in runs if r[0] > edits[r[1]]]
+    if not armed:
         return None
+    _, last_script, _ = armed[-1]
+
+    # A self-test counts only when THAT script ran after its last edit and its own output carried the evidence.
+    for idx, base, out in armed:
+        if base == last_script and idx > edits[base] and SELF_TEST.search(out or ""):
+            return None
 
     return (
         "INSTRUMENT NOT TESTED. This text reports a nil result, and the instrument that produced it - "
