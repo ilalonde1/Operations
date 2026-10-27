@@ -187,6 +187,14 @@ public sealed record SheetOutcome(
     string File, string Label, string? Building, IReadOnlyList<int> Levels,
     IReadOnlyList<string> Stories, int Walls, int Columns, int Slabs, IReadOnlyList<string> Flags)
 {
+    /// <summary>
+    /// WHERE THIS VIEW WAS PUT IN THE MODEL (2026-10-27): "rot=R;dx=X;dy=Y;scale=S;ox=OX;oy=OY", invariant culture. A point (x, y)
+    /// of the view's DXF lands in the written model at: scale it by S, turn it R degrees about the origin, shift it by (X, Y) - the
+    /// sheet's frame - then add (OX, OY), the composer's offset. Null for a view that placed nothing. The build computed this
+    /// and threw it away; without it a member could be traced from the model back to its sheet only by voting (31065 L2's and
+    /// 31170-arch L7's unresolved twin columns, 10-26; the outline-column measure, 10-27, whose two votes both failed).
+    /// </summary>
+    public string? Placement { get; init; }
     public int? DrawingSlabThicknessInches { get; init; }
     public int? DrawingSlabThicknessPage { get; init; }
     public string? DrawingSlabThicknessTitle { get; init; }
@@ -1093,6 +1101,8 @@ public static class DxfToEtabsService
                 "was assumed and the question is asked instead.");
 
         var outcomes = new List<SheetOutcome>();
+        // the frame each view was put in the model by - written into SheetOutcome.Placement with the composer's offset
+        var frameOfSheet = new Dictionary<string, AnnotationOverlay.Frame>(StringComparer.OrdinalIgnoreCase);
         var readButNotPlaced = new List<(string Sheet, int Walls, int Columns, int Slabs)>();
         string? unplacedNote = null;
         var parsed = new List<(PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories)>();
@@ -1950,6 +1960,7 @@ public static class DxfToEtabsService
             // READ IN THE DRAWING'S FRAME, DELIVERED IN THE MODEL'S. See PlanGeometryTransform for
             // why this is the last thing done to a sheet rather than the first.
             var frame = alignedByName.TryGetValue(file, out var namedFit) ? namedFit.Frame : alignment?.Frame;
+            frameOfSheet[sheet.FileName] = frame ?? new AnnotationOverlay.Frame(0, 0, 0);
             parsed.Add((
                 sheet,
                 frame is { } sheetFrame ? PlanGeometryTransform.Apply(geometry, sheetFrame) : geometry,
@@ -2975,7 +2986,15 @@ public static class DxfToEtabsService
         // From the readback taken BEFORE the stack merge: the ledger says which drawing gave what,
         // and the merge rewrites the object names that carry the answer. The storey list is trimmed
         // to what survived, which is the same either way.
-        var sheetsAfterCut = SheetsAfterCut(outcomes, provenance, saved);
+        var sheetsAfterCut = SheetsAfterCut(outcomes, provenance, saved)
+            .Select(s => frameOfSheet.TryGetValue(s.File, out var f)
+                ? s with
+                {
+                    Placement = string.Create(CultureInfo.InvariantCulture,
+                        $"rot={f.RotationDegrees:0.######};dx={f.OffsetX:0.###};dy={f.OffsetY:0.###};scale={scale:0.##########};ox={offset.X:0.###};oy={offset.Y:0.###}"),
+                }
+                : s)
+            .ToList();
 
         return new DxfToEtabsReport(
             request.OutputE2k, files.Count, sheetsAfterCut.Count(s => s.Stories.Count > 0),

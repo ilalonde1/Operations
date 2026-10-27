@@ -39,7 +39,11 @@ public sealed class TheCorpusLedgerRoundTripsTests
                 // and the storeys only ours plate (item 5, 2026-10-26)
                 StoreysPlatedOnlyOurs: 4, PlatesOnlyOursSqFt: 21204.5);
             var sheet = new CorpusAnalyzer.SheetRow(run, "31168-01", 2, "S2.02", "plan", "S2.02 - LEVEL P3 PLAN / FOUNDATIONS PLAN, BLDG A & B", "P3", "1/8\" = 1'-0\"", 96,
-                0, 71, 35, 13641, "S2.02_1_LEVEL P3 PLAN FOUNDATIONS PLAN BLDG A - & B.dxf", null, false, null, "walls: 6 outline(s) would not close; 7 wall panel(s) read", null);
+                0, 71, 35, 13641, "S2.02_1_LEVEL P3 PLAN FOUNDATIONS PLAN BLDG A - & B.dxf", null, false, null, "walls: 6 outline(s) would not close; 7 wall panel(s) read", null)
+            {
+                // where the view was put in the model (2026-10-27): its own ";" and "=" must survive the quoting
+                Placement = "rot=90;dx=12345.678;dy=-987.5;scale=1;ox=0;oy=0",
+            };
             string sets = Path.Combine(root, "set.csv"), sheets = Path.Combine(root, "sheets.csv");
             CorpusAnalyzer.WriteSetCsv(sets, [set]);
             CorpusAnalyzer.WriteSheetCsv(sheets, [sheet]);
@@ -73,7 +77,8 @@ public sealed class TheCorpusLedgerRoundTripsTests
             Assert.Equal("", fields[18]);                                         // a null is an empty field
             Assert.Equal("356.2", fields[25]);
             var sf = CorpusAnalyzer.Csv.Parse(File.ReadAllLines(sheets)[1]);
-            Assert.Equal(19, sf.Count);
+            Assert.Equal(20, sf.Count);                                            // 19 + where the view was placed
+            Assert.Equal(sheet.Placement, sf[19]);
             Assert.Equal(sheet.Title, sf[5]);
             Assert.Equal("1/8\" = 1'-0\"", sf[7]);
             Assert.Equal("False", sf[15]);
@@ -84,6 +89,11 @@ public sealed class TheCorpusLedgerRoundTripsTests
             var run2 = Guid.NewGuid(); var at2 = at.AddDays(1);
             Assert.Equal(set with { RunId = run2, RunAtUtc = at2 }, CorpusAnalyzer.ReadSetRow(sets, run2, at2));
             Assert.Equal(sheet with { RunId = run2 }, Assert.Single(CorpusAnalyzer.ReadSheetRows(sheets, run2)));
+            // and a ledger written before the placement column (19 fields) still reads, its placement null
+            string legacy = Path.Combine(root, "sheets-19.csv");
+            var lines = File.ReadAllLines(sheets);
+            File.WriteAllLines(legacy, [lines[0], lines[1][..lines[1].LastIndexOf(',')]]);
+            Assert.Equal(sheet with { RunId = run2, Placement = null }, Assert.Single(CorpusAnalyzer.ReadSheetRows(legacy, run2)));
             Assert.Equal(set, Assert.Single(CorpusAnalyzer.ReadSets(sets)));
 
             // A SET'S ROW IS WRITTEN THE MOMENT THE SET IS DONE (2026-09-14): the partial ledger a killed run leaves reads

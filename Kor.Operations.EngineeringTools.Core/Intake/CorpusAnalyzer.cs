@@ -61,7 +61,15 @@ public static class CorpusAnalyzer
 
     public sealed record SheetRow(
         Guid RunId, string Job, int Page, string? SheetNumber, string SheetType, string? Title, string? Level, string? ScaleNote, int? ScaleDenominator,
-        int Slabs, int Columns, int Walls, int Lines, string? DxfFiles, string? SelfCheck, bool? Placed, string? Storeys, string? Flags, string? Failure);
+        int Slabs, int Columns, int Walls, int Lines, string? DxfFiles, string? SelfCheck, bool? Placed, string? Storeys, string? Flags, string? Failure)
+    {
+        /// <summary>
+        /// Where each of the sheet's views was put in the model (<see cref="Dxf.SheetOutcome.Placement"/>), one per DXF view in
+        /// the order of <see cref="DxfFiles"/>, joined by <see cref="DxfFileSeparator"/>. Null on a ledger written before
+        /// 2026-10-27 and for a view that placed nothing.
+        /// </summary>
+        public string? Placement { get; init; }
+    }
 
     public sealed record RunResult(Guid RunId, IReadOnlyList<SetRow> Sets, IReadOnlyList<SheetRow> Sheets, int Rebuilt, int Reused, TimeSpan Elapsed);
 
@@ -433,15 +441,22 @@ public static class CorpusAnalyzer
             bool? wasPlaced = null;
             var storeys = new List<string>();
             var flags = new List<string>();
+            var placements = new List<string>();
             if (model is not null && s.DxfFiles.Count > 0)
             {
                 wasPlaced = s.DxfFiles.Any(f => placedFiles.Contains(f));
                 foreach (var f in s.DxfFiles)
+                {
                     if (byFile.TryGetValue(f, out var c)) { storeys.AddRange(c.Stories); flags.AddRange(c.Flags); }
+                    placements.Add(byFile.TryGetValue(f, out var p) ? p.Placement ?? "" : "");
+                }
             }
             rows.Add(new SheetRow(runId, job, s.Page, s.SheetNumber, s.SheetType, s.Title, s.Level, s.ScaleNote, s.ScaleDenominator,
                 s.Slabs, s.Columns, s.Walls, s.Lines, s.DxfFiles.Count == 0 ? null : string.Join(DxfFileSeparator, s.DxfFiles), s.SelfCheck.Trim().Length == 0 ? null : s.SelfCheck.Trim(),
-                wasPlaced, storeys.Count == 0 ? null : string.Join(",", storeys.Distinct()), flags.Count == 0 ? null : string.Join("; ", flags.Distinct()), s.Failure));
+                wasPlaced, storeys.Count == 0 ? null : string.Join(",", storeys.Distinct()), flags.Count == 0 ? null : string.Join("; ", flags.Distinct()), s.Failure)
+            {
+                Placement = placements.All(p => p.Length == 0) ? null : string.Join(DxfFileSeparator, placements),
+            });
         }
         return rows;
     }
@@ -509,7 +524,7 @@ public static class CorpusAnalyzer
     private static string Q(object? v) => v is null ? "" : "\"" + Convert.ToString(v, CultureInfo.InvariantCulture)!.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
 
     private static readonly string SetHeader = "run_id,run_at_utc,tool_built_at_utc,job,category,set_kind,pdf,issue_date,issue_date_from_name,bytes,pages,plan_sheets,sheets_written,sheets_failed,sheets_not_plan,assembly_cards,storeys_read,has_model,model_error,sheets_placed,storeys_built,walls,columns,floors,storeys_with_plate,seconds,error,yardstick,yardstick_storeys,shared_storeys,frame_from_grids,frame_support,ours_compared,ours_median_mm,ours_within_100,theirs_compared,theirs_within_100,yardstick_note,yardstick_edb,yardstick_written,yardstick_age_days,plates_ours_sqft,plates_hers_sqft,plates_under_half,plates_over_half_again,plates_beyond_sqft,thickness_storeys,thickness_agree,openings_hers,openings_hers_we_have,storeys_plated_only_ours,plates_only_ours_sqft";
-    private static readonly string SheetHeader = "run_id,job,page,sheet_number,sheet_type,title,level,scale_note,scale_denominator,slabs,columns,walls,lines,dxf_files,self_check,placed,storeys,flags,failure";
+    private static readonly string SheetHeader = "run_id,job,page,sheet_number,sheet_type,title,level,scale_note,scale_denominator,slabs,columns,walls,lines,dxf_files,self_check,placed,storeys,flags,failure,placement";
 
     public static void WriteSetCsv(string path, IReadOnlyList<SetRow> rows)
     {
@@ -565,7 +580,7 @@ public static class CorpusAnalyzer
         var lines = new List<string> { SheetHeader };
         foreach (var s in rows)
             lines.Add(string.Join(",", Q(s.RunId), Q(s.Job), Q(s.Page), Q(s.SheetNumber), Q(s.SheetType), Q(s.Title), Q(s.Level), Q(s.ScaleNote), Q(s.ScaleDenominator),
-                Q(s.Slabs), Q(s.Columns), Q(s.Walls), Q(s.Lines), Q(s.DxfFiles), Q(s.SelfCheck), Q(s.Placed), Q(s.Storeys), Q(s.Flags), Q(s.Failure)));
+                Q(s.Slabs), Q(s.Columns), Q(s.Walls), Q(s.Lines), Q(s.DxfFiles), Q(s.SelfCheck), Q(s.Placed), Q(s.Storeys), Q(s.Flags), Q(s.Failure), Q(s.Placement)));
         File.WriteAllLines(path, lines, new UTF8Encoding(true));
     }
 
@@ -619,7 +634,11 @@ public static class CorpusAnalyzer
         if (runId == Guid.Empty && Guid.TryParse(f[0], out var g)) runId = g;
         return new SheetRow(runId, f[1], int.Parse(f[2], CultureInfo.InvariantCulture), S(f[3]), f[4], S(f[5]), S(f[6]), S(f[7]), I(f[8]),
             int.Parse(f[9], CultureInfo.InvariantCulture), int.Parse(f[10], CultureInfo.InvariantCulture), int.Parse(f[11], CultureInfo.InvariantCulture), int.Parse(f[12], CultureInfo.InvariantCulture),
-            S(f[13]), S(f[14]), f[15].Length == 0 ? null : bool.Parse(f[15]), S(f[16]), S(f[17]), S(f[18]));
+            S(f[13]), S(f[14]), f[15].Length == 0 ? null : bool.Parse(f[15]), S(f[16]), S(f[17]), S(f[18]))
+        {
+            // where each view was placed (2026-10-27); a ledger written before it has 19 fields and reads as null
+            Placement = f.Count > 19 ? S(f[19]) : null,
+        };
     }
 
     /// <summary>A quoted-field CSV line back into its fields (the writer above's inverse).</summary>
