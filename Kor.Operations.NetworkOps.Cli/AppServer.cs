@@ -71,24 +71,47 @@ internal sealed class AppServer : IDisposable
     /// the token is the only thing on stdout.</summary>
     public Task<string> AccessTokenAsync(CancellationToken ct) => TokenAsync(ct);
 
+    /// <summary>How long an interactive sign-in may wait for the person before the CLI gives up and says so.</summary>
+    public static readonly TimeSpan InteractiveSignInWait = TimeSpan.FromMinutes(3);
+
+    /// <summary>
+    /// Whether a person can answer a sign-in prompt: a console whose input is a keyboard. A Claude session's shell, an MCP
+    /// bridge (stdin is the MCP channel) and a scheduled task all have redirected input -- there, a browser prompt waits for
+    /// nobody. 2026-10-27: the API's 12-hour MFA sign-in frequency expired at night, every session's `netops run` opened a
+    /// browser on an empty screen and HUNG -- no output, no exit -- and a dialog watch went blind for two hours.
+    /// KOR_NETOPS_INTERACTIVE=1 / 0 overrides the guess.
+    /// </summary>
+    internal static bool CanPrompt(bool inputRedirected, string? overrideVar)
+        => overrideVar switch { "1" => true, "0" => false, _ => !inputRedirected };
+
     private async Task<string> TokenAsync(CancellationToken ct)
     {
         _pca ??= await BuildPcaAsync().ConfigureAwait(false);
         var scopes = new[] { Scope };
         var account = (await _pca.GetAccountsAsync().ConfigureAwait(false)).FirstOrDefault();
+        string? claims = null;
         try
         {
             if (account is not null) return (await _pca.AcquireTokenSilent(scopes, account).ExecuteAsync(ct).ConfigureAwait(false)).AccessToken;
         }
-        catch (MsalUiRequiredException ex)
+        catch (MsalUiRequiredException ex) { claims = ex.Claims; }
+
+        // The silent sign-in is not enough (MFA due, or never signed in). Only ask when someone can answer, and not forever.
+        if (!CanPrompt(Console.IsInputRedirected, Environment.GetEnvironmentVariable("KOR_NETOPS_INTERACTIVE")))
+            throw new SignInNeededException("the NetworkOps sign-in has expired and needs MFA, and nobody can answer a prompt here. " +
+                "Ian: in a terminal on this PC run `netops token` (from a Claude session: $env:KOR_NETOPS_INTERACTIVE=1; netops token) " +
+                "and complete the MFA in the browser; then retry.");
+        Console.Error.WriteLine($"netops: signing in to NetworkOps (a browser window opens for MFA; giving up after {InteractiveSignInWait.TotalMinutes:0} min)...");
+        var again = _pca.AcquireTokenInteractive(scopes);
+        if (account is not null) again = again.WithAccount(account);
+        if (!string.IsNullOrEmpty(claims)) again = again.WithClaims(claims);
+        using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        wait.CancelAfter(InteractiveSignInWait);
+        try { return (await again.ExecuteAsync(wait.Token).ConfigureAwait(false)).AccessToken; }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            Console.Error.WriteLine("netops: signing in to NetworkOps (a browser window opens for MFA)...");
-            var again = _pca.AcquireTokenInteractive(scopes).WithAccount(account);
-            if (!string.IsNullOrEmpty(ex.Claims)) again = again.WithClaims(ex.Claims);
-            return (await again.ExecuteAsync(ct).ConfigureAwait(false)).AccessToken;
+            throw new SignInNeededException($"nobody completed the NetworkOps sign-in within {InteractiveSignInWait.TotalMinutes:0} min.");
         }
-        Console.Error.WriteLine("netops: signing in to NetworkOps (a browser window opens)...");
-        return (await _pca.AcquireTokenInteractive(scopes).ExecuteAsync(ct).ConfigureAwait(false)).AccessToken;
     }
 
     // The app's registration and token cache file (Kor.Operations.App/NetworkOps/NetworkOpsClient.BuildPcaAsync).
@@ -113,4 +136,10 @@ internal sealed class AppServer : IDisposable
 internal sealed class AppServerException(int status, string message) : Exception(message)
 {
     public int Status { get; } = status;
+}
+
+/// <summary>No token without a person: the CLI exits <see cref="ExitCode"/> at once instead of waiting on a prompt.</summary>
+internal sealed class SignInNeededException(string message) : Exception(message)
+{
+    public const int ExitCode = 4;
 }

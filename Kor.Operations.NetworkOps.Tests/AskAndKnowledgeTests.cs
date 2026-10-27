@@ -156,6 +156,23 @@ public sealed class AskAndKnowledgeTests
         }
     }
 
+    // 2026-10-27: the API's 12-hour MFA expired at night; every session's `netops run` opened a browser on an empty screen
+    // and hung with no output and no exit, and a dialog watch went blind for two hours. The CLI must never wait on a prompt
+    // nobody can answer, and never wait on one forever. (A source check: the CLI project is not referenced by these tests.
+    // It would NOT catch a second interactive call added somewhere else in the CLI -- it reads AppServer.cs only.)
+    [Fact]
+    public void The_CLI_never_waits_on_a_sign_in_prompt_nobody_can_answer()
+    {
+        var src = File.ReadAllText(Path.Combine(Repo.Root, "Kor.Operations.NetworkOps.Cli", "AppServer.cs"));
+        Assert.Single(Regex.Matches(src, @"AcquireTokenInteractive\("));
+        var guard = src.IndexOf("if (!CanPrompt(Console.IsInputRedirected", StringComparison.Ordinal);
+        Assert.True(guard > 0 && guard < src.IndexOf("AcquireTokenInteractive(", StringComparison.Ordinal), "the no-person guard comes before the prompt");
+        Assert.Contains("wait.CancelAfter(InteractiveSignInWait)", src);
+        var verbs = File.ReadAllText(Path.Combine(Repo.Root, "Kor.Operations.NetworkOps.Cli", "SessionVerbs.cs"));
+        Assert.Contains("catch (SignInNeededException ex)", verbs);
+        Assert.Contains("catch (TaskCanceledException) when (!ct.IsCancellationRequested)", verbs);
+    }
+
     [Fact]
     public void The_CLI_sends_run_through_APP01_unless_told_direct()
     {

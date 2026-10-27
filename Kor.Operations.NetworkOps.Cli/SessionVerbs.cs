@@ -151,6 +151,13 @@ internal static class SessionVerbs
             return unknown.Count > 0 && code == 0 ? 1 : code;
         }
         catch (AppServerException ex) { Console.Error.WriteLine($"netops: {ex.Message}"); return 1; }
+        // A caller that cannot see a prompt must see a failure: exit 4 = sign-in needed, 5 = no answer in time. Never a hang.
+        catch (SignInNeededException ex) { Console.Error.WriteLine($"netops: SIGN-IN NEEDED (exit {SignInNeededException.ExitCode}): {ex.Message}"); return SignInNeededException.ExitCode; }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            Console.Error.WriteLine($"netops: NO ANSWER (exit 5): NetworkOps on APP01 did not answer within {Math.Max(timeout, 60) + 60} s. curl.exe -sk {AppServer.BaseUrl}/api/ping");
+            return 5;
+        }
         catch (HttpRequestException ex) { Console.Error.WriteLine($"netops: could not reach NetworkOps on APP01 ({ex.Message}). On the VPN? curl.exe -sk {AppServer.BaseUrl}/api/ping"); return 1; }
         catch (Microsoft.Identity.Client.MsalException ex) { Console.Error.WriteLine($"netops: sign-in failed ({ex.ErrorCode}): {ex.Message}"); return 1; }
     }
