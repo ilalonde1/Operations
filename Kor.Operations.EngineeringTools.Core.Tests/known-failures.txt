@@ -1,0 +1,9 @@
+# Core.Tests failures that are KNOWN and not caused by the change under test - one fully qualified test name per line (a
+# theory's name WITH its case, as `dotnet test` prints it after "Failed "), then " | " and why, since when, whose.
+# tools/SuiteDiff/suite_diff.py reads a suite log against this list and prints NEW / KNOWN / FIXED; a NEW failure is never
+# reported as known from memory (2026-10-27: "3 known" was told for 4 - oversight.Mistake 36).
+# A line is REMOVED in the commit that makes its test pass; a line is ADDED only with its evidence, never to quiet a run.
+Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays | NBC 9.8.x clause past its 30-day re-read; Ian's (do not touch the test or its threshold) | 2026-10-26
+Kor.Operations.EngineeringTools.Core.Tests.LiveProjectBaselineTests.TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") | 31138 walls 228 vs 204+-21; open live-baseline bisect | 2026-10-26
+Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline | six-set bank stale since 231e0f69; re-bank waits on Ian+Griffin (split-level, overlap) | 2026-10-25
+Kor.Operations.EngineeringTools.Core.Tests.Intake.TheSameDrawingsShiftedOnThePageBuildTheSameStructureTests.EveryBankedSetBuildsTheSameStructureShifted | 31138-01 shifted: 2 columns lost, 1 wall gained; same class as the six-set moves | 2026-10-24
