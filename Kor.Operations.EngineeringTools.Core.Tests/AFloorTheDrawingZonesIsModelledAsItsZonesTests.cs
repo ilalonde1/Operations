@@ -181,6 +181,31 @@ public sealed class AFloorTheDrawingZonesIsModelledAsItsZonesTests
         AssertTheZonesTileTheFloor(Floor(20000, 10000), zones);
     }
 
+    /// <summary>
+    /// A ZONE ROUND ANOTHER IS WHERE ITS OWN CELLS ARE, NOT WHERE ITS HOLE IS (31138 L21, 2026-10-26): the drawing nests an
+    /// 8" edge ring, a 12" band, a 24" box and an 8" core (S2.36, looked at; the engineer's model nests the same). Every
+    /// ring's outer centroid falls at the middle - in the core, a hole of the 24" box - so a face located by its outer ring
+    /// alone read as an island of the 24" box: the 12" band was taken into it (7,184 sq ft printing 12) and the floor
+    /// written 24" over 7,215 sq ft where the drawing prints 24" on about half. The core is an island in one cell of the
+    /// 24" box and is taken into it as before; the band and the ring are not islands and keep their own thicknesses.
+    /// </summary>
+    [Fact]
+    public void AZoneRoundAnotherIsWhereItsOwnCellsAreNotWhereItsHoleIs()
+    {
+        static IEnumerable<(IReadOnlyList<DxfPoint>, double)> Box(double x0, double y0, double x1, double y1)
+            => [Solid(x0, y0, x1, y0), Solid(x1, y0, x1, y1), Solid(x1, y1, x0, y1), Solid(x0, y1, x0, y0)];
+        var lines = Ring(30000, 30000).Concat(Box(4000, 4000, 26000, 26000)).Concat(Box(9000, 9000, 21000, 21000))
+            .Concat(Box(14000, 14000, 16000, 16000)).ToList();
+        var zones = Cut(Floor(30000, 30000), lines,
+            [Says(200, 2000, 15000), Says(300, 6500, 15000), Says(600, 11000, 15000), Says(200, 15000, 15000)], out string why);
+
+        Assert.True(zones is not null, why);
+        Assert.Equal(30000.0 * 30000 - 22000.0 * 22000, zones!.Where(z => z.Printed == 200).Sum(z => z.Ring.Area), 1e6);
+        Assert.Equal(22000.0 * 22000 - 12000.0 * 12000, zones.Where(z => z.Printed == 300).Sum(z => z.Ring.Area), 1e6);
+        Assert.Equal(12000.0 * 12000, zones.Where(z => z.Printed == 600).Sum(z => z.Ring.Area), 1e6);
+        AssertTheZonesTileTheFloor(Floor(30000, 30000), zones);
+    }
+
     [Fact]
     public void AFloorPrintingOneThicknessIsNotCut()
     {

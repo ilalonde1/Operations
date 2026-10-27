@@ -103,6 +103,56 @@ report said zoned); longest-edge fill gave 31130 P2's field 12"; an island in on
 and grid-axis strokes left out (31130 L14's 16" areas open). Rejected: "a mixed zone takes the floor's answer" -
 fixed L14 and undid five true zones.
 
+## A nest is not an island (2026-10-26 evening; found by the six-set drift record, six-set-drift-2026-10-26.md)
+
+**The witness.** 31138 L21 (S2.36, p44, looked at) nests an 8" edge ring, a 12" band, a 24" box and an 8" core, and the
+engineer's model nests the same. We wrote 24" over 7,215 sq ft. The trace (SlabPassTraceProbe, KOR_SLAB_TRACE_PAGES=44) read
+every boundary, then: "7184 sq ft printing 12 ... taken into the zone round them".
+
+**The class, in one sentence:** a face was located by its outer ring alone, so a ring-shaped face (one with a hole) was
+located in its hole, and every test asking "where is this face" (in the floor? an island? which side of the cut? inside
+the wrapped hole?) answered for whatever stood in the hole. Seven sites in SlabZones.Cut asked it. Behind that, a zone that
+is a single ring-shaped cell has no cell above it and none below, so the wrap-cut could not part it, and it was taken in.
+
+**The check:** `AZoneRoundAnotherIsWhereItsOwnCellsAreNotWhereItsHoleIs` builds 31138 L21's shape synthetically (ring /
+band / box / core, every ring's centroid in the core). It was RED before the change: "its zone lines divide nothing ...
+4 faces, 4 labelled" (all one thickness). It is GREEN after: 8" 416 / 12" 340 / 24" 144 m², with the core taken in as an
+island, as before.
+
+**The change.**
+1. A face is located inside its outer ring AND outside its holes (`InteriorPoint(ring, holes)`; `FacePoint(i)` at all seven
+   sites).
+2. Where a face's hole holds two faces or more (a nest, not one box), two short cut lines run from its outer edge to the
+   hole, west and east, at the hole's mid-height. They cross the ring only, so an island inside the nest (the core) is
+   still an island. A line straight across split the core and kept it 8".
+3. A cell the cut made reads the call-outs of the cell it was cut from, never the nearest call-out (beside a core, that
+   is the core's).
+
+A hole holding one face is an island exactly as before (31065 L1N's box).
+
+**Measured, 2026-10-26 ~20:20 PDT.** Halifax raw e2k 1898f6b4c5a8ad26: identical. Core fast 1,687 of 1,687. The six sets
+against 86a2e160 (attribute_baseline_drift.py): 31170-arch byte-identical. 18 storeys moved, every move a re-split of
+thickness; no plate area and no member moved. Each was checked against what its sheet prints:
+
+| Storey | Before → after | The drawing / the engineer |
+|---|---|---|
+| 31138 L21 | 24" 7,215 / 8" 2,188 → 12" 3,554 / 8" 3,006 / 24" 2,947 | S2.36 nests 8/12/24/8 (looked at); hers 12" 3,614, 24" 2,613 |
+| 31138 L2 | 46" 4,730, 52" 978 → 46" 3,772, 52" 1,935 | hers 46" 4,491, 52" 1,855 |
+| 31168 L3 | 10" whole → 10" 12,883 / 66" 3,432 / 60" 3,423 | S2.20.1 prints `60" SLAB` ×4 (bldg A); S2.30.1 prints `66" SLAB` ×8 (bldg B): transfer slabs the take-in had erased |
+| 31138 P1 | 12" 176 → 3,519 | S2.10 prints `12" SLAB` ×7 beside `10"` ×17; the engineer models 10" throughout |
+| 31065 L5 | 300 2,148 → 6,082 | S2.16.1 (looked at): 300 north and an east strip, 200 elsewhere; ours the same three parts. Hers covers the north tower only |
+| 31065 L4 | 200 whole → + 300 1,298 | S2.08.1 prints 300 once |
+| 31130 L19 | 14" 220 → 4,444 | S2.09.1 prints `14" SLAB` ×3 beside `9"` ×4 |
+| 31168 B-L39 | 12" whole → 12" / 8" halves | S2.34.1 prints `8" SLAB` ×2 beside `12"` ×3 |
+| 31202 L5 | + 10½" 344 | S2.06.1 prints `10 1/2" SLAB` ×2 |
+| 31065 L1, 31130 L1/L1M/L0-P1, 31138 L5, 31168 L2/P1/A-L1, 31202 L13 | a few hundred sq ft re-split | not looked at one by one |
+
+**What it does not do:**
+- A call-out whose own outline is not read still labels the face round it. 31065 P1: a `150 SLAB` box of about 6 × 2 m
+  labels 1,726 sq ft. That is open, a separate fault.
+- A nest whose rings are not convex enough for a horizontal line at the hole's mid-height to reach the hole from each
+  side is not cut; it stays taken in, as before.
+
 ## The change (as built - supersedes the cell-union design below it)
 
 The floor is NOT re-derived. The slab pass recovers it exactly as today; then a separate pass cuts each finished floor into

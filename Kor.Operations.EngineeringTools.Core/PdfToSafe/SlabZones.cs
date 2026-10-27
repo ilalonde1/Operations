@@ -129,15 +129,49 @@ public static class SlabZones
         try { planar = new PlanarRings(joinMm, bridgeMm, extendMm).Build(ring.Concat(zoneLines)); }
         catch (InvalidOperationException refused) { why = "the zone lines would not arrange: " + refused.Message; return null; }
 
+        // A NEST IS NOT AN ISLAND (31138 L21, 2026-10-26): the drawing rings an 8" edge round a 12" band round a 24" box round
+        // an 8" core, each one cell. A ring of one cell cannot be cut round what it wraps - there is no cell above it and
+        // none below - so the band was taken into the box. Where a face's hole holds two faces or more (zones nested in it,
+        // not one box), one line across the face through the hole's middle gives it a cell on each side, and the cut below
+        // parts it as it parts any wrapping zone. A hole holding one face is an island as before (31065 L1N's box, the core)
+        // ⚠ THE CUT DIVIDES CELLS, IT DOES NOT CHANGE WHAT THEY SAY: a half the cut leaves without a call-out of its own reads
+        // the call-outs of the cell it was cut from (below), never the nearest one - which, beside a core, is the core's
+        var uncut = planar;
+        var nestCuts = new List<DxfSegment>();
+        // the cut crosses the ring only - outer edge to hole, west and east at the hole's middle - and nothing in the hole,
+        // so an island inside the nest is still an island (a line straight across split the 31138 core and kept it 8")
+        foreach (var f in planar.Faces)
+            foreach (var h in f.Holes)
+                if (planar.Faces.Count(g => !ReferenceEquals(g, f) && LoopGeometry.PointInPolygon(InteriorPoint(g.Outer, g.Holes), h.Points)) >= 2)
+                {
+                    double y = h.Centroid().Y;
+                    var outer = Crossings(f.Outer, y); var hole = Crossings(h, y);
+                    if (hole.Count < 2) continue;
+                    double holeW = hole[0], holeE = hole[^1];
+                    double? outW = outer.Where(x => x < holeW).Cast<double?>().LastOrDefault(), outE = outer.Where(x => x > holeE).Cast<double?>().FirstOrDefault();
+                    if (outW is null || outE is null) continue;
+                    nestCuts.Add(new DxfSegment("ZONE", new DxfPoint(outW.Value, y), new DxfPoint(holeW, y)));
+                    nestCuts.Add(new DxfSegment("ZONE", new DxfPoint(holeE, y), new DxfPoint(outE.Value, y)));
+                }
+        if (nestCuts.Count > 0)
+            try { planar = new PlanarRings(joinMm, bridgeMm, extendMm).Build(ring.Concat(zoneLines).Concat(nestCuts)); }
+            catch (InvalidOperationException refused) { why = "the zone lines would not arrange cut through a nest: " + refused.Message; return null; }
+
         int n = planar.Faces.Count;
+        // where a face is, by its own cells: inside its outer ring and outside its holes (see InteriorPoint)
+        DxfPoint FacePoint(int i) => InteriorPoint(planar.Faces[i].Outer, planar.Faces[i].Holes);
         var inFloor = new bool[n];
         var label = new (double Printed, bool IsMetric)?[n];
+        static bool InFace(DxfPoint p, PlanarRings.Face face)
+            => LoopGeometry.PointInPolygon(p, face.Outer.Points) && !face.Holes.Any(h => LoopGeometry.PointInPolygon(p, h.Points));
         for (int i = 0; i < n; i++)
         {
             var f = planar.Faces[i];
-            inFloor[i] = Math.Abs(f.Outer.Area) > 0 && LoopGeometry.PointInPolygon(InteriorPoint(f.Outer), floor.Points);
+            inFloor[i] = Math.Abs(f.Outer.Area) > 0 && LoopGeometry.PointInPolygon(FacePoint(i), floor.Points);
             if (!inFloor[i]) continue;
-            var says = inside.Where(c => LoopGeometry.PointInPolygon(c.At, f.Outer.Points) && !f.Holes.Any(h => LoopGeometry.PointInPolygon(c.At, h.Points))).ToList();
+            // the cell this face was cut from, when a nest was cut (the face itself otherwise)
+            var from = ReferenceEquals(uncut, planar) ? f : uncut.Faces.FirstOrDefault(u => InFace(FacePoint(i), u)) ?? f;
+            var says = inside.Where(c => InFace(c.At, from)).ToList();
             if (says.Count == 0) continue;
             var centre = f.Outer.Centroid();
             label[i] = says.GroupBy(c => (c.Printed, c.IsMetric))
@@ -151,7 +185,7 @@ public static class SlabZones
         for (int i = 0; i < n; i++)
         {
             if (!inFloor[i] || label[i] is not null) continue;
-            var at = InteriorPoint(planar.Faces[i].Outer);
+            var at = FacePoint(i);
             var near = inside.MinBy(c => c.At.DistanceTo(at));
             label[i] = (near.Printed, near.IsMetric);
         }
@@ -166,7 +200,7 @@ public static class SlabZones
             for (int i = 0; i < n; i++)
             {
                 if (!inFloor[i]) continue;
-                var at = InteriorPoint(planar.Faces[i].Outer);
+                var at = FacePoint(i);
                 int around = Enumerable.Range(0, n).FirstOrDefault(j => j != i && inFloor[j]
                     && planar.Faces[j].Holes.Any(h => LoopGeometry.PointInPolygon(at, h.Points)), -1);
                 if (around < 0 || label[around] is null || label[i] == label[around]) continue;
@@ -202,12 +236,12 @@ public static class SlabZones
                     foreach (var region in planar.RecoverSurfaces(_ => false, (i, _) => group.Contains(i)).Slabs)
                     {
                         var wrapped = region.Holes.FirstOrDefault(h => Enumerable.Range(0, n).Any(i => inFloor[i] && label[i] != l
-                            && LoopGeometry.PointInPolygon(InteriorPoint(planar.Faces[i].Outer), h.Points)));
+                            && LoopGeometry.PointInPolygon(FacePoint(i), h.Points)));
                         // a sliver of no area between two lines a hair apart is no zone (31130 L14: "16" 0 sq ft")
                         if (wrapped is null) { if (Math.Abs(region.Outer.Area) >= 92903.04) zones.Add(new Zone(region.Outer, l.Printed, l.IsMetric)); continue; }
                         double y = wrapped.Centroid().Y;
-                        var mine = group.Where(i => LoopGeometry.PointInPolygon(InteriorPoint(planar.Faces[i].Outer), region.Outer.Points)).ToList();
-                        var above = mine.Where(i => InteriorPoint(planar.Faces[i].Outer).Y >= y).ToHashSet();
+                        var mine = group.Where(i => LoopGeometry.PointInPolygon(FacePoint(i), region.Outer.Points)).ToList();
+                        var above = mine.Where(i => FacePoint(i).Y >= y).ToHashSet();
                         var below = mine.Where(i => !above.Contains(i)).ToHashSet();
                         if (pass > 8 || above.Count == 0 || below.Count == 0) { takeInto = l; wrappedHole = wrapped; break; }
                         pending.Add(above); pending.Add(below);
@@ -235,7 +269,7 @@ public static class SlabZones
             if (takeInto is null) break;
             if (attempt >= 60) { why = "zones wrap others and would not come apart"; return null; }
             var inHole = Enumerable.Range(0, n).Where(i => inFloor[i] && label[i] != takeInto
-                && LoopGeometry.PointInPolygon(InteriorPoint(planar.Faces[i].Outer), wrappedHole!.Points)).ToList();
+                && LoopGeometry.PointInPolygon(FacePoint(i), wrappedHole!.Points)).ToList();
             if (inHole.Count == 0) { why = "a zone stands inside another and no cell of it could be found to take in"; return null; }
             islandsTakenIn.Add($"{inHole.Sum(i => Math.Abs(planar.Faces[i].Outer.Area)) / 92903.04:0} sq ft of {label[inHole[0]]!.Value.Printed:0.#} wrapped");
             foreach (int i in inHole) label[i] = takeInto;
@@ -372,23 +406,45 @@ public static class SlabZones
         return new DxfPoint(end.X + ux * (best + 1.0), end.Y + uy * (best + 1.0));
     }
 
+    /// <summary>Where a horizontal line at <paramref name="y"/> crosses a ring's edges, west to east.</summary>
+    private static List<double> Crossings(PlanLoop ring, double y)
+    {
+        var xs = new List<double>();
+        for (int i = 0; i < ring.Points.Count; i++)
+        {
+            var (a, b) = (ring.Points[i], ring.Points[(i + 1) % ring.Points.Count]);
+            if ((a.Y > y) == (b.Y > y)) continue;
+            xs.Add(a.X + (y - a.Y) * (b.X - a.X) / (b.Y - a.Y));
+        }
+        xs.Sort();
+        return xs;
+    }
+
     /// <summary>A point inside the ring: its centroid where that is inside, else the middle of the widest horizontal chord.</summary>
-    internal static DxfPoint InteriorPoint(PlanLoop ring)
+    internal static DxfPoint InteriorPoint(PlanLoop ring) => InteriorPoint(ring, []);
+
+    /// <summary>
+    /// A point inside a face: inside its outer ring and outside every hole. A FACE WITH A HOLE IS LOCATED BY ITS OWN CELLS
+    /// (31138 L21, 2026-10-26): located by its outer ring alone, a ring-shaped zone's point fell in its hole - in the core,
+    /// a hole of the 24" box inside it - so the 12" band read as an island of the box and was taken into it.
+    /// </summary>
+    internal static DxfPoint InteriorPoint(PlanLoop ring, IReadOnlyList<PlanLoop> holes)
     {
         var c = ring.Centroid();
-        if (LoopGeometry.PointInPolygon(c, ring.Points)) return c;
+        if (LoopGeometry.PointInPolygon(c, ring.Points) && !holes.Any(h => LoopGeometry.PointInPolygon(c, h.Points))) return c;
         var (minX, minY, maxX, maxY) = ring.Bounds();
         DxfPoint best = c; double widest = -1;
         for (int k = 1; k < 8; k++)
         {
             double y = minY + (maxY - minY) * k / 8;
             var xs = new List<double>();
-            for (int i = 0; i < ring.Points.Count; i++)
-            {
-                var (a, b) = (ring.Points[i], ring.Points[(i + 1) % ring.Points.Count]);
-                if ((a.Y > y) == (b.Y > y)) continue;
-                xs.Add(a.X + (y - a.Y) * (b.X - a.X) / (b.Y - a.Y));
-            }
+            foreach (var loop in holes.Prepend(ring))
+                for (int i = 0; i < loop.Points.Count; i++)
+                {
+                    var (a, b) = (loop.Points[i], loop.Points[(i + 1) % loop.Points.Count]);
+                    if ((a.Y > y) == (b.Y > y)) continue;
+                    xs.Add(a.X + (y - a.Y) * (b.X - a.X) / (b.Y - a.Y));
+                }
             xs.Sort();
             for (int j = 0; j + 1 < xs.Count; j += 2)
                 if (xs[j + 1] - xs[j] > widest) { widest = xs[j + 1] - xs[j]; best = new DxfPoint((xs[j] + xs[j + 1]) / 2, y); }

@@ -33,13 +33,13 @@ building's floor, which the bank either lacked or had with a hole in it.
 | cd7dc0de steps 175–177 | 5 storeys | **Neutral.** 31202 ROOF 8,736 → 9,683; thickness shares; 1 column on 31202 L2. | numbers |
 | 674b2890 steps 178–180 | 7 storeys | **Fix.** It undoes 8ed10d03's plate moves: 31065 L1 back to 32,792 against her 58,968, and 31170 L1/L5/L6 back to the bank. The column moves (31065 L1: 14; 31138 L2: 3; 31138 L20: 1) are step 178's turns; **not looked at**. | numbers |
 | 7240315b step 182 | 2 storeys | **Fix.** 31130 P2: 12"/10" → 10", against her 10" on 49,264 sq ft. 31138 L22: 12" → 10", against her 8"/10". | her thicknesses |
-| 21fb2b10 / 0de30b47 / ea108775 step 183 | 27 / 24 / 6 | **Mostly a fix, with over-zoning.** Zones that match hers: 31138 L2 46"/52"; 31130 L14 16"; 31130 L16 18"/10"/12"; 31065 L1 35.4"; 31168 L1 30"/36"/56"; 31168 L2 14"/18"/48"/36"/30". **Regressions:** on 31138 L21 the whole interior is 24" (7,215 sq ft) where hers nests 8"/12"/24" (24" on 2,613); on 31202 L13, 12" covers 8,738 sq ft where hers has 1,128. **Candidates not yet decided:** 31065 L2 35.4" (3,097; hers none); 31065 P1 5.9" (1,726; hers none); 31130 L2 9" (4,290; hers none); 31130 L20 18" (her storey not matched). | her thickness mix; rendered 31138 L21, 31202 L13 |
+| 21fb2b10 / 0de30b47 / ea108775 step 183 | 27 / 24 / 6 | **Mostly a fix, with over-zoning.** Zones that match hers: 31138 L2 46"/52"; 31130 L14 16"; 31130 L16 18"/10"/12"; 31065 L1 35.4"; 31168 L1 30"/36"/56"; 31168 L2 14"/18"/48"/36"/30". **Regressions:** on 31138 L21 the whole interior is 24" (7,215 sq ft) where hers nests 8"/12"/24" (24" on 2,613); on 31202 L13, 12" covers 8,738 sq ft where hers has 1,128 (⚠ CORRECTED below: 31202 L13 follows the drawing, which prints three 12" areas; only 31138 L21 is a regression). **Candidates not yet decided:** 31065 L2 35.4" (3,097; hers none); 31065 P1 5.9" (1,726; hers none); 31130 L2 9" (4,290; hers none); 31130 L20 18" (her storey not matched). | her thickness mix; rendered 31138 L21, 31202 L13 |
 
 All of 9055a41e, 9670a49e (step 184) and 86a2e160 moved 0 storeys on the six sets.
 
 ## What a re-bank would bank
 
-- **Faults the bank never had:** step 183's over-zoning on 31138 L21 and 31202 L13, plus the four undecided candidates.
+- **Faults the bank never had:** step 183's over-zoning on 31138 L21 (fixed: "a nest is not an island") and on 31065 P1 (the 150 box, open), plus the undecided candidates. 31202 L13 is not one: it follows the drawing (see the correction under the member moves).
 - **A fault the bank had, still there:** 31168 C-L3's floor short of its columns.
 - **Never judged:** the member moves listed as "not looked at" above.
 
@@ -76,7 +76,12 @@ Renders and overlays are in [six-set-drift-2026-10-26/](six-set-drift-2026-10-26
 | 31065 L2 35.4" (826 + 2,271 sq ft) | Outside every plate of hers. | **Undecided**: a part of the set her model does not cover at L2. |
 | 31130 L20 18" (6,818 sq ft) | Her model has no L20 (her top is L18 ROOF). | **Undecided.** |
 
-The same check confirms the two step-183 regressions named above. 31138 L21's 24" zone sits inside her 8" plate. On 31202 L13, the 12" zones (8,738 sq ft) sit inside her 10" plates; 1 of the 5 also overlaps her 12" plate (1,128 sq ft).
+**CORRECTED the same evening, after looking at the drawings.** "Inside her plate" cannot see an engineer's overlay, and it does not ask what the drawing prints. Per storey:
+
+- **31202 L13 is NOT a regression.** S2.09.1 (p35) outlines and prints three `12" P/T SLAB` areas (the pool box, the hatched east bay, the south-west area) beside an 8" field and a 10½" area. Ours follows the drawing; the engineer models 10" throughout. step183-prediction.md had already recorded this, and the first reading above missed it.
+- **31138 L21 IS one.** S2.36 (p44) nests an 8" edge ring, a 12" band, a 24" box and an 8" core, and her model nests the same. The slab-pass trace says why ours was 24" over the band: "7184 sq ft printing 12 … taken into the zone round them". Fixed as its own commit (step 183, "a nest is not an island").
+- **31065 P1 5.9" is a different fault.** S2.03.2.1 (p22) prints `150 SLAB` in a box about 6 × 2 m, bounded by a 150 wall. The box was not read as a boundary, so its call-out labelled a 1,726 sq ft face. **Regression, not fixed tonight.**
+- **31130 L2 9" is a different question.** The 9" call-out is on the east tower's L2 sheet (S2.14.1, p33). The zone sits where her model has the west tower's 36" transfer (S2.05.1, p21). That is placement or attribution, not zoning. **Undecided.**
 
 **A new class, found at two commits.** When the same column is drawn twice, the build keeps one of the two. That is right; hers has one. But nothing decides which of the two is kept: 31138 L2 has 3 of 12 further from hers, 31065 L2 has 1, and 674b2890 swapped one more on 31138 L2. The invariant: the column kept is the one the drawing's grid and the storeys above and below agree on. This is not fixed. It is raised to operations-ee as a candidate for its own step.
 
