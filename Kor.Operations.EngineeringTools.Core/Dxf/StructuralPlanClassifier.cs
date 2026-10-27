@@ -194,6 +194,19 @@ public sealed record PlanClassificationOptions
     public bool WoodFramedFloorCarriesNoConcrete { get; init; } = true;
 
     /// <summary>
+    /// Whether a bare rectangle beyond the building - a sheet's legend or key frame, holding no column, no opening and at
+    /// most one sample stroke - is taken out of the floors, with the stroke it frames. See
+    /// `dxf.legend-frame-is-not-a-floor` (step 185).
+    /// </summary>
+    public bool LegendFrameIsNotAFloor { get; init; } = true;
+
+    /// <summary>
+    /// The smallest legend frame, in sq ft, step 185 takes out: the smallest looked at was 653 (31053 L1); the 2-100 sq ft
+    /// rectangles beyond a building are pads and symbols not looked at, and are left as read. See `dxf.legend-frame-min-sqft`.
+    /// </summary>
+    public double LegendFrameMinSqFt { get; init; } = 500;
+
+    /// <summary>
     /// How far a straightened outline may sit from the trace it came from, in inches. A floor
     /// recovered by flood fill is traced off pixels and arrives as a staircase; this is what
     /// turns it back into walls. See `dxf.recovered-outline-tolerance`.

@@ -57,6 +57,7 @@ public class RulesTravelBetweenUnitsTests
         ["SameGroundAreaTolerance"] = "a fraction of an area",
         ["RingOnPlateEdgeFraction"] = "a fraction of a ring's length",
         ["NestedRingTileShare"] = "a share of a hole's area",
+        ["LegendFrameMinSqFt"] = "square feet whatever the drawing's unit: the plate's area is converted to sq ft (sqFtPerUnitArea) before it is compared (step 185)",
         ["SlabCalloutMinThickness"] = "compared against a number PRINTED on the drawing, which says " +
                                       "its own unit — inches whatever the geometry counts in",
         ["SlabCalloutMaxThickness"] = "the same: a printed dimension, not a model length",

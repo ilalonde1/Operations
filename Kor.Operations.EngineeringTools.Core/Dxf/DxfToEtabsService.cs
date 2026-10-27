@@ -353,6 +353,8 @@ public static class DxfToEtabsService
         "dxf.ring-on-plate-edge-fraction",
         "dxf.nested-ring-tile-share",
         "dxf.wood-framed-floor-carries-no-concrete",
+        "dxf.legend-frame-is-not-a-floor",
+        "dxf.legend-frame-min-sqft",
         "dxf.recovered-outline-tolerance",
         "dxf.slab-chain-join-fraction",
         "dxf.drawn-ring-beats-fill-fraction",
@@ -487,6 +489,8 @@ public static class DxfToEtabsService
             ["dxf.ring-on-plate-edge-fraction"] = classification.RingOnPlateEdgeFraction,
             ["dxf.nested-ring-tile-share"] = classification.NestedRingTileShare,
             ["dxf.wood-framed-floor-carries-no-concrete"] = classification.WoodFramedFloorCarriesNoConcrete ? 1 : 0,
+            ["dxf.legend-frame-is-not-a-floor"] = classification.LegendFrameIsNotAFloor ? 1 : 0,
+            ["dxf.legend-frame-min-sqft"] = classification.LegendFrameMinSqFt,
             ["dxf.recovered-outline-tolerance"] = classification.RecoveredOutlineTolerance,
             ["dxf.slab-chain-join-fraction"] = classification.SlabChainJoinFraction,
             ["dxf.drawn-ring-beats-fill-fraction"] = classification.DrawnRingBeatsFillFraction,
@@ -556,6 +560,8 @@ public static class DxfToEtabsService
             RingOnPlateEdgeFraction = settings.ValueOr("dxf.ring-on-plate-edge-fraction", options.RingOnPlateEdgeFraction),
             NestedRingTileShare = settings.ValueOr("dxf.nested-ring-tile-share", options.NestedRingTileShare),
             WoodFramedFloorCarriesNoConcrete = settings.FlagOr("dxf.wood-framed-floor-carries-no-concrete", options.WoodFramedFloorCarriesNoConcrete),
+            LegendFrameIsNotAFloor = settings.FlagOr("dxf.legend-frame-is-not-a-floor", options.LegendFrameIsNotAFloor),
+            LegendFrameMinSqFt = settings.ValueOr("dxf.legend-frame-min-sqft", options.LegendFrameMinSqFt),
             RecoveredOutlineTolerance = settings.ValueOr("dxf.recovered-outline-tolerance", options.RecoveredOutlineTolerance),
             SlabChainJoinFraction = settings.ValueOr("dxf.slab-chain-join-fraction", options.SlabChainJoinFraction),
             DrawnRingBeatsFillFraction = settings.ValueOr("dxf.drawn-ring-beats-fill-fraction", options.DrawnRingBeatsFillFraction),
@@ -2173,7 +2179,9 @@ public static class DxfToEtabsService
         // here? Or maybe it should - I dunno." Where the drawing does not say, the tool does not
         // guess: the ring is not a floor, it is not cut as a hole either, and what stands beyond the
         // plates is counted and left. The removal this pass first did cost four KOR sets their walls.
-        warnings.AddRange(SettleFloorsAcrossSheets(parsed, StandDownReachInches / modelUnitInInches, modelUnitInInches * modelUnitInInches / 144.0));
+        warnings.AddRange(SettleFloorsAcrossSheets(parsed, StandDownReachInches / modelUnitInInches, modelUnitInInches * modelUnitInInches / 144.0,
+            legendFrameIsNotAFloor: classification.LegendFrameIsNotAFloor && Environment.GetEnvironmentVariable("KOR_STEP185_OFF") != "1",
+            legendFrameMinSqFt: classification.LegendFrameMinSqFt));
 
         // What this job's own drawings say a wall is, before anything is written. A portfolio rule
         // cannot tell a 42" tower core from two faces paired across a parkade corridor; the job's
@@ -3204,6 +3212,72 @@ public static class DxfToEtabsService
     private const double StandDownReachInches = 6.0;
 
     /// <summary>
+    /// A SHEET'S LEGEND FRAME, CLOSED AS A FLOOR (step 185, 2026-10-27). The office's sheets carry a key and legend in a
+    /// framed box at the sheet's edge; the slab pass closes the frame as a ring, and the key's line-type sample inside it
+    /// reads as a wall. Looked at on the 57-set gate (develop c03a0e07): the same frame at the same size on job after job
+    /// (7,065-7,068 sq ft on 31066, 31076, 31162; 1,171 on 31129, 31158, 31171) - docs/pdf-intake/step185-prediction.md.
+    ///
+    /// NARROWED BY ITS OWN REPLAY (gate 8acd14bc, migration 126): first written as "at most one stroke", it took 40112-01's
+    /// upper steel roof deck (S2.03), bare only because none of its steel was read. A rectangle with nothing read on it cannot
+    /// be told from a real slab whose members were missed, so only the legend's own signature is taken: EXACTLY ONE stroke.
+    /// All 32 one-stroke takes of that replay were legend frames or 31183 P1's schedule box.
+    ///
+    /// A plate is one when it is a rectangle (four corners once collinear points are dropped, each square within 1 deg) of
+    /// at least <paramref name="minSqFt"/> (`dxf.legend-frame-min-sqft`); no column and no opening of the storey, on any sheet, stands inside it;
+    /// exactly one wall's midpoint does (the sample stroke, returned in <paramref name="sample"/>); and the box round every
+    /// OTHER wall midpoint and column of the storey does not touch it - it lies wholly beyond the building. A storey with no
+    /// member outside the plate is not judged: there is no building for it to stand beyond.
+    ///
+    /// WHAT IT DOES NOT: a frame inside the building's box (a key plan inset), a frame that is not a rectangle, a frame
+    /// whose key holds two or more strokes read as walls (31048 L4's upper box, 31093 L2, 31162), a box with no stroke
+    /// (note, schedule and sketch boxes; 30990 L1's reviewer sketch) - each left as read. A same-class fault it would take
+    /// out wrongly: a real detached rectangular slab beyond the building on which exactly one short wall was read.
+    /// </summary>
+    internal static bool IsLegendFrame(PlanLoop slab, IReadOnlyList<PlanGeometrySet> storey, double sqFtPerUnitArea, double minSqFt, out WallAxis? sample)
+    {
+        sample = null;
+        if (slab.Area * sqFtPerUnitArea < minSqFt || !IsRectangle(slab.Points)) return false;
+        if (storey.Any(g => g.Columns.Any(c => LoopGeometry.PointInPolygon(c.Center, slab.Points)))) return false;
+        if (storey.Any(g => g.Openings.Any(o => LoopGeometry.PointInPolygon(
+                new DxfPoint(o.Points.Average(pt => pt.X), o.Points.Average(pt => pt.Y)), slab.Points)))) return false;
+        static DxfPoint Mid(WallAxis w) => new((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2);
+        var inside = storey.SelectMany(g => g.Walls).Where(w => LoopGeometry.PointInPolygon(Mid(w), slab.Points)).ToList();
+        // EXACTLY ONE STROKE, THE KEY'S SAMPLE (migration 126). "At most one" took 40112-01's upper steel roof deck (S2.03),
+        // bare only because none of its steel was read: a rectangle with NOTHING read on it cannot be told from a slab whose
+        // members the reader missed. The legend's own signature is its one line-type sample.
+        if (inside.Count != 1) return false;
+        var rest = storey.SelectMany(g => g.Walls).Where(w => !inside.Contains(w)).Select(Mid)
+            .Concat(storey.SelectMany(g => g.Columns).Select(c => c.Center)).ToList();
+        if (rest.Count == 0) return false;
+        double x0 = rest.Min(p => p.X), x1 = rest.Max(p => p.X), y0 = rest.Min(p => p.Y), y1 = rest.Max(p => p.Y);
+        double sx0 = slab.Points.Min(p => p.X), sx1 = slab.Points.Max(p => p.X), sy0 = slab.Points.Min(p => p.Y), sy1 = slab.Points.Max(p => p.Y);
+        if (!(sx1 < x0 || sx0 > x1 || sy1 < y0 || sy0 > y1)) return false;
+        sample = inside[0];
+        return true;
+
+        static bool IsRectangle(IReadOnlyList<DxfPoint> pts)
+        {
+            var corners = new List<DxfPoint>();
+            for (int i = 0; i < pts.Count; i++)
+            {
+                var a = pts[(i + pts.Count - 1) % pts.Count]; var b = pts[i]; var c = pts[(i + 1) % pts.Count];
+                double ux = b.X - a.X, uy = b.Y - a.Y, vx = c.X - b.X, vy = c.Y - b.Y;
+                double lu = Math.Sqrt(ux * ux + uy * uy), lv = Math.Sqrt(vx * vx + vy * vy);
+                if (lu < 1e-9 || lv < 1e-9 || Math.Abs(ux * vy - uy * vx) / (lu * lv) < 0.01) continue;   // repeated, or straight on
+                corners.Add(b);
+            }
+            if (corners.Count != 4) return false;
+            for (int i = 0; i < 4; i++)
+            {
+                var a = corners[(i + 3) % 4]; var b = corners[i]; var c = corners[(i + 1) % 4];
+                double ux = b.X - a.X, uy = b.Y - a.Y, vx = c.X - b.X, vy = c.Y - b.Y;
+                if (Math.Abs(ux * vx + uy * vy) / (Math.Sqrt(ux * ux + uy * uy) * Math.Sqrt(vx * vx + vy * vy)) > Math.Sin(Math.PI / 180)) return false;
+            }
+            return true;
+        }
+    }
+
+    /// <summary>
     /// ACROSS THE SHEETS OF ONE STOREY, A PLATE INSIDE A LARGER PLATE IS NOT A SECOND FLOOR — and
     /// that is all the tool knows (intake step 35, composer side).
     ///
@@ -3227,19 +3301,35 @@ public static class DxfToEtabsService
     /// WHAT IT DOES NOT: a ring inside a floor on the SAME sheet (the classifier's, as before); a
     /// plate that overlaps the larger one without lying inside it; whether the composer's own gates
     /// downstream (a plate nothing stands under, two plates on one place) keep what this pass leaves.
+    ///
+    /// A SHEET'S LEGEND FRAME IS NOT A FLOOR (step 185, 2026-10-27, <paramref name="legendFrameIsNotAFloor"/>): see
+    /// <see cref="IsLegendFrame"/>. Taken out with the one sample stroke it frames, and listed.
     /// </summary>
     internal static IReadOnlyList<string> SettleFloorsAcrossSheets(
-        List<(PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories)> parsed, double reach, double sqFtPerUnitArea)
+        List<(PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories)> parsed, double reach, double sqFtPerUnitArea,
+        bool legendFrameIsNotAFloor = false, double legendFrameMinSqFt = 500)
     {
         var warnings = new List<string>();
         var storeys = parsed.SelectMany(p => p.Stories).Distinct().ToList();
-        int notSecondFloors = 0, wallsBeyond = 0, columnsBeyond = 0;
+        int notSecondFloors = 0, wallsBeyond = 0, columnsBeyond = 0, legendFrames = 0;
         string SqFt(double area) => (area * sqFtPerUnitArea).ToString("N0");
         var listed = new List<string>();
 
         foreach (string storey in storeys)
         {
             var here = parsed.Where(p => p.Stories.Contains(storey)).ToList();
+            if (legendFrameIsNotAFloor)
+                foreach (var p in here)
+                    foreach (var slab in p.Geometry.Slabs.ToList())
+                    {
+                        if (!IsLegendFrame(slab, here.Select(q => q.Geometry).ToList(), sqFtPerUnitArea, legendFrameMinSqFt, out var sample)) continue;
+                        p.Geometry.Slabs.Remove(slab);
+                        if (sample is { } s) foreach (var q in here) q.Geometry.Walls.Remove(s);
+                        legendFrames++;
+                        var lo = (X: slab.Points.Min(pt => pt.X), Y: slab.Points.Min(pt => pt.Y));
+                        listed.Add($"{storey}: a {SqFt(slab.Area)} sq ft rectangle on {p.Sheet.FileName} at ({lo.X:N0}, {lo.Y:N0}) stands beyond the building and holds no column, no opening and " +
+                                   "exactly one stroke - the sheet's legend frame and its key's sample, not a floor; taken out with the stroke (dxf.legend-frame-is-not-a-floor)");
+                    }
             var plates = here.SelectMany(p => p.Geometry.Slabs.Select(s => (Sheet: p, Slab: s))).ToList();
             if (plates.Count == 0) continue;
 
@@ -3302,8 +3392,9 @@ public static class DxfToEtabsService
                        string.Join("; ", where) + (wallsOut + columnsOut > where.Count ? "; ..." : ""));
         }
 
-        if (notSecondFloors + wallsBeyond + columnsBeyond > 0)
-            warnings.Add($"{notSecondFloors} ring(s) inside another sheet's floor are not second floors; {wallsBeyond} wall(s) and {columnsBeyond} column(s) stand beyond every plate of their storey and were left in place. Each is listed below.");
+        if (notSecondFloors + wallsBeyond + columnsBeyond + legendFrames > 0)
+            warnings.Add($"{notSecondFloors} ring(s) inside another sheet's floor are not second floors; {wallsBeyond} wall(s) and {columnsBeyond} column(s) stand beyond every plate of their storey and were left in place" +
+                         (legendFrames > 0 ? $"; {legendFrames} legend frame(s) were taken out of the floors" : "") + ". Each is listed below.");
         warnings.AddRange(listed);
         return warnings;
 

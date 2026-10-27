@@ -132,4 +132,45 @@ public sealed class StructureStandsOnAFloorTests
         Assert.Contains("left as read for the engineer", said, StringComparison.Ordinal);
         Assert.DoesNotContain("kept", said, StringComparison.Ordinal);                        // this pass cannot promise the model carries it
     }
+
+    /// <summary>
+    /// A SHEET'S LEGEND FRAME IS NOT A FLOOR (step 185, 2026-10-27): the office's sheets frame their key at the sheet's edge,
+    /// the slab pass closes the frame, and its line-type sample reads as a wall - 35 plates on 20 of 56 gate models. The bare
+    /// rectangle beyond the building goes, with its one sample stroke, and is said; a rectangle holding a column, an opening,
+    /// or two strokes, or touching the building's box, is left as read; and the rule off leaves everything.
+    ///
+    /// AND A BARE ONE WITH NO STROKE STAYS (migration 126): "at most one stroke" took 40112-01's upper steel roof deck on its
+    /// own replay - bare only because none of its steel was read. Nothing read on it is not evidence it is not a floor.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ASheetsLegendFrameIsNotAFloor(bool on)
+    {
+        PlanLoop bare = Box(1300, -1200, 2300, -500);                                            // a roof whose steel was not read
+        PlanGeometrySet Storey(out PlanLoop legend, out PlanLoop withColumn, out PlanLoop withTwo, out PlanLoop touching, out WallAxis sample)
+        {
+            var g = new PlanGeometrySet();
+            g.Slabs.Add(Box(0, 0, 1200, 800));                                                   // the floor
+            g.Walls.Add(Wall(0, 0, 1200, 0)); g.Walls.Add(Wall(0, 800, 1200, 800)); g.Columns.Add(Column(600, 400));
+            legend = Box(0, -1200, 1000, -500); g.Slabs.Add(legend);                             // below the building: 4,861 sq ft
+            sample = Wall(50, -550, 200, -550); g.Walls.Add(sample);                            // the key's wall sample
+            withColumn = Box(1400, 0, 2400, 600); g.Slabs.Add(withColumn); g.Columns.Add(Column(1900, 300));   // beside it
+            withTwo = Box(2600, 0, 3600, 600); g.Slabs.Add(withTwo);
+            g.Walls.Add(Wall(2650, 550, 2800, 550)); g.Walls.Add(Wall(2650, 450, 2800, 450));
+            touching = Box(1100, 700, 2100, 1400); g.Slabs.Add(touching);                        // overlaps the building's box
+            g.Slabs.Add(bare);
+            return g;
+        }
+
+        var g = Storey(out var legend, out var withColumn, out var withTwo, out var touching, out var sample);
+        var warnings = DxfToEtabsService.SettleFloorsAcrossSheets([Sheet("S2.03_1_LEVEL 2 PLAN.dxf", "L2", g)], Reach, SqFtPerUnit, legendFrameIsNotAFloor: on);
+
+        Assert.Equal(!on, g.Slabs.Contains(legend));
+        Assert.Equal(!on, g.Walls.Contains(sample));
+        Assert.Contains(withColumn, g.Slabs); Assert.Contains(withTwo, g.Slabs); Assert.Contains(touching, g.Slabs);
+        Assert.Contains(bare, g.Slabs);
+        Assert.Equal(on ? 1 : 0, warnings.Count(w => w.Contains("the sheet's legend frame and its key's sample, not a floor", StringComparison.Ordinal)));
+        if (on) Assert.Contains(warnings, w => w.Contains("4,861 sq ft rectangle on S2.03_1_LEVEL 2 PLAN.dxf", StringComparison.Ordinal));
+    }
 }
