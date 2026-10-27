@@ -79,7 +79,7 @@
   .first li b { color:var(--ink); }
 
   figure { margin:.5rem 0 0; }
-  figure img { width:76%; display:block; margin:0 auto; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  figure img { width:62%; display:block; margin:0 auto; border:1px solid var(--line); border-radius:6px; background:#fff; }
   figcaption { font-size:8.2pt; color:var(--ink-soft); margin-top:.2rem; }
   figcaption b { color:var(--ink); }
 
@@ -115,11 +115,19 @@
   </div>
 
   <div class="body">
-    <p class="why">The standard details drafters place from Revit now come from your masters: your CAD typical-detail
+    <p class="why">The standard details drafters place from Revit now come from your masters, your CAD typical-detail
        blocks and your Concrete Tower R24 template, in one file. Where a sheet of yours held a Revit copy of a CAD
        detail, it now holds the detail drawn from your CAD block, so a change you make in CAD is the one everybody
-       gets. Everything else on your sheets is yours, untouched. This page is what you need to look at; the detail
-       behind it is in the folder at the end.</p>
+       gets. Everything else on your sheets is yours, untouched.</p>
+
+    <div class="folder" style="margin-top:4px">
+      <h3>Where the files are</h3>
+      <p class="note"><b>The Revit file drafters place from:</b><br>
+        <span class="path">\\Kor-fs01\Drafting\KOR-Standards\template\MASTER\KOR-Standard-Details-R24.rvt</span><br>
+        Revit 2024. The previous master, <span class="path">KOR-Standards-Master-R25.rvt</span>, stays beside it, untouched.</p>
+      <p class="note"><b>Everything to look at, one folder, nothing attached:</b><br>
+        <a class="path" href="file://///Kor-fs01/Drafting/KOR-Standards/for-review/2026-10-26%20Nelson%20standards%20package/">\\Kor-fs01\Drafting\KOR-Standards\for-review\2026-10-26 Nelson standards package</a></p>
+    </div>
 
     <div class="first">
       <h3>First: about an hour and a half, in two sittings</h3>
@@ -142,9 +150,6 @@
       <tr><td>Your notes and schedules, placeable</td><td class="num">117</td><td>A detail-view copy of each of your 118 legends (one is empty), named "&lt;legend&gt; - DETAIL VIEW", printing identically to the legend. The palette cannot place a legend; it can place these.</td></tr>
       <tr><td>Details drafters had, from your off-sheet views</td><td class="num">10</td><td>12 details the old catalogue offered exist in your templates only as views on no sheet; the identical ones were copied in (three numbers shared one drawing).</td></tr>
       <tr><td>Details drafters had, from the August R25 file</td><td class="num">53</td><td>54 details the old catalogue offered exist only in the August R25 file (37 wood, 16 steel, 1 concrete). Each was brought in from that file by the CAD Detail button and looked at beside the old picture and the R25 view: the same drawing. Two old names match nothing there (an empty column schedule; a view titled only "TYPICAL DETAIL").</td></tr>
-      <tr><td>Sheets and legends</td><td class="num">90 · 118</td><td>Yours, as in the template.</td></tr>
-      <tr><td>The file</td><td colspan="2"><span class="path">\\Kor-fs01\Drafting\KOR-Standards\template\MASTER\KOR-Standard-Details-R24.rvt</span><br>
-        Revit 2024. The previous master (<span class="path">KOR-Standards-Master-R25.rvt</span>) stays beside it, untouched.</td></tr>
     </table>
     <p class="note">How it was checked: every one of the 190 printed from Revit beside its CAD plot under KOR.ctb and
        looked at; 181 of 190 match word for word and line for line, 9 differ in text only (font, the diameter symbol,
@@ -152,9 +157,8 @@
 
     <figure>
       <img src="KOR-StandardDetails-Nelson-StandardsPackage-2026-10-26-D3.06.png" alt="Sheet D3.06: Nelson's on the left, the new file's on the right">
-      <figcaption><b>D3.06, shear wall typical details.</b> Left: your sheet. Right: the same sheet in the new file. Five
-        details now come from your CAD blocks (black); the zone and shear wall notes and the two embedment tables are
-        yours, unchanged. All 11 changed sheets are in folder file 2.</figcaption>
+      <figcaption><b>D3.06, shear wall typical details.</b> Your sheet left, the new file right: five details now from your
+        CAD blocks (black); your notes and tables unchanged. All 11 changed sheets are in folder file 2.</figcaption>
     </figure>
 
     <h2 class="pb">Decisions that are yours</h2>
@@ -169,12 +173,8 @@
     </table>
 
     <h2>Wood framing: the one way, decided as assumed - you confirm</h2>
-    <p class="note">Ian has settled how wood framing is drawn. His words, 25 October:</p>
-    <blockquote>"I think the issue is that until recently we were told woodframe couldn't be done in revit" ·
-      "If we CAN then 2D cad is redundant" · "I don't want THREE versions ... make some decisions and we simply note them
-      as assumed and need confirmation."</blockquote>
-    <p class="note">So framing plans show modelled members (beams, joists, posts, hold-downs, walls), with 2D for
-       annotation only. Standard details, the typical sections and connections, stay 2D and are not affected. For the
+    <p class="note">Wood framing is modelled in Revit from now on: framing plans show modelled members (beams, joists,
+       posts, hold-downs, walls), with 2D for annotation only. Standard details, the typical sections and connections, stay 2D and are not affected. For the
        <b>"Level N showing Level N+1 framing over" sheet</b> the office now has one way, recorded on 26 October as assumed
        with your name against it: a ceiling plan of level N carries the framing over, beside the engineering plan of
        level N+1, two plan views a sheet, at 1/8" = 1'-0" (the scale of the office concrete plans); the view type is
@@ -194,9 +194,7 @@
     </table>
 
     <div class="folder">
-      <h3>The detail behind this page</h3>
-      <p class="note">One folder, nothing attached:
-        <a class="path" href="file://///Kor-fs01/Drafting/KOR-Standards/for-review/2026-10-26%20Nelson%20standards%20package/">\\Kor-fs01\Drafting\KOR-Standards\for-review\2026-10-26 Nelson standards package</a></p>
+      <h3>What is in the folder</h3>
       <ul>
         <li><b>1</b> — the 55 details drawn differently in CAD and Revit, one page each, with the answer line. Each page also
           says where that Revit version stands in the new file: not in it (32), replaced on your sheet by a CAD detail (13),
