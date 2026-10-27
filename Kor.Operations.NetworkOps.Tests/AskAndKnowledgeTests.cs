@@ -49,6 +49,15 @@ public sealed class AskAndKnowledgeTests
     public void A_card_applies_to_the_machines_its_terms_name(string appliesTo, bool applies)
         => Assert.Equal(applies, KnowledgeCards.AppliesTo(appliesTo, "KOR-214", "Workstation", AndreasPc, ["crash-loop:etabs.exe", "memory-layout"]));
 
+    // A rack server's name carries its description, with commas that Terms' split can never keep: the bare name matches.
+    [Theory]
+    [InlineData("device:KOR-APP01", true)]
+    [InlineData("device:kor-app01", true)]
+    [InlineData("device:KOR-APP0", false)]   // not a prefix match
+    [InlineData("device:KOR-FS01", false)]
+    public void A_card_names_a_rack_server_by_its_bare_name(string appliesTo, bool applies)
+        => Assert.Equal(applies, KnowledgeCards.AppliesTo(appliesTo, "KOR-APP01 (apps, SQL, NetworkOps)", "Server", new Dictionary<string, string>(), []));
+
     [Theory]
     [InlineData("")]
     [InlineData("app:")]

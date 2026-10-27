@@ -44,7 +44,10 @@ public static class KnowledgeCards
             "model" => facts.TryGetValue(Facts.Model, out var m) && Has(m, t.Value),
             "gpu" => facts.TryGetValue(Facts.GpuName, out var g) && Has(g, t.Value),
             "kind" => deviceKind.Equals(t.Value, StringComparison.OrdinalIgnoreCase),
-            "device" => device.Equals(t.Value, StringComparison.OrdinalIgnoreCase),
+            // A rack device is named with its description ("KOR-APP01 (apps, SQL, NetworkOps)"), and the commas in it can
+            // never survive Terms' comma split: the bare name matches too (27 Oct: cards for APP01/FS01 reached no prompt).
+            "device" => device.Equals(t.Value, StringComparison.OrdinalIgnoreCase)
+                        || Actions.ProtectedHosts.Bare(device).Equals(t.Value, StringComparison.OrdinalIgnoreCase),
             "finding" => families.Contains(FixLearning.FamilyOf(t.Value)),
             _ => false,
         });
