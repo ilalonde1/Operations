@@ -53,3 +53,17 @@ the engineer's by what its stack misses. These include 3 of the 4 instances this
 **What will decide it:** the drawing. Which sheet drew each copy, and whether one copy is a column risen from the plan below
 while the other is the storey's own (143 E 3rd's L37 pair was exactly that). Next: trace each WRONG TWIN to the sheets that
 drew it and LOOK, then write the rule from what is seen, gated by the check. Until then the snap stays as it is.
+
+**Traced on the drawing, 31138 L2 (2026-10-26 ~22:00).** The four copies were matched to the sheet outlines that drew them
+(31138's sheets are placed at the identity, so DXF coordinates are model coordinates):
+- The L1 partner, the copy on the engineer's model, is drawn identically on 11 sheets, the foundations and P5..P1:
+  914x459, 459x914, 455x914, 455x1524.
+- The L2 copy comes only from S2.12_2 / S2.13, "LEVEL 1 **AT 55'-0**": 914x1447, 459x256, 914x967, 455x232. These are real
+  outlines on that sheet: a larger box, and a small block at a wall junction (rendered from the DXF).
+- The engineer's L2 column there is the one S2.14, "LEVEL 1 **AT 64'-1**", draws (914x455 at 76950,44562, 2 mm from hers).
+
+So on 31138 the "two copies" are the columns of TWO PHYSICAL LEVELS, 9 ft apart, both titled Level 1 and both placed on our
+L1 storey (and risen to L2). The report already refuses one of them ("S2.12_1 LEVEL 1 MEZZ. AT 55'-0 ... NOT PLACED"), and the
+engineer's model has both L01 and Mezz. This is split-level storey attribution, not a column drawn twice, and a rule about
+which copy to keep would be the wrong fix. The 31065 L2 and 31170-arch L7 instances are not traced: their sheets are placed
+with an offset the DXF does not carry, and the report does not list it. Tracing them needs the placement surfaced first.
