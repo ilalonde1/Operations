@@ -1,7 +1,8 @@
-r"""twin_trace.py <gate-work-dir> <job> <near-miss.out> : each WRONG TWIN column that column_stack_near_miss.py found, traced
-back to the sheets that drew it, through sheets.csv's placement column (d92e50b1).
+r"""twin_trace.py <gate-work-dir> <job> <near-miss.out> : each OFF HER STACK column that column_stack_near_miss.py found (called
+WRONG TWIN before 2026-10-27; both labels are read), traced back to the sheets that drew it, through sheets.csv's placement
+column (d92e50b1). This is what decides whether it is a twin the build chose wrongly or a column the drawing itself moves.
 
-For every WRONG TWIN line ("  L2  (x y) stack misses by N mm  WRONG TWIN (hers M mm)") it prints:
+For every such line ("  L2  (x y) stack misses by N mm  OFF HER STACK (hers M mm)") it prints:
   - our model's columns on the storeys directly above and below within 700 mm (the stack the twin misses);
   - every column outline on every placed view's KOR_V_COL layer that the view's placement carries to within 700 mm of the twin
     - the view's file, the storeys the ledger gives it, where the outline lands and how far from the twin.
@@ -24,7 +25,7 @@ cols = members(os.path.join(work, job, "out.e2k"))
 lines = open(os.path.join(work, job, "out.e2k"), encoding="utf-8", errors="replace").read().splitlines()
 order = [norm(m.group(1)) for s in lines if (m := re.match(r'\s*STORY\s+"([^"]+)"', s))]   # top first
 twins = [(norm(m.group(1)), float(m.group(2)), float(m.group(3)))
-         for m in (re.match(r"\s+(\S+)\s+\((-?\d+) (-?\d+)\).*WRONG TWIN", s) for s in open(report, encoding="utf-8")) if m]
+         for m in (re.match(r"\s+(\S+)\s+\((-?\d+) (-?\d+)\).*(?:OFF HER STACK|WRONG TWIN)", s) for s in open(report, encoding="utf-8")) if m]   # the old label too
 
 views, unplaced = [], []
 for row in csv.DictReader(open(os.path.join(work, job, "sheets.csv"), encoding="utf-8-sig")):
@@ -46,7 +47,7 @@ for row in csv.DictReader(open(os.path.join(work, job, "sheets.csv"), encoding="
             at.append((x * c - y * s + p["dx"] + p["ox"], x * s + y * c + p["dy"] + p["oy"]))
         views.append((f, row["storeys"], at))
 
-print(f"{job}: {len(twins)} WRONG TWIN column(s); {len(views)} placed view(s), {len(unplaced)} unplaced")
+print(f"{job}: {len(twins)} OFF HER STACK column(s); {len(views)} placed view(s), {len(unplaced)} unplaced")
 for st, x, y in twins:
     print(f"\n{st} ({x:.0f} {y:.0f})")
     i = order.index(st) if st in order else -1
