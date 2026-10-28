@@ -45,6 +45,12 @@ def main(stdin=sys.stdin, env=os.environ):
         if len(parts) != 4: continue
         _, lsha, rref, rsha = parts
         if lsha == ZERO: continue                     # a delete: nothing carried
+        # The remote moved after this clone's last fetch: its tip is not in the local object store, so the range cannot
+        # be read (rev-list exits 128 -- until 28 Oct that surfaced as a Python traceback). Refuse, and say how to go on.
+        if rsha != ZERO and subprocess.run(["git", "cat-file", "-e", f"{rsha}^{{commit}}"], capture_output=True).returncode != 0:
+            print(f"PUSH REFUSED - the remote's {rref} is at {rsha[:8]}, which this clone has not fetched (someone pushed "
+                  "since your last fetch): git fetch, put your own commits on top of it, and push again.", file=sys.stderr)
+            return 1
         rng = [lsha, "--not", "--remotes"] if rsha == ZERO else [f"{rsha}..{lsha}"]
         for sha in git("rev-list", *rng).split():
             if any(sha.lower().startswith(o) for o in ok): continue
