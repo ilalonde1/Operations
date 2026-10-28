@@ -281,7 +281,54 @@ public static class WallNetwork
                 best = (i, j, new WallAxis(from, to, lng.Thickness, lng.Layer), gap);
             }
             if (best.I < 0) return list;
-            list.RemoveAt(best.J); list.RemoveAt(best.I); list.Add(best.Merged); joined++;
+            var facing = FacingEnds(list[best.I], list[best.J]);
+            list.RemoveAt(best.J); list.RemoveAt(best.I);
+            CarryStemsToTheRun(list, best.Merged, facing, inch);
+            list.Add(best.Merged); joined++;
+        }
+    }
+
+    /// <summary>The two piece ends that face across the gap - the ends a join makes disappear inside the run.</summary>
+    private static (DxfPoint A, DxfPoint B) FacingEnds(WallAxis a, WallAxis b)
+    {
+        (DxfPoint P, DxfPoint Q, double D) best = (a.Start, b.Start, double.MaxValue);
+        foreach (var p in new[] { a.Start, a.End })
+        foreach (var q in new[] { b.Start, b.End })
+            if (p.DistanceTo(q) < best.D) best = (p, q, p.DistanceTo(q));
+        return (best.P, best.Q);
+    }
+
+    /// <summary>
+    /// A WALL THAT MET A PIECE'S END STILL MEETS THE RUN (2026-10-28, board 76 consumer 1). Before the join a cross wall that
+    /// stopped at the face of a piece's end made a CORNER with it, and the network carried both ends to the crossing. Once the
+    /// pieces are one run that end is gone and the crossing is mid-span - a T, where the network moves no end - so the cross
+    /// wall stopped half a thickness short (31053 L2 KW86, 280 mm). Here the joint the drawing had is kept: an end of another
+    /// wall within the network's own corner reach of either vanishing end is carried to where its line crosses the run. Only
+    /// those ends move; nothing that met the pieces anywhere else is touched.
+    /// </summary>
+    private static void CarryStemsToTheRun(List<WallAxis> walls, WallAxis run, (DxfPoint A, DxfPoint B) facing, double inch)
+    {
+        double rx = run.End.X - run.Start.X, ry = run.End.Y - run.Start.Y, rl = Math.Sqrt(rx * rx + ry * ry);
+        if (rl < 1e-9) return;
+        for (int k = 0; k < walls.Count; k++)
+        {
+            var w = walls[k];
+            double reach = (run.Thickness + w.Thickness) / 2.0 * ReachFactor + 2.0 * inch;
+            double wx = w.End.X - w.Start.X, wy = w.End.Y - w.Start.Y;
+            double cross = rx * wy - ry * wx;
+            if (Math.Abs(cross) < 1e-9 * rl * Math.Max(1e-9, Math.Sqrt(wx * wx + wy * wy))) continue;   // parallel: not a stem
+            // where w's line meets the run's line, and how far along the run
+            double s = ((w.Start.X - run.Start.X) * wy - (w.Start.Y - run.Start.Y) * wx) / cross;
+            if (s <= 0 || s >= 1) continue;
+            var at = new DxfPoint(run.Start.X + rx * s, run.Start.Y + ry * s);
+            var start = w.Start; var end = w.End;
+            if (Near(start)) start = at;
+            else if (Near(end)) end = at;
+            else continue;
+            walls[k] = w with { Start = start, End = end };
+
+            bool Near(DxfPoint p) => LoopGeometry.Within(p.DistanceTo(at), reach)
+                                     && (LoopGeometry.Within(p.DistanceTo(facing.A), reach) || LoopGeometry.Within(p.DistanceTo(facing.B), reach));
         }
     }
 

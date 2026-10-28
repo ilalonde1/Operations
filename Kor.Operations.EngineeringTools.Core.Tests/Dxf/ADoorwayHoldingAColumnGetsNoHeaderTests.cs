@@ -25,7 +25,8 @@ public sealed class ADoorwayHoldingAColumnGetsNoHeaderTests
         // 700 mm: a doorway's width (over the 18 in minimum), and within a 600 mm column plus 152 mm of slack (752)
         var made = StructuralPlanClassifier.Classify(Run(gap: 700, column: (3050, -300, 600)), Options);
 
-        Assert.Equal(2, made.Walls.Count);
+        // with the wall-through join (board 76) the two pieces are one wall through the column; either way, no header
+        Assert.Single(made.Walls);
         Assert.Empty(made.WallOpenings);
         Assert.Single(made.Columns);
     }
