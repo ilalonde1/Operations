@@ -2090,8 +2090,11 @@ public static class StructuralPlanClassifier
         // a standalone stub and made it a 30x41 column. The engineer had already settled what it
         // should be — "a short face joined to other walls is part of a core and stays a wall" —
         // and she marked these very elements as missing return WALLS.
+        // A copy of itself is not something it runs into (2026-10-27): 31087's column outline drawn twice 21 mm apart met
+        // itself within the inch and shipped as a wall.
         bool RunsInto(WallAxis stub) => result.Walls.Any(other =>
-            !ReferenceEquals(other, stub) && LoopGeometry.SegmentsMeet(stub.Start, stub.End, other.Start, other.End, 1.0 / options.UnitInInches));   // an inch, in the drawing's unit (2026-10-27)
+            !ReferenceEquals(other, stub) && !WallNetwork.NearCopies(stub, other)
+            && LoopGeometry.SegmentsMeet(stub.Start, stub.End, other.Start, other.End, 1.0 / options.UnitInInches));   // an inch, in the drawing's unit (2026-10-27)
 
         // Same half-inch of slack as the rectangle test above: a wall drawn at exactly 48" measures
         // a fraction under it after the export, and must not change from a wall into a column for

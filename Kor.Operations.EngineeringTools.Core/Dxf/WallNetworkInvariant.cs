@@ -10,8 +10,9 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 ///
 /// <para>Three violations, each against the walls as they stood before the network (<see cref="PlanGeometrySet.WallsBeforeNetwork"/>):
 /// TILT - a wall after the network parallel (within <see cref="ToleranceDegrees"/>) to no wall before it that it overlaps;
-/// HEADER - an opening parallel to no wall before it at either of its ends; SELF - a wall shorter than the stub length whose
-/// every joined end is joined only to near-copies of itself (parallel, overlapping, less than a wall thickness apart).</para>
+/// HEADER - an opening on the axis of no wall before it at either of its ends; SELF - a wall shorter than the stub length whose
+/// every contact (a shared end, or another wall within an inch) is a near-copy of itself (parallel, overlapping, less than a
+/// wall thickness apart).</para>
 ///
 /// <para>COVERS: one sheet's classification, in the classifier's own unit. A wall drawn skewed is judged against its own
 /// source wall, so a building drawn at 14.7 degrees is not a fault. DOES NOT: the composer's joint merge or storey stacking
@@ -43,24 +44,31 @@ public static class WallNetworkInvariant
         foreach (var opening in geometry.WallOpenings)
         {
             if (opening.Span <= 1e-9) continue;
+            // On the jamb's AXIS, not its drawn segment: pass 1 may carry a jamb's end along its axis out to a corner (30990
+            // S1.21, 295 mm past where it was drawn), so the end is held to the line, and the jamb to within a span of it.
             bool onJamb(DxfPoint end) => before.Any(b => Parallel(opening.Start, opening.End, b.Start, b.End)
-                && DistanceToSegment(end, b.Start, b.End) <= Math.Max(opening.Thickness, b.Thickness) / 2.0 + snap);
+                && DistanceToLine(end, b.Start, b.End) <= Math.Max(opening.Thickness, b.Thickness) / 2.0 + snap
+                && DistanceToSegment(end, b.Start, b.End) <= opening.Span);
             if (!onJamb(opening.Start) && !onJamb(opening.End))
                 found.Add(new Violation("HEADER", opening.Start, opening.End,
                     $"{Bearing(opening.Start, opening.End):0.##} deg, on the axis of neither jamb (nearest bearing {NearestBearing(opening.Start, opening.End, before):0.##} deg)"));
         }
 
-        var ends = geometry.Walls.SelectMany(w => new[] { (Wall: w, At: w.Start), (Wall: w, At: w.End) }).ToList();
+        // Any contact counts - a shared end, or the segments within an inch (the classifier's RunsInto) - since either keeps a
+        // short wall from being a stub; 31087's copies 21 mm apart were kept walls by RunsInto with no end shared.
         foreach (var wall in geometry.Walls.Where(w => w.Length < minWallLength))
         {
-            var partners = ends.Where(e => !ReferenceEquals(e.Wall, wall) && (e.At.DistanceTo(wall.Start) < 0.01 || e.At.DistanceTo(wall.End) < 0.01))
-                .Select(e => e.Wall).Distinct().ToList();
+            var partners = geometry.Walls.Where(o => !ReferenceEquals(o, wall) && SegmentDistance(wall, o) <= inch).ToList();
             if (partners.Count > 0 && partners.All(p => NearCopy(wall, p)))
                 found.Add(new Violation("SELF", wall.Start, wall.End,
                     $"{wall.Length:0.#} long, joined only to {partners.Count} near-cop{(partners.Count == 1 ? "y" : "ies")} of itself"));
         }
         return found;
     }
+
+    private static double SegmentDistance(WallAxis a, WallAxis b) => Math.Min(
+        Math.Min(DistanceToSegment(a.Start, b.Start, b.End), DistanceToSegment(a.End, b.Start, b.End)),
+        Math.Min(DistanceToSegment(b.Start, a.Start, a.End), DistanceToSegment(b.End, a.Start, a.End)));
 
     private static bool NearCopy(WallAxis a, WallAxis b)
     {

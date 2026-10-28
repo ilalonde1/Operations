@@ -173,6 +173,11 @@ public static class WallNetwork
             // Never fuse a wall's own two ends: that would collapse it to nothing.
             if (ends[i].AxisIndex == ends[k].AxisIndex) continue;
 
+            // NOR A WALL'S ENDS WITH A COPY OF ITSELF (2026-10-27). An outline drawn twice ~25 mm apart reads as two
+            // parallel axes; fused end to end they "join", so neither is a standalone stub and 31087's column shipped as a
+            // 762 mm wall once the snap was the 2 in it was written for. Left apart, both are what they were at 2 mm.
+            if (NearCopies(axes[ends[i].AxisIndex], axes[ends[k].AxisIndex])) continue;
+
             var p = axes[ends[i].AxisIndex].End(ends[i].Which);
             var q = axes[ends[k].AxisIndex].End(ends[k].Which);
             if (LoopGeometry.Within(p.DistanceTo(q), snap)) { int a = Find(i), b = Find(k); if (a != b) clusterOf[a] = b; }
@@ -186,13 +191,57 @@ public static class WallNetwork
             list.Add(i);
         }
 
+        // A JOINT MOVES AN END ALONG ITS WALL, NOT ACROSS IT (2026-10-27, WallNetworkInvariant). The joint was the plain
+        // average of the ends, so two walls whose centrelines run ~30 mm apart were each pulled half-way across: at a 2 in
+        // snap that tilted 79 walls on the metric gate sets, and at 2 ft Halifax's four corner pieces. The joint is now
+        // weighted by length - a long wall hardly moves - and an end that would turn its wall more than
+        // WallNetworkInvariant.ToleranceDegrees to reach it stays where it is, a joint of its own.
         foreach (var group in members.Values.Where(g => g.Count > 1))
         {
-            double x = group.Average(i => axes[ends[i].AxisIndex].End(ends[i].Which).X);
-            double y = group.Average(i => axes[ends[i].AxisIndex].End(ends[i].Which).Y);
-            var joint = new DxfPoint(x, y);
-            foreach (int i in group) axes[ends[i].AxisIndex].SetEnd(ends[i].Which, joint);
+            var kept = group.ToList();
+            DxfPoint joint = default;
+            while (kept.Count > 1)
+            {
+                double weight = kept.Sum(i => Math.Max(axes[ends[i].AxisIndex].Length, 1e-9));
+                joint = new DxfPoint(
+                    kept.Sum(i => axes[ends[i].AxisIndex].End(ends[i].Which).X * Math.Max(axes[ends[i].AxisIndex].Length, 1e-9)) / weight,
+                    kept.Sum(i => axes[ends[i].AxisIndex].End(ends[i].Which).Y * Math.Max(axes[ends[i].AxisIndex].Length, 1e-9)) / weight);
+                var turned = kept.Where(i => Turn(axes[ends[i].AxisIndex], ends[i].Which, joint) > WallNetworkInvariant.ToleranceDegrees).ToList();
+                if (turned.Count == 0) break;
+                kept.Remove(turned.MaxBy(i => Turn(axes[ends[i].AxisIndex], ends[i].Which, joint)));
+            }
+            if (kept.Count < 2) continue;
+            foreach (int i in kept) axes[ends[i].AxisIndex].SetEnd(ends[i].Which, joint);
         }
+    }
+
+    /// <summary>How far, in degrees, moving this end of the axis to <paramref name="to"/> turns the axis.</summary>
+    private static double Turn(Axis axis, int which, DxfPoint to)
+    {
+        var fixedEnd = axis.End(1 - which);
+        double before = Math.Atan2(axis.End(which).Y - fixedEnd.Y, axis.End(which).X - fixedEnd.X);
+        double after = Math.Atan2(to.Y - fixedEnd.Y, to.X - fixedEnd.X);
+        double d = Math.Abs(before - after) * 180.0 / Math.PI;
+        return Math.Min(d, 360.0 - d);
+    }
+
+    /// <summary>The same test on two finished centrelines - the classifier's stub rule asks it of what a short wall runs into.</summary>
+    internal static bool NearCopies(WallAxis a, WallAxis b)
+        => NearCopies(new Axis { A = a.Start, B = a.End, Thickness = a.Thickness, Layer = a.Layer }, new Axis { A = b.Start, B = b.End, Thickness = b.Thickness, Layer = b.Layer });
+
+    /// <summary>One wall drawn twice: parallel within 2 deg, less than a wall's thickness apart, sharing half the shorter.</summary>
+    private static bool NearCopies(Axis a, Axis b)
+    {
+        double la = a.Length, lb = b.Length;
+        if (la < 1e-9 || lb < 1e-9) return false;
+        double ux = (a.B.X - a.A.X) / la, uy = (a.B.Y - a.A.Y) / la;
+        double vx = (b.B.X - b.A.X) / lb, vy = (b.B.Y - b.A.Y) / lb;
+        if (Math.Abs(ux * vy - uy * vx) > Math.Sin(2.0 * Math.PI / 180.0)) return false;
+        double apart = Math.Abs((b.A.X - a.A.X) * -uy + (b.A.Y - a.A.Y) * ux);
+        if (apart > Math.Max(a.Thickness, b.Thickness)) return false;
+        double t0 = (b.A.X - a.A.X) * ux + (b.A.Y - a.A.Y) * uy, t1 = (b.B.X - a.A.X) * ux + (b.B.Y - a.A.Y) * uy;
+        double shared = Math.Min(la, Math.Max(t0, t1)) - Math.Max(0.0, Math.Min(t0, t1));
+        return shared >= 0.5 * Math.Min(la, lb);
     }
 
     /// <summary>
@@ -329,6 +378,13 @@ public static class WallNetwork
             }
 
             if (LoopGeometry.Beyond(minSpan, best.D) || LoopGeometry.Beyond(best.D, maxSpan)) continue;   // a 24" doorway meets a 24" floor in every frame
+
+            // A HEADER LIES ON ITS JAMBS' AXIS (2026-10-27, WallNetworkInvariant). Jambs up to 3 in out of line pass the test
+            // above, and the header between their ends then runs crooked: 139 on the metric gate sets once the 3 in was 3 in
+            // and not 3 mm. ASSUMED: no header where it would turn more than ToleranceDegrees off either jamb - what a metric
+            // drawing got before (its 3 mm found none of these) - rather than a crooked one; the doorway is still a gap.
+            double hx = best.Q.X - best.P.X, hy = best.Q.Y - best.P.Y, hl = Math.Sqrt(hx * hx + hy * hy);
+            if (hl > 1e-9 && Math.Max(Off(hx, hy, hl, ax, ay, la), Off(hx, hy, hl, bx, by, lb)) > WallNetworkInvariant.ToleranceDegrees) continue;
             if (!used.Add((i, j))) continue;
 
             found.Add(new WallOpening(best.P, best.Q, Math.Min(a.Thickness, b.Thickness), a.Layer) { ThickerWall = Math.Max(a.Thickness, b.Thickness) });
@@ -353,6 +409,10 @@ public static class WallNetwork
 
         return kept;
     }
+
+    /// <summary>The angle in degrees between two directions, either way round (0-90).</summary>
+    private static double Off(double x1, double y1, double l1, double x2, double y2, double l2)
+        => Math.Asin(Math.Min(1.0, Math.Abs(x1 * y2 - y1 * x2) / (l1 * l2))) * 180.0 / Math.PI;
 
     private static double DistanceToSegment(DxfPoint p, DxfPoint a, DxfPoint b)
     {
