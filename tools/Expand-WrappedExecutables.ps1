@@ -28,26 +28,23 @@
 #                     wrapped exe, e.g. "Revit 2026 - (EN)" with its Setup.zip); the root's own zips stay wrapped, so the
 #                     right-click fix holds for what people open. For the share itself (Ian, 28 Oct 12:0x).
 #   -Summary        : one row per installer root instead of one line per file (for a whole share).
-param([Parameter(Mandatory)][string]$Root, [switch]$Apply, [switch]$Quick, [switch]$NestedOnly, [switch]$Summary)
+#   -SkipRoot       : installer roots to leave entirely alone, as wildcards on the path below -Root (e.g. '*Crack*').
+param([Parameter(Mandatory)][string]$Root, [switch]$Apply, [switch]$Quick, [switch]$NestedOnly, [switch]$Summary, [string[]]$SkipRoot = @())
 $ErrorActionPreference = 'Stop'
 if ($Apply -and $Quick) { 'REFUSED: -Quick is for -Check only; -Apply always verifies every byte'; exit 2 }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 if (-not (Test-Path -LiteralPath $Root -PathType Container)) { "ROOT NOT FOUND: $Root"; exit 2 }
 
+# Same bytes as the zip entry: length, then SHA-256 of both streams (native speed; a PowerShell byte loop ran ~3 MB/s,
+# hours on the 40 GB share).
 function Same-AsEntry($entry, [string]$path) {
-    $fi = [IO.FileInfo]$path
-    if ($fi.Length -ne $entry.Length) { return $false }
-    $a = $entry.Open(); $b = [IO.File]::OpenRead($path)
+    if (([IO.FileInfo]$path).Length -ne $entry.Length) { return $false }
+    $sha = [Security.Cryptography.SHA256]::Create()
     try {
-        $ba = New-Object byte[] 1048576; $bb = New-Object byte[] 1048576
-        while ($true) {
-            $na = 0; while ($na -lt $ba.Length) { $r = $a.Read($ba, $na, $ba.Length - $na); if ($r -le 0) { break }; $na += $r }
-            $nb = 0; while ($nb -lt $bb.Length) { $r = $b.Read($bb, $nb, $bb.Length - $nb); if ($r -le 0) { break }; $nb += $r }
-            if ($na -ne $nb) { return $false }
-            if ($na -eq 0) { return $true }
-            for ($i = 0; $i -lt $na; $i++) { if ($ba[$i] -ne $bb[$i]) { return $false } }
-        }
-    } finally { $a.Dispose(); $b.Dispose() }
+        $a = $entry.Open(); try { $ha = [BitConverter]::ToString($sha.ComputeHash($a)) } finally { $a.Dispose() }
+        $b = [IO.File]::OpenRead($path); try { $hb = [BitConverter]::ToString($sha.ComputeHash($b)) } finally { $b.Dispose() }
+        return $ha -eq $hb
+    } finally { $sha.Dispose() }
 }
 
 # Pass 1: every wrapped executable (a .zip whose ONLY entry is an .exe), at any depth.
@@ -76,8 +73,12 @@ foreach ($i in $items) {
         if ($holders.Contains($d)) { $i.Root = $d }
     }
 }
+$rel = { param($p) $p.Substring([Math]::Min($p.Length, $rootFull.Length + 1)) }
+$skipped = @($items | Where-Object { $r = & $rel $_.Root; @($SkipRoot | Where-Object { $r -like $_ }).Count -gt 0 })
+if ($skipped) { "SKIPPED by -SkipRoot: $($skipped.Count) wrapped executables in $(@($skipped | Select-Object -ExpandProperty Root -Unique).Count) installer root(s): $((@($skipped | ForEach-Object { & $rel $_.Root } | Select-Object -Unique)) -join '; ')" }
+$items = @($items | Where-Object { $skipped -notcontains $_ })
 $nestedCount = @($items | Where-Object { $_.Dir -ne $_.Root }).Count
-$targets = if ($NestedOnly) { @($items | Where-Object { $_.Dir -ne $_.Root }) } else { $items }
+$targets = @(if ($NestedOnly) { $items | Where-Object { $_.Dir -ne $_.Root } } else { $items })
 
 # Pass 2: check or unwrap each target.
 $restored = 0; $present = 0; $missing = 0; $missingBytes = 0L
@@ -95,9 +96,12 @@ foreach ($i in $targets) {
             continue
         }
         if (-not $Apply) { if (-not $Summary) { "MISSING: $exe" }; $missing++; $r.Missing++; $r.MissingGB = [Math]::Round($r.MissingGB + $entry.Length / 1GB, 2); $missingBytes += $entry.Length; continue }
-        [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $exe)
-        if (Same-AsEntry $entry $exe) { if (-not $Summary) { "restored: $exe ($($entry.Length) B, verified)" }; $restored++; $r.Restored++ }
-        else { Remove-Item -LiteralPath $exe -Force; "FAILED verify (removed): $exe"; $failed++; $r.Failed++ }
+        # written as <name>.exe.partial and renamed only once verified: a stopped run never leaves a half-written .exe
+        $part = "$exe.partial"
+        if (Test-Path -LiteralPath $part) { Remove-Item -LiteralPath $part -Force }   # only this tool makes .partial files
+        [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $part)
+        if (Same-AsEntry $entry $part) { [IO.File]::Move($part, $exe); if (-not $Summary) { "restored: $exe ($($entry.Length) B, verified)" }; $restored++; $r.Restored++ }
+        else { Remove-Item -LiteralPath $part -Force; "FAILED verify (removed): $exe"; $failed++; $r.Failed++ }
     } finally { $archive.Dispose() }
 }
 $unreadableLines

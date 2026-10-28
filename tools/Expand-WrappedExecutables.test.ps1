@@ -76,6 +76,8 @@ try {
     Check ($code -eq 3) "-NestedOnly dry run: 3 nested missing (exit 3), got $code"
     Check ("$out" -like '*CHECK 3 NESTED (installer-root zips kept as they are: 3) wrapped executables*in 2 installer roots: missing 3*') "-NestedOnly dry run total: $($out[-1])"
     Check ("$out" -like '*Autodesk\Revit 2026 - (EN)*' -and "$out" -like '*Brother*' -and "$out" -notlike '*MISSING:*') "-Summary prints one row per installer root, no per-file lines"
+    $out = & $shell -NoProfile -File $tool -Root $s -NestedOnly -Summary -SkipRoot '*Brother*'; $code = $LASTEXITCODE
+    Check ($code -eq 2 -and "$out" -like '*SKIPPED by -SkipRoot: 3 wrapped executables in 1 installer root(s): Brother*' -and "$out" -like '*CHECK 2 NESTED*') "-SkipRoot leaves a whole installer root out: $out"
     $out = & $shell -NoProfile -File $tool -Root $s -NestedOnly -Apply; $code = $LASTEXITCODE
     Check ($code -eq 0) "-NestedOnly -Apply exits 0, got $code"
     foreach ($p in $unwrap) { Check ((Test-Path -LiteralPath $p) -and ([Convert]::ToBase64String([IO.File]::ReadAllBytes($p)) -eq [Convert]::ToBase64String($files[$p]))) "-NestedOnly restored byte-identical: $($p.Substring($s.Length + 1))" }
