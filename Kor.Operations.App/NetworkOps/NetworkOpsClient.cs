@@ -427,9 +427,16 @@ public sealed class NetworkOpsClient
             // Conditional Access asking for MFA arrives here as a claims challenge: pass it on.
             var interactive = pca.AcquireTokenInteractive(_scopes).WithAccount(account);
             if (!string.IsNullOrEmpty(ex.Claims)) interactive = interactive.WithClaims(ex.Claims);
-            return (await interactive.ExecuteAsync(ct).ConfigureAwait(false)).AccessToken;
+            return Signed((await interactive.ExecuteAsync(ct).ConfigureAwait(false)).AccessToken);
         }
-        return (await pca.AcquireTokenInteractive(_scopes).ExecuteAsync(ct).ConfigureAwait(false)).AccessToken;
+        return Signed((await pca.AcquireTokenInteractive(_scopes).ExecuteAsync(ct).ConfigureAwait(false)).AccessToken);
+    }
+
+    // An interactive NetworkOps sign-in = MFA just done: start the 12-h clock the sessions warn from (no token stored).
+    private static string Signed(string token)
+    {
+        Kor.Operations.NetworkOps.Core.Actions.SignInClock.Record("KOR Operations app");
+        return token;
     }
 
     // The same registration and the same token cache as the app's Graph sign-in

@@ -107,7 +107,12 @@ internal sealed class AppServer : IDisposable
         if (!string.IsNullOrEmpty(claims)) again = again.WithClaims(claims);
         using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
         wait.CancelAfter(InteractiveSignInWait);
-        try { return (await again.ExecuteAsync(wait.Token).ConfigureAwait(false)).AccessToken; }
+        try
+        {
+            var token = (await again.ExecuteAsync(wait.Token).ConfigureAwait(false)).AccessToken;
+            Kor.Operations.NetworkOps.Core.Actions.SignInClock.Record("netops cli");   // the MFA clock (no token stored)
+            return token;
+        }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             throw new SignInNeededException($"nobody completed the NetworkOps sign-in within {InteractiveSignInWait.TotalMinutes:0} min.");

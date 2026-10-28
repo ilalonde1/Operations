@@ -46,6 +46,37 @@ if (verb == "watchdog")
 if (verb == "mcp")
     return await Kor.Operations.NetworkOps.Cli.McpBridge.RunAsync();
 
+// When the NetworkOps sign-in needs MFA again (Core/Actions/SignInClock). Reads one local file: no network, no MSAL, so
+// a hook can run it on every prompt. --hook speaks only from 2 h before the lapse (or after it) and always exits 0.
+// --seed records a renewal that happened before the clock existed, e.g. --seed 2026-10-28T13:02:51 --via "Ian, ...".
+if (verb == "signin-status")
+{
+    string? seed = null, via = null; var hook = false;
+    for (var i = 1; i < args.Length; i++)
+    {
+        if (args[i] == "--hook") hook = true;
+        else if (args[i] == "--seed" && i + 1 < args.Length) seed = args[++i];
+        else if (args[i] == "--via" && i + 1 < args.Length) via = args[++i];
+        else { Console.Error.WriteLine($"netops signin-status: unknown argument {args[i]}"); return hook ? 0 : 2; }
+    }
+    if (seed is not null)
+    {
+        if (!DateTimeOffset.TryParse(seed, out var at) || at > DateTimeOffset.Now || string.IsNullOrWhiteSpace(via))
+        { Console.Error.WriteLine("netops signin-status --seed needs a past time and --via \"who/how\""); return 2; }
+        Kor.Operations.NetworkOps.Core.Actions.SignInClock.Record($"seeded: {via}", at);
+    }
+    var reading = Kor.Operations.NetworkOps.Core.Actions.SignInClock.Judge(Kor.Operations.NetworkOps.Core.Actions.SignInClock.Read(), DateTimeOffset.Now);
+    if (!hook || reading.State is Kor.Operations.NetworkOps.Core.Actions.SignInClock.State.Soon or Kor.Operations.NetworkOps.Core.Actions.SignInClock.State.Lapsed)
+        Console.WriteLine(reading.Line);
+    return hook ? 0 : reading.State switch
+    {
+        Kor.Operations.NetworkOps.Core.Actions.SignInClock.State.Ok => 0,
+        Kor.Operations.NetworkOps.Core.Actions.SignInClock.State.Soon => 1,
+        Kor.Operations.NetworkOps.Core.Actions.SignInClock.State.Lapsed => 4,
+        _ => 3,
+    };
+}
+
 // What a Claude session uses: everything through NetworkOps on APP01, never from this PC to the machine (SessionVerbs.cs).
 if (Kor.Operations.NetworkOps.Cli.SessionVerbs.Handles(verb, args))
     return await Kor.Operations.NetworkOps.Cli.SessionVerbs.RunAsync(verb, args);
