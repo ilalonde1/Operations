@@ -188,7 +188,7 @@
           },
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/tools/PlanDocCheck/check_plan_doc_current.py\" owed --ledger \"C:/KOR.Drafter-work/31180-01-halifax/doc-owed.jsonl\" || true",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/PlanDocCheck/check_plan_doc_current.py\" owed --hook --ledger \"C:/KOR.Drafter-work/*/doc-owed.jsonl\"",
             "timeout": 20,
             "statusMessage": "Is the plan doc behind the pipeline?"
           }
