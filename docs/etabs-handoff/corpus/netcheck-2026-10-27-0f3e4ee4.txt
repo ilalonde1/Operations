@@ -1,0 +1,173 @@
+30819-01: holds
+30838-01: TILT 0, HEADER 0, SELF 4
+    SELF   S2.40_1_LEVEL 34 PLAN.dxf: (11222, 47449)-(11222, 48193) mm  743.7 long, joined only to 1 near-copy of itself
+    SELF   S2.40_1_LEVEL 34 PLAN.dxf: (11221, 53470)-(11221, 54212) mm  741.7 long, joined only to 1 near-copy of itself
+    SELF   S2.40_1_LEVEL 34 PLAN.dxf: (11221, 53470)-(11221, 54212) mm  741.7 long, joined only to 1 near-copy of itself
+30849-01: TILT 5, HEADER 0, SELF 0
+    TILT   S2.01.1_1_LEVEL P2 FOUNDATION PLAN.dxf: (38831, 36267)-(38856, 34796) mm  90.99 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.01.2_1_LEVEL P2 SLAB ON GRADE PLAN.dxf: (38831, 36267)-(38856, 34796) mm  90.99 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.02_1_LEVEL P1 PLAN.dxf: (38831, 36267)-(38856, 34796) mm  90.99 deg, parallel to no wall it came from (nearest bearing 90 deg)
+30864-01: TILT 22, HEADER 6, SELF 0
+    TILT   S2.01_1_P4 PARKING RAFT SLAB PLAN PM.dxf: (19884, 43049)-(19854, 42700) mm  85.15 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.02_1_P4 PARKING PLAN FOUNDATION PM CONCRETE OUTLINE.dxf: (19089, 41326)-(19060, 40992) mm  85.15 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.03_1_P3 PARKING PLAN - CONCRETE OUTLINE PM.dxf: (19884, 43049)-(19854, 42700) mm  85.15 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    HEADER S2.09_1_LEVEL 1 CONCRETE OUTLINE PLAN.dxf: (20341, 41988)-(21438, 42016) mm  1.44 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.10_1_LEVEL 1 PLAN - SLAB REINFORCING PLAN PM.dxf: (20341, 41988)-(21438, 42016) mm  1.44 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.11_1_LEVEL 2 PLAN - CONCRETE OUTLINE PM.dxf: (20341, 41988)-(21438, 42016) mm  1.44 deg, on the axis of neither jamb (nearest bearing 0 deg)
+30933-01: TILT 0, HEADER 3, SELF 0
+    HEADER S2.05.1_1_LEVEL 01 PLAN -CONCRETE OUTLINE AND SHEAR RENFORCING PLAN.dxf: (49963, 44850)-(49979, 43351) mm  90.62 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.05.2_1_LEVEL 01 PLAN -SLAB REINFORCING.dxf: (49979, 44867)-(49999, 43359) mm  90.77 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.06_1_LEVEL 02 PLAN.dxf: (49963, 44850)-(49979, 43351) mm  90.62 deg, on the axis of neither jamb (nearest bearing 0 deg)
+30972-01: TILT 4, HEADER 0, SELF 0
+    TILT   S2.00_1_FOUNDATIONS PLAN.dxf: (48869, 40994)-(48894, 39116) mm  90.78 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.01_1_LEVEL P4 PLAN.dxf: (48869, 40994)-(48894, 39116) mm  90.78 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.03.1_1_LEVEL P2 PLAN - CONCRETE OUTLINE.dxf: (47151, 25596)-(46730, 25586) mm  1.38 deg, parallel to no wall it came from (nearest bearing 2.86 deg)
+30986-02: TILT 0, HEADER 1, SELF 0
+    HEADER S2.08_1_LEVEL 2 PLAN SHOWING LEVEL 3 FRAMING OVER.dxf: (36481, 22416)-(35408, 22428) mm  179.34 deg, on the axis of neither jamb (nearest bearing 0 deg)
+30989-01: TILT 3, HEADER 0, SELF 0
+    TILT   S2.19_1_LEVEL 22 E.M.R. MEZZ. PLAN CONCRETE OUTLINE.dxf: (71532, 7876)-(71507, 9847) mm  90.74 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.19_2_LEVEL 22 E.M.R. PLAN CONCRETE OUTLINE.dxf: (71532, 40551)-(71507, 42416) mm  90.78 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.20_1_LEVEL 22 E.M.R. & ROOF SLAB PM REINFORCING.dxf: (71532, 40551)-(71507, 42416) mm  90.78 deg, parallel to no wall it came from (nearest bearing 90 deg)
+30990-01: TILT 5, HEADER 0, SELF 0
+    TILT   S2.01.2.1_1_TOWER B - FOUNDATION PLAN PARKING LEVEL P3.dxf: (76327, 52360)-(77873, 52376) mm  0.59 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    TILT   S2.01.2.1_1_TOWER B - FOUNDATION PLAN PARKING LEVEL P3.dxf: (76327, 52360)-(77872, 52331) mm  178.93 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    TILT   S2.01.2.1_1_TOWER B - FOUNDATION PLAN PARKING LEVEL P3.dxf: (77872, 52331)-(78025, 52328) mm  178.93 deg, parallel to no wall it came from (nearest bearing 0 deg)
+30993-01: TILT 5, HEADER 6, SELF 0
+    TILT   S2.01.2_1_LEVEL P3 PLAN FOUNDATIONS PLAN SOUTH SIDE.dxf: (62139, 35420)-(60218, 35440) mm  179.39 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    HEADER S2.01.2_1_LEVEL P3 PLAN FOUNDATIONS PLAN SOUTH SIDE.dxf: (24719, 50889)-(24746, 50280) mm  92.48 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    TILT   S2.01.4_1_LEVEL P3 PLAN - RAFT SLAB REINFORCING SOUTH SIDE.dxf: (62139, 35420)-(60218, 35440) mm  179.39 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    HEADER S2.01.4_1_LEVEL P3 PLAN - RAFT SLAB REINFORCING SOUTH SIDE.dxf: (24719, 50889)-(24746, 50280) mm  92.48 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S2.01.6_1_LEVEL P3 PLAN - STIRRUP REINFORCING SOUTH SIDE.dxf: (24719, 50889)-(24746, 50280) mm  92.48 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    TILT   S2.02.0_1_LEVEL P2 KEY PLAN.dxf: (49772, 11997)-(49751, 12972) mm  91.19 deg, parallel to no wall it came from (nearest bearing 90 deg)
+31003-01: TILT 7, HEADER 2, SELF 0
+    TILT   S2.01.2_1_FOUNDATION BASEMENT PLAN.dxf: (39107, 54069)-(39095, 53408) mm  88.94 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.04_1_2ND FLOOR HOLD DOWN PLAN.dxf: (79062, 17071)-(79674, 17065) mm  179.49 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    TILT   S2.05_1_2ND FLOOR PLAN SHOWING 3RD FLOOR FRAMING OVER.dxf: (79062, 17071)-(79674, 17065) mm  179.49 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    HEADER S2.07_1_5TH FLOOR PLAN SHOWING 6TH FLOOR FRAMING OVER.dxf: (57978, 60168)-(56661, 60192) mm  178.94 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S2.09_1_6TH FLOOR PLAN SHOWING ROOF FRAMING OVER.dxf: (57978, 60168)-(56661, 60192) mm  178.94 deg, on the axis of neither jamb (nearest bearing 90 deg)
+31005-01: TILT 0, HEADER 0, SELF 4
+    SELF   S2.02.1_1_OUTLINE PLAN CHANGE LEVEL CONCRETE CONSTRUCTION.dxf: (44141, 60838)-(45035, 60838) mm  894.1 long, joined only to 1 near-copy of itself
+    SELF   S2.02.1_1_OUTLINE PLAN CHANGE LEVEL CONCRETE CONSTRUCTION.dxf: (44141, 60838)-(45035, 60838) mm  894.1 long, joined only to 1 near-copy of itself
+    SELF   S2.02.2_1_PLAN CHANGE REINFORCING LEVEL CONSTRUCTION.dxf: (44141, 60838)-(45035, 60838) mm  894.1 long, joined only to 1 near-copy of itself
+31006-01: TILT 0, HEADER 2, SELF 0
+    HEADER S2.01_1_PLAN PLAN - NORTH.dxf: (55083, 52100)-(53344, 52060) mm  1.34 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S3.01_1_1ST LEVEL PLAN SHOWING 2ND LEVEL FRAMING OVER - NORTH.dxf: (60415, 50266)-(61952, 50221) mm  178.33 deg, on the axis of neither jamb (nearest bearing 0 deg)
+31009-01: TILT 1, HEADER 0, SELF 0
+    TILT   S2.09.1_1_LEVEL 8 PLAN - CONCRETE.dxf: (35674, 42753)-(37141, 42779) mm  0.99 deg, parallel to no wall it came from (nearest bearing 0 deg)
+31016-01: holds
+31017-01: TILT 0, HEADER 3, SELF 0
+    HEADER S2.02_1_Foundation Plan Parking Level P1 Tower A.dxf: (53899, 34450)-(53849, 35872) mm  92.05 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S2.05_1_Level 1 Plan Tower A.dxf: (53899, 34450)-(53849, 35872) mm  92.05 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S2.08_1_Level 2 Plan Tower A.dxf: (53899, 34450)-(53849, 35872) mm  92.05 deg, on the axis of neither jamb (nearest bearing 90 deg)
+31029-01: holds
+31032-01: TILT 2, HEADER 11, SELF 0
+    TILT   S2.01_1_FOUNDATION PLAN PARKING LEVEL P2.dxf: (46387, 19315)-(46362, 18502) mm  88.21 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.01_1_FOUNDATION PLAN PARKING LEVEL P2.dxf: (46336, 17283)-(46362, 18502) mm  88.81 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    HEADER S2.02_1_PARKING LEVEL P1.dxf: (70737, 18181)-(70781, 20000) mm  88.59 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.06_1_LEVEL 2 SHOWING LEVEL 3 FRAMING OVER.dxf: (54584, 31391)-(54564, 32494) mm  91.06 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.07_1_LEVEL 3 SHOWING LEVEL 4 FRAMING OVER.dxf: (54584, 31391)-(54564, 32494) mm  91.06 deg, on the axis of neither jamb (nearest bearing 0 deg)
+31037-01: holds
+31039-01: TILT 2, HEADER 2, SELF 0
+    HEADER S2.01.1_1_PARKADE LEVEL 2 PLAN FOUNDATIONS PLAN - NORTH.dxf: (18138, 61885)-(19304, 61935) mm  2.49 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S2.02.1_1_PARKADE LEVEL 2 PLAN - S.O.G. PLAN - NORTH.dxf: (18138, 61885)-(19304, 61935) mm  2.49 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    TILT   S2.03.1R_1_PARKADE LEVEL 1 PLAN - SLAB REINFORCING - NORTH.dxf: (19304, 61901)-(21373, 61935) mm  0.94 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    TILT   S2.03.1_1_PARKADE LEVEL 1 PLAN - CONCRETE OUTLINE - NORTH.dxf: (19304, 61901)-(21373, 61935) mm  0.94 deg, parallel to no wall it came from (nearest bearing 0 deg)
+31048-01: TILT 22, HEADER 15, SELF 0
+    TILT   S3.01_1_LEVEL 3 PLAN SHOWING LEVEL 4 FRAMING OVER (NW QUADRANT).dxf: (26096, 30912)-(26120, 32867) mm  89.29 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S3.01_1_LEVEL 3 PLAN SHOWING LEVEL 4 FRAMING OVER (NW QUADRANT).dxf: (26144, 34531)-(26120, 32867) mm  89.16 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S3.01_1_LEVEL 3 PLAN SHOWING LEVEL 4 FRAMING OVER (NW QUADRANT).dxf: (10240, 35769)-(10255, 36636) mm  88.99 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    HEADER S3.02_1_LEVEL 3 PLAN SHOWING LEVEL 4 FRAMING OVER (SW QUADRANT).dxf: (61454, 34925)-(61404, 33692) mm  87.64 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S3.02_1_LEVEL 3 PLAN SHOWING LEVEL 4 FRAMING OVER (SW QUADRANT).dxf: (8071, 33463)-(8140, 35187) mm  87.71 deg, on the axis of neither jamb (nearest bearing 176 deg)
+    HEADER S3.04_1_LEVEL 4 PLAN SHOWING LEVEL 5 FRAMING OVER (SW QUADRANT).dxf: (61454, 34925)-(61404, 33692) mm  87.64 deg, on the axis of neither jamb (nearest bearing 90 deg)
+31053-01: holds
+31064-01: TILT 18, HEADER 5, SELF 0
+    TILT   S2.08_3_BUILDING 1 LEVEL 2 SHOWING LEVEL 3 FRAMING OVER.dxf: (46533, 18373)-(45009, 18347) mm  0.95 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    TILT   S2.08_3_BUILDING 1 LEVEL 2 SHOWING LEVEL 3 FRAMING OVER.dxf: (46533, 18373)-(48856, 18398) mm  0.63 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    HEADER S2.08_3_BUILDING 1 LEVEL 2 SHOWING LEVEL 3 FRAMING OVER.dxf: (70156, 26170)-(70194, 27364) mm  88.21 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S2.08_3_BUILDING 1 LEVEL 2 SHOWING LEVEL 3 FRAMING OVER.dxf: (61622, 26120)-(61659, 27364) mm  88.29 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    TILT   S2.09_3_BUILDING 2 LEVEL 2 SHOWING LEVEL 3 FRAMING OVER.dxf: (64701, 19824)-(66040, 19798) mm  178.91 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    HEADER S2.09_3_BUILDING 2 LEVEL 2 SHOWING LEVEL 3 FRAMING OVER.dxf: (45136, 22084)-(45187, 23158) mm  87.29 deg, on the axis of neither jamb (nearest bearing 90 deg)
+31065-01: holds
+31066-01: holds
+31076-01: TILT 1, HEADER 37, SELF 0
+    HEADER S2.04_1_LEVEL 1 PLAN SHOWING LEVEL 2 FRAMING OVER.dxf: (58566, 25376)-(58599, 26436) mm  88.17 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S2.04_1_LEVEL 1 PLAN SHOWING LEVEL 2 FRAMING OVER.dxf: (69889, 25729)-(69906, 26853) mm  89.14 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S2.04_1_LEVEL 1 PLAN SHOWING LEVEL 2 FRAMING OVER.dxf: (46465, 34256)-(46490, 35607) mm  88.92 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    TILT   S2.09_1_LEVEL 6 PLAN SHOWING ROOF FRAMING OVER.dxf: (52857, 33941)-(55761, 33911) mm  179.4 deg, parallel to no wall it came from (nearest bearing 0 deg)
+31082-01: TILT 5, HEADER 8, SELF 0
+    TILT   S1.21_2_LEVEL 1 DESIGN LOAD PLAN.dxf: (102173, 63850)-(104498, 63825) mm  179.4 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    TILT   S2.01_1_FOUNDATION PLAN PARKING LEVEL P1.dxf: (22543, 15846)-(24864, 15820) mm  179.36 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    TILT   S2.02.1_1_LEVEL 1 PLAN CONCRETE OUTLINE.dxf: (22543, 15846)-(24868, 15820) mm  179.37 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    HEADER S2.07_1_MID-RISE LEVEL 2 PLAN SHOWING LEVEL 3 FRAMING OVER.dxf: (31837, 12013)-(32870, 11997) mm  179.1 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.07_1_MID-RISE LEVEL 2 PLAN SHOWING LEVEL 3 FRAMING OVER.dxf: (48313, 12019)-(47100, 12003) mm  0.77 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.08_1_MID-RISE LEVEL 3 PLAN SHOWING LEVEL 4 FRAMING OVER.dxf: (31837, 12013)-(32870, 11997) mm  179.1 deg, on the axis of neither jamb (nearest bearing 0 deg)
+31083-01: TILT 0, HEADER 4, SELF 0
+    HEADER S2.04.1_1_MEZZANINE PLAN CANOPY PLAN (CONCRETE OUTLINE).dxf: (22742, 48547)-(24335, 48520) mm  179.05 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.04.1_1_MEZZANINE PLAN CANOPY PLAN (CONCRETE OUTLINE).dxf: (22742, 48547)-(22675, 46921) mm  87.64 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S2.04.2_1_MEZZANINE PLAN (SLAB REINFORCING).dxf: (22742, 48547)-(24335, 48520) mm  179.05 deg, on the axis of neither jamb (nearest bearing 0 deg)
+31085-01: holds
+31087-01: TILT 0, HEADER 0, SELF 8
+    SELF   S2.14.1_1_LEVEL 5 PLAN CONCRETE OUTLINE.dxf: (80114, 57187)-(80114, 57949) mm  762 long, joined only to 1 near-copy of itself
+    SELF   S2.14.1_1_LEVEL 5 PLAN CONCRETE OUTLINE.dxf: (80114, 57187)-(80114, 57949) mm  762 long, joined only to 1 near-copy of itself
+    SELF   S2.14.2_1_LEVEL 5 PLAN SLAB REINFORCING.dxf: (80114, 57187)-(80114, 57949) mm  762 long, joined only to 1 near-copy of itself
+31093-01: TILT 2, HEADER 3, SELF 0
+    TILT   S2.10_1_LEVEL 2 SHOWING LEVEL 3 FRAMING OVER WEST.dxf: (69716, 35531)-(72356, 35508) mm  179.49 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    HEADER S2.11_1_LEVEL 3 SHOWING LEVEL 4 FRAMING OVER EAST.dxf: (44182, 24718)-(44826, 24697) mm  178.19 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    TILT   S2.12_1_LEVEL 3 SHOWING LEVEL 4 FRAMING OVER WEST.dxf: (37937, 25468)-(37926, 26695) mm  90.51 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    HEADER S2.12_1_LEVEL 3 SHOWING LEVEL 4 FRAMING OVER WEST.dxf: (29058, 47752)-(30781, 47789) mm  1.24 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.13_1_LEVEL 4 SHOWING ROOF FRAMING OVER EAST.dxf: (20896, 24699)-(20181, 24718) mm  178.51 deg, on the axis of neither jamb (nearest bearing 0 deg)
+31098-01: TILT 2, HEADER 0, SELF 0
+    TILT   S2.01.1_1_LEVEL P3 PLAN.dxf: (65226, 62907)-(65252, 61655) mm  91.16 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.01.2_1_LEVEL P3 PLAN CORE FOOTING REINFORCING.dxf: (65230, 62907)-(65256, 61655) mm  91.16 deg, parallel to no wall it came from (nearest bearing 90 deg)
+31101-01: TILT 1, HEADER 0, SELF 0
+    TILT   S2.03_1_WOOD FRAMING - LEVEL 2 PLAN SHOWING LEVEL 3 FRAMING OVER.dxf: (17195, 75806)-(17171, 73404) mm  89.44 deg, parallel to no wall it came from (nearest bearing 90 deg)
+31108-01: holds
+31117-01: TILT 4, HEADER 1, SELF 0
+    TILT   S2.06_1_LEVEL 2 PLAN SHOWING LEVEL 3 FRAMING OVER.dxf: (51799, 33250)-(51769, 35182) mm  90.9 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.07_1_LEVEL 3 PLAN SHOWING LEVEL 4 FRAMING OVER.dxf: (51799, 33250)-(51769, 35182) mm  90.9 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    TILT   S2.08_1_LEVEL 4 PLAN SHOWING LEVEL 5 FRAMING OVER.dxf: (51799, 33250)-(51769, 35182) mm  90.9 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    HEADER S2.09_1_ROOF PLAN SHOWING UPPER ROOF FRAMING OVER.dxf: (62523, 37392)-(62460, 39143) mm  92.05 deg, on the axis of neither jamb (nearest bearing 90 deg)
+31129-01: holds
+31130-01: holds
+31143-01: TILT 0, HEADER 7, SELF 0
+    HEADER S2.04_1_LEVEL 1 PLAN SHOWING LEVEL 2 FRAMING OVER.dxf: (58904, 41664)-(60373, 41678) mm  0.55 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S2.04_1_LEVEL 1 PLAN SHOWING LEVEL 2 FRAMING OVER.dxf: (68864, 16181)-(67097, 16158) mm  0.72 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.05_1_LEVEL 2 PLAN SHOWING LEVEL 3 FRAMING OVER.dxf: (58904, 41664)-(60373, 41678) mm  0.55 deg, on the axis of neither jamb (nearest bearing 90 deg)
+31155-01: TILT 0, HEADER 19, SELF 0
+    HEADER S2.11_1_LEVEL 1 PLAN SHOWING LEVEL 2 FRAMING OVER NORTH.dxf: (26062, 36805)-(27253, 36740) mm  176.91 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.11_1_LEVEL 1 PLAN SHOWING LEVEL 2 FRAMING OVER NORTH.dxf: (62127, 17008)-(62167, 18274) mm  88.16 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S2.11_1_LEVEL 1 PLAN SHOWING LEVEL 2 FRAMING OVER NORTH.dxf: (62167, 39712)-(62130, 41141) mm  91.49 deg, on the axis of neither jamb (nearest bearing 90 deg)
+31158-01: holds
+31162-01: TILT 0, HEADER 7, SELF 0
+    HEADER S2.08_1_LEVEL 1 SHOWING LEVEL 2 FRAMING OVER.dxf: (37948, 36708)-(36844, 36744) mm  178.16 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.10_1_LEVEL 2 SHOWING LEVEL 3 FRAMING OVER.dxf: (37948, 36708)-(36844, 36744) mm  178.16 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    HEADER S2.10_1_LEVEL 2 SHOWING LEVEL 3 FRAMING OVER.dxf: (46252, 63219)-(44501, 63244) mm  179.17 deg, on the axis of neither jamb (nearest bearing 90 deg)
+31168-01: holds
+31170-01: holds
+31171-01: TILT 4, HEADER 2, SELF 0
+    TILT   S2.01.1_1_FOUNDATION PLAN.dxf: (65304, 30774)-(65247, 29434) mm  87.54 deg, parallel to no wall it came from (nearest bearing 86.89 deg)
+    TILT   S2.01.1_1_FOUNDATION PLAN.dxf: (65932, 42414)-(65941, 43117) mm  89.28 deg, parallel to no wall it came from (nearest bearing 90 deg)
+    HEADER S2.01.1_1_FOUNDATION PLAN.dxf: (51114, 46053)-(49394, 46110) mm  178.12 deg, on the axis of neither jamb (nearest bearing 0 deg)
+    TILT   S2.01.2_1_LEVEL 1 SLAB ON GRADE PLAN.dxf: (65304, 30769)-(65247, 29434) mm  87.52 deg, parallel to no wall it came from (nearest bearing 86.89 deg)
+    HEADER S2.01.2_1_LEVEL 1 SLAB ON GRADE PLAN.dxf: (51114, 46053)-(49394, 46110) mm  178.12 deg, on the axis of neither jamb (nearest bearing 0 deg)
+31174-01: holds
+31183-01: TILT 8, HEADER 2, SELF 0
+    TILT   S1.11_2_LEVEL 1 PLAN LOADING PLAN.dxf: (73682, 54428)-(75095, 54462) mm  1.37 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    TILT   S1.11_2_LEVEL 1 PLAN LOADING PLAN.dxf: (73682, 54428)-(75094, 54411) mm  179.32 deg, parallel to no wall it came from (nearest bearing 0 deg)
+    TILT   S1.11_2_LEVEL 1 PLAN LOADING PLAN.dxf: (34355, 56698)-(34220, 58519) mm  94.23 deg, parallel to no wall it came from (nearest bearing 95.01 deg)
+    HEADER S1.11_2_LEVEL 1 PLAN LOADING PLAN.dxf: (33896, 60846)-(33841, 61639) mm  93.96 deg, on the axis of neither jamb (nearest bearing 90 deg)
+    HEADER S2.01.1_1_PHASE 1A - PARKING LEVEL P2 PLAN FOUNDATIONS PLAN-ZONE A - CONCRETE OUTLINE.dxf: (67117, 49179)-(66520, 49054) mm  11.85 deg, on the axis of neither jamb (nearest bearing 11.09 deg)
+31185-01: TILT 0, HEADER 1, SELF 0
+    HEADER S2.08_3_BUILDING 5 ROOF SHOWING UPPER ROOF OVER.dxf: (58687, 57675)-(58697, 58285) mm  89.05 deg, on the axis of neither jamb (nearest bearing 90 deg)
+31224-01: holds
+40112-01: holds
+60061-03: holds
+70057-01: holds
+70060-01: holds
+70061-01: holds
+70063-01: holds
+70064-01: holds
+70065-01: holds
+80064-01: holds
+
+57 set(s), 1309 sheet(s): 32 set(s) and 142 sheet(s) break the network invariant - TILT 123, HEADER 147, SELF 16
