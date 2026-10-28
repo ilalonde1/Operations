@@ -99,6 +99,15 @@ LOOKED["commit message naming e2k_book.py"] = (
     [B("python tools/e2k_book.py m.e2k b.pdf"), R(r"C:\x\b.png"),
      B('git add tools/e2k_book.py && git commit -q -m "ETABS book: plate labels via e2k_book.py and drafted_set.py" -- tools/e2k_book.py && git push -q fs01 HEAD && git log --oneline -1 fs01/main')],
     "Committed - done.")
+# --- ALLOWED: a read-only grep/sed whose TEXT mentions model-render is not a drawing run (PDF Ingestor's wrong
+# refusal, 10-27 17:5x: `sed -n 15,19p TakeoffVerbs.cs; grep -n 'new("model-render"' ...`)
+LOOKED["a grep that mentions model-render"] = (
+    [B("sed -n 15,19p Kor.Operations.EngineeringTools.TakeoffCli/TakeoffVerbs.cs; grep -n 'new(\"model-render\"' Kor.Operations.EngineeringTools.TakeoffCli/TakeoffVerbs.cs")],
+    "Found it - done.")
+# --- REFUSED: the real model-render run still counts
+MISSES["a real takeoff model-render run"] = (
+    [B(r'"C:\KOR.Drafter-work\_tools\takeoff\0f3e4ee4\takeoff.exe" model-render model.e2k model.png')],
+    "Rendered - done.", "drawing")
 # --- ALLOWED: no completion claim at all
 NO_CLAIM = ([E(r"C:\x\tools\drafted_set.py")], "Working on the drawing changes next.")
 
