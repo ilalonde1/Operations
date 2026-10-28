@@ -48,6 +48,9 @@ The ledger's "cleared" is the writer's own word; `doc` is the check of that word
 
 Usage (exit 0 = current or owed within grace, 1 = STALE, 2 = cannot judge / refused):
   python check_plan_doc_current.py owed  [--ledger <work>\doc-owed.jsonl] [--grace-min 60] [--now ...]
+  python check_plan_doc_current.py owed --hook --ledger "C:\KOR.Drafter-work\*\doc-owed.jsonl"
+      (a Claude Code UserPromptSubmit hook: one "[plan doc, <job>] STALE ..." block per job that owes, nothing when
+      current or when no job has a ledger yet, and ALWAYS exit 0 -- a hook's exit 2 would drop the prompt)
   python check_plan_doc_current.py clear --doc-stamp "28 Oct, 10:15" --rev 49 --by "Virtual Drafter" [--ledger ...]
   python check_plan_doc_current.py doc   --doc-text plan-read.txt [--run-json <work>\run.json] [--now 2026-10-28T09:00]
   python check_plan_doc_current.py doc   --doc-stamp "28 Oct, 10:15" ...
@@ -55,7 +58,9 @@ Tests: python test_check_plan_doc_current.py (replays 27-28 Oct on frozen real d
 """
 import argparse
 import datetime as dt
+import glob
 import json
+import os
 import re
 import sys
 
@@ -172,7 +177,9 @@ def main(argv=None):
     src.add_argument("--doc-stamp", help='one stamp, e.g. "28 Oct, 10:15"')
     d.add_argument("--run-json", default=DEFAULT_RUN_JSON)
     o = sub.add_parser("owed", help="what the plan doc owes, from doc-owed.jsonl (no doc read)")
-    o.add_argument("--ledger", default=DEFAULT_LEDGER)
+    o.add_argument("--ledger", default=DEFAULT_LEDGER, help="a path or a glob, e.g. C:\\KOR.Drafter-work\\*\\doc-owed.jsonl")
+    o.add_argument("--hook", action="store_true",
+                   help="for a Claude Code hook: print only STALE / unreadable ledgers, silent when current, ALWAYS exit 0")
     c = sub.add_parser("clear", help="after writing the doc: record that it covers everything up to its stamp")
     c.add_argument("--ledger", default=DEFAULT_LEDGER)
     c.add_argument("--doc-stamp", required=True, help='the stamp just written in the doc, e.g. "28 Oct, 10:15"')
@@ -197,14 +204,26 @@ def main(argv=None):
         return 0
 
     if a.cmd == "owed":
-        try:
-            ms, clears, bad = read_ledger(a.ledger)
-        except OSError as e:
-            print(f"CANNOT JUDGE: ledger unreadable ({a.ledger}): {e}")
-            return 2
-        code, lines = owed(ms, clears, now, a.grace_min, bad)
-        print("\n".join(lines))
-        return code
+        # --ledger may be a glob (every job's work folder); each ledger is judged on its own, named by its folder.
+        paths = sorted(glob.glob(a.ledger)) if glob.has_magic(a.ledger) else [a.ledger]
+        if a.hook and not paths:
+            return 0   # no job has a ledger yet: nothing is owed by anyone, say nothing
+        worst, out = 0, []
+        for p in paths:
+            try:
+                ms, clears, bad = read_ledger(p)
+                code, lines = owed(ms, clears, now, a.grace_min, bad)
+            except OSError as e:
+                code, lines = 2, [f"CANNOT JUDGE: ledger unreadable ({p}): {e}"]
+            if a.hook and code == 0:
+                continue   # a hook speaks only when the doc is STALE or the ledger cannot be read
+            job = os.path.basename(os.path.dirname(os.path.abspath(p)))
+            out += [f"[plan doc, {job}] {lines[0]}"] + lines[1:] if len(paths) > 1 or a.hook else lines
+            worst = max(worst, code)
+        if out:
+            print("\n".join(out))
+        # A Claude Code hook that exits 2 BLOCKS (on UserPromptSubmit it drops the prompt): a hook only ever prints.
+        return 0 if a.hook else worst
 
     text = a.doc_stamp if a.doc_stamp else open(a.doc_text, encoding="utf-8-sig").read()
     try:

@@ -149,6 +149,34 @@ class Ledger(unittest.TestCase):
                                       "--now", "2026-10-28T10:00")[0], 2)
         self.assertEqual(self.run_cli("clear", "--doc-stamp", "this morning", "--rev", "1", "--by", "t")[0], 2)
 
+    def hook(self, ledger_glob, now):
+        p = subprocess.run([sys.executable, os.path.join(HERE, "check_plan_doc_current.py"), "owed", "--hook",
+                            "--ledger", ledger_glob, "--now", now], capture_output=True, text=True)
+        return p.returncode, p.stdout
+
+    def test_hook_always_exits_0_and_speaks_only_when_stale(self):
+        self.clear_night()
+        job = os.path.basename(self.dir)
+        code, out = self.hook(self.path, "2026-10-28T01:30")          # owed, within grace
+        self.assertEqual((code, out), (0, ""))
+        code, out = self.hook(self.path, "2026-10-28T09:00")          # STALE
+        self.assertEqual(code, 0, out)
+        self.assertTrue(out.startswith(f"[plan doc, {job}] STALE: plan doc owes 3 milestone(s), oldest 28 Oct 01:15"), out)
+        self.run_cli("clear", "--doc-stamp", "28 Oct, 10:15", "--rev", "49", "--by", "VD", "--now", "2026-10-28T10:16")
+        self.assertEqual(self.hook(self.path, "2026-10-28T10:20"), (0, ""))  # cleared
+
+    def test_hook_over_a_glob_names_each_job_and_is_silent_with_no_ledger(self):
+        root = tempfile.mkdtemp()
+        self.assertEqual(self.hook(os.path.join(root, "*", "doc-owed.jsonl"), "2026-10-28T09:00"), (0, ""))
+        for job in ("31180-01-halifax", "99999-01-other"):
+            os.makedirs(os.path.join(root, job))
+            with open(self.path, encoding="utf-8") as src, open(os.path.join(root, job, "doc-owed.jsonl"), "w", encoding="utf-8") as dst:
+                dst.write(src.read())
+        code, out = self.hook(os.path.join(root, "*", "doc-owed.jsonl"), "2026-10-28T09:00")
+        self.assertEqual(code, 0)
+        self.assertIn("[plan doc, 31180-01-halifax] STALE", out)
+        self.assertIn("[plan doc, 99999-01-other] STALE", out)
+
     def test_an_unreadable_line_is_reported_not_skipped(self):
         with open(self.path, "a", encoding="utf-8") as f:
             f.write("{not json\n")
