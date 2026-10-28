@@ -1,0 +1,13 @@
+enumerated rows: 13371; relevant after gate: 3191; dropped: 10180
+  dropped by reason: no contract token and not in a contracts folder=8267, over 25 MB=837, not a document type=635, contracts folder but a drawing/photo sub-folder=254, document over 12 MB without an agreement token (renderings/proposal graphics)=116, email over 8 MB (drawings attached, not a contract)=58, photo/sheet name=13
+  relevant by area: projects=2904, opportunities=287
+  relevant by ext: .eml=1274, .pdf=1250, .msg=467, .docx=158, .doc=42
+  with a job number: 2985; job matched in Deltek: 2938
+kind counts (a file can carry several): email=1741, proposal=1576, agreement?=924, agreement=558, executed=43, markup=42, insurance=1
+jobs/pursuits keyed: 639
+  with an agreement-class file: 494
+  with a negotiation trail (agreement + markup/executed/email): 162
+  trail AND newest file >= 2024-10-01: 84
+  relevant files by year: 2000=1, 2001=3, 2003=4, 2004=3, 2005=1, 2006=5, 2007=5, 2008=2, 2009=6, 2010=5, 2012=1, 2013=3, 2015=1, 2016=6, 2017=20, 2018=48, 2019=125, 2020=211, 2021=222, 2022=381, 2023=475, 2024=613, 2025=657, 2026=393
+pull list: 1919 files, 2672 MB
+rule: relevant = doc type, <=25MB, (contract token in name OR in a contracts folder); trail = agreement-class AND (markup|executed|email); pull = all relevant files of trail jobs + relevant agreement/markup/executed files >= 2024-10-01 + templates

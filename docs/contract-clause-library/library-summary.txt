@@ -1,0 +1,8 @@
+documents (parts): 1958; by role: other=889, email=662, proposal=270, draft=108, executed=25, markup=4
+  executed by text signal only (no 'signed/executed' in the name): 5
+  KOR paper (proposals): 763; client paper: 1195
+  jobs with 2+ client-paper versions on file: 25 of 65
+operative clause rows: 5175 across 126 jobs; topics: 18
+jobs with an EXECUTED clause, by topic: assignment_subconsultants=14, confidentiality=6, consequential_damages=5, dispute=8, field_review=12, indemnity=7, insurance=15, intellectual_property=7, lien=2, limitation_of_liability=3, limitation_period=1, payment=15, permits_approvals=16, schedule_delay=4, standard_of_care=6, suspension=6, termination=9, warranty_reperform=7
+jobs with a LATEST-ON-FILE clause, by topic: assignment_subconsultants=50, confidentiality=45, consequential_damages=28, dispute=52, field_review=28, indemnity=47, insurance=47, intellectual_property=44, lien=18, limitation_of_liability=11, limitation_period=1, payment=56, permits_approvals=60, schedule_delay=34, standard_of_care=31, suspension=34, termination=52, warranty_reperform=42
+rules: role = name kind (executed>markup>proposal>draft); 'executed' also when the text carries a DocuSign/Adobe Sign marker; Latest = last client-paper version by file date within the job; clause rows exclude email bodies, definitions, <15 or >2500 words
