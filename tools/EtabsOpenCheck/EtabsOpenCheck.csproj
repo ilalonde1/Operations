@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Kor.EtabsOpenCheck</RootNamespace>
+    <AssemblyName>EtabsOpenCheck</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- ETABS 23's API assembly (2.16.0.0, copied from KOR-210 2026-10-28) for COMPILING against only. Private=false, as
+         in tools/EtabsExportE2k: ETABS refuses a client that carries its own copy; Program.cs loads the one beside the
+         ETABS.exe it starts. -->
+    <Reference Include="ETABSv1">
+      <HintPath>lib\ETABSv1.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>
