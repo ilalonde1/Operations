@@ -68,6 +68,15 @@ function Query([string]$sql) {
     try { $c = $cn.CreateCommand(); $c.CommandTimeout = 60; $c.CommandText = $sql; $c.ExecuteScalar() } finally { $cn.Dispose() }
 }
 
+# 0. the drawings are reachable BY THIS ACCOUNT. ModelCoverageTests returns - PASSES - when LiveProjects.ShareReachable is false
+# (ModelCoverageTests.cs: "if (built is null) return;"), so a run that cannot list the root prints an all-green count that
+# measured nothing. Same root the tests use: PublishDiscovery.ProjectsRoot = KOR_PROJECTS_ROOT, else the share.
+$root = if ($env:KOR_PROJECTS_ROOT) { $env:KOR_PROJECTS_ROOT } else { '\\Kor-fs01\Projects\Projects' }
+if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+    throw "step 0 failed: $root cannot be listed as $([Security.Principal.WindowsIdentity]::GetCurrent().Name) - every ModelCoverage test would pass without building anything"
+}
+"0. drawings root reachable as $([Security.Principal.WindowsIdentity]::GetCurrent().Name): $root"
+
 # 1. reads
 $who = Query "SELECT SUSER_SNAME()"
 $rules = Query "SELECT COUNT(*) FROM analysis.vw_RuleSetting"
