@@ -38,9 +38,11 @@ if not (server and database and user and pwd):
     print("connection string is missing server/database/uid/pwd", file=sys.stderr)
     sys.exit(2)
 
-cmd = ["sqlcmd", "-S", server, "-d", database, "-U", user, "-P", pwd,
+# the password goes to sqlcmd through SQLCMDPASSWORD, never -P: a command line is readable by any process lister
+# (NetworkOps' wedge check showed it, 2026-10-28 01:57)
+cmd = ["sqlcmd", "-S", server, "-d", database, "-U", user,
        "-b", "-W", "-s", "|", "-w", "400",
        "-l", "15", "-t", "120"]   # login 15 s, query 120 s: a VPN stall is an error, never a hang
 cmd += sys.argv[1:]
-r = subprocess.run(cmd)
+r = subprocess.run(cmd, env=dict(os.environ, SQLCMDPASSWORD=pwd))
 sys.exit(r.returncode)
