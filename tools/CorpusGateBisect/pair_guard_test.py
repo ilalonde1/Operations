@@ -97,6 +97,26 @@ for name, before, after, claims, want_refused, because in CASES:
         if line.startswith("REFUSED") or line.startswith("dropped:"):
             print("           " + line)
 
+# ---- refusal 3, and its measured blind spot. gw-narrow was mid-run at 11:49 and gw-fix2m was still
+# judging PAST its end-of-run summary - so one is caught and the other is not, and both are asserted.
+# A live folder cannot be asserted forever: a case whose folder has moved on says so instead of failing.
+skipped = 0
+NARROW = os.path.join(E4, "gw-narrow")
+for label, work, want_caught in (("gw-narrow, mid-run", NARROW, True),
+                                 ("gw-b52, finished 11:12", B52W, False),
+                                 ("gw-fix2m, past its summary and still judging (BLIND SPOT)", FIX2M, False)):
+    log = os.path.join(work, "gate.log")
+    lines = io.open(log, encoding="utf-8", errors="replace").read().splitlines() if os.path.isfile(log) else []
+    progress = sum(1 for l in lines if l.strip().startswith("["))      # read without the guard's own rule
+    caught = pg.still_running(work) is not None
+    if want_caught and not caught and progress:
+        skipped += 1
+        print("  SKIP " + label + f": that run has since reached its summary ({len(lines)} lines) - not testable now")
+        continue
+    ok = caught == want_caught
+    passed += ok
+    print(("  OK   " if ok else "  FAIL ") + f"{label}: still_running={caught} ({len(lines)} log lines, {progress} progress lines)")
+
 # the refusal has to name BOTH values: "mismatch" costs the next person a rebuild (board 76)
 _, lines = run(FIX2M, B52W, {"before": (D435, "d4352fc0"), "after": (B52BIN, "77b56e29")})
 both = any("b94b8d33" in l and "d4352fc0" in l for l in lines)
@@ -108,6 +128,7 @@ dropped = sorted(l.split("dropped: ")[1].split(" (")[0] for l in lines if l.star
 print(f"         like-for-like dropped by name: {dropped}")
 
 print()
-print("self-test: {0} of {1} decisions, {2} of {3} detections, both-values {4}".format(
-    passed, len(CASES), detect, len(DETECT), "yes" if both else "NO"))
-sys.exit(0 if (passed == len(CASES) and detect == len(DETECT) and both) else 1)
+WANT = len(CASES) + 3 - skipped
+print("self-test: {0} of {1} decisions ({2} not runnable now), {3} of {4} detections, both-values {5}".format(
+    passed, WANT, skipped, detect, len(DETECT), "yes" if both else "NO"))
+sys.exit(0 if (passed == WANT and detect == len(DETECT) and both) else 1)

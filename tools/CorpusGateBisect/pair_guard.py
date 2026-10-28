@@ -22,7 +22,11 @@ THE THREE REFUSALS
   2. PROJECTS ROOT (whole run). Both sides must name the same root: run-root.txt in the work dir, or
      failing that the job count on gate.log's census line, which is an INFERENCE and says so. Neither
      present on a side = refused, not guessed.
-  3. VIEWS (per job). A job whose <job>/dxf/ file lists differ between the sides is DROPPED by name with
+  3. A RUN STILL GOING (whole run). A gate.log that has not reached its end-of-run summary is a run
+     still in flight, and its work dir is a moving target: 80064-01's view list changed under this
+     guard between two reads four minutes apart. A MISSING gate.log is not evidence either way and is
+     not treated as one.
+  4. VIEWS (per job). A job whose <job>/dxf/ file lists differ between the sides is DROPPED by name with
      its counts, and the rest of the run carries on.
 
 A refusal RAISES (SystemExit) rather than returning a flag, so a caller cannot carry on past one by
@@ -37,6 +41,12 @@ models themselves, or a bin folder holding a Core.dll that is not the one the ex
 SAME-CLASS FAULT IT WOULD MISS: two runs of the SAME bin and root where one read a job from an older
 drawing set that happens to carry the same file names - the gate's own "re-read from older drawings"
 case. The names match, so this passes it.
+⚠ AND THE KNOWN BLIND SPOT IN REFUSAL 3, MEASURED NOT ASSUMED: a run that has WRITTEN its end-of-run
+summary and is still judging afterwards reads as finished here. On 2026-10-28 gw-b52 (finished 11:12)
+and gw-fix2m (still running at 11:49) both carried the summary and both its 8 LOST lines; only
+gw-narrow, mid-run, lacked it. So this catches a run stopped in its middle and not one in its tail.
+The only thing that closes it is the run recording its own exit - corpus-gate writing a done marker
+beside run-root.txt, which is the PDF Ingestor's to add.
 
 Exit 0 when the pair is comparable (any dropped jobs are listed), 1 on a refusal, 2 on bad arguments.
 """
@@ -45,6 +55,9 @@ import io, os, re, sys
 VERSION = re.compile(rb"\d+\.\d+\.\d+\+[0-9a-fA-F]{40}")
 CORE = "Kor.Operations.EngineeringTools.Core.dll"
 CENSUS = re.compile(r"census[^\n]*?\((\d+) job folders", re.I)
+# What a gate.log says when the run reached its end: the ledger verdict, or the bisect hint printed
+# under it. Both are present in a finished log and absent from one stopped in its middle.
+END_OF_RUN = re.compile(r"--bisect |no set lost", re.I)
 
 
 class Refused(SystemExit):
@@ -93,6 +106,20 @@ def recorded_root(work):
     return None, "nothing recorded"
 
 
+def still_running(work):
+    """A reason the run behind this work dir has not finished, or None. Evidence of incompleteness
+    only: a gate.log short of its end-of-run summary. A work dir with NO gate.log says nothing either
+    way and is not called unfinished for it - absence of evidence is not evidence."""
+    g = os.path.join(work, "gate.log")
+    if not os.path.isfile(g):
+        return None
+    text = io.open(g, encoding="utf-8", errors="replace").read()
+    if END_OF_RUN.search(text):
+        return None
+    return (f"{os.path.basename(work)}: gate.log has {text.count(chr(10)) + 1} line(s) and no "
+            f"end-of-run summary - that run is still going, so its work dir is a moving target")
+
+
 def views(work, job):
     d = os.path.join(work, job, "dxf")
     return sorted(os.listdir(d)) if os.path.isdir(d) else []
@@ -116,6 +143,9 @@ def check_pair(before_work, after_work, claims=None, raise_on_refuse=True, log=p
 
     roots = {}
     for side, work in (("before", before_work), ("after", after_work)):
+        going = still_running(work)
+        if going:
+            refusals.append(f"{side} is still running - {going}")
         root, how = recorded_root(work)
         roots[side] = root
         if root is None:
