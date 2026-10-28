@@ -1,0 +1,15 @@
+stickfile : 31117-01 2026-03-19 2726-2730 W16th Ave Stickfile - SSI#5.pdf
+job       : 31117-01
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\s150\off
+rules     : KorStandards
+
+scale     : not given; 96 assumed (1/8" = 1'-0"). Pass --scale if the set draws at another.
+
+pages read: 27   plan sheets: 9   views written: 9
+storeys   : 7   with a floor: 7
+members   : 416 walls   101 columns   9 floors
+
+  model   : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s150/off\out.e2k
+  report  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s150/off\report.txt
+  levels  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s150/off\levels.csv
+  sheets  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s150/off\sheets.csv

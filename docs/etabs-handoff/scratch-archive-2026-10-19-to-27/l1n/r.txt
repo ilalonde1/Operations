@@ -1,0 +1,117 @@
+Model written : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\l1n\out.e2k
+Sheets read   : 1   placed: 1
+Storeys built : 25
+Walls         : 56
+Columns       : 47
+Floors        : 3
+Joints        : 263
+Sections made : KOR-W152.4, KOR-W203.2, KOR-W292.1, KOR-W304.8, KOR-W495.3, KOR-W508, KOR-W596.9, KOR-W635, KOR-S200, KOR-S304.8, KOR-C254x609.6, KOR-C254x635, KOR-C279.4x635, KOR-C304.8x304.8, KOR-C304.8x736.6, KOR-C304.8x762, KOR-C355.6x863.6, KOR-C406.4x762, KOR-C406.4x863.6, KOR-C406.4x889, KOR-C406.4x914.4, KOR-C457.2x457.2, KOR-C482.6x508, KOR-C508x508, KOR-D508
+Questions for you: 1
+Offset applied: 0, 0 in
+
+Sheet                                                  Lvls  Storeys  Walls  Cols  Slabs
+S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND S...     1        1     56    47      3
+
+Not placed:
+  - rules: all 53 read from KorStandards.
+  -    dxf.already-modelled-tolerance = 6 in [replay-verified, ETABS/e2k]
+  -    dxf.assign-diaphragms = 0 bool [engineer-confirmed, andrean]
+  -    dxf.assign-pier-labels = 1 bool [engineer-confirmed, andrean]
+  -    dxf.bridge-tolerance = 6 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.connect-walls = 1 bool [engineer-confirmed, DXF-to-ETABS/e2k]
+  -    dxf.dash-join-gap = 14 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.dash-offset-tolerance = 0.15 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.default-slab-thickness = 12 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.donor-plate-likeness-margin = 0.98 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.doubled-edge-coverage = 0.5 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.doubled-edge-parallel-ratio = 2 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.drawn-ring-beats-fill-fraction = 0.6 fraction [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.extend-limit = 0 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.flood-fill-bridge = 36 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.floor-from-perimeter-wall = 1 bool [replay-verified, DXF-to-ETABS]
+  -    dxf.include-floors = 1 bool [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.join-tolerance = 0.05 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.joint-merge-tolerance = 0.05 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-column-aspect = 3 ratio [replay-verified, ETABS/e2k]
+  -    dxf.max-column-size = 132 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-opening-span = 72 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-pier-thickness = 48 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-wall-thickness = 60 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-column-size = 6 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-floor-coverage = 0.6 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-opening-span = 24 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-panel-aspect = 1.2 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-panel-overlap = 12 in [replay-verified, Revit/dxf]
+  -    dxf.min-plate-area = 57600 sqin [replay-verified, Revit/dxf]
+  -    dxf.min-slab-area = 7200 sqin [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-wall-aspect = 2 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-wall-length = 48 in [engineer-confirmed, codex-audit]
+  -    dxf.min-wall-thickness = 6 in [replay-verified, DXF-to-ETABS]
+  -    dxf.nested-ring-tile-share = 0.15 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.opening-height = 88 in [replay-verified, ETABS/e2k]
+  -    dxf.outline-self-touch-tolerance = 0.05 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.pier-fill-ratio = 0.6 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.pour-strip-aspect = 10 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.pour-strip-min-length-mm = 10000 mm [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.recovered-outline-tolerance = 3 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.ring-on-plate-edge-fraction = 0.5 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.same-ground-area-tolerance = 0.02 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.same-ground-centre-tolerance = 24 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.self-touch-report-gap = 2 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.skip-members-already-modelled = 1 bool [engineer-confirmed, DXF-to-ETABS/e2k]
+  -    dxf.slab-callout-max-thickness = 120 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.slab-callout-min-thickness = 4 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.slab-chain-join-fraction = 0.1 fraction [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.spandrel-depth-ceiling = 60 in [engineer-confirmed, ETABS/e2k]
+  -    dxf.spandrel-depth-floor = 18 in [engineer-confirmed, ETABS/e2k]
+  -    dxf.storeys-at-one-level-gap = 12 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.unusual-wall-thickness = 24 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.wall-bridge-tolerance = 12 in [replay-verified, DXF-to-ETABS/e2k]
+  - 1 sheet(s) whose name carries a non-structural word were read anyway because the name says what the sheet is: S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf [CONCRETE OUTLINE]. Governed by dxf.structural-plan-words.
+  - Facts are banked for job(s) 31168 (which storeys to join on a match line, how many slabs a storey carries) and this run is job 'unknown — no five-digit job number in the stick file, DXF folder, reference or output names; give --job': none of them applies.
+  - 1 of 1 sheet(s) set on this model's grid by the names of their axes, each in its own frame: S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: the set's reference plan, in its own frame (no model grid to set it on; its 17 named axes are the grid)
+  - 0 ring(s) inside another sheet's floor are not second floors; 7 wall(s) and 0 column(s) stand beyond every plate of their storey and were left in place. Each is listed below.
+  - L1: a 454 sq ft plate stands beyond the storey's 19,352 sq ft floor - another building, a ramp, a canopy, a podium edge, or a floor read twice; left as read for the engineer, and a later gate may still refuse it and say so
+  - L1: a 433 sq ft plate stands beyond the storey's 19,352 sq ft floor - another building, a ramp, a canopy, a podium edge, or a floor read twice; left as read for the engineer, and a later gate may still refuse it and say so
+  - L1: 7 of 56 wall(s) and 0 of 48 column(s) stand beyond every plate read for the storey - strays, or a floor the tool did not read whole; nothing removed. wall at (79,364, 41,283) on S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf; wall at (79,813, 41,283) on S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf; wall at (79,688, 41,434) on S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf; wall at (79,688, 37,457) on S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf; wall at (79,688, 33,479) on S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf; wall at (79,813, 33,630) on S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf; ...
+  - This job's own walls, measured off its drawings: median 300.6", 9 in 10 at or under 601.1", thickest 630.8" (from 56 panels). Columns: median 626.5", thickest 901.7".
+  - 1 wall(s) are thicker than 9 in 10 of the walls on this job's own drawings (over 601.1"): 630.8" at (22547,55391). Measured against two engineers' models, the drawings' own upper tenth is where the tool starts reading something other than a wall — a face paired across a void, or an outline that is not one member. Worth a look before the model is relied on.
+  - The model's grid is the drawings' own: 15 named axis(es) written to GRIDS.
+
+About the model as a whole:
+  - Slab thickness read from the stick file PDF by sheet title: L1: 8". These are FIELD slab thicknesses for each matched sheet only. Local thickenings, drop bands and transfer bands on the same drawings are not modelled here, so a storey reported as 14" may still carry 30" or 36" bands the model does not have.
+  - Slab thickness still ASSUMED: 2 of 3 floor plate(s) use the engineer's default 12" because no thickness call-out is printed inside them on the drawing. Storeys affected: L1.
+  - 1 member(s) were drawn on a sheet in a place another sheet had already filled, and were not added a second time — L2 (1). Where a storey shows more members drawn than modelled, this is why.
+  - 14 generated column section(s) are wider than 48" on both faces (254x610, 254x635, 279x635, 305x305, 305x737, 305x762, 356x864, 406x762, 406x864, 406x889, 406x914, 457x457, 483x508, 508x508). A column that wide is more likely a wall or a pier; worth a look at those locations.
+  - KOR_V_COL -> columns (294 segments)
+  - KOR_V-WALL -> walls (224 segments)
+  - KOR_C_SLABEDG -> slab edges (128 segments)
+  - BEAM carries 8,446 segments and names a member this tool does not model. Nothing from it is in the model — those members are yours.
+  - BEAM-MARKUP carries 318 segments and names a member this tool does not model. Nothing from it is in the model — those members are yours.
+  - read and ignored, on no structural layer: 8,782 segments across 3 layer(s) — BEAM (8,446), BEAM-MARKUP (318), GRID (18)
+  - opening height: 88, the standing value — the reference model has only 0 spandrel(s) to measure, so the standing value stands.
+  - column slenderness: 3, the standing value — the reference model uses only 0 rectangular concrete column section(s), which is too few to read a limit from.
+  - 2 floor plate(s) have an outline that closes through itself: L1 — two edges 0.4 ft apart at (6048, 2778) ft, from S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf, L1 — two edges 0.5 ft apart at (402, 516) ft, from S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf. A floor is a ring; where the ring meets itself the outline has closed through its own edge, and ETABS will mesh it badly or refuse it. Two wings joined at a point are usually two plates — which two is the drawing's answer, so this is reported and not repaired.
+  - 1 storey(s) carry walls or columns and no floor plate at all, so they have no diaphragm: L2. Nothing was borrowed or invented for them; add a plate if these storeys need one.
+  - 1 storey(s) carry a floor plate with no wall or column beneath it: L1. The plan placed there draws no vertical structure, so either the structure stops below that level or another sheet holds it.
+  - THIS SET'S DRAWINGS NAME 25 STOREYS AND ONLY 1 OF THEM RECEIVED A FLOOR, so what shipped is a fraction of the building and should be read as one. The storeys with no floor plate at all: UPPER ROOF, ROOF, L20, L19, L18, L17, L16, L15, L14, L13, L12, L11, L10, L9, L8, L7, L6, L5, L4, L3, L2, P1, P2, P3. This is not a count of drawings that failed — the sheets were read and their structure is in the file; what could not be established is which storey each of them draws.
+
+Flags (18) — outlines that needed judgement:
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (53 sq ft + 53 sq ft).
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: 1 edge(s) were drawn more than once on the same layer family and were read once.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: slab edges: an outline of 53 sq ft the drawing draws closed, which re-traced from its segments would not close, was taken as drawn.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: walls: 1 outline(s) would not close (148 units of edge ignored).
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: an opening of 146 sq ft cut from a floor of 19,352 sq ft, its edge 17723 in inside — check it is a hole and not the inner face of the edge.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: an opening of 130 sq ft cut from a floor of 19,352 sq ft, its edge 17896 in inside — check it is a hole and not the inner face of the edge.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: an opening of 53 sq ft cut from a floor of 19,352 sq ft, its edge 18412 in inside — check it is a hole and not the inner face of the edge.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: slab edges: a ring of 53 sq ft inside the 53 sq ft opening already cut was NOT cut again — it is drawn inside that hole (a cab in a shaft, a flight in a stair), not a second one.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: an opening of 53 sq ft cut from a floor of 19,352 sq ft, its edge 18413 in inside — check it is a hole and not the inner face of the edge.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: an opening of 31 sq ft cut from a floor of 433 sq ft, its edge 1669 in inside — check it is a hole and not the inner face of the edge.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: an opening of 31 sq ft cut from a floor of 19,352 sq ft, its edge 18602 in inside — check it is a hole and not the inner face of the edge.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: an opening of 24 sq ft cut from a floor of 19,352 sq ft, its edge 18723 in inside — check it is a hole and not the inner face of the edge.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: an opening of 4 sq ft cut from a floor of 19,352 sq ft, its edge 19053 in inside — check it is a hole and not the inner face of the edge.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: an opening of 3 sq ft cut from a floor of 19,352 sq ft, its edge 19081 in inside — check it is a hole and not the inner face of the edge.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: an opening of 2 sq ft cut from a floor of 19,352 sq ft, its edge 19169 in inside — check it is a hole and not the inner face of the edge.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: a floor plate of 19,352 sq ft has 4 different thickness call-outs inside it and no separate outline to tell them apart (11.81", 19.69", 23.62", 35.43"), so its thickness was NOT read from the drawing. Draw the thicker region as its own outline and it will be. Nearest call-out by share of the plate: 35.43" 46%, 11.81" 19%, 23.62" 19%, 19.69" 15%.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: KOR_C_SLABEDG: a floor plate of 433 sq ft is 7.87" thick — read from "200 SLAB", printed inside it. Not assumed, and not taken from a stick file.
+  - S2.04.1.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE AND SHEAR REINFORCING - NORTH TOWER.dxf: 8 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.

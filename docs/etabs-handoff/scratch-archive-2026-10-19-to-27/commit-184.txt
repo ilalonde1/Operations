@@ -1,0 +1,39 @@
+Step 184: a floor the set frames in wood carries no concrete plate - from the second link of a chain, and a wood floor holds its members up
+
+21 of the corpus gate's 57 sets draw "LEVEL N SHOWING LEVEL N+1 FRAMING OVER" sheets, and we plated their wood storeys
+in concrete at the default 12" - 1,000-57,000 sq ft a storey - where 19 of the 21 engineers' models stop at the concrete.
+The gate could not see it (it judges only storeys both models have). Corpus reach: 120 of 279 sets, 20 of 48 with a model.
+
+THE RULE (WoodFramedFloors): a framing-over sheet's own floor is wood when the sheet framing it is itself the plan of a
+framed floor - the second link of a chain and up. Its walls and columns stand; its plates and openings are not written.
+Buildings by title tag. Rule row dxf.wood-framed-floor-carries-no-concrete (KOR.Drafter migration 110, applied by
+operations-ee; required). Knob KOR_STEP184_OFF.
+
+THE PREDICTION WAS WRONG TWICE, AND THE ARTIFACT SAID SO (24 sets built on and off each time):
+1. Every framed floor: 5 LOST an L2 the engineer plates (31064, 31066, 31082, 31162, 31185; 3,976-25,300 sq ft). The
+   chain's first link frames the CONCRETE podium as often as wood. Stud walls on the framing sheet, plate thickness and
+   level were measured and do not separate them. Narrowed to the second link: 69 of 69 storeys right, 0 lost; 16 named
+   in the prediction doc are left as read (the first wood floor above a podium).
+2. Members then moved on 13 of 21 sets. Split own vs extended (new tools/CorpusGateBisect/own_vs_extended.py): drawn
+   members changed on 0 storeys; every change was a stack carried down by E2kDocument's "A MEMBER DOES NOT END IN
+   MID-AIR", which reads plates to decide what hangs. Fixed: a member on a wood floor is not hanging
+   (ModelDoubleHeightMembersOnBothFloors(woodFloored)); and a wood floor is not a LANDING - taken as one, it carried
+   31082's roof wall KW228 through L5 onto the wood L4 (replay 3).
+
+FINAL (replay 4): plates 69 of 69 storeys right, 0 lost; own members changed on 0 storeys of 24 sets; extended 173 lost
+(each an invention on a fake plate - 31117's were the legend box and corridor fills, LOOKED at off and on), 0 gained.
+6 of 6 banked sets byte-identical on and off; Halifax raw e2k 1898f6b4c5a8ad26 identical.
+
+Tests: AFloorTheSetFramesInWoodCarriesNoConcreteTests (4; red with the chain rule off - all 4 - and with buildings merged
+- its own), AWoodFloorHoldsAMemberUpThoughItIsNoPlate and AWoodFloorIsNotALandingForAMemberCarriedDown (each red on its own
+half). Core fast 1,685 of 1,685 on this commit alone. Full suite 1,808 of 1,813: the 4 failures are NOT this step -
+an NBC clause aged past 30 days (time-triggered); 31138's live baseline (walls 228 vs 204+-21) fails identically with
+KOR_STEP184_OFF=1; the two six-set baseline tests, whose banked pdf-only e2ks predate steps 175-183 (the off builds hash
+exactly as the on builds, and both differ from the banked file). Re-banking is operations-ee's call, reported.
+
+QUEUED, found on the way: corpus-gate --jobs silently skips sets not in its 57 (31138, 31202 here); the carry-down is
+silent (no count of its carries in any report); legend boxes taken as floors (4b: 20 of 56 sets have a storey whose
+plate misses 80%+ of its members). Local only - GitHub held until morning.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

@@ -1,0 +1,7 @@
+started 2026-10-19T15:10:05
+build-core exit 0  3s
+build-app exit 0  17s
+core-fast exit 1  21s
+app-pdftosafe exit 1  130s
+sixsets exit 0  673s
+finished 2026-10-19T15:24:09

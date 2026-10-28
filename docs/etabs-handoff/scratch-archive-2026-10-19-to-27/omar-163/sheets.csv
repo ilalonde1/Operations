@@ -1,0 +1,12 @@
+page,sheet_number,sheet_type,title,level,scale_note,scale_denominator,slabs,columns,walls,footings,lines,dxf_files,failure
+1,A100,plan,A100 - SITE PLAN,,"1/16"" = 1'-0"" A100",192,50,28,36,0,2333,A100_1_SITE PLAN.dxf,
+2,A101,plan,A101 - B1 & B2 PLAN,B2,"1/8"" = 1'-0"" A101",96,30,14,0,0,0,A101_1_LEVEL B2.dxf | A101_2_LEVEL B1.dxf,
+3,A102,plan,A102 - LEVEL 1 & 2 PLAN,2,"1/8"" = 1'-0"" A102",96,40,23,0,0,6,A102_1_LEVEL 1.dxf | A102_2_LEVEL 2.dxf,
+4,A103,plan,A103 - LEVEL 3 & 4 PLAN,4,"1/8"" = 1'-0"" A103",96,33,24,0,0,4,A103_1_LEVEL 3.dxf | A103_2_LEVEL 4.dxf,
+5,A104,plan,A104 - LEVEL 5 & 6 PLAN,6,"1/8"" = 1'-0"" A104",96,31,24,0,0,0,A104_1_LEVEL 5.dxf | A104_2_LEVEL 6.dxf,
+6,A105,plan,A105 - LEVEL 7-35 PLAN,35,"1/8"" = 1'-0"" A105",96,14,12,0,0,6,A105_1_LEVEL 7-35 PLAN.dxf,
+7,A106,plan,A106 - LEVEL 36 & 37 PLAN,36,"1/8"" = 1'-0"" A106",96,25,32,0,0,11,A106_1_LEVEL 36.dxf | A106_2_LEVEL 37.dxf,
+8,A107,plan,A107 - LEVEL ROOFTOP PLAN,,"1/8"" = 1'-0"" A107",96,9,14,0,0,5,A107_1_LEVEL ROOF.dxf | A107_2_UPPER ROOF PLAN.dxf,
+9,A201,section/elevation,A201 - ELEVATIONS,,"3/64"" = 1'-0"" A201",256,82,0,0,0,1772,,
+10,A202,section/elevation,A202 - ELEVATIONS,,"3/64"" = 1'-0"" A202",256,82,0,0,0,1939,,
+11,A301,section/elevation,A301 - BUILDING SECTION,,"3/64"" = 1'-0"" A301",256,779,11,374,0,18913,,

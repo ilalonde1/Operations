@@ -1,0 +1,8 @@
+Drift attribution: the engineer's plate total is read without this tool's own plates (same fault as d5c11ee2)
+
+attribute_baseline_drift.py summed 31168's C-LEVEL 3 as 31,473 sq ft "hers" - KF84, our earlier output in the yardstick,
+included. Read without K-letter-digits objects (ModelYardstick.GeneratedObject's rule) it is 8,810: her bands, not a floor.
+The 31168 "hers" figures in six-set-drift-2026-10-26.txt predate this; the record says 31168 is not judged against hers.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

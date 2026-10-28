@@ -1,0 +1,1175 @@
+  views 0: 
+  furniture regions 8 (light blue): schedule: STIRRUP SCHEDULE; schedule: PODIUM COLUMN SCHEDULE; furniture: REFERENCE NOTES:; furniture: MECHANICAL NOTES:; furniture: CONCRETE COLUMN REFERENCE NOTE:; furniture: REVISIONS:; furniture: ISSUES; title block
+    'MATCH' at (1135,246) pt, box 29.8 x 6.1 pt; no LINE beside it
+    'MATCH' at (796,175) pt, box 29.8 x 6.1 pt; no LINE beside it
+  match lines 0 (magenta); the word MATCH appears 2 time(s) at (1135,246) pt 'MATCH', (796,175) pt 'MATCH' but no line spanning the drawing runs beside it
+31065-01 - 2026-07-08 - 5380-Heather Street - Stickfile (up to SSI-04)-OAP.pdf p26 1:100 @ 60 dpi  C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/l1/p26w.png
+  slabs 12 (grey)   columns 49 (blue)   walls 24 (dark red)   footings 0 (orange; 0 without a label, magenta)   grid axes 15 (cyan: X 8,9,10,11,12,13; Y F,1|1'|12'|8|9,G,F,E,D,C,B,A)   lines 3501 (red)   mark-shaped words 183 (green)
+  filled walls 24 (dark red), by thickness and colour:
+      6 in thick #D0D0D0:    4 wall(s), length 75-177 in
+      6 in thick #000000:    2 wall(s), length 158-160 in
+     12 in thick #D0D0D0:    2 wall(s), length 278-278 in
+     20 in thick #D0D0D0:    4 wall(s), length 278-302 in
+     23 in thick #D0D0D0:    3 wall(s), length 35-93 in
+     24 in thick #D0D0D0:    9 wall(s), length 16-93 in
+  face-line rule, every pair of cut-pen lines 94"+ long (923 lines):
+      cut pen w8.00
+      emitted line 95" w2.00 at (46723,55766) mm
+      emitted line 102" w2.00 at (46871,55702) mm
+      emitted line 102" w2.00 at (47083,55702) mm
+      emitted line 102" w2.00 at (47295,55702) mm
+      emitted line 102" w2.00 at (47506,55702) mm
+      emitted line 102" w2.00 at (47720,55702) mm
+      emitted line 102" w2.00 at (47932,55702) mm
+      emitted line 102" w2.00 at (49204,55702) mm
+      emitted line 102" w2.00 at (49416,55702) mm
+      emitted line 102" w2.00 at (49627,55702) mm
+      emitted line 102" w2.00 at (49839,55702) mm
+      emitted line 104" w2.00 at (49907,51530) mm
+      emitted line 120" w2.00 at (50051,50402) mm
+      emitted line 120" w2.00 at (50051,50190) mm
+      emitted line 120" w2.00 at (50051,49979) mm
+      emitted line 110" w2.00 at (50140,49856) mm
+      emitted line 99" w2.00 at (50245,49750) mm
+      emitted line 102" w2.00 at (55647,51545) mm
+      emitted line 114" w2.00 at (55753,51439) mm
+      emitted line 126" w2.00 at (55859,51333) mm
+      emitted line 97" w2.00 at (55603,50231) mm
+      emitted line 109" w2.00 at (55709,50125) mm
+      emitted line 197" w2.00 at (56494,50698) mm
+      emitted line 239" w2.00 at (56327,50320) mm
+      emitted line 240" w2.00 at (56485,50267) mm
+      emitted line 236" w2.00 at (56526,50093) mm
+      emitted line 233" w2.00 at (56553,49911) mm
+      emitted line 293" w2.00 at (56018,49162) mm
+      emitted line 293" w2.00 at (56018,48950) mm
+      emitted line 293" w2.00 at (56018,48736) mm
+      emitted line 293" w2.00 at (56018,48525) mm
+      emitted line 167" w2.00 at (54889,47185) mm
+      emitted line 115" w2.00 at (57607,49903) mm
+      emitted line 167" w2.00 at (54889,46973) mm
+      emitted line 104" w2.00 at (57713,49797) mm
+      emitted line 167" w2.00 at (54889,46761) mm
+      emitted line 111" w2.00 at (62802,54674) mm
+      emitted line 167" w2.00 at (54889,46550) mm
+      emitted line 111" w2.00 at (62802,54462) mm
+      emitted line 167" w2.00 at (54889,46338) mm
+      emitted line 111" w2.00 at (62802,54250) mm
+      emitted line 167" w2.00 at (54889,46126) mm
+      emitted line 106" w2.00 at (62850,54087) mm
+      emitted line 167" w2.00 at (54889,45915) mm
+      emitted line 163" w2.00 at (54921,45735) mm
+      emitted line 152" w2.00 at (55027,45629) mm
+      emitted line 140" w2.00 at (55133,45521) mm
+      emitted line 128" w2.00 at (55239,45415) mm
+      emitted line 116" w2.00 at (55344,45309) mm
+      emitted line 104" w2.00 at (55450,45204) mm
+      emitted line 97" w2.00 at (54999,38392) mm
+      emitted line 109" w2.00 at (55105,38286) mm
+      emitted line 121" w2.00 at (55213,38180) mm
+      emitted line 133" w2.00 at (55319,38075) mm
+      emitted line 142" w2.00 at (55400,37945) mm
+      emitted line 142" w2.00 at (55400,37734) mm
+      emitted line 142" w2.00 at (55400,37522) mm
+      emitted line 142" w2.00 at (55400,37310) mm
+      emitted line 142" w2.00 at (55400,37099) mm
+      emitted line 96" w2.00 at (72720,29614) mm
+      emitted line 108" w2.00 at (72826,29508) mm
+      emitted line 120" w2.00 at (72934,29403) mm
+      emitted line 102" w2.00 at (69516,25773) mm
+      emitted line 131" w2.00 at (73040,29297) mm
+      emitted line 114" w2.00 at (69621,25667) mm
+      emitted line 143" w2.00 at (73146,29191) mm
+      emitted line 125" w2.00 at (69727,25561) mm
+      emitted line 106" w2.00 at (72813,28647) mm
+      emitted line 137" w2.00 at (69833,25455) mm
+      emitted line 105" w2.00 at (72805,28425) mm
+      emitted line 149" w2.00 at (69939,25349) mm
+      emitted line 109" w2.00 at (72843,28253) mm
+      emitted line 161" w2.00 at (70045,25243) mm
+      emitted line 116" w2.00 at (72900,28099) mm
+      emitted line 97" w2.00 at (69471,24454) mm
+      emitted line 128" w2.00 at (73008,27993) mm
+      emitted line 101" w2.00 at (69509,24282) mm
+      emitted line 197" w2.00 at (73679,28454) mm
+      emitted line 105" w2.00 at (69547,24109) mm
+      emitted line 185" w2.00 at (73787,28349) mm
+      emitted line 109" w2.00 at (69698,24047) mm
+      emitted line 173" w2.00 at (73893,28243) mm
+      emitted line 109" w2.00 at (69909,24047) mm
+      emitted line 161" w2.00 at (73999,28137) mm
+      emitted line 151" w2.00 at (70502,24426) mm
+      emitted line 150" w2.00 at (74105,28031) mm
+      emitted line 140" w2.00 at (70608,24321) mm
+      emitted line 138" w2.00 at (74210,27925) mm
+      emitted line 128" w2.00 at (70714,24215) mm
+      emitted line 126" w2.00 at (74316,27819) mm
+      emitted line 116" w2.00 at (70819,24109) mm
+      emitted line 114" w2.00 at (74422,27714) mm
+      emitted line 104" w2.00 at (70925,24003) mm
+      emitted line 102" w2.00 at (74528,27606) mm
+      emitted line 98" w2.00 at (46751,28797) mm
+      emitted line 121" w2.00 at (46962,29009) mm
+      emitted line 145" w2.00 at (47174,29221) mm
+      emitted line 97" w2.00 at (47066,29752) mm
+      emitted line 107" w2.00 at (48006,29661) mm
+      emitted line 98" w2.00 at (51410,28799) mm
+      emitted line 122" w2.00 at (51621,29011) mm
+      emitted line 145" w2.00 at (51835,29225) mm
+      emitted line 95" w2.00 at (51710,29773) mm
+      emitted line 135" w2.00 at (52917,29413) mm
+      emitted line 111" w2.00 at (53128,29625) mm
+      emitted line 110" w2.00 at (62092,24056) mm
+      emitted line 133" w2.00 at (62304,24268) mm
+      emitted line 101" w2.00 at (55038,31534) mm
+      emitted line 157" w2.00 at (62516,24479) mm
+      emitted line 125" w2.00 at (55249,31746) mm
+      emitted line 170" w2.00 at (62636,24784) mm
+      emitted line 148" w2.00 at (55461,31957) mm
+      emitted line 172" w2.00 at (55673,32169) mm
+      emitted line 107" w2.00 at (51494,36350) mm
+      emitted line 196" w2.00 at (55884,32381) mm
+      emitted line 131" w2.00 at (51706,36561) mm
+      emitted line 223" w2.00 at (60926,27764) mm
+      emitted line 219" w2.00 at (56096,32595) mm
+      emitted line 155" w2.00 at (51918,36773) mm
+      emitted line 292" w2.00 at (61544,27572) mm
+      emitted line 243" w2.00 at (56310,32806) mm
+      emitted line 127" w2.00 at (51672,37442) mm
+      emitted line 265" w2.00 at (56532,33007) mm
+      emitted line 140" w2.00 at (51786,37753) mm
+      emitted line 242" w2.00 at (56748,33215) mm
+      emitted line 191" w2.00 at (52413,37550) mm
+      emitted line 154" w2.00 at (61142,29244) mm
+      emitted line 219" w2.00 at (56962,33426) mm
+      emitted line 167" w2.00 at (52625,37761) mm
+      emitted line 130" w2.00 at (61354,29456) mm
+      emitted line 195" w2.00 at (57173,33638) mm
+      emitted line 144" w2.00 at (52836,37973) mm
+      emitted line 106" w2.00 at (61565,29669) mm
+      emitted line 105" w2.00 at (57984,33249) mm
+      emitted line 120" w2.00 at (53048,38185) mm
+      emitted line 97" w2.00 at (53260,38398) mm
+      emitted line 108" w2.00 at (46844,45240) mm
+      emitted line 132" w2.00 at (47058,45451) mm
+      emitted line 155" w2.00 at (47269,45663) mm
+      emitted line 173" w2.00 at (47422,45934) mm
+      emitted line 173" w2.00 at (47422,46359) mm
+      emitted line 173" w2.00 at (47422,46783) mm
+      emitted line 119" w2.00 at (46937,47691) mm
+      emitted line 103" w2.00 at (47106,47945) mm
+      emitted line 96" w2.00 at (47470,48004) mm
+      emitted line 116" w2.00 at (63564,32334) mm
+      emitted line 108" w2.00 at (48002,47896) mm
+      emitted line 140" w2.00 at (63777,32546) mm
+      emitted line 101" w2.00 at (72769,23980) mm
+      emitted line 109" w2.00 at (55103,41643) mm
+      emitted line 125" w2.00 at (72981,24191) mm
+      emitted line 132" w2.00 at (55315,41857) mm
+      emitted line 148" w2.00 at (73192,24403) mm
+      emitted line 156" w2.00 at (64808,32785) mm
+      emitted line 142" w2.00 at (55400,42196) mm
+      emitted line 108" w2.00 at (73978,24043) mm
+      emitted line 133" w2.00 at (65022,32997) mm
+      emitted line 142" w2.00 at (55400,42619) mm
+      emitted line 112" w2.00 at (74371,24073) mm
+      emitted line 109" w2.00 at (65234,33208) mm
+      emitted line 108" w2.00 at (74492,24378) mm
+      emitted line 97" w2.00 at (56430,42437) mm
+      emitted line 159" w2.00 at (74030,25260) mm
+      emitted line 151" w2.00 at (56375,42918) mm
+      emitted line 135" w2.00 at (74244,25472) mm
+      emitted line 151" w2.00 at (56799,42918) mm
+      emitted line 112" w2.00 at (74456,25684) mm
+      emitted line 151" w2.00 at (57222,42918) mm
+      emitted line 151" w2.00 at (57645,42918) mm
+      emitted line 151" w2.00 at (58069,42918) mm
+      emitted line 151" w2.00 at (58494,42918) mm
+      emitted line 147" w2.00 at (58884,42951) mm
+      emitted line 123" w2.00 at (59095,43163) mm
+      emitted line 100" w2.00 at (59307,43377) mm
+      emitted line 136" w2.00 at (75645,31703) mm
+      emitted line 159" w2.00 at (75857,31915) mm
+      emitted line 183" w2.00 at (76069,32127) mm
+      emitted line 189" w2.00 at (76230,32389) mm
+      emitted line 166" w2.00 at (76448,32595) mm
+      emitted line 143" w2.00 at (76668,32802) mm
+      emitted line 120" w2.00 at (76886,33007) mm
+      emitted line 97" w2.00 at (77102,33213) mm
+      emitted line 111" w2.00 at (46871,51465) mm
+      emitted line 135" w2.00 at (47085,51251) mm
+      emitted line 159" w2.00 at (47297,51039) mm
+      emitted line 118" w2.00 at (46929,50248) mm
+      emitted line 125" w2.00 at (47089,49985) mm
+      emitted line 144" w2.00 at (47682,50154) mm
+      emitted line 120" w2.00 at (47896,49943) mm
+      emitted line 96" w2.00 at (48108,49731) mm
+      emitted line 102" w2.00 at (52045,51549) mm
+      emitted line 125" w2.00 at (52256,51338) mm
+      emitted line 149" w2.00 at (52470,51126) mm
+      emitted line 114" w2.00 at (52150,50383) mm
+      emitted line 122" w2.00 at (52229,50036) mm
+      emitted line 124" w2.00 at (52595,49979) mm
+      emitted line 157" w2.00 at (53317,50277) mm
+      emitted line 103" w2.00 at (46802,43339) mm
+      emitted line 134" w2.00 at (53531,50066) mm
+      emitted line 127" w2.00 at (47013,43125) mm
+      emitted line 110" w2.00 at (53742,49854) mm
+      emitted line 119" w2.00 at (46941,42630) mm
+      emitted line 118" w2.00 at (46929,42192) mm
+      emitted line 133" w2.00 at (47068,41908) mm
+      emitted line 151" w2.00 at (47612,42029) mm
+      emitted line 128" w2.00 at (47824,41817) mm
+      emitted line 104" w2.00 at (48036,41605) mm
+      emitted line 104" w2.00 at (51460,43335) mm
+      emitted line 108" w2.00 at (46844,38293) mm
+      emitted line 128" w2.00 at (51674,43123) mm
+      emitted line 132" w2.00 at (59830,51278) mm
+      emitted line 132" w2.00 at (47058,38081) mm
+      emitted line 151" w2.00 at (51886,42911) mm
+      emitted line 156" w2.00 at (60041,51067) mm
+      emitted line 156" w2.00 at (47269,37867) mm
+      emitted line 123" w2.00 at (51630,42232) mm
+      emitted line 166" w2.00 at (60135,50737) mm
+      emitted line 173" w2.00 at (47422,37596) mm
+      emitted line 134" w2.00 at (51729,41906) mm
+      emitted line 166" w2.00 at (60135,50311) mm
+      emitted line 170" w2.00 at (47443,37196) mm
+      emitted line 179" w2.00 at (52521,42274) mm
+      emitted line 166" w2.00 at (60135,49886) mm
+      emitted line 146" w2.00 at (47655,36985) mm
+      emitted line 155" w2.00 at (52735,42062) mm
+      emitted line 166" w2.00 at (60135,49462) mm
+      emitted line 123" w2.00 at (47868,36773) mm
+      emitted line 132" w2.00 at (52946,41851) mm
+      emitted line 145" w2.00 at (60323,49227) mm
+      emitted line 108" w2.00 at (53158,41639) mm
+      emitted line 121" w2.00 at (60535,49016) mm
+      emitted line 98" w2.00 at (60746,48804) mm
+      emitted line 111" w2.00 at (46867,33227) mm
+      emitted line 134" w2.00 at (47079,33016) mm
+      emitted line 116" w2.00 at (46914,32427) mm
+      emitted line 121" w2.00 at (46958,32044) mm
+      emitted line 134" w2.00 at (47164,31826) mm
+      emitted line 144" w2.00 at (47678,31917) mm
+      emitted line 106" w2.00 at (67272,51511) mm
+      emitted line 120" w2.00 at (47890,31706) mm
+      emitted line 111" w2.00 at (67318,51134) mm
+      emitted line 97" w2.00 at (48101,31494) mm
+      emitted line 111" w2.00 at (67318,50711) mm
+      emitted line 111" w2.00 at (51528,33225) mm
+      emitted line 135" w2.00 at (51740,33014) mm
+      emitted line 158" w2.00 at (51951,32800) mm
+      emitted line 128" w2.00 at (51678,32103) mm
+      emitted line 114" w2.00 at (46895,26896) mm
+      emitted line 134" w2.00 at (51824,31826) mm
+      emitted line 138" w2.00 at (47109,26683) mm
+      emitted line 171" w2.00 at (52589,32165) mm
+      emitted line 161" w2.00 at (47320,26471) mm
+      emitted line 148" w2.00 at (52800,31953) mm
+      emitted line 185" w2.00 at (47532,26259) mm
+      emitted line 124" w2.00 at (53012,31739) mm
+      emitted line 208" w2.00 at (47744,26048) mm
+      emitted line 101" w2.00 at (53224,31528) mm
+      emitted line 232" w2.00 at (47957,25838) mm
+      emitted line 232" w2.00 at (48381,25838) mm
+      emitted line 232" w2.00 at (48806,25838) mm
+      emitted line 232" w2.00 at (49229,25838) mm
+      emitted line 232" w2.00 at (49653,25838) mm
+      emitted line 232" w2.00 at (50076,25838) mm
+      emitted line 135" w2.00 at (49632,24968) mm
+      emitted line 120" w2.00 at (49919,24833) mm
+      emitted line 116" w2.00 at (50313,24803) mm
+      emitted line 108" w2.00 at (52455,26945) mm
+      emitted line 232" w2.00 at (51774,25838) mm
+      emitted line 232" w2.00 at (52197,25838) mm
+      emitted line 232" w2.00 at (52620,25838) mm
+      emitted line 232" w2.00 at (53044,25838) mm
+      emitted line 232" w2.00 at (53469,25838) mm
+      emitted line 161" w2.00 at (60372,32741) mm
+      emitted line 253" w2.00 at (53700,25646) mm
+      emitted line 185" w2.00 at (60583,32529) mm
+      emitted line 270" w2.00 at (53971,25493) mm
+      emitted line 190" w2.00 at (60814,32334) mm
+      emitted line 270" w2.00 at (54398,25493) mm
+      emitted line 167" w2.00 at (61026,32123) mm
+      emitted line 270" w2.00 at (54822,25493) mm
+      emitted line 143" w2.00 at (61237,31909) mm
+      emitted line 270" w2.00 at (55245,25493) mm
+      emitted line 120" w2.00 at (61449,31697) mm
+      emitted line 270" w2.00 at (55668,25493) mm
+      emitted line 96" w2.00 at (61661,31485) mm
+      emitted line 270" w2.00 at (56092,25493) mm
+      emitted line 270" w2.00 at (56515,25493) mm
+      emitted line 270" w2.00 at (56940,25493) mm
+      emitted line 270" w2.00 at (57366,25493) mm
+      emitted line 115" w2.00 at (56392,24096) mm
+      emitted line 129" w2.00 at (59059,26763) mm
+      emitted line 105" w2.00 at (56733,24014) mm
+      emitted line 144" w2.00 at (59347,26628) mm
+      emitted line 247" w2.00 at (58433,25290) mm
+      emitted line 101" w2.00 at (67124,33981) mm
+      emitted line 234" w2.00 at (58735,25169) mm
+      emitted line 125" w2.00 at (67335,33769) mm
+      emitted line 225" w2.00 at (59083,25091) mm
+      emitted line 148" w2.00 at (67547,33558) mm
+      emitted line 202" w2.00 at (59296,24879) mm
+      emitted line 172" w2.00 at (67759,33344) mm
+      emitted line 178" w2.00 at (59508,24668) mm
+      emitted line 196" w2.00 at (67970,33132) mm
+      emitted line 155" w2.00 at (59720,24456) mm
+      emitted line 133" w2.00 at (68620,33357) mm
+      emitted line 131" w2.00 at (59931,24244) mm
+      emitted line 118" w2.00 at (68756,33069) mm
+      emitted line 107" w2.00 at (60143,24033) mm
+      emitted line 134" w2.00 at (68608,32497) mm
+      emitted line 111" w2.00 at (68819,32286) mm
+      emitted line 113" w2.00 at (65176,25675) mm
+      emitted line 136" w2.00 at (65390,25464) mm
+      emitted line 98" w2.00 at (65047,24272) mm
+      emitted line 202" w2.00 at (66076,24877) mm
+      emitted line 202" w2.00 at (66499,24877) mm
+      emitted line 194" w2.00 at (66857,24812) mm
+      emitted line 170" w2.00 at (67071,24598) mm
+      emitted line 147" w2.00 at (67282,24386) mm
+      emitted line 123" w2.00 at (67494,24174) mm
+      emitted line 100" w2.00 at (67706,23963) mm
+      emitted line 117" w2.00 at (46924,24809) mm
+      emitted line 141" w2.00 at (47136,25021) mm
+      emitted line 164" w2.00 at (47348,25233) mm
+      emitted line 188" w2.00 at (47559,25444) mm
+      emitted line 212" w2.00 at (47773,25656) mm
+      emitted line 232" w2.00 at (48014,25838) mm
+      emitted line 232" w2.00 at (48438,25838) mm
+      emitted line 232" w2.00 at (48861,25838) mm
+      emitted line 232" w2.00 at (49284,25838) mm
+      emitted line 270" w2.00 at (50055,25493) mm
+      emitted line 270" w2.00 at (50478,25493) mm
+      emitted line 270" w2.00 at (50902,25493) mm
+      emitted line 270" w2.00 at (51325,25493) mm
+      emitted line 155" w2.00 at (52783,24458) mm
+      emitted line 169" w2.00 at (53082,24587) mm
+      emitted line 270" w2.00 at (52599,25493) mm
+      emitted line 270" w2.00 at (53023,25493) mm
+      emitted line 112" w2.00 at (46882,31634) mm
+      emitted line 270" w2.00 at (53446,25493) mm
+      emitted line 136" w2.00 at (47094,31845) mm
+      emitted line 270" w2.00 at (53869,25493) mm
+      emitted line 160" w2.00 at (47305,32057) mm
+      emitted line 270" w2.00 at (54293,25493) mm
+      emitted line 173" w2.00 at (47422,32366) mm
+      emitted line 270" w2.00 at (54716,25493) mm
+      emitted line 166" w2.00 at (47479,32732) mm
+      emitted line 270" w2.00 at (55143,25493) mm
+      emitted line 142" w2.00 at (47693,32944) mm
+      emitted line 270" w2.00 at (55567,25493) mm
+      emitted line 119" w2.00 at (47904,33155) mm
+      emitted line 270" w2.00 at (55990,25493) mm
+      emitted line 270" w2.00 at (56413,25493) mm
+      emitted line 270" w2.00 at (56837,25493) mm
+      emitted line 105" w2.00 at (58742,24014) mm
+      emitted line 142" w2.00 at (56106,26647) mm
+      emitted line 117" w2.00 at (59063,24115) mm
+      emitted line 128" w2.00 at (56413,26767) mm
+      emitted line 113" w2.00 at (51541,31636) mm
+      emitted line 270" w2.00 at (58111,25493) mm
+      emitted line 136" w2.00 at (51755,31849) mm
+      emitted line 115" w2.00 at (46903,36701) mm
+      emitted line 270" w2.00 at (58534,25493) mm
+      emitted line 160" w2.00 at (51966,32061) mm
+      emitted line 138" w2.00 at (47115,36913) mm
+      emitted line 255" w2.00 at (58820,25631) mm
+      emitted line 184" w2.00 at (52178,32273) mm
+      emitted line 119" w2.00 at (46937,37514) mm
+      emitted line 231" w2.00 at (59032,25845) mm
+      emitted line 194" w2.00 at (52390,32484) mm
+      emitted line 132" w2.00 at (47062,37812) mm
+      emitted line 208" w2.00 at (59243,26056) mm
+      emitted line 170" w2.00 at (52601,32696) mm
+      emitted line 164" w2.00 at (47502,37795) mm
+      emitted line 184" w2.00 at (59457,26268) mm
+      emitted line 146" w2.00 at (52813,32908) mm
+      emitted line 140" w2.00 at (47714,38009) mm
+      emitted line 160" w2.00 at (59669,26480) mm
+      emitted line 116" w2.00 at (47926,38221) mm
+      emitted line 137" w2.00 at (59881,26691) mm
+      emitted line 113" w2.00 at (60092,26903) mm
+      emitted line 96" w2.00 at (46736,41533) mm
+      emitted line 120" w2.00 at (46948,41745) mm
+      emitted line 105" w2.00 at (65107,24009) mm
+      emitted line 143" w2.00 at (47159,41957) mm
+      emitted line 128" w2.00 at (65318,24221) mm
+      emitted line 167" w2.00 at (47371,42168) mm
+      emitted line 152" w2.00 at (65530,24433) mm
+      emitted line 173" w2.00 at (47422,42541) mm
+      emitted line 176" w2.00 at (65742,24644) mm
+      emitted line 159" w2.00 at (47547,42841) mm
+      emitted line 199" w2.00 at (65953,24856) mm
+      emitted line 135" w2.00 at (47758,43053) mm
+      emitted line 116" w2.00 at (67128,24107) mm
+      emitted line 122" w2.00 at (67496,24164) mm
+      emitted line 117" w2.00 at (59978,31680) mm
+      emitted line 120" w2.00 at (67526,24558) mm
+      emitted line 141" w2.00 at (60192,31892) mm
+      emitted line 155" w2.00 at (67211,25296) mm
+      emitted line 116" w2.00 at (60837,31670) mm
+      emitted line 131" w2.00 at (67422,25508) mm
+      emitted line 118" w2.00 at (61244,31689) mm
+      emitted line 96" w2.00 at (51395,41535) mm
+      emitted line 108" w2.00 at (67634,25722) mm
+      emitted line 122" w2.00 at (61428,31926) mm
+      emitted line 120" w2.00 at (51609,41747) mm
+      emitted line 163" w2.00 at (61055,32722) mm
+      emitted line 144" w2.00 at (51820,41959) mm
+      emitted line 140" w2.00 at (61267,32935) mm
+      emitted line 167" w2.00 at (52032,42170) mm
+      emitted line 116" w2.00 at (61481,33147) mm
+      emitted line 191" w2.00 at (52244,42384) mm
+      emitted line 186" w2.00 at (52455,42596) mm
+      emitted line 163" w2.00 at (52669,42807) mm
+      emitted line 139" w2.00 at (52881,43019) mm
+      emitted line 112" w2.00 at (46876,49871) mm
+      emitted line 135" w2.00 at (47087,50082) mm
+      emitted line 159" w2.00 at (47301,50294) mm
+      emitted line 173" w2.00 at (47422,50597) mm
+      emitted line 167" w2.00 at (47475,50967) mm
+      emitted line 143" w2.00 at (47686,51179) mm
+      emitted line 147" w2.00 at (67530,32609) mm
+      emitted line 170" w2.00 at (67742,32821) mm
+      emitted line 194" w2.00 at (67953,33033) mm
+      emitted line 183" w2.00 at (68167,33246) mm
+      emitted line 160" w2.00 at (68379,33458) mm
+      emitted line 102" w2.00 at (52049,49784) mm
+      emitted line 136" w2.00 at (68591,33670) mm
+      emitted line 126" w2.00 at (52261,49998) mm
+      emitted line 112" w2.00 at (68802,33881) mm
+      emitted line 150" w2.00 at (52472,50209) mm
+      emitted line 173" w2.00 at (52686,50421) mm
+      emitted line 197" w2.00 at (52898,50633) mm
+      emitted line 180" w2.00 at (53109,50844) mm
+      emitted line 157" w2.00 at (53321,51056) mm
+      emitted line 114" w2.00 at (59669,48950) mm
+      emitted line 138" w2.00 at (59881,49162) mm
+      emitted line 161" w2.00 at (60092,49373) mm
+      emitted line 166" w2.00 at (60135,49754) mm
+      emitted line 134" w2.00 at (60422,49894) mm
+      emitted line 111" w2.00 at (60623,50114) mm
+      emitted line 103" w2.00 at (60702,50461) mm
+      emitted line 139" w2.00 at (60374,51213) mm
+      emitted line 116" w2.00 at (60585,51424) mm
+      emitted line 111" w2.00 at (67318,50629) mm
+      emitted line 111" w2.00 at (67318,51054) mm
+      emitted line 111" w2.00 at (67323,51471) mm
+      emitted line 278" w8.00 at (60801,34688) mm
+      emitted line 302" w8.00 at (60501,34188) mm
+      emitted line 278" w8.00 at (60801,41063) mm
+      emitted line 278" w8.00 at (60801,41563) mm
+      emitted line 278" w8.00 at (60799,38676) mm
+      emitted line 206" w8.00 at (61711,38375) mm
+      emitted line 177" w8.00 at (60799,39793) mm
+      emitted line 177" w8.00 at (60799,39946) mm
+      emitted line 126" w5.00 at (63022,37457) mm
+      emitted line 126" w5.00 at (63022,37459) mm
+      emitted line 126" w5.00 at (60405,37457) mm
+      emitted line 126" w5.00 at (60405,37459) mm
+      emitted line 313" w8.00 at (72297,54762) mm
+      emitted line 144" w8.00 at (74151,53052) mm
+      emitted line 302" w8.00 at (72147,50889) mm
+      emitted line 302" w8.00 at (72147,38375) mm
+      emitted line 153" w5.00 at (74145,53814) mm
+      emitted line 154" w5.00 at (74151,53810) mm
+      emitted line 161" w8.00 at (75976,51003) mm
+      emitted line 229" w8.00 at (78543,51858) mm
+      emitted line 1119" w8.00 at (45872,40547) mm
+      emitted line 371" w8.00 at (50525,25576) mm
+      emitted line 175" w8.00 at (57393,26420) mm
+      emitted line 156" w8.00 at (59610,24445) mm
+      emitted line 711" w8.00 at (68644,22471) mm
+      emitted line 545" w8.00 at (77883,29388) mm
+      emitted line 303" w8.00 at (72159,35687) mm
+      emitted line 211" w8.00 at (61648,41563) mm
+      emitted line 130" w8.00 at (63276,43718) mm
+      emitted line 406" w8.00 at (61625,48876) mm
+      emitted line 183" w8.00 at (59307,54034) mm
+      emitted line 233" w8.00 at (54127,22471) mm
+      emitted line 111" w8.00 at (45872,24920) mm
+      emitted line 209" w8.00 at (48522,23508) mm
+      emitted line 627" w8.00 at (68318,45178) mm
+      emitted line 144" w8.00 at (66290,40439) mm
+      emitted line 205" w8.00 at (65714,56629) mm
+      emitted line 217" w8.00 at (59739,56629) mm
+      emitted line 127" w8.00 at (77616,20853) mm
+      emitted line 127" w8.00 at (51173,20853) mm
+      emitted line 1039" w8.00 at (64370,19236) mm
+      emitted line 117" w5.00 at (62844,38676) mm
+      emitted line 142" w5.00 at (60374,41063) mm
+      emitted line 98" w5.00 at (60391,39793) mm
+      emitted line 302" w8.00 at (42035,56629) mm
+      emitted line 204" w8.00 at (38841,19236) mm
+      emitted line 168" w8.00 at (41436,21372) mm
+      emitted line 175" w8.00 at (43654,23508) mm
+      emitted line 438" w8.00 at (51431,56629) mm
+      emitted line 106" w8.00 at (62981,38680) mm
+      emitted line 206" w8.00 at (61714,36542) mm
+      emitted line 223" w8.00 at (54250,22471) mm
+      emitted line 696" w8.00 at (68328,22471) mm
+      emitted line 98" w8.00 at (77216,48954) mm
+      emitted line 148" w8.00 at (75976,44975) mm
+      emitted line 307" w8.00 at (78340,45055) mm
+      emitted line 191" w8.00 at (75976,38731) mm
+      emitted line 191" w8.00 at (78160,38731) mm
+      emitted line 95" w8.00 at (58285,22471) mm
+      emitted line 312" w4.00 at (72223,37086) mm
+      emitted line 319" w4.00 at (72136,37031) mm
+      emitted line 186" w2.00 at (45536,45411) mm
+      emitted line 173" w2.00 at (52269,22689) mm
+      emitted line 157" w4.00 at (69008,43498) mm
+      emitted line 144" w4.00 at (65329,40439) mm
+      emitted line 119" w4.00 at (58198,39872) mm
+      emitted line 130" w4.00 at (58420,39872) mm
+      emitted line 165" w2.00 at (65689,53058) mm
+      emitted line 102" w4.00 at (73508,34055) mm
+      emitted line 191" w2.00 at (77212,38731) mm
+      emitted line 121" w8.00 at (59008,21012) mm
+      emitted line 113" w8.00 at (57569,22547) mm
+      emitted line 121" w8.00 at (56130,21012) mm
+      emitted line 166" w5.00 at (57569,21012) mm
+      emitted line 166" w5.00 at (57569,21012) mm
+      emitted line 138" w4.00 at (74994,40424) mm
+      emitted line 104" w4.00 at (60283,22007) mm
+      emitted line 645" w2.00 at (70557,46569) mm
+      emitted line 154" w4.00 at (70098,38375) mm
+      emitted line 149" w4.00 at (74111,38375) mm
+      emitted line 106" w4.00 at (66290,43618) mm
+      emitted line 290" w4.00 at (62886,49433) mm
+      emitted line 299" w4.00 at (65814,45553) mm
+      emitted line 773" w4.00 at (36246,27976) mm
+      emitted line 772" w4.00 at (36246,47767) mm
+      emitted line 278" w8.00 at (17585,34692) mm
+      emitted line 301" w8.00 at (17285,34193) mm
+      emitted line 278" w8.00 at (17585,41063) mm
+      emitted line 278" w8.00 at (17585,41563) mm
+      emitted line 278" w8.00 at (17585,38676) mm
+      emitted line 206" w8.00 at (18498,38375) mm
+      emitted line 177" w8.00 at (17585,39793) mm
+      emitted line 177" w8.00 at (17585,39946) mm
+      emitted line 126" w5.00 at (19806,37457) mm
+      emitted line 126" w5.00 at (19806,37459) mm
+      emitted line 126" w5.00 at (17192,37457) mm
+      emitted line 126" w5.00 at (17192,37459) mm
+      emitted line 105" w5.00 at (16677,38680) mm
+      emitted line 114" w4.00 at (19264,40466) mm
+      emitted line 146" w4.00 at (19348,40502) mm
+      emitted line 314" w4.00 at (17585,36519) mm
+      emitted line 314" w4.00 at (17585,36517) mm
+      emitted line 238" w4.00 at (22278,32893) mm
+      emitted line 259" w4.00 at (15801,32893) mm
+      emitted line 259" w4.00 at (15801,42748) mm
+      emitted line 238" w4.00 at (22278,42748) mm
+      emitted line 176" w4.00 at (12510,34688) mm
+      emitted line 230" w4.00 at (12510,40001) mm
+      emitted line 230" w4.00 at (25303,40001) mm
+      emitted line 176" w4.00 at (25303,34688) mm
+      emitted line 130" w4.00 at (22054,39370) mm
+      emitted line 423" w10.00 at (20424,26657) mm
+      emitted line 435" w10.00 at (25789,21139) mm
+      emitted line 423" w10.00 at (20424,16281) mm
+      emitted line 435" w10.00 at (15058,21139) mm
+      emitted line 423" w10.00 at (20424,15621) mm
+      emitted line 808" w10.00 at (70229,16844) mm
+      emitted line 1157" w10.00 at (41273,17272) mm
+      emitted line 807" w4.00 at (3306,40143) mm
+      emitted line 120" w5.00 at (67456,40339) mm
+      emitted line 147" w5.00 at (74113,34271) mm
+      emitted line 306" w5.00 at (58196,25360) mm
+      emitted line 178" w5.00 at (49335,54955) mm
+      emitted line 200" w5.00 at (65862,39095) mm
+      emitted line 205" w5.00 at (76486,21476) mm
+      emitted line 177" w5.00 at (78046,53370) mm
+      emitted line 96" w4.00 at (72426,45982) mm
+      emitted line 104" w4.00 at (78033,32283) mm
+      emitted line 101" w4.00 at (69621,25489) mm
+      emitted line 690" w5.00 at (68711,47718) mm
+      emitted line 653" w5.00 at (75667,47250) mm
+      emitted line 259" w2.00 at (14059,35145) mm
+      emitted line 259" w2.00 at (14059,42179) mm
+      emitted line 259" w2.00 at (21713,35145) mm
+      emitted line 259" w2.00 at (21713,42179) mm
+      emitted line 259" w2.00 at (24799,35145) mm
+      emitted line 259" w2.00 at (24799,42179) mm
+      emitted line 126" w5.00 at (22648,39393) mm
+      emitted line 173" w2.00 at (5525,6439) mm
+      emitted line 429" w2.00 at (10056,8412) mm
+      emitted line 173" w2.00 at (10579,6439) mm
+      emitted line 173" w2.00 at (11616,6439) mm
+      emitted line 173" w2.00 at (15301,6439) mm
+      emitted line 173" w2.00 at (4870,6439) mm
+      emitted line 181" w5.00 at (11053,6284) mm
+      emitted line 330" w5.00 at (11002,8310) mm
+      emitted line 161" w5.00 at (4866,6373) mm
+      emitted line 157" w5.00 at (15299,6322) mm
+      emitted line 159" w5.00 at (15327,6322) mm
+      emitted line 338" w5.00 at (11100,8340) mm
+      emitted line 163" w5.00 at (4832,6375) mm
+      emitted line 140" w5.00 at (9997,6380) mm
+      emitted line 163" w5.00 at (10300,6405) mm
+      emitted line 139" w5.00 at (11055,3327) mm
+      emitted line 100" w2.00 at (5730,7546) mm
+      emitted line 120" w2.00 at (5895,7260) mm
+      emitted line 146" w2.00 at (6111,7029) mm
+      emitted line 172" w2.00 at (6327,6797) mm
+      emitted line 198" w2.00 at (6543,6564) mm
+      emitted line 224" w2.00 at (6759,6331) mm
+      emitted line 224" w2.00 at (7203,6327) mm
+      emitted line 224" w2.00 at (7652,6327) mm
+      emitted line 224" w2.00 at (8100,6327) mm
+      emitted line 224" w2.00 at (8549,6327) mm
+      emitted line 224" w2.00 at (8998,6327) mm
+      emitted line 202" w2.00 at (9243,6124) mm
+      emitted line 177" w2.00 at (9468,5899) mm
+      emitted line 152" w2.00 at (9692,5675) mm
+      emitted line 127" w2.00 at (9917,5450) mm
+      emitted line 102" w2.00 at (10141,5226) mm
+      lines 278"/303" 39.3" apart at (60801,34688) mm: not a pair, they overlap by only -157"
+      lines 278"/206" 73.0" apart at (60801,34688) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/278" 0.2" apart at (60801,34688) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/301" 19.5" apart at (60801,34688) mm: not a pair, they overlap by only -1424"
+      lines 302"/303" 59.0" apart at (60501,34188) mm: not a pair, they overlap by only -157"
+      lines 302"/206" 92.7" apart at (60501,34188) mm: not a pair, the gap is outside wall thicknesses
+      lines 302"/278" 19.8" apart at (60501,34188) mm: not a pair, they overlap by only -1400"
+      lines 302"/301" 0.2" apart at (60501,34188) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/278" 94.0" apart at (60801,41063) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/206" 105.8" apart at (60801,41063) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/302" 105.8" apart at (60801,41063) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/130" 104.5" apart at (60801,41063) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/106" 93.8" apart at (60801,41063) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/278" 0.0" apart at (60801,41063) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/278" 19.7" apart at (60801,41063) mm: not a pair, they overlap by only -1424"
+      lines 278"/278" 94.0" apart at (60801,41063) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/206" 105.8" apart at (60801,41063) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/177" 50.0" apart at (60801,41063) mm: not a pair, they overlap by only -1474"
+      lines 278"/177" 44.0" apart at (60801,41063) mm: not a pair, they overlap by only -1474"
+      lines 278"/278" 113.7" apart at (60801,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/177" 69.7" apart at (60801,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/177" 63.7" apart at (60801,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/211" 0.0" apart at (60801,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/130" 84.8" apart at (60801,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/106" 113.5" apart at (60801,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/278" 19.7" apart at (60801,41563) mm: not a pair, they overlap by only -1424"
+      lines 278"/278" 0.0" apart at (60801,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/278" 113.7" apart at (60801,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/177" 69.7" apart at (60801,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/177" 63.7" apart at (60801,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/302" 11.8" apart at (60799,38676) mm: not a pair, they overlap by only -157"
+      lines 278"/303" 117.7" apart at (60799,38676) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/211" 113.7" apart at (60799,38676) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/106" 0.2" apart at (60799,38676) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/206" 84.0" apart at (60799,38676) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/278" 94.0" apart at (60799,38676) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/278" 113.7" apart at (60799,38676) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/278" 0.0" apart at (60799,38676) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/206" 11.8" apart at (60799,38676) mm: not a pair, they overlap by only -1424"
+      lines 278"/177" 44.0" apart at (60799,38676) mm: not a pair, they overlap by only -1474"
+      lines 278"/177" 50.0" apart at (60799,38676) mm: not a pair, they overlap by only -1474"
+      lines 206"/177" 61.8" apart at (61711,38375) mm: not a pair, the gap is outside wall thicknesses
+      lines 206"/302" 0.0" apart at (61711,38375) mm: not a pair, the gap is outside wall thicknesses
+      lines 206"/303" 105.8" apart at (61711,38375) mm: not a pair, the gap is outside wall thicknesses
+      lines 206"/206" 72.2" apart at (61711,38375) mm: not a pair, the gap is outside wall thicknesses
+      lines 206"/278" 105.8" apart at (61711,38375) mm: not a pair, the gap is outside wall thicknesses
+      lines 206"/278" 11.8" apart at (61711,38375) mm: not a pair, they overlap by only -1496"
+      lines 206"/206" 0.0" apart at (61711,38375) mm: not a pair, the gap is outside wall thicknesses
+      lines 206"/177" 55.8" apart at (61711,38375) mm: not a pair, they overlap by only -1546"
+      lines 206"/177" 61.8" apart at (61711,38375) mm: not a pair, the gap is outside wall thicknesses
+      lines 177"/302" 55.8" apart at (60799,39793) mm: not a pair, they overlap by only -207"
+      lines 177"/211" 69.7" apart at (60799,39793) mm: not a pair, the gap is outside wall thicknesses
+      lines 177"/106" 43.8" apart at (60799,39793) mm: not a pair, the overlap is under 2 times the gap
+      lines 177"/278" 50.0" apart at (60799,39793) mm: not a pair, they overlap by only -1474"
+      lines 177"/278" 69.7" apart at (60799,39793) mm: not a pair, the gap is outside wall thicknesses
+      lines 177"/278" 44.0" apart at (60799,39793) mm: not a pair, they overlap by only -1474"
+      lines 177"/206" 55.8" apart at (60799,39793) mm: not a pair, they overlap by only -1474"
+      lines 177"/177" 0.0" apart at (60799,39793) mm: not a pair, the gap is outside wall thicknesses
+      lines 177"/177" 6.0" apart at (60799,39793) mm: not a pair, they overlap by only -1524"
+      lines 177"/302" 61.8" apart at (60799,39946) mm: not a pair, the gap is outside wall thicknesses
+      lines 177"/211" 63.7" apart at (60799,39946) mm: not a pair, the gap is outside wall thicknesses
+      lines 177"/106" 49.8" apart at (60799,39946) mm: not a pair, the overlap is under 2 times the gap
+      lines 177"/278" 44.0" apart at (60799,39946) mm: not a pair, they overlap by only -1474"
+      lines 177"/278" 63.7" apart at (60799,39946) mm: not a pair, the gap is outside wall thicknesses
+      lines 177"/278" 50.0" apart at (60799,39946) mm: not a pair, they overlap by only -1474"
+      lines 177"/206" 61.8" apart at (60799,39946) mm: not a pair, the gap is outside wall thicknesses
+      lines 177"/177" 6.0" apart at (60799,39946) mm: not a pair, they overlap by only -1524"
+      lines 177"/177" 0.0" apart at (60799,39946) mm: not a pair, the gap is outside wall thicknesses
+      lines 313"/144" 67.3" apart at (72297,54762) mm: not a pair, the gap is outside wall thicknesses
+      lines 313"/183" 28.7" apart at (72297,54762) mm: not a pair, they overlap by only -264"
+      lines 313"/205" 73.5" apart at (72297,54762) mm: not a pair, the gap is outside wall thicknesses
+      lines 313"/217" 73.5" apart at (72297,54762) mm: not a pair, the gap is outside wall thicknesses
+      lines 313"/302" 73.5" apart at (72297,54762) mm: not a pair, the gap is outside wall thicknesses
+      lines 313"/438" 73.5" apart at (72297,54762) mm: not a pair, the gap is outside wall thicknesses
+      lines 144"/302" 85.2" apart at (74151,53052) mm: not a pair, the gap is outside wall thicknesses
+      lines 144"/183" 38.7" apart at (74151,53052) mm: not a pair, they overlap by only -421"
+      lines 302"/98" 76.2" apart at (72147,50889) mm: not a pair, the gap is outside wall thicknesses
+      lines 302"/303" 105.8" apart at (72147,38375) mm: not a pair, the gap is outside wall thicknesses
+      lines 302"/106" 12.0" apart at (72147,38375) mm: not a pair, they overlap by only -157"
+      lines 302"/206" 72.2" apart at (72147,38375) mm: not a pair, the gap is outside wall thicknesses
+      lines 302"/278" 105.8" apart at (72147,38375) mm: not a pair, the gap is outside wall thicknesses
+      lines 302"/278" 11.8" apart at (72147,38375) mm: not a pair, they overlap by only -1859"
+      lines 302"/206" 0.0" apart at (72147,38375) mm: not a pair, the gap is outside wall thicknesses
+      lines 302"/177" 55.8" apart at (72147,38375) mm: not a pair, they overlap by only -1909"
+      lines 302"/177" 61.8" apart at (72147,38375) mm: not a pair, the gap is outside wall thicknesses
+      lines 161"/148" 0.0" apart at (75976,51003) mm: not a pair, the gap is outside wall thicknesses
+      lines 161"/191" 0.0" apart at (75976,51003) mm: not a pair, the gap is outside wall thicknesses
+      lines 229"/545" 0.4" apart at (78543,51858) mm: not a pair, the gap is outside wall thicknesses
+      lines 229"/127" 0.0" apart at (78543,51858) mm: not a pair, the gap is outside wall thicknesses
+      lines 229"/307" 0.0" apart at (78543,51858) mm: not a pair, the gap is outside wall thicknesses
+      lines 229"/191" 0.4" apart at (78543,51858) mm: not a pair, the gap is outside wall thicknesses
+      lines 1119"/111" 0.0" apart at (45872,40547) mm: not a pair, the gap is outside wall thicknesses
+      lines 175"/209" 114.7" apart at (57393,26420) mm: not a pair, the gap is outside wall thicknesses
+      lines 175"/175" 114.7" apart at (57393,26420) mm: not a pair, the gap is outside wall thicknesses
+      lines 156"/406" 79.3" apart at (59610,24445) mm: not a pair, the gap is outside wall thicknesses
+      lines 156"/121" 23.7" apart at (59610,24445) mm: not a pair, they overlap by only 3"
+      lines 711"/233" 0.0" apart at (68644,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 711"/209" 40.8" apart at (68644,22471) mm: not a pair, they overlap by only -332"
+      lines 711"/175" 40.8" apart at (68644,22471) mm: not a pair, they overlap by only -541"
+      lines 711"/223" 0.0" apart at (68644,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 711"/696" 0.0" apart at (68644,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 711"/95" 0.0" apart at (68644,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 711"/113" 3.0" apart at (68644,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 545"/127" 0.5" apart at (77883,29388) mm: not a pair, the gap is outside wall thicknesses
+      lines 545"/307" 0.3" apart at (77883,29388) mm: not a pair, the gap is outside wall thicknesses
+      lines 545"/191" 0.0" apart at (77883,29388) mm: not a pair, the gap is outside wall thicknesses
+      lines 303"/106" 117.8" apart at (72159,35687) mm: not a pair, the gap is outside wall thicknesses
+      lines 303"/206" 33.7" apart at (72159,35687) mm: not a pair, they overlap by only -157"
+      lines 303"/278" 39.2" apart at (72159,35687) mm: not a pair, they overlap by only -1859"
+      lines 303"/301" 58.8" apart at (72159,35687) mm: not a pair, they overlap by only -1859"
+      lines 303"/278" 117.7" apart at (72159,35687) mm: not a pair, the gap is outside wall thicknesses
+      lines 303"/206" 105.8" apart at (72159,35687) mm: not a pair, the gap is outside wall thicknesses
+      lines 211"/130" 84.8" apart at (61648,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 211"/106" 113.5" apart at (61648,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 211"/278" 19.7" apart at (61648,41563) mm: not a pair, they overlap by only -1491"
+      lines 211"/278" 0.0" apart at (61648,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 211"/278" 113.7" apart at (61648,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 211"/177" 69.7" apart at (61648,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 211"/177" 63.7" apart at (61648,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 130"/278" 104.5" apart at (63276,43718) mm: not a pair, the gap is outside wall thicknesses
+      lines 130"/278" 84.8" apart at (63276,43718) mm: not a pair, the gap is outside wall thicknesses
+      lines 406"/121" 103.0" apart at (61625,48876) mm: not a pair, the gap is outside wall thicknesses
+      lines 183"/205" 102.2" apart at (59307,54034) mm: not a pair, the gap is outside wall thicknesses
+      lines 183"/217" 102.2" apart at (59307,54034) mm: not a pair, the gap is outside wall thicknesses
+      lines 183"/302" 102.2" apart at (59307,54034) mm: not a pair, the gap is outside wall thicknesses
+      lines 183"/438" 102.2" apart at (59307,54034) mm: not a pair, the gap is outside wall thicknesses
+      lines 233"/209" 40.8" apart at (54127,22471) mm: not a pair, they overlap by only 0"
+      lines 233"/175" 40.8" apart at (54127,22471) mm: not a pair, they overlap by only -209"
+      lines 233"/223" 0.0" apart at (54127,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 233"/696" 0.0" apart at (54127,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 233"/95" 0.0" apart at (54127,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 233"/113" 3.0" apart at (54127,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 209"/175" 0.0" apart at (48522,23508) mm: not a pair, the gap is outside wall thicknesses
+      lines 209"/223" 40.8" apart at (48522,23508) mm: not a pair, they overlap by only -10"
+      lines 209"/696" 40.8" apart at (48522,23508) mm: not a pair, they overlap by only -327"
+      lines 209"/95" 40.8" apart at (48522,23508) mm: not a pair, they overlap by only -233"
+      lines 209"/113" 37.8" apart at (48522,23508) mm: not a pair, they overlap by only -195"
+      lines 627"/144" 79.8" apart at (68318,45178) mm: not a pair, the gap is outside wall thicknesses
+      lines 205"/217" 0.0" apart at (65714,56629) mm: not a pair, the gap is outside wall thicknesses
+      lines 205"/302" 0.0" apart at (65714,56629) mm: not a pair, the gap is outside wall thicknesses
+      lines 205"/438" 0.0" apart at (65714,56629) mm: not a pair, the gap is outside wall thicknesses
+      lines 217"/302" 0.0" apart at (59739,56629) mm: not a pair, the gap is outside wall thicknesses
+      lines 217"/438" 0.0" apart at (59739,56629) mm: not a pair, the gap is outside wall thicknesses
+      lines 127"/307" 0.2" apart at (77616,20853) mm: not a pair, the gap is outside wall thicknesses
+      lines 127"/191" 0.2" apart at (77616,20853) mm: not a pair, the gap is outside wall thicknesses
+      lines 1039"/204" 0.0" apart at (64370,19236) mm: not a pair, the gap is outside wall thicknesses
+      lines 302"/438" 0.0" apart at (42035,56629) mm: not a pair, the gap is outside wall thicknesses
+      lines 175"/223" 40.8" apart at (43654,23508) mm: not a pair, they overlap by only -218"
+      lines 175"/696" 40.8" apart at (43654,23508) mm: not a pair, they overlap by only -536"
+      lines 175"/95" 40.8" apart at (43654,23508) mm: not a pair, they overlap by only -441"
+      lines 175"/113" 37.8" apart at (43654,23508) mm: not a pair, they overlap by only -404"
+      lines 106"/206" 84.2" apart at (62981,38680) mm: not a pair, the gap is outside wall thicknesses
+      lines 106"/278" 93.8" apart at (62981,38680) mm: not a pair, the gap is outside wall thicknesses
+      lines 106"/278" 113.5" apart at (62981,38680) mm: not a pair, the gap is outside wall thicknesses
+      lines 106"/278" 0.2" apart at (62981,38680) mm: not a pair, the gap is outside wall thicknesses
+      lines 106"/206" 12.0" apart at (62981,38680) mm: not a pair, they overlap by only -1596"
+      lines 106"/177" 43.8" apart at (62981,38680) mm: not a pair, they overlap by only -1646"
+      lines 106"/177" 49.8" apart at (62981,38680) mm: not a pair, they overlap by only -1646"
+      lines 206"/278" 72.8" apart at (61714,36542) mm: not a pair, the gap is outside wall thicknesses
+      lines 206"/301" 92.5" apart at (61714,36542) mm: not a pair, the gap is outside wall thicknesses
+      lines 206"/278" 84.0" apart at (61714,36542) mm: not a pair, the gap is outside wall thicknesses
+      lines 206"/206" 72.2" apart at (61714,36542) mm: not a pair, the gap is outside wall thicknesses
+      lines 223"/696" 0.0" apart at (54250,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 223"/95" 0.0" apart at (54250,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 223"/113" 3.0" apart at (54250,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 696"/95" 0.0" apart at (68328,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 696"/113" 3.0" apart at (68328,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 148"/191" 0.0" apart at (75976,44975) mm: not a pair, the gap is outside wall thicknesses
+      lines 307"/191" 0.4" apart at (78340,45055) mm: not a pair, the gap is outside wall thicknesses
+      lines 95"/113" 3.0" apart at (58285,22471) mm: not a pair, the gap is outside wall thicknesses
+      lines 121"/121" 113.3" apart at (59008,21012) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/278" 94.0" apart at (17585,41063) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/206" 105.8" apart at (17585,41063) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/278" 113.7" apart at (17585,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/177" 69.7" apart at (17585,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/177" 63.7" apart at (17585,41563) mm: not a pair, the gap is outside wall thicknesses
+      lines 206"/177" 61.8" apart at (18498,38375) mm: not a pair, the gap is outside wall thicknesses
+      cut line 313" at (72297,54762) mm: no partner a wall's thickness away
+      cut line 144" at (74151,53052) mm: no partner a wall's thickness away
+      cut line 302" at (72147,50889) mm: no partner a wall's thickness away
+      cut line 302" at (72147,38375) mm: no partner a wall's thickness away
+      cut line 161" at (75976,51003) mm: no partner a wall's thickness away
+      cut line 229" at (78543,51858) mm: no partner a wall's thickness away
+      cut line 1119" at (45872,40547) mm: no partner a wall's thickness away
+      cut line 371" at (50525,25576) mm: no partner a wall's thickness away
+      cut line 175" at (57393,26420) mm: no partner a wall's thickness away
+      cut line 156" at (59610,24445) mm: no partner a wall's thickness away
+      cut line 711" at (68644,22471) mm: no partner a wall's thickness away
+      cut line 545" at (77883,29388) mm: no partner a wall's thickness away
+      cut line 303" at (72159,35687) mm: no partner a wall's thickness away
+      cut line 130" at (63276,43718) mm: no partner a wall's thickness away
+      cut line 406" at (61625,48876) mm: no partner a wall's thickness away
+      cut line 183" at (59307,54034) mm: no partner a wall's thickness away
+      cut line 233" at (54127,22471) mm: no partner a wall's thickness away
+      cut line 111" at (45872,24920) mm: no partner a wall's thickness away
+      cut line 209" at (48522,23508) mm: no partner a wall's thickness away
+      cut line 627" at (68318,45178) mm: no partner a wall's thickness away
+      cut line 144" at (66290,40439) mm: no partner a wall's thickness away
+      cut line 205" at (65714,56629) mm: no partner a wall's thickness away
+      cut line 217" at (59739,56629) mm: no partner a wall's thickness away
+      cut line 127" at (77616,20853) mm: no partner a wall's thickness away
+      cut line 127" at (51173,20853) mm: no partner a wall's thickness away
+      cut line 1039" at (64370,19236) mm: no partner a wall's thickness away
+      cut line 302" at (42035,56629) mm: no partner a wall's thickness away
+      cut line 204" at (38841,19236) mm: no partner a wall's thickness away
+      cut line 168" at (41436,21372) mm: no partner a wall's thickness away
+      cut line 175" at (43654,23508) mm: no partner a wall's thickness away
+      cut line 438" at (51431,56629) mm: no partner a wall's thickness away
+      cut line 206" at (61714,36542) mm: no partner a wall's thickness away
+      cut line 223" at (54250,22471) mm: no partner a wall's thickness away
+      cut line 696" at (68328,22471) mm: no partner a wall's thickness away
+      cut line 98" at (77216,48954) mm: no partner a wall's thickness away
+      cut line 148" at (75976,44975) mm: no partner a wall's thickness away
+      cut line 307" at (78340,45055) mm: no partner a wall's thickness away
+      cut line 191" at (75976,38731) mm: no partner a wall's thickness away
+      cut line 191" at (78160,38731) mm: no partner a wall's thickness away
+      cut line 121" at (59008,21012) mm: no partner a wall's thickness away
+      cut line 113" at (57569,22547) mm: no partner a wall's thickness away
+      cut line 121" at (56130,21012) mm: no partner a wall's thickness away
+      pair 278" x 19.7" (ends 19.7"/19.7") at (60801,41313) mm: under a wall or column already read
+      pair 278" x 19.7" (ends 19.7"/19.7") at (60801,34438) mm: under a wall or column already read
+      pair 278" x 19.7" (ends 19.7"/19.7") at (17585,41313) mm: under a wall or column already read
+      pair 278" x 19.7" (ends 19.7"/19.7") at (17585,34442) mm: under a wall or column already read
+      pair 211" x 19.7" (ends 19.7"/19.7") at (61648,41313) mm: under a wall or column already read
+      pair 206" x 11.8" (ends 11.8"/11.8") at (61711,38525) mm: under a wall or column already read
+      pair 206" x 11.8" (ends 11.8"/11.8") at (18498,38525) mm: under a wall or column already read
+      pair 177" x 6.0" (ends 6.0"/6.0") at (60799,39870) mm: under a wall or column already read
+      pair 177" x 44.0" (ends 44.0"/44.0") at (60799,40505) mm: its first face is another wall's, on its other side
+      pair 177" x 44.0" (ends 44.0"/44.0") at (60799,39235) mm: its first face is another wall's, on its other side
+      pair 177" x 50.0" (ends 50.0"/50.0") at (60799,40428) mm: its first face is another wall's, on its other side
+      pair 177" x 50.0" (ends 50.0"/50.0") at (60799,39311) mm: its first face is another wall's, on its other side
+      pair 177" x 6.0" (ends 6.0"/6.0") at (17585,39870) mm: under a wall or column already read
+      pair 177" x 44.0" (ends 44.0"/44.0") at (17585,40505) mm: its first face is another wall's, on its other side
+      pair 177" x 44.0" (ends 44.0"/44.0") at (17585,39235) mm: its first face is another wall's, on its other side
+      pair 177" x 50.0" (ends 50.0"/50.0") at (17585,40428) mm: its first face is another wall's, on its other side
+      pair 177" x 50.0" (ends 50.0"/50.0") at (17585,39311) mm: its first face is another wall's, on its other side
+      pair 156" x 55.8" (ends 55.8"/55.8") at (61074,39084) mm: its second face is another wall's, on its other side
+      pair 156" x 55.8" (ends 55.8"/55.8") at (17860,39084) mm: its second face is another wall's, on its other side
+      pair 106" x 12.0" (ends 12.0"/12.0") at (62981,38528) mm: under a wall or column already read
+      slab pass: 5 run(s) end at an arrowhead and take 247 of 3501 lines with them; run sizes 231,8,6,1,1
+      slab pass: not offered - a wall's whole face 0: 
+      slab pass: not offered - a section cut's run 247: (41186,23757)-(41186,23508) (41436,23508)-(41186,23508) (68313,33541)-(68313,33325) (68313,33227)-(68313,33012) (67716,54762)-(67716,54407) (67716,54208)-(67716,53814) (67716,53615)-(67716,53221) (67716,53023)-(67716,52629) (67716,52434)-(67716,52036) (67716,51841)-(67716,51443) (67716,51249)-(67716,50889) (68318,54762)-(68114,54762) (67920,54762)-(67716,54762) (67712,37219)-(67712,37452) (68313,48506)-(68313,48268) (68313,34862)-(68313,34663) (68313,48506)-(68064,48506) (67966,48506)-(67716,48506) (68318,50889)-(68114,50889) (67920,50889)-(67716,50889) (67716,50889)-(67716,50681) (67716,50487)-(67716,50093) (67716,49894)-(67716,49500) (67716,49306)-(67716,48912) (67716,48713)-(67716,48506) (67716,48506)-(67716,48264) (67716,48065)-(67716,47672) (67716,47477)-(67716,47083) (67716,46884)-(67716,46490) (67716,46296)-(67716,45902) (67716,45703)-(67716,45309) (67716,45115)-(67716,44721) (67716,44522)-(67716,44128) (67716,43934)-(67716,43540) (67716,43341)-(67716,42951) (67716,42752)-(67716,42359) (67716,42164)-(67716,41770) (67716,41571)-(67716,41178) (67716,40983)-(67716,40589) (67716,40390)-(67716,39997)
+      slab pass: ends at columns (step 97; centre ft: ends): (159.8,158.6):6 (151.5,117.6):5 (179.9,148.2):5 (224.6,85.7):5 (215.1,75.2):5 (180.1,156.8):4 (164.9,114.9):4 (213.6,84.7):4 (223.0,155.2):4 (166.1,175.6):3 (81.2,120.6):3 (175.1,123.4):2 (255.2,104.7):2 (179.0,106.8):2 (196.5,74.7):2 (198.3,158.0):2 (254.4,76.0):2 (206.3,175.3):2 (151.9,135.4):1-lone (152.0,154.9):1-lone (151.9,107.0):1-lone (159.7,134.8):1-lone (151.3,174.7):1-lone (223.0,137.1):1-lone (202.9,105.7):1-lone (225.0,106.2):1-lone
+      slab pass: 62 edge end(s) joined through 18 column(s)
+      slab pass: 0 void(s) by their words (step 106): 
+      slab pass: stair at (74,125) ft: 1 flight(s), box 18 sq ft, 1 of 2932 cell(s) hold a flight (arranged 3239 + wall edges 96 + door edges 0), ring(s) sq ft: 197
+      slab pass: stair box (71.6-75.5, 122.3-126.9) ft grown to its walls (71.2-75.5, 122.3-126.9) ft
+      slab pass: stair at (56,130) ft: 3 flight(s), box 97 sq ft, 6 of 2932 cell(s) hold a flight (arranged 3239 + wall edges 96 + door edges 0), ring(s) sq ft: 125
+      slab pass: stair at (199,131) ft: 2 flight(s), box 79 sq ft, 5 of 2932 cell(s) hold a flight (arranged 3239 + wall edges 96 + door edges 0), ring(s) sq ft: 156
+      slab pass: 2 stair well(s) (step 105; sq ft at centre ft): 125 (59,131) 156 (204,131)
+      slab pass: OPEN TO BELOW (step 164): 0 OPEN, 0 BELOW, 0 together, of 0 page words [containing OPEN: ]
+      slab pass: 11 X mark(s) (an opening's mark, step 104; reach ft at centre ft [column ft, wall ft]): 27 (237,122)[1.7,12.1] 14 (189,69)[2.4,39.0] 13 (243,177)[17.6,45.5] 11 (191,131)[11.4,0.5] 10 (207,123)[10.4,0.5] 10 (56,123)[19.0,0.2] 10 (198,123)[12.7,0.2] 10 (65,123)[10.5,0.5] 3 (142,137)[8.1,44.1] 2 (141,87)[9.1,50.7] 2 (178,121)[0.6,8.8]
+      slab pass: 6 stair flight(s) (step 105; treads, extent ft, centre ft [column ft, wall ft]): 5 3.9x4.6 (74,125)[6.2,3.3] 8 7.3x3.7 (54,133)[25.7,2.1] 11 10.0x3.7 (199,133)[18.1,2.1] 8 7.3x3.7 (54,129)[25.7,2.1] 5 4.6x3.7 (61,129)[19.2,2.1] 8 7.3x3.7 (199,129)[18.5,2.1]
+      slab pass: lone column at (151.9,135.4) ft: arrangement points within 1.5 m (offset in, degree): (0,-5)d4 (-2,-5)d4 (-1,-6)d4 (5,5)d4 (8,3)d4 (-7,5)d4 (-9,3)d4 (-1,11)d4 (10,5)d4 (-12,-1)d4 (-12,5)d4 (12,-2)d4 (-12,5)d2 (-12,-5)d2 (12,5)d2 (12,-5)d2 (8,-14)d4 (-9,-14)d4 (16,-6)d4 (-17,-6)d2 (-17,-6)d2 (-17,-6)d2 (16,11)d4 (-17,11)d2 (-17,11)d2 (-17,11)d2 (8,19)d4 (-9,19)d4 (-1,-23)d4 (1,-24)d2 (-2,-24)d1 (24,3)d4 (16,-22)d4 (-1,28)d4 (14,-24)d1 (-17,-22)d2 (24,-14)d4 (-17,-23)d2 (-16,-24)d2 (17,-24)d2 (24,19)d4 (16,28)d4 (-17,27)d2 (-17,28)d2 (33,-6)d4 (33,11)d4 (8,36)d4 (-9,36)d4 (31,-24)d1 (33,-22)d4 (41,3)d4 (34,-24)d2 (33,28)d4 (-17,-39)d1 (41,-14)d4 (24,36)d4 (-1,44)d4 (41,19)d4 (2,47)d4 (-3,47)d4 (16,44)d4 (-17,44)d2 (-17,44)d2 (-17,45)d3 (14,46)d3 (13,47)d4 (-15,47)d4 (15,47)d2 (49,-6)d4 (-17,47)d3 (49,11)d4 (8,53)d4 (-9,53)d4 (48,-24)d1 (49,-22)d4 (41,36)d4 (33,44)d4 (51,-24)d2 (49,28)d4 (58,3)d4 (24,53)d4 (-17,-56)d1 (-36,47)d2
+      slab pass: lone column at (152.0,154.9) ft: arrangement points within 1.5 m (offset in, degree): (-18,-7)d1 (-18,10)d1 (-18,-23)d1 (-18,27)d1 (-18,-40)d1 (-18,44)d1 (2,52)d2 (-9,52)d4 (5,55)d3
+      slab pass: lone column at (151.9,107.0) ft: arrangement points within 1.5 m (offset in, degree): (-1,1)d4 (7,-8)d4 (8,-7)d4 (8,-8)d4 (-9,-8)d4 (-9,-7)d4 (-10,-8)d4 (8,10)d4 (-9,10)d4 (-1,-15)d4 (12,-11)d3 (16,1)d4 (15,-8)d2 (-17,1)d2 (-17,2)d2 (-17,1)d2 (-1,18)d4 (16,-15)d4 (-17,-15)d2 (-17,-16)d2 (-17,-15)d2 (16,18)d4 (-17,18)d1 (8,-24)d4 (24,-7)d4 (-9,-24)d4 (24,10)d4 (8,26)d4 (-1,-32)d4 (33,1)d4 (24,-24)d4 (24,26)d4 (16,-32)d4 (-17,-32)d2 (33,-15)d4 (-17,-32)d2 (-17,-32)d2 (-36,-8)d2 (33,18)d4 (16,35)d4 (-17,34)d1 (-39,-8)d1 (8,-40)d4 (-9,-40)d4 (41,-7)d4 (41,10)d4 (33,-32)d4 (24,-40)d4 (41,-24)d4 (33,35)d4 (35,-34)d3 (34,-35)d2 (41,26)d4 (-1,-49)d4 (49,1)d4 (24,43)d4 (16,-49)d4 (-17,-48)d2 (-17,-49)d2 (49,-15)d4 (-17,-49)d2 (49,18)d4 (-17,51)d1 (41,-40)d4 (8,-57)d4 (-9,-57)d4 (58,-7)d4 (34,-47)d4 (58,10)d4 (33,-49)d4 (49,-32)d4
+      slab pass: lone column at (159.7,134.8) ft: arrangement points within 1.5 m (offset in, degree): (2,6)d4 (-3,-6)d4 (12,-4)d2 (14,-6)d4 (-15,6)d4 (12,13)d2 (8,-16)d1 (18,6)d2 (18,-6)d2 (-18,6)d2 (-18,-6)d2 (-9,-16)d2 (-10,18)d4 (-19,10)d4 (-2,27)d4 (-27,2)d4 (24,-16)d1 (-26,-16)d2 (-7,-30)d2 (12,30)d2 (-12,-30)d2 (-12,-30)d3 (-19,27)d4 (-27,18)d4 (6,35)d4 (-35,-7)d4 (-10,35)d4 (-35,10)d4 (-22,-30)d2 (12,-37)d2 (-25,-34)d3 (-25,-34)d2 (12,41)d2 (0,-43)d2 (-2,43)d4 (-44,2)d4 (41,-16)d1 (-27,35)d4 (-35,27)d4 (-42,-16)d2 (15,43)d3 (-44,-15)d4 (-19,43)d4 (-44,18)d4 (12,46)d2 (-45,-16)d1 (6,52)d4 (-52,-7)d4 (-30,-43)d2 (-10,52)d4 (-52,10)d4 (23,-48)d2 (-28,-48)d3 (-28,-48)d2 (-35,43)d4 (-44,35)d4 (-7,-57)d2 (12,57)d2 (-27,52)d4 (-52,27)d4
+      slab pass: 11 end(s) short of another edge's middle by under the bridge (a T drawn short): (167.8,165.4)ft 5.9in (179.6,164.7)ft 5.9in (175.2,146.4)ft 5.9in (203.1,174.3)ft 5.9in (235.8,88.1)ft 5.9in (153.6,160.3)ft 5.9in (157.5,143.4)ft 1.8in (205.1,106.1)ft 5.1in (195.5,75.7)ft 5.6in (175.2,160.3)ft 5.9in (220.0,104.4)ft 0.9in
+      slab pass: 441 dangling end(s) (degree one; nearest other body): (48421,56617)mm 5.9in (48848,56617)mm 5.9in (48290,54788)mm 5.9in (50753,56617)mm 3.8in (50626,52464)mm 5.9in (50842,52464)mm 8.5in (52112,52464)mm 5.5in (52536,52464)mm 11.8in (51130,50423)mm 5.9in (53382,52464)mm 5.4in (50212,48865)mm 11.8in (53810,52464)mm 16.8in (50635,48865)mm 11.8in (54729,50203)mm 5.9in (56989,52464)mm 5.9in (51130,51554)mm 2.0in (53391,48230)mm 5.9in (53391,47807)mm 13.2in (61802,54944)mm 5.9in (63483,56629)mm 5.9in (63801,55673)mm 5.9in (53391,44628)mm 5.9in (61900,53137)mm 5.9in (57844,48865)mm 11.9in (58268,48865)mm 11.8in (61625,52227)mm 11.8in (56388,46774)mm 5.9in (58644,47549)mm 11.8in (58644,47125)mm 11.8in (58644,46702)mm 16.0in (60206,46990)mm 5.9in (60206,45716)mm 6.0in (56083,39264)mm 5.9in (73791,30476)mm 5.9in (74430,30476)mm 5.9in (73749,29367)mm 1.5in (71861,26848)mm 5.9in (71912,26687)mm 6.6in (75446,30222)mm 5.9in (72128,26687)mm 5.9in (75446,28524)mm 5.9in (45872,29676)mm 11.8in (45872,30099)mm 11.8in (48971,28698)mm 12.2in (48971,29121)mm 11.8in (48971,29544)mm 11.8in (48971,29968)mm 11.8in (45872,33067)mm 11.4in (48971,30391)mm 11.8in (45872,33490)mm 11.9in (49162,30624)mm 10.6in (45872,33917)mm 11.7in (50529,29680)mm 6.5in (49585,30624)mm 11.8in (45987,34222)mm 11.9in (45872,35187)mm 10.3in (54127,29053)mm 11.9in (48971,34205)mm 11.7in (54127,29477)mm 11.8in (49382,34222)mm 11.8in (54127,29900)mm 11.8in (45872,38155)mm 11.4in (61379,23072)mm 11.8in (54127,30323)mm 11.8in (61802,23072)mm 11.8in (62226,23072)mm 11.9in (54674,30624)mm 11.8in (62653,23072)mm 11.8in (55097,30624)mm 11.8in (63077,23072)mm 11.8in (55520,30624)mm 11.9in (63500,23072)mm 11.8in (55948,30624)mm 11.8in (63923,23072)mm 11.8in (58924,28071)mm 4.7in (56371,30624)mm 11.8in (58924,28495)mm 11.8in (56794,30624)mm 11.8in (52036,35386)mm 11.8in (50529,36889)mm 11.8in (58924,28918)mm 11.8in (57218,30624)mm 11.8in (52459,35386)mm 11.8in (50529,37313)mm 11.8in (62586,25684)mm 0.0in (58924,29341)mm 11.8in (57641,30624)mm 11.8in (54127,34138)mm 11.8in (52883,35386)mm 11.8in (50529,37736)mm 11.8in (50529,38159)mm 11.9in (54127,34989)mm 11.8in (50529,38587)mm 11.8in (45872,43244)mm 11.4in (50529,39010)mm 11.8in (50698,39264)mm 12.0in (49293,40670)mm 11.9in (45872,44090)mm 11.9in (62522,27864)mm 11.8in (54999,35391)mm 4.9in (51122,39264)mm 11.8in (49721,40670)mm 11.8in (45872,44514)mm 11.9in (62522,28287)mm 11.8in (55423,35391)mm 6.8in (51545,39264)mm 11.8in (50144,40670)mm 11.7in (45872,44941)mm 16.8in (62522,28715)mm 11.9in (51968,39264)mm 11.8in (62522,29138)mm 11.8in (52392,39264)mm 11.8in (45872,45788)mm 11.8in (62522,29561)mm 11.8in (45872,46211)mm 11.8in (62522,29985)mm 11.8in (45872,46634)mm 11.8in (62522,30408)mm 11.8in (45872,47058)mm 11.9in (48971,44382)mm 11.7in (45872,47485)mm 11.8in (48971,44810)mm 11.9in (45872,47909)mm 11.8in (62912,31293)mm 11.8in (48971,45233)mm 11.8in (45872,48332)mm 8.2in (63335,31293)mm 11.8in (63758,31293)mm 11.8in (54381,40670)mm 11.8in (64182,31293)mm 11.8in (54805,40670)mm 11.9in (51211,44268)mm 11.9in (64605,31293)mm 11.9in (55232,40670)mm 11.8in (51634,44268)mm 9.3in (48971,46927)mm 11.5in (65032,31293)mm 11.8in (48971,47350)mm 11.8in (65456,31293)mm 11.8in (56079,40670)mm 11.8in (48971,47777)mm 11.9in (74100,23072)mm 11.8in (65879,31293)mm 11.8in (56502,40670)mm 6.7in (45872,51300)mm 11.4in (74524,23072)mm 11.9in (45872,51723)mm 11.8in (74951,23072)mm 11.8in (75375,23072)mm 13.7in (75459,23410)mm 11.8in (75459,23834)mm 11.8in (75459,24257)mm 11.8in (75459,24680)mm 11.8in (75459,25104)mm 11.8in (56291,44272)mm 11.8in (56714,44272)mm 11.8in (57137,44272)mm 11.8in (57565,44272)mm 11.9in (60202,42054)mm 11.8in (60202,42482)mm 11.9in (76865,30484)mm 11.8in (74426,32923)mm 11.8in (77288,30484)mm 11.8in (74426,33346)mm 11.8in (77711,30484)mm 11.8in (74426,33769)mm 11.8in (77923,30696)mm 11.8in (74536,34083)mm 13.1in (77936,31107)mm 11.8in (74960,34083)mm 11.8in (77948,31521)mm 3.1in (75387,34083)mm 11.9in (75811,34083)mm 11.8in (47447,52464)mm 10.8in (47871,52464)mm 11.9in (48298,52464)mm 11.8in (48721,52464)mm 16.7in (46821,48865)mm 5.9in (51130,48937)mm 11.8in (51482,48865)mm 11.8in (51905,48865)mm 11.8in (52332,48865)mm 11.9in (52756,48865)mm 5.9in (48010,43701)mm 1.4in (46253,40670)mm 2.0in (46677,40670)mm 2.0in (47100,40670)mm 2.1in (47523,40670)mm 2.1in (51968,44268)mm 9.3in (47392,39264)mm 2.4in (52392,44268)mm 11.9in (47816,39264)mm 2.4in (48243,39264)mm 2.5in (48971,39146)mm 11.8in (58644,48823)mm 11.7in (61625,51799)mm 11.9in (48971,38722)mm 7.7in (58644,48395)mm 11.8in (61625,51376)mm 11.8in (58644,47972)mm 11.8in (47439,34222)mm 6.8in (47862,34222)mm 4.9in (48285,34222)mm 4.9in (67801,52464)mm 11.8in (68224,52464)mm 13.3in (48971,32787)mm 11.8in (66319,50135)mm 11.8in (68318,52134)mm 11.8in (48971,32364)mm 7.7in (66319,49712)mm 16.7in (68318,51710)mm 11.8in (52104,34222)mm 11.8in (52527,34222)mm 11.8in (45872,25023)mm 11.5in (45872,24600)mm 11.8in (45872,24177)mm 11.8in (49615,27919)mm 8.1in (45877,23757)mm 16.5in (46300,23757)mm 11.8in (46723,23757)mm 11.8in (47147,23757)mm 11.3in (58924,31293)mm 4.7in (51427,23372)mm 11.8in (58924,30869)mm 4.7in (51545,23067)mm 12.9in (51973,23067)mm 11.7in (62522,32347)mm 5.1in (66214,33071)mm 11.7in (66214,32647)mm 0.1in (68457,34891)mm 6.7in (66214,32224)mm 0.1in (68881,34891)mm 11.8in (66214,31797)mm 0.2in (69304,34891)mm 11.8in (69727,34891)mm 13.9in (69812,34548)mm 11.9in (69812,34125)mm 11.8in (59178,23067)mm 2.4in (69812,33702)mm 11.3in (59601,23067)mm 2.4in (67826,31293)mm 7.3in (68250,31293)mm 9.3in (64165,24240)mm 7.9in (64165,23817)mm 11.9in (67886,26687)mm 11.8in (64690,23067)mm 11.8in (68601,26556)mm 9.9in (45872,26708)mm 11.4in (45872,27131)mm 11.8in (45872,27555)mm 11.8in (45932,27919)mm 11.8in (51562,26107)mm 0.1in (60113,23067)mm 11.8in (60537,23067)mm 11.8in (60960,23067)mm 11.8in (45872,38578)mm 11.8in (54127,30747)mm 11.8in (48971,36326)mm 11.7in (48971,36754)mm 11.9in (48971,37177)mm 11.8in (48971,37600)mm 7.7in (48870,40670)mm 10.5in (45872,43667)mm 11.8in (64165,26645)mm 11.8in (66451,25633)mm 10.6in (62522,30831)mm 11.8in (67090,26687)mm 11.8in (62522,31255)mm 11.8in (53111,40670)mm 11.8in (53535,40670)mm 11.8in (53958,40670)mm 11.8in (45872,52146)mm 11.8in (45978,52464)mm 13.2in (48971,49894)mm 10.0in (46402,52464)mm 11.8in (68847,31293)mm 11.8in (69270,31293)mm 11.8in (69693,31293)mm 13.0in (66214,34773)mm 11.8in (69812,31602)mm 11.9in (69812,32025)mm 11.8in (66946,34891)mm 11.8in (69812,32449)mm 11.2in (67369,34891)mm 11.8in (53391,48865)mm 5.9in (67793,34891)mm 6.7in (51130,51977)mm 11.8in (51913,52464)mm 5.5in (61117,47926)mm 9.3in (61540,47926)mm 13.7in (61625,48264)mm 11.8in (61625,48692)mm 11.9in (61625,49115)mm 11.8in (68318,49627)mm 15.5in (66319,51630)mm 11.8in (68318,50055)mm 11.9in (66319,52053)mm 11.7in (68318,50478)mm 11.8in (66328,52464)mm 11.9in (68318,50902)mm 11.8in (67712,41118)mm 9.2in (50080,34582)mm 6.3in (43172,45411)mm 15.8in (52269,20489)mm 15.7in (71006,43498)mm 17.7in (65329,38608)mm 13.3in (65689,50965)mm 15.7in (65689,55152)mm 9.0in (77212,36305)mm 9.8in (76742,40424)mm 13.5in (73245,40424)mm 80.7in (61714,21298)mm 12.5in (70557,54762)mm 9.7in (75997,38375)mm 10.2in (68140,38375)mm 32.1in (78232,41182)mm 40.2in (75976,41182)mm 11.8in (61654,45754)mm 25.0in (36246,57578)mm 120.7in (36246,18165)mm 35.2in (14313,40712)mm 10.0in (23012,37376)mm 22.0in (12510,42918)mm 6.7in (12510,32457)mm 17.2in (25303,32457)mm 17.2in (25303,42918)mm 6.7in (20405,39370)mm 13.3in (59965,16844)mm 104.0in (80493,16844)mm 153.6in (26585,17272)mm 31.3in (55960,17272)mm 87.1in (3306,29900)mm 376.1in (3306,50385)mm 465.5in (74113,36140)mm 13.5in (49335,52697)mm 24.7in (65862,41635)mm 8.0in (76606,24075)mm 37.2in (77102,51058)mm 21.8in (57442,19969)mm 19.0in (73647,45496)mm 16.8in (73660,21878)mm 21.3in (50453,40132)mm 22.7in (66239,48175)mm 60.6in (68398,48175)mm 12.3in (79354,34159)mm 64.9in (68711,38955)mm 22.8in (75667,38955)mm 22.8in (72936,44585)mm 4.2in (73990,45106)mm 1.2in (14059,31852)mm 41.0in (14059,45470)mm 107.2in (21713,31852)mm 41.0in (21713,45470)mm 107.2in (24799,31852)mm 31.0in (24799,45470)mm 102.4in (22648,37799)mm 14.3in (22153,41588)mm 0.2in (5525,4242)mm 2.5in (5525,8636)mm 7.5in (4614,8412)mm 6.2in (10579,8636)mm 8.8in (11616,8636)mm 8.8in (15367,8636)mm 8.7in (4936,8636)mm 7.5in (11053,8581)mm 6.7in (11053,3988)mm 12.5in (12374,6405)mm 20.5in (5753,8077)mm 9.0in (-72,21)mm 217.7in (1194,21)mm 184.9in (55503,52464)mm 11.8in (55927,52464)mm 11.9in (69156,26687)mm 11.9in (45872,28406)mm 11.8in (45872,28829)mm 11.8in (45872,29252)mm 11.8in (50529,28410)mm 11.8in (50529,28833)mm 11.8in (45872,39429)mm 9.1in (45872,39853)mm 11.8in (45872,40276)mm 11.8in (63699,26687)mm 11.8in (49936,44268)mm 16.7in (50360,44268)mm 9.4in (65248,34891)mm 12.7in (65672,34891)mm 11.8in (66726,31293)mm 11.8in (67048,31818)mm 0.9in (61714,37825)mm 17.7in (64444,47646)mm 21.8in (77656,51058)mm 21.8in (71205,45496)mm 19.2in (78224,35607)mm 0.9in (60880,45119)mm 35.4in (73017,21560)mm 0.2in (65862,36449)mm 0.1in (76645,52404)mm 14.5in (63788,42863)mm 44.8in (64376,54077)mm 17.2in (73406,53751)mm 30.0in (22276,38396)mm 11.0in (64969,26192)mm 8.4in (64927,43718)mm 40.6in (58869,37715)mm 3.2in (59627,37715)mm 9.2in (16442,24312)mm 54.5in (16828,24312)mm 69.7in (16442,19461)mm 54.5in (16828,19461)mm 65.7in (77961,54513)mm 7.8in (76175,54513)mm 3.8in (56303,54513)mm 7.8in (55838,54513)mm 7.8in (41186,19486)mm 11.3in (41436,19486)mm 21.2in (39649,37715)mm 7.8in (51723,19486)mm 7.8in (76911,19486)mm 8.0in (51173,19486)mm 21.7in (51422,19486)mm 11.8in (40898,19486)mm 7.8in (76276,50703)mm 3.8in (76276,49005)mm 8.2in (76276,48772)mm 7.7in (76276,47985)mm 7.8in (76276,42316)mm 8.8in (76276,41123)mm 2.3in (76276,38235)mm 3.8in (76276,37219)mm 5.2in (78224,42469)mm 50.7in (77974,42477)mm 51.0in (76276,43481)mm 7.8in (76276,46651)mm 7.8in (76276,52210)mm 7.7in (45318,50665)mm 3.2in (47172,52997)mm 3.2in (45318,32423)mm 3.2in (68013,30721)mm 3.2in (45318,42469)mm 3.2in (76225,34620)mm 3.2in (78643,35796)mm 0.1in
+      slab pass: arrangement 2939 cell(s); columns in a cell 36 of 49; largest (sq ft, holds): 1199 764* 552 219 197 182 151 125 122 107
+      slab pass: 471 open chain(s) in the arrangement; longest (ft, ends in ft): 96 (87.2,56.7)[62.5]-(183.6,56.7)[17.5] | 67 (196.7,55.3)[18.9]-(264.1,55.3)[19.7] | 67 (10.8,98.1)[68.9]-(10.8,165.3)[68.9] | 60 (118.9,63.9)[32.0]-(118.9,123.7)[31.2] | 57 (250.6,63.9)[11.0]-(193.6,63.9)[10.3] | 54 (118.9,124.5)[31.2]-(118.9,178.8)[31.4] | 46 (210.3,82.1)[2.1]-(177.6,114.8)[6.5] | 39 (248.3,132.6)[5.8]-(248.3,171.9)[15.2] | 35 (165.8,125.2)[7.9]-(190.9,100.1)[10.4] | 32 (150.8,179.8)[4.1]-(118.9,178.8)[31.4] | 21 (206.4,155.6)[6.7]-(211.4,156.3)[10.1] | 21 (161.9,178.8)[3.2]-(183.2,178.8)[1.8] | 20 (204.9,178.8)[2.5]-(184.7,178.8)[1.0] | 18 (194.3,103.6)[7.2]-(181.8,116.1)[5.8] | 17 (231.5,142.7)[7.0]-(231.5,125.9)[7.0] | 16 (189.1,100.5)[8.6]-(177.6,112.0)[3.7] | 16 (253.3,119.1)[1.8]-(253.3,135.1)[3.3] | 16 (255.7,100.7)[2.9]-(244.5,111.8)[7.3] | 15 (118.9,63.9)[32.0]-(134.2,63.9)[22.9] | 15 (255.0,100.0)[3.6]-(244.2,110.8)[8.4] | 15 (251.3,79.0)[2.0]-(250.6,63.9)[11.0] | 15 (253.0,167.5)[10.8]-(254.8,167.5)[10.8] | 14 (160.7,148.4)[7.7]-(150.5,158.6)[2.6] | 14 (160.7,147.0)[7.7]-(150.5,157.2)[1.2] | 14 (192.4,147.7)[8.9]-(197.5,138.0)[16.6] | 14 (248.3,178.8)[22.2]-(234.7,178.8)[22.2] | 13 (175.2,146.4)[3.8]-(184.7,155.9)[3.1] | 13 (253.6,100.0)[3.6]-(244.2,109.4)[9.8] | 13 (209.7,75.7)[4.4]-(200.6,84.9)[2.7] | 13 (247.6,78.2)[5.8]-(238.5,87.3)[4.5] | 13 (263.1,175.1)[18.4]-(250.3,175.1)[18.4] | 13 (196.4,136.4)[15.4]-(187.5,145.3)[6.5] | 12 (188.9,145.3)[7.9]-(197.5,136.4)[16.6] | 12 (237.0,125.9)[11.7]-(249.3,125.9)[3.8] | 12 (205.1,91.4)[7.3]-(196.4,100.2)[5.1] | 12 (244.5,75.7)[8.8]-(236.0,84.2)[7.0] | 12 (243.2,118.6)[5.5]-(243.2,106.6)[9.4] | 12 (152.2,179.8)[4.0]-(161.9,178.8)[3.2] | 12 (215.5,167.2)[8.2]-(215.5,178.8)[8.2] | 12 (174.0,119.8)[2.2]-(165.8,128.0)[5.3] | 12 (220.7,170.4)[13.4]-(225.4,173.2)[16.6] | 11 (252.2,100.0)[3.6]-(244.2,108.0)[10.0] | 11 (177.1,120.8)[1.1]-(169.1,128.8)[4.5] | 11 (213.4,102.7)[9.0]-(205.4,110.6)[3.4] | 11 (241.6,149.3)[7.0]-(233.6,149.3)[9.1] | 11 (242.1,118.1)[6.5]-(242.0,108.7)[10.5] | 11 (235.8,88.1)[7.2]-(243.6,95.3)[3.5] | 11 (208.3,75.7)[5.8]-(200.6,83.5)[2.7] | 11 (185.4,133.4)[8.9]-(177.6,141.2)[6.0] | 11 (173.5,116.1)[5.8]-(165.8,123.8)[7.5] | 11 (247.6,79.6)[5.4]-(239.9,87.3)[3.1] | 11 (235.9,87.6)[7.1]-(243.6,95.3)[3.5] | 11 (260.3,112.1)[6.4]-(255.7,105.9)[0.2] | 11 (119.3,123.7)[30.7]-(130.1,123.7)[20.0] | 11 (165.8,126.6)[6.7]-(173.3,119.1)[2.9] | 11 (192.1,137.8)[11.2]-(184.7,145.3)[3.8] | 10 (250.3,142.7)[1.3]-(250.3,153.1)[0.7] | 10 (205.1,92.8)[7.3]-(197.8,100.2)[4.1] | 10 (166.8,172.1)[2.4]-(159.5,164.8)[5.5] | 10 (151.7,149.0)[4.9]-(141.6,149.0)[9.3] | 10 (118.9,178.8)[31.4]-(118.9,188.9)[31.4] | 10 (179.6,164.7)[6.4]-(186.6,171.8)[4.0] | 10 (150.5,98.8)[6.7]-(157.4,91.8)[4.4] | 10 (193.0,138.3)[12.1]-(186.1,145.3)[5.1] | 10 (192.4,146.3)[10.3]-(197.5,139.4)[16.0] | 10 (206.3,155.6)[6.6]-(202.3,150.1)[6.4] | 10 (150.5,155.8)[0.4]-(157.2,149.1)[4.9] | 9 (247.3,75.7)[6.0]-(240.7,82.3)[2.7] | 9 (214.3,126.7)[7.2]-(214.3,135.9)[7.2] | 9 (212.0,102.7)[7.6]-(205.4,109.2)[2.0] | 9 (171.5,76.4)[5.4]-(171.5,67.2)[14.6] | 9 (245.9,75.7)[7.4]-(239.5,82.1)[3.5] | 9 (184.0,133.4)[8.6]-(177.6,139.8)[7.4] | 9 (206.9,75.7)[7.2]-(200.6,82.1)[2.7] | 9 (247.6,76.8)[5.8]-(241.2,83.2)[1.8] | 9 (172.1,116.1)[5.8]-(165.8,122.4)[6.1] | 9 (247.6,81.0)[4.0]-(241.2,87.3)[1.7] | 9 (71.2,140.3)[8.5]-(71.2,149.2)[10.6] | 9 (81.4,140.3)[1.6]-(81.4,149.2)[10.6] | 9 (46.1,140.3)[33.6]-(46.1,149.2)[33.6] | 9 (169.7,63.9)[17.9]-(178.5,63.9)[17.6] | 9 (195.1,73.9)[1.0]-(202.5,69.9)[5.4] | 9 (160.7,154.0)[3.9]-(154.7,160.0)[4.0] | 8 (205.1,94.2)[8.3]-(199.2,100.2)[4.1] | 8 (171.7,133.9)[9.1]-(165.5,131.7)[4.4] | 8 (160.7,94.2)[6.7]-(154.8,100.0)[4.7] | 8 (184.9,100.5)[4.8]-(179.3,106.1)[-0.8] | 8 (183.6,100.5)[4.8]-(177.9,106.1)[-0.4] | 8 (248.3,132.6)[5.8]-(240.3,132.6)[8.3] | 8 (231.5,125.9)[7.0]-(223.6,125.9)[3.8] | 8 (177.6,95.3)[10.0]-(172.0,100.9)[5.5] | 8 (150.5,97.4)[7.4]-(156.0,91.8)[4.2] | 8 (155.9,149.0)[4.9]-(150.5,154.4)[0.4] | 8 (216.1,102.7)[7.4]-(210.7,108.1)[6.4] | 8 (160.7,155.3)[2.6]-(155.3,160.7)[3.7] | 8 (160.7,95.5)[8.1]-(155.3,100.9)[3.9] | 8 (175.8,123.5)[-0.7]-(170.5,128.8)[4.0] | 7 (205.1,95.6)[8.7]-(199.9,100.9)[3.4] | 7 (182.2,100.5)[4.8]-(176.9,105.7)[0.6] | 7 (180.8,120.0)[4.3]-(185.9,125.2)[9.4] | 7 (160.7,162.5)[3.1]-(165.8,167.7)[6.9] | 7 (210.6,102.7)[6.2]-(205.4,107.8)[1.1] | 7 (177.0,123.7)[0.5]-(171.9,128.8)[4.0] | 7 (165.8,107.1)[6.1]-(160.7,112.2)[2.8] | 7 (239.6,77.9)[4.6]-(239.6,70.7)[4.6] | 7 (217.3,158.1)[4.2]-(224.4,158.1)[1.4] | 7 (205.6,75.7)[7.7]-(200.6,80.7)[2.7] | 7 (170.7,116.1)[4.4]-(165.8,121.0)[4.7] | 7 (167.7,128.8)[5.9]-(172.7,123.9)[1.0] | 7 (216.1,125.4)[5.4]-(216.1,132.3)[5.4] | 7 (155.3,91.1)[3.5]-(150.5,96.0)[8.2] | 7 (177.6,96.7)[8.6]-(172.7,101.6)[4.8] | 7 (225.4,178.8)[18.1]-(225.4,185.7)[18.1] | 7 (166.3,128.8)[5.2]-(171.1,124.0)[2.5] | 7 (167.8,165.4)[7.2]-(163.0,160.7)[2.5] | 7 (250.3,132.6)[5.8]-(250.3,125.9)[3.8] | 7 (214.8,102.7)[8.8]-(210.0,107.4)[5.7] | 7 (160.7,96.9)[7.8]-(156.0,101.6)[3.2] | 6 (205.1,97.0)[7.3]-(200.6,101.6)[2.7] | 6 (180.8,100.5)[4.8]-(176.2,105.0)[1.3] | 6 (164.7,160.3)[4.2]-(169.3,164.8)[8.7] | 6 (203.1,174.3)[2.2]-(207.6,178.8)[2.5] | 6 (218.6,110.0)[5.0]-(214.1,114.5)[7.4] | 6 (179.0,167.6)[8.2]-(183.5,172.1)[3.7] | 6 (192.4,153.2)[4.5]-(196.9,157.7)[-0.0] | 6 (166.5,107.8)[5.6]-(162.0,112.3)[1.4] | 6 (209.2,102.7)[4.8]-(204.7,107.1)[0.4] | 6 (193.3,96.3)[8.2]-(197.8,91.8)[8.1] | 6 (181.2,133.4)[8.6]-(176.9,137.7)[9.5] | 6 (164.5,133.4)[3.3]-(160.2,137.7)[1.5] | 6 (204.2,75.7)[6.6]-(199.9,80.0)[2.3] | 6 (161.9,172.9)[3.2]-(161.9,178.8)[3.2] | 6 (154.6,90.4)[2.8]-(150.5,94.6)[6.8] | 6 (154.6,128.0)[5.3]-(150.5,132.1)[2.3] | 6 (177.6,98.1)[7.2]-(173.4,102.3)[4.1] | 6 (165.5,114.5)[-0.9]-(164.3,113.5)[0.0] | 6 (154.5,149.0)[4.9]-(150.5,153.0)[0.9] | 6 (192.4,154.6)[4.5]-(196.4,158.6)[0.5] | 6 (73.1,120.4)[6.6]-(73.1,126.0)[6.6] | 6 (213.0,137.8)[8.5]-(213.0,143.4)[8.5] | 6 (250.3,166.3)[9.7]-(250.3,160.8)[4.1] | 6 (160.7,98.3)[6.4]-(156.7,102.3)[2.5] | 6 (255.8,178.8)[22.2]-(250.3,178.8)[22.2] | 6 (245.9,111.8)[7.3]-(249.8,107.9)[4.4] | 5 (205.1,98.4)[5.9]-(201.3,102.3)[2.0] | 5 (162.7,100.5)[4.3]-(158.8,104.3)[0.4] | 5 (179.4,100.5)[4.8]-(175.5,104.3)[2.0] | 5 (255.7,102.1)[1.6]-(251.8,105.9)[2.4] | 5 (74.3,126.9)[5.4]-(75.5,122.6)[4.2] | 5 (166.1,160.3)[5.6]-(169.9,164.1)[8.7] | 5 (156.0,168.3)[5.4]-(159.8,172.1)[5.2] | 5 (178.3,168.3)[7.5]-(182.1,172.1)[3.7] | 5 (163.1,133.4)[2.0]-(159.5,137.0)[0.8] | 5 (202.8,75.7)[5.7]-(199.2,79.3)[3.0] | 5 (179.8,133.4)[8.6]-(176.2,137.0)[10.2] | 5 (243.6,95.3)[3.5]-(247.2,98.8)[7.0] | 5 (231.5,125.9)[7.0]-(236.4,125.9)[12.0] | 5 (154.0,89.7)[2.1]-(150.5,93.2)[5.4] | 5 (154.0,127.3)[6.0]-(150.5,130.8)[3.6] | 5 (154.0,144.0)[7.5]-(150.5,147.4)[6.5] | 5 (177.6,99.5)[5.8]-(174.1,102.9)[3.4] | 5 (160.7,145.6)[8.3]-(157.2,149.1)[4.9] | 5 (220.7,166.2)[9.6]-(224.1,162.8)[6.1] | 5 (248.3,132.6)[5.8]-(248.3,127.8)[5.7] | 5 (167.2,141.9)[6.0]-(163.8,145.2)[9.0] | 5 (192.4,156.0)[4.5]-(195.7,159.3)[1.2] | 5 (160.7,99.7)[5.0]-(157.4,102.9)[1.8] | 5 (225.4,132.3)[3.3]-(225.4,127.8)[5.7] | 4 (205.1,99.8)[4.5]-(201.9,102.9)[1.4] | 4 (161.3,100.5)[4.3]-(158.1,103.6)[1.1] | 4 (247.6,82.4)[2.6]-(244.4,85.5)[-0.6] | 4 (217.6,163.1)[6.4]-(220.7,166.2)[9.6] | 4 (218.6,111.3)[5.0]-(215.5,114.5)[6.0] | 4 (155.3,169.0)[4.7]-(158.5,172.1)[6.1] | 4 (118.9,59.6)[32.0]-(118.9,63.9)[32.0] | 4 (193.3,94.9)[9.4]-(196.4,91.8)[8.1] | 4 (207.8,102.7)[3.4]-(204.7,105.7)[0.4] | 4 (187.7,100.5)[7.2]-(184.7,103.5)[4.2] | 4 (175.2,156.8)[3.5]-(178.2,159.9)[1.6] | 4 (161.9,183.2)[0.1]-(161.9,187.4)[2.2] | 4 (236.7,176.3)[19.7]-(240.8,176.3)[19.7] | 4 (-0.2,0.1)[119.1]-(3.9,0.1)[119.1] | 4 (201.4,75.7)[4.3]-(198.5,78.6)[3.4] | 4 (178.4,133.4)[8.6]-(175.5,136.3)[10.9] | 4 (167.8,160.6)[7.2]-(170.6,163.5)[8.0] | 4 (208.9,171.3)[3.0]-(206.7,174.6)[-0.4] | 4 (239.3,146.3)[9.3]-(242.5,147.5)[6.2] | 4 (165.8,94.6)[7.1]-(168.6,91.8)[7.3] | 4 (241.7,71.8)[6.7]-(241.7,75.7)[6.7] | 4 (153.3,126.6)[6.7]-(150.5,129.4)[5.0] | 4 (174.8,103.6)[2.7]-(177.6,100.9)[4.4] | 4 (153.3,143.3)[6.8]-(150.5,146.0)[7.9] | 4 (250.1,109.1)[4.1]-(247.3,111.8)[6.9] | 4 (199.2,160.0)[0.6]-(201.9,157.2)[2.2] | 4 (211.2,173.6)[3.9]-(211.2,177.4)[3.9] | 4 (209.3,144.5)[12.1]-(209.3,140.6)[12.2] | 4 (221.4,166.9)[10.3]-(224.1,164.2)[7.5] | 4 (248.3,178.8)[22.2]-(248.3,175.1)[18.4] | 4 (250.3,175.1)[18.4]-(250.3,178.8)[22.2] | 4 (248.3,178.8)[22.2]-(248.3,182.6)[25.9] | 4 (250.3,135.1)[3.3]-(250.3,138.8)[-0.4] | 4 (153.1,149.0)[4.9]-(150.5,151.6)[2.3] | 4 (192.4,157.4)[4.5]-(195.0,160.0)[1.9] | 4 (151.2,84.2)[2.7]-(147.5,84.2)[3.4] | 4 (153.3,89.0)[1.4]-(150.7,91.6)[3.8] | 4 (158.1,121.7)[5.2]-(160.7,119.2)[2.9] | 4 (202.6,103.6)[0.7]-(205.1,101.2)[3.1] | 4 (226.3,112.0)[4.3]-(228.8,114.5)[4.7] | 3 (217.6,164.5)[7.8]-(220.0,166.9)[10.3] | 3 (168.9,160.3)[8.4]-(171.3,162.8)[7.3] | 3 (189.8,160.3)[7.1]-(192.2,162.8)[4.7] | 3 (220.0,169.7)[12.7]-(217.6,172.1)[10.3] | 3 (186.3,100.5)[5.8]-(183.9,102.9)[3.4] | 3 (46.1,107.9)[33.6]-(46.1,104.5)[33.6] | 3 (81.4,107.9)[11.3]-(81.4,104.5)[14.7] | 3 (71.2,107.9)[11.3]-(71.2,104.5)[14.7] | 3 (212.9,85.0)[-0.5]-(210.5,87.4)[1.9] | 3 (153.3,169.7)[4.0]-(150.8,172.1)[1.6] | 3 (221.4,169.7)[13.0]-(223.8,172.1)[15.4] | 3 (203.1,148.0)[8.5]-(199.7,148.0)[8.5] | 3 (153.3,109.9)[1.9]-(150.9,112.3)[3.9] | 3 (206.4,102.7)[2.1]-(204.0,105.0)[-0.3] | 3 (256.7,135.1)[4.2]-(253.3,135.1)[3.3] | 3 (226.3,105.0)[-0.2]-(228.7,102.7)[2.2] | 3 (250.3,125.4)[3.3]-(250.3,122.1)[0.0] | 3 (199.9,160.7)[1.3]-(202.2,158.3)[2.4] | 3 (199.9,169.0)[5.4]-(202.2,171.3)[3.1] | 3 (154.8,169.8)[3.8]-(157.1,172.1)[4.7] | 3 (197.8,77.9)[2.7]-(200.0,75.7)[3.0] | 3 (174.8,135.6)[10.8]-(177.0,133.4)[8.6] | 3 (250.3,135.1)[3.3]-(253.3,135.1)[3.3] | 3 (74.3,131.8)[5.4]-(74.3,134.8)[5.4] | 3 (147.5,114.4)[2.6]-(150.5,114.4)[1.8] | 3 (151.2,159.3)[3.3]-(148.3,159.3)[3.3] | 3 (152.6,109.2)[1.2]-(150.5,111.3)[3.2] | 3 (150.5,79.3)[7.1]-(152.6,81.4)[5.0] | 3 (152.6,88.3)[0.7]-(150.5,90.4)[2.6] | 3 (152.6,142.6)[6.1]-(150.5,144.7)[8.2] | 3 (152.6,169.0)[4.7]-(150.5,171.1)[2.6] | 3 (151.9,77.9)[7.3]-(154.0,80.0)[5.3] | 3 (227.0,111.3)[3.6]-(229.0,113.3)[5.7] | 3 (227.0,105.7)[0.5]-(229.0,103.7)[2.6] | 3 (74.3,126.9)[5.4]-(74.3,124.0)[5.4] | 3 (222.1,167.6)[10.9]-(224.1,165.6)[8.9] | 3 (222.1,169.0)[12.3]-(224.1,171.0)[14.4] | 3 (185.7,65.5)[10.4]-(188.5,65.5)[8.7] | 3 (192.4,158.8)[4.5]-(194.3,160.7)[2.6] | 3 (154.8,171.2)[2.5]-(154.8,173.9)[2.4] | 3 (158.8,122.4)[5.9]-(160.7,120.6)[4.3] | 3 (152.2,182.6)[1.6]-(149.6,182.6)[1.6] | 3 (250.3,160.0)[3.3]-(250.3,157.4)[0.7] | 3 (225.1,85.7)[-0.7]-(226.9,87.6)[1.1] | 3 (231.5,178.8)[22.2]-(234.0,178.8)[22.2] | 3 (203.3,104.3)[-0.0]-(205.1,102.5)[1.8] | 3 (225.6,112.7)[5.0]-(227.4,114.5)[4.7] | 3 (221.4,112.7)[5.0]-(219.6,114.5)[4.7] | 2 (223.1,103.3)[1.5]-(223.1,100.8)[4.0] | 2 (219.3,169.0)[12.0]-(217.6,170.8)[10.2] | 2 (150.5,77.9)[7.3]-(152.3,79.7)[5.6] | 2 (151.2,166.2)[7.5]-(148.7,166.2)[7.5] | 2 (191.2,160.3)[5.7]-(192.9,162.1)[4.0] | 2 (170.3,160.3)[8.3]-(172.0,162.1)[6.6] | 2 (151.1,106.4)[-0.2]-(148.7,106.4)[2.2] | 2 (190.9,76.4)[5.1]-(190.9,74.0)[5.1] | 2 (220.7,170.4)[13.4]-(222.4,172.1)[15.1] | 2 (154.0,170.4)[3.3]-(152.2,172.1)[1.6] | 2 (170.6,110.6)[4.3]-(172.3,112.3)[5.2] | 2 (225.6,104.3)[0.5]-(227.3,102.7)[2.1] | 2 (250.6,63.9)[11.0]-(250.5,61.6)[13.4] | 2 (193.3,93.5)[9.8]-(195.0,91.8)[8.1] | 2 (66.9,129.2)[12.8]-(69.3,129.2)[10.5] | 2 (197.5,150.0)[6.6]-(195.9,148.4)[8.2] | 2 (200.6,168.3)[5.9]-(202.2,169.9)[4.3] | 2 (200.6,161.4)[2.0]-(202.2,159.8)[2.4] | 2 (250.3,132.6)[5.8]-(250.3,134.9)[3.5] | 2 (169.1,75.7)[6.8]-(170.6,77.2)[5.3] | 2 (197.1,77.2)[2.0]-(198.6,75.7)[1.6] | 2 (212.2,75.7)[1.9]-(213.8,77.2)[1.0] | 2 (210.5,86.0)[1.9]-(209.0,87.6)[3.4] | 2 (174.1,134.9)[10.1]-(175.6,133.4)[8.6] | 2 (158.8,165.5)[6.2]-(160.3,167.0)[7.5] | 2 (215.5,178.8)[8.2]-(215.5,180.9)[8.2] | 2 (243.1,75.7)[8.2]-(241.7,77.1)[6.7] | 2 (250.3,132.6)[5.8]-(248.3,132.6)[5.8] | 2 (40.6,21.0)[98.2]-(38.6,21.0)[98.2] | 2 (165.8,93.2)[6.0]-(167.2,91.8)[7.4] | 2 (150.5,80.7)[6.1]-(151.9,82.1)[4.7] | 2 (151.9,168.3)[5.4]-(150.5,169.7)[4.0] | 2 (151.9,125.2)[6.1]-(150.5,126.6)[7.5] | 2 (151.9,108.5)[0.5]-(150.5,109.9)[1.8] | 2 (151.9,141.9)[5.4]-(150.5,143.3)[6.8] | 2 (151.9,87.6)[-0.0]-(150.5,89.0)[1.2] | 2 (153.3,77.9)[7.3]-(154.7,79.3)[6.0] | 2 (250.1,110.5)[4.8]-(248.7,111.8)[6.1] | 2 (227.7,110.6)[2.9]-(229.0,112.0)[4.3] | 2 (227.7,106.4)[1.2]-(229.0,105.1)[2.6] | 2 (217.2,108.5)[6.3]-(218.6,109.8)[5.0] | 2 (218.6,112.7)[5.1]-(217.2,114.1)[5.1] | 2 (256.6,116.8)[4.1]-(258.0,117.4)[3.5] | 2 (222.8,168.3)[11.6]-(224.1,169.7)[13.0] | 2 (222.8,168.3)[11.6]-(224.1,167.0)[10.3] | 2 (221.4,86.3)[1.9]-(220.1,87.6)[3.2] | 2 (221.4,86.3)[1.9]-(222.7,87.6)[0.6] | 2 (150.5,139.3)[2.9]-(148.7,139.3)[2.9] | 2 (167.1,96.1)[8.6]-(165.8,97.4)[7.4] | 2 (202.5,125.9)[18.7]-(202.5,124.1)[16.9] | 2 (216.1,121.4)[5.4]-(216.1,119.6)[5.4] | 2 (250.1,111.8)[6.1]-(250.1,113.6)[5.6] | 2 (170.6,144.0)[8.3]-(171.9,145.2)[7.1] | 2 (169.3,144.0)[8.1]-(168.0,145.2)[9.0] | 2 (151.7,149.0)[4.9]-(150.5,150.2)[3.7] | 2 (168.7,76.7)[7.2]-(170.0,77.9)[6.0] | 2 (193.9,123.7)[15.5]-(195.6,123.7)[15.5] | 2 (243.6,86.3)[-0.6]-(242.4,87.6)[0.6] | 2 (250.6,63.9)[11.0]-(252.3,63.9)[11.0] | 2 (192.4,160.2)[4.5]-(193.6,161.4)[3.3] | 2 (248.3,178.8)[22.2]-(249.9,178.8)[22.2] | 2 (210.5,78.1)[3.6]-(211.7,79.3)[3.1] | 2 (160.7,156.8)[1.2]-(159.5,157.9)[-0.0] | 2 (159.5,164.8)[5.5]-(160.7,163.7)[4.3] | 2 (159.5,123.1)[6.6]-(160.7,122.0)[5.7] | 2 (159.5,106.4)[-0.1]-(160.7,107.6)[1.0] | 2 (159.5,127.3)[6.0]-(160.7,128.4)[4.9] | 2 (224.9,113.4)[5.7]-(226.0,114.5)[4.7] | 2 (222.1,113.4)[5.7]-(221.0,114.5)[4.7] | 2 (251.8,132.6)[5.8]-(250.3,132.6)[5.8] | 2 (218.6,168.3)[11.3]-(217.6,169.4)[10.2] | 1 (171.7,160.3)[6.9]-(172.7,161.4)[5.9] | 1 (231.5,142.7)[7.0]-(233.0,142.7)[8.5] | 1 (175.5,171.1)[8.4]-(176.5,172.1)[8.5] | 1 (171.3,171.1)[4.2]-(172.4,172.1)[5.3] | 1 (41.0,107.9)[38.7]-(41.0,106.5)[38.7] | 1 (83.0,107.9)[11.3]-(83.0,106.5)[12.7] | 1 (47.0,133.6)[32.8]-(46.1,134.7)[33.6] | 1 (170.0,111.3)[3.6]-(170.9,112.3)[4.6] | 1 (154.7,111.3)[3.3]-(155.6,112.3)[3.9] | 1 (223.9,102.7)[2.1]-(224.9,103.6)[1.2] | 1 (224.9,103.6)[1.2]-(225.9,102.7)[2.1] | 1 (217.9,103.6)[5.6]-(218.9,102.7)[4.7] | 1 (250.3,168.3)[11.7]-(250.3,167.0)[10.3] | 1 (155.9,149.0)[4.9]-(157.2,149.1)[4.9] | 1 (150.5,115.4)[0.7]-(151.4,114.5)[1.7] | 1 (201.2,162.1)[2.7]-(202.2,161.1)[2.4] | 1 (201.3,167.6)[6.6]-(202.2,168.6)[5.7] | 1 (154.8,171.2)[2.5]-(155.7,172.1)[3.3] | 1 (53.9,79.8)[39.4]-(55.2,79.8)[39.4] | 1 (53.9,63.8)[55.3]-(55.2,63.8)[55.3] | 1 (161.7,133.4)[0.6]-(160.8,134.3)[-0.3] | 1 (160.3,133.4)[-0.1]-(159.5,134.3)[-1.0] | 1 (250.3,171.9)[15.2]-(251.5,171.9)[15.2] | 1 (196.4,76.5)[1.3]-(197.2,75.7)[0.5] | 1 (170.5,75.7)[6.1]-(171.3,76.5)[5.3] | 1 (173.4,134.2)[9.4]-(174.3,133.4)[8.6] | 1 (168.6,169.7)[4.8]-(167.8,170.5)[4.0] | 1 (200.5,157.2)[0.8]-(199.7,158.0)[0.0] | 1 (36.3,14.1)[105.0]-(36.3,13.1)[106.1] | 1 (250.3,135.1)[3.3]-(249.3,135.1)[3.3] | 1 (213.2,84.9)[-0.7]-(213.2,85.9)[-0.0] | 1 (153.2,180.1)[4.1]-(153.9,180.1)[4.1] | 1 (236.1,91.2)[4.6]-(236.1,90.5)[5.3] | 1 (226.5,76.0)[6.4]-(227.2,76.0)[5.7] | 1 (247.2,98.8)[7.0]-(247.2,98.1)[7.0] | 1 (185.9,171.8)[4.0]-(186.6,171.8)[4.0] | 1 (150.5,82.1)[4.7]-(151.2,82.8)[4.0] | 1 (224.4,86.4)[-0.5]-(225.1,87.1)[0.2] | 1 (151.2,167.6)[6.0]-(150.5,168.3)[5.4] | 1 (151.2,107.8)[-0.2]-(150.5,108.5)[0.5] | 1 (151.2,141.2)[4.7]-(150.5,141.9)[5.4] | 1 (153.3,80.7)[4.6]-(152.6,80.0)[5.3] | 1 (151.2,87.0)[-0.1]-(150.5,87.6)[0.4] | 1 (151.2,124.5)[5.5]-(150.5,125.2)[6.1] | 1 (154.7,77.9)[7.3]-(155.3,78.6)[6.7] | 1 (228.4,109.9)[2.2]-(229.0,110.6)[2.9] | 1 (228.4,107.1)[1.9]-(229.0,106.5)[2.6] | 1 (161.9,178.8)[3.2]-(161.9,179.8)[3.2] | 1 (218.6,83.5)[3.8]-(218.0,84.1)[3.1] | 1 (222.5,102.7)[2.1]-(223.1,103.3)[1.5] | 1 (241.8,87.9)[1.1]-(241.2,87.3)[1.7] | 1 (256.6,139.3)[-0.0]-(255.8,139.4)[-0.0] | 1 (231.5,179.7)[23.0]-(231.5,178.8)[22.2] | 1 (135.1,63.9)[22.5]-(135.9,63.9)[21.7] | 1 (167.9,63.9)[17.9]-(168.7,63.9)[17.9] | 1 (165.8,144.7)[8.4]-(165.2,145.2)[9.0] | 1 (170.0,144.7)[8.8]-(170.5,145.2)[8.5] | 1 (170.0,144.7)[8.8]-(169.4,145.2)[9.0] | 1 (222.2,134.9)[0.8]-(222.2,135.7)[-0.0] | 1 (18.1,26.5)[92.7]-(18.9,26.5)[92.7] | 1 (34.7,27.6)[91.6]-(34.7,28.3)[90.8] | 1 (38.1,27.6)[91.6]-(38.1,28.3)[90.8] | 1 (50.4,28.3)[90.8]-(50.4,27.6)[91.6] | 1 (213.0,136.4)[8.5]-(213.0,137.1)[8.5] | 1 (248.3,171.9)[15.2]-(247.6,171.9)[15.2] | 1 (162.3,91.1)[3.7]-(162.8,91.6)[4.1] | 1 (216.1,135.9)[5.4]-(216.1,136.6)[5.4] | 1 (15.0,15.1)[104.1]-(15.7,15.1)[104.1] | 1 (210.5,79.5)[3.6]-(211.0,80.0)[3.5] | 1 (250.3,171.9)[15.2]-(250.3,171.3)[14.6] | 1 (160.2,126.6)[6.7]-(160.7,127.0)[6.3] | 1 (160.2,105.7)[0.6]-(160.7,106.2)[1.0] | 1 (160.2,123.8)[7.3]-(160.7,123.4)[7.0] | 1 (16.2,28.3)[90.8]-(16.2,27.7)[91.5] | 1 (18.1,27.7)[91.5]-(18.1,28.3)[90.8] | 1 (242.5,147.5)[6.2]-(242.8,148.0)[5.9] | 1 (204.7,105.7)[0.4]-(205.1,106.1)[0.8] | 1 (224.2,114.1)[5.1]-(224.6,114.5)[4.7] | 1 (222.8,114.1)[5.1]-(222.4,114.5)[4.7] | 1 (36.3,27.6)[91.6]-(36.3,28.2)[91.0] | 1 (226.0,132.3)[3.3]-(225.4,132.3)[3.3] | 1 (83.0,140.3)[1.6]-(83.0,140.8)[2.2] | 1 (41.0,140.3)[38.7]-(41.0,140.8)[38.7] | 1 (15.1,27.6)[91.6]-(15.7,27.6)[91.6] | 0 (202.8,180.3)[4.0]-(203.1,180.6)[3.7] | 0 (160.3,185.8)[1.7]-(159.9,185.4)[2.0] | 0 (173.1,160.3)[5.6]-(173.4,160.7)[5.2] | 0 (154.0,160.7)[4.7]-(153.6,160.3)[4.4] | 0 (158.4,179.8)[3.5]-(158.8,180.1)[3.1] | 0 (184.0,128.8)[7.5]-(183.7,128.5)[7.2] | 0 (247.5,93.6)[6.1]-(247.2,93.2)[6.2] | 0 (158.9,185.8)[3.1]-(158.5,185.4)[3.4] | 0 (197.5,154.2)[2.4]-(197.2,153.8)[2.7] | 0 (247.5,99.2)[6.7]-(247.2,98.8)[7.0] | 0 (209.3,182.7)[2.3]-(209.0,182.3)[2.1] | 0 (166.1,172.1)[2.4]-(165.8,171.8)[2.8] | 0 (244.2,100.0)[4.1]-(243.8,99.6)[3.7] | 0 (187.0,172.1)[3.7]-(186.6,171.8)[4.0] | 0 (175.2,158.2)[3.5]-(175.5,158.6)[3.1] | 0 (174.8,160.7)[3.8]-(175.2,160.3)[3.5] | 0 (236.6,87.6)[6.3]-(237.0,87.9)[6.0] | 0 (185.0,153.5)[3.5]-(184.7,153.1)[3.1] | 0 (242.1,100.0)[2.7]-(241.8,99.6)[2.4] | 0 (208.3,185.8)[1.2]-(207.9,185.4)[0.9] | 0 (170.6,171.8)[3.5]-(171.0,172.1)[3.9] | 0 (170.6,171.8)[3.5]-(170.3,172.1)[3.2] | 0 (174.8,171.8)[7.7]-(175.1,172.1)[8.0] | 0 (158.1,112.0)[4.8]-(158.4,112.3)[5.0] | 0 (180.4,116.1)[5.8]-(180.7,115.8)[6.1] | 0 (156.7,112.0)[4.0]-(157.0,112.3)[4.1] | 0 (193.6,102.9)[7.9]-(193.3,102.7)[8.2] | 0 (193.6,101.6)[7.9]-(193.3,101.3)[8.2] | 0 (193.3,92.1)[8.4]-(193.6,91.8)[8.1] | 0 (192.0,148.4)[8.2]-(192.4,148.4)[8.2] | 0 (241.0,87.6)[2.0]-(241.2,87.3)[1.7] | 0 (225.4,173.2)[16.6]-(225.8,173.2)[16.6] | 0 (15.3,26.5)[92.7]-(15.7,26.5)[92.7] | 0 (255.7,103.4)[0.2]-(255.5,103.6)[0.0] | 0 (166.5,185.8)[2.5]-(166.3,185.5)[2.3] | 0 (225.4,145.8)[7.2]-(225.7,145.8)[7.2] | 0 (193.4,123.7)[15.5]-(193.1,123.7)[15.5] | 0 (18.1,13.9)[105.3]-(18.1,14.1)[105.0] | 0 (158.1,128.7)[4.7]-(158.3,128.8)[4.5] | 0 (195.5,75.7)[0.5]-(195.7,75.8)[0.6] | 0 (155.3,128.7)[4.6]-(155.5,128.8)[4.5] | 0 (194.2,75.7)[1.9]-(194.3,75.8)[1.7] | 0 (156.7,128.7)[4.6]-(156.9,128.8)[4.5] | 0 (154.7,133.6)[1.7]-(154.5,133.4)[1.6] | 0 (156.0,133.6)[2.2]-(155.9,133.4)[2.3] | 0 (167.9,169.0)[5.5]-(167.8,169.1)[5.4] | 0 (153.3,133.5)[0.8]-(153.1,133.4)[1.0] | 0 (151.9,133.5)[0.8]-(151.8,133.4)[1.0] | 0 (242.0,96.3)[1.8]-(241.9,96.3)[1.7] | 0 (157.4,143.3)[6.8]-(157.5,143.4)[6.9] | 0 (220.0,104.4)[3.6]-(219.9,104.4)[3.7] | 0 (217.2,104.3)[6.3]-(217.2,104.3)[6.3] | 0 (250.6,63.9)[11.0]-(250.6,63.9)[11.0] | 0 (72.7,136.4)[7.0]-(72.7,136.4)[7.0] | 0 (239.6,70.7)[4.6]-(239.6,70.7)[4.6] | 0 (216.1,119.6)[5.4]-(216.1,119.6)[5.4] | 0 (169.2,85.7)[6.7]-(169.2,85.6)[6.7] | 0 (217.2,105.7)[6.3]-(217.2,105.7)[6.3] | 0 (217.2,107.1)[6.3]-(217.2,107.1)[6.3] | 0 (205.3,84.3)[7.1]-(205.3,84.3)[7.1]
+      slab pass: chain 96 ft: start (87.2,56.7) body 31.3in on SLABEDGE (84.6,87.5)-(84.6,51.3); end 50.0in of SLABEDGE (84.6,53.4)-(49.4,53.4) | end (183.6,56.7) body 87.2in on SLABEDGE (183.4,63.9)-(184.0,63.9); end 87.1in of SLABEDGE (184.2,63.9)-(184.2,74.0)
+      slab pass: chain 67 ft: start (196.7,55.3) body 181.1in on SLABEDGE (193.6,74.0)-(184.2,63.9); end 104.0in of SLABEDGE (196.0,63.9)-(196.7,63.9) | end (264.1,55.3) body 483.3in on SLABEDGE (227.5,75.7)-(235.8,83.9); end 153.6in of SLABEDGE (252.0,59.6)-(252.0,59.3)
+      slab pass: chain 67 ft: start (10.8,98.1) body 595.7in on SLABEDGE (53.9,73.5)-(53.3,72.4); end 376.1in of SLABEDGE (41.0,106.5)-(41.0,121.1) | end (10.8,165.3) body 1296.8in on SLABEDGE (118.9,124.5)-(118.9,188.9); end 465.5in of SLABEDGE (46.1,127.6)-(46.1,149.2)
+      slab pass: arranged within 1 m of (26585,17272) mm: 2: SLABEDGE (26585,17272)-(55960,17272) | SLABEDGE (25789,26657)-(25789,15621)
+      slab pass: arranged within 1 m of (55960,17272) mm: 1: SLABEDGE (26585,17272)-(55960,17272)
+      slab pass: 3 cell(s) of 500 sq ft or more: 1199 sq ft x 49..85 y 53..87 ft, 6 hole(s) | 764 sq ft x 157..211 y 81..138 ft, 8 hole(s) | 552 sq ft x 206..225 y 146..179 ft, 4 hole(s)
+      slab pass: arranged within 600 mm of the pinch (81768,17961) mm: 0: 
+      slab pass: column at (223.0,120.6) ft is in no cell; the outside reaches it through a gap 19 in wide at (268.3,58.9) ft
+      slab pass: arranged within 600 mm of the pinch (46128,58641) mm: 0: 
+      slab pass: column at (151.4,184.7) ft is in no cell; the outside reaches it through a gap 19 in wide at (151.3,192.4) ft
+      slab pass: arranged within 600 mm of the pinch (62808,56481) mm: 2: SLABEDGE (61802,55156)-(63271,56629) | SLABEDGE (61802,54944)-(63483,56629)
+      slab pass: column at (206.0,185.4) ft is in no cell; the outside reaches it through a gap 18 in wide at (206.1,185.3) ft
+      slab pass: wrapping cell 552 sq ft with 4 hole(s) of 30 sq ft (step 116 study)
+      slab pass: wrapping cell 83 sq ft with 1 hole(s) of 5 sq ft (step 116 study)
+      slab pass: biggest cells (step 116 study): 1199 sq ft holds False wraps False outside True holes 6 | 764 sq ft holds True wraps False outside False holes 8 | 552 sq ft holds False wraps True outside True holes 4
+      slab pass: cells by selection (step 116 study): holding structure 59 (1159 sq ft), wrapping 2, enclosed 2207 (3837 sq ft), open to the page 671 (3713 sq ft)
+      slab pass: 1 of the walk's 1 floor(s) stand down to the arrangement's floor(s) over them (step 113 / 135)
+      slab pass: lone column at (151.9,135.4) ft: arrangement points within 1.5 m (offset in, degree): (0,-5)d4 (-2,-5)d4 (-1,-6)d4 (5,5)d4 (8,3)d4 (-7,5)d4 (-9,3)d4 (-1,11)d4 (10,5)d4 (-12,-1)d4 (-12,5)d4 (12,-2)d4 (-12,5)d2 (-12,-5)d2 (12,5)d2 (12,-5)d2 (8,-14)d4 (-9,-14)d4 (16,-6)d4 (-17,-6)d2 (-17,-6)d2 (-17,-6)d2 (16,11)d4 (-17,11)d2 (-17,11)d2 (-17,11)d2 (8,19)d4 (-9,19)d4 (-1,-23)d4 (1,-24)d2 (-2,-24)d1 (24,3)d4 (16,-22)d4 (-1,28)d4 (14,-24)d1 (-17,-22)d1 (24,-14)d4 (17,-24)d2 (24,19)d4 (16,28)d4 (-17,27)d2 (-17,28)d2 (-17,28)d2 (33,-6)d4 (33,11)d4 (8,36)d4 (-9,36)d4 (31,-24)d1 (33,-22)d4 (41,3)d4 (34,-24)d2 (33,28)d4 (41,-14)d4 (24,36)d4 (-1,44)d4 (41,19)d4 (2,47)d4 (-3,47)d4 (16,44)d4 (-17,44)d2 (-17,44)d2 (-17,45)d3 (14,46)d3 (13,47)d4 (-15,47)d4 (15,47)d2 (49,-6)d4 (-17,47)d3 (49,11)d4 (8,53)d4 (-9,53)d4 (48,-24)d1 (49,-22)d4 (41,36)d4 (33,44)d4 (51,-24)d2 (49,28)d4 (58,3)d4 (24,53)d4 (-36,47)d2
+      slab pass: lone column at (152.0,154.9) ft: arrangement points within 1.5 m (offset in, degree): (-18,-7)d1 (-18,10)d1 (-18,-23)d1 (-18,27)d1 (-18,-40)d1 (-18,44)d1
+      slab pass: lone column at (151.9,107.0) ft: arrangement points within 1.5 m (offset in, degree): (-1,1)d4 (7,-8)d4 (8,-7)d4 (8,-8)d4 (-9,-8)d4 (-9,-7)d4 (-10,-8)d4 (8,10)d4 (-9,10)d4 (-1,-15)d4 (12,-11)d3 (16,1)d4 (15,-8)d2 (-17,1)d2 (-17,2)d2 (-17,1)d2 (-1,18)d4 (16,-15)d4 (-17,-15)d2 (-17,-16)d2 (-17,-15)d2 (16,18)d4 (-17,18)d1 (8,-24)d4 (24,-7)d4 (-9,-24)d4 (24,10)d4 (8,26)d4 (-1,-32)d4 (33,1)d4 (24,-24)d4 (24,26)d4 (16,-32)d4 (-17,-32)d2 (33,-15)d4 (-17,-32)d2 (-17,-32)d2 (-36,-8)d2 (33,18)d4 (16,35)d4 (-17,34)d1 (-39,-8)d1 (8,-40)d4 (-9,-40)d4 (41,-7)d4 (41,10)d4 (33,-32)d4 (24,-40)d4 (41,-24)d4 (33,35)d4 (35,-34)d3 (34,-35)d2 (41,26)d4 (-1,-49)d4 (49,1)d4 (24,43)d4 (16,-49)d4 (-17,-48)d2 (-17,-49)d2 (49,-15)d4 (-17,-49)d2 (49,18)d4 (-17,51)d1 (41,-40)d4 (8,-57)d4 (-9,-57)d4 (58,-7)d4 (34,-47)d4 (58,10)d4 (33,-49)d4 (49,-32)d4
+      slab pass: lone column at (159.7,134.8) ft: arrangement points within 1.5 m (offset in, degree): (2,6)d4 (-3,-6)d4 (12,-4)d2 (14,-6)d4 (-15,6)d4 (12,13)d2 (8,-16)d1 (18,6)d2 (18,-6)d2 (-18,6)d2 (-18,-6)d2 (-9,-16)d2 (-10,18)d4 (-19,10)d4 (-2,27)d4 (-27,2)d4 (24,-16)d1 (-26,-16)d2 (-7,-30)d2 (12,30)d2 (-12,-30)d2 (-12,-30)d3 (-19,27)d4 (-27,18)d4 (6,35)d4 (-35,-7)d4 (-10,35)d4 (-35,10)d4 (-22,-30)d2 (12,-37)d2 (-25,-34)d3 (-25,-34)d2 (12,41)d2 (0,-43)d2 (-2,43)d4 (-44,2)d4 (41,-16)d1 (-27,35)d4 (-35,27)d4 (-42,-16)d2 (15,43)d3 (-44,-15)d4 (-19,43)d4 (-44,18)d4 (12,46)d2 (-45,-16)d1 (6,52)d4 (-52,-7)d4 (-30,-43)d2 (-10,52)d4 (-52,10)d4 (23,-48)d2 (-28,-48)d3 (-28,-48)d2 (-35,43)d4 (-44,35)d4 (-7,-57)d2 (12,57)d2 (-27,52)d4 (-52,27)d4
+      slab pass: 11 end(s) short of another edge's middle by under the bridge (a T drawn short): (167.8,165.4)ft 5.9in (179.6,164.7)ft 5.9in (175.2,146.4)ft 5.9in (203.1,174.3)ft 5.9in (225.1,82.3)ft 5.9in (235.8,88.1)ft 5.9in (153.6,160.3)ft 5.9in (205.1,106.1)ft 5.1in (195.5,75.7)ft 5.6in (175.2,160.3)ft 5.9in (119.5,124.1)ft 4.5in
+      slab pass: 458 dangling end(s) (degree one; nearest other body): (48421,56617)mm 5.9in (48848,56617)mm 5.9in (48290,54788)mm 5.9in (50753,56617)mm 3.8in (50626,52464)mm 5.9in (50842,52464)mm 8.5in (52112,52464)mm 5.5in (52536,52464)mm 11.8in (51130,50423)mm 5.9in (53382,52464)mm 5.4in (50212,48865)mm 11.8in (53810,52464)mm 16.8in (50635,48865)mm 11.8in (54729,50203)mm 5.9in (56989,52464)mm 5.9in (51130,51554)mm 2.0in (53391,48230)mm 5.9in (53391,47807)mm 13.2in (61802,54944)mm 5.9in (63483,56629)mm 5.9in (63801,55673)mm 5.9in (53391,44628)mm 5.9in (61900,53137)mm 5.9in (57844,48865)mm 11.9in (58268,48865)mm 11.8in (61625,52227)mm 11.8in (56388,46774)mm 5.9in (58644,47549)mm 11.8in (58644,47125)mm 11.8in (58644,46702)mm 16.0in (60206,46990)mm 5.9in (60206,45716)mm 6.0in (56083,39264)mm 5.9in (73791,30476)mm 5.9in (68601,25070)mm 4.3in (74430,30476)mm 5.9in (73749,29367)mm 1.5in (68601,23800)mm 2.9in (71861,26848)mm 5.9in (71912,26687)mm 6.6in (75446,30222)mm 5.9in (72128,26687)mm 5.9in (75446,28524)mm 5.9in (45872,29676)mm 11.8in (45872,30099)mm 11.8in (48971,28698)mm 12.2in (48971,29121)mm 11.8in (48971,29544)mm 11.8in (48971,29968)mm 11.8in (45872,33067)mm 11.4in (48971,30391)mm 11.8in (45872,33490)mm 11.9in (49162,30624)mm 10.6in (45872,33917)mm 11.7in (50529,29680)mm 6.5in (49585,30624)mm 11.8in (45987,34222)mm 11.9in (45872,34764)mm 11.8in (45872,35187)mm 10.3in (54127,29053)mm 11.9in (48971,34205)mm 11.7in (54127,29477)mm 11.8in (49382,34222)mm 11.8in (54127,29900)mm 11.8in (45872,38155)mm 11.4in (61379,23072)mm 11.8in (54127,30323)mm 11.8in (61802,23072)mm 11.8in (62226,23072)mm 11.9in (54674,30624)mm 11.8in (62653,23072)mm 11.8in (55097,30624)mm 11.8in (63077,23072)mm 11.8in (55520,30624)mm 11.9in (63500,23072)mm 11.8in (55948,30624)mm 11.8in (58924,28071)mm 4.7in (56371,30624)mm 11.8in (58924,28495)mm 11.8in (56794,30624)mm 11.8in (52036,35386)mm 11.8in (50529,36889)mm 11.8in (57218,30624)mm 11.8in (52459,35386)mm 11.8in (50529,37313)mm 11.8in (62586,25684)mm 0.0in (58924,29341)mm 11.8in (57641,30624)mm 11.8in (54127,34138)mm 11.8in (52883,35386)mm 11.8in (54127,34989)mm 11.8in (50529,38587)mm 11.8in (45872,43244)mm 11.4in (62522,27017)mm 11.8in (50529,39010)mm 11.8in (62522,27440)mm 11.8in (50698,39264)mm 12.0in (49293,40670)mm 11.9in (45872,44090)mm 11.9in (62522,27864)mm 11.8in (54999,35391)mm 4.9in (51122,39264)mm 11.8in (49721,40670)mm 11.8in (45872,44514)mm 11.9in (62522,28287)mm 11.8in (55423,35391)mm 6.8in (51545,39264)mm 11.8in (50144,40670)mm 11.7in (45872,44941)mm 16.8in (62522,28715)mm 11.9in (51968,39264)mm 11.8in (62522,29138)mm 11.8in (52392,39264)mm 11.8in (45872,45788)mm 11.8in (62522,29561)mm 11.8in (45872,46211)mm 11.8in (62522,29985)mm 11.8in (45872,46634)mm 11.8in (62522,30408)mm 11.8in (49471,43464)mm 0.1in (45872,47058)mm 11.9in (48971,44382)mm 11.7in (45872,47485)mm 11.8in (48971,44810)mm 11.9in (45872,47909)mm 11.8in (62912,31293)mm 11.8in (48971,45233)mm 11.8in (45872,48332)mm 11.8in (63335,31293)mm 11.8in (63758,31293)mm 11.8in (54381,40670)mm 11.8in (50783,44268)mm 11.8in (64182,31293)mm 11.8in (54805,40670)mm 11.9in (51211,44268)mm 11.9in (64605,31293)mm 11.9in (55232,40670)mm 11.8in (51634,44268)mm 9.3in (48971,46927)mm 11.5in (65032,31293)mm 11.8in (48971,47350)mm 11.8in (65456,31293)mm 11.8in (56079,40670)mm 11.8in (48971,47777)mm 11.9in (74100,23072)mm 11.8in (65879,31293)mm 11.8in (56502,40670)mm 6.7in (45872,51300)mm 11.4in (74524,23072)mm 11.9in (45872,51723)mm 11.8in (74951,23072)mm 11.8in (75375,23072)mm 13.7in (75459,23410)mm 11.8in (75459,23834)mm 11.8in (75459,24257)mm 11.8in (75459,24680)mm 11.8in (75459,25104)mm 11.8in (56291,44272)mm 11.8in (56714,44272)mm 11.8in (57137,44272)mm 11.8in (57565,44272)mm 11.9in (60202,42054)mm 11.8in (60202,42482)mm 11.9in (76865,30484)mm 11.8in (74426,32923)mm 11.8in (77288,30484)mm 11.8in (74426,33346)mm 11.8in (77711,30484)mm 11.8in (74426,33769)mm 11.8in (77923,30696)mm 11.8in (74536,34083)mm 13.1in (77936,31107)mm 11.8in (74960,34083)mm 11.8in (77948,31521)mm 3.1in (75387,34083)mm 11.9in (75811,34083)mm 11.8in (47447,52464)mm 10.8in (47871,52464)mm 11.9in (48298,52464)mm 11.8in (48721,52464)mm 16.7in (46821,48865)mm 5.9in (51130,48937)mm 11.8in (51482,48865)mm 11.8in (51905,48865)mm 11.8in (54729,51689)mm 16.7in (52332,48865)mm 11.9in (54729,51266)mm 9.5in (52756,48865)mm 5.9in (45872,40712)mm 11.4in (46253,40670)mm 2.0in (46677,40670)mm 2.0in (47100,40670)mm 2.1in (47523,40670)mm 2.1in (51968,44268)mm 9.3in (52392,44268)mm 11.9in (48971,39146)mm 11.8in (58644,48823)mm 11.7in (61625,51799)mm 11.9in (48971,38722)mm 11.8in (50914,40670)mm 11.8in (58644,48395)mm 11.8in (61625,51376)mm 11.8in (51342,40670)mm 11.9in (58644,47972)mm 11.8in (51765,40670)mm 11.8in (47439,34222)mm 6.8in (47862,34222)mm 4.9in (48285,34222)mm 4.9in (67801,52464)mm 11.8in (68224,52464)mm 13.5in (48971,32787)mm 11.8in (66319,50135)mm 11.8in (68318,52134)mm 11.8in (48971,32364)mm 7.7in (66319,49712)mm 16.7in (68318,51710)mm 11.8in (52104,34222)mm 11.8in (52527,34222)mm 11.8in (45872,25023)mm 11.5in (45872,24600)mm 11.8in (45872,24177)mm 11.8in (49615,27919)mm 8.1in (45877,23757)mm 16.5in (46300,23757)mm 11.8in (46723,23757)mm 11.8in (47147,23757)mm 11.3in (58924,31293)mm 4.7in (51427,23372)mm 11.8in (58924,30869)mm 4.7in (51545,23067)mm 12.9in (51973,23067)mm 11.7in (62522,32347)mm 5.1in (66214,33071)mm 11.7in (68457,34891)mm 6.7in (68881,34891)mm 11.8in (69304,34891)mm 11.8in (69727,34891)mm 13.9in (69812,34548)mm 11.9in (69812,34125)mm 11.8in (59178,23067)mm 2.4in (67403,31293)mm 7.5in (69812,33702)mm 11.3in (59601,23067)mm 2.4in (67826,31293)mm 7.3in (68250,31293)mm 9.3in (64165,24240)mm 7.9in (64165,23817)mm 11.9in (67886,26687)mm 11.8in (64690,23067)mm 11.8in (68601,26556)mm 9.9in (45872,26708)mm 11.4in (45872,27131)mm 11.8in (45872,27555)mm 11.8in (45932,27919)mm 14.5in (46355,27919)mm 11.8in (46778,27919)mm 11.8in (47202,27919)mm 8.1in (51562,26107)mm 0.1in (60113,23067)mm 11.8in (60537,23067)mm 11.8in (60960,23067)mm 11.8in (45872,38578)mm 11.8in (54127,30747)mm 11.8in (48971,36326)mm 11.7in (46033,39264)mm 11.8in (48971,36754)mm 11.9in (46457,39264)mm 11.8in (48971,37177)mm 11.8in (46880,39264)mm 11.8in (48971,37600)mm 7.7in (64165,25375)mm 8.0in (48870,40670)mm 10.5in (45872,43667)mm 11.8in (64165,25798)mm 11.8in (67318,23067)mm 11.8in (64165,26221)mm 11.8in (67742,23067)mm 11.8in (64165,26645)mm 16.7in (68165,23067)mm 11.9in (66451,25633)mm 10.6in (62522,30831)mm 11.8in (67090,26687)mm 11.8in (62522,31255)mm 11.8in (53111,40670)mm 11.8in (50529,43248)mm 11.7in (53535,40670)mm 11.8in (50529,43671)mm 11.9in (53958,40670)mm 11.8in (50529,44099)mm 12.0in (45872,52146)mm 11.8in (45978,52464)mm 13.2in (48971,49894)mm 10.0in (46402,52464)mm 11.8in (68847,31293)mm 11.8in (66214,33926)mm 11.8in (69270,31293)mm 11.8in (66214,34349)mm 11.8in (69693,31293)mm 13.0in (66214,34773)mm 13.0in (69812,31602)mm 11.9in (69812,32025)mm 11.8in (66946,34891)mm 11.8in (69812,32449)mm 11.2in (67369,34891)mm 11.8in (53391,48865)mm 5.9in (67793,34891)mm 6.7in (51130,51977)mm 11.8in (51913,52464)mm 5.5in (61117,47926)mm 9.3in (61540,47926)mm 13.7in (61625,48264)mm 11.8in (61625,48692)mm 11.9in (61625,49115)mm 11.8in (68318,49627)mm 15.5in (66319,51630)mm 11.8in (68318,50055)mm 11.9in (66319,52053)mm 11.7in (68318,50478)mm 11.8in (66328,52464)mm 16.2in (68318,50902)mm 11.8in (66755,52464)mm 11.9in (67712,41118)mm 9.2in (61079,38913)mm 9.2in (50080,34582)mm 6.3in (43172,45411)mm 15.8in (52269,20489)mm 39.5in (71006,43498)mm 17.7in (65329,38608)mm 15.8in (65689,50965)mm 17.1in (65689,55152)mm 9.0in (77212,36305)mm 32.0in (76742,40424)mm 18.3in (73245,40424)mm 80.7in (59169,22716)mm 9.2in (61714,21298)mm 12.5in (70557,54762)mm 9.8in (72098,38206)mm 6.7in (75997,38375)mm 10.2in (68140,38375)mm 32.1in (78232,41182)mm 40.2in (75976,41182)mm 11.8in (67090,44353)mm 12.5in (61654,45754)mm 25.7in (36415,37829)mm 0.3in (36246,57578)mm 120.7in (36246,18165)mm 35.2in (14313,40712)mm 10.0in (23076,38680)mm 2.5in (23012,37376)mm 22.0in (19211,33054)mm 6.3in (19130,42587)mm 6.3in (12675,36961)mm 6.5in (12510,42918)mm 6.7in (12510,32457)mm 17.2in (25303,32457)mm 17.2in (25303,42918)mm 6.7in (20405,39370)mm 22.7in (59965,16844)mm 104.0in (80493,16844)mm 153.6in (26585,17272)mm 31.3in (55960,17272)mm 87.1in (3306,29900)mm 376.1in (3306,50385)mm 465.5in (74113,36140)mm 13.5in (73414,31801)mm 8.2in (50034,57815)mm 8.0in (73017,21666)mm 4.0in (65862,36555)mm 4.0in (76606,24075)mm 37.2in (64486,44738)mm 8.0in (64444,49636)mm 21.8in (63674,52201)mm 8.2in (77656,53048)mm 12.7in (77102,51058)mm 32.2in (57442,19969)mm 19.0in (71205,45982)mm 25.5in (73647,45496)mm 16.8in (73660,21878)mm 21.3in (50453,40132)mm 22.7in (66239,48175)mm 60.6in (68398,48175)mm 12.3in (79354,34159)mm 70.2in (69621,26767)mm 18.9in (68711,56481)mm 4.3in (68711,38955)mm 22.8in (75667,55546)mm 4.2in (75667,38955)mm 22.8in (72936,44585)mm 4.2in (73990,45106)mm 1.2in (14059,31852)mm 41.0in (14059,45470)mm 107.2in (21713,31852)mm 41.0in (21713,45470)mm 107.2in (24799,31852)mm 31.0in (24799,45470)mm 102.4in (22648,37799)mm 14.3in (22648,40987)mm 4.2in (22153,41588)mm 0.2in (5525,4242)mm 2.5in (5525,8636)mm 7.5in (4614,8412)mm 6.2in (10579,4242)mm 2.5in (10579,8636)mm 8.8in (11616,4242)mm 2.5in (11616,8636)mm 8.8in (15367,8636)mm 8.7in (4936,8636)mm 7.5in (11053,8581)mm 6.7in (11053,3988)mm 12.5in (12374,6405)mm 20.5in (3933,3835)mm 29.7in (4034,8835)mm 28.3in (5753,8077)mm 9.0in (9288,3327)mm 38.5in (12823,3327)mm 38.5in (-72,21)mm 217.7in (1194,21)mm 184.9in (64969,26192)mm 8.4in (64927,43718)mm 40.6in (58869,37715)mm 3.2in (59627,37715)mm 9.2in (16442,24312)mm 54.5in (16828,24312)mm 69.7in (16442,19461)mm 54.5in (16828,19461)mm 65.7in (77961,54513)mm 7.8in (76175,54513)mm 3.8in (56303,54513)mm 7.8in (55838,54513)mm 7.8in (41186,19486)mm 11.3in (41436,19486)mm 21.2in (39649,37715)mm 7.8in (51723,19486)mm 7.8in (76911,19486)mm 8.0in (51173,19486)mm 21.7in (51422,19486)mm 11.8in (40898,19486)mm 7.8in (76276,50703)mm 3.8in (76276,49005)mm 8.2in (76276,48772)mm 7.7in (76276,47985)mm 7.8in (76276,42316)mm 8.8in (76276,41123)mm 2.3in (76276,38235)mm 3.8in (76276,37219)mm 5.2in (78224,42469)mm 50.7in (77974,42477)mm 51.0in (76276,43481)mm 7.8in (76276,46651)mm 7.8in (76276,52210)mm 8.2in (45318,50665)mm 3.2in (47172,52997)mm 3.2in (45318,32423)mm 3.2in (68013,30721)mm 3.2in (45318,42469)mm 3.2in (76225,34620)mm 3.2in (78643,35793)mm 0.1in (78643,35796)mm 0.1in
+      slab pass: arrangement 2749 cell(s); columns in a cell 35 of 49; largest (sq ft, holds): 1199 557 414* 219 202 182 151 125 123 121
+      slab pass: 476 open chain(s) in the arrangement; longest (ft, ends in ft): 96 (87.2,56.7)[62.5]-(183.6,56.7)[17.5] | 67 (196.7,55.3)[18.9]-(264.1,55.3)[19.7] | 67 (10.8,98.1)[68.9]-(10.8,165.3)[68.9] | 60 (118.9,63.9)[32.0]-(118.9,123.7)[31.2] | 57 (250.6,63.9)[11.0]-(193.6,63.9)[10.3] | 54 (118.9,124.5)[31.2]-(118.9,178.8)[31.4] | 46 (210.3,82.1)[2.1]-(177.6,114.8)[6.5] | 42 (248.3,132.6)[5.8]-(248.3,175.1)[18.4] | 32 (150.8,179.8)[4.1]-(118.9,178.8)[31.4] | 21 (161.9,178.8)[3.2]-(183.2,178.8)[1.8] | 20 (204.9,178.8)[2.5]-(184.7,178.8)[1.0] | 19 (173.5,116.1)[5.8]-(160.2,123.8)[7.3] | 18 (194.3,103.6)[7.2]-(181.8,116.1)[5.8] | 17 (231.5,142.7)[7.0]-(231.5,125.9)[7.0] | 16 (189.1,100.5)[8.6]-(177.6,112.0)[3.7] | 16 (253.3,119.1)[1.8]-(253.3,135.1)[3.3] | 16 (255.7,100.7)[2.9]-(244.5,111.8)[7.3] | 15 (118.9,63.9)[32.0]-(134.2,63.9)[22.9] | 15 (255.0,100.0)[3.6]-(244.2,110.8)[8.4] | 15 (251.3,79.0)[2.0]-(250.6,63.9)[11.0] | 15 (206.4,155.6)[6.7]-(211.4,162.8)[10.1] | 14 (160.7,148.4)[7.7]-(150.5,158.6)[2.6] | 14 (160.7,147.0)[7.7]-(150.5,157.2)[1.2] | 14 (158.1,166.2)[6.8]-(161.9,178.8)[3.2] | 14 (192.4,147.7)[8.9]-(197.5,138.0)[16.6] | 14 (248.3,178.8)[22.2]-(234.7,178.8)[22.2] | 13 (175.2,146.4)[3.8]-(184.7,155.9)[3.1] | 13 (253.6,100.0)[3.6]-(244.2,109.4)[9.8] | 13 (247.6,78.2)[5.8]-(238.5,87.3)[4.5] | 13 (263.1,175.1)[18.4]-(250.3,175.1)[18.4] | 13 (242.0,108.7)[10.5]-(243.2,117.1)[5.5] | 13 (196.4,136.4)[15.4]-(187.5,145.3)[6.5] | 12 (188.9,145.3)[7.9]-(197.5,136.4)[16.6] | 12 (237.0,125.9)[11.7]-(249.3,125.9)[3.8] | 12 (205.1,91.4)[7.3]-(196.4,100.2)[5.1] | 12 (244.5,75.7)[8.8]-(236.0,84.2)[7.0] | 12 (152.2,179.8)[4.0]-(161.9,178.8)[3.2] | 12 (215.5,167.2)[8.2]-(215.5,178.8)[8.2] | 12 (30.5,10.9)[108.3]-(42.1,10.9)[108.0] | 12 (174.0,119.8)[2.2]-(165.8,128.0)[5.3] | 11 (252.2,100.0)[3.6]-(244.2,108.0)[10.0] | 11 (177.1,120.8)[1.1]-(169.1,128.8)[4.5] | 11 (213.4,102.7)[9.0]-(205.4,110.6)[3.4] | 11 (235.8,88.1)[7.2]-(243.6,95.3)[3.5] | 11 (208.3,75.7)[5.8]-(200.6,83.5)[2.7] | 11 (185.4,133.4)[8.9]-(177.6,141.2)[6.0] | 11 (247.6,79.6)[5.4]-(239.9,87.3)[3.1] | 11 (235.9,87.6)[7.1]-(243.6,95.3)[3.5] | 11 (260.3,112.1)[6.4]-(255.7,105.9)[0.2] | 11 (119.3,123.7)[30.7]-(130.1,123.7)[20.0] | 11 (165.8,126.6)[6.7]-(173.3,119.1)[2.9] | 11 (192.1,137.8)[11.2]-(184.7,145.3)[3.8] | 10 (243.2,106.6)[9.4]-(243.2,117.1)[5.5] | 10 (250.3,142.7)[1.3]-(250.3,153.1)[0.7] | 10 (205.1,92.8)[7.3]-(197.8,100.2)[4.1] | 10 (166.8,172.1)[2.4]-(159.5,164.8)[5.5] | 10 (151.7,149.0)[4.9]-(141.6,149.0)[9.3] | 10 (118.9,178.8)[31.4]-(118.9,188.9)[31.4] | 10 (179.6,164.7)[6.4]-(186.6,171.8)[4.0] | 10 (150.5,98.8)[6.7]-(157.4,91.8)[4.4] | 10 (193.0,138.3)[12.1]-(186.1,145.3)[5.1] | 10 (192.4,146.3)[10.3]-(197.5,139.4)[16.0] | 10 (194.1,74.5)[1.9]-(202.5,69.9)[5.4] | 10 (233.6,150.9)[9.1]-(241.6,149.3)[7.0] | 10 (206.3,155.6)[6.6]-(202.3,150.1)[6.4] | 10 (150.5,155.8)[0.4]-(157.2,149.1)[4.9] | 9 (247.3,75.7)[6.0]-(240.7,82.3)[2.7] | 9 (177.1,122.2)[0.6]-(170.5,128.8)[4.0] | 9 (214.3,126.7)[7.2]-(214.3,135.9)[7.2] | 9 (212.0,102.7)[7.6]-(205.4,109.2)[2.0] | 9 (171.5,76.4)[5.4]-(171.5,67.2)[14.6] | 9 (245.9,75.7)[7.4]-(239.5,82.1)[3.5] | 9 (206.9,75.7)[7.2]-(200.6,82.1)[2.7] | 9 (162.3,142.6)[6.3]-(155.9,149.0)[4.9] | 9 (184.0,133.4)[8.6]-(177.6,139.8)[7.4] | 9 (247.6,76.8)[5.8]-(241.2,83.2)[1.8] | 9 (172.1,116.1)[5.8]-(165.8,122.4)[6.1] | 9 (247.6,81.0)[4.0]-(241.2,87.3)[1.7] | 9 (71.2,140.3)[8.5]-(71.2,149.2)[10.6] | 9 (81.4,140.3)[1.6]-(81.4,149.2)[10.6] | 9 (46.1,140.3)[33.6]-(46.1,149.2)[33.6] | 9 (169.7,63.9)[17.9]-(178.5,63.9)[17.6] | 9 (160.7,154.0)[3.9]-(154.7,160.0)[4.0] | 8 (205.1,94.2)[8.3]-(199.2,100.2)[4.1] | 8 (171.7,133.9)[9.1]-(165.5,131.7)[4.4] | 8 (254.8,174.0)[17.4]-(253.0,167.5)[10.8] | 8 (160.7,94.2)[6.7]-(154.8,100.0)[4.7] | 8 (12.9,12.6)[106.6]-(15.7,15.1)[104.1] | 8 (184.9,100.5)[4.8]-(179.3,106.1)[-0.8] | 8 (183.6,100.5)[4.8]-(177.9,106.1)[-0.4] | 8 (248.3,132.6)[5.8]-(240.3,132.6)[8.3] | 8 (231.5,125.9)[7.0]-(223.6,125.9)[3.8] | 8 (177.6,95.3)[10.0]-(172.0,100.9)[5.5] | 8 (150.5,97.4)[7.4]-(156.0,91.8)[4.2] | 8 (13.2,29.0)[90.2]-(15.7,26.5)[92.7] | 8 (205.1,88.6)[7.3]-(199.7,94.1)[10.2] | 8 (155.9,149.0)[4.9]-(150.5,154.4)[0.4] | 8 (216.1,102.7)[7.4]-(210.7,108.1)[6.4] | 8 (171.9,128.8)[4.0]-(177.3,123.5)[0.8] | 8 (160.7,155.3)[2.6]-(155.3,160.7)[3.7] | 8 (160.7,95.5)[8.1]-(155.3,100.9)[3.9] | 7 (205.1,95.6)[8.7]-(199.9,100.9)[3.4] | 7 (182.2,100.5)[4.8]-(176.9,105.7)[0.6] | 7 (180.8,120.0)[4.3]-(185.9,125.2)[9.4] | 7 (160.7,162.5)[3.1]-(165.8,167.7)[6.9] | 7 (210.6,102.7)[6.2]-(205.4,107.8)[1.1] | 7 (160.7,112.2)[2.8]-(165.8,107.1)[6.1] | 7 (217.3,158.1)[4.2]-(224.4,158.1)[1.4] | 7 (205.6,75.7)[7.7]-(200.6,80.7)[2.7] | 7 (205.1,90.0)[7.3]-(200.2,95.0)[9.3] | 7 (170.7,116.1)[4.4]-(165.8,121.0)[4.7] | 7 (167.7,128.8)[5.9]-(172.7,123.9)[1.0] | 7 (216.1,125.4)[5.4]-(216.1,132.3)[5.4] | 7 (177.6,96.7)[8.6]-(172.7,101.6)[4.8] | 7 (166.3,128.8)[5.2]-(171.1,124.0)[2.5] | 7 (239.6,77.9)[4.6]-(239.6,71.1)[4.6] | 7 (167.8,165.4)[7.2]-(163.0,160.7)[2.5] | 7 (250.3,132.6)[5.8]-(250.3,125.9)[3.8] | 7 (192.8,145.3)[11.3]-(197.5,150.0)[6.6] | 7 (214.8,102.7)[8.8]-(210.0,107.4)[5.7] | 7 (160.7,96.9)[7.8]-(156.0,101.6)[3.2] | 6 (205.1,97.0)[7.3]-(200.6,101.6)[2.7] | 6 (225.4,185.3)[18.1]-(225.4,178.8)[18.1] | 6 (180.8,100.5)[4.8]-(176.2,105.0)[1.3] | 6 (164.7,160.3)[4.2]-(169.3,164.8)[8.7] | 6 (203.1,174.3)[2.2]-(207.6,178.8)[2.5] | 6 (192.4,153.2)[4.5]-(196.9,157.7)[-0.0] | 6 (166.5,107.8)[5.6]-(162.0,112.3)[1.4] | 6 (209.2,102.7)[4.8]-(204.7,107.1)[0.4] | 6 (193.3,96.3)[8.2]-(197.8,91.8)[8.1] | 6 (181.2,133.4)[8.6]-(176.9,137.7)[9.5] | 6 (164.5,133.4)[3.3]-(160.2,137.7)[1.5] | 6 (204.2,75.7)[6.6]-(199.9,80.0)[2.3] | 6 (154.7,111.3)[3.3]-(150.5,115.4)[0.7] | 6 (177.6,98.1)[7.2]-(173.4,102.3)[4.1] | 6 (220.1,145.5)[6.9]-(225.4,143.1)[4.5] | 6 (165.5,114.5)[-0.9]-(164.3,113.5)[0.0] | 6 (154.5,149.0)[4.9]-(150.5,153.0)[0.9] | 6 (192.4,154.6)[4.5]-(196.4,158.6)[0.5] | 6 (213.0,137.8)[8.5]-(213.0,143.4)[8.5] | 6 (250.3,166.3)[9.7]-(250.3,160.8)[4.1] | 6 (160.7,98.3)[6.4]-(156.7,102.3)[2.5] | 6 (255.8,178.8)[22.2]-(250.3,178.8)[22.2] | 6 (245.9,111.8)[7.3]-(249.8,107.9)[4.4] | 5 (205.1,98.4)[5.9]-(201.3,102.3)[2.0] | 5 (162.7,100.5)[4.3]-(158.8,104.3)[0.4] | 5 (179.4,100.5)[4.8]-(175.5,104.3)[2.0] | 5 (255.7,102.1)[1.6]-(251.8,105.9)[2.4] | 5 (74.3,126.9)[5.4]-(75.5,122.6)[4.2] | 5 (166.1,160.3)[5.6]-(169.9,164.1)[8.7] | 5 (156.0,168.3)[5.4]-(159.8,172.1)[5.2] | 5 (231.5,125.9)[7.0]-(236.7,125.9)[11.9] | 5 (163.1,133.4)[2.0]-(159.5,137.0)[0.8] | 5 (202.8,75.7)[5.7]-(199.2,79.3)[3.0] | 5 (179.8,133.4)[8.6]-(176.2,137.0)[10.2] | 5 (243.6,95.3)[3.5]-(247.2,98.8)[7.0] | 5 (154.0,144.0)[7.5]-(150.5,147.4)[6.5] | 5 (154.0,110.6)[2.6]-(150.5,114.1)[2.1] | 5 (177.6,99.5)[5.8]-(174.1,102.9)[3.4] | 5 (161.9,183.2)[0.1]-(161.9,188.1)[2.9] | 5 (160.7,145.6)[8.3]-(157.2,149.1)[4.9] | 5 (220.7,166.2)[9.6]-(224.1,162.8)[6.1] | 5 (248.3,132.6)[5.8]-(248.3,127.8)[5.7] | 5 (225.1,82.3)[2.2]-(228.4,85.6)[2.6] | 5 (192.4,156.0)[4.5]-(195.7,159.3)[1.2] | 5 (160.7,99.7)[5.0]-(157.4,102.9)[1.8] | 5 (225.4,132.3)[3.3]-(225.4,127.8)[5.7] | 4 (205.1,99.8)[4.5]-(201.9,102.9)[1.4] | 4 (161.3,100.5)[4.3]-(158.1,103.6)[1.1] | 4 (247.6,82.4)[2.6]-(244.4,85.5)[-0.6] | 4 (217.6,163.1)[6.4]-(220.7,166.2)[9.6] | 4 (155.3,169.0)[4.7]-(158.5,172.1)[6.1] | 4 (118.9,59.6)[32.0]-(118.9,63.9)[32.0] | 4 (207.8,102.7)[3.4]-(204.7,105.7)[0.4] | 4 (187.7,100.5)[7.2]-(184.7,103.5)[4.2] | 4 (175.2,156.8)[3.5]-(178.2,159.9)[1.6] | 4 (-0.2,0.1)[119.1]-(3.9,0.1)[119.1] | 4 (201.4,75.7)[4.3]-(198.5,78.6)[3.4] | 4 (178.4,133.4)[8.6]-(175.5,136.3)[10.9] | 4 (167.8,160.6)[7.2]-(170.6,163.5)[8.0] | 4 (239.3,146.3)[9.3]-(242.5,147.5)[6.2] | 4 (211.6,146.8)[9.9]-(209.3,145.2)[11.4] | 4 (241.7,71.8)[6.7]-(241.7,75.7)[6.7] | 4 (174.8,103.6)[2.7]-(177.6,100.9)[4.4] | 4 (153.3,143.3)[6.8]-(150.5,146.0)[7.9] | 4 (250.1,109.1)[4.1]-(247.3,111.8)[6.9] | 4 (199.2,160.0)[0.6]-(201.9,157.2)[2.2] | 4 (221.4,166.9)[10.3]-(224.1,164.2)[7.5] | 4 (250.3,175.1)[18.4]-(250.3,171.3)[14.6] | 4 (248.3,178.8)[22.2]-(248.3,175.1)[18.4] | 4 (250.3,175.1)[18.4]-(250.3,178.8)[22.2] | 4 (250.3,135.1)[3.3]-(250.3,138.8)[-0.4] | 4 (153.1,149.0)[4.9]-(150.5,151.6)[2.3] | 4 (192.4,157.4)[4.5]-(195.0,160.0)[1.9] | 4 (153.3,89.0)[1.4]-(150.7,91.6)[3.8] | 4 (213.1,84.9)[-0.7]-(210.5,87.4)[1.9] | 4 (158.1,121.7)[5.2]-(160.7,119.2)[2.9] | 4 (158.1,125.9)[6.8]-(160.7,128.4)[4.9] | 4 (202.6,103.6)[0.7]-(205.1,101.2)[3.1] | 4 (226.3,112.0)[4.3]-(228.8,114.5)[4.7] | 3 (217.6,164.5)[7.8]-(220.0,166.9)[10.3] | 3 (168.9,160.3)[8.4]-(171.3,162.8)[7.3] | 3 (189.8,160.3)[7.1]-(192.2,162.8)[4.7] | 3 (220.0,169.7)[12.7]-(217.6,172.1)[10.3] | 3 (186.3,100.5)[5.8]-(183.9,102.9)[3.4] | 3 (46.1,107.9)[33.6]-(46.1,104.5)[33.6] | 3 (81.4,107.9)[11.3]-(81.4,104.5)[14.7] | 3 (71.2,107.9)[11.3]-(71.2,104.5)[14.7] | 3 (153.3,169.7)[4.0]-(150.8,172.1)[1.6] | 3 (221.4,169.7)[13.0]-(223.8,172.1)[15.4] | 3 (248.3,182.2)[25.6]-(248.3,178.8)[22.2] | 3 (153.3,109.9)[1.9]-(150.9,112.3)[3.9] | 3 (206.4,102.7)[2.1]-(204.0,105.0)[-0.3] | 3 (256.7,135.1)[4.2]-(253.3,135.1)[3.3] | 3 (226.3,105.0)[-0.2]-(228.7,102.7)[2.2] | 3 (250.3,125.4)[3.3]-(250.3,122.1)[0.0] | 3 (199.9,160.7)[1.3]-(202.2,158.3)[2.4] | 3 (199.9,169.0)[5.4]-(202.2,171.3)[3.1] | 3 (154.8,169.8)[3.8]-(157.1,172.1)[4.7] | 3 (153.3,126.6)[6.7]-(151.0,128.8)[5.6] | 3 (197.8,77.9)[2.7]-(200.0,75.7)[3.0] | 3 (221.4,77.9)[5.3]-(223.6,75.7)[7.5] | 3 (167.0,133.4)[5.9]-(169.3,135.6)[8.1] | 3 (174.8,135.6)[10.8]-(177.0,133.4)[8.6] | 3 (250.3,135.1)[3.3]-(253.3,135.1)[3.3] | 3 (167.9,142.6)[6.7]-(165.8,144.7)[8.4] | 3 (152.6,109.2)[1.2]-(150.5,111.3)[3.2] | 3 (150.5,79.3)[7.1]-(152.6,81.4)[5.0] | 3 (152.6,88.3)[0.7]-(150.5,90.4)[2.6] | 3 (152.6,142.6)[6.1]-(150.5,144.7)[8.2] | 3 (152.6,169.0)[4.7]-(150.5,171.1)[2.6] | 3 (151.9,77.9)[7.3]-(154.0,80.0)[5.3] | 3 (227.0,111.3)[3.6]-(229.0,113.3)[5.7] | 3 (227.0,105.7)[0.5]-(229.0,103.7)[2.6] | 3 (74.3,126.9)[5.4]-(74.3,124.0)[5.4] | 3 (222.1,167.6)[10.9]-(224.1,165.6)[8.9] | 3 (222.1,169.0)[12.3]-(224.1,171.0)[14.4] | 3 (185.7,65.5)[10.4]-(188.5,65.5)[8.7] | 3 (168.6,143.3)[7.4]-(166.6,145.2)[9.0] | 3 (74.3,131.8)[5.4]-(74.3,134.5)[5.4] | 3 (192.4,158.8)[4.5]-(194.3,160.7)[2.6] | 3 (154.8,171.2)[2.5]-(154.8,173.9)[2.4] | 3 (154.0,89.7)[2.1]-(152.1,91.6)[3.8] | 3 (212.4,84.2)[0.0]-(210.5,86.0)[1.9] | 3 (158.8,122.4)[5.9]-(160.7,120.6)[4.3] | 3 (158.8,125.2)[6.1]-(160.7,127.0)[6.3] | 3 (200.4,127.7)[19.6]-(202.2,126.9)[19.3] | 3 (250.3,160.0)[3.3]-(250.3,157.4)[0.7] | 3 (231.5,178.8)[22.2]-(234.0,178.8)[22.2] | 3 (203.3,104.3)[-0.0]-(205.1,102.5)[1.8] | 3 (225.6,112.7)[5.0]-(227.4,114.5)[4.7] | 3 (221.4,112.7)[5.0]-(219.6,114.5)[4.7] | 2 (223.1,103.3)[1.5]-(223.1,100.8)[4.0] | 2 (219.3,169.0)[12.0]-(217.6,170.8)[10.2] | 2 (150.5,77.9)[7.3]-(152.3,79.7)[5.6] | 2 (151.2,166.2)[7.5]-(148.7,166.2)[7.5] | 2 (191.2,160.3)[5.7]-(192.9,162.1)[4.0] | 2 (170.3,160.3)[8.3]-(172.0,162.1)[6.6] | 2 (151.1,106.4)[-0.2]-(148.7,106.4)[2.2] | 2 (190.9,76.4)[5.1]-(190.9,74.0)[5.1] | 2 (220.7,170.4)[13.4]-(222.4,172.1)[15.1] | 2 (220.7,170.4)[13.4]-(219.0,172.1)[11.7] | 2 (154.0,170.4)[3.3]-(152.2,172.1)[1.6] | 2 (170.6,110.6)[4.3]-(172.3,112.3)[5.2] | 2 (225.6,104.3)[0.5]-(227.3,102.7)[2.1] | 2 (250.6,63.9)[11.0]-(250.5,61.6)[13.4] | 2 (193.3,93.5)[9.8]-(195.0,91.8)[8.1] | 2 (66.9,129.2)[12.8]-(69.3,129.2)[10.5] | 2 (200.6,168.3)[5.9]-(202.2,169.9)[4.3] | 2 (200.6,161.4)[2.0]-(202.2,159.8)[2.4] | 2 (250.3,132.6)[5.8]-(250.3,134.9)[3.5] | 2 (75.7,126.9)[4.8]-(75.7,129.2)[6.5] | 2 (228.4,85.6)[2.6]-(228.4,87.8)[2.6] | 2 (154.0,127.3)[6.0]-(152.4,128.8)[5.6] | 2 (169.1,75.7)[6.8]-(170.6,77.2)[5.3] | 2 (197.1,77.2)[2.0]-(198.6,75.7)[1.6] | 2 (212.2,75.7)[1.9]-(213.8,77.2)[1.0] | 2 (220.7,77.2)[4.6]-(222.3,75.7)[6.1] | 2 (174.1,134.9)[10.1]-(175.6,133.4)[8.6] | 2 (168.4,133.4)[7.3]-(170.0,134.9)[8.8] | 2 (158.8,165.5)[6.2]-(160.3,167.0)[7.5] | 2 (215.5,178.8)[8.2]-(215.5,180.9)[8.2] | 2 (243.1,75.7)[8.2]-(241.7,77.1)[6.7] | 2 (250.3,132.6)[5.8]-(248.3,132.6)[5.8] | 2 (250.3,175.1)[18.4]-(248.3,175.1)[18.4] | 2 (40.6,21.0)[98.2]-(38.6,21.0)[98.2] | 2 (167.2,141.9)[6.0]-(165.8,143.3)[7.0] | 2 (150.5,80.7)[6.1]-(151.9,82.1)[4.7] | 2 (151.9,168.3)[5.4]-(150.5,169.7)[4.0] | 2 (151.9,125.2)[6.1]-(150.5,126.6)[7.5] | 2 (151.9,108.5)[0.5]-(150.5,109.9)[1.8] | 2 (151.9,141.9)[5.4]-(150.5,143.3)[6.8] | 2 (151.9,87.6)[-0.0]-(150.5,89.0)[1.2] | 2 (153.3,77.9)[7.3]-(154.7,79.3)[6.0] | 2 (250.1,110.5)[4.8]-(248.7,111.8)[6.1] | 2 (227.7,110.6)[2.9]-(229.0,112.0)[4.3] | 2 (227.7,106.4)[1.2]-(229.0,105.1)[2.6] | 2 (218.6,111.3)[5.0]-(217.2,112.7)[6.3] | 2 (217.2,108.5)[6.3]-(218.6,109.8)[5.0] | 2 (218.6,110.0)[5.0]-(217.2,111.3)[6.3] | 2 (218.6,112.7)[5.1]-(217.2,114.1)[5.1] | 2 (222.8,168.3)[11.6]-(224.1,169.7)[13.0] | 2 (222.8,168.3)[11.6]-(224.1,167.0)[10.3] | 2 (221.4,86.3)[1.9]-(220.1,87.6)[3.2] | 2 (221.4,86.3)[1.9]-(222.7,87.6)[0.6] | 2 (150.5,139.3)[2.9]-(148.7,139.3)[2.9] | 2 (167.1,96.1)[8.6]-(165.8,97.4)[7.4] | 2 (178.3,168.3)[7.5]-(179.6,169.6)[6.2] | 2 (250.1,111.8)[6.1]-(250.1,113.6)[5.6] | 2 (170.6,144.0)[8.3]-(171.9,145.2)[7.1] | 2 (169.3,144.0)[8.1]-(168.0,145.2)[9.0] | 2 (151.7,149.0)[4.9]-(150.5,150.2)[3.7] | 2 (168.7,76.7)[7.2]-(170.0,77.9)[6.0] | 2 (193.9,123.7)[15.5]-(195.6,123.7)[15.5] | 2 (243.6,86.3)[-0.6]-(242.4,87.6)[0.6] | 2 (250.6,63.9)[11.0]-(252.3,63.9)[11.0] | 2 (192.4,160.2)[4.5]-(193.6,161.4)[3.3] | 2 (248.3,178.8)[22.2]-(249.9,178.8)[22.2] | 2 (154.6,90.4)[2.8]-(153.5,91.6)[3.8] | 2 (211.7,83.5)[0.7]-(210.5,84.6)[1.9] | 2 (210.5,78.1)[3.6]-(211.7,79.3)[3.1] | 2 (160.7,156.8)[1.2]-(159.5,157.9)[-0.0] | 2 (240.9,104.3)[7.1]-(242.0,105.5)[8.2] | 2 (159.5,164.8)[5.5]-(160.7,163.7)[4.3] | 2 (159.5,123.1)[6.6]-(160.7,122.0)[5.7] | 2 (159.5,106.4)[-0.1]-(160.7,107.6)[1.0] | 2 (208.9,171.3)[3.0]-(210.0,172.4)[2.7] | 2 (164.2,189.7)[4.5]-(163.0,190.8)[5.6] | 2 (224.9,113.4)[5.7]-(226.0,114.5)[4.7] | 2 (222.1,113.4)[5.7]-(221.0,114.5)[4.7] | 2 (251.8,132.6)[5.8]-(250.3,132.6)[5.8] | 2 (218.6,168.3)[11.3]-(217.6,169.4)[10.2] | 1 (243.2,118.6)[5.5]-(243.2,117.1)[5.5] | 1 (171.7,160.3)[6.9]-(172.7,161.4)[5.9] | 1 (231.5,142.7)[7.0]-(233.0,142.7)[8.5] | 1 (216.1,119.9)[5.4]-(216.1,121.4)[5.4] | 1 (175.5,171.1)[8.4]-(176.5,172.1)[8.5] | 1 (171.3,171.1)[4.2]-(172.4,172.1)[5.3] | 1 (41.0,107.9)[38.7]-(41.0,106.5)[38.7] | 1 (83.0,107.9)[11.3]-(83.0,106.5)[12.7] | 1 (47.0,133.6)[32.8]-(46.1,134.7)[33.6] | 1 (170.0,111.3)[3.6]-(170.9,112.3)[4.6] | 1 (154.7,111.3)[3.3]-(155.6,112.3)[3.9] | 1 (154.5,149.0)[4.9]-(155.9,149.0)[4.9] | 1 (223.9,102.7)[2.1]-(224.9,103.6)[1.2] | 1 (224.9,103.6)[1.2]-(225.9,102.7)[2.1] | 1 (250.3,168.3)[11.7]-(250.3,167.0)[10.3] | 1 (155.9,149.0)[4.9]-(157.2,149.1)[4.9] | 1 (201.2,162.1)[2.7]-(202.2,161.1)[2.4] | 1 (201.3,167.6)[6.6]-(202.2,168.6)[5.7] | 1 (154.8,171.2)[2.5]-(155.7,172.1)[3.3] | 1 (53.9,79.8)[39.4]-(55.2,79.8)[39.4] | 1 (53.9,63.8)[55.3]-(55.2,63.8)[55.3] | 1 (161.7,133.4)[0.6]-(160.8,134.3)[-0.3] | 1 (160.3,133.4)[-0.1]-(159.5,134.3)[-1.0] | 1 (154.6,128.0)[5.3]-(153.8,128.8)[4.5] | 1 (196.4,76.5)[1.3]-(197.2,75.7)[0.5] | 1 (170.5,75.7)[6.1]-(171.3,76.5)[5.3] | 1 (220.0,76.5)[3.9]-(220.9,75.7)[4.7] | 1 (173.4,134.2)[9.4]-(174.3,133.4)[8.6] | 1 (168.6,169.7)[4.8]-(167.8,170.5)[4.0] | 1 (169.8,133.4)[8.6]-(170.6,134.2)[9.4] | 1 (200.5,157.2)[0.8]-(199.7,158.0)[0.0] | 1 (36.3,14.1)[105.0]-(36.3,13.1)[106.1] | 1 (250.3,135.1)[3.3]-(249.3,135.1)[3.3] | 1 (213.2,84.9)[-0.7]-(213.2,85.9)[-0.0] | 1 (153.2,180.1)[4.1]-(153.9,180.1)[4.1] | 1 (236.1,91.2)[4.6]-(236.1,90.5)[5.3] | 1 (226.5,76.0)[6.4]-(227.2,76.0)[5.7] | 1 (247.2,98.8)[7.0]-(247.2,98.1)[7.0] | 1 (185.9,171.8)[4.0]-(186.6,171.8)[4.0] | 1 (166.5,141.2)[5.3]-(165.8,141.9)[5.6] | 1 (150.5,82.1)[4.7]-(151.2,82.8)[4.0] | 1 (224.4,86.4)[-0.5]-(225.1,87.1)[0.2] | 1 (151.2,167.6)[6.0]-(150.5,168.3)[5.4] | 1 (151.2,107.8)[-0.2]-(150.5,108.5)[0.5] | 1 (151.2,141.2)[4.7]-(150.5,141.9)[5.4] | 1 (153.3,80.7)[4.6]-(152.6,80.0)[5.3] | 1 (151.2,87.0)[-0.1]-(150.5,87.6)[0.4] | 1 (151.2,124.5)[5.5]-(150.5,125.2)[6.1] | 1 (151.2,134.2)[0.2]-(150.5,133.6)[0.8] | 1 (154.7,77.9)[7.3]-(155.3,78.6)[6.7] | 1 (228.4,109.9)[2.2]-(229.0,110.6)[2.9] | 1 (228.4,107.1)[1.9]-(229.0,106.5)[2.6] | 1 (161.9,178.8)[3.2]-(161.9,179.8)[3.2] | 1 (221.1,102.7)[2.4]-(221.8,103.3)[1.8] | 1 (218.6,83.5)[3.8]-(218.0,84.1)[3.1] | 1 (222.5,102.7)[2.1]-(223.1,103.3)[1.5] | 1 (241.8,87.9)[1.1]-(241.2,87.3)[1.7] | 1 (256.6,139.3)[-0.0]-(255.8,139.4)[-0.0] | 1 (231.5,179.7)[23.0]-(231.5,178.8)[22.2] | 1 (135.1,63.9)[22.5]-(135.9,63.9)[21.7] | 1 (167.9,63.9)[17.9]-(168.7,63.9)[17.9] | 1 (179.0,167.6)[8.2]-(179.6,168.2)[7.6] | 1 (170.0,144.7)[8.8]-(170.5,145.2)[8.5] | 1 (170.0,144.7)[8.8]-(169.4,145.2)[9.0] | 1 (222.2,134.9)[0.8]-(222.2,135.7)[-0.0] | 1 (18.1,26.5)[92.7]-(18.9,26.5)[92.7] | 1 (34.7,27.6)[91.6]-(34.7,28.3)[90.8] | 1 (38.1,27.6)[91.6]-(38.1,28.3)[90.8] | 1 (50.4,28.3)[90.8]-(50.4,27.6)[91.6] | 1 (213.0,136.4)[8.5]-(213.0,137.1)[8.5] | 1 (155.3,91.1)[3.5]-(154.9,91.6)[3.8] | 1 (162.3,91.1)[3.7]-(162.8,91.6)[4.1] | 1 (211.0,82.8)[1.4]-(210.5,83.3)[1.9] | 1 (210.5,79.5)[3.6]-(211.0,80.0)[3.5] | 1 (160.2,105.7)[0.6]-(160.7,106.2)[1.0] | 1 (160.2,123.8)[7.3]-(160.7,123.4)[7.0] | 1 (16.2,28.3)[90.8]-(16.2,27.7)[91.5] | 1 (18.1,27.7)[91.5]-(18.1,28.3)[90.8] | 1 (236.5,125.3)[12.1]-(236.7,125.9)[11.9] | 1 (242.5,147.5)[6.2]-(242.8,148.0)[5.9] | 1 (204.7,105.7)[0.4]-(205.1,106.1)[0.8] | 1 (224.2,114.1)[5.1]-(224.6,114.5)[4.7] | 1 (222.8,114.1)[5.1]-(222.4,114.5)[4.7] | 1 (41.6,121.3)[38.1]-(41.0,121.4)[38.7] | 1 (36.3,27.6)[91.6]-(36.3,28.2)[91.0] | 1 (226.0,132.3)[3.3]-(225.4,132.3)[3.3] | 1 (83.0,140.3)[1.6]-(83.0,140.8)[2.2] | 1 (41.0,140.3)[38.7]-(41.0,140.8)[38.7] | 1 (63.0,108.4)[16.7]-(62.9,107.9)[16.8] | 1 (62.8,139.7)[17.0]-(62.9,140.3)[16.8] | 1 (15.1,27.6)[91.6]-(15.7,27.6)[91.6] | 0 (202.8,180.3)[4.0]-(203.1,180.6)[3.7] | 0 (160.3,185.8)[1.7]-(159.9,185.4)[2.0] | 0 (173.1,160.3)[5.6]-(173.4,160.7)[5.2] | 0 (154.0,160.7)[4.7]-(153.6,160.3)[4.4] | 0 (158.4,179.8)[3.5]-(158.8,180.1)[3.1] | 0 (184.0,128.8)[7.5]-(183.7,128.5)[7.2] | 0 (247.5,93.6)[6.1]-(247.2,93.2)[6.2] | 0 (158.9,185.8)[3.1]-(158.5,185.4)[3.4] | 0 (197.5,154.2)[2.4]-(197.2,153.8)[2.7] | 0 (247.5,99.2)[6.7]-(247.2,98.8)[7.0] | 0 (209.3,182.7)[2.3]-(209.0,182.3)[2.1] | 0 (166.1,172.1)[2.4]-(165.8,171.8)[2.8] | 0 (244.2,100.0)[4.1]-(243.8,99.6)[3.7] | 0 (187.0,172.1)[3.7]-(186.6,171.8)[4.0] | 0 (175.2,158.2)[3.5]-(175.5,158.6)[3.1] | 0 (174.8,160.7)[3.8]-(175.2,160.3)[3.5] | 0 (236.6,87.6)[6.3]-(237.0,87.9)[6.0] | 0 (185.0,153.5)[3.5]-(184.7,153.1)[3.1] | 0 (242.1,100.0)[2.7]-(241.8,99.6)[2.4] | 0 (208.3,185.8)[1.2]-(207.9,185.4)[0.9] | 0 (170.6,171.8)[3.5]-(171.0,172.1)[3.9] | 0 (170.6,171.8)[3.5]-(170.3,172.1)[3.2] | 0 (174.8,171.8)[7.7]-(175.1,172.1)[8.0] | 0 (192.8,145.9)[10.6]-(192.4,145.6)[10.9] | 0 (158.1,112.0)[4.8]-(158.4,112.3)[5.0] | 0 (157.0,112.3)[4.1]-(156.7,112.0)[4.0] | 0 (180.4,116.1)[5.8]-(180.7,115.8)[6.1] | 0 (193.6,102.9)[7.9]-(193.3,102.7)[8.2] | 0 (193.6,101.6)[7.9]-(193.3,101.3)[8.2] | 0 (193.3,92.1)[8.4]-(193.6,91.8)[8.1] | 0 (241.0,87.6)[2.0]-(241.2,87.3)[1.7] | 0 (255.7,103.4)[0.2]-(255.5,103.6)[0.0] | 0 (166.5,185.8)[2.5]-(166.3,185.5)[2.3] | 0 (193.4,123.7)[15.5]-(193.1,123.7)[15.5] | 0 (225.1,78.1)[6.4]-(225.2,78.3)[6.2] | 0 (18.1,13.9)[105.3]-(18.1,14.1)[105.0] | 0 (34.7,13.9)[105.3]-(34.7,14.1)[105.0] | 0 (38.1,13.9)[105.3]-(38.1,14.1)[105.0] | 0 (195.5,75.7)[0.5]-(195.7,75.8)[0.6] | 0 (194.2,75.7)[1.9]-(194.3,75.8)[1.7] | 0 (154.7,133.6)[1.7]-(154.5,133.4)[1.6] | 0 (156.0,133.6)[2.2]-(155.9,133.4)[2.3] | 0 (167.9,169.0)[5.5]-(167.8,169.1)[5.4] | 0 (153.3,133.5)[0.8]-(153.1,133.4)[1.0] | 0 (151.9,133.5)[0.8]-(151.8,133.4)[1.0] | 0 (242.0,96.3)[1.8]-(241.9,96.3)[1.7] | 0 (119.5,124.1)[30.6]-(119.4,124.1)[30.6] | 0 (250.6,63.9)[11.0]-(250.6,63.9)[11.0] | 0 (72.7,136.4)[7.0]-(72.7,136.4)[7.0] | 0 (169.2,85.7)[6.7]-(169.2,85.6)[6.7] | 0 (258.0,117.4)[3.5]-(258.0,117.4)[3.5] | 0 (162.3,142.6)[6.3]-(162.3,142.6)[6.3] | 0 (205.3,84.3)[7.1]-(205.3,84.3)[7.1]
+      slab pass: chain 96 ft: start (87.2,56.7) body 31.3in on SLABEDGE (84.6,87.5)-(84.6,51.3); end 50.0in of SLABEDGE (84.6,53.4)-(49.4,53.4) | end (183.6,56.7) body 87.2in on SLABEDGE (183.4,63.9)-(184.0,63.9); end 87.1in of SLABEDGE (184.2,63.9)-(184.2,74.0)
+      slab pass: chain 67 ft: start (196.7,55.3) body 181.1in on SLABEDGE (193.6,74.0)-(184.2,63.9); end 104.0in of SLABEDGE (196.0,63.9)-(196.7,63.9) | end (264.1,55.3) body 483.3in on SLABEDGE (227.5,75.7)-(235.8,83.9); end 153.6in of SLABEDGE (252.0,59.6)-(252.0,59.3)
+      slab pass: chain 67 ft: start (10.8,98.1) body 595.7in on SLABEDGE (53.9,73.5)-(53.3,72.4); end 376.1in of SLABEDGE (41.0,106.5)-(41.0,121.1) | end (10.8,165.3) body 1296.8in on SLABEDGE (118.9,124.5)-(118.9,188.9); end 465.5in of SLABEDGE (46.1,127.6)-(46.1,149.2)
+      slab pass: arranged within 1 m of (26585,17272) mm: 2: SLABEDGE (26585,17272)-(55960,17272) | SLABEDGE (25789,26657)-(25789,15621)
+      slab pass: arranged within 1 m of (55960,17272) mm: 1: SLABEDGE (26585,17272)-(55960,17272)
+      slab pass: 2 cell(s) of 500 sq ft or more: 1199 sq ft x 49..85 y 53..87 ft, 6 hole(s) | 557 sq ft x 206..225 y 143..179 ft, 4 hole(s)
+      slab pass: arranged within 600 mm of the pinch (81768,20421) mm: 0: 
+      slab pass: column at (223.0,120.6) ft is in no cell; the outside reaches it through a gap 19 in wide at (268.3,67.0) ft
+      slab pass: arranged within 600 mm of the pinch (45888,58641) mm: 0: 
+      slab pass: column at (151.4,184.7) ft is in no cell; the outside reaches it through a gap 19 in wide at (150.6,192.4) ft
+      slab pass: arranged within 600 mm of the pinch (62808,56481) mm: 2: SLABEDGE (61802,55156)-(63271,56629) | SLABEDGE (61802,54944)-(63483,56629)
+      slab pass: column at (206.0,185.4) ft is in no cell; the outside reaches it through a gap 18 in wide at (206.1,185.3) ft
+      slab pass: the outline's pen is 2.00 mm (4 outward edge(s) of the structure-holding cells); 122 rim cell(s) face the page through it alone and are inside the outline (step 115)
+      slab pass: wrapping cell 557 sq ft with 4 hole(s) of 29 sq ft (step 116 study)
+      slab pass: wrapping cell 83 sq ft with 1 hole(s) of 5 sq ft (step 116 study)
+      slab pass: biggest cells (step 116 study): 1199 sq ft holds False wraps False outside True holes 6 | 557 sq ft holds False wraps True outside True holes 4 | 414 sq ft holds True wraps False outside True holes 1
+      slab pass: cells by selection (step 116 study): holding structure 59 (811 sq ft), wrapping 2, enclosed 1986 (3399 sq ft), open to the page 702 (3911 sq ft)
+      slab pass: 1 of the walk's 1 floor(s) stand down to the arrangement's floor(s) over them (step 113 / 135)
+      slab pass: with step 170 31 column(s) on no floor and 5,031 sq ft of floor, without 34 and 4,360; kept the step's reading
+      slab pass: 3254 of 3501 lines offered; walk 147 loop(s), 839 piece(s); walk found a floor: False; arranged 2973; refused: -; rings 207 (sq ft: 3348,1275,670,558,454,443); floors (big enough, structure stands in) 4; the three largest rings: 3348 sq ft (True, 27, 32), 2 of 307 vertices in an X, extent x 150.5..228.4 y 74.2..149.2 ft | 1275 sq ft (False, 0, 0), 0 of 4 vertices in an X, extent x 49.4..84.6 y 51.3..87.5 ft | 670 sq ft (True, 11, 11), 0 of 16 vertices in an X, extent x 44.2..75.7 y 112.2..136.4 ft
+  pens of stroked lines 48"+: w2.00x928 w4.00x124 w5.00x213 w8.00x112 w10.00x39 w16.00x13
+  pens of filled walls' outlines: 
+  filled walls with no stroke of their own: 16
+  pens of lines along filled walls' long edges: w5.00x2 w8.00x38
+  filled shape of wall proportions not read as a wall: 4 pts, 290 in long, 23.5-23.5 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #D0D0D0, no stroke, at (64628,37876) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 271 in long, 23.7-23.7 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #D0D0D0, no stroke, at (56972,38125) mm
+  long fill: 4 pts, box 1268 x 1271 in, colour #F0F0F0, no stroke, at (61980,38616) mm, corners (45872,22471) (78088,22471) (78088,54762) (45872,54762)
+      paper fill after it (path 118): 4 pts, box 541 x 156 in, corners (45872,22471) (59610,22471) (59610,26420) (45872,26420)
+      paper fill after it (path 122): 4 pts, box 264 x 627 in, corners (61625,37219) (68318,37219) (68318,53137) (61625,53137)
+      paper fill after it (path 130): 4 pts, box 54 x 144 in, corners (64927,38608) (66290,38608) (66290,42270) (64927,42270)
+      paper fill after it (path 133): 4 pts, box 10 x 94 in, corners (64067,38676) (64330,38676) (64330,41063) (64067,41063)
+      paper fill after it (path 134): 4 pts, box 11 x 1 in, corners (58568,39946) (58843,39946) (58843,39971) (58568,39971)
+      paper fill after it (path 135): 4 pts, box 11 x 1 in, corners (58843,39946) (59123,39946) (59123,39971) (58843,39971)
+      paper fill after it (path 138): 4 pts, box 11 x 44 in, corners (59123,39946) (59402,39946) (59402,41063) (59123,41063)
+      paper fill after it (path 140): 4 pts, box 11 x 44 in, corners (59402,39946) (59682,39946) (59682,41063) (59402,41063)
+      paper fill after it (path 141): 4 pts, box 11 x 44 in, corners (59682,39946) (59961,39946) (59961,41063) (59682,41063)
+      paper fill after it (path 142): 4 pts, box 11 x 44 in, corners (59961,39946) (60240,39946) (60240,41063) (59961,41063)
+      paper fill after it (path 143): 4 pts, box 11 x 44 in, corners (60240,39946) (60520,39946) (60520,41063) (60240,41063)
+      paper fill after it (path 144): 4 pts, box 11 x 44 in, corners (60520,39946) (60799,39946) (60799,41063) (60520,41063)
+      paper fill after it (path 145): 4 pts, box 11 x 44 in, corners (60799,39946) (61079,39946) (61079,41063) (60799,41063)
+      paper fill after it (path 146): 4 pts, box 11 x 44 in, corners (61079,39946) (61358,39946) (61358,41063) (61079,41063)
+      paper fill after it (path 147): 4 pts, box 11 x 44 in, corners (61358,39946) (61637,39946) (61637,41063) (61358,41063)
+      paper fill after it (path 148): 4 pts, box 11 x 44 in, corners (61637,39946) (61917,39946) (61917,41063) (61637,41063)
+      paper fill after it (path 149): 4 pts, box 10 x 44 in, corners (61917,39946) (62179,39946) (62179,41063) (61917,41063)
+      paper fill after it (path 150): 4 pts, box 11 x 44 in, corners (61358,38676) (61637,38676) (61637,39793) (61358,39793)
+      paper fill after it (path 151): 4 pts, box 11 x 44 in, corners (61079,38680) (61358,38680) (61358,39793) (61079,39793)
+      paper fill after it (path 152): 4 pts, box 11 x 44 in, corners (60799,38680) (61079,38680) (61079,39793) (60799,39793)
+      paper fill after it (path 153): 4 pts, box 11 x 44 in, corners (60520,38680) (60799,38680) (60799,39793) (60520,39793)
+      paper fill after it (path 154): 4 pts, box 11 x 44 in, corners (60240,38680) (60520,38680) (60520,39793) (60240,39793)
+      paper fill after it (path 155): 4 pts, box 11 x 44 in, corners (59961,38680) (60240,38680) (60240,39793) (59961,39793)
+      paper fill after it (path 156): 4 pts, box 11 x 44 in, corners (59682,38680) (59961,38680) (59961,39793) (59682,39793)
+      paper fill after it (path 158): 4 pts, box 11 x 44 in, corners (59402,38680) (59682,38680) (59682,39793) (59402,39793)
+      paper fill after it (path 161): 4 pts, box 10 x 26 in, corners (59148,39146) (59402,39146) (59402,39793) (59148,39793)
+      paper fill after it (path 163): 4 pts, box 94 x 94 in, corners (57273,38680) (59669,38680) (59669,41063) (57273,41063)
+      paper fill after it (path 175): 4 pts, box 446 x 64 in, corners (56989,53137) (68318,53137) (68318,54762) (56989,54762)
+      paper fill after it (path 176): 4 pts, box 47 x 11 in, corners (65028,41432) (66226,41432) (66226,41711) (65028,41711)
+      paper fill after it (path 177): 4 pts, box 47 x 11 in, corners (65028,41711) (66226,41711) (66226,41990) (65028,41990)
+      paper fill after it (path 178): 4 pts, box 47 x 11 in, corners (65028,41990) (66226,41990) (66226,42270) (65028,42270)
+      paper fill after it (path 180): 4 pts, box 106 x 94 in, corners (61637,38680) (64326,38680) (64326,41063) (61637,41063)
+      paper fill after it (path 182): 4 pts, box 325 x 145 in, corners (56672,34688) (64927,34688) (64927,38375) (56672,38375)
+      paper fill after it (path 183): 4 pts, box 19 x 8 in, corners (50893,23529) (51380,23529) (51380,23741) (50893,23741)
+      paper fill after it (path 186): 4 pts, box 47 x 11 in, corners (65028,36995) (66226,36995) (66226,37275) (65028,37275)
+      paper fill after it (path 187): 4 pts, box 47 x 11 in, corners (65028,37275) (66226,37275) (66226,37558) (65028,37558)
+      paper fill after it (path 188): 4 pts, box 47 x 11 in, corners (65028,37558) (66226,37558) (66226,37838) (65028,37838)
+      paper fill after it (path 190): 4 pts, box 47 x 11 in, corners (65028,37838) (66226,37838) (66226,38117) (65028,38117)
+      paper fill after it (path 193): 4 pts, box 27 x 11 in, corners (65532,38117) (66226,38117) (66226,38396) (65532,38396)
+      paper fill after it (path 196): 4 pts, box 98 x 307 in, corners (75976,41156) (78456,41156) (78456,48954) (75976,48954)
+      paper fill after it (path 200): 4 pts, box 89 x 191 in, corners (75976,36305) (78232,36305) (78232,41156) (75976,41156)
+      paper fill after it (path 207): 4 pts, box 95 x 43 in, corners (57082,22471) (59487,22471) (59487,23554) (57082,23554)
+      paper fill after it (path 208): 4 pts, box 10 x 2 in, corners (75993,48980) (76255,48980) (76255,49030) (75993,49030)
+      paper fill after it (path 209): 4 pts, box 2 x 34 in, corners (76251,51329) (76302,51329) (76302,52189) (76251,52189)
+      paper fill after it (path 211): 4 pts, box 10 x 24 in, corners (75993,50584) (76255,50584) (76255,51194) (75993,51194)
+      paper fill after it (path 212): 4 pts, box 10 x 24 in, corners (75997,38070) (76255,38070) (76255,38680) (75997,38680)
+      paper fill after it (path 213): 4 pts, box 87 x 2 in, corners (75993,41123) (78215,41123) (78215,41182) (75993,41182)
+      paper fill after it (path 12617): 4 pts, box 56 x 13 in, corners (71556,37118) (72983,37118) (72983,37448) (71556,37448)
+      paper fill after it (path 12618): 4 pts, box 43 x 13 in, corners (71556,36788) (72640,36788) (72640,37118) (71556,37118)
+      line along it: 1119" long, offset 0.0" to 0.0" from the band's edge, w8.00 #000000
+      line along it: 545" long, offset 1252.2" to 1268.3" from the band's edge, w8.00 #000000
+      line along it: 406" long, offset 620.2" to 620.2" from the band's edge, w8.00 #000000
+      line along it: 627" long, offset 883.7" to 883.7" from the band's edge, w8.00 #000000
+      line along it: 645" long, offset 971.8" to 971.8" from the band's edge, w2.00 #000000
+      line along it: 773" long, offset -379.0" to -379.0" from the band's edge, w4.00 #000000
+      line along it: 772" long, offset -379.0" to -379.0" from the band's edge, w4.00 #000000
+      line along it: 435" long, offset -790.7" to -790.7" from the band's edge, w10.00 #000000
+      line along it: 435" long, offset -1213.2" to -1213.2" from the band's edge, w10.00 #000000
+      line along it: 807" long, offset -1675.8" to -1675.8" from the band's edge, w4.00 #000000
+      line along it: 690" long, offset 899.2" to 899.2" from the band's edge, w5.00 #000000
+      line along it: 653" long, offset 1173.0" to 1173.0" from the band's edge, w5.00 #000000
+      line along it: 2249" long, offset 1422.0" to 1422.0" from the band's edge, w5.00 #000000
+      line along it: 355" long, offset 1721.8" to 1721.8" from the band's edge, w5.00 #000000
+      line along it: 355" long, offset 1422.0" to 1422.0" from the band's edge, w5.00 #000000
+      line along it: 2249" long, offset -1675.8" to -1675.8" from the band's edge, w5.00 #000000
+      line along it: 2249" long, offset 1721.8" to 1721.8" from the band's edge, w5.00 #000000
+      line along it: 2249" long, offset 1422.0" to 1422.0" from the band's edge, w5.00 #000000
+      line along it: 2249" long, offset -1675.8" to -1675.8" from the band's edge, w5.00 #000000
+      line along it: 2249" long, offset 1721.8" to 1721.8" from the band's edge, w5.00 #000000
+      line along it: 327" long, offset 1422.0" to 1422.0" from the band's edge, w5.00 #000000
+      line along it: 715" long, offset 1721.8" to 1721.8" from the band's edge, w5.00 #000000
+      line along it: 364" long, offset 1422.0" to 1422.0" from the band's edge, w5.00 #000000
+  long fill: 4 pts, box 83 x 1192 in, colour #F0F0F0, no stroke, at (37139,41489) mm, corners (36081,26348) (38197,26348) (38197,56629) (36081,56629)
+      paper fill after it (path 167): 4 pts, box 379 x 1472 in, corners (36246,19236) (45872,19236) (45872,56629) (36246,56629)
+      paper fill after it (path 205): 4 pts, box 56 x 1552 in, corners (34993,18165) (36415,18165) (36415,57578) (34993,57578)
+      line along it: 773" long, offset 6.5" to 6.5" from the band's edge, w4.00 #000000
+      line along it: 772" long, offset 6.5" to 6.5" from the band's edge, w4.00 #000000
+      line along it: 312" long, offset 26.5" to 26.5" from the band's edge, w2.00 #000000
+      line along it: 312" long, offset 26.5" to 26.5" from the band's edge, w2.00 #000000
+      line along it: 312" long, offset 26.5" to 26.5" from the band's edge, w2.00 #000000
+  long fill: 4 pts, box 1043 x 127 in, colour #F0F0F0, no stroke, at (64419,20853) mm, corners (51173,19236) (77665,19236) (77665,22471) (51173,22471)
+      line along it: 371" long, offset 279.3" to 219.8" from the band's edge, w8.00 #000000
+      line along it: 711" long, offset 127.3" to 127.3" from the band's edge, w8.00 #000000
+      line along it: 1039" long, offset 0.0" to 0.0" from the band's edge, w8.00 #000000
+      line along it: 696" long, offset 127.3" to 127.3" from the band's edge, w8.00 #000000
+      line along it: 935" long, offset -277.7" to -277.7" from the band's edge, w10.00 #000000
+      line along it: 808" long, offset -246.3" to -246.3" from the band's edge, w10.00 #000000
+      line along it: 808" long, offset -94.2" to -94.2" from the band's edge, w10.00 #000000
+      line along it: 808" long, offset -125.8" to -125.8" from the band's edge, w10.00 #000000
+      line along it: 808" long, offset -158.8" to -158.8" from the band's edge, w10.00 #000000
+      line along it: 655" long, offset -202.7" to -202.7" from the band's edge, w5.00 #000000
+      line along it: 808" long, offset -246.3" to -246.3" from the band's edge, w5.00 #000000
+      line along it: 1157" long, offset -77.3" to -77.3" from the band's edge, w10.00 #000000
+      line along it: 312" long, offset 199.0" to 199.0" from the band's edge, w2.00 #000000
+      line along it: 312" long, offset 199.0" to 199.0" from the band's edge, w2.00 #000000
+      line along it: 312" long, offset 199.0" to 199.0" from the band's edge, w2.00 #000000
+      line along it: 312" long, offset 9.8" to 9.8" from the band's edge, w2.00 #000000
+      line along it: 312" long, offset 9.8" to 9.8" from the band's edge, w2.00 #000000
+      line along it: 312" long, offset 9.8" to 9.8" from the band's edge, w2.00 #000000
+      line along it: 575" long, offset -339.5" to -339.5" from the band's edge, w10.00 #000000
+      line along it: 575" long, offset -125.5" to -125.5" from the band's edge, w10.00 #000000
+  filled shape of wall proportions not read as a wall: 4 pts, 144 in long, 53.7-53.7 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (65608,40439) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 94 in long, 10.3-10.3 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (64199,39870) mm
+  long fill: 4 pts, box 379 x 1472 in, colour #F0F0F0, no stroke, at (41059,37933) mm, corners (36246,19236) (45872,19236) (45872,56629) (36246,56629)
+      paper fill after it (path 168): 4 pts, box 77 x 154 in, corners (36246,22449) (38197,22449) (38197,26348) (36246,26348)
+      paper fill after it (path 205): 4 pts, box 56 x 1552 in, corners (34993,18165) (36415,18165) (36415,57578) (34993,57578)
+      line along it: 1119" long, offset 379.0" to 379.0" from the band's edge, w8.00 #000000
+      line along it: 406" long, offset 999.2" to 999.2" from the band's edge, w8.00 #000000
+      line along it: 627" long, offset 1262.7" to 1262.7" from the band's edge, w8.00 #000000
+      line along it: 645" long, offset 1350.8" to 1350.8" from the band's edge, w2.00 #000000
+      line along it: 773" long, offset 0.0" to 0.0" from the band's edge, w4.00 #000000
+      line along it: 772" long, offset 0.0" to 0.0" from the band's edge, w4.00 #000000
+      line along it: 435" long, offset -411.7" to -411.7" from the band's edge, w10.00 #000000
+      line along it: 435" long, offset -834.2" to -834.2" from the band's edge, w10.00 #000000
+      line along it: 690" long, offset 1278.2" to 1278.2" from the band's edge, w5.00 #000000
+  filled shape of wall proportions not read as a wall: 4 pts, 126 in long, 24.0-24.0 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (78854,58498) mm
+  long fill: 4 pts, box 56 x 1552 in, colour #F0F0F0, no stroke, at (35704,37871) mm, corners (34993,18165) (36415,18165) (36415,57578) (34993,57578)
+      line along it: 773" long, offset 49.3" to 49.3" from the band's edge, w4.00 #000000
+      line along it: 772" long, offset 49.3" to 49.3" from the band's edge, w4.00 #000000
+  filled shape of wall proportions not read as a wall: 4 pts, 1552 in long, 56.0-56.0 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (35704,37871) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 95 in long, 42.7-42.7 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (58285,23012) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 290 in long, 23.7-23.7 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #D0D0D0, no stroke, at (21412,37878) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 271 in long, 23.7-23.7 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #D0D0D0, no stroke, at (13758,38128) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 94 in long, 50.8-50.8 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (14704,39872) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 155 in long, 58.3-58.3 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (21110,39421) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 74 in long, 54.3-54.3 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (22672,36792) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 504 in long, 23.7-23.7 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (18906,32753) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 504 in long, 12.8-12.8 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (18906,42755) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 412 in long, 28.3-28.3 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (12315,37685) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 412 in long, 27.5-27.5 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (25491,37685) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 56 in long, 13.0-13.0 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (72269,37283) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 230 in long, 43.3-43.3 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #000000, no stroke, at (85706,20608) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 50 in long, 6.2-6.2 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #000000, no stroke, at (84969,52449) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 136 in long, 20.0-20.0 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (13339,5398) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 137 in long, 20.0-20.0 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (7315,5398) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 127 in long, 12.8-12.8 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (87435,22447) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 84 in long, 20.7-20.7 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #D0D0D0, no stroke, at (30262,3564) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 90 in long, 38.8-38.8 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #D0D0D0, no stroke, at (31054,11995) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 90 in long, 42.8-42.8 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #D0D0D0, no stroke, at (31054,10958) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 89 in long, 38.8-38.8 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #D0D0D0, no stroke, at (45815,12097) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 109 in long, 38.8-38.8 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #D0D0D0, no stroke, at (48338,12097) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 89 in long, 39.0-39.0 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #D0D0D0, no stroke, at (45815,11108) mm
+  wall   301.5 x  19.7 in   centre ( 60501, 34438) mm   outline pts 4
+      on it, the wall itself (path 4):  301.5 x  19.7 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall   301.3 x  19.7 in   centre ( 17285, 34442) mm   outline pts 4
+      on it, the wall itself (path 11189):  301.3 x  19.7 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall   277.8 x  19.7 in   centre ( 60801, 41313) mm   outline pts 4
+      on it, the wall itself (path 10):  277.8 x  19.7 in  colour #D0D0D0  filled unstroked closed  pts 4
+      on it, painted after (path 119):  263.5 x 626.7 in  colour #000000  unfilled unstroked closed  pts 12
+      on it, painted after (path 122):  263.5 x 626.7 in  colour #F0F0F0  filled unstroked closed  pts 4
+  wall   277.7 x  19.7 in   centre ( 17585, 41313) mm   outline pts 4
+      on it, the wall itself (path 11194):  277.7 x  19.7 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall   277.7 x  11.8 in   centre ( 17585, 38525) mm   outline pts 4
+      on it, the wall itself (path 11195):  277.7 x  11.8 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall   277.7 x  11.8 in   centre ( 60799, 38525) mm   outline pts 4
+      on it, the wall itself (path 11):  277.7 x  11.8 in  colour #D0D0D0  filled unstroked closed  pts 4
+      on it, painted after (path 119):  263.5 x 626.7 in  colour #000000  unfilled unstroked closed  pts 12
+      on it, painted after (path 122):  263.5 x 626.7 in  colour #F0F0F0  filled unstroked closed  pts 4
+      on it, painted after (path 12780):   38.1 x  12.8 in  colour #000000  unfilled stroked open  pts 17
+  wall   177.3 x   6.0 in   centre ( 60799, 39870) mm   outline pts 4
+      on it, the wall itself (path 12):  177.3 x   6.0 in  colour #D0D0D0  filled unstroked closed  pts 4
+      on it, painted after (path 119):  263.5 x 626.7 in  colour #000000  unfilled unstroked closed  pts 12
+      on it, painted after (path 122):  263.5 x 626.7 in  colour #F0F0F0  filled unstroked closed  pts 4
+      on it, painted after (path 162):   94.3 x  93.8 in  colour #000000  unfilled unstroked closed  pts 6
+      on it, painted after (path 163):   94.3 x  93.8 in  colour #F0F0F0  filled unstroked closed  pts 4
+      on it, painted after (path 179):  105.8 x  93.8 in  colour #000000  unfilled unstroked closed  pts 11
+      on it, painted after (path 180):  105.8 x  93.8 in  colour #F0F0F0  filled unstroked closed  pts 4
+  wall   177.3 x   6.0 in   centre ( 17585, 39870) mm   outline pts 4
+      on it, the wall itself (path 11196):  177.3 x   6.0 in  colour #D0D0D0  filled unstroked closed  pts 4
+      on it, painted after (path 11237):  154.8 x  58.3 in  colour #000000  unfilled unstroked closed  pts 14
+      on it, painted after (path 11238):  154.8 x  58.3 in  colour #F0F0F0  filled unstroked closed  pts 4
+  wall   160.3 x   6.2 in   centre (  4849,  6375) mm   outline pts 4
+      on it, painted after (path 13783):    6.2 x 160.3 in  colour #000000  unfilled unstroked closed  pts 25
+      on it, painted after (path 13784):    6.2 x 160.5 in  colour #000000  filled unstroked closed  pts 4
+  wall   157.5 x   5.8 in   centre ( 15314,  6310) mm   outline pts 4
+      on it, painted after (path 13774):    5.8 x 157.5 in  colour #000000  unfilled unstroked closed  pts 38
+      on it, painted after (path 13775):    5.8 x 157.7 in  colour #000000  filled unstroked closed  pts 4
+  wall    93.0 x  23.5 in   centre ( 64628, 37600) mm   outline pts 4
+      on it, painted after (path 1):   23.5 x  93.0 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 3):   23.5 x 290.3 in  colour #D0D0D0  filled unstroked closed  pts 4
+      on it, painted after (path 181):  325.0 x 145.2 in  colour #000000  unfilled unstroked closed  pts 16
+      on it, painted after (path 182):  325.0 x 145.2 in  colour #F0F0F0  filled unstroked closed  pts 4
+      on it, painted after (path 12778):   11.3 x   8.0 in  colour #000000  filled unstroked closed  pts 4
+      on it, painted after (path 12779):   11.3 x   8.0 in  colour #000000  unfilled stroked closed  pts 4
+      on it, painted after (path 12780):   38.1 x  12.8 in  colour #000000  unfilled stroked open  pts 17
+  wall    93.0 x  23.7 in   centre ( 56972, 37600) mm   outline pts 4
+      on it, painted after (path 7):   23.7 x  93.0 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 9):   23.7 x 270.7 in  colour #D0D0D0  filled unstroked closed  pts 4
+      on it, painted after (path 181):  325.0 x 145.2 in  colour #000000  unfilled unstroked closed  pts 16
+      on it, painted after (path 182):  325.0 x 145.2 in  colour #F0F0F0  filled unstroked closed  pts 4
+  wall    93.0 x  23.7 in   centre ( 21412, 37600) mm   outline pts 4
+      on it, painted after (path 11185):   23.7 x  93.0 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 11187):   23.7 x 290.2 in  colour #D0D0D0  filled unstroked closed  pts 4
+      on it, painted after (path 11237):  154.8 x  58.3 in  colour #000000  unfilled unstroked closed  pts 14
+      on it, painted after (path 11238):  154.8 x  58.3 in  colour #F0F0F0  filled unstroked closed  pts 4
+  wall    93.0 x  23.7 in   centre ( 13758, 37600) mm   outline pts 4
+      on it, painted after (path 11191):   23.7 x  93.0 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 11193):   23.7 x 270.5 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    75.0 x   5.8 in   centre ( 59023, 37423) mm   outline pts 4
+      on it, the wall itself (path 13):    5.8 x  75.0 in  colour #D0D0D0  filled unstroked closed  pts 4
+      on it, painted after (path 181):  325.0 x 145.2 in  colour #000000  unfilled unstroked closed  pts 16
+      on it, painted after (path 182):  325.0 x 145.2 in  colour #F0F0F0  filled unstroked closed  pts 4
+  wall    74.8 x   5.8 in   centre ( 15809, 37425) mm   outline pts 4
+      on it, the wall itself (path 11197):    5.8 x  74.8 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    69.0 x  23.7 in   centre ( 56972, 40687) mm   outline pts 4
+      on it, painted after (path 6):   23.7 x  69.0 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 9):   23.7 x 270.7 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    69.0 x  23.7 in   centre ( 13758, 40687) mm   outline pts 4
+      on it, painted after (path 11190):   23.7 x  69.0 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 11193):   23.7 x 270.5 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    68.8 x  23.5 in   centre ( 64628, 40689) mm   outline pts 4
+      on it, painted after (path 0):   23.5 x  68.8 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 3):   23.5 x 290.3 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    68.8 x  23.7 in   centre ( 21412, 40689) mm   outline pts 4
+      on it, painted after (path 11184):   23.7 x  68.8 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 11187):   23.7 x 290.2 in  colour #D0D0D0  filled unstroked closed  pts 4
+      on it, painted after (path 11237):  154.8 x  58.3 in  colour #000000  unfilled unstroked closed  pts 14
+      on it, painted after (path 11238):  154.8 x  58.3 in  colour #F0F0F0  filled unstroked closed  pts 4
+  wall    35.5 x  23.5 in   centre ( 64628, 34639) mm   outline pts 4
+      on it, painted after (path 2):   23.5 x  35.5 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 3):   23.5 x 290.3 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    35.3 x  23.7 in   centre ( 21412, 34641) mm   outline pts 4
+      on it, painted after (path 11186):   23.7 x  35.3 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 11187):   23.7 x 290.2 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    15.8 x  23.7 in   centre ( 56972, 34889) mm   outline pts 4
+      on it, painted after (path 8):   23.7 x  15.8 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 9):   23.7 x 270.7 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    15.7 x  23.7 in   centre ( 13758, 34891) mm   outline pts 4
+      on it, painted after (path 11192):   23.7 x  15.7 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 11193):   23.7 x 270.5 in  colour #D0D0D0  filled unstroked closed  pts 4

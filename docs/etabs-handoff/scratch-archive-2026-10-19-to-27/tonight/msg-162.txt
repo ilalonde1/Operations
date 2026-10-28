@@ -1,0 +1,10 @@
+Step 162: which of two drawn copies of a column is kept - characterised, not fixed (neither the stack nor the grid decides)
+
+Step 162 snaps a later drawing onto the copy written first, so sheet order picks the survivor. Measured on the six sets
+(e5b1409f): the stack cannot decide - on all 4 known 31138 L2 instances the only neighbour is L1 (no column on L3 within 1 m),
+and with one neighbour either copy can be right (11 PARTNER pairs where ours is on hers); the grid cannot either - nearer the
+model's grid picks the engineer's copy in 12 of 21 decidable pairs. What decides it is on the drawing (which sheet drew each
+copy; a column risen from the plan below vs the storey's own). Recorded in step162-prediction.md; no code changed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

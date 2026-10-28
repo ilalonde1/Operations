@@ -1,0 +1,13 @@
+pair_look.py: a gate pair's moved member, rendered before / after over the engineer's model
+
+The WallNetwork unit fix (0f3e4ee4) was gated as a pair - the same 57 sets' views recomposed by aa73cd4a's bin and 0f3e4ee4's -
+and gate_pair_moves.py judges midpoints, which read a column that became a wall in place, or two wall pieces that merged, as
+lost + gained. ee's rule: a move is neither fix nor fault until it is rendered against her model and looked at. This draws one
+storey around a point, before and after side by side, hers in grey under both, registered as model-yardstick registered it.
+
+What it showed (board 52): 30849 L2 better (a column on her wall line is now a wall along it); 30933 L12 and 30990 L17 the
+Halifax pattern (a column at a wall end now the short leg of an L, header over the gap; she has no walls there); 31087 L6-L9
+worse - her column, drawn twice ~25 mm apart, now joins itself and stays a 762 mm wall (board 54).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

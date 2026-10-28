@@ -1,0 +1,24 @@
+Corpus gate: the storeys we plate that her model does not name are counted, named, and a rise stops the bank
+
+Every figure the gate judges is over the storeys both models name, and a storey is "hers" to the yardstick only if she put
+a column on it. So 21 of the 57 gate sets plated their wood storeys in concrete - 1,000-57,000 sq ft a storey - and
+nothing judged it (step 184 found it by measuring, not by the gate). operations-ee (Ian's proxy) asked for it as item 5.
+
+- ModelYardstick.PlatedOnlyInModel: our storeys carrying plate whose name matches NONE of her storeys - every storey she
+  names, columns or none (TheirsFor matches only her column storeys and is left alone: it sets the frame), full name then
+  stripped within one building. A line in yardstick.txt.
+- SetRow fields 50/51, storeys_plated_only_ours and plates_only_ours_sqft, behind f.Count > 51: a ledger banked before them
+  (run 45: 50 fields) reads them as null. The round-trip test now carries and checks both. The SQL ledger is NOT extended.
+- CorpusGate: MoreOnlyOurs - more such storeys than at the bank stops it; by storey NAME, so a frame that does not register
+  does not void it. Every Summary names them set by set, "(was N)", and says when the bank predates the figure.
+
+Judged on real ledgers, the same 24 sets built with step 184 off and on (both with this code): 93 storeys only ours -> 42
+(778,042 sq ft, 21 of 24 sets), "no set lost". Swapped (off judged against on): 19 sets STOP THE BANK, each "N -> M".
+Test TheStoreysOnlyWePlateAreNamedAndMoreOfThemStopsTheBank (a rise through an unregistered frame stops it; a pre-figure
+bank names, does not judge; fewer is no loss). Core fast 1,686 of 1,686 with step 184.
+
+DOES NOT: judge a storey she names but does not plate (31101/31143's wood storeys are "shared"); judge more AREA on the
+same number of storeys; reach the SQL ledger. Local only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

@@ -1,0 +1,42 @@
+Step 185: a sheet's legend frame is not a floor - a bare rectangle beyond the building holding exactly one stroke, its key's sample
+
+The office's sheets frame their key and legend in a box at the sheet's edge; the slab pass closed the frame as a ring and the
+key's line-type sample read as a wall, so the frame was written as the storey's floor - the same frame at one size on job after
+job (7,065-7,215 sq ft; 6,845; 5,710; 1,171-1,431). Found on Ian's plan-page item (4b): of the 21 storeys of the 57-set gate
+(develop c03a0e07) whose members stand 80%+ off every plate, 12 were this frame - every one rendered and looked at; the other 9
+are other faults (a floor read in part, a plate off its walls, edge boxes, no plate).
+
+SettleFloorsAcrossSheets takes out, per storey, a plate that is a rectangle of dxf.legend-frame-min-sqft (500) or more, holding
+no column and no opening of the storey and EXACTLY ONE wall, lying wholly beyond the box of the storey's other walls and columns
+- with that one stroke - and lists it (IsLegendFrame). KOR_STEP185_OFF. Rows (KOR.Drafter, applied by operations-ee): 123 the
+rule, 124 the 500 sq ft floor (read through RuleSettings, required), 125 and 126 its restatements.
+
+REPLAYED TWICE, and the first contradicted it. "At most one stroke" (gate 8acd14bc) took 47 rectangles; one was 40112-01's
+upper steel roof deck on S2.03 (F-K by 7B-10A), bare only because the reader read none of its steel (recorded as its own
+item). Narrowed to exactly one stroke (migration 126; operations-ee's call). Replay 2 (gate f98c7cf2) against the step-off gate
+fff31290, exact per set (tools/CorpusGateBisect/step185_replay_diff.py; plates and columns exact, walls bounded - a wall
+carries its top storey's name, so they cannot be paired, a limit stated in its header): takes = replay 1's 32 one-stroke takes
+on every set; 54 of 56 sets PASS - 40112 and 30990 byte-identical to off, the boundary sets 30864/31168/31048 byte-identical,
+every untouched set byte-identical. The 2 FAILs, explained inside the taken frames and nothing worse than before:
+ - 31066: L2 and ROOF still carry one frame plate at exactly the taken frame's place (37,016-92,198 x 2,828-14,725 mm):
+   building 2's sheets S2.15/S2.20 draw the same frame with no stroke; formerly deduplicated against building 1's, it is now
+   written - net unchanged on those storeys (L1, L3 clean). Recorded as a remaining instance of the class, not fixed.
+ - 31158: L4-L6's legend samples (frames not taken) rewritten 1 mm off (x 25,743 -> 25,744) as their stack recomposed -
+   stroke for stroke the same, inside the frame's box.
+The gate's judge marks 31117 LOST: openings "hers we have" 7 -> 4 - a false credit going: the 7,215 sq ft frame had counted
+toward "we carry the floor". Her plate figure unchanged (5,426 of 16,615 sq ft); our plates beyond her footprint 18,012 ->
+10,797 sq ft, exactly the frame. All in docs/pdf-intake/step185-prediction.md. Accepted by operations-ee (Ian's proxy).
+
+Check: tools/CorpusGateBisect/legend_box_plates.py (RED 35 plates / 20 of 56 at c03a0e07; its header says it judges the
+written model, which over- and under-predicts the step - measured). Test StructureStandsOnAFloorTests.ASheetsLegendFrameIsNotAFloor
+(on/off; a bare box with no stroke stays). Repo gates: Target set line, KOR_STEP185_OFF on the gate's --bisect line,
+LegendFrameMinSqFt named NotALength (compared in sq ft). Core fast 1,696/1,696; Halifax 1898f6b4 identical. Full suite: run at
+this commit after the push, announced; result in the reply.
+
+Covers: a rectangular frame beyond the building with its one key stroke. Does not: a frame inside the building's box, a frame
+not a rectangle, a key holding two or more strokes read as walls (31093 L2, 31162, 31048 L4), a box with no stroke (note,
+schedule and sketch boxes; 31066's twin) - each left as read. Same-class fault it would take wrongly: a real detached
+rectangular slab beyond the building on which exactly one short wall was read.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

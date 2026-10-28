@@ -1,0 +1,21 @@
+38 identical, 17 changed, 0 with no before; the check named 20
+changed and named    : 30986-02 30990-01 31003-01 31066-01 31076-01 31085-01 31108-01 31129-01 31143-01 31158-01 31171-01 40112-01
+changed, NOT named   : 31017-01 31037-01 31064-01 31183-01 70057-01
+named, NOT changed   : 30864-01 31039-01 31048-01 31053-01 31093-01 31098-01 31117-01 31162-01
+  30986-02: plates moved 2, columns lost 0 / gained 0, walls lost 2 / gained 0
+  30990-01: plates moved 2, columns lost 0 / gained 0, walls lost 0 / gained 0
+  31003-01: plates moved 3, columns lost 1 / gained 0, walls lost 3 / gained 0
+  31017-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+  31037-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+  31064-01: plates moved 1, columns lost 0 / gained 0, walls lost 1 / gained 0
+  31066-01: plates moved 4, columns lost 0 / gained 0, walls lost 3 / gained 0
+  31076-01: plates moved 2, columns lost 0 / gained 0, walls lost 2 / gained 0
+  31085-01: plates moved 2, columns lost 0 / gained 0, walls lost 2 / gained 0
+  31108-01: plates moved 2, columns lost 0 / gained 0, walls lost 2 / gained 0
+  31129-01: plates moved 1, columns lost 0 / gained 0, walls lost 0 / gained 0
+  31143-01: plates moved 2, columns lost 0 / gained 0, walls lost 2 / gained 0
+  31158-01: plates moved 2, columns lost 0 / gained 0, walls lost 2 / gained 0
+  31171-01: plates moved 3, columns lost 0 / gained 0, walls lost 3 / gained 0
+  31183-01: plates moved 1, columns lost 0 / gained 0, walls lost 1 / gained 0
+  40112-01: plates moved 2, columns lost 0 / gained 0, walls lost 2 / gained 0
+  70057-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0

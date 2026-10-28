@@ -1,0 +1,18 @@
+stickfile : 31017-01 - 2026-04-02 - Langford Central - Stickfile-SSI#1.pdf
+job       : 31017-01
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\s31017\at-750a
+rules     : KorStandards
+
+scale     : not given; 96 assumed (1/8" = 1'-0"). Pass --scale if the set draws at another.
+
+pages read: 56   plan sheets: 30   views written: 32
+storeys   : 31   with a floor: 15
+members   : 456 walls   675 columns   26 floors
+
+  model   : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s31017/at-750a\out.e2k
+  report  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s31017/at-750a\report.txt
+  levels  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s31017/at-750a\levels.csv
+  sheets  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s31017/at-750a\sheets.csv
+
+READ THESE FIRST:
+  - THIS SET'S DRAWINGS NAME 31 STOREYS AND ONLY 15 OF THEM RECEIVED A FLOOR, so what shipped is a fraction of the building and should be read as one. The storeys with no floor plate at all: C4, L22, L20, L19, L18, L17, L15, L14, L13, L12, L10, L9, L6, C3, C2, C1. This is not a count of drawings that fa ...

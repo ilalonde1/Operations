@@ -1,0 +1,32 @@
+Steps 175-177: a slab edge the drawing closed is closed; the larger of two readings of a floor stays; a ring that tiles a hole is part of it
+
+31032-01 L2 lost 3,076 sq ft: its slab outline is one closed, valid 5,735 sq ft polyline, and StructuralPlanClassifier re-walked
+it from segments, could not close it, and refused it for having no thickness printed inside. Taken alone, the fix took
+closed outlines on PARTIAL plans as floors (L1 497 -> 57 m3) and cut shafts three times, so it comes with two more rules:
+
+- 175 (StructuralPlanClassifier): every closed polyline is numbered as it is read (DxfSegment.ClosedOutlineId, each block
+  insert its own); a closed slab-edge polyline the walk did not find - no ring of its area within 2% standing where it
+  stands - is taken as drawn, if it does not cross itself and is a plate's size.
+- 176 (DxfToEtabsService, step 103): a plate from another sheet with nine tenths of its GROUND inside a larger plate is
+  the same floor read again and goes - the measure the writer's step 113b already used (moved to
+  LoopGeometry.GroundShared), the choice 103 always made. The writer kept the FIRST reading: a stair partial plan's
+  2,143 sq ft plate 2.6 m off the grid displaced 31032's 11,610 sq ft L1 floor.
+- 177 (SplitSlabsAndOpenings): a ring inside an opening already cut, running along its edge
+  (dxf.ring-on-plate-edge-fraction) and at least dxf.nested-ring-tile-share of it (0.15, KOR.Drafter db 107, applied by
+  Ian 2026-10-25), is part of that hole - a cab in its shaft - and is not cut again.
+
+Each has its knob (KOR_STEP175/176/177_OFF) and a prediction note in docs/pdf-intake. Also: corpus-gate --jobs judges only
+those sets, and --bisect names a knob when the re-judged set is no longer lost (any loss kind, not plate area alone).
+
+Measured (rendered and judged against her models):
+- 31032-01: 27,830 -> 30,680 sq ft of her 37,333 (75% -> 82%); L1 one floor where it was two stacked, L2 a full plate
+  where it was a comb, L3 the drawn outline (as L4).
+- Six banked sets, all three on against all off: no set loses plate or any opening of hers; 31170-arch her openings
+  32 -> 33 of 37; 31065 +112 sq ft. Openings 31202 77 -> 75 (a core slot no longer cut three times), 31138 +2.
+- Halifax (Virtual Drafter route): e2k and report byte-identical, its own command and with --rules-db.
+- Two cuts written, measured and removed: refusing openings under 90% over the floor (took one of hers - she cuts edge
+  shafts), and a tile share of 0.25 (left 31202's slot ends, 24.6%, cut three times).
+Core fast 1,653 of 1,653.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

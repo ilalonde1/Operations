@@ -1,0 +1,41 @@
+31170-01: 4 OFF HER STACK column(s); 9 placed view(s), 9 unplaced
+
+L7 (56620 43349)
+  model L6      : (56849 43564) 314 mm
+  view S2.02.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE.dxf                [L1] draws (56849 43564) 314 mm from the twin
+  view S2.03.1_1_LEVEL 2 PLAN - CONCRETE OUTLINE.dxf                [L2] draws (56849 43564) 314 mm from the twin
+  view S2.04.1_1_LEVEL 3 PLAN - CONCRETE OUTLINE.dxf                [L3] draws (56849 43564) 314 mm from the twin
+  view S2.05.1_1_LEVEL 4 PLAN - CONCRETE OUTLINE.dxf                [L4] draws (56849 43564) 314 mm from the twin
+  view S2.06.1_1_LEVEL 5 PLAN - CONCRETE OUTLINE.dxf                [L5] draws (56849 43564) 314 mm from the twin
+  view S2.07.1_1_LEVEL 6 PLAN - CONCRETE OUTLINE.dxf                [L6] draws (56620 43349) 0 mm from the twin
+
+L7 (38953 52253)
+  model L6      : (39183 52200) 236 mm
+  view S2.02.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE.dxf                [L1] draws (39183 52200) 236 mm from the twin
+  view S2.03.1_1_LEVEL 2 PLAN - CONCRETE OUTLINE.dxf                [L2] draws (39183 52200) 236 mm from the twin
+  view S2.04.1_1_LEVEL 3 PLAN - CONCRETE OUTLINE.dxf                [L3] draws (39183 52200) 236 mm from the twin
+  view S2.05.1_1_LEVEL 4 PLAN - CONCRETE OUTLINE.dxf                [L4] draws (39183 52200) 236 mm from the twin
+  view S2.06.1_1_LEVEL 5 PLAN - CONCRETE OUTLINE.dxf                [L5] draws (39183 52200) 236 mm from the twin
+  view S2.07.1_1_LEVEL 6 PLAN - CONCRETE OUTLINE.dxf                [L6] draws (38953 52253) 0 mm from the twin
+
+L7 (77624 37277)
+  model L6      : (77397 37049) 322 mm
+  view S2.01.1_1_LEVEL P1 FOUNDATIONS PLAN.dxf                      [P1] draws (77474 37047) 274 mm from the twin
+  view S2.01.4_1_LEVEL P1 SLAB PLAN.dxf                             [P1] draws (77474 37047) 274 mm from the twin
+  view S2.02.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE.dxf                [L1] draws (77397 37049) 322 mm from the twin
+  view S2.03.1_1_LEVEL 2 PLAN - CONCRETE OUTLINE.dxf                [L2] draws (77403 37049) 317 mm from the twin
+  view S2.04.1_1_LEVEL 3 PLAN - CONCRETE OUTLINE.dxf                [L3] draws (77403 37049) 317 mm from the twin
+  view S2.05.1_1_LEVEL 4 PLAN - CONCRETE OUTLINE.dxf                [L4] draws (77403 37049) 317 mm from the twin
+  view S2.06.1_1_LEVEL 5 PLAN - CONCRETE OUTLINE.dxf                [L5] draws (77397 37049) 322 mm from the twin
+  view S2.07.1_1_LEVEL 6 PLAN - CONCRETE OUTLINE.dxf                [L6] draws (77624 37277) 0 mm from the twin
+
+L7 (41430 35818)
+  model L6      : (41227 35818) 203 mm
+  view S2.02.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE.dxf                [L1] draws (41227 35818) 203 mm from the twin
+  view S2.03.1_1_LEVEL 2 PLAN - CONCRETE OUTLINE.dxf                [L2] draws (41219 35818) 211 mm from the twin
+  view S2.04.1_1_LEVEL 3 PLAN - CONCRETE OUTLINE.dxf                [L3] draws (41219 35818) 211 mm from the twin
+  view S2.05.1_1_LEVEL 4 PLAN - CONCRETE OUTLINE.dxf                [L4] draws (41219 35818) 211 mm from the twin
+  view S2.06.1_1_LEVEL 5 PLAN - CONCRETE OUTLINE.dxf                [L5] draws (41219 35818) 211 mm from the twin
+  view S2.07.1_1_LEVEL 6 PLAN - CONCRETE OUTLINE.dxf                [L6] draws (41430 35818) 0 mm from the twin
+
+unplaced: S2.01.2_1_LEVEL P1 - REINFORCING PLAN.dxf; S2.01.3_1_LEVEL P1 - STIRRUP REINFORCING PLAN.dxf; S2.02.2_1_LEVEL 1 PLAN - SLAB REINFORCING.dxf; S2.03.2_1_LEVEL 2 - REINFORCING PLAN.dxf; S2.04.2_1_LEVEL 3 - REINFORCING PLAN.dxf; S2.05.2_1_LEVEL 4 - REINFORCING PLAN.dxf; S2.06.2_1_LEVEL 5 - REINFORCING PLAN.dxf; S2.07.2_1_LEVEL 6 - REINFORCING PLAN.dxf; S2.08.2_1_ROOF PLAN - REINFORCING.dxf

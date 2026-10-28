@@ -1,0 +1,19 @@
+Tonight's WallNetwork evidence and the scripts that measured it, out of the scratchpad and into the repo
+
+ee 10-27, before the KOR-1001 reboot: nothing that matters stays only in a scratchpad.
+
+Evidence (docs/etabs-handoff/corpus, the existing <kind>-<date>-<run> convention):
+- pair-2026-10-27-wallnet-aa73cd4a-vs-0f3e4ee4.txt: gate_pair_moves over the 57 sets (MOVED lines included).
+- tilt-2026-10-27-wallnet-aa73cd4a-vs-0f3e4ee4.txt: off-axis panels per set, 216 -> 434.
+- netcheck-2026-10-27-0f3e4ee4.txt: the invariant check failing (32 sets, 142 sheets); netcheck-2026-10-27-d4352fc0.txt: the
+  fix, 0 of 1,309 sheets.
+- nearmiss / twintrace-2026-10-27-31138-issue-2026-09-01.txt: board 49's three L2 columns.
+
+Scripts (tools/CorpusGateBisect), each as run tonight, headers stating covers / does not:
+- tilt_pair.py (KS / KW split is now an optional argument; reproduces 216 -> 434, 0 -> 139, 216 -> 295 from the repo copy),
+  wall_length_pair.py, pair_breakdown.py, col_to_wall.py, further_bins.py - the gate-pair breakdowns behind board 52.
+- e2k_walls.py, off_axis_all.py - per-storey panel listings (e2k_walls assumes FT and now says so).
+- net_probe.ps1 - one sheet's walls before / after the network and its openings; copies the bin to TEMP, not the repo.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

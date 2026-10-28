@@ -1,0 +1,13 @@
+The column kept from two drawn copies is the one its stack agrees on: the CHECK (rule 11), no fix yet
+
+tools/CorpusGateBisect/column_stack_near_miss.py: a column whose nearest column on the storey above or below stands 100-700 mm
+away (none within 50) is a near-miss; held against the engineer's model, a WRONG TWIN when it misses hers by about what the
+stack misses - the storeys above and below agree with her, this column does not. Exit 1 on any.
+
+Six sets (506be566): 45 near-miss of 4,164 columns - 11 WRONG TWIN (31138 L2 x3 = three of the four known instances from
+8ed10d03 / 674b2890; 31065 L2 x3; 31130 L14 x1; 31170-arch L7 x4), 11 PARTNER, 22 NOT JUDGED, 1 OFF HERS. Misses the known
+31065 L2 instance (no column above or below it) and 31138's fourth (reads OFF HERS); both said in the header. The 8 new
+instances are not yet looked at on their drawings. The fix is tomorrow's, gated by this.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

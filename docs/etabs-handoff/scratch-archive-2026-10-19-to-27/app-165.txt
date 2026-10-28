@@ -1,0 +1,1 @@
+C:\Program Files\dotnet\sdk\8.0.426\Sdks\Microsoft.NET.Sdk.WindowsDesktop\targets\Microsoft.WinFX.targets(706,5): error RG1000: Unknown build error, 'An item with the same key has already been added. Key: bookmarknoteswindow.baml'  [C:\VIsual Studio Projects\Operations\Kor.Operations.App\Kor.Operations.App.csproj]

@@ -1,0 +1,91 @@
+31170-01-arch L3 @ 8ed10d03: 3 lost, 3 gained -> 3 re-placed (0 closer to hers, 1 further, 2 same); unpaired 0 lost, 0 gained
+31170-01-arch L7 @ 8ed10d03: 3 lost, 3 gained -> 3 re-placed (0 closer to hers, 0 further, 3 same); unpaired 0 lost, 0 gained
+31138-01 L2 @ 8ed10d03: 12 lost, 1 gained -> 0 re-placed (0 closer to hers, 0 further, 0 same); unpaired 12 lost, 1 gained
+    lost   column (31,520, 40,260) 0  hers 4,625 mm
+    lost   column (34,770, 34,453) 0  hers 77 mm
+    lost   column (41,896, 43,064) 0  hers 0 mm
+    lost   column (41,898, 47,648) 0  hers 2 mm
+    lost   column (60,745, 42,123) 0  hers 1,138 mm
+    lost   column (61,125, 34,682) 0  hers 152 mm
+    lost   column (61,125, 35,164) 0  hers 634 mm
+    lost   column (61,480, 42,410) 0  hers 411 mm
+    lost   column (69,277, 43,560) 0  hers 7,635 mm
+    lost   column (69,277, 44,216) 0  hers 7,662 mm
+    lost   column (69,312, 34,050) 0  hers 528 mm
+    lost   column (76,950, 44,562) 0  hers 2 mm
+    gained wall (49,681, 35,190) 6,070  hers 6,559 mm
+31065-01 L2 @ 8ed10d03: 8 lost, 0 gained -> 0 re-placed (0 closer to hers, 0 further, 0 same); unpaired 8 lost, 0 gained
+    lost   column (19,433, 25,051) 0  hers 89 mm
+    lost   column (65,028, 38,739) 0  hers 46,158 mm
+    lost   column (68,806, 49,390) 0  hers 52,158 mm
+    lost   column (69,020, 42,211) 0  hers 50,619 mm
+    lost   column (72,208, 36,428) 0  hers 53,109 mm
+    lost   column (73,086, 42,587) 0  hers 54,689 mm
+    lost   column (73,203, 48,597) 0  hers 56,136 mm
+    lost   column (76,225, 42,702) 0  hers 57,803 mm
+31202-01 ROOF @ d2cec177: 12 lost, 15 gained -> 1 re-placed (0 closer to hers, 0 further, 1 same); unpaired 11 lost, 14 gained
+    lost   wall (21,803, 42,859) 3,381  hers 5,231 mm
+    lost   wall (21,803, 61,100) 3,381  hers 5,327 mm
+    lost   wall (21,809, 52,291) 3,369  hers 7,833 mm
+    lost   wall (27,101, 41,219) 1,370  hers 1,792 mm
+    lost   wall (27,101, 43,308) 1,370  hers 1,794 mm
+    lost   wall (29,982, 57,018) 5,763  hers 3,821 mm
+    lost   wall (32,499, 47,167) 12,166  hers 384 mm
+    lost   wall (32,904, 53,112) 13,285  hers 6,343 mm
+    lost   wall (35,977, 57,018) 5,763  hers 9,612 mm
+    lost   wall (37,819, 41,219) 1,526  hers 1,792 mm
+    lost   wall (37,819, 43,308) 1,526  hers 1,794 mm
+    gained column (32,994, 60,960) 0  hers 15,251 mm
+    gained column (39,496, 60,960) 0  hers 15,510 mm
+    gained column (84,226, 37,464) 0  hers 1 mm
+    gained wall (16,508, 61,314) 4,877  hers 305 mm
+    gained wall (24,282, 27,660) 4,218  hers 8,375 mm
+    gained wall (24,282, 34,392) 8,636  hers 4,529 mm
+    gained wall (24,282, 41,097) 4,166  hers 2,783 mm
+    gained wall (24,282, 45,568) 4,166  hers 2,350 mm
+    gained wall (24,282, 52,273) 8,636  hers 6,674 mm
+    gained wall (24,282, 59,066) 4,340  hers 2,264 mm
+    gained wall (26,491, 55,738) 11,664  hers 2,833 mm
+    gained wall (32,459, 43,844) 11,176  hers 2,941 mm
+    gained wall (38,352, 45,022) 3,530  hers 2 mm
+    gained wall (74,396, 45,358) 5,803  hers 1,671 mm
+31065-01 L1 @ 8fa0d9d6: 13 lost, 9 gained -> 9 re-placed (0 closer to hers, 1 further, 8 same); unpaired 4 lost, 0 gained
+    lost   column (65,126, 25,821) 0  hers 2,054 mm
+    lost   column (65,585, 22,921) 0  hers 1,634 mm
+    lost   wall (56,233, 33,634) 648  hers 1,401 mm
+    lost   wall (56,233, 41,288) 648  hers 1,053 mm
+31065-01 P1 @ 8fa0d9d6: 9 lost, 9 gained -> 9 re-placed (2 closer to hers, 1 further, 6 same); unpaired 0 lost, 0 gained
+31065-01 P2 @ 8fa0d9d6: 6 lost, 8 gained -> 6 re-placed (3 closer to hers, 1 further, 2 same); unpaired 0 lost, 2 gained
+    gained wall (77,934, 48,975) 8,289  hers 7,332 mm
+    gained wall (78,087, 53,466) 702  hers 4,938 mm
+31130-01 L1 @ 8fa0d9d6: 13 lost, 12 gained -> 11 re-placed (5 closer to hers, 3 further, 3 same); unpaired 2 lost, 1 gained
+    lost   column (157,480, 60,757) 0  hers 6,232 mm
+    lost   wall (116,654, 55,665) 1,112  hers 1,016 mm
+    gained wall (147,320, 32,526) 2,873  hers 796 mm
+31130-01 P2 @ 8fa0d9d6: 10 lost, 11 gained -> 8 re-placed (4 closer to hers, 2 further, 2 same); unpaired 2 lost, 3 gained
+    lost   wall (150,673, 36,015) 1,089  hers 1,496 mm
+    lost   wall (150,839, 35,471) 331  hers 1,480 mm
+    gained wall (137,832, 65,646) 301  hers 810 mm
+    gained wall (138,202, 66,403) 1,514  hers 262 mm
+    gained wall (138,315, 67,192) 215  hers 742 mm
+31130-01 L0/P1 @ 8fa0d9d6: 12 lost, 11 gained -> 11 re-placed (7 closer to hers, 2 further, 2 same); unpaired 1 lost, 0 gained
+    lost   wall (150,659, 35,970) 1,000  hers 1,467 mm
+31065-01 L1 @ 674b2890: 12 lost, 0 gained -> 0 re-placed (0 closer to hers, 0 further, 0 same); unpaired 12 lost, 0 gained
+    lost   column (46,133, 53,253) 0  hers 2,784 mm
+    lost   column (46,154, 26,615) 0  hers 2,551 mm
+    lost   column (46,330, 47,229) 0  hers 3,553 mm
+    lost   column (48,713, 48,359) 0  hers 2,774 mm
+    lost   column (50,633, 53,516) 0  hers 3,664 mm
+    lost   column (54,896, 47,805) 0  hers 3,470 mm
+    lost   column (56,708, 53,901) 0  hers 4,952 mm
+    lost   column (59,912, 22,773) 0  hers 1,907 mm
+    lost   column (60,452, 48,154) 0  hers 2,523 mm
+    lost   column (68,459, 26,130) 0  hers 2,702 mm
+    lost   column (71,313, 22,921) 0  hers 3,135 mm
+    lost   column (72,974, 29,422) 0  hers 4,377 mm
+31065-01 P1 @ 674b2890: 0 lost, 1 gained -> 0 re-placed (0 closer to hers, 0 further, 0 same); unpaired 0 lost, 1 gained
+    gained column (47,381, 37,476) 0  hers 10 mm
+31138-01 L2 @ 674b2890: 2 lost, 1 gained -> 1 re-placed (0 closer to hers, 1 further, 0 same); unpaired 1 lost, 0 gained
+    lost   column (74,489, 32,729) 0  hers 5,274 mm
+31138-01 L20 @ 674b2890: 0 lost, 1 gained -> 0 re-placed (0 closer to hers, 0 further, 0 same); unpaired 0 lost, 1 gained
+    gained column (45,047, 45,653) 0  hers 5,859 mm

@@ -1,0 +1,32 @@
+The yardstick finds an engineer's model turned from the drawings - 30986-02, 31098, 31183 judged by position again
+
+Seven corpus-gate sets were left FRAME (unjudged by position). Looked at, each with tools/CorpusGateBisect/
+frame_rotation_look.py (docs/pdf-intake/frames-unregistered-2026-10-26.md + renders): 3 of 7 are the engineer's model
+rigidly turned from the drawings - 30986-02 and 31098 at 270 deg, 31183 at 355 - the same angle and offset on every storey;
+2 register already and are held back by our own short column read (31005, 31048); 2 cannot be decided by columns (30819:
+her model has 2-4 a storey; 70057: we read 8-13 of her 75). None is our datum or rotation being wrong.
+
+ModelYardstick.Register voted for a translation only. Now, where the translation places under half of our columns, every
+half-degree turn is tried (BestTurn); one is taken when it places at least twice the columns and a third of ours. The
+engineer's POINTs are turned back by it (TurnedPoints) and the comparison runs again, so every figure - columns, plates,
+walls, openings - meets ours by a translation as before, and a note says "rotated N deg". A registered set is untouched (the
+search does not run). Among tied turns the MIDDLE of the run is taken: a half degree moves a column 8 m out by 70 mm, so a
+small plan ties at 269.5/270/270.5 and the first of them is the edge of the truth (the first cut took it; the test caught it).
+
+Changes the judge only - no e2k moves.
+
+Proved: the check tools/CorpusGateBisect/frame_rotation_check.py RED on the gate's builds - 3 of 48 sets with columns in both
+models a rigid rotation the judge did not find, exit 1; theory AModelTurnedFromTheDrawingsIsTurnedBackBeforeItJudges(270,
+355) RED on the old judge (4 and 1 of 8 within 100 mm), 8 of 8 now. 31098 on real data: 345 of 528 of our columns within
+100 mm, median 10 mm (32 by translation alone).
+GATES: frame_rotation_check GREEN on the 57-set gate judged with this code (run 8acd14bc, 2026-10-27): the same 3 of 48
+sets found by the judge, "rotated 270/270/355 deg", exit 0. Core fast suite 1,694/1,694 on this change alone (step 185's
+uncommitted work set aside). The full suite rides on the next one at the tip (with step 185); the last full suite, at
+62bbbadb, was 1,815 pass / 4 fail (all 4 on record before) of 1,820.
+
+Covers: a rigid turn of the engineer's model, no grids shared. Does not: a model mirrored, or turned where the grids give
+the frame (taken as they stand); a model turned AND scaled. Same-class fault it would miss: two buildings at two angles in
+one model - the larger one's turn wins and the other stays unjudged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

@@ -1,0 +1,65 @@
+  Determining projects to restore...
+  Restored C:\VIsual Studio Projects\Operations\Kor.Operations.NetworkOps.Core\Kor.Operations.NetworkOps.Core.csproj (in 173 ms).
+  Restored C:\VIsual Studio Projects\Operations\Kor.Opportunities.Core\Kor.Opportunities.Core.csproj (in 173 ms).
+  Restored C:\VIsual Studio Projects\Operations\Kor.Operations.Core\Kor.Operations.Core.csproj (in 534 ms).
+  Restored C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Kor.Operations.EngineeringTools.Core.csproj (in 545 ms).
+  Restored C:\VIsual Studio Projects\Operations\Kor.Operations.Data\Kor.Operations.Data.csproj (in 537 ms).
+  Restored C:\VIsual Studio Projects\Operations\Kor.Operations.Graph\Kor.Operations.Graph.csproj (in 535 ms).
+  Restored C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj (in 544 ms).
+  Restored C:\VIsual Studio Projects\Operations\Kor.Operations.Architecture\Kor.Operations.Architecture.csproj (in 507 ms).
+  Restored C:\VIsual Studio Projects\Operations\Kor.EmailCommon\Kor.EmailCommon.csproj (in 552 ms).
+  Restored C:\VIsual Studio Projects\Operations\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj (in 554 ms).
+  Restored C:\VIsual Studio Projects\Operations\Kor.Operations.Business\Kor.Operations.Business.csproj (in 555 ms).
+  Restored C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj (in 581 ms).
+  Restored C:\VIsual Studio Projects\Operations\Kor.Operations.App\Kor.Operations.App.csproj (in 604 ms).
+  1 of 14 projects are up-to-date for restore.
+  Kor.EmailSearch.Core -> C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\bin\Debug\netstandard2.0\Kor.EmailSearch.Core.dll
+  Kor.EmailCommon -> C:\VIsual Studio Projects\Operations\Kor.EmailCommon\bin\Debug\net8.0\Kor.EmailCommon.dll
+  Kor.Opportunities.Core -> C:\VIsual Studio Projects\Operations\Kor.Opportunities.Core\bin\Debug\net8.0\Kor.Opportunities.Core.dll
+  Kor.Operations.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.Core\bin\Debug\net8.0\Kor.Operations.Core.dll
+  Kor.Operations.Architecture -> C:\VIsual Studio Projects\Operations\Kor.Operations.Architecture\bin\Debug\net8.0-windows\archmap.dll
+  Kor.Operations.NetworkOps.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.NetworkOps.Core\bin\Debug\net8.0\Kor.Operations.NetworkOps.Core.dll
+  Kor.Operations.Graph -> C:\VIsual Studio Projects\Operations\Kor.Operations.Graph\bin\Debug\net8.0\Kor.Operations.Graph.dll
+  Kor.Operations.Rendering -> C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\bin\Debug\net8.0\Kor.Operations.Rendering.dll
+  Kor.Operations.Data -> C:\VIsual Studio Projects\Operations\Kor.Operations.Data\bin\Debug\net8.0-windows\Kor.Operations.Data.dll
+  Kor.Operations.Business -> C:\VIsual Studio Projects\Operations\Kor.Operations.Business\bin\Debug\net8.0-windows\Kor.Operations.Business.dll
+  Kor.Operations.EngineeringTools.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.dll
+  Kor.Opportunities.Data -> C:\VIsual Studio Projects\Operations\Kor.Opportunities.Data\bin\Debug\net8.0\Kor.Opportunities.Data.dll
+  Kor.Operations.App -> C:\VIsual Studio Projects\Operations\Kor.Operations.App\bin\Debug\net8.0-windows10.0.19041.0\Kor.Operations.App.dll
+  Kor.Operations.EngineeringTools.Tests -> C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\bin\Debug\net8.0-windows10.0.19041.0\Kor.Operations.EngineeringTools.Tests.dll
+Test run for C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\bin\Debug\net8.0-windows10.0.19041.0\Kor.Operations.EngineeringTools.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:01.48]     Kor.Operations.EngineeringTools.Tests.PdfToSafe.TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.BothRoutesWriteTheSameMarkupDxf(layerByColour: False) [FAIL]
+  Failed Kor.Operations.EngineeringTools.Tests.PdfToSafe.TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.BothRoutesWriteTheSameMarkupDxf(layerByColour: False) [65 ms]
+  Error Message:
+   Assert.Equal() Failure: Collections differ
+                                                                                                                                  ↓ (pos 5)
+Expected: [···, "{\"Layer\":\"BEAM-MARKUP\",\"Vertices\":[\"31943.3"···, "{\"Layer\":\"BEAM-MARKUP\",\"Vertices\":[\"34681.4"···, "{\"Layer\":\"COLUMN-MARKUP\",\"Vertices\":[\"13529"···, "{\"Layer\":\"COLUMN-MARKUP\",\"Vertices\":[\"13529"···, "{\"Layer\":\"COLUMN-MARKUP\",\"Vertices\":[\"13529"···, ···]
+Actual:   [···, "{\"Layer\":\"BEAM-MARKUP\",\"Vertices\":[\"31943.3"···, "{\"Layer\":\"BEAM-MARKUP\",\"Vertices\":[\"34681.4"···, "{\"Layer\":\"WALL-MARKUP\",\"Vertices\":[\"13529.6"···, "{\"Layer\":\"WALL-MARKUP\",\"Vertices\":[\"13529.6"···, "{\"Layer\":\"WALL-MARKUP\",\"Vertices\":[\"13529.6"···, ···]
+                                                                                                                                  ↑ (pos 5)
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Tests.PdfToSafe.TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.BothRoutesWriteTheSameMarkupDxf(Boolean layerByColour) in C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\PdfToSafe\TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.cs:line 52
+   at InvokeStub_TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.BothRoutesWriteTheSameMarkupDxf(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Standard Output Messages:
+ layerByColour=False: App POLYLINE=25, TEXT=0; CLI POLYLINE=25, TEXT=0
+
+
+The active test run was aborted. Reason: Test host process crashed
+Data collector 'Blame' message: The specified inactivity time of 5 minutes has elapsed. Collecting hang dumps from testhost and its child processes.
+
+Failed!  - Failed:     1, Passed:   429, Skipped:     0, Total:   430, Duration: 10 s - Kor.Operations.EngineeringTools.Tests.dll (net8.0)
+Test Run Aborted.
+
+The active Test Run was aborted because the host process exited unexpectedly. Please inspect the call stack above, if available, to get more information about where the exception originated from.
+The test running when the crash occurred: 
+Kor.Operations.EngineeringTools.Tests.PdfToSafe.WhereTheMarkupLandedMeasurement.NoMarkupLandsOutsideTheDrawing
+Kor.Operations.EngineeringTools.Tests.PdfToSafe.PageContentVsAnnotationsMeasurement.WhatThePageHoldsThatTheAnnotationsOnlyFilterThrowsAway
+
+This test may, or may not be the source of the crash.
+
+Attachments:
+  C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\TestResults\4d4db81b-9d6a-4ead-ba70-9fc5ffefd05a\Sequence_e642a00d57a341f3bb9537ed29384b21.xml

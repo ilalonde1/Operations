@@ -1,0 +1,31 @@
+WallNetwork: its inch literals scale to the drawing's unit, and a short L-corner piece is not taken for a T
+
+Two faults, both found on Halifax LEVEL 1 (31180, operations-ee's two findings 2026-10-27):
+
+1. WallNetwork's reach (+2.0), SnapTolerance (2.0) and FindOpenings' 3.0/4.0/6.0 were inch literals
+   applied in the model's unit. In feet 2 in became 2 ft: the 969 mm door was snapped shut (N and S
+   walls continuous 42997-45830) and the two L corners were averaged into a point 329 mm off both
+   pieces, tilting four panels. In millimetres they became 2 mm (all 56 of 56 gate models are MM).
+   Connect/FindOpenings now take `inch` (one inch in the drawing's unit) from the classifier, and the
+   classifier's own RunsInto and stub literals do the same.
+2. TryEndToMove refused any crossing with t in 0.25-0.75 as a T. Halifax's short corner piece meets
+   its wall at t=0.27, so it was never joined and became a column in inches. A T now also needs the
+   end to lie beyond the other wall's half thickness (times ReachFactor).
+
+Check first (rule 11): HalifaxsCoreIsTheSameWallNetworkInInchesMillimetresAndFeet, the twelve
+LEVEL 1 core outlines, asserts the inch model outright (0 columns, headers over both doors at both
+faces, both L corners a joint of 2+ walls, no panel off-axis) and then mm and ft equal to it.
+  - on the old code: FAILED, 2 columns (fault 2)
+  - with fault 2 fixed and the classifier not passing the unit: FAILED, walls 24 vs 22 (fault 1)
+  - with both: passes; Speed!=Slow 1706 of 1706 passed.
+
+Halifax rebuilt with operations-ee's call (--levels-unit ft --no-storey-rise), against ee's 1.e2k:
+off-axis wall panels 101 -> 9 (the 9 are P1's drawn skew walls, identical in both); columns 432 ->
+432 on every storey; LEVEL 1 core: KS headers 42997-44142 on N and S, corners at (38422, 27901) and
+(38422, 36053) square. Rendered and looked at.
+
+Not yet run: the 57-set corpus gate and the full suite - the fix moves every MM model's snap from
+2 mm to 50.8 mm, so both are owed before this counts as settled.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

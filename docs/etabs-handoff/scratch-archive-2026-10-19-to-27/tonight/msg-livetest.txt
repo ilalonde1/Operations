@@ -1,0 +1,31 @@
+The answer-import test commits nothing: one transaction, rolled back - the live max-pier rule is never seen retired
+
+AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests imported a real answer, which retires the office convention
+dxf.max-pier-thickness (a REQUIRED rule), committed it, and put it back in Clean() afterwards. For those seconds
+every build reading the store in parallel read the rule missing; a killed test host would have left it missing.
+
+RuleSettings gains overloads on a caller's (SqlConnection, SqlTransaction): ImportQuestionAnswers (never commits),
+CarriedRules, WithheldFor. The connection-string versions are unchanged in behaviour - they open, call the overload,
+and commit (import) or swallow errors (the two readers), as before. The test holds one connection and transaction,
+rolls back in Dispose; Clean() now runs only before each test, for residue a run from before this change could leave.
+
+New fact TheOfficeRuleItDisplacesIsNeverSeenDisplaced: a second connection never reads the convention retired while
+the import is uncommitted (it waits, lock timeout 1222), and after rollback it is live with its value and 0 rulings
+remain under the test topic. RED on the committing import: "another connection read the office rule as 'retired 48'
+... it was 'live 48'". Kill proof (outside the suite): a process holding the same retire uncommitted was killed; a
+second connection waited during, read "live 48" after.
+
+Gates: the class 5/5; store read back live 48, 0 test rulings, 0 applications on 99997/99996; Halifax 1898f6b4
+identical; full suite (announced to operations-ee 22:53 PDT) 1,815 passed, 4 failed, 1 skipped of 1,820 in 3 h 14 m - the
+4 all on record before tonight: the NBC 9.8.x 30-day citation test (Ian's), the 31138 live baseline (walls 228 vs 204+-21),
+SixSetsBuildAsBanked byte test (red since 231e0f69), the shifted-on-the-page differential (31138-01 2 columns lost, 1 wall
+gained). The suite is 3 h, not 7 min: three tests rebuild the six sets (29 m, ~70 m, 27 m), and the handoff test reads
+31065's S1.11 page twice at 10-25 min a read.
+
+Covers: the three accessors on a held transaction; that the test's writes never commit. Does not cover:
+AnAnsweredQuestionChangesTheNextModelTests, which still commits a row - job-scoped (99999-01 key), so no live rule
+is touched, but a killed host would leave that row. A same-class fault this would not catch: a future test calling
+the connection-string import, which still commits by design (the CLI verb needs it to).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

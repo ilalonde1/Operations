@@ -1,0 +1,85 @@
+Model written : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\omar-etabs\143E3rd-A105.e2k
+Sheets read   : 1   placed: 0
+Storeys built : 39
+Walls         : 0
+Columns       : 0
+Floors        : 0
+Joints        : 0
+Sections made : 
+Questions for you: 2
+Offset applied: 0, 0 in
+
+Sheet                                                  Lvls  Storeys  Walls  Cols  Slabs
+
+Read but not placed on any storey in this model (1):
+A105.dxf                                                 0        0      0     0      0
+
+Not placed:
+  - rules: all 52 read from KorStandards.
+  -    dxf.already-modelled-tolerance = 6 in [replay-verified, ETABS/e2k]
+  -    dxf.assign-diaphragms = 0 bool [engineer-confirmed, andrean]
+  -    dxf.assign-pier-labels = 1 bool [engineer-confirmed, andrean]
+  -    dxf.bridge-tolerance = 6 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.connect-walls = 1 bool [engineer-confirmed, DXF-to-ETABS/e2k]
+  -    dxf.dash-join-gap = 14 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.dash-offset-tolerance = 0.15 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.default-slab-thickness = 12 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.donor-plate-likeness-margin = 0.98 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.doubled-edge-coverage = 0.5 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.doubled-edge-parallel-ratio = 2 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.drawn-ring-beats-fill-fraction = 0.6 fraction [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.extend-limit = 0 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.flood-fill-bridge = 36 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.floor-from-perimeter-wall = 1 bool [replay-verified, DXF-to-ETABS]
+  -    dxf.include-floors = 1 bool [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.join-tolerance = 0.05 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.joint-merge-tolerance = 0.05 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-column-aspect = 3 ratio [replay-verified, ETABS/e2k]
+  -    dxf.max-column-size = 132 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-opening-span = 72 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-pier-thickness = 48 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-wall-thickness = 60 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-column-size = 6 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-floor-coverage = 0.6 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-opening-span = 24 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-panel-aspect = 1.2 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-panel-overlap = 12 in [replay-verified, Revit/dxf]
+  -    dxf.min-plate-area = 57600 sqin [replay-verified, Revit/dxf]
+  -    dxf.min-slab-area = 7200 sqin [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-wall-aspect = 2 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-wall-length = 48 in [engineer-confirmed, codex-audit]
+  -    dxf.min-wall-thickness = 6 in [replay-verified, DXF-to-ETABS]
+  -    dxf.opening-height = 88 in [replay-verified, ETABS/e2k]
+  -    dxf.outline-self-touch-tolerance = 0.05 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.pier-fill-ratio = 0.6 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.pour-strip-aspect = 10 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.pour-strip-min-length-mm = 10000 mm [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.recovered-outline-tolerance = 3 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.ring-on-plate-edge-fraction = 0.5 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.same-ground-area-tolerance = 0.02 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.same-ground-centre-tolerance = 24 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.self-touch-report-gap = 2 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.skip-members-already-modelled = 1 bool [engineer-confirmed, DXF-to-ETABS/e2k]
+  -    dxf.slab-callout-max-thickness = 120 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.slab-callout-min-thickness = 4 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.slab-chain-join-fraction = 0.1 fraction [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.spandrel-depth-ceiling = 60 in [engineer-confirmed, ETABS/e2k]
+  -    dxf.spandrel-depth-floor = 18 in [engineer-confirmed, ETABS/e2k]
+  -    dxf.storeys-at-one-level-gap = 12 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.unusual-wall-thickness = 24 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.wall-bridge-tolerance = 12 in [replay-verified, DXF-to-ETABS/e2k]
+  - Facts are banked for job(s) 31168 (which storeys to join on a match line, how many slabs a storey carries) and this run is job 'unknown — no five-digit job number in the stick file, DXF folder, reference or output names; give --job': none of them applies.
+  - A105.dxf: NOT PLACED — nothing in this sheet's title says which level it draws, so its structure reached no storey. The reader looks for a level number, a range ("LEVEL 9-19"), a parkade level, the roof, or a storey named by a word. TO FIX: tell us the level for this drawing in the workbook — the question is already there and your answer is banked against this job, so it is asked once. If the title does name a level in a form this reader does not know, say which and it becomes a rule for every set.
+
+About the model as a whole:
+  - KOR_C_SLABEDG-MARKUP -> slab edges (60 segments)
+  - KOR_V_COL-MARKUP -> columns (48 segments)
+  - read and ignored, on no structural layer: 6 segments across 1 layer(s) — BEAM-MARKUP (6)
+  - 1 drawing(s) carry structure that is NOT IN THIS MODEL, because the storeys they name do not exist in it: A105.dxf (0 wall(s), 12 column(s), 1 plate(s)). Either the model needs those storeys, or the drawings name them differently from the way the model does. This is not a warning about the drawings — it is a piece of the building that was read, understood, and then left out.
+  - opening height: 88, the standing value — the reference model has only 0 spandrel(s) to measure, so the standing value stands.
+  - column slenderness: 3, the standing value — the reference model uses only 0 rectangular concrete column section(s), which is too few to read a limit from.
+  - THIS SET'S DRAWINGS NAME 39 STOREYS AND ONLY 0 OF THEM RECEIVED A FLOOR, so what shipped is a fraction of the building and should be read as one. The storeys with no floor plate at all: L37, L36, L35, L34, L33, L32, L31, L30, L29, L28, L27, L26, L25, L24, L23, L22, L21, L20, L19, L18, L17, L16, L15, L14, L13, L12, L11, L10, L9, L8, L7, L6, L5, L4, L3, L2, L1, B1, B2. This is not a count of drawings that failed — the sheets were read and their structure is in the file; what could not be established is which storey each of them draws.
+
+Flags (0) — outlines that needed judgement:
+
+No walls or columns were generated, so no model was written. '143E3rd-A105.e2k' would have been the reference model with nothing added to it.

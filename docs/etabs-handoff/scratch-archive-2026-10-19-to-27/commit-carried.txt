@@ -1,0 +1,11 @@
+CarriedRules offers only the caller's kind of rule: a drafting ruling is not an ETABS question
+
+Raised by the Virtual Drafter session before its KOR.Drafter migration 109 (wood drafting choices as 'drafting' rulings):
+CarriedRules offered every rule confirmed on another job whatever its Scope, so the day the questionnaire calls it a wood
+choice confirmed on 31165-01 would be offered on every ETABS job. It now takes a scope (default etabs-modelling) and
+offers that scope and the job answers the questionnaire records under 'job:'. No production caller today.
+New test ARuleOfAnotherKindIsNotOfferedToThisOne; the class's 4 of 4 pass against KorStandards, which it leaves clean
+(0 test rows, dxf.max-pier-thickness live). WithheldFor left scope-blind on purpose: it only withholds.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

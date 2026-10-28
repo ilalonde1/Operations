@@ -1,0 +1,103 @@
+TABLE - set | storey | first commit it moves at | what moved there (vs the bank's geometry) | the engineer's plate there
+31065-01       L1         NOT FOUND                                                              hers 58,968
+31065-01       L2         NOT FOUND                                                              hers 10,728
+31065-01       L3         NOT FOUND                                                              hers 10,727
+31065-01       L4         NOT FOUND                                                              hers 10,829
+31065-01       L5         NOT FOUND                                                              hers 10,870
+31065-01       L6         NOT FOUND                                                              hers 7,837
+31065-01       L7         NOT FOUND                                                              hers 7,834
+31065-01       L9         NOT FOUND                                                              hers 7,834
+31065-01       P1         NOT FOUND                                                              hers 40,064
+31065-01       P2         NOT FOUND                                                              hers 36,256
+31065-01       P3         NOT FOUND                                                              hers -
+31065-01       L11        NOT FOUND                                                              hers 7,834
+31065-01       L13        NOT FOUND                                                              hers 7,834
+31065-01       L15        NOT FOUND                                                              hers 7,834
+31065-01       L17        NOT FOUND                                                              hers 7,834
+31130-01       L1         NOT FOUND                                                              hers 55,644
+31130-01       L2         NOT FOUND                                                              hers 12,348
+31130-01       L3         NOT FOUND                                                              hers 11,227
+31130-01       P2         NOT FOUND                                                              hers 49,532
+31130-01       P3         NOT FOUND                                                              hers -
+31130-01       L14        NOT FOUND                                                              hers 11,227
+31130-01       L15        NOT FOUND                                                              hers 10,435
+31130-01       L16        NOT FOUND                                                              hers 9,125
+31130-01       L17        NOT FOUND                                                              hers -
+31130-01       L19        NOT FOUND                                                              hers -
+31130-01       L1M        NOT FOUND                                                              hers -
+31130-01       L20        NOT FOUND                                                              hers -
+31130-01       L0/P1      NOT FOUND                                                              hers -
+31138-01       L1         NOT FOUND                                                              hers -
+31138-01       L2         NOT FOUND                                                              hers -
+31138-01       L3         NOT FOUND                                                              hers -
+31138-01       L4         NOT FOUND                                                              hers -
+31138-01       L5         NOT FOUND                                                              hers -
+31138-01       P1         NOT FOUND                                                              hers 18,450
+31138-01       P3         NOT FOUND                                                              hers 18,450
+31138-01       L20        NOT FOUND                                                              hers 9,515
+31138-01       L21        NOT FOUND                                                              hers 15,825
+31138-01       L22        NOT FOUND                                                              hers 9,021
+31168-01       L1         NOT FOUND                                                              hers -
+31168-01       L2         NOT FOUND                                                              hers -
+31168-01       L3         NOT FOUND                                                              hers -
+31168-01       P1         NOT FOUND                                                              hers -
+31168-01       L10        NOT FOUND                                                              hers -
+31168-01       L11        NOT FOUND                                                              hers -
+31168-01       A-L1       NOT FOUND                                                              hers -
+31168-01       C-L3       NOT FOUND                                                              hers -
+31168-01       A-L34      NOT FOUND                                                              hers -
+31170-01-arch  L1         NOT FOUND                                                              hers -
+31170-01-arch  L3         NOT FOUND                                                              hers -
+31170-01-arch  L4         NOT FOUND                                                              hers -
+31170-01-arch  L5         NOT FOUND                                                              hers -
+31170-01-arch  L6         NOT FOUND                                                              hers -
+31170-01-arch  L7         NOT FOUND                                                              hers -
+31202-01       L1         NOT FOUND                                                              hers -
+31202-01       L2         NOT FOUND                                                              hers 33,572
+31202-01       L3         NOT FOUND                                                              hers 38,105
+31202-01       L4         NOT FOUND                                                              hers 38,105
+31202-01       L5         NOT FOUND                                                              hers 50,753
+31202-01       L7         NOT FOUND                                                              hers 34,635
+31202-01       L8         NOT FOUND                                                              hers 34,635
+31202-01       L9         NOT FOUND                                                              hers 34,635
+31202-01       L10        NOT FOUND                                                              hers 34,635
+31202-01       L11        NOT FOUND                                                              hers 34,635
+31202-01       L12        NOT FOUND                                                              hers 34,635
+31202-01       L13        NOT FOUND                                                              hers 44,553
+31202-01       ROOF       NOT FOUND                                                              hers -
+31202-01       UPPER ROOF NOT FOUND                                                              hers -
+
+67 storeys moved bank -> rb-all-on; 0 with a first commit, 67 NOT FOUND
+
+PER COMMIT - what it changed against the commit before (the evidence for fix / regression / bank's error):
+f226e8f4 One markup DXF from the app and the CLI: markup labels read in Core, layer-by-colour a cho: 0 storey change(s)
+750a273f A2/A2b/A3d/A3e: stated scale read by app and CLI; a DXF opens on its drawing; a markup lab: 0 storey change(s)
+8ed10d03 PDF intake steps 149-168: a marked-up PDF builds an ETABS model (143 E 3rd Hotel): 0 storey change(s)
+da94a37d Bids tab shows structural-firm work only: KorBidFit reads a tender's title (prime/architec: 0 storey change(s)
+2d1fce88 Takeoff CLI: no AI vision service (C1, the takeoff half). Ian: "yes - delete them".: 0 storey change(s)
+83d424bc PdfToSafe: "Build whole building (ETABS)" button - the whole set through the same route as: 0 storey change(s)
+47705014 Rebar compare: the app's change report reads the drawings the way its markup does, refuses: 0 storey change(s)
+06afccff Steps 150, 151, 162, 167 fixed from tonight's corpus gate and six-set attribution: 0 storey change(s)
+d2cec177 Step 169: a ceiling under half a storey a floor is another building's level: 0 storey change(s)
+1f967a4e Rebar workbook: the Summary's tonnes are the weight sheet's own arithmetic, and it says ho: 0 storey change(s)
+ef549a08 Model takeoff: floors in building order, lowest first, not by name: 0 storey change(s)
+8fa0d9d6 Steps 170-172: slab edge runs kept whole, a table's broken top rule, a slanted wall's clip: 0 storey change(s)
+8bef3049 Intake step 174: a wall Revit's own PDF export split is still a wall; the corpus gate know: 0 storey change(s)
+f5a74e04 Steps 170 repaired and 173: the slab-edge step never costs a floor; a column drawn with a : 0 storey change(s)
+3a65b340 takeoff revit-to-dxf: a level may carry floor outlines (slab edges) - Halifax builds the p: 0 storey change(s)
+507116a4 takeoff revit-to-dxf: a level may carry openings (shafts, stair wells) - written as inner : 0 storey change(s)
+f2ffb2bc takeoff revit-to-dxf: a round column's type names its diameter (24" Ø, 24" DIA) and goes : 0 storey change(s)
+4392a5a4 Step 173 corrected: a column shown through a round clip is round - as committed it turned : 0 storey change(s)
+231e0f69 ETABS column ANG is the long face's bearing - every oblong column was a quarter turn off s: 0 storey change(s)
+e7adce28 A doorway header between walls of two thicknesses takes the thinner - and the report says : 0 storey change(s)
+cd7dc0de Steps 175-177: a slab edge the drawing closed is closed; the larger of two readings of a f: 0 storey change(s)
+674b2890 Steps 178-180: a column's turn carried to ETABS (Revit route); a section cut is a straight: 0 storey change(s)
+0db1608d The engineer's model judges, not ours inside it: objects named as this tool names its own : 0 storey change(s)
+7240315b Step 182: a tie between printed thicknesses is broken by the ground each stands for - over: 0 storey change(s)
+3a56ded0 CarriedRules offers only the caller's kind of rule: a drafting ruling is not an ETABS ques: 0 storey change(s)
+21fb2b10 Step 183: a floor the drawing zones by thickness is modelled as its zones: 0 storey change(s)
+0de30b47 Step 183: a short stroke of the outline's own pen closes a zone; a zone that cannot be cut: 0 storey change(s)
+ea108775 Step 183: the zones tile the floor or there are none - a zone inside another of its thickn: 0 storey change(s)
+9055a41e Corpus gate: a set whose frame does not register is not judged by position - and a frame t: 0 storey change(s)
+9670a49e Step 184: a floor the set frames in wood carries no concrete plate - from the second link : 0 storey change(s)
+86a2e160 Corpus gate: the storeys we plate that her model does not name are counted, named, and a r: 0 storey change(s)

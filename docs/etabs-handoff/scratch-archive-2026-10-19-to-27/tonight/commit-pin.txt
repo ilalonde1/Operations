@@ -1,0 +1,22 @@
+corpus-gate --pdf job=path builds a set from a named issue; 31138's three L2 columns traced on the page: two drawn transitions, one reading fault
+
+Board 49. The census reads each job's newest stick file, so 31138's 10-26 finding (built from the 2026-09-01 issue the six-set
+test banks) could not be rebuilt by the gate, and only CorpusAnalyzer writes the placement twin_trace reads.
+- StickFileCorpus.PinIssues: a pinned job's issues become that one file, dated from its name; a job the census lacks or a file
+  that is not there is a problem line, never a guess. Test APinnedIssueReplacesTheNewestForThatJobOnly.
+- corpus-gate --pdf job=path[;job=path]: a bad pin stops the gate (exit 2) before rules load or anything builds - run here.
+- tools/CorpusGateBisect/page_look.py: crops the rendered PDF page around model points, with an overview to LOOK that the boxes
+  land where asked (it assumes an identity placement and says so).
+- tools/CorpusGateBisect/gate_pair_moves.py: two corpus-gate work dirs built from the same views by two bins, set by set -
+  byte-identical, or every storey's moves judged against the engineer's model (judge_drift_moves members). Self-tested on
+  gate57-1027 vs gate57-185: 40112 L1 two walls lost, 31065 identical.
+
+31138 from the 2026-09-01 issue: 3 OFF HER STACK, all L2, the same three as 10-26; each drawn at 0 mm by S2.12_2 LEVEL 1 AT
+55'-0 only. On the page (S2.12, looked at): (76974, 44066) and (41898, 47394) are drawn transitions - a solid shaded column
+over a dashed column below; (61125, 35164) is a reading fault - GC12 crossed near its top by the dashed edge of the column
+below, and only the strip above the dashed line was kept. That class is board 53 (characterise before any fix).
+
+Speed!=Slow 1707 of 1707.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

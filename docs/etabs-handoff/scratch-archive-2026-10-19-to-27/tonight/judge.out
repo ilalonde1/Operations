@@ -1,0 +1,111 @@
+31170-01-arch L3 (hers L3) @ 8ed10d03: 3 lost, 3 gained; 3 re-placed (0 closer to hers, 1 further, 2 same within 50 mm)
+31170-01-arch L4 (hers L4) @ 8ed10d03: 3 lost, 3 gained; 3 re-placed (0 closer to hers, 1 further, 2 same within 50 mm)
+31170-01-arch L5 (hers L5) @ 8ed10d03: 3 lost, 3 gained; 3 re-placed (0 closer to hers, 0 further, 3 same within 50 mm)
+31170-01-arch L6 (hers L6) @ 8ed10d03: 3 lost, 3 gained; 3 re-placed (0 closer to hers, 0 further, 3 same within 50 mm)
+31170-01-arch L7 (hers L7) @ 8ed10d03: 3 lost, 3 gained; 3 re-placed (0 closer to hers, 0 further, 3 same within 50 mm)
+31138-01 L2 (hers L2) @ 8ed10d03: 12 lost, 1 gained; 0 re-placed (0 closer to hers, 0 further, 0 same within 50 mm)
+    LOST   column (31,520, 40,260) 0  4,625 mm from hers; nearest after 460 mm away, 4,490 mm from hers
+    LOST   column (34,770, 34,453) 0  77 mm from hers; nearest after 98 mm away, 59 mm from hers
+    LOST   column (41,896, 43,064) 0  0 mm from hers; nearest after 342 mm away, 342 mm from hers
+    LOST   column (41,898, 47,648) 0  2 mm from hers; nearest after 254 mm away, 255 mm from hers
+    LOST   column (60,745, 42,123) 0  1,138 mm from hers; nearest after 29 mm away, 1,164 mm from hers
+    LOST   column (61,125, 34,682) 0  152 mm from hers; nearest after 122 mm away, 30 mm from hers
+    LOST   column (61,125, 35,164) 0  634 mm from hers; nearest after 604 mm away, 30 mm from hers
+    LOST   column (61,480, 42,410) 0  411 mm from hers; nearest after 439 mm away, 74 mm from hers
+    LOST   column (69,277, 43,560) 0  7,635 mm from hers; nearest after 39 mm away, 7,631 mm from hers
+    LOST   column (69,277, 44,216) 0  7,662 mm from hers; nearest after 695 mm away, 7,631 mm from hers
+    LOST   column (69,312, 34,050) 0  528 mm from hers; nearest after 528 mm away, 1 mm from hers
+    LOST   column (76,950, 44,562) 0  2 mm from hers; nearest after 497 mm away, 498 mm from hers
+    GAINED wall   (49,681, 35,190) 6,070  6,559 mm from hers
+31065-01 L2 (hers L2) @ 8ed10d03: 8 lost, 0 gained; 0 re-placed (0 closer to hers, 0 further, 0 same within 50 mm)
+    LOST   column (19,433, 25,051) 0  89 mm from hers; nearest after 402 mm away, 461 mm from hers
+    LOST   column (65,028, 38,739) 0  46,158 mm from hers; nearest after 3,537 mm away, 48,902 mm from hers
+    LOST   column (68,806, 49,390) 0  52,158 mm from hers; nearest after 2,234 mm away, 50,771 mm from hers
+    LOST   column (69,020, 42,211) 0  50,619 mm from hers; nearest after 1,126 mm away, 49,514 mm from hers
+    LOST   column (72,208, 36,428) 0  53,109 mm from hers; nearest after 4,045 mm away, 57,152 mm from hers
+    LOST   column (73,086, 42,587) 0  54,689 mm from hers; nearest after 3,149 mm away, 57,804 mm from hers
+    LOST   column (73,203, 48,597) 0  56,136 mm from hers; nearest after 3,296 mm away, 58,742 mm from hers
+    LOST   column (76,225, 42,702) 0  57,803 mm from hers; nearest after 52 mm away, 57,804 mm from hers
+31202-01 ROOF (hers ROOF) @ d2cec177: 12 lost, 15 gained; 1 re-placed (0 closer to hers, 0 further, 1 same within 50 mm)
+    LOST   wall   (21,803, 42,859) 3,381  5,231 mm from hers; nearest after 3,041 mm away, 2,783 mm from hers
+    LOST   wall   (21,803, 61,100) 3,381  5,327 mm from hers; nearest after 3,207 mm away, 2,264 mm from hers
+    LOST   wall   (21,809, 52,291) 3,369  7,833 mm from hers; nearest after 2,473 mm away, 6,674 mm from hers
+    LOST   wall   (27,101, 41,219) 1,370  1,792 mm from hers; nearest after 1,383 mm away, 2,526 mm from hers
+    LOST   wall   (27,101, 43,308) 1,370  1,794 mm from hers; nearest after 974 mm away, 2,526 mm from hers
+    LOST   wall   (29,982, 57,018) 5,763  3,821 mm from hers; nearest after 3,718 mm away, 2,833 mm from hers
+    LOST   wall   (32,499, 47,167) 12,166  384 mm from hers; nearest after 382 mm away, 2 mm from hers
+    LOST   wall   (32,904, 53,112) 13,285  6,343 mm from hers; nearest after 3,206 mm away, 3,151 mm from hers
+    LOST   wall   (35,977, 57,018) 5,763  9,612 mm from hers; nearest after 7,707 mm away, 3,169 mm from hers
+    LOST   wall   (37,819, 41,219) 1,526  1,792 mm from hers; nearest after 1,791 mm away, 1 mm from hers
+    LOST   wall   (37,819, 43,308) 1,526  1,794 mm from hers; nearest after 1,793 mm away, 1 mm from hers
+    GAINED column (32,994, 60,960) 0  15,251 mm from hers
+    GAINED column (39,496, 60,960) 0  15,510 mm from hers
+    GAINED column (84,226, 37,464) 0  1 mm from hers
+    GAINED wall   (16,508, 61,314) 4,877  305 mm from hers
+    GAINED wall   (24,282, 27,660) 4,218  8,375 mm from hers
+    GAINED wall   (24,282, 34,392) 8,636  4,529 mm from hers
+    GAINED wall   (24,282, 41,097) 4,166  2,783 mm from hers
+    GAINED wall   (24,282, 45,568) 4,166  2,350 mm from hers
+    GAINED wall   (24,282, 52,273) 8,636  6,674 mm from hers
+    GAINED wall   (24,282, 59,066) 4,340  2,264 mm from hers
+    GAINED wall   (26,491, 55,738) 11,664  2,833 mm from hers
+    GAINED wall   (32,459, 43,844) 11,176  2,941 mm from hers
+    GAINED wall   (38,352, 45,022) 3,530  2 mm from hers
+    GAINED wall   (74,396, 45,358) 5,803  1,671 mm from hers
+31065-01 L1 (hers L1) @ 8fa0d9d6: 13 lost, 9 gained; 9 re-placed (0 closer to hers, 1 further, 8 same within 50 mm)
+    LOST   column (65,126, 25,821) 0  2,054 mm from hers; nearest after 1,754 mm away, 515 mm from hers
+    LOST   column (65,585, 22,921) 0  1,634 mm from hers; nearest after 1,418 mm away, 515 mm from hers
+    LOST   wall   (56,233, 33,634) 648  1,401 mm from hers; nearest after 3,917 mm away, 24 mm from hers
+    LOST   wall   (56,233, 41,288) 648  1,053 mm from hers; nearest after 1,037 mm away, 16 mm from hers
+31065-01 P1 (hers P1) @ 8fa0d9d6: 9 lost, 9 gained; 9 re-placed (2 closer to hers, 1 further, 6 same within 50 mm)
+31065-01 P2 (hers P2) @ 8fa0d9d6: 6 lost, 8 gained; 6 re-placed (3 closer to hers, 1 further, 2 same within 50 mm)
+    GAINED wall   (77,934, 48,975) 8,289  7,332 mm from hers
+    GAINED wall   (78,087, 53,466) 702  4,938 mm from hers
+31130-01 L1 (hers L1) @ 8fa0d9d6: 13 lost, 12 gained; 11 re-placed (5 closer to hers, 3 further, 3 same within 50 mm)
+    LOST   column (157,480, 60,757) 0  6,232 mm from hers; nearest after 3,556 mm away, 3,761 mm from hers
+    LOST   wall   (116,654, 55,665) 1,112  1,016 mm from hers; nearest after 1,474 mm away, 83 mm from hers
+    GAINED wall   (147,320, 32,526) 2,873  796 mm from hers
+31130-01 P2 (hers P2) @ 8fa0d9d6: 10 lost, 11 gained; 8 re-placed (4 closer to hers, 2 further, 2 same within 50 mm)
+    LOST   wall   (150,673, 36,015) 1,089  1,496 mm from hers; nearest after 1,504 mm away, 9 mm from hers
+    LOST   wall   (150,839, 35,471) 331  1,480 mm from hers; nearest after 961 mm away, 536 mm from hers
+    GAINED wall   (137,832, 65,646) 301  810 mm from hers
+    GAINED wall   (138,202, 66,403) 1,514  262 mm from hers
+    GAINED wall   (138,315, 67,192) 215  742 mm from hers
+31130-01 L0/P1 (hers P1) @ 8fa0d9d6: 12 lost, 11 gained; 11 re-placed (7 closer to hers, 2 further, 2 same within 50 mm)
+    LOST   wall   (150,659, 35,970) 1,000  1,467 mm from hers; nearest after 1,475 mm away, 9 mm from hers
+31065-01 L1 (hers L1) @ 674b2890: 12 lost, 0 gained; 0 re-placed (0 closer to hers, 0 further, 0 same within 50 mm)
+    LOST   column (46,133, 53,253) 0  2,784 mm from hers; nearest after 2,779 mm away, 17 mm from hers
+    LOST   column (46,154, 26,615) 0  2,551 mm from hers; nearest after 2,010 mm away, 767 mm from hers
+    LOST   column (46,330, 47,229) 0  3,553 mm from hers; nearest after 3,547 mm away, 17 mm from hers
+    LOST   column (48,713, 48,359) 0  2,774 mm from hers; nearest after 2,782 mm away, 17 mm from hers
+    LOST   column (50,633, 53,516) 0  3,664 mm from hers; nearest after 3,653 mm away, 20 mm from hers
+    LOST   column (54,896, 47,805) 0  3,470 mm from hers; nearest after 3,479 mm away, 20 mm from hers
+    LOST   column (56,708, 53,901) 0  4,952 mm from hers; nearest after 4,948 mm away, 18 mm from hers
+    LOST   column (59,912, 22,773) 0  1,907 mm from hers; nearest after 1,920 mm away, 18 mm from hers
+    LOST   column (60,452, 48,154) 0  2,523 mm from hers; nearest after 2,521 mm away, 18 mm from hers
+    LOST   column (68,459, 26,130) 0  2,702 mm from hers; nearest after 3,097 mm away, 515 mm from hers
+    LOST   column (71,313, 22,921) 0  3,135 mm from hers; nearest after 2,726 mm away, 464 mm from hers
+    LOST   column (72,974, 29,422) 0  4,377 mm from hers; nearest after 4,339 mm away, 49 mm from hers
+31065-01 P1 (hers P1) @ 674b2890: 0 lost, 1 gained; 0 re-placed (0 closer to hers, 0 further, 0 same within 50 mm)
+    GAINED column (47,381, 37,476) 0  10 mm from hers
+31138-01 L2 (hers L2) @ 674b2890: 2 lost, 1 gained; 1 re-placed (0 closer to hers, 1 further, 0 same within 50 mm)
+    LOST   column (74,489, 32,729) 0  5,274 mm from hers; nearest after 2,647 mm away, 6,908 mm from hers
+31138-01 L20 (hers L20) @ 674b2890: 0 lost, 1 gained; 0 re-placed (0 closer to hers, 0 further, 0 same within 50 mm)
+    GAINED column (45,047, 45,653) 0  5,859 mm from hers
+31065-01 L2 (hers L2: 63 plates) @ 86a2e160 - 35.4" plates:
+   826 sq ft at (47,701, 36,997) -> outside every plate of hers
+   2,271 sq ft at (71,597, 39,892) -> outside every plate of hers
+31065-01 P1 (hers P1: 108 plates) @ 86a2e160 - 5.9" plates:
+   1,726 sq ft at (72,519, 47,184) -> inside her 9.8" plate (34,827 sq ft)
+31130-01 L2 (hers L2: 26 plates) @ 86a2e160 - 9" plates:
+   4,290 sq ft at (143,895, 48,239) -> inside her 36" plate (6,190 sq ft)
+31130-01 L20 (hers -: 0 plates) @ 86a2e160 - 18" plates:
+   6,818 sq ft at (47,820, 46,537) -> outside every plate of hers
+31138-01 L21 (hers L21: 8 plates) @ 86a2e160 - 24" plates:
+   7,215 sq ft at (54,509, 49,551) -> inside her 8" plate (9,524 sq ft)
+31202-01 L13 (hers L13: 10 plates) @ 86a2e160 - 12" plates:
+   1,848 sq ft at (20,156, 31,994) -> inside her 10" plate (30,928 sq ft)
+   2,560 sq ft at (54,722, 53,359) -> inside her 10" plate (30,928 sq ft), inside her 10" plate (6,870 sq ft), inside her 12" plate (1,128 sq ft)
+   228 sq ft at (78,966, 38,170) -> inside her 10" plate (30,928 sq ft), inside her 10" plate (1,413 sq ft)
+   2,624 sq ft at (78,674, 49,678) -> inside her 10" plate (30,928 sq ft), inside her 10" plate (1,413 sq ft)
+   1,478 sq ft at (69,027, 52,828) -> inside her 10" plate (30,928 sq ft), inside her 10" plate (6,870 sq ft)

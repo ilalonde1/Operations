@@ -1,0 +1,32 @@
+frames matched by column registration (-59,126, -50,900) mm, no shared grid labels (0 X / 0 Y): 227 of 341 of our columns within 100 mm of one of theirs
+storeys: ours 13, theirs 13, shared 13; only ours: -; only theirs: -
+ours -> theirs: 341 columns on shared storeys inside her footprint (27 beyond it, not judged), nearest of theirs: median 27 mm; within 50 mm 204 (60%), within 100 mm 227 (67%), within 300 mm 286 (84%)
+theirs -> ours: 298 columns they modelled on those storeys, nearest of ours: median 10 mm; within 100 mm 221 (74%)
+13 storeys both models name, every one (ours judged / theirs / median / ours within 100 / theirs within 100 / the rigid part of the error and the median and share after it / ours beyond her footprint):
+   L3         L3           50   37        7 mm   86%  100%   rigid (    0,     1) ->     7 mm  86%   beyond 3
+   L2         L2           41   36       15 mm   71%   81%   rigid (    0,     1) ->    16 mm  71%   beyond 12
+   L4         L4           40   36       10 mm   72%   81%   rigid (    0,     0) ->    10 mm  72%   beyond 3
+   L5         L5           29   27       27 mm   69%   74%   rigid (    0,    -1) ->    27 mm  69%
+   P1         P1           28   25       36 mm   71%   80%   rigid (   -2,     1) ->    37 mm  71%   beyond 1
+   L1         L1           27   26       36 mm   70%   73%   rigid (   -2,     1) ->    37 mm  70%   beyond 8
+   L10        L10          18   16       76 mm   50%   56%   rigid (   -1,    -7) ->    69 mm  61%
+   L11        L11          18   16       76 mm   50%   56%   rigid (   -1,    -7) ->    69 mm  61%
+   L6         L6           18   16       76 mm   50%   56%   rigid (   -1,    -7) ->    69 mm  61%
+   L7         L7           18   16       76 mm   50%   56%   rigid (   -1,    -7) ->    69 mm  61%
+   L8         L8           18   16       76 mm   50%   56%   rigid (   -1,    -7) ->    69 mm  61%
+   L9         L9           18   16       76 mm   50%   56%   rigid (   -1,    -7) ->    69 mm  61%
+   ROOF       Roof         18   15        4 mm   72%   87%   rigid (    0,     1) ->     4 mm  72%
+against the plans' grid lines (within 50 mm; X / Y / an intersection): ours 39 / 14 / 0 of 341 (0% on an intersection); hers 41 / 14 / 0 of 298 (0%)
+ours with none of theirs within 300 mm, by section: KOR-C254x609.6 13, KOR-C457.2x635 10, KOR-C609.6x711.2 10, KOR-C304.8x762 8, KOR-C304.8x914.4 3, KOR-C330.2x457.2 2, KOR-C330.2x609.6 2, KOR-C355.6x914.4 2 ...
+  of which 27 stand on a wall she modelled (a column to us, a pier to her): KOR-C457.2x635 10, KOR-C609.6x711.2 10, KOR-C330.2x457.2 2, KOR-C330.2x609.6 2, KOR-C304.8x762 1, KOR-C584.2x609.6 1, KOR-C609.6x1117.6 1
+theirs with none of ours within 300 mm, by their section: C12X30-45MPA 8, C10x24-45MPA 6, C12X24-45MPA 2, C14X36-45MPA 2, C12X60-45MPA 1, C18X90-45MPA 1
+plates on the shared storeys: ours 87,471 sq ft, hers 123,638 (71%); storeys where ours is under half of hers: 2 (L4 1,068/8,920 ROOF 0/4,633); ours over half again hers: 0
+slab thickness on the shared storeys (the thickness under most of the plate area, ours/hers in): 12 storeys both plate, 12 agree within half an inch (100%)
+openings on the shared storeys: ours 32 inside her footprint (2 beyond it, not judged), hers 47; ours with one of hers within 1.5 m 12 (38%); hers with one of ours 12 (26%)
+  ours she has not, by size: 2.5x8 m 6, 1x1.5 m 2, 2.5x6.5 m 2, 3x3 m 2, 1x4.5 m 1, 2.5x4.5 m 1, 2.5x7 m 1, 2.5x8.5 m 1 ...
+  hers we have not, by size: 0.5x1 m 11, 0.5x1.5 m 11, 0x0.5 m 10, 1.5x5 m 1, 1x1 m 1, 5x7 m 1
+  hers whose centre stands inside one of ours: 11 (23%)
+  hers we have, by centre or cover or as a void we carry no plate over: 13 of 47 (28%; by centre 12, by cover 11, off our plate 1)
+  of ours she has not, 2 stand where she cuts on another storey
+  note: frame from column registration, no shared grid labels (0 X / 0 Y): 227 of 368 of our columns within 100 mm of one of theirs after it
+  note: 27 of our columns stand beyond her model's footprint on their storey (more than 1.5 m past her outermost column) and are not judged: L2 12, L1 8, L4 3, L3 3, P1 1

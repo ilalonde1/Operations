@@ -1,0 +1,12 @@
+Guard rule 8: a slow Core test run is refused when its inputs are missing; the unfiltered App engineering suite is refused
+
+On 2026-10-19 three runs were wasted on inputs a second's check would have shown missing: the stick-file mirror
+empty, then a six-set source moved on the share (7 m 22 s, then a refusal). The unfiltered App EngineeringTools
+suite hung headless for 297 s. Ian: "STOP DOING ANYTHING WITHOUT FUCKING CHECKING. THAT'S A CARDINAL FUCKING RULE."
+
+Before a Core test run that is not filtered to Speed!=Slow, the guard now checks that every share source
+SixSetsBuildAsBankedTests names exists and that the mirror holds its five PDFs, and it names what is missing.
+Its own tests: 51 of 51 as expected, including five new rule-8 cases.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

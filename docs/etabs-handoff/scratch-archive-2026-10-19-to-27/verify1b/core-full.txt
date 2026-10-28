@@ -1,0 +1,128 @@
+  Determining projects to restore...
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1902: Package 'SixLabors.ImageSharp' 3.1.12 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-gwg2-r3hj-4w44 [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-j3p4-wp97-rph4 [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-j9gm-c75j-xc9q [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-jjfr-hcj7-qf5w [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1902: Package 'SixLabors.ImageSharp' 3.1.12 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-wmxv-xphr-5c9g [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+  All projects are up-to-date for restore.
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1902: Package 'SixLabors.ImageSharp' 3.1.12 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-gwg2-r3hj-4w44
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-j3p4-wp97-rph4
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-j9gm-c75j-xc9q
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-jjfr-hcj7-qf5w
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1902: Package 'SixLabors.ImageSharp' 3.1.12 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-wmxv-xphr-5c9g
+  Kor.Operations.EngineeringTools.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.dll
+  Kor.Operations.EngineeringTools.TakeoffCli -> C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\bin\Debug\net8.0\takeoff.dll
+  Kor.Operations.EngineeringTools.Core.Tests -> C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll
+Test run for C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:02.87]     Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays [513 ms]
+  Error Message:
+   clauses written from memory more than thirty days ago and never read from the source - run takeoff knowledge-ingest on KOR's copy: NBC-2020 9.8.2.1 stair-width-min-dwelling (written 2026-09-16); NBC-2020 9.8.2.1 stair-width-min-other (written 2026-09-16); NBC-2020 9.8.4.1 stair-rise-max (written 2026-09-16); NBC-2020 9.8.4.1 stair-rise-min (written 2026-09-16); NBC-2020 9.8.4.2 stair-run-min (written 2026-09-16); NBC-2020 9.8.4.2 stair-run-max (written 2026-09-16)
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Rules\EveryRuleCitesItsAuthorityTests.cs:line 61
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:19:30.93]     Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline [9 m 44 s]
+  Error Message:
+   The six-set gate: these sets no longer build byte-identical to their baselines. Look at what moved (TestResults/six-sets/<job>-diff.txt, and render both models), then either fix the rule or bank the new models by replacing Baselines/pdf-only-<job>.e2k in the same commit:
+  31130-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+  31138-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+  31065-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+  31202-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+  31168-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+  31170-01-arch: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Intake\SixSetsBuildAsBankedTests.cs:line 171
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Standard Output Messages:
+ 31130-01: read (manifest changed: reader source or options)
+ 31130-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+ plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+ 
+ 31138-01: read (manifest changed: reader source or options)
+ 31138-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+ plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+ 
+ 31065-01: read (manifest changed: reader source or options)
+ 31065-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+ where the members went (4 place(s) whose storeys changed):
+   wall new: 2
+      at (4,357, 33,634) 1,330 long: - -> L19
+      at (4,357, 41,290) 1,330 long: - -> L19
+   wall shortened: 2
+      at (4,356, 33,634) 1,329 long: L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 -> L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7
+      at (4,356, 41,290) 1,329 long: L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 -> L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7
+ plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+ 
+ 31202-01: read (manifest changed: reader source or options)
+ 31202-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+ plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+ 
+ 31168-01: read (manifest changed: reader source or options)
+ 31168-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+ where the members went (27 place(s) whose storeys changed):
+   wall new: 14
+      at (18,391, 54,700) 1,205 long: - -> A-L34
+      at (18,392, 54,701) 1,207 long: - -> A-L33
+      at (27,438, 54,700) 1,205 long: - -> A-L34
+      at (27,438, 54,701) 1,207 long: - -> A-L33
+      at (77,167, 51,233) 1,207 long: - -> L1 A-L1
+      at (77,167, 55,348) 1,399 long: - -> L1 A-L1
+      at (77,167, 55,349) 1,399 long: - -> L3
+      at (77,243, 51,230) 1,207 long: - -> B-L37 B-L36 B-L35 B-L34
+      at (77,243, 55,349) 1,398 long: - -> B-L37 B-L36 B-L35 B-L34
+      at (79,107, 56,765) 1,220 long: - -> B-L36 B-L35 B-L34
+      at (84,778, 56,765) 1,223 long: - -> B-L36 B-L35 B-L34
+      at (84,779, 56,765) 1,220 long: - -> B-L37
+      ... and 2 more
+   wall shortened: 12
+      at (18,392, 54,700) 1,205 long: A-L35 A-L34 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 -> A-L35 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4
+      at (18,392, 54,701) 1,206 long: A-L33 A-L32 A-L31 A-L30 A-L29 A-L28 -> A-L32 A-L31 A-L30 A-L29 A-L28
+      at (27,438, 54,700) 1,205 long: A-L35 A-L34 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 -> A-L35 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4
+      at (27,439, 54,701) 1,206 long: A-L33 A-L32 A-L31 A-L30 A-L29 A-L28 -> A-L32 A-L31 A-L30 A-L29 A-L28
+      at (77,167, 55,348) 1,398 long: L3 L1 A-L1 P1 P2 -> P1 P2
+      at (77,242, 51,230) 1,207 long: B-L39 B-L38 B-L37 B-L36 B-L35 B-L34 B-L33 B-L32 B-L31 B-L30 B-L29 B-L28 B-L27 L26 L25 L24 L23 L22 L21 L20 L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 -> B-L39 B-L38 B-L33 B-L32 B-L31 B-L30 B-L29 B-L28 B-L27 L26 L25 L24 L23 L22 L21 L20 L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5
+      at (77,242, 55,349) 1,398 long: B-L39 B-L38 B-L37 B-L36 B-L35 B-L34 B-L33 B-L32 B-L31 B-L30 B-L29 B-L28 B-L27 L26 L25 L24 L23 L22 L21 L20 L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 -> B-L39 B-L38 B-L33 B-L32 B-L31 B-L30 B-L29 B-L28 B-L27 L26 L25 L24 L23 L22 L21 L20 L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4
+      at (79,106, 56,765) 1,220 long: B-L36 B-L35 B-L34 B-L33 B-L32 B-L31 B-L30 -> B-L33 B-L32 B-L31 B-L30
+      at (84,778, 56,765) 1,222 long: B-L36 B-L35 B-L34 B-L33 B-L32 B-L31 B-L30 -> B-L33 B-L32 B-L31 B-L30
+      at (84,779, 56,765) 1,219 long: B-L39 B-L38 B-L37 B-L29 B-L28 B-L27 L26 L25 L24 L23 L22 L21 L20 L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 -> B-L39 B-L38 B-L29 B-L28 B-L27 L26 L25 L24 L23 L22 L21 L20 L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4
+      at (86,443, 51,230) 1,207 long: B-L39 B-L38 B-L37 B-L36 B-L35 B-L34 B-L33 B-L32 B-L31 B-L30 B-L29 B-L28 B-L27 L26 L25 L24 L23 L22 L21 L20 L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 -> B-L39 B-L38 B-L33 B-L32 B-L31 B-L30 B-L29 B-L28 B-L27 L26 L25 L24 L23 L22 L21 L20 L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5
+      at (86,443, 55,349) 1,398 long: B-L39 B-L38 B-L37 B-L36 B-L35 B-L34 B-L33 B-L32 B-L31 B-L30 B-L29 B-L28 B-L27 L26 L25 L24 L23 L22 L21 L20 L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 -> B-L39 B-L38 B-L33 B-L32 B-L31 B-L30 B-L29 B-L28 B-L27 L26 L25 L24 L23 L22 L21 L20 L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4
+   wall vanished: 1
+      at (77,167, 51,233) 1,206 long: L1 A-L1 -> -
+ plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+ 
+ 31170-01-arch: read (manifest changed: reader source or options)
+ 31170-01-arch: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+ where the members went (2 place(s) whose storeys changed):
+   wall new: 1
+      at (30,168, 37,123) 991 long: - -> L6 L5 L4 L3
+   wall shortened: 1
+      at (30,167, 37,123) 991 long: L6 L5 L4 L3 L2 -> L2
+ plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 0
+ 
+
+
+The active test run was aborted. Reason: Test host process crashed
+Data collector 'Blame' message: The specified inactivity time of 10 minutes has elapsed. Collecting hang dumps from testhost and its child processes.
+Data collector 'Blame' message: Dumping 14152 - testhost.
+Results File: C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\verify1b\core-full.trx
+
+Failed!  - Failed:     2, Passed:  1737, Skipped:     0, Total:  1739, Duration: 19 m 29 s - Kor.Operations.EngineeringTools.Core.Tests.dll (net8.0)
+Test Run Aborted.
+
+The active Test Run was aborted because the host process exited unexpectedly. Please inspect the call stack above, if available, to get more information about where the exception originated from.
+The test running when the crash occurred: 
+Kor.Operations.EngineeringTools.Core.Tests.Intake.TheHandoffIsInMemoryAndTheModelIsTheSameTests.TheSixSetsBuildTheSameModelThroughMemoryAsThroughTheDisk
+
+This test may, or may not be the source of the crash.
+
+Attachments:
+  C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\TestResults\9172934e-be6f-40f0-8bee-be535d119a7d\testhost_14152_20261019T135705_hangdump.dmp
+  C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\TestResults\9172934e-be6f-40f0-8bee-be535d119a7d\Sequence_7f69a648537c469aba73a94623ee6a12.xml

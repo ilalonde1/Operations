@@ -1,0 +1,13 @@
+The rule loader's acceptance rule as SQL: the KorStandards rows RuleSettings would refuse (expect 0) - for the applier's post-check
+
+tools/SqlQuery/rows_the_rule_loader_refuses.sql: RuleSettings.KindOf (aa73cd4a) written as one SELECT over analysis.vw_RuleSetting -
+units 'rule' left out; a list unit refused only when blank; anything else refused unless it parses (a number, a number anywhere
+in the text, or for 'bool' a yes/no word). Its one approximation (a digit right after a dot) is stated in the header; the C# test
+ARulingWrittenForPeopleIsNotASettingTests is the authority.
+
+Run 2026-10-27 13:46: 0 rows on the live view. Probed with a VALUES table in place of the view: refuses forty-eight/in, a blank
+names list and maybe/bool; passes 48/in, yes please/bool and a 'rule' row - the C# test's verdicts. For operations-ee's applier,
+after every migration that adds a ruling or convention (its own row on the oversight board).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

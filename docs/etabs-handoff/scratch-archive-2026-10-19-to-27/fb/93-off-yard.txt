@@ -1,0 +1,54 @@
+frames matched by column registration (-30,362, 16,169) mm, no shared grid labels (0 X / 0 Y): 186 of 556 of our columns within 100 mm of one of theirs
+storeys: ours 40, theirs 38, shared 36; only ours: AMANITY P1 P2 UPPER ROOF; only theirs: B1 B2
+ours -> theirs: 556 columns on shared storeys inside her footprint (16 beyond it, not judged), nearest of theirs: median 149 mm; within 50 mm 74 (13%), within 100 mm 186 (33%), within 300 mm 408 (73%)
+theirs -> ours: 870 columns they modelled on those storeys, nearest of ours: median 422 mm; within 100 mm 186 (21%)
+36 storeys both models name, every one (ours judged / theirs / median / ours within 100 / theirs within 100 / the rigid part of the error and the median and share after it / ours beyond her footprint):
+   L2         L2           53   73      358 mm   28%   21%   rigid (   -1,   -15) ->   359 mm  25%
+   L3         L3           50   92      182 mm   34%   18%   rigid (    1,   -10) ->   179 mm  32%
+   L4         L4           50   83      197 mm   34%   20%   rigid (    0,    -5) ->   200 mm  32%
+   L1         L1           36   46      144 mm   36%   28%   rigid (   -2,   -15) ->   138 mm  36%   beyond 7
+   ROOF       ROOF         15   18      205 mm   20%   17%   rigid (  -63,  -100) ->   159 mm  13%
+   L25        L25          13   18      149 mm   31%   22%   rigid (  -63,   -24) ->   113 mm  38%
+   L34        L34          13   18      202 mm   23%   17%   rigid (  -73,   -69) ->   147 mm   8%
+   L35        L35          13   18      202 mm   23%   17%   rigid (  -73,   -69) ->   147 mm   8%
+   L21        L21          12   18      140 mm   33%   22%   rigid (  -73,   -21) ->   117 mm  33%
+   L22        L22          12   18      140 mm   33%   22%   rigid (  -73,   -21) ->   117 mm  33%
+   L23        L23          12   18      140 mm   33%   22%   rigid (  -73,   -21) ->   117 mm  33%
+   L24        L24          12   18      140 mm   33%   22%   rigid (  -73,   -21) ->   117 mm  33%
+   L26        L26          12   18      164 mm   25%   17%   rigid (  -73,   -69) ->   131 mm   8%
+   L27        L27          12   18      164 mm   25%   17%   rigid (  -73,   -69) ->   131 mm   8%
+   L28        L28          12   18      164 mm   25%   17%   rigid (  -73,   -69) ->   131 mm   8%
+   L29        L29          12   18      164 mm   25%   17%   rigid (  -73,   -69) ->   131 mm   8%
+   L30        L30          12   18      164 mm   25%   17%   rigid (  -73,   -69) ->   131 mm   8%
+   L31        L31          12   18      164 mm   25%   17%   rigid (  -73,   -69) ->   131 mm   8%
+   L32        L32          12   18      164 mm   25%   17%   rigid (  -73,   -69) ->   131 mm   8%
+   L33        L33          12   18      164 mm   25%   17%   rigid (  -73,   -69) ->   131 mm   8%
+   L5         L5           12   18      135 mm   33%   22%   rigid (    2,   -16) ->   138 mm  17%   beyond 5
+   L14        L14          11   18       88 mm   55%   33%   rigid (  -14,   -31) ->    77 mm  64%
+   L15        L15          11   18       88 mm   55%   33%   rigid (  -14,   -31) ->    77 mm  64%
+   L16        L16          11   18       88 mm   55%   33%   rigid (  -14,   -31) ->    77 mm  64%
+   L17        L17          11   18       88 mm   55%   33%   rigid (  -14,   -31) ->    77 mm  64%
+   L18        L18          11   18       88 mm   55%   33%   rigid (  -14,   -31) ->    77 mm  64%
+   L19        L19          11   18       88 mm   55%   33%   rigid (  -14,   -31) ->    77 mm  64%
+   L20        L20          11   18       88 mm   55%   33%   rigid (  -14,   -31) ->    77 mm  64%
+   L10        L10          10   18      130 mm   30%   17%   rigid (    0,   -53) ->   137 mm  40%
+   L11        L11          10   18      130 mm   30%   17%   rigid (    0,   -53) ->   137 mm  40%
+   L12        L12          10   18      130 mm   30%   17%   rigid (    0,   -53) ->   137 mm  40%
+   L13        L13          10   18      130 mm   30%   17%   rigid (    0,   -53) ->   137 mm  40%
+   L6         L6           10   18      130 mm   40%   22%   rigid (    4,   -53) ->   137 mm  40%   beyond 4
+   L7         L7           10   18      130 mm   30%   17%   rigid (    0,   -53) ->   137 mm  40%
+   L8         L8           10   18      130 mm   30%   17%   rigid (    0,   -53) ->   137 mm  40%
+   L9         L9           10   18      130 mm   30%   17%   rigid (    0,   -53) ->   137 mm  40%
+against the plans' grid lines (within 50 mm; X / Y / an intersection): ours 4 / 24 / 0 of 556 (0% on an intersection); hers 4 / 39 / 0 of 870 (0%)
+ours with none of theirs within 300 mm, by section: KOR-C304.8x762 34, KOR-C914.4x1117.6 31, KOR-C304.8x1219.2 14, KOR-C406.4x609.6 12, KOR-C457.2x914.4 12, KOR-C508x762 9, KOR-C965.2x1117.6 9, KOR-C457.2x762 7 ...
+  of which 45 stand on a wall she modelled (a column to us, a pier to her): KOR-C914.4x1117.6 31, KOR-C965.2x1117.6 9, KOR-C304.8x558.8 1, KOR-C304.8x584.2 1, KOR-C406.4x482.6 1, KOR-C406.4x558.8 1, KOR-C965.2x1092.2 1
+theirs with none of ours within 300 mm, by their section: Ramp Transfer Beam 56, C12x60(c8ksi) 47, C12x30(c8ksi) 37, C16x48(c8ksi) 37, C12x48(c8ksi) 33, C12x96(c8ksi) 31, C20x30(c8ksi) 22, C18x48(c8ksi) 21 ...
+plates on the shared storeys: ours 510,530 sq ft, hers 560,266 (91%); storeys where ours is under half of hers: 0 (); ours over half again hers: 0
+slab thickness on the shared storeys (the thickness under most of the plate area, ours/hers in): 35 storeys both plate, 35 agree within half an inch (100%)
+openings on the shared storeys: ours 290 inside her footprint (1 beyond it, not judged), hers 154; ours with one of hers within 1.5 m 75 (26%); hers with one of ours 75 (49%)
+  ours she has not, by size: 0.5x1 m 66, 0.5x1.5 m 63, 1x1.5 m 36, 1x2 m 35, 2.5x2.5 m 4, 0.5x0.5 m 3, 0.5x2.5 m 2, 2.5x4.5 m 2 ...
+  hers we have not, by size: 0.5x2.5 m 68, 2.5x4 m 3, 17.5x19 m 2, 9x24.5 m 2, 1x2 m 1, 2.5x2.5 m 1, 7.5x17.5 m 1, 9x13 m 1
+  hers whose centre stands inside one of ours: 38 (25%)
+  hers we have, by centre or cover or as a void we carry no plate over: 76 of 154 (49%; by centre 75, by cover 38, off our plate 1)
+  note: frame from column registration, no shared grid labels (0 X / 0 Y): 186 of 572 of our columns within 100 mm of one of theirs after it
+  note: 16 of our columns stand beyond her model's footprint on their storey (more than 1.5 m past her outermost column) and are not judged: L1 7, L5 5, L6 4

@@ -1,0 +1,110 @@
+
+ETABS model takeoff - 2146 members priced (concrete in cubic yards, formwork in square feet).
+Concrete: 18,024.7 yd3   Reinforcing: 4,298,324 lb   Formwork: 751,526 ftý
+  13,878 ftý of openings deducted from the slabs they are cut in.
+
+Per storey - concrete is the model's own geometry; reinforcing is the calibrated density estimate:
+  L1
+     Slab     -         KOR-DEFAULT-CONCRETE   1,090.1 yd3    185,325 lb     25,821 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     637.1 yd3    181,564 lb     35,912 ftý
+     Column   -         KOR-DEFAULT-CONCRETE     124.6 yd3     87,211 lb      7,121 ftý
+  L10
+     Slab     -         KOR-DEFAULT-CONCRETE     327.0 yd3     55,583 lb     13,948 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     138.4 yd3     39,440 lb      5,181 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.2 yd3     30,928 lb      2,934 ftý
+  L11
+     Slab     -         KOR-DEFAULT-CONCRETE     326.0 yd3     55,428 lb     13,910 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     138.4 yd3     39,440 lb      5,181 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.2 yd3     30,951 lb      2,936 ftý
+  L12
+     Slab     -         KOR-DEFAULT-CONCRETE     327.0 yd3     55,583 lb     13,948 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     138.4 yd3     39,440 lb      5,181 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.2 yd3     30,928 lb      2,934 ftý
+  L13
+     Slab     -         KOR-DEFAULT-CONCRETE     326.0 yd3     55,428 lb     13,910 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     138.4 yd3     39,440 lb      5,181 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.2 yd3     30,951 lb      2,936 ftý
+  L14
+     Slab     -         KOR-DEFAULT-CONCRETE     327.0 yd3     55,583 lb     13,948 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     138.4 yd3     39,440 lb      5,181 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.2 yd3     30,928 lb      2,934 ftý
+  L15
+     Slab     -         KOR-DEFAULT-CONCRETE     326.0 yd3     55,428 lb     13,910 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     138.3 yd3     39,426 lb      5,179 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.2 yd3     30,941 lb      2,935 ftý
+  L16
+     Slab     -         KOR-DEFAULT-CONCRETE     327.0 yd3     55,583 lb     13,948 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     138.4 yd3     39,440 lb      5,181 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.2 yd3     30,928 lb      2,934 ftý
+  L17
+     Slab     -         KOR-DEFAULT-CONCRETE     326.0 yd3     55,428 lb     13,910 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     138.4 yd3     39,440 lb      5,181 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.2 yd3     30,951 lb      2,936 ftý
+  L18
+     Slab     -         KOR-DEFAULT-CONCRETE     327.0 yd3     55,583 lb     13,948 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     138.4 yd3     39,440 lb      5,181 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.2 yd3     30,928 lb      2,934 ftý
+  L19
+     Slab     -         KOR-DEFAULT-CONCRETE     469.1 yd3     79,749 lb     13,494 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     149.0 yd3     42,465 lb      5,547 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      46.6 yd3     32,605 lb      3,092 ftý
+  L2
+     Slab     -         KOR-DEFAULT-CONCRETE     615.6 yd3    104,645 lb     26,268 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     464.3 yd3    132,336 lb     21,473 ftý
+     Column   -         KOR-DEFAULT-CONCRETE     113.2 yd3     79,232 lb      7,931 ftý
+  L20
+     Wall     -         KOR-DEFAULT-CONCRETE     154.2 yd3     43,933 lb      9,896 ftý
+     Slab     -         KOR-DEFAULT-CONCRETE     127.9 yd3     21,748 lb      5,537 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      17.0 yd3     11,883 lb      1,261 ftý
+  L3
+     Slab     -         KOR-DEFAULT-CONCRETE     616.5 yd3    104,812 lb     26,290 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     190.5 yd3     54,289 lb      8,978 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      73.5 yd3     51,479 lb      5,496 ftý
+  L4
+     Slab     -         KOR-DEFAULT-CONCRETE     606.4 yd3    103,082 lb     25,833 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     209.2 yd3     59,620 lb     10,112 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      77.4 yd3     54,171 lb      5,787 ftý
+  L5
+     Slab     -         KOR-DEFAULT-CONCRETE     512.8 yd3     87,180 lb     17,525 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     207.3 yd3     59,081 lb     10,329 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      62.0 yd3     43,387 lb      4,431 ftý
+  L6
+     Slab     -         KOR-DEFAULT-CONCRETE     327.0 yd3     55,583 lb     13,948 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     171.3 yd3     48,824 lb      7,950 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.3 yd3     31,009 lb      2,939 ftý
+  L7
+     Slab     -         KOR-DEFAULT-CONCRETE     326.0 yd3     55,428 lb     13,910 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     138.4 yd3     39,440 lb      5,181 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.2 yd3     30,951 lb      2,936 ftý
+  L8
+     Slab     -         KOR-DEFAULT-CONCRETE     327.0 yd3     55,583 lb     13,948 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     138.4 yd3     39,440 lb      5,181 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.2 yd3     30,928 lb      2,934 ftý
+  L9
+     Slab     -         KOR-DEFAULT-CONCRETE     326.0 yd3     55,428 lb     13,910 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     138.4 yd3     39,440 lb      5,181 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      44.2 yd3     30,951 lb      2,936 ftý
+  P1
+     Slab     parking   KOR-DEFAULT-CONCRETE   1,084.3 yd3    184,325 lb     36,714 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     479.0 yd3    136,524 lb     27,228 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      91.8 yd3     64,293 lb      4,979 ftý
+  P2
+     Slab     parking   KOR-DEFAULT-CONCRETE   1,113.6 yd3    189,315 lb     37,820 ftý
+     Wall     -         KOR-DEFAULT-CONCRETE     501.0 yd3    142,782 lb     28,517 ftý
+     Column   -         KOR-DEFAULT-CONCRETE      88.8 yd3     62,177 lb      4,918 ftý
+  P3
+     Slab     parking   KOR-DEFAULT-CONCRETE   1,394.3 yd3    237,032 lb     39,168 ftý
+  ROOF
+     Wall     -         KOR-DEFAULT-CONCRETE      55.7 yd3     15,877 lb      4,622 ftý
+     Column   -         KOR-DEFAULT-CONCRETE       0.3 yd3        188 lb         48 ftý
+
+WHAT THESE NUMBERS REST ON - every inference, named:
+   [HEIGHT_FROM_STOREY] walls and columns are priced over the full rise from their own storey to the next floor above it. A member the drawings stop short of that floor is over-measured by the difference.
+   [WALL_VARIANT_UNSPLIT] shear and non-shear walls are not distinguished, so every wall takes the default reinforcing ratio. The generator gives every wall a pier label, so a pier cannot be used as evidence of a shear wall. Split by hand where it matters.
+   [SLAB_VARIANT_DEFAULTED] no roof or parkade word matched these storeys, so their slabs take the default reinforcing ratio rather than an occupancy one: L1, L10, L11, L12, L13, L14, L15, L16, L17, L18, L19, L2, L20, L3, L4, L5, L6, L7, L8, L9.
+
+NOT PRICED - 1 item(s), listed so nothing is silently dropped:
+   foundation x1
+      P3               -        footings, pile caps, piles and grade beams are below the lowest modelled storey and are not in an ETABS superstructure model. Quantify them by hand.
+
+  ->  C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/plates/c173-takeoff.xlsx

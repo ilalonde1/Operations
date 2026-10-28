@@ -1,0 +1,34 @@
+Step 183: a floor the drawing zones by thickness is modelled as its zones
+
+31065's L1 is a transfer floor: 900 over the west half, 500 north-centre, 600 in the east bays, 300 strips, each printed
+inside the zone it names, the zones divided by the floor's own pen, its walls and dashed lines. It was one 19,352 sq ft
+ring with four call-outs, refused, 12" throughout. It is now 900 13,276 / 600 4,482 / 500 2,433 / 300 3,787 sq ft
+(north and south towers together, with the south's 875), every call-out in its own zone - looked at on the drawing.
+
+How (docs/pdf-intake/step183-prediction.md):
+- Reader (PdfToSafe/SlabZones): each finished floor is cut - never re-derived - by its outline's solid pen (by length),
+  its walls' faces, and dashed runs joined in ANY direction, across a gap a word stands in and a stray dash past a
+  break, carried to the line they stop at; dashes along a grid axis in a pen not the grid's are offered too. A face
+  takes the call-out in it, a face printing nothing the nearest call-out, an island in one cell that cell's zone.
+  Written on their own layer, KOR_C_SLABZONE (DxfExporter.SlabZoneLayer).
+- Classifier: the zone layer is taken out at entry like the carried openings; at the end a floor its zones tile (two
+  or more, within 2%) CARRIES them (PlanLoop.Zones) - priced among the sheet's other plates and openings, a zone
+  printing nothing taking the nearest call-out. The floor stays one plate for every reader that asks where a floor is.
+- PlanGeometryTransform.Move carries the zones; the seam trim leaves them behind on purpose (said where).
+- Composer: every check on the floor whole; only the writing is per zone, each its own AREA and section.
+KOR_STEP183_OFF.
+
+Measured (frozen build, six sets on and off; by concrete VOLUME against the engineer's model - engineers overlay thicker
+plates - and by the drawing where the yardstick cannot judge): better 31065 L1, L5; 31130 L14 (9" field + 3,000 sq ft
+16", the engineer's 3,452), L20 (18" field, looked), L0/P1, L2; 31138 L2, L21. Follows the drawing where the engineer
+differs: 31065 L2 (three dashed 900 areas), 31202 L13 (8" field + three outlined 12" areas). OPEN: 31130 L16/L17 carry
+more 18" than the engineer's - to look at. 31168 not judged (its yardstick is this tool's output).
+Six faults this measurement found were fixed before commit, each now a test (prediction doc lists them); one rule tried
+and rejected (a mixed zone taking the floor's answer undid five true zones).
+Halifax (Virtual Drafter, Revit route): e2k and report byte-identical. Core fast 1,675 of 1,675; the step's tests 14 of 14,
+including a reflection guard naming PlanLoop's settable properties so the next one is carried or the test fails.
+Not covered: the 57-project corpus reach (gate owed); SixSetReadCacheTests failed once in one suite run and passed alone
+and in every suite since - not characterised.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

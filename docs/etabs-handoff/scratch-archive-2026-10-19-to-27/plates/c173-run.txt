@@ -1,0 +1,15 @@
+stickfile : 31065-01 - 2026-07-08 - 5380-Heather Street - Stickfile (up to SSI-04)-OAP.pdf
+job       : 31065-01
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\plates\c173
+rules     : KorStandards
+
+
+pages read: 73   plan sheets: 40   views written: 51
+storeys   : 25   with a floor: 23
+members   : 775 walls   1181 columns   56 floors
+
+  model   : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/plates/c173\out.e2k
+  report  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/plates/c173\report.txt
+  levels  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/plates/c173\levels.csv
+  sheets  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/plates/c173\sheets.csv
+  render  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/plates/c173\model.png

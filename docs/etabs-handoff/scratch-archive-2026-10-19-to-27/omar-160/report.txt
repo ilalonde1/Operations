@@ -1,0 +1,156 @@
+Storeys       : 43 storeys (P2 P1 B2 B1 L1 L2 L3 L4 L5 L6 L7 L8 L9 L10 L11 L12 L13 L14 L15 L16 L17 L18 L19 L20 L21 L22 L23 L24 L25 L26 L27 L28 L29 L30 L31 L32 L33 L34 L35 L36 L37 ROOF UPPER ROOF): 39 with a stated elevation, 4 named by plans only, 3 height(s) ASSUMED at the set's typical storey, 3050 mm
+Sheets read   : 13   placed: 13   set on the grid by name: 13
+Storeys built : 43   Walls: 651   Columns: 415   Floors: 43
+  - rules: all 52 read from KorStandards.
+  -    dxf.already-modelled-tolerance = 6 in [replay-verified, ETABS/e2k]
+  -    dxf.assign-diaphragms = 0 bool [engineer-confirmed, andrean]
+  -    dxf.assign-pier-labels = 1 bool [engineer-confirmed, andrean]
+  -    dxf.bridge-tolerance = 6 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.connect-walls = 1 bool [engineer-confirmed, DXF-to-ETABS/e2k]
+  -    dxf.dash-join-gap = 14 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.dash-offset-tolerance = 0.15 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.default-slab-thickness = 12 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.donor-plate-likeness-margin = 0.98 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.doubled-edge-coverage = 0.5 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.doubled-edge-parallel-ratio = 2 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.drawn-ring-beats-fill-fraction = 0.6 fraction [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.extend-limit = 0 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.flood-fill-bridge = 36 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.floor-from-perimeter-wall = 1 bool [replay-verified, DXF-to-ETABS]
+  -    dxf.include-floors = 1 bool [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.join-tolerance = 0.05 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.joint-merge-tolerance = 0.05 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-column-aspect = 3 ratio [replay-verified, ETABS/e2k]
+  -    dxf.max-column-size = 132 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-opening-span = 72 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-pier-thickness = 48 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-wall-thickness = 60 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-column-size = 6 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-floor-coverage = 0.6 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-opening-span = 24 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-panel-aspect = 1.2 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-panel-overlap = 12 in [replay-verified, Revit/dxf]
+  -    dxf.min-plate-area = 57600 sqin [replay-verified, Revit/dxf]
+  -    dxf.min-slab-area = 7200 sqin [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-wall-aspect = 2 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-wall-length = 48 in [engineer-confirmed, codex-audit]
+  -    dxf.min-wall-thickness = 6 in [replay-verified, DXF-to-ETABS]
+  -    dxf.opening-height = 88 in [replay-verified, ETABS/e2k]
+  -    dxf.outline-self-touch-tolerance = 0.05 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.pier-fill-ratio = 0.6 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.pour-strip-aspect = 10 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.pour-strip-min-length-mm = 10000 mm [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.recovered-outline-tolerance = 3 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.ring-on-plate-edge-fraction = 0.5 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.same-ground-area-tolerance = 0.02 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.same-ground-centre-tolerance = 24 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.self-touch-report-gap = 2 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.skip-members-already-modelled = 1 bool [engineer-confirmed, DXF-to-ETABS/e2k]
+  -    dxf.slab-callout-max-thickness = 120 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.slab-callout-min-thickness = 4 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.slab-chain-join-fraction = 0.1 fraction [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.spandrel-depth-ceiling = 60 in [engineer-confirmed, ETABS/e2k]
+  -    dxf.spandrel-depth-floor = 18 in [engineer-confirmed, ETABS/e2k]
+  -    dxf.storeys-at-one-level-gap = 12 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.unusual-wall-thickness = 24 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.wall-bridge-tolerance = 12 in [replay-verified, DXF-to-ETABS/e2k]
+  - 1 sheet(s) in the folder are not structural plans and were not read: A100_1_SITE PLAN.dxf [SITE PLAN]. Governed by dxf.non-structural-sheet-patterns.
+  - Facts are banked for job(s) 31168 (which storeys to join on a match line, how many slabs a storey carries) and this run is job 'unknown — no five-digit job number in the stick file, DXF folder, reference or output names; give --job': none of them applies.
+  - 12 sheet(s) named no axis the model names and were set where their columns and walls stand over members already placed: A102_1_LEVEL 1.dxf, A102_2_LEVEL 2.dxf, A103_1_LEVEL 3.dxf, A103_2_LEVEL 4.dxf, A104_1_LEVEL 5.dxf, A104_2_LEVEL 6.dxf, A106_1_LEVEL 36.dxf, A106_2_LEVEL 37.dxf, A107_1_LEVEL ROOF.dxf, A107_2_UPPER ROOF PLAN.dxf, A101_1_LEVEL B2.dxf, A101_2_LEVEL B1.dxf
+  - 13 of 13 sheet(s) set on this model's grid by the names of their axes, each in its own frame: A105_1_LEVEL 7-35 PLAN.dxf: the set names no grid: the plan placing the most storeys (29) stands in its own frame and the others are set on its members A102_1_LEVEL 1.dxf: set where 17 of its 35 columns and walls stand over members already placed (no axis named in common) A102_2_LEVEL 2.dxf: set where 34 of its 35 columns and walls stand over members already placed (no axis named in common) A103_1_LEVEL 3.dxf: set where 33 of its 34 columns and walls stand over members already placed (no axis named in common) A103_2_LEVEL 4.dxf: set where 30 of its 30 columns and walls stand over members already placed (no axis named in common) A104_1_LEVEL 5.dxf: set where 30 of its 30 columns and walls stand over members already placed (no axis named in common) A104_2_LEVEL 6.dxf: set where 30 of its 30 columns and walls stand over members already placed (no axis named in common) A106_1_LEVEL 36.dxf: set where 22 of its 34 columns and walls stand over members already placed (no axis named in common) A106_2_LEVEL 37.dxf: set where 22 of its 22 columns and walls stand over members already placed (no axis named in common) A107_1_LEVEL ROOF.dxf: set where 22 of its 22 columns and walls stand over members already placed (no axis named in common) A107_2_UPPER ROOF PLAN.dxf: set where 4 of its 4 columns and walls stand over members already placed (no axis named in common) A101_1_LEVEL B2.dxf: set where 19 of its 40 columns and walls stand over members already placed (no axis named in common) A101_2_LEVEL B1.dxf: set where 40 of its 40 columns and walls stand over members already placed (no axis named in common)
+  - 0 ring(s) inside another sheet's floor are not second floors; 10 wall(s) and 20 column(s) stand beyond every plate of their storey and were left in place. Each is listed below.
+  - L1: 9 of 21 wall(s) and 7 of 7 column(s) stand beyond every plate read for the storey - strays, or a floor the tool did not read whole; nothing removed. wall at (64,491, 38,989) on A102_1_LEVEL 1.dxf; wall at (60,043, 29,993) on A102_1_LEVEL 1.dxf; wall at (61,885, 28,465) on A102_1_LEVEL 1.dxf; wall at (60,043, 26,937) on A102_1_LEVEL 1.dxf; wall at (59,168, 19,763) on A102_1_LEVEL 1.dxf; wall at (59,175, 31,576) on A102_1_LEVEL 1.dxf; ...
+  - L6: 1 of 17 wall(s) and 7 of 10 column(s) stand beyond every plate read for the storey - strays, or a floor the tool did not read whole; nothing removed. wall at (61,109, 31,576) on A104_2_LEVEL 6.dxf; column at (64,059, 24,683) on A104_2_LEVEL 6.dxf; column at (55,228, 9,645) on A104_2_LEVEL 6.dxf; column at (58,828, 9,645) on A104_2_LEVEL 6.dxf; column at (64,338, 9,645) on A104_2_LEVEL 6.dxf; column at (62,529, 38,317) on A104_2_LEVEL 6.dxf; ...
+  - L37: 0 of 11 wall(s) and 6 of 10 column(s) stand beyond every plate read for the storey - strays, or a floor the tool did not read whole; nothing removed. column at (62,781, 31,530) on A106_2_LEVEL 37.dxf; column at (62,765, 24,663) on A106_2_LEVEL 37.dxf; column at (52,380, 44,603) on A106_2_LEVEL 37.dxf; column at (56,230, 44,603) on A106_2_LEVEL 37.dxf; column at (62,771, 44,603) on A106_2_LEVEL 37.dxf; column at (62,758, 38,317) on A106_2_LEVEL 37.dxf
+  - This job's own walls, measured off its drawings: median 609.6", 9 in 10 at or under 766.3", thickest 1117.6" (from 203 panels). Columns: median 914.4", thickest 1225.8".
+  - 12 wall(s) are thicker than 9 in 10 of the walls on this job's own drawings (over 766.3"): 1117.6" at (52050,14074), 1117.6" at (52050,14074), 777.9" at (55456,19763), 777.9" at (55456,19763), 777.9" at (55456,19763), …. Measured against two engineers' models, the drawings' own upper tenth is where the tool starts reading something other than a wall — a face paired across a void, or an outline that is not one member. Worth a look before the model is relied on.
+  - 11 double-height member(s) were modelled on both floors they pass, not only the floor above. A member standing on two storeys with one empty storey between them hangs from the upper one until the middle storey carries it too. Gaps wider than one storey were NOT filled — those are members the drawings did not give us, and are listed separately rather than invented.
+  - 967 column and wall object(s) were merged into the stack they belong to, so a member running through several floors now carries ONE label its whole height with a separate member between each pair of floors. Each storey is read from its own drawing, so each used to arrive as a differently named object — a single column reading C360, C359, C363 up the building. This is the convention your own 31138 model uses: one object, an assign per storey, the section carried on the assign so a column may still change size as it rises.
+  - A101_1_LEVEL B2.dxf: KOR_C_SLABEDG: closed ring of 57 sq ft on its own — too small for a floor plate and not inside one, so it is linework rather than slab; not modelled.
+  - A101_1_LEVEL B2.dxf: KOR_C_SLABEDG: closed ring of 45 sq ft on its own — too small for a floor plate and not inside one, so it is linework rather than slab; not modelled.
+  - A101_1_LEVEL B2.dxf: Slab edges did not close as vectors, so one floor plate was recovered by flood-filling the drawn slab-edge linework — 269,677 sq ft in 4 corners. Treat as recovered geometry. Read from KOR_C_SLABEDG alone.
+  - A101_1_LEVEL B2.dxf: 1 slab ring(s) totalling 418 sq ft stand inside the 5,328 sq ft ring the perimeter walls close, and are its interior; the floor is the walls' outer edge.
+  - A101_1_LEVEL B2.dxf: No slab edge on this drawing would close, so the floor is taken from the inside face of the perimeter wall — 5,328 sq ft, one outline, one thickness. It is an approximation offered because a storey with no plate has no diaphragm at all.
+  - A101_1_LEVEL B2.dxf: 7 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.
+  - A101_2_LEVEL B1.dxf: KOR_C_SLABEDG: closed ring of 117 sq ft on its own — too small for a floor plate and not inside one, so it is linework rather than slab; not modelled.
+  - A101_2_LEVEL B1.dxf: KOR_C_SLABEDG: closed ring of 57 sq ft on its own — too small for a floor plate and not inside one, so it is linework rather than slab; not modelled.
+  - A101_2_LEVEL B1.dxf: KOR_C_SLABEDG: closed ring of 45 sq ft on its own — too small for a floor plate and not inside one, so it is linework rather than slab; not modelled.
+  - A101_2_LEVEL B1.dxf: Slab edges did not close as vectors, so one floor plate was recovered by flood-filling the drawn slab-edge linework — 281,935 sq ft in 4 corners. Treat as recovered geometry. Read from KOR_C_SLABEDG alone.
+  - A101_2_LEVEL B1.dxf: 1 slab ring(s) totalling 437 sq ft stand inside the 5,328 sq ft ring the perimeter walls close, and are its interior; the floor is the walls' outer edge.
+  - A101_2_LEVEL B1.dxf: No slab edge on this drawing would close, so the floor is taken from the inside face of the perimeter wall — 5,328 sq ft, one outline, one thickness. It is an approximation offered because a storey with no plate has no diaphragm at all.
+  - A101_2_LEVEL B1.dxf: 7 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.
+  - A102_1_LEVEL 1.dxf: a floor plate of 189 sq ft lies over one of 481 sq ft already read on this storey and was not modelled — two readings of one floor, not two floors. The larger is kept. TO FIX: nothing, unless the storey genuinely carries two overlapping slabs at different levels — say so in the workbook and both are kept for this job.
+  - A102_1_LEVEL 1.dxf: a floor plate of 57 sq ft lies over one of 481 sq ft already read on this storey and was not modelled — two readings of one floor, not two floors. The larger is kept. TO FIX: nothing, unless the storey genuinely carries two overlapping slabs at different levels — say so in the workbook and both are kept for this job.
+  - A102_1_LEVEL 1.dxf: a floor plate of 57 sq ft lies over one of 354 sq ft already read on this storey and was not modelled — two readings of one floor, not two floors. The larger is kept. TO FIX: nothing, unless the storey genuinely carries two overlapping slabs at different levels — say so in the workbook and both are kept for this job.
+  - A102_1_LEVEL 1.dxf: a floor plate of 45 sq ft lies over one of 481 sq ft already read on this storey and was not modelled — two readings of one floor, not two floors. The larger is kept. TO FIX: nothing, unless the storey genuinely carries two overlapping slabs at different levels — say so in the workbook and both are kept for this job.
+  - A102_1_LEVEL 1.dxf: KOR_C_SLABEDG-MARKUP: closed ring of 354 sq ft on its own — too small for a floor plate and not inside one, so it is linework rather than slab; not modelled.
+  - A102_1_LEVEL 1.dxf: 7 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.
+  - A102_2_LEVEL 2.dxf: an opening of 249,390 sq ft on L2 was NOT cut - a column stands in it; an X or a ring round a column marks the column (a footing, a drop, a bay), not a hole
+  - A102_2_LEVEL 2.dxf: 5 edge(s) were drawn more than once on the same layer family and were read once.
+  - A102_2_LEVEL 2.dxf: walls: 5 outline(s) would not close; 12 wall panel(s) read from them anyway (110453 units of edge).
+  - A102_2_LEVEL 2.dxf: KOR_C_SLABEDG-MARKUP: an opening of 405 sq ft cut from a floor of 4,957 sq ft, its edge 4030 in inside — check it is a hole and not the inner face of the edge.
+  - A102_2_LEVEL 2.dxf: KOR_C_SLABEDG-MARKUP: an opening of 387 sq ft cut from a floor of 4,957 sq ft, its edge 6596 in inside — check it is a hole and not the inner face of the edge.
+  - A102_2_LEVEL 2.dxf: KOR_C_SLABEDG-MARKUP: an opening of 267 sq ft cut from a floor of 4,957 sq ft, its edge 7214 in inside — check it is a hole and not the inner face of the edge.
+  - A102_2_LEVEL 2.dxf: KOR_C_SLABEDG: an opening of 57 sq ft cut from a floor of 4,957 sq ft, its edge 8530 in inside — check it is a hole and not the inner face of the edge.
+  - A102_2_LEVEL 2.dxf: KOR_C_SLABEDG: an opening of 45 sq ft cut from a floor of 4,957 sq ft, its edge 8638 in inside — check it is a hole and not the inner face of the edge.
+  - A102_2_LEVEL 2.dxf: 10 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.
+  - A103_1_LEVEL 3.dxf: 4 edge(s) were drawn more than once on the same layer family and were read once.
+  - A103_1_LEVEL 3.dxf: walls: 5 outline(s) would not close; 3 wall panel(s) read from them anyway (17317 units of edge).
+  - A103_1_LEVEL 3.dxf: KOR_C_SLABEDG: an opening of 57 sq ft cut from a floor of 4,957 sq ft, its edge 8530 in inside — check it is a hole and not the inner face of the edge.
+  - A103_1_LEVEL 3.dxf: KOR_C_SLABEDG: an opening of 45 sq ft cut from a floor of 4,957 sq ft, its edge 8638 in inside — check it is a hole and not the inner face of the edge.
+  - A103_1_LEVEL 3.dxf: 10 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.
+  - A103_2_LEVEL 4.dxf: 5 edge(s) were drawn more than once on the same layer family and were read once.
+  - A103_2_LEVEL 4.dxf: walls: 5 outline(s) would not close; 3 wall panel(s) read from them anyway (16707 units of edge).
+  - A103_2_LEVEL 4.dxf: KOR_C_SLABEDG: an opening of 57 sq ft cut from a floor of 4,957 sq ft, its edge 8530 in inside — check it is a hole and not the inner face of the edge.
+  - A103_2_LEVEL 4.dxf: KOR_C_SLABEDG: an opening of 45 sq ft cut from a floor of 4,957 sq ft, its edge 8638 in inside — check it is a hole and not the inner face of the edge.
+  - A103_2_LEVEL 4.dxf: 10 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.
+  - A104_1_LEVEL 5.dxf: 5 edge(s) were drawn more than once on the same layer family and were read once.
+  - A104_1_LEVEL 5.dxf: walls: 5 outline(s) would not close; 16 wall panel(s) read from them anyway (129726 units of edge).
+  - A104_1_LEVEL 5.dxf: KOR_C_SLABEDG: an opening of 57 sq ft cut from a floor of 4,957 sq ft, its edge 8530 in inside — check it is a hole and not the inner face of the edge.
+  - A104_1_LEVEL 5.dxf: KOR_C_SLABEDG: an opening of 45 sq ft cut from a floor of 4,957 sq ft, its edge 8638 in inside — check it is a hole and not the inner face of the edge.
+  - A104_1_LEVEL 5.dxf: 10 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.
+  - A104_2_LEVEL 6.dxf: 5 edge(s) were drawn more than once on the same layer family and were read once.
+  - A104_2_LEVEL 6.dxf: walls: 5 outline(s) would not close; 3 wall panel(s) read from them anyway (16707 units of edge).
+  - A104_2_LEVEL 6.dxf: KOR_C_SLABEDG: an opening of 57 sq ft cut from a floor of 3,100 sq ft, its edge 5627 in inside — check it is a hole and not the inner face of the edge.
+  - A104_2_LEVEL 6.dxf: KOR_C_SLABEDG: an opening of 45 sq ft cut from a floor of 3,100 sq ft, its edge 5710 in inside — check it is a hole and not the inner face of the edge.
+  - A104_2_LEVEL 6.dxf: 10 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.
+  - A105_1_LEVEL 7-35 PLAN.dxf: 5 edge(s) were drawn more than once on the same layer family and were read once.
+  - A105_1_LEVEL 7-35 PLAN.dxf: walls: 5 outline(s) would not close; 12 wall panel(s) read from them anyway (110453 units of edge).
+  - A105_1_LEVEL 7-35 PLAN.dxf: KOR_C_SLABEDG: an opening of 45 sq ft cut from a floor of 4,852 sq ft, its edge 8454 in inside — check it is a hole and not the inner face of the edge.
+  - A105_1_LEVEL 7-35 PLAN.dxf: 10 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.
+  - A106_1_LEVEL 36.dxf: an opening of 75,336 sq ft on L36 was NOT cut - a column stands in it; an X or a ring round a column marks the column (a footing, a drop, a bay), not a hole
+  - A106_1_LEVEL 36.dxf: 1 edge(s) were drawn more than once on the same layer family and were read once.
+  - A106_1_LEVEL 36.dxf: 1 further outline(s) closed at the interruption width but carry no slab thickness call-out inside them, so they were NOT modelled as floors. Nothing was invented where the drawing does not say what the shape is.
+  - A106_1_LEVEL 36.dxf: KOR_C_SLABEDG-MARKUP: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (11 sq ft + 19 sq ft).
+  - A106_1_LEVEL 36.dxf: KOR_C_SLABEDG-MARKUP: an opening of 117 sq ft cut from a floor of 4,950 sq ft, its edge 7843 in inside — check it is a hole and not the inner face of the edge.
+  - A106_1_LEVEL 36.dxf: KOR_C_SLABEDG: an opening of 57 sq ft cut from a floor of 4,950 sq ft, its edge 8523 in inside — check it is a hole and not the inner face of the edge.
+  - A106_1_LEVEL 36.dxf: KOR_C_SLABEDG: an opening of 45 sq ft cut from a floor of 4,950 sq ft, its edge 8631 in inside — check it is a hole and not the inner face of the edge.
+  - A106_1_LEVEL 36.dxf: KOR_C_SLABEDG-MARKUP: an opening of 19 sq ft cut from a floor of 4,950 sq ft, its edge 8761 in inside — check it is a hole and not the inner face of the edge.
+  - A106_1_LEVEL 36.dxf: KOR_C_SLABEDG-MARKUP: an opening of 17 sq ft cut from a floor of 4,950 sq ft, its edge 8815 in inside — check it is a hole and not the inner face of the edge.
+  - A106_1_LEVEL 36.dxf: KOR_C_SLABEDG-MARKUP: an opening of 12 sq ft cut from a floor of 4,950 sq ft, its edge 8963 in inside — check it is a hole and not the inner face of the edge.
+  - A106_1_LEVEL 36.dxf: KOR_C_SLABEDG-MARKUP: an opening of 11 sq ft cut from a floor of 4,950 sq ft, its edge 9007 in inside — check it is a hole and not the inner face of the edge.
+  - A106_1_LEVEL 36.dxf: 4 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.
+  - A106_2_LEVEL 37.dxf: KOR_C_SLABEDG: an opening of 94 sq ft cut from a floor of 2,880 sq ft, its edge 5184 in inside — check it is a hole and not the inner face of the edge.
+  - A106_2_LEVEL 37.dxf: KOR_C_SLABEDG: an opening of 57 sq ft cut from a floor of 2,880 sq ft, its edge 5722 in inside — check it is a hole and not the inner face of the edge.
+  - A106_2_LEVEL 37.dxf: KOR_C_SLABEDG: an opening of 45 sq ft cut from a floor of 2,880 sq ft, its edge 5814 in inside — check it is a hole and not the inner face of the edge.
+  - A106_2_LEVEL 37.dxf: 4 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.
+  - A107_1_LEVEL ROOF.dxf: 2 element(s) under 1219" long and joined to no other wall were modelled as columns. Short faces that form part of a core stay walls.
+  - A107_2_UPPER ROOF PLAN.dxf: 1 edge(s) were drawn more than once on the same layer family and were read once.
+  - A107_2_UPPER ROOF PLAN.dxf: slab edges: CANDIDATE NOT MODELLED — a region of 2,518 sq ft at (3930, 2181) ft, with no slab thickness printed inside it and none this sheet has proved on an outline that closed — so nothing on the drawing says this region is a floor. If this is a floor, say so and it is read from here on.
+  - A107_2_UPPER ROOF PLAN.dxf: slab edges: 1 outline(s) would not close (72106 units of edge ignored).
+  - A107_2_UPPER ROOF PLAN.dxf: KOR_C_SLABEDG-MARKUP: closed ring of 390 sq ft on its own — too small for a floor plate and not inside one, so it is linework rather than slab; not modelled.
+  - A107_2_UPPER ROOF PLAN.dxf: Slab edges did not close as vectors, so one floor plate was recovered by flood-filling the drawn slab-edge linework — 2,000,964 sq ft in 10 corners. Treat as recovered geometry. Read from KOR_C_SLABEDG-MARKUP alone.
+  - Slab thickness is ASSUMED, not read: every one of the 43 floor plate(s) in this model is 12" thick because this tool does not yet read a thickness tag off a drawing. It is the engineer's default, given for exactly this case, and it is applied everywhere rather than only where a tag is missing — so no plate in this model has a thickness that came from the drawings. Storeys affected: B2, P2, B1, P1, L1, L2, L3, L4, L5, L6, L35, L34, L33, L32, L31, L30, L29, L28, L27, L26, L25, L24, L23, L22, L21, L20, L19, L18, L17, L16, L15, L14, L13, L12, L11, L10, L9, L8, L7, L36, L37, ROOF, UPPER ROOF.
+  - 2 shaft or stair opening(s) were not cut, because the storey they are drawn on has no floor plate to cut them from. They come back with the plate.
+  - 10 member(s) were drawn on a sheet in a place another sheet had already filled, and were not added a second time — ROOF (6), UPPER ROOF (4). Where a storey shows more members drawn than modelled, this is why.
+  - 7 generated column section(s) are wider than 48" on both faces (305x762, 305x838, 356x914, 432x762, 457x457, 457x1067, 610x1219). A column that wide is more likely a wall or a pier; worth a look at those locations.
+  - KOR_V-WALL-MARKUP -> walls (1,082 segments)
+  - KOR_C_SLABEDG -> slab edges (264 segments)
+  - KOR_C_SLABEDG-MARKUP -> slab edges (235 segments)
+  - KOR_V_COL-MARKUP -> columns (100 segments)
+  - BEAM-MARKUP carries 32 segments and names a member this tool does not model. Nothing from it is in the model — those members are yours.
+  - read and ignored, on no structural layer: 32 segments across 1 layer(s) — BEAM-MARKUP (32)
+  - opening height: 88, the standing value — the reference model has only 0 spandrel(s) to measure, so the standing value stands.
+  - column slenderness: 3, the standing value — the reference model uses only 0 rectangular concrete column section(s), which is too few to read a limit from.
+  - 1 storey(s) have floor plate(s), but most of their walls and columns stand outside every plate on the floor: L1. This is measured from the finished file after cuts; it is a partial-coverage warning, not a no-diaphragm count.
+  - 1 storey(s) carry a floor plate with no wall or column beneath it: P2. The plan placed there draws no vertical structure, so either the structure stops below that level or another sheet holds it.

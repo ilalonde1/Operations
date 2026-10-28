@@ -1,0 +1,9 @@
+Test run for C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+WARNING: Overwriting results file: C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\baseline\core-fast.trx
+Results File: C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\baseline\core-fast.trx
+
+Passed!  - Failed:     0, Passed:  1623, Skipped:     0, Total:  1623, Duration: 19 s - Kor.Operations.EngineeringTools.Core.Tests.dll (net8.0)

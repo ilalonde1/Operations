@@ -1,0 +1,5 @@
+started 2026-10-19T20:08:27
+31130-01  KOR_STEP149_OFF  exit 0  149s  -> plates moved 0, columns lost 0 / gained 1, walls lost 1 / gained 0
+31130-01  KOR_STEP150_OFF  exit 0  148s  -> plates moved 0, columns lost 0 / gained 1, walls lost 1 / gained 0
+31130-01  KOR_STEP154_OFF  exit 0  146s  -> byte-identical
+31202-01  KOR_STEP149_OFF  exit 0  291s  -> plates moved 0, columns lost 0 / gained 0, walls lost 1 / gained 2

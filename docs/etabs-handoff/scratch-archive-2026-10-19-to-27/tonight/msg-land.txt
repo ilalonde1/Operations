@@ -1,0 +1,16 @@
+Step 170: a stroke continuing a kept edge in line is offered whole - 31168 C-L3's floor back to its outline (landed from e0fe5872)
+
+f5a74e04's drawn-twice rule offered only the stretch of a stroke past a kept edge it OVERLAPS; a stroke continuing a kept edge
+end to end overlaps nothing and was dropped, so 31168 building C level 3 (S2.40.1) lost its outline's east side - the ring
+open 25 in, the floor 23,199 -> 11,885 sq ft, 6 columns on no floor. The rule is GeometryFilterService.
+StretchesNoKeptEdgeCovers, with ALineDrawnTwiceOffersTheStretchNoKeptEdgeCoversTests (red without the continuation clause,
+1 of 5; green 5 of 5).
+
+Gates (on 506be566; develop's code unchanged since): Core fast 1,692/1,692; Halifax 1898f6b4 identical; six sets: 31168 C-L3
+and 31130 L15 fixed (looked at), 31065 identical, small re-splits on 31202; 31170-arch L5 gains a part-plan plate over its floor
+- landed under the existing policy ("left as read for the engineer", as its L1 and L6 already are), by operations-ee's decision
+(A): storey_plate_overlap.py counts 18 pairs on the six sets without this, 19 with (the 1: L5, 79% inside, 1,705 sq ft past).
+Whether a storey's plates may overlap is (B), Ian's and Griffin's.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

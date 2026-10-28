@@ -1,0 +1,95 @@
+Test run for C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:01.20]     Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays [411 ms]
+  Error Message:
+   clauses written from memory more than thirty days ago and never read from the source - run takeoff knowledge-ingest on KOR's copy: NBC-2020 9.8.2.1 stair-width-min-dwelling (written 2026-09-16); NBC-2020 9.8.2.1 stair-width-min-other (written 2026-09-16); NBC-2020 9.8.4.1 stair-rise-max (written 2026-09-16); NBC-2020 9.8.4.1 stair-rise-min (written 2026-09-16); NBC-2020 9.8.4.2 stair-run-min (written 2026-09-16); NBC-2020 9.8.4.2 stair-run-max (written 2026-09-16)
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Rules\EveryRuleCitesItsAuthorityTests.cs:line 61
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:02:49.53]     Kor.Operations.EngineeringTools.Core.Tests.LiveProjectBaselineTests.TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.LiveProjectBaselineTests.TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [17 s]
+  Error Message:
+   31138 2170 W 1st walls: expected about 204 (±21), got 228.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.LiveProjectBaselineTests.AssertWithin(Int32 expected, Int32 actual, String what) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\LiveProjectBaselineTests.cs:line 196
+   at Kor.Operations.EngineeringTools.Core.Tests.LiveProjectBaselineTests.TheModelStillCarriesTheSameStructure(String name) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\LiveProjectBaselineTests.cs:line 213
+   at InvokeStub_LiveProjectBaselineTests.TheModelStillCarriesTheSameStructure(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+[xUnit.net 00:11:18.74]     Kor.Operations.EngineeringTools.Core.Tests.ShippedModelsAgreeWithEachOtherTests.TheModelsThisCodeBuildsNowAgreeBeforeAnyOfItShips [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.ShippedModelsAgreeWithEachOtherTests.TheModelsThisCodeBuildsNowAgreeBeforeAnyOfItShips [1 m]
+  Error Message:
+   System.InvalidOperationException : KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 321
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 802
+   at Kor.Operations.EngineeringTools.Core.Tests.ShippedModelsAgreeWithEachOtherTests.<TheModelsThisCodeBuildsNowAgreeBeforeAnyOfItShips>g__Build|24_1(String tower, IReadOnlyList`1 drop, <>c__DisplayClass24_0&) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ShippedModelsAgreeWithEachOtherTests.cs:line 461
+   at Kor.Operations.EngineeringTools.Core.Tests.ShippedModelsAgreeWithEachOtherTests.TheModelsThisCodeBuildsNowAgreeBeforeAnyOfItShips() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ShippedModelsAgreeWithEachOtherTests.cs:line 478
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:11:19.13]     Kor.Operations.EngineeringTools.Core.Tests.StackMergeChangesNothingButLabelsTests.TheBuildingIsTheSameWhicheverWayItIsLabelled(name: "31138 2170 W 1st") [FAIL]
+[xUnit.net 00:11:19.28]     Kor.Operations.EngineeringTools.Core.Tests.StackMergeChangesNothingButLabelsTests.TheBuildingIsTheSameWhicheverWayItIsLabelled(name: "31168 YMCA Langara") [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.StackMergeChangesNothingButLabelsTests.TheBuildingIsTheSameWhicheverWayItIsLabelled(name: "31138 2170 W 1st") [393 ms]
+  Error Message:
+   System.InvalidOperationException : KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 321
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 802
+   at Kor.Operations.EngineeringTools.Core.Tests.StackMergeChangesNothingButLabelsTests.BuildOrSkip(Project project, Boolean merge) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\StackMergeChangesNothingButLabelsTests.cs:line 80
+   at Kor.Operations.EngineeringTools.Core.Tests.StackMergeChangesNothingButLabelsTests.TheBuildingIsTheSameWhicheverWayItIsLabelled(String name) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\StackMergeChangesNothingButLabelsTests.cs:line 160
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+  Failed Kor.Operations.EngineeringTools.Core.Tests.StackMergeChangesNothingButLabelsTests.TheBuildingIsTheSameWhicheverWayItIsLabelled(name: "31168 YMCA Langara") [143 ms]
+  Error Message:
+   System.InvalidOperationException : KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 321
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 802
+   at Kor.Operations.EngineeringTools.Core.Tests.StackMergeChangesNothingButLabelsTests.BuildOrSkip(Project project, Boolean merge) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\StackMergeChangesNothingButLabelsTests.cs:line 80
+   at Kor.Operations.EngineeringTools.Core.Tests.StackMergeChangesNothingButLabelsTests.TheBuildingIsTheSameWhicheverWayItIsLabelled(String name) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\StackMergeChangesNothingButLabelsTests.cs:line 160
+   at InvokeStub_StackMergeChangesNothingButLabelsTests.TheBuildingIsTheSameWhicheverWayItIsLabelled(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+[xUnit.net 00:11:19.49]     Kor.Operations.EngineeringTools.Core.Tests.Rules.AnAnsweredQuestionChangesTheNextModelTests.HerAnswerMovesTheDrawingAndWithdrawingItPutsItBack [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Rules.AnAnsweredQuestionChangesTheNextModelTests.HerAnswerMovesTheDrawingAndWithdrawingItPutsItBack [171 ms]
+  Error Message:
+   System.InvalidOperationException : KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 321
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 802
+   at Kor.Operations.EngineeringTools.Core.Tests.Rules.AnAnsweredQuestionChangesTheNextModelTests.Build(String drawings, String reference) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Rules\AnAnsweredQuestionChangesTheNextModelTests.cs:line 129
+   at Kor.Operations.EngineeringTools.Core.Tests.Rules.AnAnsweredQuestionChangesTheNextModelTests.HerAnswerMovesTheDrawingAndWithdrawingItPutsItBack() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Rules\AnAnsweredQuestionChangesTheNextModelTests.cs:line 98
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:38:22.24]     Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline [26 m 57 s]
+  Error Message:
+   The six-set gate: these sets no longer build byte-identical to their baselines. Look at what moved (TestResults/six-sets/<job>-diff.txt, and render both models), then either fix the rule or bank the new models by replacing Baselines/pdf-only-<job>.e2k in the same commit:
+  31130-01: no model: InvalidOperationException: KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+  31138-01: no model: InvalidOperationException: KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+  31065-01: no model: InvalidOperationException: KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+  31202-01: no model: InvalidOperationException: KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+  31168-01: no model: InvalidOperationException: KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+  31170-01-arch: no model: InvalidOperationException: KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Intake\SixSetsBuildAsBankedTests.cs:line 172
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Standard Output Messages:
+ 31130-01: read (manifest changed: reader source or options)
+ 31130-01: no model: InvalidOperationException: KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+ 31138-01: read (manifest changed: reader source or options)
+ 31138-01: no model: InvalidOperationException: KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+ 31065-01: read (manifest changed: reader source or options)
+ 31065-01: no model: InvalidOperationException: KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+ 31202-01: read (manifest changed: reader source or options)
+ 31202-01: no model: InvalidOperationException: KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+ 31168-01: read (manifest changed: reader source or options)
+ 31168-01: no model: InvalidOperationException: KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+ 31170-01-arch: read (manifest changed: reader source or options)
+ 31170-01-arch: no model: InvalidOperationException: KorStandards rule settings could not be read: drafting.cover-sheet.numbering='top-to-bottom; columns right-to-left; same on every sheet size'; drafting.cover-sheet.label-by-kind='general-note: numbered heading, no bubble; typical: bubble label; never mixed on one sheet'; drafting.detail-title.on-sheet='title = the drawing title; catalogue number on the line below, small, non-printing'; drafting.cover-sheet.size='the largest title block in the office template'
+
+

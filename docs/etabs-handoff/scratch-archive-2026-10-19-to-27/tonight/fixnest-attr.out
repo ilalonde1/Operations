@@ -1,0 +1,78 @@
+TABLE - storeys that differ between 86a2e160 (base) and fixnest
+31130-01       L1         first fixnest   thickness 14"/12"->14"/12"   [hers plate 55,644]
+                          NET thickness 14"/12"->14"/12"   moved at: fixnest
+                          thickness  base 14":31,835 12":1,275 | last 14":31,831 12":1,280 | hers 14":50,361 36":4,230 40":630 80":271 20":153
+31130-01       L19        first fixnest   thickness 9"/14"->9"/14"   [hers plate -]
+                          NET thickness 9"/14"->9"/14"   moved at: fixnest
+                          thickness  base 9":9,211 14":220 | last 9":4,987 14":4,444 | hers -
+31130-01       L1M        first fixnest   thickness 14"/12"->14"/12"   [hers plate -]
+                          NET thickness 14"/12"->14"/12"   moved at: fixnest
+                          thickness  base 14":31,835 12":1,275 | last 14":31,831 12":1,280 | hers -
+31130-01       L0/P1      first fixnest   thickness 10"/12"->10"/12"   [hers plate -]
+                          NET thickness 10"/12"->10"/12"   moved at: fixnest
+                          thickness  base 10":46,250 12":7,185 | last 10":46,480 12":6,955 | hers -
+31138-01       L2         first fixnest   thickness 46"/24"->24"/46"   [hers plate 21,676]
+                          NET thickness 46"/24"->24"/46"   moved at: fixnest
+                          thickness  base 46":4,730 24":4,060 52":978 12":958 42":646 8":595 14":340 | last 24":4,060 46":3,772 52":1,935 12":958 42":646 8":595 14":340 | hers 24":12,417 46":4,491 52":1,855 36":1,665 8":933 72":314
+31138-01       L5         first fixnest   thickness 8"/12"->8"/12"   [hers plate 17,497]
+                          NET thickness 8"/12"->8"/12"   moved at: fixnest
+                          thickness  base 8":10,224 12":2,461 | last 8":10,128 12":2,557 | hers 8":12,756 12":4,313 22":428
+31138-01       P1         first fixnest   thickness 10"/12"->10"/12"   [hers plate 18,450]
+                          NET thickness 10"/12"->10"/12"   moved at: fixnest
+                          thickness  base 10":18,241 12":176 | last 10":14,897 12":3,519 | hers 10":18,450
+31138-01       L21        first fixnest   thickness 24"/8"->12"/8"   [hers plate 15,825]
+                          NET thickness 24"/8"->12"/8"   moved at: fixnest
+                          thickness  base 24":7,215 8":2,188 12":105 | last 12":3,554 8":3,006 24":2,947 | hers 8":9,524 12":3,614 24":2,613 40":74
+31065-01       L1         first fixnest   thickness 35.4"/34.4"->35.4"/34.4"   [hers plate 58,968]
+                          NET thickness 35.4"/34.4"->35.4"/34.4"   moved at: fixnest
+                          thickness  base 35.4":12,011 34.4":8,450 23.6":4,478 11.8":3,680 19.7":2,433 12":908 24.6":833 | last 35.4":11,591 34.4":8,359 23.6":4,478 11.8":4,192 19.7":2,433 12":908 24.6":833 | hers 35.4":37,540 11.8":9,120 19.7":5,191 76.6":1,711 40.9":1,044 71.1":994 55.3":949 53":783 60.8":640 70.3":433 64.6":358 7.9":204
+31065-01       L4         first fixnest   thickness 7.9"->7.9"/11.8"   [hers plate 10,829]
+                          NET thickness 7.9"->7.9"/11.8"   moved at: fixnest
+                          thickness  base 7.9":25,525 | last 7.9":24,227 11.8":1,298 | hers 7.9":10,570 76.6":259
+31065-01       L5         first fixnest   thickness 7.9"/11.8"->7.9"/11.8"   [hers plate 10,870]
+                          NET thickness 7.9"/11.8"->7.9"/11.8"   moved at: fixnest
+                          thickness  base 7.9":15,210 11.8":2,148 | last 7.9":11,277 11.8":6,082 | hers 7.9":8,944 11.8":1,678 76.6":247
+31202-01       L5         first fixnest   thickness 12"/16"->12"/16"   [hers plate 50,753]
+                          NET thickness 12"/16"->12"/16"   moved at: fixnest
+                          thickness  base 12":35,126 16":842 | last 12":34,782 16":842 10.5":344 | hers 12":50,753
+31202-01       L13        first fixnest   thickness 8"/12"->8"/12"   [hers plate 44,553]
+                          NET thickness 8"/12"->8"/12"   moved at: fixnest
+                          thickness  base 8":19,610 12":8,738 | last 8":20,029 12":8,327 | hers 10":42,402 12":1,128 8":1,024
+31168-01       L2         first fixnest   thickness 12"/14"->12"/14"   [hers plate 36,784]
+                          NET thickness 12"/14"->12"/14"   moved at: fixnest
+                          thickness  base 12":31,119 14":10,391 18":3,266 48":1,511 36":1,381 30":457 | last 12":31,037 14":10,391 18":3,348 48":1,511 36":1,381 30":457 | hers 12":22,430 14":9,650 48":2,067 36":1,270 18":1,020 30":347
+31168-01       L3         first fixnest   thickness 10"->10"/66"   [hers plate -]
+                          NET thickness 10"->10"/66"   moved at: fixnest
+                          thickness  base 10":19,738 | last 10":12,883 66":3,432 60":3,423 | hers -
+31168-01       P1         first fixnest   thickness 10"/12"->10"/12"   [hers plate -]
+                          NET thickness 10"/12"->10"/12"   moved at: fixnest
+                          thickness  base 10":46,472 12":42,971 | last 10":44,920 12":44,523 | hers -
+31168-01       A-L1       first fixnest   thickness 14"/12"->14"/12"   [hers plate -]
+                          NET thickness 14"/12"->14"/12"   moved at: fixnest
+                          thickness  base 14":38,765 12":2,078 | last 14":38,762 12":2,081 | hers -
+31168-01       B-L39      first fixnest   thickness 12"->12"/8"   [hers plate -]
+                          NET thickness 12"->12"/8"   moved at: fixnest
+                          thickness  base 12":9,475 | last 12":4,738 8":4,737 | hers -
+
+18 storeys moved; 18 with a first commit, 0 NOT FOUND
+
+PER COMMIT - what it changed against the commit before:
+fixnest : 18 storey change(s)
+    31130-01 L1: thickness 14"/12"->14"/12" | hers 55,644
+    31130-01 L19: thickness 9"/14"->9"/14" | hers -
+    31130-01 L1M: thickness 14"/12"->14"/12" | hers -
+    31130-01 L0/P1: thickness 10"/12"->10"/12" | hers -
+    31138-01 L2: thickness 46"/24"->24"/46" | hers 21,676
+    31138-01 L5: thickness 8"/12"->8"/12" | hers 17,497
+    31138-01 P1: thickness 10"/12"->10"/12" | hers 18,450
+    31138-01 L21: thickness 24"/8"->12"/8" | hers 15,825
+    31065-01 L1: thickness 35.4"/34.4"->35.4"/34.4" | hers 58,968
+    31065-01 L4: thickness 7.9"->7.9"/11.8" | hers 10,829
+    31065-01 L5: thickness 7.9"/11.8"->7.9"/11.8" | hers 10,870
+    31202-01 L5: thickness 12"/16"->12"/16" | hers 50,753
+    31202-01 L13: thickness 8"/12"->8"/12" | hers 44,553
+    31168-01 L2: thickness 12"/14"->12"/14" | hers 36,784
+    31168-01 L3: thickness 10"->10"/66" | hers -
+    31168-01 P1: thickness 10"/12"->10"/12" | hers -
+    31168-01 A-L1: thickness 14"/12"->14"/12" | hers -
+    31168-01 B-L39: thickness 12"->12"/8" | hers -

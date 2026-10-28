@@ -1,0 +1,58 @@
+TABLE - storeys that differ between fixnest (base) and fixcont
+31130-01       L15        first fixcont   plate 18,878->20,236   [hers plate 10,435]
+                          NET plate 18,878->20,236   moved at: fixcont
+                          thickness  base 9":18,878 | last 9":20,236 | hers 9":10,334 80":100
+31138-01       L2         first fixcont   plate 12,307->12,492; members walls 1 cols 0   [hers plate 21,676]
+                          NET plate 12,307->12,492; members walls 1 cols 0   moved at: fixcont
+                          thickness  base 24":4,060 46":3,772 52":1,935 12":958 42":646 8":595 14":340 | last 24":4,129 46":3,772 52":1,948 12":958 42":827 8":595 14":262 | hers 24":12,417 46":4,491 52":1,855 36":1,665 8":933 72":314
+31202-01       L4         first fixcont   thickness 10"->10"   [hers plate 38,105]
+                          NET thickness 10"->10"   moved at: fixcont
+                          thickness  base 10":36,317 | last 10":36,323 | hers 10":38,105
+31202-01       L7         first fixcont   thickness 8"->8"   [hers plate 34,635]
+                          NET thickness 8"->8"   moved at: fixcont
+                          thickness  base 8":28,657 | last 8":28,921 | hers 8":34,635
+31202-01       L8         first fixcont   thickness 8"->8"   [hers plate 34,635]
+                          NET thickness 8"->8"   moved at: fixcont
+                          thickness  base 8":28,657 | last 8":28,921 | hers 8":34,635
+31202-01       L9         first fixcont   thickness 8"->8"   [hers plate 34,635]
+                          NET thickness 8"->8"   moved at: fixcont
+                          thickness  base 8":28,657 | last 8":28,921 | hers 8":34,635
+31202-01       L10        first fixcont   thickness 8"->8"   [hers plate 34,635]
+                          NET thickness 8"->8"   moved at: fixcont
+                          thickness  base 8":28,657 | last 8":28,921 | hers 8":34,635
+31202-01       L11        first fixcont   thickness 8"->8"   [hers plate 34,635]
+                          NET thickness 8"->8"   moved at: fixcont
+                          thickness  base 8":28,657 | last 8":28,921 | hers 8":34,635
+31202-01       L12        first fixcont   thickness 8"->8"   [hers plate 34,635]
+                          NET thickness 8"->8"   moved at: fixcont
+                          thickness  base 8":28,657 | last 8":28,921 | hers 8":34,635
+31202-01       L13        first fixcont   thickness 8"/12"->8"/12"   [hers plate 44,553]
+                          NET thickness 8"/12"->8"/12"   moved at: fixcont
+                          thickness  base 8":20,029 12":8,327 | last 8":20,179 12":8,339 | hers 10":42,402 12":1,128 8":1,024
+31168-01       C-L3       first fixcont   plate 11,885->23,199   [hers plate 31,473]
+                          NET plate 11,885->23,199   moved at: fixcont
+                          thickness  base 8":7,572 26":1,730 24":1,587 36":997 | last 24":10,526 8":7,457 26":3,312 36":978 14":926 | hers 14":22,663 24":5,179 36":2,966 30":666
+31170-01-arch  L1         first fixcont   thickness 12"->12"   [hers plate 31,891]
+                          NET thickness 12"->12"   moved at: fixcont
+                          thickness  base 12":39,907 | last 12":39,920 | hers 12":26,288 24":4,470 20":868 16":152 8":113
+31170-01-arch  L5         first fixcont   plate 32,076->40,320   [hers plate 21,149]
+                          NET plate 32,076->40,320   moved at: fixcont
+                          thickness  base 12":32,076 | last 12":40,320 | hers 7.5":18,542 10":2,209 18":398
+
+13 storeys moved; 13 with a first commit, 0 NOT FOUND
+
+PER COMMIT - what it changed against the commit before:
+fixcont : 13 storey change(s)
+    31130-01 L15: plate 18,878->20,236 | hers 10,435
+    31138-01 L2: plate 12,307->12,492; members walls 1 cols 0 | hers 21,676
+    31202-01 L4: thickness 10"->10" | hers 38,105
+    31202-01 L7: thickness 8"->8" | hers 34,635
+    31202-01 L8: thickness 8"->8" | hers 34,635
+    31202-01 L9: thickness 8"->8" | hers 34,635
+    31202-01 L10: thickness 8"->8" | hers 34,635
+    31202-01 L11: thickness 8"->8" | hers 34,635
+    31202-01 L12: thickness 8"->8" | hers 34,635
+    31202-01 L13: thickness 8"/12"->8"/12" | hers 44,553
+    31168-01 C-L3: plate 11,885->23,199 | hers 31,473
+    31170-01-arch L1: thickness 12"->12" | hers 31,891
+    31170-01-arch L5: plate 32,076->40,320 | hers 21,149

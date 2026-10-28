@@ -1,0 +1,5 @@
+stickfile : 31202-01 2026-09-04 Hotel Circle North StickSet  - FULL SET.pdf
+job       : 31202-01
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31202-01-KOR_STEP150_OFF
+rules     : KorStandards
+

@@ -1,0 +1,52 @@
+        // THE WHOLE RUN IS StickfileRun (Core, 2026-10-20), shared with the app's "Build whole building" button so
+        // the two cannot drift. This verb parses its arguments and prints.
+        var r = StickfileRun.Run(pdf, outDir, scale, job, rulesDb, first, last, questions, render);
+        var built = r.Built;
+
+        Console.WriteLine($"stickfile : {Path.GetFileName(pdf)}");
+        Console.WriteLine($"job       : {r.Job}");
+        Console.WriteLine($"out       : {Path.GetFullPath(outDir)}");
+        Console.WriteLine($"rules     : {r.RulesSource}");
+        Console.WriteLine();
+        if (r.ScaleAssumed) Console.WriteLine("scale     : not given; 96 assumed (1/8\" = 1'-0\"). Pass --scale if the set draws at another.");
+
+        Console.WriteLine();
+        Console.WriteLine($"pages read: {built.Pages}   plan sheets: {built.Sheets.Sheets.Count(s => s.IsPlan)}   views written: {built.Sheets.Written}");
+
+        if (built.Model is null)
+        {
+            Console.WriteLine();
+            Console.WriteLine("NO MODEL WAS BUILT.");
+            Console.WriteLine($"  {built.ModelError}");
+            Console.WriteLine();
+            Console.WriteLine($"  What was read is still here: {r.SheetsCsv} and {Path.Combine(outDir, "dxf")}.");
+            return 2;
+        }
+
+        var m = built.Model;
+        Console.WriteLine($"storeys   : {m.SavedModel.Storeys.Count}   with a floor: {m.PlatesByStorey.Count(p => p.Value > 0)}");
+        Console.WriteLine($"members   : {m.SavedModel.Walls} walls   {m.SavedModel.Columns} columns   {m.SavedModel.Floors} floors");
+        Console.WriteLine();
+        Console.WriteLine($"  model   : {built.OutputE2k}");
+        Console.WriteLine($"  report  : {Path.Combine(outDir, "report.txt")}");
+        Console.WriteLine($"  levels  : {Path.Combine(outDir, "levels.csv")}");
+        Console.WriteLine($"  sheets  : {r.SheetsCsv}");
+        if (questions)
+            Console.WriteLine(r.Questions is not null
+                ? $"  questions: {r.Questions}   ({r.OpenQuestions} waiting on the engineer)"
+                : $"  questions: not written - {r.QuestionsError}");
+        if (render)
+            Console.WriteLine(r.Png is not null ? $"  render  : {r.Png}" : $"  render  : not written - {r.RenderError}");
+
+        if (r.ReadFirst.Count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("READ THESE FIRST:");
+            foreach (string w in r.ReadFirst.Take(6))
+                Console.WriteLine("  - " + (w.Length > 300 ? w[..300] + " ..." : w));
+            if (r.ReadFirst.Count > 6) Console.WriteLine($"  ... and {r.ReadFirst.Count - 6} more in report.txt");
+        }
+
+        return 0;
+    }
+}

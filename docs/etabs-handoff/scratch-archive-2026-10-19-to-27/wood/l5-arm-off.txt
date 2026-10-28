@@ -1,0 +1,4 @@
+  - 4 storey(s) have floor plate(s), but most of their walls and columns stand outside every plate on the floor: L5, L3, L2, L1. This is measured from the finished file after cuts; it is a partial-coverage warning, not a no-diaphr
+  - L5: 22 of 23 wall(s) and 1 of 1 column(s) stand beyond every plate read for the storey - strays, or a floor the tool did not read whole; nothing removed. wall at (59,028, 45,108) on S2.09_1_LEVEL 5 PLAN SHOWING LEVEL 6 FRAMING
+  - Slab thickness still ASSUMED: 10 of 11 floor plate(s) use the engineer's default 12" because no thickness call-out is printed inside them on the drawing. Storeys affected: P2, L1, L2, L3, L4, L5, L6.
+Storeys       : 8 storeys (P2 P1 L1 L2 L3 L4 L5 L6): 0 with a stated elevation, 8 named by plans only, 7 height(s) ASSUMED at the assumed storey height, 3000 mm

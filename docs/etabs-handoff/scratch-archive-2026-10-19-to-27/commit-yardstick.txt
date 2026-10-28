@@ -1,0 +1,17 @@
+The engineer's model judges, not ours inside it: objects named as this tool names its own are left out of the yardstick
+
+Ian, 2026-10-25: "Or even worse if you're judging against the original projects we did which were Andrea's but not fully
+finished." Checked, all 59 yardsticks: 58 carry none of this tool's object names; 31168-01 (YMCA Langara) carries 302 of its
+438 objects as KC/KW/KF/... and 715 KOR- section references - an engineer's model built from our generated output.
+
+ModelYardstick.Compare (and so the corpus gate, which calls it) now leaves those objects and their assigns out of the
+yardstick and says how many in the comparison's notes. 31168 judged with them: 12 shared storeys, columns 84% within 100 mm,
+plates 83%, her openings 64 of 64. Without them: the engineer's own part of that file is one storey and one column - nothing
+shared to judge. Every earlier judgement on 31168 was largely this tool against itself.
+
+Also: the comparison's notes say "the engineer's model", not "her model" - the yardsticks are each job's own engineer's.
+New test ObjectsNamedAsThisToolNamesItsOwnAreLeftOutOfTheEngineersModel. Core fast 1,661 of 1,661.
+Not covered: an engineer's model that is simply unfinished - the files cannot say that; it is a question for the engineers.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

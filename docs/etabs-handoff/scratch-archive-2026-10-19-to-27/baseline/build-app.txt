@@ -1,0 +1,35 @@
+  Determining projects to restore...
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.Opportunities.Core\Kor.Opportunities.Core.csproj (in 82 ms).
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.NetworkOps.Core\Kor.Operations.NetworkOps.Core.csproj (in 83 ms).
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.Architecture\Kor.Operations.Architecture.csproj (in 343 ms).
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.Core\Kor.Operations.Core.csproj (in 352 ms).
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.EmailCommon\Kor.EmailCommon.csproj (in 355 ms).
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.Graph\Kor.Operations.Graph.csproj (in 357 ms).
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj (in 358 ms).
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.Data\Kor.Operations.Data.csproj (in 365 ms).
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.Business\Kor.Operations.Business.csproj (in 375 ms).
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj (in 383 ms).
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.App\Kor.Operations.App.csproj (in 417 ms).
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.App\EngineeringTools.Tests\Kor.Operations.EngineeringTools.Tests.csproj (in 424 ms).
+  Restored C:\VIsual Studio Projects\Operations-baseline\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj (in 431 ms).
+  1 of 14 projects are up-to-date for restore.
+  Kor.Operations.EngineeringTools.Core -> C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.EngineeringTools.Core\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.dll
+  Kor.Opportunities.Core -> C:\VIsual Studio Projects\Operations-baseline\Kor.Opportunities.Core\bin\Debug\net8.0\Kor.Opportunities.Core.dll
+  Kor.EmailSearch.Core -> C:\VIsual Studio Projects\Operations-baseline\Kor.EmailSearch.Core\bin\Debug\netstandard2.0\Kor.EmailSearch.Core.dll
+  Kor.Operations.NetworkOps.Core -> C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.NetworkOps.Core\bin\Debug\net8.0\Kor.Operations.NetworkOps.Core.dll
+  Kor.EmailCommon -> C:\VIsual Studio Projects\Operations-baseline\Kor.EmailCommon\bin\Debug\net8.0\Kor.EmailCommon.dll
+  Kor.Operations.Core -> C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.Core\bin\Debug\net8.0\Kor.Operations.Core.dll
+  Kor.Operations.Architecture -> C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.Architecture\bin\Debug\net8.0-windows\archmap.dll
+  Kor.Operations.Rendering -> C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.Rendering\bin\Debug\net8.0\Kor.Operations.Rendering.dll
+  Kor.Operations.Data -> C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.Data\bin\Debug\net8.0-windows\Kor.Operations.Data.dll
+  Kor.Operations.Graph -> C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.Graph\bin\Debug\net8.0\Kor.Operations.Graph.dll
+  Kor.Operations.Business -> C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.Business\bin\Debug\net8.0-windows\Kor.Operations.Business.dll
+  Kor.Opportunities.Data -> C:\VIsual Studio Projects\Operations-baseline\Kor.Opportunities.Data\bin\Debug\net8.0\Kor.Opportunities.Data.dll
+  Kor.Operations.App -> C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.App\bin\Debug\net8.0-windows10.0.19041.0\Kor.Operations.App.dll
+  Kor.Operations.EngineeringTools.Tests -> C:\VIsual Studio Projects\Operations-baseline\Kor.Operations.App\EngineeringTools.Tests\bin\Debug\net8.0-windows10.0.19041.0\Kor.Operations.EngineeringTools.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:24.24

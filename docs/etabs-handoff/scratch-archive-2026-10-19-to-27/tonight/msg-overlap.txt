@@ -1,0 +1,11 @@
+A storey's plates overlap: the check, measured - the parked continuation fix's regression is one of a class already on develop
+
+tools/CorpusGateBisect/storey_plate_overlap.py counts floor plates of one storey lying over one another. 24-set replay
+(wood/arm-on4): 67 pairs in 24 models, spread from 0-9% of the smaller's ground inside (19) to wholly inside (6) - halves
+drawn past their match line, a whole floor read twice (31006 L1: 21,425 over 22,590 sq ft, 87%), part plans. 31170-arch on
+develop: 2 (L1, L6 part plans, 86-87%); the parked fix adds L5 (79%). The build reports each as "left as read for the
+engineer", a decided policy - so "a part plan's floor over the overall floor is always absorbed" does not hold today, and no
+share threshold separates the kinds. Fixing the class is a decision first. Nothing changed in the build.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

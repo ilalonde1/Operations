@@ -1,0 +1,15 @@
+stickfile : 31017-01 - 2026-04-02 - Langford Central - Stickfile-SSI#1.pdf
+job       : 31017-01
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\s31017\at-a
+rules     : KorStandards
+
+scale     : not given; 96 assumed (1/8" = 1'-0"). Pass --scale if the set draws at another.
+
+pages read: 56   plan sheets: 30   views written: 32
+storeys   : 31   with a floor: 26
+members   : 589 walls   1034 columns   37 floors
+
+  model   : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s31017/at-a\out.e2k
+  report  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s31017/at-a\report.txt
+  levels  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s31017/at-a\levels.csv
+  sheets  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s31017/at-a\sheets.csv

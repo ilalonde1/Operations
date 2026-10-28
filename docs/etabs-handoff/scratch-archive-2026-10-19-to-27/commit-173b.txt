@@ -1,0 +1,18 @@
+Step 173 corrected: a column shown through a round clip is round - as committed it turned none of 31065's round
+
+As committed in f5a74e04 the step read only the column's own fill, and only Bezier curves. 31065 draws neither: on
+S2.16.1, C18 is a grey 449 x 444 mm square fill painted through a clip drawn just before it with the same box, and the
+clip is an 86-point polygon with no curve (pdf-at, 2026-10-24). A build of the committed reader wrote 0 ARCs in 51 DXFs.
+
+Now a filled column is also round when its clip - the one drawn just before it, else the one with its box, as step 172
+finds a wall's - is drawn with a curve or is a circle (IsCircle: square to a tenth, 16+ corners, every corner within 5%
+of one radius, that radius half the box, filling 0.72-0.85). An octagon, a square clip, a clip not the column's and a
+radiused square drawn by its corner arcs stay square (tests).
+
+Measured, 31065-01 whole, one build, KOR_STEP173_OFF on and off: 82 round columns in the DXFs, 3 circular sections;
+columns 971 -> 957 m3 (Revit 814; most of the rest is the takeoff pricing a column through the slab, which Revit cuts);
+slab 9,080 and wall 3,730 m3 identical both ways. Core fast 1,650 of 1,650. Full suite and corpus gate not run: reach on
+the other corpus sets is not yet known.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

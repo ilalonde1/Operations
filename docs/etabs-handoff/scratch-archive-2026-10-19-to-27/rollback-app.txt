@@ -1,0 +1,36 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Kor.Opportunities.Core -> C:\VIsual Studio Projects\Operations\Kor.Opportunities.Core\bin\Debug\net8.0\Kor.Opportunities.Core.dll
+  Kor.EmailCommon -> C:\VIsual Studio Projects\Operations\Kor.EmailCommon\bin\Debug\net8.0\Kor.EmailCommon.dll
+  Kor.EmailSearch.Core -> C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\bin\Debug\netstandard2.0\Kor.EmailSearch.Core.dll
+  Kor.Operations.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.Core\bin\Debug\net8.0\Kor.Operations.Core.dll
+  Kor.Operations.Architecture -> C:\VIsual Studio Projects\Operations\Kor.Operations.Architecture\bin\Debug\net8.0-windows\archmap.dll
+  Kor.Operations.NetworkOps.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.NetworkOps.Core\bin\Debug\net8.0\Kor.Operations.NetworkOps.Core.dll
+  Kor.Operations.EngineeringTools.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.dll
+  Kor.Operations.Data -> C:\VIsual Studio Projects\Operations\Kor.Operations.Data\bin\Debug\net8.0-windows\Kor.Operations.Data.dll
+  Kor.Operations.Rendering -> C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\bin\Debug\net8.0\Kor.Operations.Rendering.dll
+  Kor.Operations.Graph -> C:\VIsual Studio Projects\Operations\Kor.Operations.Graph\bin\Debug\net8.0\Kor.Operations.Graph.dll
+  Kor.Opportunities.Data -> C:\VIsual Studio Projects\Operations\Kor.Opportunities.Data\bin\Debug\net8.0\Kor.Opportunities.Data.dll
+  Kor.Operations.Business -> C:\VIsual Studio Projects\Operations\Kor.Operations.Business\bin\Debug\net8.0-windows\Kor.Operations.Business.dll
+  Kor.Operations.App -> C:\VIsual Studio Projects\Operations\Kor.Operations.App\bin\Debug\net8.0-windows10.0.19041.0\Kor.Operations.App.dll
+  Kor.Operations.EngineeringTools.Tests -> C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\bin\Debug\net8.0-windows10.0.19041.0\Kor.Operations.EngineeringTools.Tests.dll
+Test run for C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\bin\Debug\net8.0-windows10.0.19041.0\Kor.Operations.EngineeringTools.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+The active test run was aborted. Reason: Test host process crashed
+Data collector 'Blame' message: The specified inactivity time of 5 minutes has elapsed. Collecting hang dumps from testhost and its child processes.
+
+Passed!  - Failed:     0, Passed:   431, Skipped:     0, Total:   431, Duration: 8 s - Kor.Operations.EngineeringTools.Tests.dll (net8.0)
+Test Run Aborted.
+
+The active Test Run was aborted because the host process exited unexpectedly. Please inspect the call stack above, if available, to get more information about where the exception originated from.
+The test running when the crash occurred: 
+Kor.Operations.EngineeringTools.Tests.PdfToSafe.WhereTheMarkupLandedMeasurement.NoMarkupLandsOutsideTheDrawing
+Kor.Operations.EngineeringTools.Tests.PdfToSafe.PageContentVsAnnotationsMeasurement.WhatThePageHoldsThatTheAnnotationsOnlyFilterThrowsAway
+
+This test may, or may not be the source of the crash.
+
+Attachments:
+  C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\TestResults\2e3f135a-e417-4a92-b186-f72812c8ec3d\Sequence_2b5642077a7245eeaa7de1ccef761d5a.xml

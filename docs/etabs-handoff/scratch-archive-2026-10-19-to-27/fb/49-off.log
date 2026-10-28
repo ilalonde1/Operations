@@ -1,0 +1,14 @@
+stickfile : 30849-01 - 2026-02-18 - 1558 West 6th - Structural Stickfile (Final Design Drawing).pdf
+job       : 3049-01
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\fb\49-off
+rules     : KorStandards
+
+
+pages read: 45   plan sheets: 16   views written: 17
+storeys   : 14   with a floor: 13
+members   : 266 walls   371 columns   15 floors
+
+  model   : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/fb/49-off\out.e2k
+  report  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/fb/49-off\report.txt
+  levels  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/fb/49-off\levels.csv
+  sheets  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/fb/49-off\sheets.csv

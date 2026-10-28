@@ -1,0 +1,34 @@
+Steps 178-180: a column's turn carried to ETABS (Revit route); a section cut is a straight run; one column read off two sheets is one stack
+
+178 - ExtractedGeometry.ColumnTurnDegrees, parallel to Columns: DxfExporter draws the footprint at that turn, the classifier
+reads it back as the column's angle, the e2k writes it as ANG. RevitToDxfVerb fills it from the Virtual Drafter's manifest
+(rotation_deg, the long face's bearing, written only for a turned rectangle - agreed with that session): a width shorter than
+the depth turns a quarter more; absent, 0. The PDF reader writes 0 - its own reading of a turned column is step 181, PARKED
+(docs/pdf-intake/step181-prediction.md: it fixes 31130's five and moves things on 31168, 31170-arch, 31130 and 31138 not yet
+understood). Halifax, its own commands, local copies: model-diff plates/columns/walls unchanged; 88 column-storeys go from
+ANG 90 to the manifest's bearings (152.6 x42, 153.2 x21, 62.9 x21, 62.2 x4); Halifax's existing DXFs without the field give
+an e2k byte-identical to cd7dc0de's.
+
+The view split forgot per-column lists. SheetViews.Split copies each by hand; the tendon-anchor flag and the round flag had
+been left behind before, and the turn was the third. EveryListParallelToAMemberListGoesWithItIntoTheView fills every
+Column/Wall/Slab/Line list of ExtractedGeometry by reflection and requires each view to carry it; on its first run it found a
+fourth, ColumnIsWallPier (a stood-down pier written as a column again in a two-view sheet). Both are carried.
+
+179 (GeometryFilterService, step 79's run rule) - pieces sharing an end join one run only when they run the same way (2 deg).
+The run was the whole network of linework a piece touched, round every corner, and one leader arrowhead took it all: 31065's
+L1 south plan lost 231 pieces, the slab's dashed edge over the ramp among them, and the tower had no L1 floor. Now 9 pieces
+go and the floor closes (12,533 sq ft); 31065 plate 247,026 -> 255,652 sq ft (85% -> 88% of the engineer's model); 31130,
+step 79's witness, byte-identical. It also removes ten L1 column-storeys on 31065 the engineer's model does not have (tower
+columns carried down past the transfer floor; nearest of the engineer's 1.9-5.0 m away).
+
+180 (E2kDocument, double-height gap fill) - two column stacks within dxf.already-modelled-tolerance (KorStandards, 6 in) that
+share no storey are one stack. 31065's ramp-edge columns read 51 mm apart on P2-P1 and L2 were two stacks, so L1 was never a
+gap; with 179 their L1 segment (the engineer's C600x900, 74 mm off ours) went. 180 brings both back.
+
+Measured: six banked sets, all on / all off / each step off alone, judged against the engineers' models, every change
+attributed to one step (see the notes); 31202 byte-identical; 31168 judged by a reference that is mostly our own output (next
+commit). Halifax e2k byte-identical to cd7dc0de on its existing DXFs. Core fast 1,660 of 1,660. Each step has its note in
+docs/pdf-intake (178, 179, 180, and 181 parked); knobs KOR_STEP179_OFF and KOR_STEP180_OFF.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

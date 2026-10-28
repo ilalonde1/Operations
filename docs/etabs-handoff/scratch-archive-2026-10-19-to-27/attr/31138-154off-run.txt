@@ -1,0 +1,18 @@
+stickfile : 31138-01 2026-09-01_2170 W 1st Ave_Str Set.pdf
+job       : 31138-01
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31138-154off
+rules     : KorStandards
+
+
+pages read: 61   plan sheets: 38   views written: 47
+storeys   : 28   with a floor: 27
+members   : 543 walls   616 columns   27 floors
+
+  model   : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31138-154off\out.e2k
+  report  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31138-154off\report.txt
+  levels  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31138-154off\levels.csv
+  sheets  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31138-154off\sheets.csv
+
+READ THESE FIRST:
+  - S2.12_1_LEVEL 1 MEZZ. AT 55'-0 PART PLAN CONCRETE OUTLINE.dxf: NOT PLACED — its title reads level(s) 1, and this model has no such storey. The model's storeys are: ROOF, L22, L21, L20, L19, L18, L17, L16, L15, L14, L13, L12, and 16 more. TO FIX: either the model needs that storey adding, or the draw ...
+  - S2.14_2_LEVEL 1 MEZZ. AT 64'-1 PART PLAN CONCRETE OUTLINE.dxf: NOT PLACED — its title reads level(s) 1, and this model has no such storey. The model's storeys are: ROOF, L22, L21, L20, L19, L18, L17, L16, L15, L14, L13, L12, and 16 more. TO FIX: either the model needs that storey adding, or the draw ...

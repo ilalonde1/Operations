@@ -1,0 +1,31 @@
+Corpus gate: a set whose frame does not register is not judged by position - and a frame that stops registering is a loss
+
+The group bisect of the 21fb2b10 gate named step 179 for 30986-02 (her plate area -3,728 sq ft, thickness agree 2 -> 1).
+Looked at, step 179 had read P1 as a whole floor - better - judged through a frame whose columns stand a median 3.1 m
+then 3.3 m off hers. Read from the code, not assumed: her plate area counts our plates whose centre is in her footprint
+(ModelYardstick.PlateJudged), thickness agreement is over those same plates, her openings are matched centre to centre.
+All four position figures (plate, thickness, openings, over-read) move with the frame.
+
+The line, FrameUnregisteredMedianMm = 1,000 mm, sits in a measured gap. Across the run 45 bank (48 sets with a figure) and
+the 21fb2b10 gate (46), the medians run continuously 0-304 mm, then 434, 641, 781, then nothing until 1,364, with the same
+seven sets above the gap in both: 30819, 30986-02, 31005, 31048, 31098, 31183, 70057. The share within 100 mm does not
+separate them (31048 37% vs 30993 33%, which registers).
+
+- Either run's frame out: no plate, thickness, openings or over-read verdict; the set is marked FRAME in the table,
+  named with its medians, and kept out of the totals (the totals line now says how many sets it covers).
+- Registered at the bank and out now: a LOSS of its own (LostFrame), so a rule that wrecks the column reading cannot hide
+  its other losses behind "not judged".
+- Evidence missing and re-issued are unchanged.
+
+Re-judged with the same judge, run 45 bank vs the 21fb2b10 gate ledger: 10 stops -> 9. 30986-02 is the only one that
+went; the other nine and their reasons are word for word as before. 7 of the 56 sets judged both times are not judged
+by position. Totals now over 49 of 56.
+
+Proved red: refusal off -> the new test fails at the empty-losses assert; LostFrame off -> it fails at the single-loss
+assert; both restored, green. Core fast 1,679 of 1,679 (the reader-constant triage gained the new constant's line).
+
+DOES NOT COVER: a real loss on those seven sets (render and six-set gate only); a frame wrong on ONE storey of a set
+whose median registers; whether 1,000 mm holds for sets not yet in the corpus. Local only; GitHub held until morning.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

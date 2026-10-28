@@ -1,0 +1,104 @@
+baseline: ledger-sets-2026-09-24-run45-step140.csv (295 rows); judging 24 set(s) she has modelled
+census...
+  census of 2026-10-26 07:15 UTC reused (1196 job folders; --census retakes it)
+rules: KorStandards; work: C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/wood/arm-on2
+24 set(s) to analyze; tool built 2026-10-26 11:34 UTC; run 2098f005-9f47-490c-8920-c5a63b5b8938
+  [1/24] 30986-02 model: 8 storeys, 552 walls, 109 columns, 12/14 placed; yardstick:4 shared storeys, 5/43 of ours within 100 mm (frame from columns)  199 s
+  [2/24] 31155-01 model: 8 storeys, 826 walls, 184 columns, 8/10 placed; yardstick:1 shared storeys, 8/14 of ours within 100 mm (frame from columns)  243 s
+  [3/24] 31158-01 model: 8 storeys, 245 walls, 40 columns, 10/10 placed; yardstick:2 shared storeys, 4/23 of ours within 100 mm (frame from columns)  94 s
+  [4/24] 31162-01 model: 8 storeys, 740 walls, 49 columns, 10/10 placed; yardstick:3 shared storeys, 21/46 of ours within 100 mm (frame from columns)  358 s
+  [5/24] 31003-01 model: 7 storeys, 943 walls, 190 columns, 10/12 placed; yardstick:2 shared storeys, 52/57 of ours within 100 mm (frame from columns)  561 s
+  [6/24] 31168-01 model: 64 storeys, 1498 walls, 2435 columns, 54/73 placed; yardstick: no shared storey with columns  368 s
+  [7/24] 31171-01 model: 7 storeys, 256 walls, 27 columns, 10/10 placed; yardstick:1 shared storeys, 3/3 of ours within 100 mm (frame from columns)  46 s
+  [8/24] 31185-01 model: 4 storeys, 282 walls, 68 columns, 15/18 placed; yardstick:2 shared storeys, 54/62 of ours within 100 mm (frame from columns)  59 s
+  [9/24] 31032-01 model: 8 storeys, 474 walls, 92 columns, 15/15 placed; yardstick:3 shared storeys, 44/64 of ours within 100 mm (frame from columns)  73 s
+  [10/24] 31048-01 model: 7 storeys, 1743 walls, 882 columns, 10/36 placed; yardstick:2 shared storeys, 74/202 of ours within 100 mm (frame from columns)  189 s
+  [11/24] 31006-01 model: 6 storeys, 607 walls, 45 columns, 7/18 placed; yardstick:1 shared storeys, 7/10 of ours within 100 mm (frame from columns)  682 s
+  [12/24] 31064-01 model: 3 storeys, 981 walls, 68 columns, 30/34 placed; yardstick:1 shared storeys, 1/1 of ours within 100 mm (frame from columns)  93 s
+  [13/24] 31066-01 model: 7 storeys, 813 walls, 21 columns, 8/15 placed; yardstick: no shared storey with columns  173 s
+  [14/24] 31076-01 model: 8 storeys, 586 walls, 31 columns, 10/11 placed; yardstick:1 shared storeys, 15/15 of ours within 100 mm (frame from columns)  44 s
+  [15/24] 31093-01 model: 5 storeys, 478 walls, 81 columns, 12/14 placed; yardstick:2 shared storeys, 35/78 of ours within 100 mm (frame from columns)  162 s
+  [16/24] 31101-01 model: 8 storeys, 925 walls, 223 columns, 8/12 placed; yardstick:1 shared storeys, 25/33 of ours within 100 mm (frame from columns)  1745 s
+  [17/24] 31108-01 model: 7 storeys, 254 walls, 124 columns, 9/10 placed; yardstick:2 shared storeys, 35/56 of ours within 100 mm (frame from columns)  87 s
+  [18/24] 31117-01 model: 7 storeys, 382 walls, 100 columns, 9/9 placed; yardstick:2 shared storeys, 20/32 of ours within 100 mm (frame from columns)  52 s
+  [19/24] 31129-01 model: 7 storeys, 651 walls, 61 columns, 12/12 placed; yardstick:1 shared storeys, 19/20 of ours within 100 mm (frame from columns)  93 s
+  [20/24] 31065-01 model: 25 storeys, 774 walls, 1168 columns, 26/51 placed; yardstick:21 shared storeys, 514/608 of ours within 100 mm (frame from columns)  2102 s
+  [21/24] 31082-01 model: 7 storeys, 295 walls, 67 columns, 15/19 placed; yardstick:2 shared storeys, 47/54 of ours within 100 mm (frame from columns)  522 s
+  [22/24] 31085-01 model: 7 storeys, 844 walls, 152 columns, 11/14 placed; yardstick: no shared storey with columns  112 s
+  [23/24] 31130-01 model: 24 storeys, 469 walls, 1311 columns, 19/33 placed; yardstick:18 shared storeys, 260/623 of ours within 100 mm (frame from columns)  466 s
+  [24/24] 31143-01 model: 7 storeys, 928 walls, 67 columns, 9/10 placed; yardstick:1 shared storeys, 13/30 of ours within 100 mm (frame from columns)  136 s
+
+24 sets: 24 built, 0 reused from their last run; 42 min; run 2098f005-9f47-490c-8920-c5a63b5b8938
+  24 of 24 build a model; 0 the analyzer failed on
+  of the 24 with a model: 470 plan views, 339 set on the grid by axis name; 257 storeys, 178 with a plate; 16,546 walls, 7,595 columns
+  sets with every view placed: 6 of 24; with a plate on every storey: 2 of 24
+  yardsticks: 24 sets have the engineer's model; 21 share a storey with columns; frames from grids 0, from columns 21
+    ours -> theirs: 1256 of 2074 of our columns within 100 mm of one of theirs (61%); theirs -> ours: 1256 of 2189 (57%)
+    3 set(s) with 100-124% of our columns within 100 mm: 31064-01 31076-01 31171-01
+    6 set(s) with 75-99% of our columns within 100 mm: 31003-01 31065-01 31082-01 31101-01 31129-01 31185-01
+    5 set(s) with 50-74% of our columns within 100 mm: 31006-01 31032-01 31108-01 31117-01 31155-01
+    5 set(s) with 25-49% of our columns within 100 mm: 31048-01 31093-01 31130-01 31143-01 31162-01
+    2 set(s) with 0-24% of our columns within 100 mm: 30986-02 31158-01
+  838 pages read: 394 plans, 0 failed; plans not placed on a grid: 118
+
+the gate: 24 set(s) the engineer has a model of, judged against the bank
+  job         her plates we read: was -> now (of hers)        thickness agree   her openings we have
+  LOST 31101-01           31,444 ->       31,444 ( 92%)         +0     0 ->   0 of   1      1 ->    0 of    1
+  LOST 31162-01           32,547 ->       46,035 (115%)    +13,488     2 ->   2 of   3      2 ->    2 of    3
+  FRAME31048-01           51,296 ->      108,299 ( 72%)    +57,002     0 ->   1 of   2      0 ->    6 of    7
+       31143-01              960 ->       22,709 ( 93%)    +21,749     0 ->   0 of   1      0 ->    2 of    2
+       31006-01           22,033 ->       40,243 (591%)    +18,210     0 ->   0 of   1      0 ->    0 of    1
+       31003-01           33,125 ->       43,127 ( 63%)    +10,002     1 ->   1 of   2      6 ->    7 of   10
+  REISS31065-01          246,648 ->      255,653 ( 88%)     +9,005    18 ->  20 of  21     62 ->   56 of  109
+  FRAME30986-02           19,710 ->       15,982 ( 28%)     -3,728     2 ->   1 of   2      7 ->   11 of   16
+       31082-01           30,253 ->       33,478 ( 84%)     +3,225     1 ->   1 of   2      3 ->    3 of    6
+  REISS31130-01          250,285 ->      253,460 ( 91%)     +3,175    14 ->  14 of  17     33 ->   33 of   33
+       31129-01           17,694 ->       19,915 ( 56%)     +2,221     0 ->   0 of   1      3 ->    4 of    5
+       31032-01           30,906 ->       32,747 ( 88%)     +1,841     2 ->   2 of   3      2 ->    2 of    8
+       31185-01           27,877 ->       27,905 ( 87%)        +28     1 ->   1 of   1      0 ->    0 of    0
+       31117-01            5,421 ->        5,426 ( 33%)         +5     0 ->   0 of   1      7 ->    7 of    7
+       31171-01            7,313 ->        7,311 ( 96%)         -1     0 ->   0 of   1      1 ->    1 of    1
+  REISS31093-01           42,519 ->       42,520 ( 63%)         +1     1 ->   1 of   1      3 ->    3 of    4
+       31076-01           12,690 ->       12,691 ( 91%)         +0     1 ->   1 of   1      1 ->    2 of    4
+       31064-01            4,536 ->        4,536 ( 21%)         +0     0 ->   0 of   1     10 ->   10 of   10
+       31066-01                0 ->            0 (   -)         +0     0 ->   0 of   0      0 ->    0 of    0
+       31085-01                0 ->            0 (   -)         +0     0 ->   0 of   0      0 ->    0 of    0
+       31108-01           44,913 ->       44,913 ( 86%)         +0     0 ->   0 of   2      1 ->    1 of    2
+       31155-01           66,281 ->       66,281 (106%)         +0     1 ->   1 of   1      6 ->    6 of    6
+       31158-01           15,956 ->       15,956 ( 38%)         +0     1 ->   1 of   2      0 ->    0 of    3
+  REISS31168-01                0 ->            0 (   -)         +0     0 ->   0 of   0      0 ->    0 of    0
+  totals: her plates we read 923,402 -> 1,006,350 sq ft of 1,170,327 (79% -> 86%); thickness 43 -> 45 of 63; her openings we have 141 -> 139 of 215 (the 22 of 24 set(s) judged both times whose frame registers)
+  2 of the 24 set(s) judged both times are NOT JUDGED on plate, thickness, openings or over-read: the frame does not register (our columns' median distance from hers over 1,000 mm at the bank or now), so a move there is the frame's. Their only judges are the render and the six-set gate:
+    31048-01: median 1,553 -> 1,364 mm
+    30986-02: median 3,057 -> 3,317 mm
+  storeys we plate that her model does not name: 21 of 24 set(s) measured now, 42 storey(s), 778,042 sq ft - the bank predates this figure, so a rise is not judged against it:
+    31130-01: 5 storey(s), 160,183 sq ft
+    31048-01: 2 storey(s), 80,623 sq ft
+    31155-01: 2 storey(s), 78,711 sq ft
+    31093-01: 2 storey(s), 57,095 sq ft
+    31003-01: 2 storey(s), 45,662 sq ft
+    31065-01: 2 storey(s), 43,704 sq ft
+    31168-01: 1 storey(s), 42,096 sq ft
+    31101-01: 1 storey(s), 30,630 sq ft
+    31185-01: 1 storey(s), 28,341 sq ft
+    31076-01: 2 storey(s), 26,910 sq ft
+    31129-01: 2 storey(s), 25,645 sq ft
+    31082-01: 2 storey(s), 24,839 sq ft
+    31032-01: 2 storey(s), 20,225 sq ft
+    31117-01: 2 storey(s), 18,300 sq ft
+    31158-01: 2 storey(s), 15,441 sq ft
+    31171-01: 3 storey(s), 15,388 sq ft
+    30986-02: 1 storey(s), 15,088 sq ft
+    31066-01: 2 storey(s), 14,134 sq ft
+    31064-01: 1 storey(s), 13,536 sq ft
+    31085-01: 3 storey(s), 12,816 sq ft
+    31108-01: 2 storey(s), 8,674 sq ft
+  4 set(s) READ A DIFFERENT STICK FILE than the bank did, so no rule is answerable for them (1 of them would otherwise have stopped the bank):
+    31065-01: RE-ISSUED, so no rule is answerable: her openings we have fell 62 -> 56
+    31130-01
+    31093-01
+    31168-01
+  2 set(s) STOP THE BANK - each with its reason:
+    31101-01: her openings we have fell 1 -> 0
+    31162-01: storeys over half again her area 0 -> 1
+  to find which rule took them: --bisect KOR_STEP130_OFF,KOR_STEP131_OFF,KOR_STEP133_OFF,KOR_STEP134_OFF,KOR_STEP135_OFF,KOR_STEP136_OFF,KOR_STEP137_OFF,KOR_STEP138_OFF,KOR_STEP139_OFF,KOR_STEP140_OFF,KOR_STEP144_OFF,KOR_STEP145_OFF,KOR_STEP149_OFF,KOR_STEP150_OFF,KOR_STEP151_OFF,KOR_STEP152_OFF,KOR_STEP153_OFF,KOR_STEP154_OFF,KOR_STEP155_OFF,KOR_STEP156_OFF,KOR_STEP157_OFF,KOR_STEP158_OFF,KOR_STEP159_OFF,KOR_STEP160_OFF,KOR_STEP161_OFF,KOR_STEP162_OFF,KOR_STEP163_OFF,KOR_STEP164_OFF,KOR_STEP165_OFF,KOR_STEP166_OFF,KOR_STEP167_OFF,KOR_STEP168_OFF,KOR_STEP169_OFF,KOR_STEP170_OFF,KOR_STEP171_OFF,KOR_STEP172_OFF,KOR_STEP173_OFF,KOR_STEP174_OFF,KOR_STEP175_OFF,KOR_STEP176_OFF,KOR_STEP177_OFF,KOR_STEP179_OFF,KOR_STEP180_OFF,KOR_STEP182_OFF,KOR_STEP183_OFF,KOR_STEP184_OFF

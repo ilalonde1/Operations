@@ -1,0 +1,30 @@
+One markup DXF from the app and the CLI: markup labels read in Core, layer-by-colour a choice in both, any named markup page exported
+
+Briefs CODEX-ENGINEERING-FIX-A3, -A3B and -A3C, by Codex; verified on the dev box 2026-10-19.
+
+Found on a real request (143 E 3rd, sheet A105, a KOR Bluebeam markup):
+- The app's DXF carried the 18 markup labels; the CLI's carried 0. The text reader lived only in the app.
+- The by-colour layering, which says what the engineer drew rather than guessing slab/beam/column, was hardcoded
+  off in the app and absent from the CLI.
+
+Now:
+- MarkupText (Core) reads markup labels for both. DrawingIntake adds them only in markup mode.
+- `takeoff pdf-takeoff --layer-by-colour` (refused together with --kor-layers).
+- An app checkbox, "Layers by markup colour", saved in FirmDefaults.
+- In markup mode the CLI writes the page the user names whatever its sheet type (Ian's decision). The stick-file
+  route keeps the plan-sheet rule.
+
+Measured on this build:
+- Core fast suite: 1,626 of 1,626.
+- App PdfToSafe tests: 430 of 430, including TheMarkupDxfIsTheSameFromTheAppAndTheCliTests, which compares shapes on
+  Regent and shapes and labels on a synthetic labelled page, in both layer modes.
+- Six-set gate (on A3): 2 of 2, so all six banked models are byte-identical and the stick-file route is untouched.
+
+Known and NOT caused here: the App test host does not exit after its tests headless. The blame timeout ends it at
+120 s and dotnet test reports exit 1 with every test passed. The unfiltered run hung the same way this morning,
+before A3.
+
+Not done: the app's scale reader still misses a title block that stacks its SCALE value under the label (fix A2).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

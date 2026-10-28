@@ -1,0 +1,84 @@
+Test run for C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.8.2+699d445a1a (64-bit .NET 8.0.32)
+[xUnit.net 00:00:00.18]   Discovering: Kor.Operations.EngineeringTools.Core.Tests
+[xUnit.net 00:00:00.37]   Discovered:  Kor.Operations.EngineeringTools.Core.Tests
+[xUnit.net 00:00:00.37]   Starting:    Kor.Operations.EngineeringTools.Core.Tests
+[xUnit.net 00:00:00.82]     Kor.Operations.EngineeringTools.Core.Tests.ModelQuestionnaireTests.EveryRuleTheRunAppliedIsVisibleWhetherOrNotAQuestionAsksAboutIt [FAIL]
+[xUnit.net 00:00:00.82]       System.InvalidOperationException : KorStandards is missing rule setting(s) required by DXF-to-ETABS: dxf.pdf.upper-roof-words.
+[xUnit.net 00:00:00.82]       Stack Trace:
+[xUnit.net 00:00:00.82]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs(300,0): at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys)
+[xUnit.net 00:00:00.82]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelQuestionnaireTests.cs(418,0): at Kor.Operations.EngineeringTools.Core.Tests.ModelQuestionnaireTests.EveryRuleTheRunAppliedIsVisibleWhetherOrNotAQuestionAsksAboutIt()
+[xUnit.net 00:00:00.82]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+[xUnit.net 00:00:00.82]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.85]     Kor.Operations.EngineeringTools.Core.Tests.ModelQuestionnaireTests.ConfiguredKorStandardsContainsEveryProductionRule [FAIL]
+[xUnit.net 00:00:00.85]       System.InvalidOperationException : KorStandards is missing rule setting(s) required by DXF-to-ETABS: dxf.pdf.upper-roof-words.
+[xUnit.net 00:00:00.85]       Stack Trace:
+[xUnit.net 00:00:00.85]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs(300,0): at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys)
+[xUnit.net 00:00:00.85]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelQuestionnaireTests.cs(310,0): at Kor.Operations.EngineeringTools.Core.Tests.ModelQuestionnaireTests.ConfiguredKorStandardsContainsEveryProductionRule()
+[xUnit.net 00:00:00.85]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+[xUnit.net 00:00:00.85]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed Kor.Operations.EngineeringTools.Core.Tests.ModelQuestionnaireTests.EveryRuleTheRunAppliedIsVisibleWhetherOrNotAQuestionAsksAboutIt [412 ms]
+  Error Message:
+   System.InvalidOperationException : KorStandards is missing rule setting(s) required by DXF-to-ETABS: dxf.pdf.upper-roof-words.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 300
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelQuestionnaireTests.EveryRuleTheRunAppliedIsVisibleWhetherOrNotAQuestionAsksAboutIt() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelQuestionnaireTests.cs:line 418
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed Kor.Operations.EngineeringTools.Core.Tests.ModelQuestionnaireTests.ConfiguredKorStandardsContainsEveryProductionRule [36 ms]
+  Error Message:
+   System.InvalidOperationException : KorStandards is missing rule setting(s) required by DXF-to-ETABS: dxf.pdf.upper-roof-words.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 300
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelQuestionnaireTests.ConfiguredKorStandardsContainsEveryProductionRule() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelQuestionnaireTests.cs:line 310
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:04.64]     Kor.Operations.EngineeringTools.Core.Tests.EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel(projectName: "31138 2170 W 1st") [FAIL]
+[xUnit.net 00:00:04.64]       System.InvalidOperationException : KorStandards is missing rule setting(s) required by DXF-to-ETABS: dxf.pdf.upper-roof-words.
+[xUnit.net 00:00:04.64]       Stack Trace:
+[xUnit.net 00:00:04.64]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs(300,0): at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys)
+[xUnit.net 00:00:04.64]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs(782,0): at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request)
+[xUnit.net 00:00:04.64]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\GeneratedModel.cs(86,0): at Kor.Operations.EngineeringTools.Core.Tests.GeneratedModel.BuildOrSkip(Project project)
+[xUnit.net 00:00:04.64]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\EngineerRulingsStillHoldTests.cs(43,0): at Kor.Operations.EngineeringTools.Core.Tests.EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel(String projectName)
+[xUnit.net 00:00:04.64]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+[xUnit.net 00:00:04.64]            at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+  Failed Kor.Operations.EngineeringTools.Core.Tests.EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel(projectName: "31138 2170 W 1st") [4 s]
+  Error Message:
+   System.InvalidOperationException : KorStandards is missing rule setting(s) required by DXF-to-ETABS: dxf.pdf.upper-roof-words.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 300
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 782
+   at Kor.Operations.EngineeringTools.Core.Tests.GeneratedModel.BuildOrSkip(Project project) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\GeneratedModel.cs:line 86
+   at Kor.Operations.EngineeringTools.Core.Tests.EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel(String projectName) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\EngineerRulingsStillHoldTests.cs:line 43
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+[xUnit.net 00:00:12.72]     Kor.Operations.EngineeringTools.Core.Tests.EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel(projectName: "31168 YMCA Langara") [FAIL]
+[xUnit.net 00:00:12.72]       System.InvalidOperationException : KorStandards is missing rule setting(s) required by DXF-to-ETABS: dxf.pdf.upper-roof-words.
+[xUnit.net 00:00:12.72]       Stack Trace:
+[xUnit.net 00:00:12.72]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs(300,0): at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys)
+[xUnit.net 00:00:12.72]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs(782,0): at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request)
+[xUnit.net 00:00:12.72]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\GeneratedModel.cs(86,0): at Kor.Operations.EngineeringTools.Core.Tests.GeneratedModel.BuildOrSkip(Project project)
+[xUnit.net 00:00:12.72]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\EngineerRulingsStillHoldTests.cs(43,0): at Kor.Operations.EngineeringTools.Core.Tests.EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel(String projectName)
+[xUnit.net 00:00:12.72]            at InvokeStub_EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel(Object, Span`1)
+[xUnit.net 00:00:12.72]            at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+[xUnit.net 00:00:12.72]   Finished:    Kor.Operations.EngineeringTools.Core.Tests
+  Failed Kor.Operations.EngineeringTools.Core.Tests.EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel(projectName: "31168 YMCA Langara") [8 s]
+  Error Message:
+   System.InvalidOperationException : KorStandards is missing rule setting(s) required by DXF-to-ETABS: dxf.pdf.upper-roof-words.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 300
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 782
+   at Kor.Operations.EngineeringTools.Core.Tests.GeneratedModel.BuildOrSkip(Project project) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\GeneratedModel.cs:line 86
+   at Kor.Operations.EngineeringTools.Core.Tests.EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel(String projectName) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\EngineerRulingsStillHoldTests.cs:line 43
+   at InvokeStub_EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+
+Test Run Failed.
+Total tests: 4
+     Failed: 4
+ Total time: 13.3301 Seconds

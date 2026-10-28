@@ -1,0 +1,38 @@
+baseline: ledger-sets-2026-09-24-run45-step140.csv (295 rows); judging 1 set(s) she has modelled
+census...
+  00 Templates: 1 job folder(s)
+  01 Small Jobs: 290 job folder(s)
+  03 Residential: 692 job folder(s)
+  04 Commercial: 53 job folder(s)
+  05 Office: 34 job folder(s)
+  06 Hotel: 52 job folder(s)
+  07 Industrial-Garage: 16 job folder(s)
+  08 Inst-Rec-Church: 11 job folder(s)
+  09 Reno-Seismic-Resto: 47 job folder(s)
+rules: KorStandards; work: C:\Users\ilalonde\AppData\Local\Temp/kor-drawings/c177gate
+1 set(s) to analyze; tool built 2026-10-25 17:34 UTC; run e5d4d345-fcec-4c77-ac15-bbed58ecbc76
+  [1/1] 31032-01 model: 8 storeys, 525 walls, 96 columns, 15/15 placed; yardstick:3 shared storeys, 44/64 of ours within 100 mm (frame from columns)  32 s
+
+1 sets: 1 built, 0 reused from their last run; 1 min; run e5d4d345-fcec-4c77-ac15-bbed58ecbc76
+  1 of 1 build a model; 0 the analyzer failed on
+  of the 1 with a model: 15 plan views, 15 set on the grid by axis name; 8 storeys, 8 with a plate; 525 walls, 96 columns
+  sets with every view placed: 1 of 1; with a plate on every storey: 1 of 1
+  yardsticks: 1 sets have the engineer's model; 1 share a storey with columns; frames from grids 0, from columns 1
+    ours -> theirs: 44 of 64 of our columns within 100 mm of one of theirs (69%); theirs -> ours: 44 of 52 (85%)
+    1 set(s) with 50-74% of our columns within 100 mm: 31032-01
+  31 pages read: 11 plans, 0 failed; plans not placed on a grid: 0
+
+the gate: 1 set(s) the engineer has a model of, judged against the bank
+  job         her plates we read: was -> now (of hers)        thickness agree   her openings we have
+  LOST 31032-01           30,906 ->       30,680 ( 82%)       -226     2 ->   2 of   3      2 ->    2 of    8
+  totals: her plates we read 30,906 -> 30,680 sq ft of 37,333 (83% -> 82%); thickness 2 -> 2 of 3; her openings we have 2 -> 2 of 8
+  1 set(s) STOP THE BANK - each with its reason:
+    31032-01: her plate area fell 226 sq ft (tolerance 200)
+
+  bisecting 1 lost set(s) over 3 knob(s): KOR_STEP175_OFF, KOR_STEP176_OFF, KOR_STEP177_OFF
+  31032-01: 30,906 -> 30,680 sq ft of her 37,333
+      KOR_STEP175_OFF        ->       27,830 sq ft   still lost: her plate area fell 3,076 sq ft (tolerance 200)
+      KOR_STEP176_OFF        ->       21,213 sq ft   still lost: her plate area fell 9,693 sq ft (tolerance 200)
+      KOR_STEP177_OFF        ->       30,680 sq ft   still lost: her plate area fell 226 sq ft (tolerance 200)
+  (the bisect re-read those sets: gate-sets.csv now holds their last knob's build, not the gate's)
+  csv: C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/r32/c177gate.csv

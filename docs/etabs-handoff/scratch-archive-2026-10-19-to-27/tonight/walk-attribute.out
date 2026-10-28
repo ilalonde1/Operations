@@ -1,0 +1,354 @@
+TABLE - set | storey | first commit it moves at | what moved there (vs the bank's geometry) | the engineer's plate there
+31065-01       L1         8ed10d03  plate 32,792->23,830; members walls 2 cols 27                hers 58,968
+                          NET bank->final: thickness 12"/34.4"->35.4"/34.4"; members walls 18 cols 10   plate/thickness/openings moved at: 8ed10d03,8fa0d9d6,f5a74e04,cd7dc0de,674b2890,21fb2b10,0de30b47
+31065-01       L2         8ed10d03  members walls 0 cols 8                                       hers 10,728
+                          NET bank->final: plate 19,468->25,901; members walls 2 cols 8   plate/thickness/openings moved at: 8fa0d9d6,21fb2b10
+31065-01       L3         8ed10d03  members walls 0 cols 1                                       hers 10,727
+                          NET bank->final: members walls 2 cols 1   plate/thickness/openings moved at: (members only)
+31065-01       L4         8ed10d03  members walls 0 cols 1                                       hers 10,829
+                          NET bank->final: members walls 2 cols 1   plate/thickness/openings moved at: (members only)
+31065-01       L5         8ed10d03  members walls 0 cols 1                                       hers 10,870
+                          NET bank->final: plate 0->17,359; members walls 18 cols 6   plate/thickness/openings moved at: 8fa0d9d6,21fb2b10
+31065-01       L6         8fa0d9d6  members walls 1 cols 0                                       hers 7,837
+                          NET bank->final: members walls 1 cols 0   plate/thickness/openings moved at: (members only)
+31065-01       L7         8fa0d9d6  plate 7,662->13,925                                          hers 7,834
+                          NET bank->final: plate 7,662->13,925   plate/thickness/openings moved at: 8fa0d9d6
+31065-01       L9         8fa0d9d6  plate 7,662->13,925                                          hers 7,834
+                          NET bank->final: plate 7,662->13,925   plate/thickness/openings moved at: 8fa0d9d6
+31065-01       P1         8ed10d03  members walls 4 cols 1                                       hers 40,064
+                          NET bank->final: thickness 9.8"/12"->9.8"/5.9"; members walls 18 cols 2   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04,21fb2b10,0de30b47
+31065-01       P2         8fa0d9d6  thickness 9.8"->9.8"; members walls 14 cols 0                hers 36,256
+                          NET bank->final: thickness 9.8"->9.8"; members walls 14 cols 0   plate/thickness/openings moved at: 8fa0d9d6,cd7dc0de
+31065-01       P3         8fa0d9d6  thickness 12"->12"                                           hers -
+                          NET bank->final: thickness 12"->12"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04
+31065-01       L11        8fa0d9d6  plate 7,662->13,925                                          hers 7,834
+                          NET bank->final: plate 7,662->13,925   plate/thickness/openings moved at: 8fa0d9d6
+31065-01       L13        8fa0d9d6  plate 7,662->13,925                                          hers 7,834
+                          NET bank->final: plate 7,662->13,925   plate/thickness/openings moved at: 8fa0d9d6
+31065-01       L15        8fa0d9d6  plate 7,662->13,925                                          hers 7,834
+                          NET bank->final: plate 7,662->13,925   plate/thickness/openings moved at: 8fa0d9d6
+31065-01       L17        8fa0d9d6  plate 7,662->13,925                                          hers 7,834
+                          NET bank->final: plate 7,662->13,925   plate/thickness/openings moved at: 8fa0d9d6
+31130-01       L1         8ed10d03  members walls 1 cols 0                                       hers 55,644
+                          NET bank->final: thickness 14"->14"/12"; members walls 31 cols 1   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04,21fb2b10,0de30b47
+31130-01       L2         8fa0d9d6  plate 15,015->17,751; members walls 0 cols 3                 hers 12,348
+                          NET bank->final: plate 15,015->17,751; members walls 0 cols 3   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04,21fb2b10,0de30b47
+31130-01       L3         8ed10d03  members walls 0 cols 1                                       hers 11,227
+                          NET bank->final: members walls 0 cols 1   plate/thickness/openings moved at: (members only)
+31130-01       P2         8fa0d9d6  thickness 12"/10"->12"/10"; members walls 21 cols 0          hers 49,532
+                          NET bank->final: thickness 12"/10"->10"/12"; members walls 21 cols 0   plate/thickness/openings moved at: 8fa0d9d6,7240315b,21fb2b10,0de30b47
+31130-01       P3         8fa0d9d6  thickness 12"->12"                                           hers -
+                          NET bank->final: thickness 12"->12"   plate/thickness/openings moved at: 8fa0d9d6
+31130-01       L14        8fa0d9d6  thickness 12"/9"->9"                                         hers 11,227
+                          NET bank->final: thickness 12"/9"->9"/16"   plate/thickness/openings moved at: 8fa0d9d6,21fb2b10,0de30b47
+31130-01       L15        8fa0d9d6  plate 18,574->20,236                                         hers 10,435
+                          NET bank->final: plate 18,574->18,878   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04
+31130-01       L16        8fa0d9d6  plate 18,747->18,942                                         hers 9,125
+                          NET bank->final: plate 18,747->18,942   plate/thickness/openings moved at: 8fa0d9d6,21fb2b10,0de30b47
+31130-01       L17        8fa0d9d6  thickness 9"->9"                                             hers -
+                          NET bank->final: thickness 9"->9"/18"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04,21fb2b10,0de30b47,ea108775
+31130-01       L19        21fb2b10  thickness 9"->9"/14"                                         hers -
+                          NET bank->final: thickness 9"->9"/14"   plate/thickness/openings moved at: 21fb2b10,0de30b47,ea108775
+31130-01       L1M        8fa0d9d6  plate 33,110->32,122                                         hers -
+                          NET bank->final: thickness 14"->14"/12"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04,21fb2b10,0de30b47
+31130-01       L20        21fb2b10  thickness 10"->18"/10"                                       hers -
+                          NET bank->final: thickness 10"->18"/10"   plate/thickness/openings moved at: 21fb2b10,0de30b47
+31130-01       L0/P1      8fa0d9d6  thickness 10"->10"; members walls 24 cols 0                  hers -
+                          NET bank->final: thickness 10"->10"/12"; members walls 24 cols 0   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04,21fb2b10,0de30b47
+31138-01       L1         8fa0d9d6  thickness 12"->12"                                           hers 21,387
+                          NET bank->final: thickness 12"->12"/10"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04,21fb2b10,0de30b47,ea108775
+31138-01       L2         8ed10d03  members walls 1 cols 12                                      hers 21,676
+                          NET bank->final: thickness 24"->46"/24"; members walls 11 cols 13   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04,21fb2b10,0de30b47
+31138-01       L3         8ed10d03  members walls 0 cols 1                                       hers 13,269
+                          NET bank->final: plate 12,405->12,715; members walls 0 cols 1   plate/thickness/openings moved at: 8fa0d9d6
+31138-01       L4         8fa0d9d6  plate 12,405->12,715                                         hers 12,718
+                          NET bank->final: plate 12,405->12,715   plate/thickness/openings moved at: 8fa0d9d6
+31138-01       L5         8fa0d9d6  thickness 8"->8"; members walls 2 cols 0                     hers 17,497
+                          NET bank->final: thickness 8"->8"/12"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04,21fb2b10,0de30b47
+31138-01       P1         8fa0d9d6  thickness 10"->10"                                           hers 18,450
+                          NET bank->final: thickness 10"->10"/12"   plate/thickness/openings moved at: 8fa0d9d6,21fb2b10,0de30b47,ea108775
+31138-01       P3         21fb2b10  thickness 10"->10"/8"                                        hers 18,450
+                          NET bank->final: thickness 10"->10"/8"   plate/thickness/openings moved at: 21fb2b10,0de30b47
+31138-01       L20        674b2890  members walls 0 cols 1                                       hers 9,515
+                          NET bank->final: members walls 0 cols 1   plate/thickness/openings moved at: (members only)
+31138-01       L21        21fb2b10  thickness 8"->24"/8"                                         hers 15,825
+                          NET bank->final: thickness 8"->24"/8"   plate/thickness/openings moved at: 21fb2b10
+31138-01       L22        7240315b  thickness 12"->10"                                           hers 9,021
+                          NET bank->final: thickness 12"->10"   plate/thickness/openings moved at: 7240315b
+31168-01       L1         21fb2b10  thickness 14"->14"/30"                                       hers 89,063
+                          NET bank->final: thickness 14"->14"/30"   plate/thickness/openings moved at: 21fb2b10,0de30b47,ea108775
+31168-01       L2         21fb2b10  thickness 12"->12"/14"                                       hers 36,784
+                          NET bank->final: thickness 12"->12"/14"   plate/thickness/openings moved at: 21fb2b10,0de30b47,ea108775
+31168-01       L3         21fb2b10  thickness 10"->10"                                           hers -
+                          NET bank->final: thickness 10"->10"   plate/thickness/openings moved at: 21fb2b10
+31168-01       P1         21fb2b10  thickness 10"/12"->10"/12"                                   hers -
+                          NET bank->final: thickness 10"/12"->10"/12"   plate/thickness/openings moved at: 21fb2b10,0de30b47
+31168-01       L10        d2cec177  members walls 1 cols 0                                       hers -
+                          NET bank->final: members walls 1 cols 0   plate/thickness/openings moved at: (members only)
+31168-01       L11        d2cec177  members walls 1 cols 0                                       hers -
+                          NET bank->final: members walls 1 cols 0   plate/thickness/openings moved at: (members only)
+31168-01       A-L1       21fb2b10  thickness 14"->14"                                           hers -
+                          NET bank->final: thickness 14"->14"/12"   plate/thickness/openings moved at: 21fb2b10,0de30b47
+31168-01       C-L3       8fa0d9d6  plate 11,885->23,199                                         hers 31,473
+                          NET bank->final: thickness 8"->8"/26"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04,0de30b47
+31168-01       A-L34      8ed10d03  members walls 2 cols 0                                       hers -
+                          NET bank->final: members walls 2 cols 0   plate/thickness/openings moved at: (members only)
+31170-01-arch  L1         8ed10d03  plate 40,235->41,521                                         hers 31,891
+                          NET bank->final: thickness 12"->12"   plate/thickness/openings moved at: 8ed10d03,8fa0d9d6,674b2890
+31170-01-arch  L3         8ed10d03  members walls 6 cols 0                                       hers 18,742
+                          NET bank->final: members walls 6 cols 0   plate/thickness/openings moved at: (members only)
+31170-01-arch  L4         8ed10d03  members walls 6 cols 0                                       hers 18,742
+                          NET bank->final: members walls 6 cols 0   plate/thickness/openings moved at: (members only)
+31170-01-arch  L5         8ed10d03  plate 32,076->41,589; members walls 6 cols 0                 hers 21,149
+                          NET bank->final: members walls 6 cols 0   plate/thickness/openings moved at: 8ed10d03,674b2890
+31170-01-arch  L6         8ed10d03  plate 41,033->41,792; members walls 6 cols 0                 hers 16,553
+                          NET bank->final: members walls 6 cols 0   plate/thickness/openings moved at: 8ed10d03,8fa0d9d6,f5a74e04,674b2890
+31170-01-arch  L7         8ed10d03  members walls 6 cols 0                                       hers 13,611
+                          NET bank->final: members walls 6 cols 0   plate/thickness/openings moved at: (members only)
+31202-01       L1         8fa0d9d6  thickness 12"->12"                                           hers -
+                          NET bank->final: thickness 12"->12"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04,cd7dc0de
+31202-01       L2         8ed10d03  members walls 3 cols 3                                       hers 33,572
+                          NET bank->final: members walls 3 cols 3   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04
+31202-01       L3         8ed10d03  members walls 0 cols 3                                       hers 38,105
+                          NET bank->final: thickness 10"->10"; members walls 0 cols 3   plate/thickness/openings moved at: 8fa0d9d6
+31202-01       L4         8fa0d9d6  thickness 10"->10"                                           hers 38,105
+                          NET bank->final: thickness 10"->10"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04
+31202-01       L5         8fa0d9d6  members walls 1 cols 0                                       hers 50,753
+                          NET bank->final: thickness 12"->12"/16"; members walls 1 cols 0   plate/thickness/openings moved at: 21fb2b10,0de30b47
+31202-01       L7         8ed10d03  members walls 0 cols 1                                       hers 34,635
+                          NET bank->final: thickness 8"->8"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04
+31202-01       L8         8ed10d03  members walls 0 cols 1                                       hers 34,635
+                          NET bank->final: thickness 8"->8"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04
+31202-01       L9         8ed10d03  members walls 0 cols 1                                       hers 34,635
+                          NET bank->final: thickness 8"->8"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04
+31202-01       L10        8ed10d03  members walls 0 cols 1                                       hers 34,635
+                          NET bank->final: thickness 8"->8"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04
+31202-01       L11        8ed10d03  members walls 0 cols 1                                       hers 34,635
+                          NET bank->final: thickness 8"->8"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04
+31202-01       L12        8ed10d03  members walls 0 cols 1                                       hers 34,635
+                          NET bank->final: thickness 8"->8"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04
+31202-01       L13        8ed10d03  members walls 0 cols 1                                       hers 44,553
+                          NET bank->final: thickness 8"->8"/12"   plate/thickness/openings moved at: 8fa0d9d6,f5a74e04,21fb2b10,0de30b47
+31202-01       ROOF       8ed10d03  plate 12,160->8,736; members walls 18 cols 2                 hers -
+                          NET bank->final: plate 12,160->9,683; members walls 12 cols 2   plate/thickness/openings moved at: 8ed10d03,cd7dc0de
+31202-01       UPPER ROOF 8ed10d03  plate 0->3,423                                               hers -
+                          NET bank->final: plate 0->3,423   plate/thickness/openings moved at: 8ed10d03
+
+67 storeys moved bank -> walk-86a2e160; 67 with a first commit, 0 NOT FOUND
+
+PER COMMIT - what it changed against the commit before (the evidence for fix / regression / bank's error):
+f226e8f4 One markup DXF from the app and the CLI: markup labels read in Core, layer-by-colour a cho: 0 storey change(s)
+750a273f A2/A2b/A3d/A3e: stated scale read by app and CLI; a DXF opens on its drawing; a markup lab: 0 storey change(s)
+8ed10d03 PDF intake steps 149-168: a marked-up PDF builds an ETABS model (143 E 3rd Hotel): 27 storey change(s)
+    31065-01 L1: plate 32,792->23,830; members walls 2 cols 27 | hers 58,968
+    31065-01 L2: members walls 0 cols 8 | hers 10,728
+    31065-01 L3: members walls 0 cols 1 | hers 10,727
+    31065-01 L4: members walls 0 cols 1 | hers 10,829
+    31065-01 P1: members walls 4 cols 1 | hers 40,064
+    31130-01 L1: members walls 1 cols 0 | hers 55,644
+    31130-01 L3: members walls 0 cols 1 | hers 11,227
+    31138-01 L2: members walls 1 cols 12 | hers 21,676
+    31138-01 L3: members walls 0 cols 1 | hers 13,269
+    31168-01 A-L34: members walls 2 cols 0 | hers 0
+    31170-01-arch L1: plate 40,235->41,521 | hers 31,891
+    31170-01-arch L3: members walls 6 cols 0 | hers 18,742
+    31170-01-arch L4: members walls 6 cols 0 | hers 18,742
+    31170-01-arch L5: plate 32,076->41,589; members walls 6 cols 0 | hers 21,149
+    31170-01-arch L6: plate 41,033->41,792; members walls 6 cols 0 | hers 16,553
+    31170-01-arch L7: members walls 6 cols 0 | hers 13,611
+    31202-01 L2: members walls 3 cols 3 | hers 33,572
+    31202-01 L3: members walls 0 cols 3 | hers 38,105
+    31202-01 L7: members walls 0 cols 1 | hers 34,635
+    31202-01 L8: members walls 0 cols 1 | hers 34,635
+    31202-01 L9: members walls 0 cols 1 | hers 34,635
+    31202-01 L10: members walls 0 cols 1 | hers 34,635
+    31202-01 L11: members walls 0 cols 1 | hers 34,635
+    31202-01 L12: members walls 0 cols 1 | hers 34,635
+    31202-01 L13: members walls 0 cols 1 | hers 44,553
+    31202-01 ROOF: plate 12,160->8,736; members walls 18 cols 2 | hers 0
+    31202-01 UPPER ROOF: plate 0->3,423 | hers 0
+da94a37d Bids tab shows structural-firm work only: KorBidFit reads a tender's title (prime/architec: 0 storey change(s)
+2d1fce88 Takeoff CLI: no AI vision service (C1, the takeoff half). Ian: "yes - delete them".: 0 storey change(s)
+83d424bc PdfToSafe: "Build whole building (ETABS)" button - the whole set through the same route as: 0 storey change(s)
+47705014 Rebar compare: the app's change report reads the drawings the way its markup does, refuses: 0 storey change(s)
+06afccff Steps 150, 151, 162, 167 fixed from tonight's corpus gate and six-set attribution: 9 storey change(s)
+    31065-01 L1: members walls 0 cols 1 | hers 58,968
+    31202-01 L7: members walls 0 cols 1 | hers 34,635
+    31202-01 L8: members walls 0 cols 1 | hers 34,635
+    31202-01 L9: members walls 0 cols 1 | hers 34,635
+    31202-01 L10: members walls 0 cols 1 | hers 34,635
+    31202-01 L11: members walls 0 cols 1 | hers 34,635
+    31202-01 L12: members walls 0 cols 1 | hers 34,635
+    31202-01 L13: members walls 0 cols 1 | hers 44,553
+    31202-01 ROOF: members walls 0 cols 1 | hers 0
+d2cec177 Step 169: a ceiling under half a storey a floor is another building's level: 3 storey change(s)
+    31168-01 L10: members walls 1 cols 0 | hers 0
+    31168-01 L11: members walls 1 cols 0 | hers 0
+    31202-01 ROOF: members walls 30 cols 3 | hers 0
+1f967a4e Rebar workbook: the Summary's tonnes are the weight sheet's own arithmetic, and it says ho: 0 storey change(s)
+ef549a08 Model takeoff: floors in building order, lowest first, not by name: 0 storey change(s)
+8fa0d9d6 Steps 170-172: slab edge runs kept whole, a table's broken top rule, a slanted wall's clip: 48 storey change(s)
+    31065-01 L1: plate 23,830->24,078; members walls 20 cols 2 | hers 58,968
+    31065-01 L2: plate 19,468->25,901; members walls 2 cols 0 | hers 10,728
+    31065-01 L3: members walls 2 cols 0 | hers 10,727
+    31065-01 L4: members walls 2 cols 0 | hers 10,829
+    31065-01 L5: plate 0->17,359; members walls 18 cols 5 | hers 10,870
+    31065-01 L6: members walls 1 cols 0 | hers 7,837
+    31065-01 L7: plate 7,662->13,925 | hers 7,834
+    31065-01 L9: plate 7,662->13,925 | hers 7,834
+    31065-01 P1: thickness 9.8"/12"->9.8"/12"; members walls 18 cols 0 | hers 40,064
+    31065-01 P2: thickness 9.8"->9.8"; members walls 14 cols 0 | hers 36,256
+    31065-01 P3: thickness 12"->12" | hers 0
+    31065-01 L11: plate 7,662->13,925 | hers 7,834
+    31065-01 L13: plate 7,662->13,925 | hers 7,834
+    31065-01 L15: plate 7,662->13,925 | hers 7,834
+    31065-01 L17: plate 7,662->13,925 | hers 7,834
+    31130-01 L1: plate 33,110->32,122; members walls 32 cols 1 | hers 55,644
+    31130-01 L2: plate 15,015->17,751; members walls 0 cols 3 | hers 12,348
+    31130-01 P2: thickness 12"/10"->12"/10"; members walls 21 cols 0 | hers 49,532
+    31130-01 P3: thickness 12"->12" | hers 0
+    31130-01 L14: thickness 12"/9"->9" | hers 11,227
+    31130-01 L15: plate 18,574->20,236 | hers 10,435
+    31130-01 L16: plate 18,747->18,942 | hers 9,125
+    31130-01 L17: thickness 9"->9" | hers 0
+    31130-01 L1M: plate 33,110->32,122 | hers 0
+    31130-01 L0/P1: thickness 10"->10"; members walls 24 cols 0 | hers 0
+    31138-01 L1: thickness 12"->12" | hers 21,387
+    31138-01 L2: plate 12,307->12,493; members walls 11 cols 0 | hers 21,676
+    31138-01 L3: plate 12,405->12,715 | hers 13,269
+    31138-01 L4: plate 12,405->12,715 | hers 12,718
+    31138-01 L5: thickness 8"->8"; members walls 2 cols 0 | hers 17,497
+    31138-01 P1: thickness 10"->10" | hers 18,450
+    31168-01 C-L3: plate 11,885->23,199 | hers 31,473
+    31168-01 B-L28: plate 6,606->6,518 | hers 0
+    31170-01-arch L1: thickness 12"->12" | hers 31,891
+    31170-01-arch L6: thickness 12"->12" | hers 16,553
+    31202-01 L1: thickness 12"->12" | hers 0
+    31202-01 L2: thickness 10"->10" | hers 33,572
+    31202-01 L3: thickness 10"->10" | hers 38,105
+    31202-01 L4: thickness 10"->10" | hers 38,105
+    31202-01 L5: members walls 1 cols 0 | hers 50,753
+    31202-01 L6: thickness 8"->8" | hers 34,635
+    31202-01 L7: plate 28,585->28,921 | hers 34,635
+    31202-01 L8: plate 28,585->28,921 | hers 34,635
+    31202-01 L9: plate 28,585->28,921 | hers 34,635
+    31202-01 L10: plate 28,585->28,921 | hers 34,635
+    31202-01 L11: plate 28,585->28,921 | hers 34,635
+    31202-01 L12: plate 28,585->28,921 | hers 34,635
+    31202-01 L13: thickness 8"->8" | hers 44,553
+8bef3049 Intake step 174: a wall Revit's own PDF export split is still a wall; the corpus gate know: 0 storey change(s)
+f5a74e04 Steps 170 repaired and 173: the slab-edge step never costs a floor; a column drawn with a : 26 storey change(s)
+    31065-01 L1: thickness 12"/34.4"->12"/34.4" | hers 58,968
+    31065-01 P1: thickness 9.8"/12"->9.8"/12" | hers 40,064
+    31065-01 P3: thickness 12"->12" | hers 0
+    31130-01 L1: plate 32,122->33,110; members walls 2 cols 0 | hers 55,644
+    31130-01 L2: thickness 12"/36"->12"/36" | hers 12,348
+    31130-01 L15: plate 20,236->18,878 | hers 10,435
+    31130-01 L17: thickness 9"->9" | hers 0
+    31130-01 L1M: plate 32,122->33,110 | hers 0
+    31130-01 L0/P1: plate 52,895->53,435 | hers 0
+    31138-01 L1: thickness 12"->12" | hers 21,387
+    31138-01 L2: plate 12,493->12,307; members walls 1 cols 0 | hers 21,676
+    31138-01 L5: thickness 8"->8"; members walls 2 cols 0 | hers 17,497
+    31168-01 C-L3: plate 23,199->11,885 | hers 31,473
+    31168-01 B-L28: plate 6,518->6,606 | hers 0
+    31170-01-arch L6: thickness 12"->12" | hers 16,553
+    31202-01 L1: thickness 12"->12" | hers 0
+    31202-01 L2: thickness 10"->10"; members walls 0 cols 1 | hers 33,572
+    31202-01 L4: thickness 10"->10" | hers 38,105
+    31202-01 L6: thickness 8"->8" | hers 34,635
+    31202-01 L7: thickness 8"->8" | hers 34,635
+    31202-01 L8: thickness 8"->8" | hers 34,635
+    31202-01 L9: thickness 8"->8" | hers 34,635
+    31202-01 L10: thickness 8"->8" | hers 34,635
+    31202-01 L11: thickness 8"->8" | hers 34,635
+    31202-01 L12: thickness 8"->8" | hers 34,635
+    31202-01 L13: thickness 8"->8" | hers 44,553
+3a65b340 takeoff revit-to-dxf: a level may carry floor outlines (slab edges) - Halifax builds the p: 0 storey change(s)
+507116a4 takeoff revit-to-dxf: a level may carry openings (shafts, stair wells) - written as inner : 0 storey change(s)
+f2ffb2bc takeoff revit-to-dxf: a round column's type names its diameter (24" Ø, 24" DIA) and goes : 0 storey change(s)
+4392a5a4 Step 173 corrected: a column shown through a round clip is round - as committed it turned : 0 storey change(s)
+231e0f69 ETABS column ANG is the long face's bearing - every oblong column was a quarter turn off s: 0 storey change(s)
+e7adce28 A doorway header between walls of two thicknesses takes the thinner - and the report says : 0 storey change(s)
+cd7dc0de Steps 175-177: a slab edge the drawing closed is closed; the larger of two readings of a f: 5 storey change(s)
+    31065-01 L1: thickness 12"/34.4"->12"/34.4" | hers 58,968
+    31065-01 P2: thickness 9.8"->9.8" | hers 36,256
+    31202-01 L1: thickness 12"->12" | hers 0
+    31202-01 L2: members walls 0 cols 1 | hers 33,572
+    31202-01 ROOF: plate 8,736->9,683 | hers 0
+674b2890 Steps 178-180: a column's turn carried to ETABS (Revit route); a section cut is a straight: 7 storey change(s)
+    31065-01 L1: plate 24,167->32,792; members walls 0 cols 14 | hers 58,968
+    31065-01 P1: members walls 0 cols 1 | hers 40,064
+    31138-01 L2: members walls 0 cols 3 | hers 21,676
+    31138-01 L20: members walls 0 cols 1 | hers 9,515
+    31170-01-arch L1: plate 41,783->39,907 | hers 31,891
+    31170-01-arch L5: plate 41,589->32,076 | hers 21,149
+    31170-01-arch L6: plate 41,792->41,033 | hers 16,553
+0db1608d The engineer's model judges, not ours inside it: objects named as this tool names its own : 0 storey change(s)
+7240315b Step 182: a tie between printed thicknesses is broken by the ground each stands for - over: 2 storey change(s)
+    31130-01 P2: thickness 12"/10"->10" | hers 49,532
+    31138-01 L22: thickness 12"->10" | hers 9,021
+3a56ded0 CarriedRules offers only the caller's kind of rule: a drafting ruling is not an ETABS ques: 0 storey change(s)
+21fb2b10 Step 183: a floor the drawing zones by thickness is modelled as its zones: 27 storey change(s)
+    31065-01 L1: thickness 12"/34.4"->35.4"/34.4" | hers 58,968
+    31065-01 L2: thickness 7.9"->7.9"/35.4" | hers 10,728
+    31065-01 L5: thickness 11.8"/7.9"->7.9"/11.8" | hers 10,870
+    31065-01 P1: thickness 9.8"/12"->9.8"/5.9" | hers 40,064
+    31130-01 L1: thickness 14"->14"/12" | hers 55,644
+    31130-01 L2: thickness 12"/36"->12"/9" | hers 12,348
+    31130-01 P2: thickness 10"->10"/12" | hers 49,532
+    31130-01 L14: thickness 9"->9"/16" | hers 11,227
+    31130-01 L16: thickness 9"/12"->9"/18" | hers 9,125
+    31130-01 L17: thickness 9"->9"/18" | hers 0
+    31130-01 L19: thickness 9"->9"/14" | hers 0
+    31130-01 L1M: thickness 14"->14"/12" | hers 0
+    31130-01 L20: thickness 10"->18"/10" | hers 0
+    31130-01 L0/P1: thickness 10"->10"/12" | hers 0
+    31138-01 L1: thickness 12"->12"/10" | hers 21,387
+    31138-01 L2: thickness 24"->46"/24" | hers 21,676
+    31138-01 L5: thickness 8"->8"/12" | hers 17,497
+    31138-01 P1: thickness 10"->10"/12" | hers 18,450
+    31138-01 P3: thickness 10"->10"/8" | hers 18,450
+    31138-01 L21: thickness 8"->24"/8" | hers 15,825
+    31168-01 L1: thickness 14"->14"/30" | hers 89,063
+    31168-01 L2: thickness 12"->12"/14" | hers 36,784
+    31168-01 L3: thickness 10"->10" | hers 0
+    31168-01 P1: thickness 10"/12"->10"/12" | hers 0
+    31168-01 A-L1: thickness 14"->14" | hers 0
+    31202-01 L5: thickness 12"->12"/16" | hers 50,753
+    31202-01 L13: thickness 8"->8"/12" | hers 44,553
+0de30b47 Step 183: a short stroke of the outline's own pen closes a zone; a zone that cannot be cut: 24 storey change(s)
+    31065-01 L1: thickness 35.4"/34.4"->35.4"/34.4" | hers 58,968
+    31065-01 P1: thickness 9.8"/5.9"->9.8"/5.9" | hers 40,064
+    31130-01 L1: thickness 14"/12"->14"/12" | hers 55,644
+    31130-01 L2: thickness 12"/9"->12"/9" | hers 12,348
+    31130-01 P2: thickness 10"/12"->10"/12" | hers 49,532
+    31130-01 L14: thickness 9"/16"->9"/16" | hers 11,227
+    31130-01 L16: thickness 9"/18"->9"/18" | hers 9,125
+    31130-01 L17: thickness 9"/18"->9"/18" | hers 0
+    31130-01 L19: thickness 9"/14"->9"/14" | hers 0
+    31130-01 L1M: thickness 14"/12"->14"/12" | hers 0
+    31130-01 L20: thickness 18"/10"->18"/10" | hers 0
+    31130-01 L0/P1: thickness 10"/12"->10"/12" | hers 0
+    31138-01 L1: thickness 12"/10"->12"/10" | hers 21,387
+    31138-01 L2: thickness 46"/24"->46"/24" | hers 21,676
+    31138-01 L5: thickness 8"/12"->8"/12" | hers 17,497
+    31138-01 P1: thickness 10"/12"->10"/12" | hers 18,450
+    31138-01 P3: thickness 10"/8"->10"/8" | hers 18,450
+    31168-01 L1: thickness 14"/30"->14"/30" | hers 89,063
+    31168-01 L2: thickness 12"/14"->12"/14" | hers 36,784
+    31168-01 P1: thickness 10"/12"->10"/12" | hers 0
+    31168-01 A-L1: thickness 14"->14"/12" | hers 0
+    31168-01 C-L3: thickness 8"->8"/26" | hers 31,473
+    31202-01 L5: thickness 12"/16"->12"/16" | hers 50,753
+    31202-01 L13: thickness 8"/12"->8"/12" | hers 44,553
+ea108775 Step 183: the zones tile the floor or there are none - a zone inside another of its thickn: 6 storey change(s)
+    31130-01 L17: thickness 9"/18"->9"/18" | hers 0
+    31130-01 L19: thickness 9"/14"->9"/14" | hers 0
+    31138-01 L1: thickness 12"/10"->12"/10" | hers 21,387
+    31138-01 P1: thickness 10"/12"->10"/12" | hers 18,450
+    31168-01 L1: thickness 14"/30"->14"/30" | hers 89,063
+    31168-01 L2: thickness 12"/14"->12"/14" | hers 36,784
+9055a41e Corpus gate: a set whose frame does not register is not judged by position - and a frame t: 0 storey change(s)
+9670a49e Step 184: a floor the set frames in wood carries no concrete plate - from the second link : 0 storey change(s)
+86a2e160 Corpus gate: the storeys we plate that her model does not name are counted, named, and a r: 0 storey change(s)

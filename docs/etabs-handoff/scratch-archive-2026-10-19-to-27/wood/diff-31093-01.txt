@@ -1,0 +1,2 @@
+L4: columns 2 -> 2, walls 198 -> 198  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 6,830 6,830 2,882 1,642 -> - sq ft
+plates moved 1, columns lost 0 / gained 0, walls lost 0 / gained 0

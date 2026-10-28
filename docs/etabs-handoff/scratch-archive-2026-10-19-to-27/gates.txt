@@ -1,0 +1,484 @@
+##### Kor.Operations.App/EngineeringTools.Tests/PdfToSafe/DesignStripGeneratorTests.cs:14 (class DesignStripGeneratorCoverageTests) Facts=11
+    /// <summary>
+    /// DesignStripGenerator tiles a slab bounding box with named strips. Zero
+    /// existing tests; this file locks the spacing, prefix, and direction
+    /// semantics engineers see in SAFE after export.
+    /// </summary>
+##### Kor.Operations.App/EngineeringTools.Tests/PdfToSafe/DxfRoundTripGate.cs:30 (class DxfRoundTripGate) Facts=1
+/// <summary>
+/// THE GATE THE ADVERSARIAL AUDIT SAID MUST BE GREEN BEFORE ANYTHING IS DELETED.
+///
+/// The convergence plan claims a PDF-derived DXF can feed the existing DXF intake. That claim was
+/// false when it was written, in two ways nobody had checked: the exporter emitted no `$INSUNITS`,
+/// so `DxfToEtabsService` refuses the file outright — *"there is no way to know whether it is drawn
+/// in inches, feet or millimetres. Every size rule and every coordinate depends on that"* — and it
+/// emitted `POLYLINE`/`VERTEX` and nothing else, so every slab-thickness and section call-out the
+/// PDF carried was dropped in transit.
+///
+/// So this does not ask whether the writer believes it wrote those things. It writes a DXF from a
+/// real PDF, reads it back through the SHIPPED reader — `DxfPlanReader`, the one the ETABS side
+/// uses — and asserts the drawing survived: units, text, geometry, extent.
+///
+/// The text-inside-the-box assertion is the sharp one. `Export` recentres every shape on a weighted
+/// centroid; text recentred by anything else lands offset from the plate it labels, which is worse
+/// than dropping it because it looks right and reads wrong.
+/// </summary>
+##### Kor.Operations.App/EngineeringTools.Tests/PdfToSafe/MarkupLabelsAreDrawingTextGate.cs:29 (class MarkupLabelsAreDrawingTextGate) Facts=1
+/// <summary>
+/// A LABEL IS TEXT ON A DRAWING. ITS HEIGHT COMES FROM THE SHEET, NOT FROM THE THING IT DESCRIBES.
+///
+/// A page WORD has a bounding box and that box's height IS the text height. A Bluebeam annotation's
+/// /Contents has no box — Bluebeam shows it in a popup, never on the sheet — and `ann.Rectangle` is
+/// the extent of THE SHAPE HE DREW. Reading the height from it set every `12" x 30"` as tall as the
+/// wall it labels: 796 mm of text on a 796 mm wall segment, 956 on the dimension string. Opened in
+/// CAD it looked, accurately, like a three-year-old had done it, and it shipped that way because the
+/// only check run on it was on the OTHER file — the tower plan, whose text comes from page words and
+/// was correct all along.
+///
+/// So the rule has two halves and this gate holds both:
+///
+///   MARKUP LABELS take a drawing text height — 2.5 mm on paper times the sheet scale. One value for
+///   every label, and small against the geometry, because that is what annotation is.
+///
+///   PAGE WORDS keep their own measured heights, which vary and already were right. A fix that
+///   flattened those too would trade one wrong drawing for another.
+/// </summary>
+##### Kor.Operations.App/EngineeringTools.Tests/PdfToSafe/MarkupSurvivesReclassificationGate.cs:25 (class MarkupSurvivesReclassificationGate) Facts=1
+/// <summary>
+/// AN ENGINEER'S RED AND HIS ARCHITECT'S RED ARE THE SAME RED.
+///
+/// On Parcel 11 both are #F00000 — Omar's shear walls and the property line sweeping round the site.
+/// No colour rule can separate them; origin can, and only origin can. `ExtractedGeometry` carries
+/// SlabIsAnnotation / ColumnIsAnnotation / LineIsAnnotation for exactly that, and `DxfExporter`
+/// writes the `-MARKUP` suffix from them.
+///
+/// `ReclassifyByColor` used to rebuild the geometry and copy the colours while dropping those flags,
+/// so any colour override collapsed `PDF-F00000-MARKUP` back into `PDF-F00000` and welded his markup
+/// onto the architect's boundary again. **The app exports the RECLASSIFIED geometry**, so that path
+/// was the one that shipped.
+///
+/// This asserts the flags survive the trip, which a grep of the source cannot.
+/// </summary>
+##### Kor.Operations.App/EngineeringTools.Tests/PdfToSafe/ReclassifyByColorCoverageTests.cs:18 (class ReclassifyByColorCoverageTests) Facts=9
+    /// <summary>
+    /// Augments the existing <see cref="ReclassifyByColorTests"/> with paths
+    /// that currently have no explicit coverage:
+    ///   - Slab→Beam (polyline preserved, null section hint)
+    ///   - null colorSettings + no element overrides → returns original unchanged
+    ///   - Color not in settings dict → falls through to default classification
+    ///   - Per-element override wins over per-color setting
+    /// Uses the same reflection pattern as the original file to match style.
+    /// </summary>
+##### Kor.Operations.App/EngineeringTools.Tests/PdfToSafe/StructuralGridGeneratorTests.cs:14 (class StructuralGridGeneratorCoverageTests) Facts=9
+    /// <summary>
+    /// Grid generator is pure clustering arithmetic driven by column
+    /// positions. Gets called automatically for every F2K export, so any
+    /// regression here shows up as bad grids on every engineer's model.
+    /// </summary>
+##### Kor.Operations.App/EngineeringTools.Tests/PdfToSafe/StructuralMaterialDatabaseTests.cs:17 (class StructuralMaterialDatabaseCoverageTests) Facts=20
+    /// <summary>
+    /// Locks the material database against silent edits. The database drives
+    /// every export's material properties, rebar list, and load-combination
+    /// set — getting any of these wrong ships structurally incorrect models.
+    /// These tests catch: grade table drift, E-formula mistakes, rebar list
+    /// reorder/rename, load combo factor typos.
+    /// </summary>
+##### Kor.Operations.App/EngineeringTools.Tests/PdfToSafe/TheScaleComesOffTheSheetGate.cs:28 (class TheScaleComesOffTheSheetGate) Facts=2
+/// <summary>
+/// EVERY EXPORTED COORDINATE IS LINEAR IN THIS ONE NUMBER, SO IT MUST COME OFF THE SHEET.
+///
+/// The old detector joined every word on the page and took the first `1:NNN` it found, against a
+/// whitelist of metric denominators only. It returned NULL for a sheet whose title block reads
+/// `SCALE: 1/8" = 1'-0"`, because the pattern demanded two to four digits so `1/8` never matched,
+/// and because 96 was not in the list. **No sheet drawn in imperial could be read at all** — which
+/// is most North American structural drawing — and the app then defaulted, silently, to a number
+/// 4% wrong.
+///
+/// Two sheets, two different places the scale lives, and both must land on 96:
+///
+///   31202-01    states it in the title block          — `SheetScaleReader.FromPage`
+///   Parcel 11   leaves that field EMPTY and states it once under the viewport, bottom-left
+///
+/// The second is the one that needs care. A caption cannot be trusted in general — `SCALE: 1:20`
+/// under a stair detail is not the sheet scale — so it is used only where the title block is silent
+/// AND the sheet states exactly one, and the engineer is told what was used and where it came from.
+/// </summary>
+##### Kor.Operations.App/EngineeringTools.Tests/StandardDetails/GatekeeperCanDoTheJobTests.cs:28 (class GatekeeperCanDoTheJobTests) Facts=1
+/// <summary>
+/// The person who runs the standard-details catalogue has to be in the groups that unlock the job.
+///
+/// WHY THIS IS CHECKED. Every governed control in the module is hidden or disabled by
+/// StandardDetailsAccessPolicy, and a missing membership does not fail — it just renders an app with
+/// the buttons gone. Lindsay was handed the gatekeeper role while being in NONE of the five groups,
+/// which would have looked exactly like the feature not existing.
+///
+/// WHAT IT COVERS: that the App.config that ships actually lists the gatekeeper in the three groups
+/// her role needs, matched the same way SecurityGroupAccess matches — full identity or the part
+/// before the '@', case-insensitive, separators ; , tab or newline.
+/// WHAT IT DOES NOT COVER: whether the address is the one Windows resolves for her at runtime (that
+/// comes from Environment.UserName or a UPN override on her machine, not from here); whether anyone
+/// else's membership is right; and anything about the KorStandards SQL logins, which are a separate
+/// gate entirely — being in these groups does not grant a single database permission.
+///
+/// A same-class fault it would NOT catch: the group key itself being renamed in both App.config and
+/// KnownRoles at once, which would leave this passing while every real user silently lost access.
+/// </summary>
+##### Kor.Operations.EngineeringTools.Core.Tests/EveryReaderOfTheSharedVocabularyIsSerialisedTests.cs:37 (class EveryReaderOfTheSharedVocabularyIsSerialisedTests) Facts=1
+/// <summary>
+/// Every test class that touches <c>PlanSheetNaming.Vocabulary</c> must be in the collection that
+/// serialises against it.
+/// </summary>
+/// <remarks>
+/// `PlanSheetNaming.Vocabulary` is a public mutable STATIC — the words an office uses for a storey,
+/// a building, a mezzanine — and production sets it once per run from the banked rules. In one
+/// process that is fine; in a test run, with xUnit running classes in PARALLEL, it is shared global
+/// state. `AnotherOfficesWordsTests` sets it to a different practice's words and restores it in
+/// Dispose, and anything reading it at that moment fails on a sheet name that is perfectly correct.
+///
+/// It presents as an intermittent that passes alone and fails in a full run, which is the shape that
+/// gets written off as flaky. SheetNamingVocabularyCollection exists for it and its own summary ends
+/// "⚠ Any NEW test class that touches that static belongs here too" — a rule stated in prose, which
+/// is exactly the kind this repo has watched lose to momentum.
+///
+/// It lost. On 2026-09-02 `E2kDocumentTests.ASheetCanNameAMezzanineForOneLevelAndNotAnother` failed
+/// in a full run and passed alone immediately after — the THIRD unexplained full-suite failure from
+/// this one static, and E2kDocumentTests had never been added despite 60 references to the
+/// vocabulary. PlacementModelTests and StickFileSlabThicknessReaderTests were exposed the same way
+/// and had simply not been unlucky yet.
+///
+/// So the rule is a check now, and it fails on every instance at once rather than on whichever one
+/// the scheduler happens to interleave.
+///
+/// WHAT THIS COVERS: any test class in this project that names PlanSheetNaming and is not in the
+/// collection. WHAT IT DOES NOT: a class reaching the vocabulary INDIRECTLY, through a helper that
+/// names PlanSheetNaming while the test class does not — this reads source text, not call graphs.
+/// Nor does it cover other mutable statics; it knows about this one.
+/// </remarks>
+##### Kor.Operations.EngineeringTools.Core.Tests/Intake/APlateOnEveryStoreyIsMeasuredTests.cs:15 (class APlateOnEveryStoreyIsMeasuredTests) Facts=2
+/// <summary>
+/// A PLATE ON EVERY STOREY is the engineers' bar (plan WP6a, 2026-09-15); PlateCoverage is its instrument. WHAT THIS
+/// COVERS: a storey with a FLOOR area is a plate; one with no sheet placed is NoSheetPlaced; one whose placed
+/// sheets read no ring is NoRingRead; one whose sheets read rings that became no plate is RingsReadNoPlate; the
+/// storeys come out in the .e2k's order; a non-floor area (a wall) is not a plate. WHAT IT DOES NOT: a plate on the
+/// wrong storey (counted where the model puts it); why a ring did not close; the corpus totals (corpus-query plates).
+/// </summary>
+##### Kor.Operations.EngineeringTools.Core.Tests/Intake/EveryPathHasExactlyOneFateTests.cs:17 (class EveryPathHasExactlyOneFateTests) Facts=4
+/// <summary>Exercises each classifier decision, including both axes, both frame edges and fallthroughs.</summary>
+/// <remarks>
+/// WHAT THIS COVERS: one synthetic fixture with a path for every classifier branch — every input
+/// index gets one fate, the object index points at the object made, the disposition follows the
+/// reason alone, markup-only and grid-exclusion have their own reasons, and every PathReason value is
+/// reached by some test. WHAT IT DOES NOT: the remap from the thinned read to the population
+/// (ThePopulationIsTheUnthinnedReadTests), a real page (FiveStickFilesTests counts fates on the
+/// banked pages), a page read with no scale (its fates are empty by design), and a fate that is
+/// unique but WRONG — a rectangle read as a slab where a wall was meant has exactly one fate too.
+/// </remarks>
+##### Kor.Operations.EngineeringTools.Core.Tests/Intake/EveryReaderConstantIsTriagedTests.cs:26 (class EveryReaderConstantIsTriagedTests) Facts=3
+/// <summary>
+/// THE TRIAGE OF THE READERS' COMPILED NUMBERS (completion plan WP5, 2026-09-11), as a gate rather
+/// than a table in a document: every <c>const double|int</c> in the intake's readers is one of —
+/// <b>Row</b>: read from a KorStandards row, whose key is named here and must exist in the code;
+/// <b>Convention</b>: a drafting convention that belongs in a row and is still compiled — the debt,
+/// counted; <b>Tolerance</b>: slack against drafting and floating-point precision, code by design;
+/// <b>Rule</b>: a fact of geometry or of buildings, code by design; <b>Elsewhere</b>: another
+/// product's setting that happens to share a file (the SAFE/WPF side); <b>Dead</b>: referenced by
+/// nothing, and the test fails until it is deleted. A constant added without a line here fails the
+/// test; a constant deleted without removing its line fails the test.
+/// </summary>
+/// <remarks>
+/// WHAT THIS COVERS: the set of constants (the scan is the same one <c>tools/list_reader_constants.py</c>
+/// makes), each named, each classed, a Row's key present in the code, a Dead one gone. WHAT IT DOES
+/// NOT: whether a Row is READ where the constant was used (CompiledDefaultsAreTheBankedRowsTests
+/// holds each row's value to its compiled default; the six-set gate holds the behaviour); whether
+/// a Tolerance is the right size; a number written inline without <c>const</c>.
+/// </remarks>
+##### Kor.Operations.EngineeringTools.Core.Tests/Intake/EveryRefusalSaysHowToFixItTests.cs:40 (class EveryRefusalSaysHowToFixItTests) Facts=2
+/// Ian: "I want EXPLICIT reasons a model didn't run and how to fix it in the error message.
+/// Everything needs to be explicit - questions / errors - everything."
+///
+/// The line that prompted it appeared 59 times across the corpus and read, entire:
+///
+///     &lt;sheet&gt;: no structural outlines found on the expected layers — not placed.
+///
+/// A whole drawing is dropped on that sentence. It names no layer the reader wanted, no layer the
+/// drawing has, and nothing anyone could do about it. The engineer reads it, cannot act, and the
+/// structure stays missing. It now names both sets of layers and the two ways to fix it — the run
+/// flag and the KorStandards key — or says plainly that a notes sheet drawing no structure is not a
+/// fault at all.
+///
+/// This test is the general form, because one fixed message is not a method. Every line that tells
+/// the engineer something was LOST — not placed, not modelled, has no plate — has to carry an
+/// instruction with it.
+///
+/// ⚠ WHAT THIS COVERS AND WHAT IT DOES NOT (rule 11). It is a SOURCE SCAN over the message literals
+/// in the engine, matching a small set of loss phrases and requiring an action phrase nearby. So:
+///
+///   - it cannot tell a GOOD instruction from a useless one. "check this location" satisfies it and
+///     helps nobody; the words are necessary, not sufficient.
+///   - it only sees messages built as literals in these files. A message assembled from pieces, or
+///     one that reaches the engineer through the workbook rather than the report, is invisible to it.
+///   - it says nothing about whether the stated fix WORKS. Naming a flag that does not exist would
+///     pass.
+///
+/// The exemption list is the honest part: the loss messages that still have no instruction are named
+/// below with what each would need. It may only shrink.
+/// </summary>
+##### Kor.Operations.EngineeringTools.Core.Tests/Intake/EveryRuleStatesItsTargetSetBeforeItIsBankedTests.cs:47 (class EveryRuleStatesItsTargetSetBeforeItIsBankedTests) Facts=2
+///   step 141  earned nothing. It was sized against a pool step 140 had already consumed.
+///   step 142  earned nothing. The shape was measured — 10 storeys, 103,634 sq ft — and the
+///             MECHANISM never was; EnclosedByWallPanels returns null on all 42 combined walls.
+///   step 144  99.8% accurate over 1,776 drawings, and it reaches TWO SETS OF 297.
+///
+/// 144 is the one that named the class, because its accuracy number was real and completely
+/// irrelevant to the decision. The back-test was leave-one-out: hide the level of a drawing whose
+/// title DID parse and ask whether sheet order recovers it. That measures whether the inference is
+/// RIGHT. It cannot measure whether anything NEEDS it — and in the corpus almost every title parses,
+/// so there were six drawings in the world to fix. (They were worth fixing: 31005-01 went from 10.6%
+/// to 31.0% of the engineer's plate area. That is luck, not method. The rule was built first and
+/// sized afterwards.)
+///
+/// ⚠ AND THE RULE AGAINST THIS ALREADY EXISTED, IN PROSE, AND LOST.
+/// `project_rule_judged_on_its_target_set_2026_09_18` is BINDING and says: build the target set and
+/// the model yardstick, or park. It was written down, it was in memory, and it did not change the
+/// next action — which is precisely what CLAUDE.md §12 says happens: *"a rule that lives only in
+/// prose loses to momentum … the gate is what changes the next action."* Rule 7 is the one repeat
+/// offence that actually stopped, and it stopped because a hook blocks the command.
+///
+/// So: every bisect knob names a rule that was banked. Every banked rule states, in its own
+/// prediction doc, HOW MANY SETS IT TOUCHES — as a number, before the reply that builds it. A rule
+/// whose reach is not written down turns this red.
+///
+/// ⚠ WHAT THIS COVERS AND WHAT IT DOES NOT (rule 11). It checks that a number was WRITTEN, not that
+/// it was measured honestly — nothing here re-runs the corpus, and a wrong figure passes. It cannot
+/// see a rule that ships without a knob at all, which is the obvious way around it. And it says
+/// nothing about whether the reach is worth the work: two sets can be the right answer, as 144 was.
+/// What it removes is the option of not knowing.
+/// </summary>
+##### Kor.Operations.EngineeringTools.Core.Tests/Intake/SixSetsBuildAsBankedTests.cs:42 (class SixSetsBuildAsBankedTests) Facts=2
+/// from its stick file alone by the one route in Core (<see cref="PdfOnlyBuild"/>) and compared
+/// byte for byte with the model banked beside this test (<c>Baselines/pdf-only-&lt;job&gt;.e2k</c>).
+/// Banking a step is replacing a baseline in the commit that changes the rule, so the diff is
+/// reviewable in git; the shell harness and its hand-typed <c>cp</c> did this until 2026-09-11
+/// (completion plan WP1).
+/// </summary>
+/// <remarks>
+/// SLOW: six PDFs (124 MB, mirrored from the share once) built in parallel; matching reader manifests
+/// reuse the DXF views and run the ladder and composer again. A miss runs the original full build.
+/// WHAT THIS COVERS: the whole PDF-only route on five KOR sets and one architect's set, every
+/// storey, member and plate of the finished file — a change that moves any byte fails here, and the
+/// failure prints what moved (<see cref="ModelDiff"/>: plates by area, columns and walls by
+/// position, frames matched by grid label) and leaves both models in TestResults. WHAT IT DOES NOT:
+/// the other 286 sets (the corpus analyzer's ledger); whether a change is RIGHT — it says only that
+/// the models changed, and the person who banks the new baseline is the one who looked.
+/// A SAME-CLASS FAULT IT WOULD NOT CATCH: a change that is wrong in the same way on the banked
+/// model and the new one — the yardsticks are the second gate for that.
+/// The sources are named by their share paths: 31130's is its 2026-05-20 issue (now under "06 Old
+/// Structural Stickfiles"), 31168's its 2026-04-21 issue (moved there by the office on 2026-09-18) — the bank is a fixed drawing, not the
+/// newest one; the corpus run reads the newest.
+/// WHAT THE CACHE COVERS: PDF SHA-256, scale, the specified reader source files and serialised
+/// PdfIntakeOptions; sheets.csv and the DXF file list must still stand. The final byte comparison
+/// runs on both paths. WHAT THE CACHE DOES NOT INVALIDATE ON: E2kGeometryComposer.cs,
+/// DxfToEtabsService.cs, WallOutlineDecomposer.cs, WallNetwork.cs, ModelDiff.cs, ModelYardstick.cs
+/// or the Tests project. It can hide a composer relying on reader-side static state set only by
+/// reading: PlanSheetNaming.Vocabulary is such a dependency. PdfOnlyBuild.WriteLevels initialises
+/// it from the rows before the ladder; hashing options does not replace that recompose-time work.
+/// </remarks>
+[Trait("Speed", "Slow")]
+[Collection(SheetNamingVocabularyCollection.Name)]
+##### Kor.Operations.EngineeringTools.Core.Tests/Intake/TheDifferentialAndTheRenderAreCodeTests.cs:22 (class TheDifferentialAndTheRenderAreCodeTests) Facts=4
+/// <summary>
+/// The differential and the render are code in the repo, not scripts in docs (completion plan WP2,
+/// 2026-09-11): <see cref="ModelDiff"/> says what a second model lost or gained against a first, and
+/// <see cref="ModelRender"/> draws every storey on one sheet.
+/// </summary>
+/// <remarks>
+/// WHAT THIS COVERS: a model against itself (byte-identical); against a copy shifted by the grid
+/// with one column moved, one wall gone, one plate enlarged and one storey added — the frame taken
+/// from the grid labels, the moved column lost and gained, the wall lost, the plate moved, the new
+/// storey reported; a copy with no grids falling back to the modal displacement and saying GUESS;
+/// the SVG carrying one cell per storey that holds something, a circle per column and a polyline
+/// per wall. WHAT IT DOES NOT: Edge's PNG (a screenshot; the SVG is the artefact); the banked six
+/// (SixSetsBuildAsBankedTests reads them through the same code).
+/// </remarks>
+##### Kor.Operations.EngineeringTools.Core.Tests/Intake/TheGateJudgesEverySetTheEngineerModelledTests.cs:24 (class TheGateJudgesEverySetTheEngineerModelledTests) Facts=8
+/// <summary>
+/// THE SETS THE ENGINEER HAS A MODEL OF, JUDGED AGAINST THE LAST BANK (2026-09-22). On 2026-09-19 step 131 was
+/// banked on a green six-set gate; the next full corpus run showed 31087 at 47% of her plates where run 41 had
+/// 89% - forty-one storeys, found a day later by reading a diff. <see cref="CorpusGate"/> is the judgement that
+/// sits between a rule and its bank: the fifty-odd sets she has modelled, on her plate area, her thicknesses and
+/// her openings.
+///
+/// WHAT THIS COVERS: a set whose plate area falls past the tolerance is LOST and named (31087's shape, in its own
+/// numbers); a fall under the tolerance is drift and is not; a fall in thickness agreement, or in her openings we
+/// have, alone; EVIDENCE MISSING (the set gone from the new ledger, its yardstick failed, an older row standing in
+/// for a newer failed one, a NaN, a tolerance inflated by her own figure changing - every one of them silent until
+/// Codex's audit of 2026-09-22); an OVER-READ, because a rule that only adds area cannot lose; the totals are the
+/// sets judged both times; a ledger banked before the figures existed (41 columns) reads as nulls, judged on nothing.
+/// WHAT IT DOES NOT: the walk (CorpusAnalyzer's own tests), whether a GAIN is right (the render and the six-set
+/// gate), the 203 sets she has no model of. A same-class fault it would not catch: a rule that swaps her plate
+/// area for someone else's on the same storey, area for area.
+/// </summary>
+##### Kor.Operations.EngineeringTools.Core.Tests/Intake/TheStripALayerDifferentialIsCodeTests.cs:14 (class TheStripALayerDifferentialIsCodeTests) Facts=2
+/// <summary>
+/// The strip-a-layer differential's first half is code (<see cref="DxfLayerStrip"/>, `dxf-strip`; 2026-09-15 it was
+/// a scratch script that settled 31138's lost columns in three minutes). WHAT THIS COVERS: entities on a matching
+/// layer move to X-STRIPPED, other layers and the TABLES section are untouched, CRLF survives, the count is right,
+/// and a folder copy strips only the sheets the glob names. WHAT IT DOES NOT: composing the two folders (that is
+/// dxf-to-etabs, gated by the six sets); a layer named on a non-entity group code.
+/// </summary>
+##### Kor.Operations.EngineeringTools.Core.Tests/ModelCoverageTests.cs:45 (class ModelCoverageTests) Facts=6
+/// the mezzanine: nothing in any number was wrong.
+///
+/// So this checks the model against the DRAWINGS rather than against itself, in both directions:
+///
+///   drawn -> modelled   every wall and column the classifier reads off a sheet is either built,
+///                       or already in the engineer's model at that place, or unexplained.
+///   modelled -> drawn   every generated member stands on linework from a sheet placed on a storey
+///                       it is assigned to. A member with nothing drawn beneath it was invented.
+///
+/// and one structural check that needs no geometry at all: a storey between two populated storeys
+/// may not be empty. That single assertion would have caught the mezzanine fault on day one.
+///
+/// Skipped when the project share is unreachable.
+/// </summary>
+/// <remarks>
+/// SLOW: rebuilds both reference buildings from their real drawings over SMB, and carries the coverage ratchets.
+///
+/// Tagged so an ordinary edit can run everything else in seconds. These five classes are the
+/// reason the suite takes ten minutes, and a suite that takes ten minutes gets run for changes
+/// it cannot possibly affect -- a PowerShell edit, a document -- while holding the build lock
+/// against the next change.
+///
+///   dotnet test --filter "Speed!=Slow"    every edit, seconds
+///   dotnet test                           geometry changes and before any publish
+///
+/// Geometry work always runs the full suite: the coverage ratchets here are the only thing
+/// that catches a member read on one build and lost on the next, and they may only come down.
+/// </remarks>
+[Trait("Speed", "Slow")]
+[Collection(SheetNamingVocabularyCollection.Name)]   // composes a model, which writes PlanSheetNaming.Vocabulary (Codex 2026-09-13, F23)
+##### Kor.Operations.EngineeringTools.Core.Tests/RequiredRuleCoverageTests.cs:26 (class RequiredRuleCoverageTests) Facts=2
+/// <summary>
+/// Every rule the code READS must be a rule the run REQUIRES.
+///
+/// KorStandards is loaded whole, so a value present there is applied whether or not it is on the
+/// required list. That makes a missing key from the list look harmless, and it is not. Three
+/// things follow from being off it, and all three were true on 26 August for eight settings:
+///
+///   * A rule ABSENT from KorStandards falls back to the number in C#, silently, on a production
+///     run whose stated contract is that a missing rule stops it.
+///   * The report's rule list and the engineer's "Rules in force" sheet are built from that list,
+///     so those eight were named nowhere she could see — including the two that decide whether a
+///     region of her building is a slab or a hole.
+///   * Nothing said so. The suite was green, the model was right, and the gap was found only by
+///     comparing three lists by hand: 43 keys read, 35 required, 43 in the database.
+///
+/// The dictionary handed to ApplyRules here records every key looked up, so this measures what the
+/// code does rather than what a list in another file claims about it.
+/// </summary>
+##### Kor.Operations.EngineeringTools.Core.Tests/Rules/CompiledDefaultsAreTheBankedRowsTests.cs:31 (class CompiledDefaultsAreTheBankedRowsTests) Facts=4
+/// <summary>
+/// A rule's number lives in two places — the KorStandards row and the compiled default that stands
+/// in for it when no connection is given — and until 2026-09-08 nothing compared them. Measured
+/// that day: 46 of 49 numeric rows agreed with the code; `dxf.max-wall-thickness` was 60 in the
+/// row (migration 038, corpus of 1,126 models) and 36 in the code, `dxf.max-column-size` 132
+/// against 96, and `dxf.outline-self-touch-tolerance` 0.5 in the row against 0.05 in the code and
+/// in the row's own migration. A production run read one number and every default-mode run —
+/// tests, the WPF window, the intake's instruments — read another.
+/// </summary>
+/// <remarks>
+/// WHAT THIS COVERS: every key `DxfToEtabsService.BuiltInRuleValues` and
+/// `PdfIntakeOptions.BuiltInRuleValues` know, against the value `RuleSettings.Load` returns for
+/// it; a key with no row must be declared unbanked here with a reason; and every public numeric
+/// property on the two option records must be a rule or be declared not one (the orphan detector).
+/// WHAT IT DOES NOT: whether a row is RIGHT — that is the corpus measurement's job; whether a
+/// reader honours the row it loads; list-valued rows (layer vocabularies, words).
+/// It needs KorStandards. An unset connection or an unreachable database FAILS this test; a gate
+/// that passes by not running is the fault it exists to catch (see LiveProjects).
+/// </remarks>
+[Trait("Speed", "Slow")]
+##### Kor.Operations.EngineeringTools.Core.Tests/Rules/EveryQuestionsAnswerHasSomewhereToLandTests.cs:47 (class EveryQuestionsAnswerHasSomewhereToLandTests) Facts=3
+/// import, all on 2026-08-15.
+///
+/// And the keyless ones were not the trivia. They were S5 (is the parkade this building's share or
+/// the whole thing — class B, 16 sets, 463,040 sq ft of gap), S7 and S4 (is this a floor, how
+/// thick, how many slabs — class C2, 269,608), and J8 (the storeys with no floor — class C1,
+/// 561,627). The tool asked the only questions that would close the gap and then threw the answers
+/// away.
+///
+/// WHAT THIS COVERS: that every question the workbook can put in front of an engineer declares a
+/// setting key, and that every key so declared is READ by the build — it appears in a
+/// <c>ValueOr</c>, <c>FlagOr</c> or <c>ListOr</c> call somewhere other than the questionnaire that
+/// names it. Declaring a key nobody reads is the same defect wearing a key.
+///
+/// WHAT IT DOES NOT COVER, and these matter:
+/// <list type="bullet">
+/// <item>That the value she types is VALID for the key. A "yes" against a millimetre threshold is
+/// read by <c>ImportQuestionAnswers</c>, not here.</item>
+/// <item>That reading the key changes the OUTPUT. A key can be read into a field the geometry then
+/// ignores; this sees the read, not the effect. Only a differential build proves the effect.</item>
+/// <item>That the question is worth asking, or that its default is right.</item>
+/// <item>The per-job half of the loop. A key is global: it says how KOR draws, not what is true of
+/// 31005-01. A question that can only be answered per job — "which level is this sheet" — passes
+/// this gate with a global key and still cannot record a job-specific answer. That is
+/// <c>ARulingCanBeScopedToOneJobTests</c>, and until both hold the loop is not closed.</item>
+/// </list>
+///
+/// A same-class fault this would NOT catch: giving S5 the key <c>dxf.building-share-only</c>, wiring
+/// <c>settings.FlagOr("dxf.building-share-only", …)</c> into a field, and never branching on that
+/// field. Green here, still a survey.
+/// </remarks>
+##### Kor.Operations.EngineeringTools.Core.Tests/Rules/EveryRuleCitesItsAuthorityTests.cs:21 (class EveryRuleCitesItsAuthorityTests) Facts=2
+/// <summary>
+/// EVERY RULE THAT LEANS ON THE PROFESSION'S KNOWLEDGE NAMES ITS AUTHORITY AS A ROW (WP7, 2026-09-16). A reader constant
+/// the triage classes <c>Rule</c> and explains by a code or a standard (NBC, BCBC, CSA - the tread sizes today) has a
+/// <c>knowledge.RuleClause</c> row (migration 096) whose clause exists and is live; and a clause written from memory
+/// (<c>from-memory-unverified</c>) is read from the source within thirty days, or this fails until it is - a remembered
+/// number is a guess with a citation, and the ingestor exists to replace it (<c>takeoff knowledge-ingest</c>).
+/// WHAT THIS COVERS: the link's existence for every code-naming Rule; the age of unverified clauses. WHAT IT DOES
+/// NOT: whether the rule's value follows from the clause's (drafting slack sits between them, recorded in HowUsed);
+/// rules that lean on a code without saying so in their triage line (name the code there and this test sees it).
+/// It needs KorStandards; an unset connection FAILS, as CompiledDefaultsAreTheBankedRowsTests does.
+/// </summary>
+[Trait("Speed", "Slow")]
+##### Kor.Operations.EngineeringTools.Core.Tests/RulingCoverageTests.cs:27 (class RulingCoverageTests) Facts=2
+/// <summary>
+/// A ruling an engineer has given is an obligation, not a note.
+///
+/// KorStandards holds two different things and only one of them was binding. SETTINGS -- numbers
+/// like dxf.flood-fill-bridge -- are read at runtime, and a missing one stops the run. RULINGS --
+/// her judgements, "dashed is below", "a big cross means no slab", "solid linework belongs to the
+/// storey above" -- are prose, read by nothing. Somebody implements them or does not, and the
+/// build says the same either way.
+///
+/// That gap is not theoretical. solid-linework-belongs-to-the-storey-above sat banked and
+/// unimplemented while every model this tool produced put every wall and column a storey too low,
+/// and the test suite was green throughout. The engineer found it, weeks later, by reading a model.
+///
+/// This closes it. Every ruling is claimed here by the test that proves the code obeys it, or
+/// declared unimplemented with a reason. A ruling that is neither turns the build red the moment
+/// somebody banks it, which is the point of banking it.
+///
+/// Skipped when KorStandards is unreachable, like every other test that needs it.
+/// </summary>
+##### Kor.Operations.EngineeringTools.Core.Tests/SectionsReportEveryStoreyTests.cs:17 (class SectionsReportEveryStoreyTests) Facts=2
+/// <summary>
+/// Asked what a section is doing in her model, the answer must name every storey it is on.
+/// </summary>
+/// <remarks>
+/// `takeoff e2k-ask … sections` reported the storey of an object's FIRST assign, which was the same
+/// answer only while one object meant one member on one storey. Once a member carries one label its
+/// whole height — the engineer's own convention — a section used on twelve floors was reported as
+/// used on the lowest, and she is told a twelfth of it.
+///
+/// Ninth of the same class. The row already carried its storey; the code reached past it.
+/// </remarks>
+##### Kor.Operations.EngineeringTools.Core.Tests/TagGatedSlabRecoveryTests.cs:14 (class TagGatedSlabRecoveryTests) Facts=5
+/// <summary>
+/// Recovering a slab outline the drawing leaves open — and only where the drawing says it is a
+/// slab.
+///
+/// This mechanism shipped once without the tag test and the engineer rejected the model the next
+/// morning: "on several levels (9, 3, mezz, 1) he inverted slab and opening". Closing a chain
+/// recovers a REGION and says nothing about what the region is. The tag says what it is.
+/// </summary>

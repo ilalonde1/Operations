@@ -1,0 +1,24 @@
+Steps 170-172: slab edge runs kept whole, a table's broken top rule, a slanted wall's clip
+
+170. A short run of slab edge joined end to end to a kept piece is part of it; "in line" is within an
+inch, not a millimetre; a line drawn twice along a kept edge is not lost with the walk's spur.
+31065 (5380 Heather St): odd tower floors L7-L17 south tower 671 -> 6,934 sq ft (even floor beside
+it 6,982); L5 both towers floored (8,820 + 8,536); slab 78% -> 90% of the Revit volumes, tower floors
+99-101%. Kept to ends only: on the hatched load plan (S1.11) the body version doubled the build.
+
+171. A schedule's furniture region follows its top rule across a gap of up to 6 pt: 31065's PODIUM
+COLUMN SCHEDULE, two halves under one title, had its right half's GC5 cells read as 990 mm walls
+on L2..L6 (215 m3). Schedule reading itself untouched.
+
+172. A filled wall shown through a clip that is a thinner band of its length is that band: the
+slanted 300 mm parkade wall read 1,401 mm thick on 31065 P2/P1/L1 (~496 m3); 31138 L2's 8"
+non-load-bearing slanted wall read 1,321 mm (now 203, matches the sheet); 31130 the same class.
+The clip is the one drawn just before the fill, or the one whose box is the fill's box.
+
+Six-set gate (frozen CLI, 24 builds, 46 min): plate share vs her models up on 31065 81->85,
+31130 89->91, 31168 83->85, nothing down; 31065 openings by centre 26->28 (the "by cover" 61->55
+was credit for floors we did not have). Corpus gate NOT yet run (needs the share census).
+Fast suite 1,641/1,641. Prediction docs docs/pdf-intake/step170..172-prediction.md.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

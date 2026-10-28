@@ -1,0 +1,22 @@
+Step 182: a tie between printed thicknesses is broken by the ground each stands for - over half the plate, ASSUMED
+
+When a plate prints two or more thicknesses equally often and draws no outline between them, step 118 kept the 12" default
+and asked. Now each point of the plate goes to the call-out nearest it (the partition the takeoff already prices zoned plates
+by, PlanGeometry.VoronoiCellShares, here on the DXF ring), and a thickness whose call-outs stand for more than half the plate
+is the plate's, flagged ASSUMED with every share. Under half it is still the engineer's question, and the refusal now says
+the shares. KOR_STEP182_OFF.
+
+Six banked sets, on and off (frozen build): 4 byte-identical; 2 differ in one plate's thickness and nothing else.
+  31130-01 P2 east 27,329 sq ft: 12" default -> 10" (77%); the engineer's P2 is a 10" field. Looked at: 10" call-outs over
+    the field, the 12" ones together at the east edge by the ramp.
+  31138-01 L22 mech 5,290 sq ft: 12" -> 10" (61%); the engineer's carries 10" over 71% of that floor.
+  31168-01 B-L39: 12" chosen, which is the default - model unchanged.
+Halifax (Virtual Drafter route): e2k byte-identical. Core fast 1,662 of 1,662.
+
+The witness it was written for does NOT move: 31065 L1 north, 900 nearest 46%. Looked at on the drawing, that plate is four
+zones divided by drawn step lines, and one thickness is wrong at any choice; the 50% line was set before measuring and is
+not moved to pass it. The zone split is its own step (docs/pdf-intake/step182-prediction.md).
+Not covered: the 57-project corpus reach (gate owed).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

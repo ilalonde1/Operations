@@ -1,0 +1,36 @@
+Steps 170 repaired and 173: the slab-edge step never costs a floor; a column drawn with a curve is round
+
+Step 170 (committed in 8fa0d9d6) lost plate on three corpus sets; repaired:
+- in line within 6 mm, not an inch (31065 needs 4 mm);
+- a line drawn twice offers only the stretch no kept edge covers;
+- a refused arrangement is built again as before the step (31037 L2 hold-down plan back from no floor);
+- both readings are always built and the step's is kept only where it floors more: fewer columns on no
+  floor, or as many and more floor area by over a square metre (30993 L4 keeps its whole floor; 31065
+  S2.17.1 keeps the step's 12,825 sq ft against 7,011).
+
+Step 173 (knob KOR_STEP173_OFF, Ian's yes 10-22): the page walk records whether a subpath used a Bezier
+(HasCurve; page cache v2); a filled column outline drawn with a curve, square to a tenth and filling
+0.72-0.85 of its box is round (ExtractedGeometry.ColumnIsRound); the DXF writes it as a full-circle ARC
+and the classifier's arc rule models it round. The app's PDF window still writes squares.
+
+Measured, corpus gate against the 09-24 step-140 bank, run a6228331 (frozen build of this content minus
+174): 31037-01 25,391, 30849-01 88,446 (+4,213), 30993-01 510,640, 31009-01 L8 floored. Still lost, 8 of 57,
+none new against run e7605731: 31104/31165 (renamed stick files, invisible to the census), 30972 -4,662
+(predates 170-173; step 172 costs 1,002 of it), 31032 L2 -3,076 (step 170's ring is the larger and valid -
+5,735 against 5,624 sq ft - and the DXF side's segment re-walk in StructuralPlanClassifier loses it: a
+DXF-side fault, open), 31101 one opening, 31117 / 60061-03 openings and 31009 thickness (not step 170:
+identical on and off).
+
+Six-set: the column losses SixSetsBuildAsBankedTests reports predate this commit. Knob runs on 8fa0d9d6:
+31138 L2 -12 and 31065 L2 -8 are the same with each of 170/171/172 off; 31065 L5 -6 and 31130 L2 -3 are
+committed step 170, unchanged by these repairs - against the engineer's models 31130's three are not hers
+(L2 share 83% -> 90%), and 31065 L5 drops one of hers (96% -> 93%). The six-set bank needs re-banking by
+its owner; not done here.
+
+Tests: Core fast 1,649 of 1,649. App PdfToSafe hung headless this run (killed, own test host); it passed
+456 of 456 on 10-22 with step 173 in, and only Core's selection changed since.
+Parked first as wip/intake-170-repairs-and-173 (0c1dbde5) by operations-23; the bisect literal carries
+both KOR_STEP173_OFF and KOR_STEP174_OFF.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

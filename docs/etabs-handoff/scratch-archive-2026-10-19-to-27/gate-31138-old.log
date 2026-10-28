@@ -1,0 +1,29 @@
+baseline: ledger-sets-2026-09-24-run45-step140.csv (295 rows); judging 1 set(s) she has modelled
+census...
+  census of 2026-10-27 19:29 UTC reused (1196 job folders; --census retakes it)
+  31138-01: pinned to C:\Users\ilalonde\AppData\Local\Temp/kor-drawings/7DFE77E9AD6CFFDC/31138-01 2026-09-01_2170 W 1st Ave_Str Set.pdf
+rules: KorStandards; work: C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gate-31138-old
+1 set(s) to analyze; tool built 2026-10-28 00:21 UTC; run 4537a2a3-6343-4c4c-b2db-d3a2d4c3e766
+  [1/1] 31138-01 model: 28 storeys, 539 walls, 603 columns, 29/47 placed; yardstick:25 shared storeys, 404/564 of ours within 100 mm (frame from columns)  160 s
+
+1 sets: 1 built, 0 reused from their last run; 3 min; run 4537a2a3-6343-4c4c-b2db-d3a2d4c3e766
+  1 of 1 build a model; 0 the analyzer failed on
+  of the 1 with a model: 47 plan views, 29 set on the grid by axis name; 28 storeys, 27 with a plate; 539 walls, 603 columns
+  sets with every view placed: 0 of 1; with a plate on every storey: 0 of 1
+  yardsticks: 1 sets have the engineer's model; 1 share a storey with columns; frames from grids 0, from columns 1
+    ours -> theirs: 404 of 564 of our columns within 100 mm of one of theirs (72%); theirs -> ours: 404 of 426 (95%)
+    1 set(s) with 50-74% of our columns within 100 mm: 31138-01
+  61 pages read: 38 plans, 0 failed; plans not placed on a grid: 18
+
+the gate: 0 set(s) the engineer has a model of, judged against the bank
+  ? THE BASELINE CARRIES NO FIGURES AND THIS JUDGEMENT IS VOID. Every 'before' is blank while
+    the new ledger has them, so nothing below compares anything - a LOST line here means only that
+    a figure was read now and none was read at the bank. The usual cause is a ledger banked by an
+    older build: her figures are the last ten columns and a short row is refused whole. Re-bank the
+    baseline with this build, or judge two arms of ONE build against each other (KOR_STEP<n>_OFF).
+  job         her plates we read: was -> now (of hers)        thickness agree   her openings we have
+       31138-01                - ->      281,777 ( 91%)                  ->  22 of  25        ->   87 of  108
+  totals: her plates we read 0 -> 0 sq ft of 0 (0% -> 0%); thickness 0 -> 0 of 0; her openings we have 0 -> 0 of 0 (the 0 of 0 set(s) judged both times whose frame registers)
+  storeys we plate that her model does not name: 1 of 1 set(s) measured now, 2 storey(s), 36,829 sq ft - the bank predates this figure, so a rise is not judged against it:
+    31138-01: 2 storey(s), 36,829 sq ft
+  no set lost: the bank may take this.

@@ -1,0 +1,71 @@
+Test run for C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.8.2+699d445a1a (64-bit .NET 8.0.32)
+[xUnit.net 00:00:00.12]   Discovering: Kor.Operations.EngineeringTools.Core.Tests
+[xUnit.net 00:00:00.32]   Discovered:  Kor.Operations.EngineeringTools.Core.Tests
+[xUnit.net 00:00:00.32]   Starting:    Kor.Operations.EngineeringTools.Core.Tests
+[xUnit.net 00:00:00.37]     Kor.Operations.EngineeringTools.Core.Tests.RequiredRuleCoverageTests.EveryRuleTheCodeReadsIsOnTheRequiredList [FAIL]
+[xUnit.net 00:00:00.37]       These rules are read when a model is built but are not on RequiredRuleKeys:
+  dxf.pdf.upper-roof-words
+
+So if KorStandards does not have one, the run does not stop — it quietly uses the number in DxfToEtabsService, and the engineer's rule sheet never mentions it. Add each to RequiredRuleKeys and to BuiltInRuleValues.
+[xUnit.net 00:00:00.37]       Stack Trace:
+[xUnit.net 00:00:00.37]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\RequiredRuleCoverageTests.cs(80,0): at Kor.Operations.EngineeringTools.Core.Tests.RequiredRuleCoverageTests.EveryRuleTheCodeReadsIsOnTheRequiredList()
+[xUnit.net 00:00:00.37]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+[xUnit.net 00:00:00.37]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.37]       Output:
+[xUnit.net 00:00:00.37]         71 rule(s) read by the code, 70 required.
+[xUnit.net 00:00:00.40]     Kor.Operations.EngineeringTools.Core.Tests.Intake.EveryReaderConstantIsTriagedTests.EveryConstantIsTriagedAndEveryTriagedConstantExists [FAIL]
+[xUnit.net 00:00:00.40]       constants with no line in the triage: GeometryFilterService.cs:reach, GeometryFilterService.cs:square
+[xUnit.net 00:00:00.40]       Stack Trace:
+[xUnit.net 00:00:00.40]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Intake\EveryReaderConstantIsTriagedTests.cs(315,0): at Kor.Operations.EngineeringTools.Core.Tests.Intake.EveryReaderConstantIsTriagedTests.EveryConstantIsTriagedAndEveryTriagedConstantExists()
+[xUnit.net 00:00:00.40]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+[xUnit.net 00:00:00.40]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.42]     Kor.Operations.EngineeringTools.Core.Tests.E2kDocumentTests.TwoReadingsOfAColumnMoreThanAnInchApartDiagonallyAreTwoColumns [FAIL]
+[xUnit.net 00:00:00.42]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:00.42]       Expected: 2
+[xUnit.net 00:00:00.42]       Actual:   1
+[xUnit.net 00:00:00.42]       Stack Trace:
+[xUnit.net 00:00:00.42]         C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\DxfToEtabsTests.cs(1334,0): at Kor.Operations.EngineeringTools.Core.Tests.E2kDocumentTests.TwoReadingsOfAColumnMoreThanAnInchApartDiagonallyAreTwoColumns()
+[xUnit.net 00:00:00.42]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+[xUnit.net 00:00:00.42]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.42]   Finished:    Kor.Operations.EngineeringTools.Core.Tests
+  Failed Kor.Operations.EngineeringTools.Core.Tests.RequiredRuleCoverageTests.EveryRuleTheCodeReadsIsOnTheRequiredList [10 ms]
+  Error Message:
+   These rules are read when a model is built but are not on RequiredRuleKeys:
+  dxf.pdf.upper-roof-words
+
+So if KorStandards does not have one, the run does not stop — it quietly uses the number in DxfToEtabsService, and the engineer's rule sheet never mentions it. Add each to RequiredRuleKeys and to BuiltInRuleValues.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.RequiredRuleCoverageTests.EveryRuleTheCodeReadsIsOnTheRequiredList() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\RequiredRuleCoverageTests.cs:line 80
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Standard Output Messages:
+ 71 rule(s) read by the code, 70 required.
+
+
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.EveryReaderConstantIsTriagedTests.EveryConstantIsTriagedAndEveryTriagedConstantExists [51 ms]
+  Error Message:
+   constants with no line in the triage: GeometryFilterService.cs:reach, GeometryFilterService.cs:square
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Intake.EveryReaderConstantIsTriagedTests.EveryConstantIsTriagedAndEveryTriagedConstantExists() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Intake\EveryReaderConstantIsTriagedTests.cs:line 315
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed Kor.Operations.EngineeringTools.Core.Tests.E2kDocumentTests.TwoReadingsOfAColumnMoreThanAnInchApartDiagonallyAreTwoColumns [72 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 2
+Actual:   1
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.E2kDocumentTests.TwoReadingsOfAColumnMoreThanAnInchApartDiagonallyAreTwoColumns() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\DxfToEtabsTests.cs:line 1334
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Test Run Failed.
+Total tests: 3
+     Failed: 3
+ Total time: 0.8965 Seconds

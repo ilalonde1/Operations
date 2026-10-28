@@ -1,0 +1,768 @@
+Level,Element,ConcreteVolume
+LEVEL P3,Slab,489.07
+LEVEL P2,Slab,785.45
+LEVEL P1,Slab,605.05
+LEVEL 1 - TS,Slab,829.32
+LEVEL 1 - TN,Slab,1561.16
+LEVEL 2 - TS,Slab,401.5
+LEVEL 2 - TN,Slab,274.41
+LEVEL 3 - TS,Slab,199.27
+LEVEL 3 - TN,Slab,272.52
+LEVEL 4 - TS,Slab,197.97
+LEVEL 4 - TN,Slab,315.82
+LEVEL 5 - TS,Slab,185.61
+LEVEL 5 - TN,Slab,271.58
+LEVEL 6 - TS,Slab,125.44
+LEVEL 6 - TN,Slab,125.32
+LEVEL 7 - TS,Slab,125.64
+LEVEL 7 - TN,Slab,125.54
+LEVEL 8 - TS,Slab,125.44
+LEVEL 8 - TN,Slab,125.32
+LEVEL 9 - TS,Slab,125.64
+LEVEL 9 - TN,Slab,125.54
+LEVEL 10 - TS,Slab,125.44
+LEVEL 10 - TN,Slab,125.32
+LEVEL 11 - TS,Slab,125.64
+LEVEL 11 - TN,Slab,125.54
+LEVEL 12 - TS,Slab,125.44
+LEVEL 12-TN,Slab,125.32
+LEVEL 13 - TS,Slab,125.64
+LEVEL 13 TN,Slab,125.54
+LEVEL 14 - TS,Slab,125.44
+LEVEL 14 TN,Slab,125.32
+LEVEL 15 - TS,Slab,125.64
+LEVEL 15 TN,Slab,125.54
+LEVEL 16 - TS,Slab,125.44
+LEVEL 16 -TN,Slab,125.32
+LEVEL 17 - TS,Slab,125.64
+LEVEL 17 -TN,Slab,125.54
+LEVEL 18 - TS,Slab,125.44
+LEVEL 18 TN,Slab,125.32
+LEVEL 19 - TS,Slab,187.47
+LEVEL 19 - TN,Slab,187.34
+ROOF - TS,Slab,59.29
+ROOF - TN,Slab,41.43
+ELEVATOR ROOF - TS,Slab,5.83
+ELEVATOR ROOF - TN,Slab,2.5
+LEVEL P3,Wall,271.0
+LEVEL P3,Wall,203.0
+LEVEL P3,Wall,251.0
+LEVEL P3,Wall,179.0
+LEVEL P3,Wall,45.0
+LEVEL P3,Wall,139.0
+LEVEL P3,Wall,21.0
+LEVEL 19 - TN,Wall,12.0
+LEVEL 19 - TN,Wall,6.0
+LEVEL 19 - TN,Wall,9.0
+LEVEL 19 - TN,Wall,2.0
+LEVEL 19 - TN,Wall,8.0
+LEVEL P3,Wall,211.0
+LEVEL P3,Wall,242.0
+LEVEL P3,Wall,193.0
+LEVEL P3,Wall,223.0
+LEVEL P3,Wall,134.0
+LEVEL P3,Wall,43.0
+LEVEL P3,Wall,20.0
+LEVEL 19 - TS,Wall,9.0
+LEVEL 19 - TS,Wall,14.0
+LEVEL 19 - TS,Wall,11.0
+LEVEL 19 - TS,Wall,10.0
+LEVEL 19 - TS,Wall,8.0
+LEVEL 19 - TS,Wall,2.0
+LEVEL 19 - TS,Wall,1.0
+T.O.SOG,Wall,58.0
+T.O.SOG,Wall,3.0
+LEVEL 1 - TS,Wall,182.0
+LEVEL 1 - TS,Wall,1.0
+LEVEL 1 - TS,Wall,1.0
+LEVEL 1 - TS,Wall,1.0
+T.O.SOG,Wall,125.0
+LEVEL P3,Wall,6.0
+LEVEL P3,Wall,7.0
+LEVEL P3,Wall,8.0
+LEVEL P3,Wall,7.0
+LEVEL P3,Wall,16.0
+LEVEL P3,Wall,16.0
+T.O.SOG,Wall,3.0
+T.O.SOG,Wall,3.0
+LEVEL P3,Wall,1.0
+LEVEL P3,Wall,1.0
+LEVEL P2,Wall,2.0
+LEVEL P1,Wall,28.0
+LEVEL P2,Wall,3.0
+LEVEL P3,Wall,4.0
+LEVEL P3,Wall,40.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,14.0
+LEVEL 1 - TN,Wall,8.0
+LEVEL 1 - TN,Wall,12.0
+LEVEL 1 - TN,Wall,20.0
+LEVEL 1 - TN,Wall,19.0
+LEVEL 1 - TN,Wall,20.0
+LEVEL 1 - TN,Wall,15.0
+LEVEL 1 - TN,Wall,7.0
+LEVEL 1 - TN,Wall,16.0
+LEVEL 1 - TN,Wall,7.0
+LEVEL 4 - TN,Wall,5.0
+LEVEL 4 - TN,Wall,5.0
+LEVEL 4 - TN,Wall,2.0
+ROOF - TN,Wall,4.0
+ROOF - TN,Wall,1.0
+ROOF - TN,Wall,4.0
+ROOF - TN,Wall,1.0
+ROOF - TS,Wall,1.0
+ROOF - TS,Wall,4.0
+ROOF - TS,Wall,1.0
+ROOF - TS,Wall,4.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 4 - TN,Wall,2.0
+LEVEL 2 - TN,Wall,0.0
+T.O.SOG,Wall,0.0
+T.O.SOG,Wall,1.0
+T.O.SOG,Wall,1.0
+T.O.SOG,Wall,1.0
+T.O.SOG,Wall,1.0
+T.O.SOG,Wall,1.0
+T.O.SOG,Wall,0.0
+ROOF - TN,Wall,2.0
+ROOF - TN,Wall,2.0
+ROOF - TN,Wall,2.0
+ROOF - TS,Wall,2.0
+ROOF - TS,Wall,2.0
+ROOF - TS,Wall,1.0
+LEVEL P3,Wall,1.0
+LEVEL P2,Wall,1.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TS,Wall,1.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,1.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,1.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,1.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,1.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,1.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,1.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,2.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,1.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TS,Wall,1.0
+LEVEL 1 - TS,Wall,1.0
+LEVEL P1,Wall,1.0
+LEVEL P1,Wall,1.0
+LEVEL P1,Wall,5.0
+LEVEL P1,Wall,4.0
+LEVEL P1,Wall,5.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+T.O.SOG,Wall,6.0
+T.O.SOG,Wall,4.0
+T.O.SOG,Wall,2.0
+T.O.SOG,Wall,0.0
+T.O.SOG,Wall,4.0
+LEVEL 19 - TN,Wall,0.0
+LEVEL 19 - TN,Wall,0.0
+LEVEL 19 - TN,Wall,0.0
+LEVEL 19 - TN,Wall,0.0
+LEVEL 19 - TN,Wall,0.0
+LEVEL 19 - TN,Wall,0.0
+LEVEL 19 - TN,Wall,0.0
+LEVEL 19 - TN,Wall,1.0
+LEVEL 19 - TN,Wall,1.0
+LEVEL 19 - TN,Wall,0.0
+LEVEL 19 - TN,Wall,0.0
+LEVEL P3,Wall,1.0
+LEVEL P2,Wall,5.0
+LEVEL P2,Wall,1.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 19 - TS,Wall,0.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,2.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,1.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TN,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL 5 - TN,Wall,0.0
+LEVEL 5 - TN,Wall,0.0
+LEVEL 5 - TN,Wall,0.0
+LEVEL 5 - TN,Wall,0.0
+LEVEL 5 - TN,Wall,0.0
+LEVEL 5 - TN,Wall,2.0
+LEVEL 5 - TN,Wall,1.0
+ROOF - TN,Wall,0.0
+ROOF - TN,Wall,0.0
+ROOF - TN,Wall,1.0
+ROOF - TN,Wall,0.0
+LEVEL 1 - TS,Wall,0.0
+LEVEL P3,Wall,19.0
+LEVEL P3,Wall,64.0
+LEVEL P3,Wall,10.0
+LEVEL P3,Wall,24.0
+LEVEL P3,Wall,10.0
+T.O.SOG,Wall,154.0
+LEVEL P3,Wall,16.0
+LEVEL P3,Wall,10.0
+LEVEL P3,Wall,3.0
+LEVEL 19 - TN,Wall,2.0
+T.O.SOG,Wall,3.0
+LEVEL P3,Wall,26.0
+LEVEL P3,Wall,10.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,2.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,2.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,6.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,2.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,2.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,4.0
+LEVEL P3,Column,3.0
+LEVEL P3,Column,5.0
+LEVEL P3,Column,6.0
+LEVEL 1 - TS,Column,2.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,2.0
+LEVEL 1 - TN,Column,10.0
+LEVEL 1 - TN,Column,11.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,18.0
+LEVEL 1 - TN,Column,18.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,18.0
+LEVEL 1 - TN,Column,11.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,0.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,3.0
+LEVEL 1 - TN,Column,2.0
+LEVEL 1 - TN,Column,11.0
+LEVEL 1 - TN,Column,11.0
+LEVEL 1 - TN,Column,3.0
+LEVEL 1 - TN,Column,4.0
+LEVEL 1 - TN,Column,12.0
+LEVEL 1 - TN,Column,15.0
+LEVEL 1 - TN,Column,4.0
+LEVEL 1 - TN,Column,10.0
+LEVEL 2 - TN,Column,10.0
+LEVEL 2 - TN,Column,10.0
+LEVEL 2 - TN,Column,14.0
+LEVEL 2 - TN,Column,14.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,0.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 5 - TN,Column,8.0
+LEVEL 5 - TN,Column,6.0
+LEVEL 5 - TN,Column,6.0
+LEVEL 4 - TN,Column,1.0
+LEVEL 5 - TN,Column,6.0
+LEVEL 19 - TN,Column,1.0
+LEVEL 19 - TN,Column,1.0
+LEVEL 19 - TN,Column,1.0
+LEVEL 19 - TN,Column,1.0
+LEVEL 19 - TN,Column,1.0
+LEVEL 19 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 1 - TS,Column,0.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,15.0
+LEVEL 1 - TS,Column,5.0
+LEVEL 1 - TS,Column,2.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,2.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,13.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,2.0
+LEVEL 1 - TS,Column,18.0
+LEVEL 1 - TS,Column,15.0
+LEVEL 1 - TS,Column,3.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,0.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,10.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,3.0
+LEVEL 1 - TS,Column,10.0
+LEVEL 1 - TS,Column,0.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,15.0
+LEVEL 1 - TS,Column,2.0
+LEVEL 1 - TS,Column,0.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 2 - TS,Column,0.0
+LEVEL 2 - TS,Column,14.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 2 - TS,Column,10.0
+LEVEL 2 - TS,Column,14.0
+LEVEL 2 - TS,Column,7.0
+LEVEL 2 - TS,Column,10.0
+LEVEL 4 - TS,Column,0.0
+LEVEL 4 - TS,Column,7.0
+LEVEL 1 - TS,Column,1.0
+LEVEL 1 - TS,Column,3.0
+LEVEL 5 - TS,Column,6.0
+LEVEL 5 - TS,Column,11.0
+LEVEL 19 - TS,Column,1.0
+LEVEL 19 - TS,Column,1.0
+LEVEL 19 - TS,Column,1.0
+LEVEL 19 - TS,Column,1.0
+LEVEL 19 - TS,Column,1.0
+LEVEL 19 - TS,Column,1.0
+LEVEL 19 - TS,Column,1.0
+LEVEL 19 - TS,Column,1.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 19 - TN,Column,1.0
+LEVEL 19 - TS,Column,1.0
+LEVEL 2 - TN,Column,9.0
+LEVEL 5 - TN,Column,8.0
+LEVEL 4 - TS,Column,12.0
+LEVEL 4 - TS,Column,6.0
+LEVEL 19 - TS,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 2 - TN,Column,0.0
+LEVEL 5 - TN,Column,0.0
+LEVEL 4 - MID-ST,Column,0.0
+LEVEL 4 - MID-ST,Column,0.0
+LEVEL 5 - TN,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 3 - TN,Column,0.0
+LEVEL 3 - TN,Column,0.0
+LEVEL 2 - TN,Column,0.0
+LEVEL 2 - TN,Column,0.0
+LEVEL 2 - TN,Column,0.0
+LEVEL 2 - TN,Column,0.0
+LEVEL 2 - TN,Column,0.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TN,Column,1.0
+LEVEL 2 - TS,Column,0.0
+LEVEL 2 - TS,Column,0.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 4 - TS,Column,0.0
+LEVEL 4 - TS,Column,0.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 2 - TS,Column,0.0
+LEVEL 2 - TS,Column,0.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 3 - TN,Column,0.0
+LEVEL 1 - TN,Column,1.0
+LEVEL 3 - TN,Column,0.0
+LEVEL 3 - TN,Column,0.0
+LEVEL 3 - TN,Column,0.0
+LEVEL 3 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 4 - TN,Column,0.0
+LEVEL 3 - TS,Column,0.0
+LEVEL 3 - TS,Column,0.0
+LEVEL 3 - TS,Column,0.0
+LEVEL 3 - TS,Column,0.0
+LEVEL 3 - TS,Column,0.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 3 - TS,Column,0.0
+LEVEL 4 - TS,Column,0.0
+LEVEL 4 - TS,Column,0.0
+LEVEL 4 - TS,Column,0.0
+LEVEL 4 - TS,Column,0.0
+LEVEL 4 - TS,Column,0.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 2 - TS,Column,1.0
+LEVEL 5 - TS,Column,7.0
+LEVEL 5 - TS,Column,7.0
+LEVEL 5 - TS,Column,7.0
+LEVEL 2 - TS,Column,10.0
+LEVEL 1 - TN,Column,0.0
+LEVEL 1 - TN,Column,0.0
+LEVEL 1 - TN,Column,0.0
+LEVEL 1 - TN,Column,0.0
+LEVEL 1 - TN,Column,0.0
+LEVEL 19 - TN,Column,0.0
+LEVEL 19 - TN,Column,0.0
+LEVEL 19 - TN,Column,0.0
+LEVEL 19 - TN,Column,0.0
+LEVEL 19 - TN,Column,0.0
+LEVEL 19 - TN,Column,0.0
+LEVEL 1 - TS,Column,2.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 19 - TS,Column,0.0
+LEVEL 5 - TN,Column,0.0
+LEVEL 5 - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+ROOF - TN,Column,0.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,21.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,6.0
+LEVEL P3,Foundation,21.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,6.0
+LEVEL P3,Foundation,21.0
+LEVEL P3,Foundation,21.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,21.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,21.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,6.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,21.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,21.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,5.0
+LEVEL P3,Foundation,28.0
+LEVEL P3,Foundation,21.0
+LEVEL P3,Foundation,6.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,9.0
+LEVEL P3,Foundation,21.0
+LEVEL P3,Foundation,9.0
+(none),Foundation,0.0
+LEVEL P3,Foundation,368.0
+(none),Foundation,2.0
+LEVEL P3,Foundation,12.0
+LEVEL P3,Foundation,436.0
+LEVEL P3,Foundation,12.0
+(none),Foundation,1.0
+(none),Foundation,3.0
+(none),Foundation,5.0
+(none),Foundation,0.0
+(none),Foundation,24.0
+(none),Foundation,19.0
+LEVEL P3,Foundation,1.0
+LEVEL P3,Foundation,4.0
+LEVEL P3,Foundation,1.0
+LEVEL P3,Foundation,4.0
+(none),Foundation,1.0
+(none),Foundation,9.0
+LEVEL P3,Foundation,33.0
+LEVEL P3,Foundation,7.0
+(none),Foundation,3.0
+(none),Foundation,3.0
+(none),Foundation,8.0
+(none),Foundation,1.0
+(none),Foundation,1.0
+(none),Foundation,1.0
+(none),Foundation,9.0
+LEVEL P3,Foundation,0.0
+(none),Foundation,3.0
+(none),Foundation,1.0
+(none),Foundation,2.0
+(none),Foundation,6.0

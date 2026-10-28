@@ -1,0 +1,411 @@
+# MODULE DOCSTRING
+
+KorConcrete — local FastAPI backend.
+
+Thin API over the validated csa19 engine. Local-first (SPEC 7): runs on the
+engineer's machine, no data leaves it. Endpoints kept minimal for the current
+milestone (engine-backed section render + section properties + edition toggle +
+checks framework contract). Capacity/DCR + diagram endpoints come next.
+
+
+# DEFINITIONS (qualname, first line, docstring)
+  __annotate__  @line 26
+  _section_suffix  @line 26
+      | '.colx' or '.sco' from an uploaded file name (S-CONCRETE import, 2026-10-07).
+    _section_suffix.<locals>.<genexpr>  @line 29
+  __annotate__  @line 58
+  _surface_errors  @line 57
+      | Return the real error message (and log the traceback) instead of a bare
+      | 500, so problems are legible in the UI banner during development.
+  _StripApiPrefix  @line 75
+      | _StripApiPrefix
+    _StripApiPrefix.__init__  @line 80
+    _StripApiPrefix.__call__  @line 83
+        | type
+  __annotate__  @line 104
+  health  @line 103
+  __annotate__  @line 112
+  _autosolve_pool_start  @line 111
+      | G-PC4: start the Autosolver worker processes with the backend (each loads the app once, a few
+      | seconds, so the first solve does not wait for them).
+  __annotate__  @line 124
+  app_ready  @line 123
+  __annotate__  @line 136
+  editions  @line 135
+      | Feeds the UI code-edition toggle (Griffin: both -19 and -24).
+  ImportPathRequest  @line 146
+      | ImportPathRequest
+  __annotate__  @line 151
+  section_import_path  @line 150
+      | Import a .colx already on the local disk (local-first convenience).
+  __annotate__  @line 163
+  section_import  @line 162
+      | Import an uploaded .colx.
+  ImportContentRequest  @line 179
+      | ImportContentRequest
+  __annotate__  @line 185
+  section_import_content  @line 184
+      | Import a .colx (spColumn) or .sco (S-CONCRETE) sent as base64 JSON (no multipart dependency).
+  E2KParseRequest  @line 212
+      | E2KParseRequest
+  __annotate__  @line 217
+  _e2k_text  @line 217
+      | .e2k
+  __annotate__  @line 228
+  etabs_parse  @line 227
+      | Parse an ETABS .e2k and return the story list + pier IDs per story.
+  E2KAssembleRequest  @line 245
+      | E2KAssembleRequest
+  __annotate__  @line 255
+  etabs_assemble  @line 254
+      | Union the selected pier walls into one section + connectivity suggestions.
+  E2KPierPlanRequest  @line 289
+      | E2KPierPlanRequest
+  __annotate__  @line 297
+  etabs_pier_plan  @line 296
+      | Recreated ETABS-style key plan of every pier at a story (import preview).
+  FixedSpec  @line 303
+      | FixedSpec
+  BuildColumnRequest  @line 312
+      | BuildColumnRequest
+  _apply_fixed_column  @line 345
+      | Column 'as imported': swap in the imported bars, confinement and axial cap (same solid,
+      | ties and builder meta) so the analysis matches the original .colx exactly.
+  __annotate__  @line 366
+  section_build  @line 365
+      | Build a rectangular or circular column from scratch (same validated engine)
+      | and run the CSA -19 column code checks.
+  ZoneSpec  @line 409
+      | ZoneSpec
+  WebSpec  @line 426
+      | WebSpec
+  SeisLoad  @line 441
+      | SeisLoad
+  BuildWallRequest  @line 448
+      | BuildWallRequest
+  _memo_get  @line 530
+      | Autosolver job thread only (2026-10-07): one build per candidate shared by its build/checks
+      | call and its diagram calls. Keyed on the builder inputs; the app's threads never set the memo.
+  _memo_put  @line 541
+  __annotate__  @line 549
+  _build_wall_result  @line 549
+      | Build the wall Section+meta from a request (shared by /build-wall and /diagram-wall).
+  __annotate__  @line 557
+  _build_wall_result_raw  @line 557
+  __annotate__  @line 607
+  _seis_kw  @line 607
+      | Seismic context for the auto horizontal spacing (G-H1): band 'high' (Rd >= 3.5) /
+      | 'low' / None, and whether the section is within the plastic hinge.
+  __annotate__  @line 616
+  section_build_wall  @line 615
+      | Build a wall template (planar first) from scratch on the validated engine and
+      | run the CSA -19 wall detailing checks (base 14.1.8 + seismic 21.5).
+  __annotate__  @line 702
+  _ductility_info  @line 702
+      | G-CK2 (2026-10-16): the 21.5.7 plane sections cases on the factored section at the factored axial load
+      | Pf (kN, compression +), checks/wall_ductility.ductility_cases. Planar: X + only (theta = 0, A1); L, T, C,
+      | custom: X +, X −, Y +, Y − in the section's global axes (A3, A4). Solved only for a seismic wall (Rd set)
+      | with a Pf; otherwise lw_dir only (no cases).
+  __annotate__  @line 714
+  _ductility_extras  @line 714
+      | CheckContext extras for the L, T, C and custom wall checks (G-CK2, 2026-10-16): the planar 21.5.7 inputs
+      | (Pf, eps_cu, Delta_f, hw, Ro and the resolved gamma_w) plus the ductility cases and the zone polygons in mm
+      | (engine axes) for the C5 zone in block test. ell_u is not passed: it would change the 14.1.7.1 row, which
+      | the decision table keeps as it is.
+  __annotate__  @line 731
+  _ductility_payload  @line 731
+      | Build payload block "ductility" (G-CK2): lw per direction (mm), the cases (c in mm, theta in degrees),
+      | in_range, and per zone the c, lw (mm), theta_id and case its confinement tie row used (C5), so the tie
+      | detail popup gets the same inputs (C6). A zone entry with note "outside" sits in no compression region;
+      | note "range" means Pf is outside Pt to Pr,max.
+  __annotate__  @line 744
+  _gamma_w_auto  @line 744
+      | γw auto fill (signed W1 to W9, 2026-10-16): γwd of 21.5.7.2 = Mn / |Mf|, the least over the axes and
+      | signs with an Mn at Ps, not less than 1.3, 2 decimals. Mn: the nominal moment resistance at Ps of the
+      | overstrength block (phi = 1, actual fy, cached by section and Ps). Mf: the largest factored moment of the
+      | selected rows about the same axis in the same sign. None when gamma_w is typed or seis_loads was not sent
+      | (stored builds). Mn and Mf in display units (kip·ft US, kN·m SI).
+    _gamma_w_auto.<locals>.<genexpr>  @line 764
+        | X
+  RunSpec  @line 777
+      | RunSpec
+  BuildCustomRequest  @line 787
+      | BuildCustomRequest
+  __annotate__  @line 838
+  section_build_custom  @line 837
+      | Reinforce an imported custom section (fixed polygon + wall runs): user zones +
+      | distributed web per run, then the CSA -19 wall detailing checks.
+  __annotate__  @line 868
+  section_geom_custom  @line 868
+      | G-PC31 (2026-10-14), Autosolver only (_AS_API "custom_geom"): section_build_custom's geometry and build meta
+      | (the same builder call and memo, the same request checks) without the wall limits and checks, for the option
+      | steel of as_tables.steel_table, which reads only the ties, the zone polygons and the zones' label and tie fields.
+  LoadCombo  @line 881
+      | LoadCombo
+  DiagramWallRequest  @line 896
+      | DiagramWallRequest
+  SlenderBlock  @line 905
+      | SlenderBlock
+  DiagramColumnRequest  @line 914
+      | DiagramColumnRequest
+  _factored_ladder  @line 934
+      | Factored 41x36 ladder for the Critical Capacity DCR, from either cache, else computed once.
+  __annotate__  @line 958
+  _sec_signature  @line 958
+      | Stable key for a section's failure surface: geometry + materials (unit-independent, since the
+      | ladders are stored in internal N/N·mm). Two sections collide only if identical in every capacity
+      | input, so a cached ladder is always valid to reuse.
+    _sec_signature.<locals>.<genexpr>  @line 963
+    _sec_signature.<locals>.<genexpr>  @line 964
+    _sec_signature.<locals>.<genexpr>  @line 965
+    _sec_signature.<locals>.<genexpr>  @line 967
+  __annotate__  @line 973
+  _slender_list  @line 973
+      | Per-load column slenderness (non-sway magnification, Cl. 10.13-10.15). Returns a list
+      | parallel to req.loads (each {"Mcx","Mcy","sl"} or None) or None if not enabled. Magnifies
+      | each case's end moments M2->Mc per axis so the DCR uses the magnified moments. Maps the
+      | tool's Mx/My to the section's minor/major (smaller Ig = minor); Mc mapped back to x/y.
+    _slender_list.<locals>.axrow  @line 994
+        | axis
+  __annotate__  @line 1031
+  _overstrength  @line 1031
+      | Mn / Mp / Mr at Ps about X (My = 0) and Y (Mx = 0), both directions (overstrength.py).
+  __annotate__  @line 1057
+  _m3_axis_from_legs  @line 1057
+    _m3_axis_from_legs.<locals>.<genexpr>  @line 1064
+  __annotate__  @line 1069
+  _legs_wall  @line 1069
+      | Centreline legs (angle deg, length) of a wall template, display units (ETABS centreline model).
+  __annotate__  @line 1086
+  _legs_custom  @line 1086
+      | Legs of an imported (ETABS) custom section = its wall runs (already collinear-merged).
+  __annotate__  @line 1102
+  _diagram  @line 1102
+      | Interaction diagrams + per-load DCRs from the validated engine. One ladder
+      | (nP=41, N=36 — matches spColumn faceting; DCR within 0.001 of nP=241) is returned
+      | in full as `rings` (P-level M-M contours); the UI derives the P-M cut at ANY moment
+      | angle and the M-M contour at ANY axial load from it (smooth sliders, no round-trip),
+      | and meshes it into the 3D surface. Everything in display units (kN·kN·m / kip·kip-ft).
+    _diagram.<locals>._sltup  @line 1109
+    _diagram.<locals>._merge_sl  @line 1113
+    _diagram.<locals>.<lambda>  @line 1122
+    _diagram.<locals>.<lambda>  @line 1123
+    _diagram.<locals>.<lambda>  @line 1194
+        | P
+    _diagram.<locals>.<lambda>  @line 1208
+  __annotate__  @line 1265
+  section_diagram_wall  @line 1264
+      | Interaction diagrams + DCRs for a wall section (same builder as /build-wall).
+  _column_result  @line 1272
+      | Column BuildResult from a column request (shared by /build, /diagram-column, Autosolver).
+  _column_result_raw  @line 1280
+      | circular
+  __annotate__  @line 1302
+  section_diagram_column  @line 1301
+      | Interaction diagrams + DCRs for a column section.
+  DiagramImportRequest  @line 1311
+      | DiagramImportRequest
+  __annotate__  @line 1323
+  section_diagram_import  @line 1322
+      | Interaction diagrams + DCRs for an IMPORTED .colx section (closes GAPS #20).
+      | Re-reads the .colx into a Section via the validated reader and runs the SAME
+      | `_diagram` used for built column/wall sections, so an imported (incl. irregular)
+      | section gets identical P-M curves + Moment/Critical DCR. Loads come from the
+      | request (the UI's editable table), not the file, so demands stay editable.
+  DiagramCustomRequest  @line 1354
+      | DiagramCustomRequest
+  __annotate__  @line 1364
+  section_diagram_custom  @line 1363
+      | Interaction diagrams + DCRs for a CUSTOM (imported ETABS box) section — same builder as
+      | /section/build-custom, then the SAME `_diagram` used for built wall/column sections, so the
+      | custom section gets identical P-M curves + Moment/Critical DCR. Loads come from the request
+      | (the editable table), in the section's display units.
+  _custom_result  @line 1374
+      | (BuildResult, runs) for a custom request (shared by /build-custom, /diagram-custom, Autosolver).
+  _custom_result_raw  @line 1382
+      | label
+  CustomEditRequest  @line 1403
+      | CustomEditRequest
+  __annotate__  @line 1421
+  _cull_new_zones  @line 1421
+      | 2026-10-16 Z3: a default zone the edit added at a new junction or free end is dropped when the
+      | build gives it no room (it would overlap a kept zone, e.g. on a short stub). Kept zones are never
+      | dropped. Builds through the same request model and builder path as the cards (/build-custom).
+    _cull_new_zones.<locals>.<lambda>  @line 1444
+      _cull_new_zones.<locals>.<lambda>.<locals>.<genexpr>  @line 1444
+  __annotate__  @line 1450
+  section_custom_edit  @line 1449
+      | Run edits for the custom section drawing tools; see custom_edit.py for the signed-off rules.
+      | Returns the new runs / zones / wall cards / no-reinf holes / cuts, or ok=False + a message.
+  ColxConvertRequest  @line 1464
+      | ColxConvertRequest
+  __annotate__  @line 1471
+  section_colx_convert  @line 1470
+      | .colx import -> editable builder section (2026-10-05). 'probe' says which kinds are
+      | possible; 'wall' / 'column' return builder params + the 'as imported' bars + a report.
+  ExportColxRequest  @line 1520
+      | ExportColxRequest
+  __annotate__  @line 1539
+  section_export_colx  @line 1538
+      | Write the CURRENT section + loads to a real spColumn .colx (irregular + explicit bars — the
+      | representation our reader round-trips exactly, materials reproduced with spColumn's own CSA
+      | formulas). Builder-agnostic: the resolved geometry (display units) + materials come from the
+      | section payload the UI already holds, so column / wall / custom / imported sections all export
+      | through this one path. Returns base64 bytes the browser saves as a .colx to open in spColumn.
+  ExportScoRequest  @line 1565
+      | ExportScoRequest
+  __annotate__  @line 1588
+  section_export_sco  @line 1587
+      | Write the CURRENT section + loads as an S-CONCRETE 2026 .SCO. S-CONCRETE stores templates, so the
+      | writer fits planar / L / T / C wall or rectangular / circular column parameters to the bars and
+      | proves the file by reading it back (every bar, the outline and every load must come back the same).
+      | A section S-CONCRETE cannot hold exactly is refused with the reason (422).
+  __annotate__  @line 1615
+  checks_reference  @line 1614
+      | Coverage view of the CSA Clause-21 reference checklist.
+  __annotate__  @line 1621
+  checks_rounding_rules  @line 1620
+      | G-DOC2 (Griffin 2026-10-16, R3): every rounding and imperial equivalent rule, from checks/fmt.py RULES,
+      | for the Code checks "Rounding rules" popover: the markdown of verification/ROUNDING_RULES.md sections 1 to 5
+      | and the rules as a list.
+  ChecksRequest  @line 1632
+      | ChecksRequest
+  __annotate__  @line 1641
+  checks_run  @line 1640
+      | Run detailing/seismic checks. Currently returns PENDING placeholders from
+      | the reference layer (no clause logic implemented until decision-table
+      | sign-off). The contract is stable so the UI can be built against it now.
+  TieDetailRequest  @line 1668
+      | TieDetailRequest
+  __annotate__  @line 1716
+  checks_tie_detail  @line 1715
+      | Forward tie-spacing ladder (+ knobs) for a column or wall zone, and — when a
+      | target is given — the fewest-changes reverse solve.  Matches V7.8 (column) and the
+      | Zone Confinement Designer (wall).  Engine-c is held fixed; Apply rebuilds exactly.
+    checks_tie_detail.<locals>.dia  @line 1725
+  SlenderCase  @line 1795
+      | SlenderCase
+  SlendernessRequest  @line 1811
+      | SlendernessRequest
+  __annotate__  @line 1825
+  section_slenderness  @line 1824
+      | US
+    section_slenderness.<locals>.__annotate__  @line 1835
+    section_slenderness.<locals>.axis_out  @line 1835
+        | axis
+  __annotate__  @line 1909
+  _sha256_bytes  @line 1909
+  __annotate__  @line 1914
+  _lidx_rel  @line 1914
+  __annotate__  @line 1918
+  _meta_filename  @line 1918
+  __annotate__  @line 1927
+  _lidx_save  @line 1927
+  __annotate__  @line 1934
+  _lidx_entry  @line 1934
+      | sha256
+  __annotate__  @line 1940
+  _lidx_rebuild  @line 1940
+      | Reconcile the index with the files: unchanged files (same size and time) keep their hash, the rest are hashed.
+  __annotate__  @line 1971
+  _lidx_init  @line 1971
+  __annotate__  @line 1986
+  _lidx_put  @line 1986
+  __annotate__  @line 1995
+  _lidx_forget  @line 1995
+  __annotate__  @line 2002
+  _lidx_valid  @line 2002
+  __annotate__  @line 2011
+  _lidx_find  @line 2011
+      | The first cached workbook with these bytes: (path, entry) or (None, None). Rescans once when the index is stale.
+    _lidx_find.<locals>.<lambda>  @line 2019
+  __annotate__  @line 2029
+  _loads_retire  @line 2029
+      | Take a workbook (and its .json) off a slot without losing it: when the same bytes are held elsewhere in the cache
+      | the slot copy goes, else it moves to _loads_cache\_kept\<id>\<time>-<name>. Answers 1 when a workbook was there.
+  __annotate__  @line 2057
+  _lidx_start  @line 2057
+      | loads hash index: %s
+  __annotate__  @line 2065
+  _loads_index_start  @line 2064
+      | E4: the hash index is built when the server starts (not in the Autosolver workers, which import this module).
+  __annotate__  @line 2070
+  _loads_dir  @line 2070
+  __annotate__  @line 2077
+  _loads_slot_path  @line 2077
+  __annotate__  @line 2086
+  _xlsx_saved  @line 2086
+      | Workbook "last saved" time (docProps/core.xml dcterms:modified, ISO UTC), else None.
+  __annotate__  @line 2098
+  _loads_slot_summary  @line 2098
+  LoadSlotUpload  @line 2115
+      | LoadSlotUpload
+  __annotate__  @line 2123
+  loads_upload  @line 2122
+      | Save an uploaded workbook into a design's slot (kept until replaced or the tab closes) + return its summary.
+      | The design id comes from the body field or the query (body first).
+  __annotate__  @line 2147
+  loads_state  @line 2146
+      | Which of the design's slots are filled (persisted across restarts) + their summaries for the UI.
+  LoadSlotClear  @line 2152
+      | LoadSlotClear
+  __annotate__  @line 2158
+  loads_clear  @line 2157
+  __annotate__  @line 2167
+  loads_close  @line 2166
+      | T5.1: a design's tab closed: its slots are taken off and its folder (_loads_cache\<designId>\) goes. Stage 4b:
+      | each workbook is kept (moved to _loads_cache\_kept\<designId>\ unless the same bytes are held elsewhere), so a
+      | saved .korcol can still reattach it by hash. removed = workbooks taken off.
+  LoadsCopy  @line 2193
+      | LoadsCopy
+  __annotate__  @line 2200
+  loads_copy  @line 2199
+      | E1, E5: make design `to`'s slots equal design `from`'s (the default id "" allowed as from, never as to), by a
+      | server side copy (no upload). Answers the state of `to`.
+  __annotate__  @line 2230
+  loads_find  @line 2229
+      | E4: is a workbook with this sha256 in the cache (any design's slot, the shared slots or the kept ones)?
+    loads_find.<locals>.<genexpr>  @line 2239
+        | sha256
+  LoadsAttach  @line 2243
+      | LoadsAttach
+  __annotate__  @line 2251
+  loads_attach  @line 2250
+      | E4: copy the cached workbook with this sha256 into a design's slot. 404 when no such workbook is on this machine.
+  LoadsCombosRequest  @line 2276
+      | LoadsCombosRequest
+  __annotate__  @line 2288
+  loads_combos  @line 2287
+      | Assemble the tagged loads for one pier + supported story and build the NBCC ULS combos.
+  _as_section  @line 2323
+      | column
+  _as_diag  @line 2335
+      | column
+  _as_build  @line 2345
+      | G-PC33 stage 2 (2026-10-16): an Autosolver candidate build. "_as_noduct" in the params (autosolve Ctx.build with
+      | duct False, builds read only for validity) skips the 21.5.7 ductility solve (_ductility_info as without a Pf); the
+      | flag never reaches the request or the builder memo key. The app's builds never carry it.
+  <lambda>  @line 2360
+  <lambda>  @line 2361
+      | column
+  <lambda>  @line 2362
+  <lambda>  @line 2363
+      | wall
+  <lambda>  @line 2364
+  <lambda>  @line 2365
+  <lambda>  @line 2366
+      | custom
+  <lambda>  @line 2367
+      | ladf
+  AutosolveRequest  @line 2371
+      | AutosolveRequest
+  __annotate__  @line 2403
+  autosolve_describe  @line 2402
+  __annotate__  @line 2411
+  autosolve_start  @line 2410
+  __annotate__  @line 2419
+  autosolve_status  @line 2418
+  __annotate__  @line 2425
+  autosolve_cancel  @line 2424
+
+# FULL DISASSEMBLY

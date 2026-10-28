@@ -1,0 +1,4 @@
+  - 4 plan sheet(s) draw a floor this set frames in wood - the floor shown as the framing over the level below - and gave it no concrete plate or opening; their walls and columns stand (step 184, dxf.wood-framed-floor-carries-no-c
+  - 4 storey(s) carry walls or columns and no floor plate at all, so they have no diaphragm: L6, L5, L4, L3. Nothing was borrowed or invented for them; add a plate if these storeys need one.
+  - THIS SET'S DRAWINGS NAME 8 STOREYS AND ONLY 4 OF THEM RECEIVED A FLOOR, so what shipped is a fraction of the building and should be read as one. The storeys with no floor plate at all: L6, L5, L4, L3. This is not a count of dr
+Storeys       : 8 storeys (P2 P1 L1 L2 L3 L4 L5 L6): 0 with a stated elevation, 8 named by plans only, 7 height(s) ASSUMED at the assumed storey height, 3000 mm

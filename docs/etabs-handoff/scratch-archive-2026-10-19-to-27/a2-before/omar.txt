@@ -1,0 +1,12 @@
+  p1   untitled           scale: - (none stated / unparseable  fallback 1/8"=1'-0", flagged)
+  p2   B2                 scale: - (none stated / unparseable  fallback 1/8"=1'-0", flagged)
+  p3   2                  scale: - (none stated / unparseable  fallback 1/8"=1'-0", flagged)
+  p4   4                  scale: - (none stated / unparseable  fallback 1/8"=1'-0", flagged)
+  p5   6                  scale: - (none stated / unparseable  fallback 1/8"=1'-0", flagged)
+  p6   35                 scale: - (none stated / unparseable  fallback 1/8"=1'-0", flagged)
+  p7   36                 scale: - (none stated / unparseable  fallback 1/8"=1'-0", flagged)
+  p8   untitled           scale: - (none stated / unparseable  fallback 1/8"=1'-0", flagged)
+  p9   untitled           scale: - (none stated / unparseable  fallback 1/8"=1'-0", flagged)
+  p10  untitled           scale: - (none stated / unparseable  fallback 1/8"=1'-0", flagged)
+  p11  untitled           scale: - (none stated / unparseable  fallback 1/8"=1'-0", flagged)
+0/11 page(s) state a machine-readable scale.

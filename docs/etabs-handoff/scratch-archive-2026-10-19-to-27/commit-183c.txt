@@ -1,0 +1,28 @@
+Step 183: the zones tile the floor or there are none - a zone inside another of its thickness is not written twice
+
+30993 L2 (south) - the group bisect named step 183 for one opening of the engineer's lost (9085569a). Measured, not
+guessed: no zone reached past the floor (0 sq ft outside, by shapely against the ring); ten zones of 2-8 sq ft lay wholly
+inside a 12,307 sq ft zone, every one of the SAME thickness - its own cells standing in a hole of it - written beside it:
+30 sq ft of plate twice. Such a zone is now dropped; the floor is 5 zones, 26,424 of 26,424 sq ft, 0 overlap.
+
+A TILING GUARD, the property every zone fault of this step has broken: the zones' areas must sum to the floor's within
+0.05%, or the cut refuses, the floor is written whole and the reason says why. A later change that breaks the cut, the
+take-in or the retry fails closed on any set.
+
+Proved red, as operations-ee (Ian's proxy tonight) required:
+- On the real witness, SlabPassTraceProbe 30993-01 p47: same-thickness drop removed -> "its zones came to 26454 sq ft of the
+  floor's 26424 - they do not tile it, so the floor is kept whole"; restored -> 26,424 of 26,424.
+- That found the guard first written at 0.2% too loose to catch its own fault (30 of 26,424 = 0.11%): now 0.05%; the
+  measured tilings are exact (31065 L1N, 30993 L2) or 1 sq ft on 9,082 (31130 L16).
+- A take-in of a zone of ANOTHER thickness inside another, also written: removed, it never fired on any of four witness
+  floors (30993 L2, 31168 L1 C, 31065 L1N, 31130 L16 all tile without it); such a floor now fails closed via the guard.
+- The new synthetic test AZoneInsideAnotherIsNotWrittenTwice stayed GREEN with the drop removed - the island rule absorbs
+  it before the union - so it is a property test, not a reproduction, and its doc says so. AssertTheZonesTileTheFloor
+  now checks the island test too.
+
+Six sets vs 0de30b47 (frozen build of exactly this commit): 31065, 31170-arch, 31202 identical; 31130, 31138, 31168 lose
+3-25 sq ft per storey where a cell was written twice; zoned-floor counts unchanged (the guard refused none).
+Halifax raw e2k byte-identical (sha256 1898f6b4c5a8ad26). Core fast 1,678 of 1,678. Local only - GitHub held until morning.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

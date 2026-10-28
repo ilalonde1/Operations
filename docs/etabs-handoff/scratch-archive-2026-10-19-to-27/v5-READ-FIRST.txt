@@ -1,0 +1,28 @@
+ASSUMED IN THIS MODEL - check these first
+
+1. Your yellow is read as structure arriving from the floor below and stopping at that level. On L36 the yellow columns
+   sit on the typical floor's columns with nothing above them (L37 and the roof step back 1.5 m); on the roof, the yellow
+   are the double-height columns arriving. In the report: KOR_V-WALL-MARKUP-BELOW-ASSUMED.
+2. The blue bands with red dashed borders (8'-0" on L2, 4'-0" on L36) and the pale-yellow blocks where the yellow wall
+   lines cross the L36 corridor are read as beam bands and headers. Beams are not modelled: these are solid slab, not
+   holes. In the report: BEAM-MARKUP-ASSUMED.
+3. UPPER ROOF is its own storey above ROOF, from the "Upper roof plan" on A107. No elevation gives ROOF or UPPER ROOF a
+   height: both are taken as the typical storey, 3050 mm (levels file).
+4. Every slab is 12 in - the drawings state no thickness. Change it in the questions workbook, row S3.
+5. Stair A on L36 is drawn with dashed treads; it is cut, as it is on L35 and L37. Stair B on B1 likewise (cut on B2 and
+   L1). Where only a stair's flights could be read, its hole is the flights grown to the walls round them.
+
+6. B1: the two OPEN TO BELOW areas at the top of the plan are cut as one opening following the room's walls (about
+   1,017 sq ft). The column standing in it rises through the double height.
+
+AS DRAWN
+
+7. The left wall from B2 to L1 is 44 in: your burgundy draws the parkade wall and the core wall as one solid band along
+   the core.
+8. L6 and L37: columns pass through the OPEN TO BELOW areas, with no floor at that level, and continue up - as the plans
+   show.
+
+THE ONE QUESTION IN THE WORKBOOK
+
+9. S4, how many slabs on L37: 1. Your own L37 area measurement is one outline of 2,464 sq ft, and that is the floor in
+   the model.

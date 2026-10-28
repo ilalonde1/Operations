@@ -1,0 +1,29 @@
+baseline: ledger-sets-2026-09-24-run45-step140.csv (295 rows); judging 2 set(s) she has modelled
+census...
+  census of 2026-10-27 19:29 UTC reused (1196 job folders; --census retakes it)
+rules: KorStandards; work: C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gate-twin2
+2 set(s) to analyze; tool built 2026-10-27 20:57 UTC; run 5c60023a-6627-459b-84b1-5f617fcd3363
+  [1/2] 31170-01 model: 9 storeys, 139 walls, 330 columns, 9/18 placed; yardstick:7 shared storeys, 287/323 of ours within 100 mm (frame from columns)  304 s
+  [2/2] 31065-01 model: 25 storeys, 774 walls, 1168 columns, 26/51 placed; yardstick:21 shared storeys, 514/608 of ours within 100 mm (frame from columns)  1303 s
+
+2 sets: 2 built, 0 reused from their last run; 22 min; run 5c60023a-6627-459b-84b1-5f617fcd3363
+  2 of 2 build a model; 0 the analyzer failed on
+  of the 2 with a model: 69 plan views, 35 set on the grid by axis name; 34 storeys, 31 with a plate; 913 walls, 1,498 columns
+  sets with every view placed: 0 of 2; with a plate on every storey: 0 of 2
+  yardsticks: 2 sets have the engineer's model; 2 share a storey with columns; frames from grids 0, from columns 2
+    ours -> theirs: 801 of 931 of our columns within 100 mm of one of theirs (86%); theirs -> ours: 801 of 906 (88%)
+    2 set(s) with 75-99% of our columns within 100 mm: 31065-01 31170-01
+  110 pages read: 58 plans, 0 failed; plans not placed on a grid: 28
+
+the gate: 2 set(s) the engineer has a model of, judged against the bank
+  job         her plates we read: was -> now (of hers)        thickness agree   her openings we have
+  REISS31065-01          246,648 ->      252,796 ( 87%)     +6,148    18 ->  20 of  21     62 ->   56 of  109
+  REISS31170-01          127,090 ->      128,575 ( 92%)     +1,485     6 ->   7 of   7     12 ->   13 of   37
+  totals: her plates we read 373,738 -> 381,371 sq ft of 431,136 (87% -> 88%); thickness 24 -> 27 of 28; her openings we have 74 -> 69 of 146 (the 2 of 2 set(s) judged both times whose frame registers)
+  storeys we plate that her model does not name: 2 of 2 set(s) measured now, 3 storey(s), 69,346 sq ft - the bank predates this figure, so a rise is not judged against it:
+    31065-01: 2 storey(s), 43,704 sq ft
+    31170-01: 1 storey(s), 25,642 sq ft
+  2 set(s) READ A DIFFERENT STICK FILE than the bank did, so no rule is answerable for them (1 of them would otherwise have stopped the bank):
+    31065-01: RE-ISSUED, so no rule is answerable: her openings we have fell 62 -> 56
+    31170-01
+  no set lost: the bank may take this.

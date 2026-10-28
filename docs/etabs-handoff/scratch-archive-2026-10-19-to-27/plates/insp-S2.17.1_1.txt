@@ -1,0 +1,10 @@
+S2.17.1_1_LEVEL 7 PLAN (LEVEL 7,9,11,13,15,17) CONCRETE OUTLINE ST.dxf
+segments: 850
+
+BEAM                     segs  657   closed loops  30   open 105
+    loose ends 210   gap median  448.73  max   6499.6   <=0.1 0/210  <=1 0/210  <=6 0/210  <=24 0/210
+GRID                     segs   10   closed loops   0   open  10
+    loose ends  20   gap median 5300.13  max  10105.0   <=0.1 0/20  <=1 0/20  <=6 0/20  <=24 0/20
+KOR_C_SLABEDG            segs   39   closed loops   3   open   1
+KOR_V-WALL               segs   60   closed loops  14   open   0
+KOR_V_COL                segs   84   closed loops  21   open   0

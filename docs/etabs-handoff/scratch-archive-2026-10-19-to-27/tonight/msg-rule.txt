@@ -1,0 +1,24 @@
+A ruling written for people (units 'rule') is not a setting: rules-required builds no longer stop on the engineer's prose rulings
+
+KOR.Drafter migrations 131, 132 and 134 (and one row of 119) put the engineer's and the drafter's rulings into analysis.Ruling with
+units 'rule' and prose values ("X = opening", "top-to-bottom; columns right-to-left"). vw_RuleSetting serves every row, and
+RuleSettings.TryLoad refused each as an unreadable number, so LoadRequired threw "KorStandards rule settings could not be read"
+and EVERY rules-required DXF-to-ETABS build stopped - production runs included, keys the build never reads included. Found by the
+full suite at d92e50b1 (started 12:40, after 131 at 12:50): ShippedModelsAgreeWithEachOther, StackMergeChangesNothingButLabels
+x2 and AnAnsweredQuestionChangesTheNextModel failed in under a second each with that message. Operations-ee (Ian's proxy):
+the rows stay as they are ('rule' is a ruling for people and the drafter; relabelling 20 rows would hide the class) - fix the
+loader; and every ruling migration now gets a read-back counting the rows this loader refuses, expecting 0.
+
+- RuleSettings.KindOf(value, units): the loader's per-row decision, now one testable function - a 'rule' row is ForPeople (left
+  out and counted), a list is a setting (an empty one stops the run), anything else must parse or it stops the run, as before.
+- LoadRequired(conn, keys, out rulingsForPeopleLeftOut); DxfToEtabsService's report says how many were left out.
+- RulingCoverageTests: 134's 8 rulings (pit edge, red outline, X = opening, columns centred, core door holes, header depth,
+  levels from the section, wall on the marked face) declared NotYetObeyed - they govern the markup reader (the drafter's lane);
+  measured today on Halifax L1/P1, each fault Jim found was already in the DXF this converter was given.
+
+Tests: ARulingWrittenForPeopleIsNotASettingTests - 7 row cases (a malformed number and an unreadable bool still stop the run)
+and the LIVE store: LoadRequired over the real view succeeds and leaves out exactly the 'rule' rows it serves. The 4 tests that
+failed on the rows: green. 14/14. Core fast 1,705/1,705. Halifax 1898f6b4 identical. A full suite at this commit follows.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

@@ -1,0 +1,14 @@
+stickfile : 260723_W49th_75% BP Draft.pdf
+job       : 260723_W49th_75% BP Draft
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31170-149and154off
+rules     : KorStandards
+
+
+pages read: 67   plan sheets: 49   views written: 49
+storeys   : 9   with a floor: 8
+members   : 133 walls   335 columns   10 floors
+
+  model   : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31170-149and154off\out.e2k
+  report  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31170-149and154off\report.txt
+  levels  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31170-149and154off\levels.csv
+  sheets  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31170-149and154off\sheets.csv

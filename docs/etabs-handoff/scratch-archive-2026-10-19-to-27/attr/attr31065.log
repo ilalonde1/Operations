@@ -1,0 +1,5 @@
+started 2026-10-19T20:33:36
+31065  154 + 152-153 off  exit 2  -> plates moved 1, columns lost 6 / gained 19, walls lost 0 / gained 2
+31065  154 + 150 off  exit 2  -> plates moved 1, columns lost 6 / gained 19, walls lost 0 / gained 2
+31065  154 + 149 off  exit 0  -> byte-identical
+finished 2026-10-19T20:43:27

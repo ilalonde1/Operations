@@ -1,0 +1,18 @@
+stickfile : 31065-01 - 2026-07-08 - 5380-Heather Street - Stickfile (up to SSI-04)-OAP.pdf
+job       : 31065-01
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\r178\on
+rules     : KorStandards
+
+
+pages read: 73   plan sheets: 1   views written: 1
+storeys   : 23   with a floor: 0
+members   : 0 walls   0 columns   0 floors
+
+  model   : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/r178/on\out.e2k
+  report  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/r178/on\report.txt
+  levels  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/r178/on\levels.csv
+  sheets  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/r178/on\sheets.csv
+
+READ THESE FIRST:
+  - 31065-01.dxf: NOT PLACED - nothing in this sheet's title says which level it draws, so its structure reached no storey. The reader looks for a level number, a range ("LEVEL 9-19"), a parkade level, the roof, or a storey named by a word. TO FIX: tell us the level for this drawing in the workbook - th ...
+  - THIS SET'S DRAWINGS NAME 23 STOREYS AND ONLY 0 OF THEM RECEIVED A FLOOR, so what shipped is a fraction of the building and should be read as one. The storeys with no floor plate at all: ROOF, L19, L18, L17, L16, L15, L14, L13, L12, L11, L10, L9, L8, L7, L6, L5, L4, L3, L2, L1, P1, P2, P3. This is no ...

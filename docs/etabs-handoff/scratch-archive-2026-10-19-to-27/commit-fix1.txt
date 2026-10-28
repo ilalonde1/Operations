@@ -1,0 +1,44 @@
+An inch is an inch in every unit: the shell's material, the storey reader's limits, and a feet model's precision
+
+Briefs CODEX-ENGINEERING-FIX-1 and -1B, by Codex; verified on the dev box 2026-10-19.
+
+The fault was one class: inch literals applied to values measured in the model's own unit. The PDF route writes
+millimetre models, and the corpus holds 159 reference models in feet and 29 in millimetres.
+- E2kShellBuilder wrote a 4000 psi mix as lb-in numbers under UNITS LB MM, which reads as 4000 lb/mm2. Ground truth:
+  an ETABS export (30783-01, KIP/IN) stores the same mix as FC 4, E 3604.997.
+- E2kDocument compared eight inch literals (480, 60, 12, 36) with model-unit elevations and distances.
+- E2kGeometryComposer wrote lengths to 3-4 decimals in every unit; in feet an 8 in wall became 8.004 in.
+
+The fix:
+- One unit table: E2kDocument.InchesPerUnit.
+- Materials in the declared unit.
+- Each literal scaled by the model's inch.
+- Decimals that follow the unit.
+
+The existing unit differential (AModelIsTheSameInInchesAndMillimetresTests) gains a feet arm and compares materials,
+storey elevations and floor-below. Inch and millimetre output formatting is unchanged.
+
+Measured on this build:
+- Full Core suite: 1,737 of 1,739 passed.
+- Two failures:
+  - SixSetsBuildAsBanked, rebanked here.
+  - AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays. Date-based, unrelated: six NBC stair clauses
+    entered 2026-09-16 are now unread for over 30 days.
+
+Re-banked: all six Baselines/pdf-only-*.e2k. In all six, plates moved 0 and columns and walls lost/gained 0.
+Every changed line traces to the fix:
+- material lines (6 of 6);
+- the bottom storey, clamped to 480 mm before, now set by the shell's own rule (4 of 6);
+- header joint heights, every one at the 18 in floor before because storeys read as 480 mm, now storey height
+  minus 88 in clamped to 18-60 in, as the composer intends;
+- 31168's stack splits (+100 KC, +55 KW objects at the same positions): its two-tower same-floor tolerance was
+  12 mm and is now 12 in.
+
+Plan renders, before and after:
+- 31130: identical.
+- 31168: 5,752 of 5,752 elements identical except two wall ends 0.1 px apart.
+
+Open, not touched: 31138 reads P5 and P4 890 mm apart off its drawings, which predates this change.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

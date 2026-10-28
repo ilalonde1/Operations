@@ -1,0 +1,106 @@
+s170 seg SLABEDGE (12065,48641)-(18292,49208)
+s170 seg SLABEDGE (12065,46664)-(12065,48641)
+s170 seg SLABEDGE (10825,46664)-(12065,46664)
+s170 seg SLABEDGE (12065,43091)-(10825,43091)
+s170 seg SLABEDGE (12065,41918)-(12065,43091)
+s170 seg SLABEDGE (10787,41918)-(12065,41918)
+s170 seg SLABEDGE (12065,38164)-(10787,38164)
+s170 seg SLABEDGE (12065,26073)-(12065,38164)
+s170 seg SLABEDGE (14317,25709)-(12065,26073)
+s170 seg SLABEDGE (13034,40754)-(12069,40754)
+s170 seg SLABEDGE (12069,41741)-(12069,40754)
+s170 seg SLABEDGE (12984,45716)-(12069,45716)
+s170 seg SLABEDGE (12069,46588)-(12069,45716)
+s170 seg SLABEDGE (12061,42990)-(12984,42990)
+s170 seg SLABEDGE (12069,38164)-(13034,38164)
+s170 seg SLABEDGE (12061,4906)-(14817,7662)
+s170 chain 2 pts len 6253 kept True: (12065,48641) (18292,49208)
+s170 chain 2 pts len 1977 kept False: (12065,46664) (12065,48641)
+s170 chain 2 pts len 1240 kept False: (10825,46664) (12065,46664)
+s170 chain 2 pts len 1240 kept False: (12065,43091) (10825,43091)
+s170 chain 2 pts len 1173 kept False: (12065,41918) (12065,43091)
+s170 chain 2 pts len 1278 kept False: (10787,41918) (12065,41918)
+s170 chain 2 pts len 1278 kept False: (12065,38164) (10787,38164)
+s170 chain 2 pts len 12090 kept True: (12065,26073) (12065,38164)
+s170 chain 2 pts len 2281 kept True: (14317,25709) (12065,26073)
+s170 chain 4 pts len 4542 kept True: (13034,38164) (13034,40754) (12069,40754) (12069,41741)
+s170 chain 4 pts len 4513 kept True: (12984,42990) (12984,45716) (12069,45716) (12069,46588)
+s170 chain 2 pts len 923 kept False: (12061,42990) (12984,42990)
+s170 chain 2 pts len 965 kept False: (12069,38164) (13034,38164)
+s170 chain 2 pts len 3897 kept True: (12061,4906) (14817,7662)
+s170 west vertex (13034,40754) degree 2 own -1 edges (13034,38164)-(13034,40754) (13034,40754)-(12069,40754)
+s170 west vertex (12069,40754) degree 2 own -1 edges (13034,40754)-(12069,40754) (12069,40754)-(12069,41741)
+s170 west vertex (12069,41741) degree 1 own 249 edges (12069,40754)-(12069,41741)
+s170 west vertex (12984,42990) degree 1 own 250 edges (12984,42990)-(12984,45716)
+s170 west vertex (12984,45716) degree 2 own -1 edges (12984,42990)-(12984,45716) (12984,45716)-(12069,45716)
+s170 west vertex (12069,45716) degree 2 own -1 edges (12984,45716)-(12069,45716) (12069,45716)-(12069,46588)
+s170 west vertex (12069,46588) degree 1 own 252 edges (12069,45716)-(12069,46588)
+s170 end (56676,34692) -> (56676,35090) 398mm best=True agreed=True crossed=False
+s170 end (64334,34193) -> (64935,34193) 601mm best=True agreed=True crossed=True
+s170 end (58551,39798) -> (58551,39950) 152mm best=True agreed=True crossed=True
+s170 end (58551,39950) -> (58551,39798) 152mm best=True agreed=True crossed=True
+s170 end (63043,41063) -> (63060,41068) 17mm best=False agreed=False crossed=False
+s170 end (55220,49301) -> (55292,49310) 72mm best=False agreed=False crossed=False
+s170 end (47934,40742) -> (47938,40653) 89mm best=False agreed=False crossed=False
+s170 end (65587,25434) -> (65540,25408) 53mm best=True agreed=True crossed=False
+s170 end (20803,34692) -> (20803,35090) 398mm best=True agreed=True crossed=False
+s170 end (28461,34193) -> (29062,34193) 601mm best=True agreed=True crossed=True
+s170 end (25260,39133) -> (24951,39798) 733mm best=True agreed=True crossed=False
+s170 end (22678,39798) -> (22678,39950) 152mm best=True agreed=True crossed=True
+s170 end (22678,39950) -> (22678,39798) 152mm best=True agreed=True crossed=True
+s170 end (27170,41063) -> (27186,41068) 17mm best=False agreed=False crossed=False
+s170 end (10566,8628) -> (10537,8547) 86mm best=True agreed=True crossed=False
+s170 end (11599,8628) -> (11616,8556) 74mm best=True agreed=True crossed=False
+s170 end (9305,6477) -> (9343,6600) 129mm best=True agreed=True crossed=False
+s170 end (9305,6477) -> (9305,5745) 732mm best=False agreed=False crossed=False
+s170 end (14817,7662) -> (14800,7662) 17mm best=True agreed=True crossed=False
+s170 end (14817,7662) -> (14736,7671) 81mm best=False agreed=False crossed=False
+s170 end (12958,4902) -> (12912,4906) 47mm best=False agreed=False crossed=False
+s170 end (68000,25637) -> (68047,25637) 47mm best=True agreed=True crossed=False
+s170 end (32127,25637) -> (32131,25633) 6mm best=True agreed=True crossed=False
+s170 end (64935,36153) -> (64935,36419) 267mm best=True agreed=True crossed=True
+s170 end (64935,35357) -> (64935,35090) 267mm best=True agreed=True crossed=True
+s170 end (57277,36153) -> (57277,36419) 267mm best=True agreed=True crossed=True
+s170 end (57277,35357) -> (57277,35090) 267mm best=True agreed=True crossed=True
+s170 end (29062,36153) -> (29062,36419) 267mm best=True agreed=True crossed=True
+s170 end (29062,35357) -> (29062,35090) 267mm best=True agreed=True crossed=True
+s170 end (21404,36153) -> (21404,36419) 267mm best=True agreed=True crossed=True
+s170 end (21404,35357) -> (21404,35090) 267mm best=True agreed=True crossed=True
+s170 end (61134,39133) -> (60825,39798) 733mm best=True agreed=True crossed=False
+s170 west vertex (13034,40754) degree 2 own -1 edges (13034,38164)-(13034,40754) (13034,40754)-(12069,40754)
+s170 west vertex (12069,40754) degree 2 own -1 edges (13034,40754)-(12069,40754) (12069,40754)-(12069,41741)
+s170 west vertex (12069,41741) degree 1 own 272 edges (12069,40754)-(12069,41741)
+s170 west vertex (12984,42990) degree 1 own 273 edges (12984,42990)-(12984,45716)
+s170 west vertex (12984,45716) degree 2 own -1 edges (12984,42990)-(12984,45716) (12984,45716)-(12069,45716)
+s170 west vertex (12069,45716) degree 2 own -1 edges (12984,45716)-(12069,45716) (12069,45716)-(12069,46588)
+s170 west vertex (12069,46588) degree 1 own 275 edges (12069,45716)-(12069,46588)
+s170 end (56676,34692) -> (56676,35090) 398mm best=True agreed=True crossed=False
+s170 end (64334,34193) -> (64935,34193) 601mm best=True agreed=True crossed=True
+s170 end (58551,39798) -> (58551,39950) 152mm best=True agreed=True crossed=True
+s170 end (58551,39950) -> (58551,39798) 152mm best=True agreed=True crossed=True
+s170 end (63043,41063) -> (63060,41068) 17mm best=False agreed=False crossed=False
+s170 end (55220,49301) -> (55292,49310) 72mm best=False agreed=False crossed=False
+s170 end (47934,40742) -> (47938,40653) 89mm best=False agreed=False crossed=False
+s170 end (65587,25434) -> (65540,25408) 53mm best=True agreed=True crossed=False
+s170 end (20803,34692) -> (20803,35090) 398mm best=True agreed=True crossed=False
+s170 end (28461,34193) -> (29062,34193) 601mm best=True agreed=True crossed=True
+s170 end (22678,39798) -> (22678,39950) 152mm best=True agreed=True crossed=True
+s170 end (22678,39950) -> (22678,39798) 152mm best=True agreed=True crossed=True
+s170 end (27170,41063) -> (27186,41068) 17mm best=False agreed=False crossed=False
+s170 end (10566,8628) -> (10537,8547) 86mm best=True agreed=True crossed=False
+s170 end (11599,8628) -> (11616,8556) 74mm best=True agreed=True crossed=False
+s170 end (9305,6477) -> (9343,6600) 129mm best=True agreed=True crossed=False
+s170 end (9305,6477) -> (9305,5745) 732mm best=False agreed=False crossed=False
+s170 end (14817,7662) -> (14800,7662) 17mm best=True agreed=True crossed=False
+s170 end (14817,7662) -> (14736,7671) 81mm best=False agreed=False crossed=False
+s170 end (12958,4902) -> (12912,4906) 47mm best=False agreed=False crossed=False
+s170 end (68000,25637) -> (68047,25637) 47mm best=True agreed=True crossed=False
+s170 end (32127,25637) -> (32131,25633) 6mm best=True agreed=True crossed=False
+s170 end (64935,36153) -> (64935,36419) 267mm best=True agreed=True crossed=True
+s170 end (64935,35357) -> (64935,35090) 267mm best=True agreed=True crossed=True
+s170 end (57277,36153) -> (57277,36419) 267mm best=True agreed=True crossed=True
+s170 end (57277,35357) -> (57277,35090) 267mm best=True agreed=True crossed=True
+s170 end (29062,36153) -> (29062,36419) 267mm best=True agreed=True crossed=True
+s170 end (29062,35357) -> (29062,35090) 267mm best=True agreed=True crossed=True
+s170 end (21404,36153) -> (21404,36419) 267mm best=True agreed=True crossed=True
+s170 end (21404,35357) -> (21404,35090) 267mm best=True agreed=True crossed=True

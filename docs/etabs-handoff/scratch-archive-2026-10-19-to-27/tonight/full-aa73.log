@@ -1,0 +1,99 @@
+Test run for C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:01.51]     Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays [566 ms]
+  Error Message:
+   clauses written from memory more than thirty days ago and never read from the source - run takeoff knowledge-ingest on KOR's copy: NBC-2020 9.8.2.1 stair-width-min-dwelling (written 2026-09-16); NBC-2020 9.8.2.1 stair-width-min-other (written 2026-09-16); NBC-2020 9.8.4.1 stair-rise-max (written 2026-09-16); NBC-2020 9.8.4.1 stair-rise-min (written 2026-09-16); NBC-2020 9.8.4.2 stair-run-min (written 2026-09-16); NBC-2020 9.8.4.2 stair-run-max (written 2026-09-16)
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Rules\EveryRuleCitesItsAuthorityTests.cs:line 61
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:02:41.01]     Kor.Operations.EngineeringTools.Core.Tests.LiveProjectBaselineTests.TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.LiveProjectBaselineTests.TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [18 s]
+  Error Message:
+   31138 2170 W 1st walls: expected about 204 (±21), got 228.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.LiveProjectBaselineTests.AssertWithin(Int32 expected, Int32 actual, String what) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\LiveProjectBaselineTests.cs:line 196
+   at Kor.Operations.EngineeringTools.Core.Tests.LiveProjectBaselineTests.TheModelStillCarriesTheSameStructure(String name) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\LiveProjectBaselineTests.cs:line 213
+   at InvokeStub_LiveProjectBaselineTests.TheModelStillCarriesTheSameStructure(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+[xUnit.net 00:06:33.56]     Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [15 s]
+  Error Message:
+   System.InvalidOperationException : KorStandards rule settings could not be read: Execution Timeout Expired.  The timeout period elapsed prior to completion of the operation or the server is not responding.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys, Int32& rulingsForPeopleLeftOut) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 335
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 803
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.BuildOrSkip(Project project) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 60
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(String name) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 313
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+[xUnit.net 00:06:49.10]     Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31138 2170 W 1st") [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31138 2170 W 1st") [15 s]
+  Error Message:
+   System.InvalidOperationException : KorStandards rule settings could not be read: Execution Timeout Expired.  The timeout period elapsed prior to completion of the operation or the server is not responding.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys, Int32& rulingsForPeopleLeftOut) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 335
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 803
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.BuildOrSkip(Project project) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 60
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(String name) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 313
+   at InvokeStub_ModelIntegrityTests.OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+[xUnit.net 00:07:04.39]     Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.ConnectivityFlagsMatchTheFormsAnEngineersModelUses(name: "31168 YMCA Langara") [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.ConnectivityFlagsMatchTheFormsAnEngineersModelUses(name: "31168 YMCA Langara") [15 s]
+  Error Message:
+   System.InvalidOperationException : KorStandards rule settings could not be read: Execution Timeout Expired.  The timeout period elapsed prior to completion of the operation or the server is not responding.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys, Int32& rulingsForPeopleLeftOut) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 335
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 803
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.BuildOrSkip(Project project) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 60
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.ConnectivityFlagsMatchTheFormsAnEngineersModelUses(String name) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 482
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+[xUnit.net 00:07:19.92]     Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.ConnectivityFlagsMatchTheFormsAnEngineersModelUses(name: "31138 2170 W 1st") [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.ConnectivityFlagsMatchTheFormsAnEngineersModelUses(name: "31138 2170 W 1st") [15 s]
+  Error Message:
+   System.InvalidOperationException : KorStandards rule settings could not be read: Execution Timeout Expired.  The timeout period elapsed prior to completion of the operation or the server is not responding.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys, Int32& rulingsForPeopleLeftOut) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 335
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 803
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.BuildOrSkip(Project project) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 60
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.ConnectivityFlagsMatchTheFormsAnEngineersModelUses(String name) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 482
+   at InvokeStub_ModelIntegrityTests.ConnectivityFlagsMatchTheFormsAnEngineersModelUses(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+[xUnit.net 00:07:35.19]     Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.EveryNameTheModelUsesIsDeclared(name: "31168 YMCA Langara") [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.EveryNameTheModelUsesIsDeclared(name: "31168 YMCA Langara") [15 s]
+  Error Message:
+   System.InvalidOperationException : KorStandards rule settings could not be read: Execution Timeout Expired.  The timeout period elapsed prior to completion of the operation or the server is not responding.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys, Int32& rulingsForPeopleLeftOut) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 335
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 803
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.BuildOrSkip(Project project) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 60
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.EveryNameTheModelUsesIsDeclared(String name) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 115
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+[xUnit.net 00:07:50.57]     Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.EveryNameTheModelUsesIsDeclared(name: "31138 2170 W 1st") [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.EveryNameTheModelUsesIsDeclared(name: "31138 2170 W 1st") [15 s]
+  Error Message:
+   System.InvalidOperationException : KorStandards rule settings could not be read: Execution Timeout Expired.  The timeout period elapsed prior to completion of the operation or the server is not responding.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys, Int32& rulingsForPeopleLeftOut) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 335
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 803
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.BuildOrSkip(Project project) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 60
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.EveryNameTheModelUsesIsDeclared(String name) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 115
+   at InvokeStub_ModelIntegrityTests.EveryNameTheModelUsesIsDeclared(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+[xUnit.net 00:08:05.80]     Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.GeneratedSectionsDoNotCollideWithTheProjectsOwn(name: "31168 YMCA Langara") [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.GeneratedSectionsDoNotCollideWithTheProjectsOwn(name: "31168 YMCA Langara") [15 s]
+  Error Message:
+   System.InvalidOperationException : KorStandards rule settings could not be read: Execution Timeout Expired.  The timeout period elapsed prior to completion of the operation or the server is not responding.
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Dxf.RuleSettings.LoadRequired(String connectionString, IEnumerable`1 requiredKeys, Int32& rulingsForPeopleLeftOut) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\RuleSettings.cs:line 335
+   at Kor.Operations.EngineeringTools.Dxf.DxfToEtabsService.Run(DxfToEtabsRequest request) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\DxfToEtabsService.cs:line 803
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.BuildOrSkip(Project project) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 60
+   at Kor.Operations.EngineeringTools.Core.Tests.ModelIntegrityTests.GeneratedSectionsDoNotCollideWithTheProjectsOwn(String name) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\ModelIntegrityTests.cs:line 578
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)

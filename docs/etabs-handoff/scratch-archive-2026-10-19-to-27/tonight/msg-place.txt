@@ -1,0 +1,23 @@
+sheets.csv records where each view was put in the model - the placement the build computed and threw away, proved on 3 sets
+
+The build places each sheet's view by a frame (named-axis fit, the set alignment, or none) and the composer adds an offset;
+neither was kept, so a member could be traced from the model back to its sheet only by voting - and the votes failed twice:
+10-26's untraced WRONG TWIN columns (31065 L2, 31170-arch L7), 10-27's outline-column measure (both registration designs).
+
+SheetOutcome.Placement = "rot=R;dx=X;dy=Y;scale=S;ox=OX;oy=OY" (invariant culture): a DXF point is scaled by S, turned R deg,
+shifted (X, Y) - the view's frame - then (OX, OY) added - the composer's offset. Taken from the frame the geometry is actually
+transformed by (frameOfSheet, set where PlanGeometryTransform.Apply is called) and the offset the composer is given. Carried into
+sheets.csv as a new last column "placement", one per DXF view joined by " | " as dxf_files is; a ledger written before it (19
+fields) reads back with a null placement.
+
+Proved: tools/CorpusGateBisect/placement_proof.py carries every placed view's own KOR_V_COL columns through its recorded
+placement onto the written model - corpus-gate --jobs 31130-01,31183-01,31048-01 (31183's sheets set by fit, 31048's quadrants by
+members): 382 of 382 (100%), 343 of 355 (97%), 695 of 775 (90%) land within 50 mm of a model column; no view with 5+ columns under
+half, exit 0. Matched on ANY storey, measured: on the view's own storeys it reads 60-64%, because a member carries the storey at
+its top (a foundation plan's columns are written on the storey above) - the header says so.
+Report-only: the 3 models are byte-identical to the twin gate's (be6dc236, 2d20947d, d773dd1d); Halifax 1898f6b4 identical.
+TheCorpusLedgerRoundTrips: 20 fields, the placement round-trips (its ";" and "=" survive the quoting), a 19-field ledger reads
+with a null placement - 3/3. Core fast 1,697/1,697.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

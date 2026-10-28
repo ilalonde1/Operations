@@ -1,0 +1,14 @@
+12 near-miss column(s) of 330
+  L7       (70175 35818) stack misses by 471 mm  PARTNER (hers 13 mm)
+  L7       (56620 43349) stack misses by 315 mm  WRONG TWIN (hers 315 mm)
+  L7       (32807 51019) stack misses by 585 mm  PARTNER (hers 11 mm)
+  L7       (38953 52253) stack misses by 236 mm  WRONG TWIN (hers 236 mm)
+  L7       (77624 37277) stack misses by 322 mm  WRONG TWIN (hers 319 mm)
+  L7       (38801 47612) stack misses by 152 mm  NOT JUDGED (hers 4,071 mm)
+  L7       (41430 35818) stack misses by 203 mm  WRONG TWIN (hers 209 mm)
+  L7       (58028 35818) stack misses by 406 mm  PARTNER (hers 12 mm)
+  L6       (38801 47764) stack misses by 152 mm  NOT JUDGED (hers 4,217 mm)
+  L1       (80443 49621) stack misses by 230 mm  NOT JUDGED (hers 5,949 mm)
+  L1       (80443 43145) stack misses by 230 mm  NOT JUDGED (hers 6,814 mm)
+  L1       (27269 43869) stack misses by 450 mm  NOT JUDGED (hers 1,830 mm)
+WRONG TWIN: 4

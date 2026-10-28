@@ -1,0 +1,120 @@
+31170-01-arch L3 @ 8ed10d03: 6 moves = 3 shift pairs (max 126 mm) + 0 real lost (0 she has -> regression, 0 she lacks -> fix) + 0 real gained (0 she has -> fix, 0 she lacks -> regression)   [her storey: L3: 51 cols 17 walls]
+31170-01-arch L4 @ 8ed10d03: 6 moves = 3 shift pairs (max 126 mm) + 0 real lost (0 she has -> regression, 0 she lacks -> fix) + 0 real gained (0 she has -> fix, 0 she lacks -> regression)   [her storey: L4: 51 cols 17 walls]
+31170-01-arch L5 @ 8ed10d03: 6 moves = 3 shift pairs (max 127 mm) + 0 real lost (0 she has -> regression, 0 she lacks -> fix) + 0 real gained (0 she has -> fix, 0 she lacks -> regression)   [her storey: L5: 51 cols 17 walls]
+31170-01-arch L6 @ 8ed10d03: 6 moves = 3 shift pairs (max 127 mm) + 0 real lost (0 she has -> regression, 0 she lacks -> fix) + 0 real gained (0 she has -> fix, 0 she lacks -> regression)   [her storey: L6: 41 cols 19 walls]
+31170-01-arch L7 @ 8ed10d03: 6 moves = 3 shift pairs (max 127 mm) + 0 real lost (0 she has -> regression, 0 she lacks -> fix) + 0 real gained (0 she has -> fix, 0 she lacks -> regression)   [her storey: L7: 33 cols 14 walls]
+31138-01 L2 @ 8ed10d03: 13 moves = 0 shift pairs (max 0 mm) + 12 real lost (5 she has -> regression, 7 she lacks -> fix) + 1 real gained (0 she has -> fix, 1 she lacks -> regression)   [her storey: L2: 25 cols 25 walls]
+      LOST   column at (31,520, 40,260) 0 long  hers: no
+      LOST   column at (34,770, 34,453) 0 long  hers: YES
+      LOST   column at (41,896, 43,064) 0 long  hers: YES
+      LOST   column at (41,898, 47,648) 0 long  hers: YES
+      LOST   column at (60,745, 42,123) 0 long  hers: no
+      LOST   column at (61,125, 34,682) 0 long  hers: YES
+      LOST   column at (61,125, 35,164) 0 long  hers: no
+      LOST   column at (61,480, 42,410) 0 long  hers: no
+      LOST   column at (69,277, 43,560) 0 long  hers: no
+      LOST   column at (69,277, 44,216) 0 long  hers: no
+      LOST   column at (69,312, 34,050) 0 long  hers: no
+      LOST   column at (76,950, 44,562) 0 long  hers: YES
+      GAINED wall   at (49,681, 35,190) 6,070 long  hers: no
+31065-01 L2 @ 8ed10d03: 8 moves = 0 shift pairs (max 0 mm) + 8 real lost (1 she has -> regression, 7 she lacks -> fix) + 0 real gained (0 she has -> fix, 0 she lacks -> regression)   [her storey: L2: 36 cols 17 walls]
+      LOST   column at (19,433, 25,051) 0 long  hers: YES
+      LOST   column at (65,028, 38,739) 0 long  hers: no
+      LOST   column at (68,806, 49,390) 0 long  hers: no
+      LOST   column at (69,020, 42,211) 0 long  hers: no
+      LOST   column at (72,208, 36,428) 0 long  hers: no
+      LOST   column at (73,086, 42,587) 0 long  hers: no
+      LOST   column at (73,203, 48,597) 0 long  hers: no
+      LOST   column at (76,225, 42,702) 0 long  hers: no
+31202-01 ROOF @ d2cec177: 27 moves = 1 shift pairs (max 119 mm) + 11 real lost (1 she has -> regression, 10 she lacks -> fix) + 14 real gained (3 she has -> fix, 11 she lacks -> regression)   [her storey: ROOF: 39 cols 11 walls]
+      LOST   wall   at (21,803, 42,859) 3,381 long  hers: no
+      LOST   wall   at (21,803, 61,100) 3,381 long  hers: no
+      LOST   wall   at (21,809, 52,291) 3,369 long  hers: no
+      LOST   wall   at (27,101, 41,219) 1,370 long  hers: no
+      LOST   wall   at (27,101, 43,308) 1,370 long  hers: no
+      LOST   wall   at (29,982, 57,018) 5,763 long  hers: no
+      LOST   wall   at (32,499, 47,167) 12,166 long  hers: YES
+      LOST   wall   at (32,904, 53,112) 13,285 long  hers: no
+      LOST   wall   at (35,977, 57,018) 5,763 long  hers: no
+      LOST   wall   at (37,819, 41,219) 1,526 long  hers: no
+      LOST   wall   at (37,819, 43,308) 1,526 long  hers: no
+      GAINED column at (32,994, 60,960) 0 long  hers: no
+      GAINED column at (39,496, 60,960) 0 long  hers: no
+      GAINED column at (84,226, 37,464) 0 long  hers: YES
+      GAINED wall   at (16,508, 61,314) 4,877 long  hers: YES
+      GAINED wall   at (24,282, 27,660) 4,218 long  hers: no
+      GAINED wall   at (24,282, 34,392) 8,636 long  hers: no
+      GAINED wall   at (24,282, 41,097) 4,166 long  hers: no
+      GAINED wall   at (24,282, 45,568) 4,166 long  hers: no
+      GAINED wall   at (24,282, 52,273) 8,636 long  hers: no
+      GAINED wall   at (24,282, 59,066) 4,340 long  hers: no
+      GAINED wall   at (26,491, 55,738) 11,664 long  hers: no
+      GAINED wall   at (32,459, 43,844) 11,176 long  hers: no
+      GAINED wall   at (38,352, 45,022) 3,530 long  hers: YES
+      GAINED wall   at (74,396, 45,358) 5,803 long  hers: no
+31065-01 L1 @ 8fa0d9d6: 22 moves = 9 shift pairs (max 276 mm) + 4 real lost (0 she has -> regression, 4 she lacks -> fix) + 0 real gained (0 she has -> fix, 0 she lacks -> regression)   [her storey: L1: 53 cols 58 walls]
+      LOST   column at (65,126, 25,821) 0 long  hers: no
+      LOST   column at (65,585, 22,921) 0 long  hers: no
+      LOST   wall   at (56,233, 33,634) 648 long  hers: no
+      LOST   wall   at (56,233, 41,288) 648 long  hers: no
+31065-01 P1 @ 8fa0d9d6: 18 moves = 9 shift pairs (max 277 mm) + 0 real lost (0 she has -> regression, 0 she lacks -> fix) + 0 real gained (0 she has -> fix, 0 she lacks -> regression)   [her storey: P1: 53 cols 54 walls]
+31065-01 P2 @ 8fa0d9d6: 14 moves = 5 shift pairs (max 276 mm) + 1 real lost (0 she has -> regression, 1 she lacks -> fix) + 3 real gained (0 she has -> fix, 3 she lacks -> regression)   [her storey: P2: 53 cols 54 walls]
+      LOST   wall   at (77,703, 40,797) 26,035 long  hers: no
+      GAINED wall   at (77,692, 40,449) 25,333 long  hers: no
+      GAINED wall   at (77,934, 48,975) 8,289 long  hers: no
+      GAINED wall   at (78,087, 53,466) 702 long  hers: no
+31130-01 L1 @ 8fa0d9d6: 25 moves = 7 shift pairs (max 279 mm) + 6 real lost (2 she has -> regression, 4 she lacks -> fix) + 5 real gained (2 she has -> fix, 3 she lacks -> regression)   [her storey: L1: 79 cols 78 walls]
+      LOST   column at (157,480, 60,757) 0 long  hers: no
+      LOST   wall   at (116,654, 55,665) 1,112 long  hers: no
+      LOST   wall   at (136,290, 62,992) 2,644 long  hers: no
+      LOST   wall   at (137,611, 64,319) 2,654 long  hers: YES
+      LOST   wall   at (137,611, 66,525) 1,759 long  hers: YES
+      LOST   wall   at (145,884, 64,901) 16,546 long  hers: no
+      GAINED wall   at (135,973, 63,005) 1,997 long  hers: no
+      GAINED wall   at (137,376, 64,623) 2,045 long  hers: YES
+      GAINED wall   at (137,978, 66,430) 1,568 long  hers: YES
+      GAINED wall   at (146,198, 64,806) 15,917 long  hers: no
+      GAINED wall   at (147,320, 32,526) 2,873 long  hers: no
+31130-01 P2 @ 8fa0d9d6: 21 moves = 6 shift pairs (max 255 mm) + 4 real lost (2 she has -> regression, 2 she lacks -> fix) + 5 real gained (2 she has -> fix, 3 she lacks -> regression)   [her storey: P2: 81 cols 72 walls]
+      LOST   wall   at (138,780, 49,588) 7,169 long  hers: YES
+      LOST   wall   at (150,673, 33,998) 2,944 long  hers: YES
+      LOST   wall   at (150,673, 36,015) 1,089 long  hers: no
+      LOST   wall   at (150,839, 35,471) 331 long  hers: no
+      GAINED wall   at (137,832, 65,646) 301 long  hers: no
+      GAINED wall   at (138,202, 66,403) 1,514 long  hers: YES
+      GAINED wall   at (138,315, 67,192) 215 long  hers: no
+      GAINED wall   at (138,476, 49,680) 6,561 long  hers: YES
+      GAINED wall   at (150,844, 34,510) 3,968 long  hers: no
+31130-01 L0/P1 @ 8fa0d9d6: 23 moves = 6 shift pairs (max 279 mm) + 6 real lost (3 she has -> regression, 3 she lacks -> fix) + 5 real gained (3 she has -> fix, 2 she lacks -> regression)   [her storey: P1: 81 cols 84 walls]
+      LOST   wall   at (136,290, 62,992) 2,644 long  hers: no
+      LOST   wall   at (137,611, 64,319) 2,654 long  hers: YES
+      LOST   wall   at (137,611, 66,525) 1,759 long  hers: YES
+      LOST   wall   at (148,158, 64,212) 21,093 long  hers: no
+      LOST   wall   at (150,659, 33,998) 2,944 long  hers: YES
+      LOST   wall   at (150,659, 35,970) 1,000 long  hers: no
+      GAINED wall   at (135,973, 63,005) 1,997 long  hers: no
+      GAINED wall   at (137,376, 64,623) 2,045 long  hers: YES
+      GAINED wall   at (137,978, 66,430) 1,568 long  hers: YES
+      GAINED wall   at (148,472, 64,117) 20,465 long  hers: no
+      GAINED wall   at (150,829, 34,466) 3,879 long  hers: YES
+31065-01 L1 @ 674b2890: 12 moves = 0 shift pairs (max 0 mm) + 12 real lost (0 she has -> regression, 12 she lacks -> fix) + 0 real gained (0 she has -> fix, 0 she lacks -> regression)   [her storey: L1: 53 cols 58 walls]
+      LOST   column at (46,133, 53,253) 0 long  hers: no
+      LOST   column at (46,154, 26,615) 0 long  hers: no
+      LOST   column at (46,330, 47,229) 0 long  hers: no
+      LOST   column at (48,713, 48,359) 0 long  hers: no
+      LOST   column at (50,633, 53,516) 0 long  hers: no
+      LOST   column at (54,896, 47,805) 0 long  hers: no
+      LOST   column at (56,708, 53,901) 0 long  hers: no
+      LOST   column at (59,912, 22,773) 0 long  hers: no
+      LOST   column at (60,452, 48,154) 0 long  hers: no
+      LOST   column at (68,459, 26,130) 0 long  hers: no
+      LOST   column at (71,313, 22,921) 0 long  hers: no
+      LOST   column at (72,974, 29,422) 0 long  hers: no
+31065-01 P1 @ 674b2890: 1 moves = 0 shift pairs (max 0 mm) + 0 real lost (0 she has -> regression, 0 she lacks -> fix) + 1 real gained (1 she has -> fix, 0 she lacks -> regression)   [her storey: P1: 53 cols 54 walls]
+      GAINED column at (47,381, 37,476) 0 long  hers: YES
+31138-01 L2 @ 674b2890: 3 moves = 0 shift pairs (max 0 mm) + 2 real lost (1 she has -> regression, 1 she lacks -> fix) + 1 real gained (0 she has -> fix, 1 she lacks -> regression)   [her storey: L2: 25 cols 25 walls]
+      LOST   column at (61,125, 34,560) 0 long  hers: YES
+      LOST   column at (74,489, 32,729) 0 long  hers: no
+      GAINED column at (61,125, 35,164) 0 long  hers: no
+31138-01 L20 @ 674b2890: 1 moves = 0 shift pairs (max 0 mm) + 0 real lost (0 she has -> regression, 0 she lacks -> fix) + 1 real gained (0 she has -> fix, 1 she lacks -> regression)   [her storey: L20: 13 cols 27 walls]
+      GAINED column at (45,047, 45,653) 0 long  hers: no

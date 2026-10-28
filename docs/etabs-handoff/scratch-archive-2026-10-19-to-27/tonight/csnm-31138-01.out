@@ -1,0 +1,17 @@
+15 near-miss column(s) of 603
+  ROOF     (58379 41065) stack misses by 341 mm  NOT JUDGED (hers inf mm)
+  L22      (58176 41339) stack misses by 341 mm  PARTNER (hers 3 mm)
+  L22      (44409 45403) stack misses by 685 mm  PARTNER (hers 3 mm)
+  L6       (39547 50658) stack misses by 293 mm  NOT JUDGED (hers 3,143 mm)
+  L2       (61633 42822) stack misses by 165 mm  PARTNER (hers 75 mm)
+  L2       (76974 44066) stack misses by 497 mm  WRONG TWIN (hers 498 mm)
+  L2       (52716 35190) stack misses by 661 mm  NOT JUDGED (hers 7,156 mm)
+  L2       (61125 35164) stack misses by 634 mm  WRONG TWIN (hers 634 mm)
+  L2       (41896 43406) stack misses by 646 mm  OFF HERS (hers 342 mm)
+  L2       (41898 47394) stack misses by 291 mm  WRONG TWIN (hers 255 mm)
+  L2       (77698 53643) stack misses by 108 mm  PARTNER (hers 26 mm)
+  L2       (33528 59830) stack misses by 319 mm  PARTNER (hers 2 mm)
+  L2       (31705 45133) stack misses by 441 mm  PARTNER (hers 1 mm)
+  L2       (31825 39915) stack misses by 125 mm  NOT JUDGED (hers 4,489 mm)
+  P4       (58050 47685) stack misses by 521 mm  NOT JUDGED (hers inf mm)
+WRONG TWIN: 3

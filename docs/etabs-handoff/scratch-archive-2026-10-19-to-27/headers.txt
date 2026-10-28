@@ -1,0 +1,526 @@
+=== ColTextVerb.cs (34 lines)
+1:// The takeoff verb `col-text`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// DIAGNOSTIC: takeoff col-text <pdf> <page> — the DETERMINISTIC column-schedule read (text grid, no vision):
+3:// bands, key-plan counts, and the priced result at 10.5ft storeys.
+21:        // Price with counts (distinct-mark replication) at typical storeys, for comparison with vision.
+=== CorpusAnalyzeVerb.cs (67 lines)
+2:// THE ANALYZER: the whole corpus through the one ingestion point, into the ledger (completion plan
+3:// WP1, 2026-09-11). Every job's current stick file, mirrored once, built exactly as the verbs build
+4:// one (PdfOnlyBuild), one row per set and per sheet into analysis.IntakeSet / IntakeSheet (migration
+5:// 083) and CSV beside the work; then the summary: X of Y build, and why the rest do not.
+6:// Usage: takeoff corpus-analyze [<projectsRoot>] [--work <dir>] [--jobs 31168-01,31170-01] [--parallel N] [--force] [--reuse] [--rules-db <conn>] [--yardsticks <dir of <job>.e2k>]
+7:// --reuse keeps every built model whatever the tool's build stamp (for a change proven outside the build path by the six-set bank) and re-measures the yardsticks.
+8:// --recompose keeps the views a previous build wrote and runs the ladder and the composer again (a change to how storeys are found, or to the composer).
+34:        // A CORPUS RUN DOES NOT DIE ON A CONSOLE SIGNAL IT DID NOT ASK FOR (2026-09-16). Runs 27 and 29, launched detached
+=== CorpusCensusVerb.cs (35 lines)
+1:// The takeoff verb `corpus-census`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// THE CENSUS OF THE DRAWING CORPUS: every job on the projects share, what it holds that the intake
+3:// can learn from - dated structural stick files, architects' sets, the engineer's ETABS models -
+4:// so rules are chosen by how many sets share a failure, not one drawing at a time (2026-09-11).
+5:// Usage: takeoff corpus-census [<projectsRoot>] [--out census.csv] [--parallel N]
+6:// Read-only; one bounded listing per folder, never a recursive walk (CLAUDE.md rule 4).
+=== CorpusDisagreementsVerb.cs (224 lines)
+5:// THE ENGINEERS' REVIEW, FROM THE CORPUS (2026-09-16, plan WP6a item 8 re-planned on Ian's challenge: "with our
+6:// extensive corpus we should be able to synthesize ALL of the info we have"). Fifty-odd sets carry the engineer's
+7:// own ETABS model beside the one this route builds from the drawings, and the analyzer already writes each
+8:// comparison to <job>/yardstick.txt - per storey, per section, per column. Nobody had read them across the
+9:// corpus. This reads all of them and says, ranked, where the two models disagree and how often: the storeys one
+10:// names and the other does not, the storeys whose columns sit a consistent distance apart (a frame or a reading),
+11:// the sections we place that she does not (a wall she models as a pier, an anchor we read as a column) and the
+12:// sections she places that we miss. Each class with its count over the corpus and the sets to open first. That
+=== CorpusGateVerb.cs (169 lines)
+1:// THE GATE BETWEEN A RULE AND ITS BANK (2026-09-22): the sets the engineer has a model of, built with the code in
+2:// hand and judged against a banked ledger on HER figures - plate area, slab thickness, openings.
+3://
+4:// The six-set gate says a rule changed nothing it should not have; it cannot say the rule is good, and six sets do
+5:// not draw what 293 draw. Step 131 was banked on a green six-set gate and cost 31087 forty-one storeys (89% -> 47%
+6:// of her plates), found a day later in a full run's diff. A full run is 3 h 17 m; these fifty-odd sets are ~35 min
+7:// at 12 workers, which fits between a rule and its bank.
+8://
+=== CorpusLedgerDbVerb.cs (36 lines)
+1:// A BANKED LEDGER INTO THE DATABASE (2026-09-16). Run 22's analyzer wrote its CSVs and then lost the KorStandards
+2:// connection on the final write ("a transport-level error"), so analysis.IntakeSet/IntakeSheet had no run-22 rows and
+3:// corpus-query pages could not put run 22 beside run 21. The CSVs carry every row with its run id; this writes them.
+4:// Usage: takeoff corpus-ledger-db <ledger-sets.csv> [<ledger-sheets.csv>]   (the sheets file defaults to the sets file's twin)
+20:        // never twice: a run's rows are written in one transaction, so a run is either there whole or not at all
+=== CorpusQueryVerb.cs (645 lines)
+1:// QUESTIONS TO THE LEDGER, no PDF opened (completion plan WP2, 2026-09-11; the prototypes were
+2:// docs/etabs-handoff/corpus/plan_titles.py and set_sheets.py). The ledger is what corpus-analyze wrote
+3:// (%LOCALAPPDATA%\Temp\kor-drawings\corpus\ledger-sets.csv and ledger-sheets.csv, or a banked copy under
+4:// docs/etabs-handoff/corpus/ given with --ledger <dir>); analysis.IntakeSet/IntakeSheet hold the same rows
+5:// once migration 083 is applied.
+6://   takeoff corpus-query summary                     the population in one table: built, why not, views on the grid, plates, yardsticks
+7://   takeoff corpus-query gap                         WHAT THE GAP IS: missing floor vs scope vs registration, and the work list
+8://   takeoff corpus-query no-model                    every set without a model, grouped by the reason it gave
+=== CorpusReadVerb.cs (53 lines)
+1:// The takeoff verb `corpus-read`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// DXF -> ETABS — build a model from drafting's concrete-outline plan exports. Walls, columns and slabs are
+3:// read off the structural layers, each sheet is placed on every storey its title covers, and the result is
+4:// merged into an .e2k ETABS itself exported (so storeys, grids and materials stay ETABS's own).
+5:// CORPUS READER CHECK — run this tool's reader over every model KOR engineers have built.
+6://
+7:// The rules have been measured against the portfolio. The reader never has: it has been exercised
+8:// against two reference models from one office. Since an unfamiliar job's FIRST act is to hand
+=== DedupeProbeVerb.cs (25 lines)
+1:// The takeoff verb `dedupe-probe`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// DIAGNOSTIC: takeoff dedupe-probe <pdf> <page> <needle> — PdfPig words matching needle with EXACT
+3:// coordinates, before and after PdfWordDedupe, to verify double-draw (fake-bold) collapsing.
+=== DxfBuildingsVerb.cs (78 lines)
+1:// The takeoff verb `dxf-buildings`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+=== DxfCensusVerb.cs (24 lines)
+1:// The takeoff verb `dxf-census`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// THE DIFFERENTIAL'S EYES. Which layers moved between two folders of DXFs written from the same pages.
+3:// Usage: takeoff dxf-census <beforeDir> <afterDir> [--only LAYER,LAYER]   (exit 2 when another layer moved)
+=== DxfImportRulesVerb.cs (53 lines)
+1:// The takeoff verb `dxf-import-rules`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// IMPORT answered DXF -> ETABS questions into KorStandards. The generation command reads these
+3:// rulings back through analysis.vw_RuleSetting on later runs.
+4:// Usage: takeoff dxf-import-rules <questions.xlsx> --engineer <name> [--rules-db <connection>]
+39:        // WHICH BUILDING SHE WAS LOOKING AT. The rule goes to the office; the record that she
+40:        // settled it HERE is what lets the next job be told who decided it and when, instead of
+=== DxfInspectVerb.cs (314 lines)
+1:// The takeoff verb `dxf-inspect`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+16:        // the standing rules are stated in inches; the sheet is read in its own unit (a millimetre PDF view read at
+17:        // inch thresholds classified nothing - every loop "-> 0 panel(s)" - until 2026-09-13)
+21:        // WHAT IS DRAWN NEAR A POINT, ON ANY LAYER (2026-09-16): every segment of the file within a reach of a point,
+22:        // with its layer - the question that settled 31168's KW235 ("nothing within 12 in of the wall's midpoint on
+23:        // any layer": a wall along a line nothing draws) and was a scratch script until it was asked twice.
+=== DxfRenderVerb.cs (175 lines)
+1:// The takeoff verb `dxf-render`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// RENDER a plan's structural layers to an image, so what the drawing contains can be seen
+3:// rather than inferred. Walls red, columns blue, slab edges grey.
+4:// Usage: takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers A,B] [--window x0,y0,x1,y1 (feet)]
+20:        // --layers narrows the drawing to the layers named, so one question can be looked at on its
+21:        // own. A slab boundary is impossible to judge with every wall and column drawn over it.
+37:        // --window x0,y0,x1,y1 IN FEET narrows the render to one part of the sheet. A storey drawn at
+38:        // 1,800 px across puts a 40 ft slab in 300 of them, and the question is usually about one
+=== DxfStripVerb.cs (26 lines)
+3:// THE STRIP-A-LAYER DIFFERENTIAL, first half (DxfLayerStrip, 2026-09-15): copy a set's DXF folder with one
+4:// layer's entities moved to X-STRIPPED, then `dxf-to-etabs` both folders and `model-diff` the models.
+5:// Usage: takeoff dxf-strip <dxfFolder> <outFolder> --layers SLABEDG[,BEAM] [--sheets "S2.02*.dxf"]
+=== DxfToEtabsVerb.cs (223 lines)
+1:// The takeoff verb `dxf-to-etabs`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Usage: takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [--rules-db <connection>] [--bldg B] [--offset x,y] [--no-floors] [--report file.txt] [--questions questions.xlsx]
+17:        // "-" means there is no reference model, which is the ordinary case for a job nobody has
+18:        // modelled yet. The level list stands in for it; see E2kShellBuilder.
+22:        // The reference must be an engineer's model, never one of ours. A file round-tripped through
+23:        // ETABS keeps its KOR-prefixed object names, and building from one produces a report saying
+24:        // nothing was generated beside a file that plainly contains generated members -- both true,
+25:        // together untrue. The publisher has always refused this; the CLI, which is what a
+=== E2kAskVerb.cs (215 lines)
+2:// Ask a finished model about itself. The query surface an /ask tool will wrap later, driven from a
+3:// terminal today. Usage: takeoff e2k-ask <model.e2k> [storeys|look|openings|sections|concrete] [storey]
+11:        // A FOLDER OF MODELS ANSWERS AS A CORPUS (step 107b, 2026-09-16): the yardsticks folder holds 106 of the engineers'
+12:        // own exports, and a question put to all of them judges a rule before it is banked - summed, then the sets that say otherwise
+32:        // the shape census over a folder: how thin, how long, how small the holes the engineers cut are, counted by class,
+33:        // so a reader rule about a shape ("a strip narrower than a metre is no hole") is judged before it is written
+=== E2kCompareVerb.cs (38 lines)
+1:// The takeoff verb `e2k-compare`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+23:            // "K" is the prefix the generator stamps on everything it creates; without it the
+24:            // reference's own objects, carried through into the output, would match themselves.
+=== E2kMultisetVerb.cs (33 lines)
+1:// The takeoff verb `e2k-multiset`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// DID A REVISION MOVE A MEMBER, OR ONLY RENAME ONE?
+3://
+4:// The multiset of (kind, plan position, storey) is what a rename-only change must preserve. Object
+5:// count is expected to fall -- a stack merge takes 1,769 column objects to 268 -- and not one
+6:// member may appear, vanish or move while it does.
+7://
+8:// Usage: takeoff e2k-multiset <before.e2k> <after.e2k>
+=== E2kStoreysVerb.cs (20 lines)
+1:// The takeoff verb `e2k-storeys`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// DIAGNOSTIC: takeoff e2k-storeys <model.e2k> — the model's storeys top → bottom with their heights, the
+3:// ground truth an elevation sheet's level ladder is measured against (elev-scan).
+=== E2kTakeoffVerb.cs (92 lines)
+1:// The takeoff verb `e2k-takeoff`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// The takeoff that costs nothing to measure: the ETABS model we already built from the drawings
+3:// states every slab outline, wall thickness and column section, on a storey, checked. This prices
+4:// what is already there. Usage: takeoff e2k-takeoff <model.e2k> <out.xlsx> [--metric]
+18:        // The storey vocabulary is the firm's, not this tool's: the same rules the model was built with.
+=== ElevScanVerb.cs (71 lines)
+1:// The takeoff verb `elev-scan`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// DIAGNOSTIC: takeoff elev-scan <pdf> [first] [last] — find where the set states floor elevations / storey
+3:// heights. Scans every page for elevation-pattern tokens (feet-inch "100'-0", metric "+45.000", "EL"/"T.O.")
+4:// and for "FLOOR TO FLOOR"/"STOREY" notes, and on any page carrying a level ladder dumps each LEVEL row's full
+5:// baseline so a level→elevation column (if present) is visible. Verifies the real source before any reader.
+27:            // MEASUREMENT (brief 28): on an AS NOTED sheet every view carries its own scale caption; where
+28:            // they sit against the ladder decides which caption a ladder belongs to.
+31:            // captions with no SCALE label: a ratio-shaped run of tokens on one baseline (1/8" = 1'-0", 1 : 100)
+=== EstimateUsageVerb.cs (12 lines)
+1:// The takeoff verb `estimate`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Explicit usage for the new modes so a short/typo'd invocation reports help instead of falling
+3:// through to the default CSV-diff path and failing with a confusing FileNotFound.
+=== EstimateVerb.cs (68 lines)
+1:// The takeoff verb `estimate`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Full stickfile → takeoff estimate. Reads a building config (the plate map a human or the
+3:// vision layer produces), measures each plate off its rasterized sheet with the Core geometry
+4:// engine, prices + reconciles via the pipeline, and writes the same orange-celled takeoff xlsx
+5:// the app produces — plus a diligence report of everything it could not fully trust.
+6:// Usage: takeoff estimate <config.json> <out.xlsx>
+=== FootingsVerb.cs (42 lines)
+1:// The takeoff verb `footings`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// DIAGNOSTIC: takeoff footings <pdf> [first] [last] — run the deterministic footing-schedule takeoff
+3:// standalone: schedule rows, per-mark plan placements, priced spread-footing volumes.
+18:            // a sheet that schedules a RAFT, a MAT or PILES has said what its foundation is, and a
+19:            // total of 0 spread footings should say so rather than say nothing (31202 is a raft)
+=== GraycompVerb.cs (46 lines)
+1:// The takeoff verb `graycomp`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Gray-fill diagnostic: dump the neutral-tone histogram + the gray connected-components (with shape)
+3:// of a crop, so wall/column fill thresholds and the shape split are chosen from evidence, not guessed.
+4:// Usage: takeoff graycomp <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [lo] [hi]
+=== GridNamesVerb.cs (87 lines)
+1:// The axis names a sheet's DXF carries and the names a model's GRIDS carry, side by side — the first
+2:// question when a sheet "could NOT be set on the grid by name". Prints the model's labels per grid
+3:// system, then for each sheet its named axes (GridAlignment.NamedAxes, the composer's own reader), which
+4:// of them the model names, and which it does not. Built 2026-09-11 when 31168's 2026-09-10 reissue placed
+5:// 1 of 3 parkade sheets where the 08-25 issue placed 3 of 3 and the report said only "their axes name
+6:// nothing the model names" — true, and not a reason. Ported from docs/etabs-handoff/grid_names.py (WP2).
+7://   takeoff grid-names <model.e2k> <sheet.dxf> [<sheet.dxf> ...]
+27:        // the model's members, for the registration a sheet with no shared name falls back to (step 55): its
+=== HatchVerb.cs (40 lines)
+1:// The takeoff verb `hatch`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Hatched-footing detector diagnostic: deterministically find the cross-hatched concrete mats /
+3:// deep footings on a crop and list their measured areas. Used to calibrate density / minSqFt.
+4:// Usage: takeoff hatch <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [densityPct] [minSqFt] [winR]
+=== IfcTakeoffVerb.cs (51 lines)
+1:// The takeoff verb `ifc-takeoff`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// MODEL takeoff — read concrete quantities straight from a structural Revit/IFC export (the source that
+3:// actually contains the whole building in 3D). No measurement, no scale, no AI: each element's NetVolume
+4:// IS the quantity. Usage: takeoff ifc-takeoff <model.ifc> <out.xlsx>
+=== IntakeBaselineVerb.cs (14 lines)
+1:// The takeoff verb `intake-baseline`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// THE BASELINE. The thirteen plan DXFs of the five stick files, to a folder named for the step, for dxf-census.
+3:// Usage: takeoff intake-baseline <stickFilesDir> <outDir>
+=== KnowledgeIngestVerb.cs (93 lines)
+4:// THE PROFESSION'S KNOWLEDGE, INGESTED (WP7, 2026-09-16). Reads KOR's copy of a code, a standard or a guideline and
+5:// lifts the knowledge.Clause rows of that source (migration 096) from what was remembered to what the document says:
+6:// the page each clause stands on and, where it states a number in the row's units, the value. Never the prose.
+7://   takeoff knowledge-ingest <pdf> --source <code> [--clause <ref> ...] [--rules-db <conn>] [--dry-run]
+8:// Without --clause every live clause of the source is looked for. --dry-run finds and reports, writes nothing.
+25:            // --register: write the source row (the edition read off the document) and --index its section headings
+29:            // --items: a short document numbered 1., 2., 3. (the Code of Ethics) - each item's text as the requirement; published-free or ours only
+=== MarkupListVerb.cs (64 lines)
+1:// The takeoff verb `markup-list`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// THE LEDGER. Everything a page carries, by kind, and what the intake did with each kind: read,
+3:// discarded by a named rule, unread, ignored by design, or unaccounted. The unaccounted and unread
+4:// totals are the intake's backlog as a number. See SheetInventory for what it covers and does not.
+5:// Usage: takeoff pdf-inventory <pdf> [--pages A-B] [--scale N] [--rules-db <conn>] [--json out.json]
+6:// A MARK-UP IS A LIST OF INSTRUCTIONS (foundation §3.1, the engineer-to-drafter loop): every
+7:// annotation with words, what it asks, where on the grid, beside which member.
+8:// Usage: takeoff markup-list <pdf> --scale N [--pages A-B]
+=== MarkupReconcileVerb.cs (58 lines)
+1:// The takeoff verb `markup-reconcile`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// THE DRAFTER'S REPLY IS BESIDE THE THING IT ANSWERS: a round of the engineer's mark-ups against
+3:// the back-checked copy the drafter saved over it; each item done, replied or open, page by page.
+4:// Usage: takeoff markup-reconcile <round.pdf> <backchecked.pdf> --scale N [--engineer <name>]
+=== MeasureUsageVerb.cs (10 lines)
+1:// The takeoff verb `measure`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+=== MeasureVerb.cs (45 lines)
+1:// The takeoff verb `measure`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Layer-1 geometry probe: measure a plate area (flood-fill) or a wall/column footprint
+3:// (gray-fill) off one rasterized plan crop. Validates the engine and is the pipeline's
+4:// measurement step. Usage: takeoff measure <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [gray]
+=== ModelAtVerb.cs (33 lines)
+1:// WHAT THE MODEL HOLDS NEAR A POINT (2026-09-16): every object of an .e2k within a reach of a plan point, nearest
+2:// first, with its kind, its ends and the storeys it rises through. The other half of the question dxf-inspect --near
+3:// answers about the drawing; asked twice as a scratch script (31168's KW235, 31138's paired faces) before it was a verb.
+4:// Usage: takeoff model-at <model.e2k> <x> <y> [reach]   (reach defaults to 60 in the model's unit)
+23:            // a PANEL names its two joints twice (A B B A): the distinct joints are the ends
+=== ModelDiffVerb.cs (17 lines)
+1:// The takeoff verb `model-diff`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// WHAT A SECOND MODEL LOST OR GAINED AGAINST A FIRST, storey by storey, with positions - the
+3:// differential behind "byte-identical, or what moved" (ModelDiff, ported 2026-09-11 from
+4:// members_diff.py and plate_diff.py). Frames by grid label, else the modal displacement (a GUESS, said).
+5:// Usage: takeoff model-diff <before.e2k> <after.e2k>
+=== ModelRenderVerb.cs (29 lines)
+1:// The takeoff verb `model-render`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// EVERY STOREY OF A MODEL ON ONE SHEET, so a person can LOOK (ModelRender, ported 2026-09-11 from
+3:// plan_sheet.py and render_storeys.sh). SVG always; PNG through Edge when it is there.
+4:// Usage: takeoff model-render <model.e2k> <out.png|out.svg> ["title"] [--columns N] [--cell px] [--no-png] [--storey L2[,L3]]
+5://   --storey draws those storeys only, one to a cell of 1800 px unless --cell says otherwise: how ONE floor is
+6://   looked at before and after a rule (2026-09-15, 31202's L2 at step 80; was a scratch SVG cut + Edge call).
+=== ModelToPageVerb.cs (66 lines)
+1:// Where on the SHEET is this model point? Maps e2k model coordinates back to a sheet's DXF frame by the
+2:// grid: the model's GRID lines carry each axis's model coordinate, the sheet's DXF carries the same axis
+3:// names at sheet coordinates (GridAlignment.NamedAxes), so the shift between the two frames is the median
+4:// difference over the shared names — the alignment model-diff uses between two models. Prints the shift,
+5:// how many names agreed, every name that disagrees by more than 50 mm (a sheet the model placed by a
+6:// different reference plan gets the WRONG shift, and this is how that shows), and each point in the
+7:// sheet's frame; `takeoff pdf-overlay --mark x y` then draws it on the page. Built 2026-09-11 to look at
+8:// the walls the audit fixes returned to 31138's L1/L2 (four 1,414 mm diagonals in a row): the model says
+=== ModelYardstickVerb.cs (38 lines)
+1:// The takeoff verb `model-yardstick`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// A MODEL AGAINST THE ENGINEER'S OWN, column by column: the positional check the counts never give
+3:// (ModelYardstick, ported 2026-09-11 from columns_vs_yardstick.py). Frames matched by grid name,
+4:// storeys by full name then stripped, residuals BOTH ways, every storey listed.
+5:// Usage: takeoff model-yardstick <model.e2k> <yardstick.e2k> [--pairs [storey]] [--openings [storey]]
+6://   --pairs: every judged column of ours with the offset to the nearest of hers (mm, after the frame) and both
+7://   sections - the raw material behind the medians, for looking at what a 300 mm residual IS (2026-09-14).
+17:        // --openings [storey]: every opening on the shared storeys, ours and hers in our frame, with the nearest of the other
+=== OverlayVerb.cs (39 lines)
+1:// The takeoff verb `overlay`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Visual-markup mode (faithful to the app's GenerateOverlay_Click): on-drawing red/green markup.
+3:// Usage: takeoff overlay <before.pdf> <after.pdf> <out.pdf> [name] [beforeLabel] [afterLabel] [imperial]
+10:        // Same honest front door as `rebar`: refuse a scanned/flattened side up front rather than emit a
+11:        // falsely-reassuring "no changes" markup off a drawing the tool cannot read.
+=== PdfAssembliesVerb.cs (37 lines)
+1:// The takeoff verb `pdf-assemblies`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// THE SET'S ASSEMBLY SCHEDULES, READ WHOLE (intake step 32). Usage: takeoff pdf-assemblies <set.pdf> [assemblies.csv]
+3:// An architect's set states its wall and floor types as cards on schedule sheets — code, name,
+4:// every layer of the build-up, the fire and sound ratings, the references, the remarks. The plans
+5:// tag walls with the codes. Everything on the card is read; the material and thickness the
+6:// structural model takes are derived from the words by a vocabulary.
+=== PdfAtVerb.cs (78 lines)
+5:// WHAT HAPPENED TO THE INK HERE. Every path and word of a page within a radius of a point, each with the
+6:// fate the intake gave it - the ledger pdf-inventory sums, opened at one spot. Built 2026-09-12 when 11 of
+7:// 55 tendon anchors on 31202's L7-12 plan were still read as columns and the census said only "nearest
+8:// tendon end 1,696 mm": the page draws a 16 m tendon from that anchor (vector-lines), so the question was
+9:// which fate the intake gave that line, and nothing answered it at a point. The point is in the frame
+10:// pdf-overlay's --mark and model-to-page use: page millimetres at the sheet's scale, y up.
+11://   takeoff pdf-at <pdf> <page> <x> <y> --scale N [--radius mm] [--rules-db <conn>] [--points]
+=== PdfInventoryVerb.cs (77 lines)
+1:// The takeoff verb `pdf-inventory`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+=== PdfLevelsVerb.cs (33 lines)
+1:// The takeoff verb `pdf-levels`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// THE DRAWINGS' STOREYS AS A LEVELS FILE, for a job nobody has modelled: what dxf-to-etabs takes
+3:// in place of a reference .e2k. Usage: takeoff pdf-levels <stickfile.pdf> [levels.csv] [--plans <dxfDir>]
+4:// The set's storeys come off its wall elevations (SetStoreys: a storey height is the distance
+5:// between two level lines at the sheet's scale), chained from the lowest level at 0 upward, in mm.
+14:        // --plans <dxfDir>: the storeys the written plan views are NAMED for join the ladder, heights assumed where
+15:        // the elevations state none (StoreysFromPlans, step 45); without it the ladder is the elevations' alone
+19:        // chained in Core (SetStoreys.Levels, intake step 25): first stated wins a name, a storey that
+=== PdfOverlayVerb.cs (456 lines)
+1:// The takeoff verb `pdf-overlay`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// OVERLAY what the intake extracted on the page it extracted it from, so a gap is seen rather than
+3:// counted: slabs grey, columns blue, leftover lines red, mark-shaped words green. The two pictures
+4:// that found the missing WALL layer on 2026-09-08 were made by hand; this is that picture in one verb.
+5:// Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--walls] [--columns] [--rules-db <conn>] [--mark x y]... [--crop x y halfW halfH]
+27:        // with --walls, the classifier says why each long pair of cut-pen lines was or was not a wall
+=== PdfReadableVerb.cs (22 lines)
+1:// The takeoff verb `pdf-readable`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// PRE-CHECK — can the vector takeoff even read this set? Cheap (text layer only, no raster/AI). Drop a bid
+3:// PDF here first: READABLE means the takeoff will run; BLIND means it's a scanned/flattened set the tool
+4:// cannot read (and will refuse rather than bluff). Usage: takeoff pdf-readable <pdf> [first] [last]
+=== PdfTakeoffVerb.cs (109 lines)
+1:// The takeoff verb `pdf-takeoff`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// TAKE OFF a drawing PDF's structure to DXF, so a job whose plans arrive only as a stick file can
+3:// enter the same pipeline as one that arrives as CAD: pdf-takeoff -> dxf-to-etabs -> publish.
+4://
+5:// ⚠ READS THE DRAWING BY DEFAULT, NOT THE MARKUP. PdfToSafe was built for the Bluebeam workflow,
+6:// where the engineer's redlines ARE the model and the page underneath is the architect's noise, and
+7:// its filter defaulted that way with no caller anywhere able to change it. So a CLEAN ISSUED SET —
+8:// which carries no markup at all — read as completely empty and said nothing about why. 31130-01's
+=== PdfVsDxfVerb.cs (68 lines)
+1:// The takeoff verb `pdf-vs-dxf`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// THE DIFFERENTIAL AGAINST GROUND TRUTH WE OWN. A job with both a stick-file PDF and a Revit DXF
+3:// export of the same sheets: sheet by sheet, what the PDF side emits against what the DXF side
+4:// reads from the same drawing. See PdfVersusDxf for what it covers and does not (position, yet).
+5:// Usage: takeoff pdf-vs-dxf <pdf> <dxfFolder> --scale N [--rules-db <conn>]
+29:        // A Revit export writes several views per sheet (S2.22.1_1, _2, …) and the PDF page carries them
+30:        // all, so the comparison is per SHEET: one PDF page against the sum of its views.
+=== PerimVerb.cs (23 lines)
+1:// The takeoff verb `perim`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Core-wall concrete the estimator's way: cross-reference the CORE WALL KEY PLAN (each mark's length)
+3:// with the SHEAR WALL SCHEDULE (each mark's thickness per level band), priced over a level list.
+4:// Diagnostic: run a vision schedule/keyplan reader on a rendered sheet and print the extracted JSON, to
+5:// PROVE the dense wall/column schedules are machine-readable before wiring them into the takeoff.
+6:// DIAGNOSTIC: takeoff perim <png> [scale] [dpi] — plate contour length off a rendered page (largest
+7:// component, hairlines opened away) — validates the below-grade perimeter-wall measurement.
+=== PublishVerb.cs (199 lines)
+1:// The takeoff verb `publish`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// VERIFY a generated model against a trusted one: how closely does the geometry built from
+3:// drawings reproduce what the imported model already says is there, storey by storey.
+4:// Usage: takeoff e2k-compare <reference.e2k> <candidate.e2k> <story> [<story> ...]
+5:// WHICH BUILDING EACH STOREY BELONGS TO, read off the drawings rather than passed in by hand.
+6://
+7:// A site model carries several buildings in one storey list, and until now the operator had to
+8:// know the shape of the job and say so: -Tower C -TopStorey C-ROOF -DropStoreys LEVEL 3..LEVEL 10.
+=== RebarVerb.cs (155 lines)
+1:// The takeoff verb `rebar`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Rebar change-detection mode: takeoff rebar <before.pdf> <after.pdf> <out.xlsx> [name] [beforeLabel] [afterLabel]
+12:        // PRE-CHECK — refuse up front if EITHER set is scanned/flattened (no vector text layer). You cannot
+13:        // detect a callout change against a side the tool is blind to, so catch it here with a clear reason
+14:        // rather than only at the later 0-callouts guard. Exit 3, no report written.
+28:        // Optional extents sidecar (from vector-takeoff: <out>.xlsx.extents.json) — measured per-level slab
+29:        // areas that price ΔAs grid changes. Detected by .json so it can never collide with the CSV path.
+31:        // Positioned-word pipeline (same as the overlay markup) so the ledger and the PDF tell one story.
+=== RenderVerb.cs (18 lines)
+1:// The takeoff verb `render`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// DIAGNOSTIC: takeoff render <pdf> <pngDir> [dpi] [first] [last] — rasterize pages to p-NN.png for inspection.
+=== RevitTakeoffVerb.cs (73 lines)
+1:// The takeoff verb `revit-takeoff`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// The takeoff straight off the Revit schedules, as Revit exports them — no hand-assembled sheet in
+3:// between. Usage: takeoff revit-takeoff <folder-or-csv...> <out.xlsx>
+=== ScaleScanVerb.cs (28 lines)
+1:// The takeoff verb `scale-scan`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Sheet-scale probe: the title-block SCALE each page states (SheetScaleReader) and the mpp it converts
+3:// to — proves what the takeoff will measure at, page by page, before a run. Usage:
+4://   takeoff scale-scan <pdf> [first] [last]
+=== SchedBorderVerb.cs (75 lines)
+1:// The takeoff verb `sched-border`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Vector front-end probe: read the NATIVE vector text + geometry of one drawing page straight from the
+3:// PDF — no raster, no OCR — and print what came out. Proves the exact-data foundation of the takeoff.
+4:// Usage: takeoff vector-dump <pdf> <page>
+5:// DIAGNOSTIC: takeoff sched-border <pdf> <page> — what MarkRowScheduleReader's border route sees.
+6:// For every schedule heading on the page and each reader's options (column, footing, shear wall):
+7:// the border found under it or "no border", its column rules, and every row band with the text of
+8:// its mark cell and its other cells. This is how to LOOK at a table read before believing a count;
+=== SchedReadVerb.cs (23 lines)
+1:// The takeoff verb `sched-read`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// kind = wall | column | keyplan.  Usage: takeoff sched-read <kind> <sheet.png>
+=== SchedTokensVerb.cs (23 lines)
+1:// The takeoff verb `sched-tokens`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// DIAGNOSTIC: takeoff sched-tokens <pdf> <page> — dump every token whose text contains a schedule keyword,
+3:// with font height + x-fraction, to tell a real schedule-sheet TITLE from a prose mention on a notes sheet.
+=== ScoScheduleVerb.cs (67 lines)
+1:// The takeoff verb `sco-schedule`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// What a project's column design says, read from the S-Concrete files themselves — including where
+3:// they disagree. Usage: takeoff sco-schedule <folder|file.SCO ...> <out.xlsx>
+=== SetCheckVerb.cs (47 lines)
+1:// The takeoff verb `set-check`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// THE SET CHECKS ITSELF (foundation §3.3): the gatekeeper's page before an issue goes out.
+3:// Usage: takeoff set-check <pdf> --scale N [--reference model.e2k] [--rules-db <conn>]
+=== SetDiffVerb.cs (157 lines)
+1:// The takeoff verb `set-diff`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// REISSUE IMPACT (foundation §3.1): what changed between two issues of a set, sheet by sheet, as
+3:// objects. Both issues are read through the one reader; sheets pair by sheet number; the new
+4:// issue is set on the old one's grid by name before anything is called a move.
+5:// Usage: takeoff set-diff <old.pdf> <new.pdf> --scale N [--sheet S2.02] [--rules-db <conn>]
+=== SingleVerb.cs (24 lines)
+1:// The takeoff verb `single`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Single-issue absolute takeoff from one concrete schedule CSV (faithful to the app's
+3:// GenerateTakeoff_Click: Import -> Compute -> BuildXlsx).
+4:// Usage: takeoff single <schedule.csv> <out.xlsx> [wbs] [name] [issue] [imperial]
+=== StickfileVerb.cs (195 lines)
+5:// The takeoff verb `stickfile`: ONE stick file in, every output out (2026-09-24).
+6:// Usage: takeoff stickfile <stickfile.pdf> <outDir> [--scale N] [--job 31005-01] [--pages A-B]
+7://                          [--rules-db <conn>] [--no-render] [--no-questions]
+8://
+9:// WHY THIS EXISTS. Ian, 2026-09-24: "get this working so I can give you a stickfile and get a
+10:// choice of outputs." Until now there was no such command. The route existed - PdfOnlyBuild.Build
+11:// does the whole thing and corpus-analyze calls it - but the only ways in were `pdf-takeoff` then
+12:// `pdf-levels` then `dxf-to-etabs` chained by hand, or `corpus-analyze`, which wants a work
+=== StoreysCheckVerb.cs (21 lines)
+1:// The takeoff verb `storeys-check`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// THE DRAWINGS' STOREYS AGAINST THE MODEL'S. Usage: takeoff storeys-check <stickfile.pdf> <model.e2k>
+=== VectorDigestVerb.cs (23 lines)
+1:// The takeoff verb `vector-digest`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Layer-1 digest: emit the per-page structured facts (lines, geometry regions, scale, wall bands) the
+3:// synthesis reasons over. Usage: takeoff vector-digest <pdf> <out.json> [firstPage] [lastPage]
+=== VectorDumpVerb.cs (39 lines)
+1:// The takeoff verb `vector-dump`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+22:        // Optional 4th arg: a substring filter — print every matching token with its position.
+=== VectorFindVerb.cs (80 lines)
+1:// Every line of a set's text that mentions any of the given words, with the pages it is on — the reading
+2:// instrument for "what does the drawing CALL this?" before a rule is written about it (rule 9: ground
+3:// truth first). Case-insensitive; a regex is a word too (quote it). Prints "count pages text", the most
+4:// repeated first, one line per distinct text, so a phrase the set repeats on every section ("T/O ELEV.
+5:// OVERRUN") stands out from one that appears once. Built 2026-09-10 to learn what 31170's sections name
+6:// L7 and L8 (the ROOF PLAN was landing on the elevator overrun); ported from
+7:// docs/etabs-handoff/pdf_words_near.py (WP2, 2026-09-11) onto VectorPageReader's text lines.
+8://   takeoff vector-find <pdf> WORD [WORD ...] [--pages a-b]
+=== VectorGeomVerb.cs (39 lines)
+1:// The takeoff verb `vector-geom`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Geometry probe: can the slab AREA come from vector geometry instead of pixels? Dump the largest paths
+3:// (open + closed) by extent, with point count and shoelace area (as if closed), in sq.ft at 1/8"=1'-0".
+4:// If the slab outline shows up as a big path (or a stitchable few), area can be exact. Usage:
+5://   takeoff vector-geom <pdf> <page>
+29:        // Also: the union extent of all stroked geometry (a rough slab-envelope upper bound).
+=== VectorLinesVerb.cs (123 lines)
+1:// GROUND TRUTH: what the PDF itself draws in a region, below every reader — every long axis-aligned
+2:// run of the page's own paths, grouped by the line it sits on. Settles "is the drafter's line actually
+3:// there?" before a reader is blamed: on 2026-09-10 it showed 31168's tower slab edge IS drawn, 31,586 mm
+4:// a side in three collinear pieces, while the DXF held none of it — the wall reader was eating it.
+5:// Ported from docs/etabs-handoff/pdf_lines.py (WP2, 2026-09-11); reads the page through
+6:// VectorPageReader, the same extraction every reader starts from (extraction is not the weak link, §30).
+7:// Coordinates are PDF points with y UP (the reader's frame, as vector-words prints them).
+8://   takeoff vector-lines <pdf> <page> [--region x0 y0 x1 y1] [--min-pt 20] [--scale 96] [--pens] [--long]
+=== VectorPlateAutoVerb.cs (28 lines)
+1:// The takeoff verb `vector-plate-auto`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Deterministic-plate probe: can we find the slab plate from the WHOLE page with NO synthesis box?
+3:// Run the enclosed-area clustering on the full render and dump the top clusters (area, position, size).
+4:// If the slab is the dominant central cluster, area can be made synthesis-free. Usage:
+5://   takeoff vector-plate-auto <png>
+=== VectorPlateVerb.cs (37 lines)
+1:// The takeoff verb `vector-plate`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Focused plate-locator derisk: synthesis returns the slab plate box, poché measures its area.
+3:// Usage: takeoff vector-plate <pdf> <page> <png>
+=== VectorSchedVerb.cs (53 lines)
+1:// The takeoff verb `vector-sched`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Schedule grid reconstruction probe: from the native vector tokens, recover the level ladder and the
+3:// thickness cells (each resolved to its level row). Usage: takeoff vector-sched <pdf> <page>
+11:        // The COLUMN schedule alongside the shear-wall one, read the same deterministic way. The only
+12:        // column-schedule reader before this was `sched-read column`, which is an AI read of a
+13:        // downscaled PNG of text this project can read exactly, for free, and the same way twice.
+=== VectorSignalsVerb.cs (133 lines)
+1:// The takeoff verb `vector-signals`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// EVIDENCE probe: compute EVERY candidate slab-AREA signal for one sheet, in the drawing's real scale,
+3:// so we can see which signal is reliable per sheet type BEFORE building a cascade. No AI. Usage:
+4://   takeoff vector-signals <pdf> <page> [png] [scaleDenom=100] [dpi=110]
+5:// Signals: (P) raster poché largest+sum, (poly) largest closed vector polygon, (fill) filled-region sum,
+6://          (env) stroked-geometry envelope, (grid) dimensioned structural-grid bubble envelope.
+20:        // Real-world conversion at scale 1:scaleDenom. 1 pt = 1/72 in (paper); real = paper × scaleDenom.
+37:        // (poly) largest closed vector polygon
+=== VectorSynthVerb.cs (52 lines)
+1:// The takeoff verb `vector-synth`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Layer-2 synthesis derisk: build one page's digest, send the EXACT facts to Claude, print the
+3:// structured page takeoff. Usage: takeoff vector-synth <pdf> <page>
+19:        // Optional 4th arg: a rendered PNG to fuse for the slab-area judgment.
+34:        // If the synthesis gave a slab plate box and we have the rendered image, MEASURE the area via poché.
+=== VectorTakeoffVerb.cs (588 lines)
+1:// The takeoff verb `vector-takeoff`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// END-TO-END synthesis-led takeoff: classify each page, locate+measure slab plates, assemble via the
+3:// EXISTING pipeline -> xlsx + total vs QTO. Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last]
+12:        // Spend controls. Vision answers are CACHED under <pngDir>/.vision-cache keyed by the exact
+13:        // request, so re-running a set replays them: $0 spent, byte-identical numbers. --fresh discards
+14:        // the stored answers (a deliberate new sample — this SPENDS); --deterministic makes no vision
+15:        // calls at all (unpriceable pieces become flags/residuals) — the free regression mode.
+25:        // Optional scale note OVERRIDE (e.g. "1:100" metric, "1/8\"=1'-0\"" imperial). Absent → each sheet
+=== VectorWordsVerb.cs (64 lines)
+1:// The takeoff verb `vector-words`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Title-block probe: dump words by FONT SIZE (height) and normalized position, so we can see where the
+3:// sheet title actually lives (corner? largest font?) vs stray cross-references. Usage:
+4://   takeoff vector-words <pdf> <page> [needle]
+5://   takeoff vector-words <pdf> <page> --band y0 y1 [x0 x1]
+6:// --band (from docs/etabs-handoff/pdf_words_in_band.py, WP2 2026-09-11): GROUND TRUTH for a row of grid
+7:// bubbles — every word the page places in a band (PDF points, y UP), with its position and how many other
+8:// words share its spot within 3 pt. Two words on one spot is what a bubble drawn twice looks like (an
+=== VectorZonesVerb.cs (62 lines)
+1:// The takeoff verb `vector-zones`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Thickness-zoning derisk: locate the plate, then split its area by thickness ZONE (Voronoi by the
+3:// «N" SLAB» callouts) and compare the zoned effective thickness to the single modal value.
+4:// Usage: takeoff vector-zones <pdf> <png> <page> <modalThk>
+35:        // Read callouts WITH positions, map PDF pts -> crop px, keep only those inside the located plate box.
+=== VerifyE2kVerb.cs (89 lines)
+1:// The takeoff verb `verify-e2k`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// INSPECT one plan: what does this drawing actually give the model? Lists the layers, the
+3:// outlines that closed, and every member read out of them with its dimensions.
+4:// Usage: takeoff dxf-inspect <plan.dxf> [--walls]
+5:// The gate. Every fault it refuses actually shipped, or came within one publish of shipping, on
+6:// 31168 -- and every one passed the counts in the report. The report FLAGS, which needs a reader;
+7:// this REFUSES, which does not.
+=== VisionEstimateUsageVerb.cs (10 lines)
+1:// The takeoff verb `vision-estimate`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+=== VisionEstimateVerb.cs (465 lines)
+1:// The takeoff verb `vision-estimate`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Vision Layer 2: the app reads the drawing itself. For each page, Claude classifies the sheet and
+3:// locates the concrete-outline plates (level, count, element, thickness, normalized box); the Core
+4:// geometry then measures the largest enclosed region in each box; the pipeline prices + reconciles.
+5:// Usage: takeoff vision-estimate <pages.json> <out.xlsx>
+26:        // Suspended slabs are collected here and reconciled building-wide AFTER all sheets are read, so
+27:        // each physical floor is counted once regardless of how the set encodes its level/layout ranges.
+29:        // Schedule cross-reference: vertical concrete priced from the SHEAR WALL + COLUMN schedules (the
+=== WallconcreteVerb.cs (92 lines)
+1:// The takeoff verb `wallconcrete`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Usage: takeoff wallconcrete <keyplan.png> <schedule.png> <levels.json>
+3://   levels.json: { "storeyHeightFt": 10.5, "levels": ["LEVEL 20", ... , "P7"] }  (top to bottom)
+18:            // Strip zero-padding in numbers so 'LEVEL 08' == 'LEVEL 8', 'L01' == 'L1'.
+39:        // mark -> total plan length per floor (sum each occurrence; the same mark can label both core faces)
+=== WallplanVerb.cs (28 lines)
+1:// The takeoff verb `wallplan`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Debug: dump a CORE WALL KEY PLAN reading (each wall mark's centreline length).
+3:// Usage: takeoff wallplan <png>
+=== WallschedVerb.cs (22 lines)
+1:// The takeoff verb `wallsched`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+2:// Debug: dump a SHEAR WALL SCHEDULE reading (wall thickness per mark per level).
+3:// Usage: takeoff wallsched <png>

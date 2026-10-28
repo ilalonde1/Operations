@@ -1,0 +1,16 @@
+The near-miss check says OFF HER STACK, not WRONG TWIN: it measures where a column is, not why
+
+column_stack_near_miss.py labelled a column WRONG TWIN when it misses the engineer's column by about what its stack misses -
+a cause (the build kept the wrong one of two readings of one drawing) it never tests. 350f8761 traced 7 of 7 such columns on
+31065 L2 and 31170 L7 through each sheet's placement: every one was drawn there by the lowest sheet of a run. A wrong label on a
+check is how the next reader stops looking (rule 11).
+
+Now: the verdict is OFF HER STACK, the summary line says "a twin chosen wrongly OR a drawn transition - twin_trace.py decides",
+and the header says the old name, why it changed, and which of the 10-26 eleven are traced (7, all transitions) and which are
+not (31138 L2 x3, 31130 L14 x1). twin_trace.py reads both labels, so a report written before this still traces.
+
+Checked: 31170-01 on gate run 5c60023a reads OFF HER STACK 4 (the same 4, exit 1 as before), and twin_trace.py on the new
+report prints a body identical to the one on the old report (diff empty).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

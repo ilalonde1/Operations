@@ -1,0 +1,15 @@
+stickfile : 30972-01 - 2023-09-26 - 18th & 18th - Stickfile.pdf
+job       : 30972-01
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\s149\off
+rules     : KorStandards
+
+scale     : not given; 96 assumed (1/8" = 1'-0"). Pass --scale if the set draws at another.
+
+pages read: 58   plan sheets: 35   views written: 48
+storeys   : 20   with a floor: 20
+members   : 474 walls   476 columns   20 floors
+
+  model   : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s149/off\out.e2k
+  report  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s149/off\report.txt
+  levels  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s149/off\levels.csv
+  sheets  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s149/off\sheets.csv

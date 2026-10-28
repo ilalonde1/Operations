@@ -1,0 +1,86 @@
+  Determining projects to restore...
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1902: Package 'SixLabors.ImageSharp' 3.1.12 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-gwg2-r3hj-4w44 [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-j3p4-wp97-rph4 [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-j9gm-c75j-xc9q [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-jjfr-hcj7-qf5w [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1902: Package 'SixLabors.ImageSharp' 3.1.12 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-wmxv-xphr-5c9g [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+  All projects are up-to-date for restore.
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1902: Package 'SixLabors.ImageSharp' 3.1.12 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-gwg2-r3hj-4w44
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-j3p4-wp97-rph4
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-j9gm-c75j-xc9q
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-jjfr-hcj7-qf5w
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1902: Package 'SixLabors.ImageSharp' 3.1.12 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-wmxv-xphr-5c9g
+  Kor.Operations.EngineeringTools.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.dll
+  Kor.Operations.EngineeringTools.TakeoffCli -> C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\bin\Debug\net8.0\takeoff.dll
+  Kor.Operations.EngineeringTools.Core.Tests -> C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll
+Test run for C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:02.87]     Kor.Operations.EngineeringTools.Core.Tests.Intake.EveryReaderConstantIsTriagedTests.EveryConstantIsTriagedAndEveryTriagedConstantExists [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.EveryReaderConstantIsTriagedTests.EveryConstantIsTriagedAndEveryTriagedConstantExists [55 ms]
+  Error Message:
+   triaged constants no longer in the code (remove their lines): E2kDocument.cs:maxPlausibleStoreyHeight, E2kDocument.cs:duplicateFloorTolerance
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Intake.EveryReaderConstantIsTriagedTests.EveryConstantIsTriagedAndEveryTriagedConstantExists() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Intake\EveryReaderConstantIsTriagedTests.cs:line 316
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:04.05]     Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays [97 ms]
+  Error Message:
+   clauses written from memory more than thirty days ago and never read from the source - run takeoff knowledge-ingest on KOR's copy: NBC-2020 9.8.2.1 stair-width-min-dwelling (written 2026-09-16); NBC-2020 9.8.2.1 stair-width-min-other (written 2026-09-16); NBC-2020 9.8.4.1 stair-rise-max (written 2026-09-16); NBC-2020 9.8.4.1 stair-rise-min (written 2026-09-16); NBC-2020 9.8.4.2 stair-run-min (written 2026-09-16); NBC-2020 9.8.4.2 stair-run-max (written 2026-09-16)
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Rules.EveryRuleCitesItsAuthorityTests.AClauseWrittenFromMemoryIsReadFromTheSourceWithinThirtyDays() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Rules\EveryRuleCitesItsAuthorityTests.cs:line 61
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:04.97]     Kor.Operations.EngineeringTools.Core.Tests.AModelIsTheSameInInchesAndMillimetresTests.TheSameDrawingsMakeTheSameStructureInInchesAndInMillimetresAndInFeet [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.AModelIsTheSameInInchesAndMillimetresTests.TheSameDrawingsMakeTheSameStructureInInchesAndInMillimetresAndInFeet [292 ms]
+  Error Message:
+   Assert.Equal() Failure: Collections differ
+                                               ↓ (pos 3)
+Expected: ["B 24", "D 24", "SLABTHICKNESS 12", "WALLTHICKNESS 8"]
+Actual:   ["B 24", "D 24", "SLABTHICKNESS 12", "WALLTHICKNESS 8.004"]
+                                               ↑ (pos 3)
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.AModelIsTheSameInInchesAndMillimetresTests.TheSameDrawingsMakeTheSameStructureInInchesAndInMillimetresAndInFeet() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\AModelIsTheSameInInchesAndMillimetresTests.cs:line 171
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:09:57.99]     Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EverySourceIsWhereThisFileSaysItIs [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EverySourceIsWhereThisFileSaysItIs [328 ms]
+  Error Message:
+   The gate names sources the share does not have. Find where each went and mend the path here - the mirror will keep the gate green while the drawings move out from under it:
+  31170-01-arch: \\Kor-fs01\Projects\Projects\03 Residential\31170-01 (2005-2045 West 49 Ave Vancouer)\05 Stickfile\01 Architectural\260723_W49th_75% BP Draft.pdf
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EverySourceIsWhereThisFileSaysItIs() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Intake\SixSetsBuildAsBankedTests.cs:line 88
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Standard Output Messages:
+ ok      31130-01       \\Kor-fs01\Projects\Projects\03 Residential\31130-01 (Uplands Area 6 Lot 12 West Vancouver)\05 Stickfile\06 Old Structural Stickfiles\31130-01 UPLANDS LOT 12 2026-05-20 Stick file.pdf
+ ok      31138-01       \\Kor-fs01\Projects\Projects\03 Residential\31138-01 (2170 W 1st Ave Vancouver BC)\05 Stickfile\06 Old Structural Stickfiles\31138-01 2026-09-01_2170 W 1st Ave_Str Set.pdf
+ ok      31065-01       \\Kor-fs01\Projects\Projects\03 Residential\31065-01 (5350 5430 Heather Street Vancouver)\05 Stickfile\06 Old Structural Stickfiles\31065-01 - 2026-07-08 - 5380-Heather Street - Stickfile (up to SSI-04)-OAP.pdf
+ ok      31202-01       \\Kor-fs01\Projects\Projects\03 Residential\31202-01 (1650 N Hotel Circle San Diego)\05 Stickfile\06 Old Structural Stickfiles\31202-01 2026-09-04 Hotel Circle North StickSet  - FULL SET.pdf
+ ok      31168-01       \\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\05 Stickfile\06 Old Structural Stickfiles\31168-01 - 2026-04-21- YMCA Langara - Stickfile.pdf
+ MISSING 31170-01-arch  \\Kor-fs01\Projects\Projects\03 Residential\31170-01 (2005-2045 West 49 Ave Vancouer)\05 Stickfile\01 Architectural\260723_W49th_75% BP Draft.pdf
+
+
+[xUnit.net 00:17:20.30]     Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline [7 m 22 s]
+  Error Message:
+   System.AggregateException : One or more errors occurred. (31170-01-arch: not mirrored from \\Kor-fs01\Projects\Projects\03 Residential\31170-01 (2005-2045 West 49 Ave Vancouer)\05 Stickfile\01 Architectural\260723_W49th_75% BP Draft.pdf)
+---- 31170-01-arch: not mirrored from \\Kor-fs01\Projects\Projects\03 Residential\31170-01 (2005-2045 West 49 Ave Vancouer)\05 Stickfile\01 Architectural\260723_W49th_75% BP Draft.pdf
+  Stack Trace:
+     at System.Threading.Tasks.TaskReplicator.Run[TState](ReplicatableUserAction`1 action, ParallelOptions options, Boolean stopOnFirstFailure)
+   at System.Threading.Tasks.Parallel.ForWorker[TLocal,TInt](TInt fromInclusive, TInt toExclusive, ParallelOptions parallelOptions, Action`1 body, Action`2 bodyWithState, Func`4 bodyWithLocal, Func`1 localInit, Action`1 localFinally)
+--- End of stack trace from previous location ---
+   at System.Threading.Tasks.Parallel.ForWorker[TLocal,TInt](TInt fromInclusive, TInt toExclusive, ParallelOptions parallelOptions, Action`1 body, Action`2 bodyWithState, Func`4 bodyWithLocal, Func`1 localInit, Action`1 localFinally)
+   at System.Threading.Tasks.Parallel.For(Int32 fromInclusive, Int32 toExclusive, ParallelOptions parallelOptions, Action`1 body)
+   at Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Intake\SixSetsBuildAsBankedTests.cs:line 118
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+----- Inner Stack Trace -----
+   at Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.<>c__DisplayClass5_0.<EveryBankedSetBuildsByteIdenticalToItsBaseline>b__0(Int32 i) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Intake\SixSetsBuildAsBankedTests.cs:line 124
+   at System.Threading.Tasks.Parallel.<>c__DisplayClass19_0`2.<ForWorker>b__1(RangeWorker& currentWorker, Int64 timeout, Boolean& replicationDelegateYieldedBeforeCompletion)
+--- End of stack trace from previous location ---
+   at System.Threading.Tasks.Parallel.<>c__DisplayClass19_0`2.<ForWorker>b__1(RangeWorker& currentWorker, Int64 timeout, Boolean& replicationDelegateYieldedBeforeCompletion)
+   at System.Threading.Tasks.TaskReplicator.Replica.Execute()

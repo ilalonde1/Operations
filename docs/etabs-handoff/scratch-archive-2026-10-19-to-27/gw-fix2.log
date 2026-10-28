@@ -1,0 +1,13 @@
+baseline: ledger-sets-2026-09-24-run45-step140.csv (295 rows); judging 57 set(s) she has modelled
+census...
+  census of 2026-10-27 19:29 UTC reused (1196 job folders; --census retakes it)
+rules: KorStandards; work: C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gw-fix2
+57 set(s) to analyze; tool built 2026-10-28 05:11 UTC; run a556122f-f56e-4e11-b036-7f339c9e9507
+  [1/57] 31016-01 no model: 9 page(s) were read and none produced a structural view. They typed as unknown 9; 0 carried a readable title and 0 a sheet number. NO PAGE HAS A READABLE TITLE, and a page is taken for a structural plan from its title, so nothing could be. TO FIX: this is a title-block the reader cannot read - the words may be drawn as linework rather than text, or set out in columns it assembles in the wrong order. Send one page and it becomes a rule for every set from this office; or name the plan pages for this run with --pages.; yardstick: no shared storey with columns  5 s
+  [2/57] 31170-01 model: 9 storeys, 160 walls, 329 columns, 9/18 placed; yardstick:7 shared storeys, 287/323 of ours within 100 mm (frame from columns)  870 s
+  [3/57] 30989-01 model: 27 storeys, 459 walls, 593 columns, 17/24 placed; yardstick:23 shared storeys, 309/522 of ours within 100 mm (frame from columns)  243 s
+  [4/57] 31171-01 model: 7 storeys, 254 walls, 26 columns, 10/10 placed; yardstick:1 shared storeys, 3/3 of ours within 100 mm (frame from columns)  94 s
+  [5/57] 30819-01 model: 8 storeys, 282 walls, 96 columns, 3/10 placed; yardstick:5 shared storeys, 4/25 of ours within 100 mm (frame from columns)  375 s
+  [6/57] 31174-01 model: 7 storeys, 82 walls, 46 columns, 7/11 placed; yardstick:5 shared storeys, 5/5 of ours within 100 mm (frame from columns)  46 s
+  [7/57] 31129-01 model: 7 storeys, 610 walls, 61 columns, 12/12 placed; yardstick:1 shared storeys, 19/20 of ours within 100 mm (frame from columns)  258 s
+  [8/57] 31053-01 model: 21 storeys, 305 walls, 577 columns, 17/31 placed; yardstick:18 shared storeys, 133/465 of ours within 100 mm (frame from columns)  381 s

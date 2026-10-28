@@ -1,0 +1,24 @@
+The wall network's invariant, checked on every sheet: no tilt, no header off its jambs' axis, no wall joined only to itself
+
+Rule 10/11 after two regressions from 0f3e4ee4 (oversight.Mistake 64-65, board 54). The check comes first and FAILS on the
+code as it stands; no fix is in this commit.
+
+- PlanGeometrySet.WallsBeforeNetwork: the classifier's snapshot of the walls just before WallNetwork.Connect. Nothing
+  downstream reads it.
+- WallNetworkInvariant.Check: TILT (a wall after the network parallel within 0.5 deg to no wall it came from and overlaps),
+  HEADER (an opening parallel to no wall at either of its ends), SELF (a wall under the stub length joined only to near-copies
+  of itself). Drawn-skew walls are judged by the wall they came from, not by a set's axes. Header states covers / does not /
+  the same-class faults it misses (a tilt under 0.5 deg; a near-copy also joined to a third wall).
+- takeoff network-check <gate-work-dir|dxf-folder> [--model-unit mm|in|ft]: every sheet, default classification options, no
+  rules DB read. Exit 1 when any sheet breaks it.
+
+On 0f3e4ee4 over the 57 gate sets (gw-after's DXFs): 32 of 57 sets, 143 of 1,309 sheets - TILT 123, HEADER 148, SELF 16.
+It names the cases rendered by hand: 31087 S2.14.1 L5 SELF (the doubled column), 30864's 85.15 deg piece and 1.44 deg header,
+31076's 37 headers at 88-89 deg; 31076's drawn 14.7 deg walls do not fire. Halifax (ft): 23 of 24 sheets hold; P1 HEADER 1 at
+152.21 deg between skew jambs ~1 deg apart - in the engineer-facing Halifax model before 0f3e4ee4 too.
+
+EveryReaderConstantIsTriaged: ToleranceDegrees triaged. SnapTolerance internal (the check allows a lateral shift up to it).
+Speed!=Slow 1707 of 1707. gate_pair_moves / judge_drift_moves: MOVED lines list each re-placed member closer or further.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

@@ -1,0 +1,13 @@
+db 107: dxf.nested-ring-tile-share (0.25) - a ring that tiles a hole already cut is part of it (intake step 177)
+
+One KorStandards rule for the Operations reader's step 177: a ring drawn inside an opening already cut, running along
+its edge (dxf.ring-on-plate-edge-fraction, 054) and at least this share of its area, is part of that hole - a cab in
+its shaft - and is not cut again. Measured on the six banked sets: cabs are 29-100% of their shafts; real holes drawn
+along a larger ring's edge 4-6%. Without it 31138's shaft was cut three times on every storey.
+
+NOT RUN - Ian applies migrations. The Operations code that requires this key is NOT committed yet: it lands after this
+is applied, since a required rule missing from KorStandards stops every rules-db build. Number 107 agreed with the
+Standard Details session (106 is its catalogue load).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

@@ -1,0 +1,240 @@
+Model written : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\hfx\c182.e2k
+Sheets read   : 24   placed: 24
+Storeys built : 24
+Walls         : 283
+Columns       : 433
+Floors        : 23
+Joints        : 137
+Sections made : KOR-W0.5, KOR-W0.66667, KOR-W1, KOR-W1.66667, KOR-W2, KOR-S1, KOR-C1x2.5, KOR-C1.16667x2.5, KOR-C1.33333x2.5, KOR-C1.5x2.5, KOR-C1.5x2.75, KOR-C1.66667x2.5, KOR-D1.66667, KOR-D2, KOR-D2.33333
+Questions for you: 0
+Offset applied: 0, 0 in
+
+Sheet                                                  Lvls  Storeys  Walls  Cols  Slabs
+LEVEL  P1.dxf                                            0        1     23    23      0
+LEVEL 1.dxf                                              1        1     12    19      1
+LEVEL 10.dxf                                             1        1     12    19      1
+LEVEL 11.dxf                                             1        1     12    19      1
+LEVEL 12.dxf                                             1        1     12    19      1
+LEVEL 13.dxf                                             1        1     12    19      1
+LEVEL 14.dxf                                             1        1     12    19      1
+LEVEL 15.dxf                                             1        1     12    19      1
+LEVEL 16.dxf                                             1        1     12    19      1
+LEVEL 17.dxf                                             1        1     12    19      1
+LEVEL 18.dxf                                             1        1     12    19      1
+LEVEL 19.dxf                                             1        1     12    19      1
+LEVEL 2.dxf                                              1        1     12    20      1
+LEVEL 20.dxf                                             1        1     12    19      1
+LEVEL 21 AMENITY.dxf                                     1        1     12    15      1
+LEVEL 22 MECH..dxf                                       1        1      8    14      1
+LEVEL 3.dxf                                              1        1     12    19      1
+LEVEL 4.dxf                                              1        1     12    19      1
+LEVEL 5.dxf                                              1        1     12    19      1
+LEVEL 6.dxf                                              1        1     12    19      1
+LEVEL 7.dxf                                              1        1     12    19      1
+LEVEL 8.dxf                                              1        1     12    19      1
+LEVEL 9.dxf                                              1        1     12    19      1
+ROOF.dxf                                                 0        1      0     0      1
+
+Not placed:
+  - rules: all 53 read from KorStandards.
+  -    dxf.already-modelled-tolerance = 6 in [replay-verified, ETABS/e2k]
+  -    dxf.assign-diaphragms = 0 bool [engineer-confirmed, andrean]
+  -    dxf.assign-pier-labels = 1 bool [engineer-confirmed, andrean]
+  -    dxf.bridge-tolerance = 6 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.connect-walls = 1 bool [engineer-confirmed, DXF-to-ETABS/e2k]
+  -    dxf.dash-join-gap = 14 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.dash-offset-tolerance = 0.15 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.default-slab-thickness = 12 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.donor-plate-likeness-margin = 0.98 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.doubled-edge-coverage = 0.5 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.doubled-edge-parallel-ratio = 2 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.drawn-ring-beats-fill-fraction = 0.6 fraction [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.extend-limit = 0 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.flood-fill-bridge = 36 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.floor-from-perimeter-wall = 1 bool [replay-verified, DXF-to-ETABS]
+  -    dxf.include-floors = 1 bool [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.join-tolerance = 0.05 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.joint-merge-tolerance = 0.05 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-column-aspect = 3 ratio [replay-verified, ETABS/e2k]
+  -    dxf.max-column-size = 132 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-opening-span = 72 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-pier-thickness = 48 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.max-wall-thickness = 60 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-column-size = 6 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-floor-coverage = 0.6 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-opening-span = 24 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-panel-aspect = 1.2 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-panel-overlap = 12 in [replay-verified, Revit/dxf]
+  -    dxf.min-plate-area = 57600 sqin [replay-verified, Revit/dxf]
+  -    dxf.min-slab-area = 7200 sqin [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-wall-aspect = 2 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.min-wall-length = 48 in [engineer-confirmed, codex-audit]
+  -    dxf.min-wall-thickness = 6 in [replay-verified, DXF-to-ETABS]
+  -    dxf.nested-ring-tile-share = 0.15 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.opening-height = 88 in [replay-verified, ETABS/e2k]
+  -    dxf.outline-self-touch-tolerance = 0.05 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.pier-fill-ratio = 0.6 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.pour-strip-aspect = 10 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.pour-strip-min-length-mm = 10000 mm [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.recovered-outline-tolerance = 3 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.ring-on-plate-edge-fraction = 0.5 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.same-ground-area-tolerance = 0.02 ratio [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.same-ground-centre-tolerance = 24 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.self-touch-report-gap = 2 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.skip-members-already-modelled = 1 bool [engineer-confirmed, DXF-to-ETABS/e2k]
+  -    dxf.slab-callout-max-thickness = 120 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.slab-callout-min-thickness = 4 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.slab-chain-join-fraction = 0.1 fraction [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.spandrel-depth-ceiling = 60 in [engineer-confirmed, ETABS/e2k]
+  -    dxf.spandrel-depth-floor = 18 in [engineer-confirmed, ETABS/e2k]
+  -    dxf.storeys-at-one-level-gap = 12 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.unusual-wall-thickness = 24 in [replay-verified, DXF-to-ETABS/e2k]
+  -    dxf.wall-bridge-tolerance = 12 in [replay-verified, DXF-to-ETABS/e2k]
+  - The drawings are millimetres and the model is feet, so every coordinate was scaled by 0.003281.
+  - Facts are banked for job(s) 31168 (which storeys to join on a match line, how many slabs a storey carries) and this run is job 'unknown — no five-digit job number in the stick file, DXF folder, reference or output names; give --job': none of them applies.
+  - 22 sheet(s) named no axis the model names and were set where their columns and walls stand over members already placed: LEVEL 1.dxf, LEVEL 10.dxf, LEVEL 11.dxf, LEVEL 12.dxf, LEVEL 13.dxf, LEVEL 14.dxf, LEVEL 15.dxf, LEVEL 16.dxf, LEVEL 17.dxf, LEVEL 18.dxf, LEVEL 19.dxf, LEVEL 2.dxf, LEVEL 20.dxf, LEVEL 21 AMENITY.dxf, LEVEL 22 MECH..dxf, LEVEL 3.dxf, LEVEL 4.dxf, LEVEL 5.dxf, LEVEL 6.dxf, LEVEL 7.dxf, LEVEL 8.dxf, LEVEL 9.dxf
+  - 23 of 24 sheet(s) set on this model's grid by the names of their axes, each in its own frame: LEVEL  P1.dxf: the set names no grid: the plan placing the most storeys (1) stands in its own frame and the others are set on its members LEVEL 1.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 10.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 11.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 12.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 13.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 14.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 15.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 16.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 17.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 18.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 19.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 2.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 20.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 21 AMENITY.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 22 MECH..dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 3.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 4.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 5.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 6.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 7.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 8.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept LEVEL 9.dxf: a set naming no grid whose sheets already stack where they sit: one model's frame, kept
+  - 1 sheet(s) could NOT be set on the grid by name and stay in their own frame — their axes name nothing the model or a placed sheet names: ROOF.dxf. Where they sit in the model is where the page put them, not where the grid does.
+  - This job's own walls, measured off its drawings: median 2", 9 in 10 at or under 2", thickest 2" (from 283 panels). Columns: median 2.5", thickest 2.7".
+  - 642 column and wall object(s) were merged into the stack they belong to, so a member running through several floors now carries ONE label its whole height with a separate member between each pair of floors. Each storey is read from its own drawing, so each used to arrive as a differently named object — a single column reading C360, C359, C363 up the building. This is the convention your own 31138 model uses: one object, an assign per storey, the section carried on the assign so a column may still change size as it rises.
+
+About the model as a whole:
+  - ASSUMED: 22 doorway header(s) stand between walls of two thicknesses and take the thinner; the drawing does not say. TO CHECK: the header's thickness with the engineer. KS1 on LEVEL 1 (20" of 20" and 24"), KS2 on LEVEL 10 (20" of 20" and 24"), KS3 on LEVEL 11 (20" of 20" and 24"), KS4 on LEVEL 12 (20" of 20" and 24"), KS5 on LEVEL 13 (20" of 20" and 24"), KS6 on LEVEL 14 (20" of 20" and 24"), KS7 on LEVEL 15 (20" of 20" and 24"), KS8 on LEVEL 16 (20" of 20" and 24"), KS9 on LEVEL 17 (20" of 20" and 24"), KS10 on LEVEL 18 (20" of 20" and 24"), KS11 on LEVEL 19 (20" of 20" and 24"), KS12 on LEVEL 2 (20" of 20" and 24"), KS13 on LEVEL 20 (20" of 20" and 24"), KS14 on LEVEL 21 AMENITY (20" of 20" and 24"), KS15 on LEVEL 22 MECH. (20" of 20" and 24"), KS16 on LEVEL 3 (20" of 20" and 24"), KS17 on LEVEL 4 (20" of 20" and 24"), KS18 on LEVEL 5 (20" of 20" and 24"), KS19 on LEVEL 6 (20" of 20" and 24"), KS20 on LEVEL 7 (20" of 20" and 24"), KS21 on LEVEL 8 (20" of 20" and 24"), KS22 on LEVEL 9 (20" of 20" and 24").
+  - Slab thickness is ASSUMED, not read: every one of the 23 floor plate(s) in this model is 12" thick because this tool does not yet read a thickness tag off a drawing. It is the engineer's default, given for exactly this case, and it is applied everywhere rather than only where a tag is missing — so no plate in this model has a thickness that came from the drawings. Storeys affected: LEVEL 1, LEVEL 10, LEVEL 11, LEVEL 12, LEVEL 13, LEVEL 14, LEVEL 15, LEVEL 16, LEVEL 17, LEVEL 18, LEVEL 19, LEVEL 2, LEVEL 20, LEVEL 21 AMENITY, LEVEL 22 MECH., LEVEL 3, LEVEL 4, LEVEL 5, LEVEL 6, LEVEL 7, LEVEL 8, LEVEL 9, ROOF.
+  - KOR_V_COL -> columns (7,827 segments)
+  - KOR_V-WALL -> walls (776 segments)
+  - KOR_C_SLABEDG -> slab edges (719 segments)
+  - opening height: 88, the standing value — the reference model has only 0 spandrel(s) to measure, so the standing value stands.
+  - column slenderness: 3, the standing value — the reference model uses only 0 rectangular concrete column section(s), which is too few to read a limit from.
+  - 1 storey(s) carry walls or columns and no floor plate at all, so they have no diaphragm: LEVEL  P1. Nothing was borrowed or invented for them; add a plate if these storeys need one.
+  - 1 storey(s) carry a floor plate with no wall or column beneath it: ROOF. The plan placed there draws no vertical structure, so either the structure stops below that level or another sheet holds it.
+
+Flags (128) — outlines that needed judgement:
+  - LEVEL 1.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 10.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 11.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 12.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 13.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 14.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 15.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 16.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 17.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 18.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 19.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 2.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 20.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 21 AMENITY.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 3.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 4.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 5.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 6.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 7.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 8.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL 9.dxf: KOR_C_SLABEDG: a slab outline crossed itself and was read as 2 separate ring(s) rather than one ring through its own edge (59 sq ft + 61 sq ft).
+  - LEVEL  P1.dxf: walls: 2 outline(s) would not close; 2 wall panel(s) read from them anyway (96 units of edge).
+  - LEVEL  P1.dxf: No slab edge on this drawing would close, and the 19 wall panels do not enclose the floor within a doorway (6): the ring closes at a gap of 24 (12,227 sq ft). The storey has no plate. REFUSED BECAUSE: PAINT-TO-WALL: the enclosed paint is 784 sq ft against 530 sq ft of summed wall, under the 2x floor. ⚠ wallArea SUMS EVERY WALL HANDED IN, so the same wall supplied twice doubles this threshold without adding paint
+  - LEVEL 1.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 1.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 12,546 sq ft, its edge 49 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 1.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 12,546 sq ft, its edge 52 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 1.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 12,546 sq ft, its edge 52 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 1.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 12,546 sq ft, its edge 52 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 10.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 10.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 10.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 10.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 10.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 11.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 11.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 11.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 11.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 11.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 12.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 12.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 12.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 12.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 12.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 13.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 13.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 13.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 13.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 13.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 14.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 14.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 14.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 14.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 14.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 15.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 15.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 15.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 15.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 15.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 16.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 16.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 16.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 16.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 16.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 17.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 17.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 17.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 17.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 17.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 18.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 18.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 18.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 18.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 18.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 19.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 19.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 19.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 19.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 19.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 2.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 2.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 2.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 2.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 2.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 20.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 20.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 20.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 20.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 20.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 21 AMENITY.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 21 AMENITY.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 21 AMENITY.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 21 AMENITY.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 21 AMENITY.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 3.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 3.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 3.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 3.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 3.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 4.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 4.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 4.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 4.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 4.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 5.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 5.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 5.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 5.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 5.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 6.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 6.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 6.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 6.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 6.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 7.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 7.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 7.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 7.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 7.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 8.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 8.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 8.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 8.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 8.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 9.dxf: walls: 1 outline(s) would not close; 1 wall panel(s) read from them anyway (51 units of edge).
+  - LEVEL 9.dxf: KOR_C_SLABEDG: an opening of 132 sq ft cut from a floor of 6,953 sq ft, its edge 31 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 9.dxf: KOR_C_SLABEDG: an opening of 61 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 9.dxf: KOR_C_SLABEDG: an opening of 59 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.
+  - LEVEL 9.dxf: KOR_C_SLABEDG: an opening of 55 sq ft cut from a floor of 6,953 sq ft, its edge 34 in inside — check it is a hole and not the inner face of the edge.

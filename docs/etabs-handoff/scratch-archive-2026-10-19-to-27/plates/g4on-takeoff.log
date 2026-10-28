@@ -1,0 +1,110 @@
+
+ETABS model takeoff - 2146 members priced (concrete in cubic metres, formwork in square metres).
+Concrete: 13,766.7 m3   Reinforcing: 1,943,818 kg   Formwork: 69,695 mý
+  1,289 mý of openings deducted from the slabs they are cut in.
+
+Per storey - concrete is the model's own geometry; reinforcing is the calibrated density estimate:
+  L1
+     Slab     -         KOR-DEFAULT-CONCRETE     833.5 m3     84,062 kg      2,399 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     487.1 m3     82,356 kg      3,336 mý
+     Column   -         KOR-DEFAULT-CONCRETE      95.3 m3     39,558 kg        662 mý
+  L10
+     Slab     -         KOR-DEFAULT-CONCRETE     250.0 m3     25,212 kg      1,296 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     105.8 m3     17,890 kg        481 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,660 kg        265 mý
+  L11
+     Slab     -         KOR-DEFAULT-CONCRETE     249.3 m3     25,142 kg      1,292 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     105.8 m3     17,890 kg        481 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,671 kg        265 mý
+  L12
+     Slab     -         KOR-DEFAULT-CONCRETE     250.0 m3     25,212 kg      1,296 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     105.8 m3     17,890 kg        481 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,660 kg        265 mý
+  L13
+     Slab     -         KOR-DEFAULT-CONCRETE     249.3 m3     25,142 kg      1,292 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     105.8 m3     17,890 kg        481 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,671 kg        265 mý
+  L14
+     Slab     -         KOR-DEFAULT-CONCRETE     250.0 m3     25,212 kg      1,296 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     105.8 m3     17,890 kg        481 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,660 kg        265 mý
+  L15
+     Slab     -         KOR-DEFAULT-CONCRETE     249.3 m3     25,142 kg      1,292 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     105.8 m3     17,883 kg        481 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,666 kg        265 mý
+  L16
+     Slab     -         KOR-DEFAULT-CONCRETE     250.0 m3     25,212 kg      1,296 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     105.8 m3     17,890 kg        481 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,660 kg        265 mý
+  L17
+     Slab     -         KOR-DEFAULT-CONCRETE     249.3 m3     25,142 kg      1,292 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     105.8 m3     17,890 kg        481 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,671 kg        265 mý
+  L18
+     Slab     -         KOR-DEFAULT-CONCRETE     250.0 m3     25,212 kg      1,296 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     105.8 m3     17,890 kg        481 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,660 kg        265 mý
+  L19
+     Slab     -         KOR-DEFAULT-CONCRETE     358.7 m3     36,173 kg      1,254 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     113.9 m3     19,262 kg        515 mý
+     Column   -         KOR-DEFAULT-CONCRETE      34.7 m3     14,402 kg        279 mý
+  L2
+     Slab     -         KOR-DEFAULT-CONCRETE     470.6 m3     47,466 kg      2,440 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     355.0 m3     60,027 kg      1,995 mý
+     Column   -         KOR-DEFAULT-CONCRETE      86.1 m3     35,771 kg        734 mý
+  L20
+     Wall     -         KOR-DEFAULT-CONCRETE     117.9 m3     19,928 kg        919 mý
+     Slab     -         KOR-DEFAULT-CONCRETE      97.8 m3      9,865 kg        514 mý
+     Column   -         KOR-DEFAULT-CONCRETE      13.0 m3      5,390 kg        117 mý
+  L3
+     Slab     -         KOR-DEFAULT-CONCRETE     471.4 m3     47,542 kg      2,442 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     145.6 m3     24,625 kg        834 mý
+     Column   -         KOR-DEFAULT-CONCRETE      55.8 m3     23,185 kg        507 mý
+  L4
+     Slab     -         KOR-DEFAULT-CONCRETE     463.6 m3     46,757 kg      2,400 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     159.9 m3     27,043 kg        939 mý
+     Column   -         KOR-DEFAULT-CONCRETE      58.7 m3     24,397 kg        534 mý
+  L5
+     Slab     -         KOR-DEFAULT-CONCRETE     392.1 m3     39,544 kg      1,628 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     158.5 m3     26,799 kg        960 mý
+     Column   -         KOR-DEFAULT-CONCRETE      47.0 m3     19,509 kg        408 mý
+  L6
+     Slab     -         KOR-DEFAULT-CONCRETE     250.0 m3     25,212 kg      1,296 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     131.0 m3     22,146 kg        739 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,682 kg        265 mý
+  L7
+     Slab     -         KOR-DEFAULT-CONCRETE     249.3 m3     25,142 kg      1,292 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     105.8 m3     17,890 kg        481 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,671 kg        265 mý
+  L8
+     Slab     -         KOR-DEFAULT-CONCRETE     250.0 m3     25,212 kg      1,296 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     105.8 m3     17,890 kg        481 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,660 kg        265 mý
+  L9
+     Slab     -         KOR-DEFAULT-CONCRETE     249.3 m3     25,142 kg      1,292 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     105.8 m3     17,890 kg        481 mý
+     Column   -         KOR-DEFAULT-CONCRETE      32.9 m3     13,671 kg        265 mý
+  P1
+     Slab     parking   KOR-DEFAULT-CONCRETE     829.0 m3     83,608 kg      3,411 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     366.2 m3     61,926 kg      2,530 mý
+     Column   -         KOR-DEFAULT-CONCRETE      70.2 m3     29,163 kg        463 mý
+  P2
+     Slab     parking   KOR-DEFAULT-CONCRETE     851.4 m3     85,872 kg      3,514 mý
+     Wall     -         KOR-DEFAULT-CONCRETE     383.0 m3     64,765 kg      2,649 mý
+     Column   -         KOR-DEFAULT-CONCRETE      67.9 m3     28,203 kg        457 mý
+  P3
+     Slab     parking   KOR-DEFAULT-CONCRETE   1,066.0 m3    107,516 kg      3,639 mý
+  ROOF
+     Wall     -         KOR-DEFAULT-CONCRETE      42.6 m3      7,202 kg        429 mý
+     Column   -         KOR-DEFAULT-CONCRETE       0.2 m3         85 kg          4 mý
+
+WHAT THESE NUMBERS REST ON - every inference, named:
+   [HEIGHT_FROM_STOREY] walls and columns are priced over the full rise from their own storey to the next floor above it. A member the drawings stop short of that floor is over-measured by the difference.
+   [WALL_VARIANT_UNSPLIT] shear and non-shear walls are not distinguished, so every wall takes the default reinforcing ratio. The generator gives every wall a pier label, so a pier cannot be used as evidence of a shear wall. Split by hand where it matters.
+   [SLAB_VARIANT_DEFAULTED] no roof or parkade word matched these storeys, so their slabs take the default reinforcing ratio rather than an occupancy one: L1, L10, L11, L12, L13, L14, L15, L16, L17, L18, L19, L2, L20, L3, L4, L5, L6, L7, L8, L9.
+
+NOT PRICED - 1 item(s), listed so nothing is silently dropped:
+   foundation x1
+      P3               -        footings, pile caps, piles and grade beams are below the lowest modelled storey and are not in an ETABS superstructure model. Quantify them by hand.
+
+  ->  C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/plates/g4on-takeoff-m.xlsx

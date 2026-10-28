@@ -1,0 +1,16 @@
+stickfile : 143 E 3rd Hotel Architectural 2026-10-01 - KOR prelim markup.pdf
+job       : 143 E 3rd Hotel Architectural 2026-10-01 - KOR prelim markup
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\whole\cli
+rules     : KorStandards
+
+
+pages read: 11   plan sheets: 8   views written: 14
+storeys   : 41   with a floor: 41
+members   : 616 walls   384 columns   41 floors
+
+  model   : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/whole/cli\out.e2k
+  report  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/whole/cli\report.txt
+  levels  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/whole/cli\levels.csv
+  sheets  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/whole/cli\sheets.csv
+  questions: C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/whole/cli\questions.xlsx   (0 waiting on the engineer)
+  render  : not written - Edge wrote no PNG (is Edge installed?); model.svg stands

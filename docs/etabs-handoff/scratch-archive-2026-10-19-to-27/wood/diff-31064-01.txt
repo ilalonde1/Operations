@@ -1,0 +1,2 @@
+L3: columns 52 -> 52, walls 673 -> 673  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 10,566 2,409 1,288 1,288 1,288 1,288 1,288 1,171 1,171 1,171 1,171 1,171 1,171 892 561 542 484 -> 10,566 2,409 561 sq ft
+plates moved 1, columns lost 0 / gained 0, walls lost 0 / gained 0

@@ -1,0 +1,23 @@
+Test run for C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\bin\Debug\net8.0-windows10.0.19041.0\Kor.Operations.EngineeringTools.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+The active test run was aborted. Reason: Test host process crashed
+Data collector 'Blame' message: The specified inactivity time of 2 minutes has elapsed. Collecting hang dumps from testhost and its child processes.
+Data collector 'Blame' message: Dumping 27288 - testhost.
+Results File: C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\verifyA3c\app.trx
+
+Passed!  - Failed:     0, Passed:   430, Skipped:     0, Total:   430, Duration: 8 s - Kor.Operations.EngineeringTools.Tests.dll (net8.0)
+Test Run Aborted.
+
+The active Test Run was aborted because the host process exited unexpectedly. Please inspect the call stack above, if available, to get more information about where the exception originated from.
+The test running when the crash occurred: 
+Kor.Operations.EngineeringTools.Tests.PdfToSafe.WhereTheMarkupLandedMeasurement.NoMarkupLandsOutsideTheDrawing
+Kor.Operations.EngineeringTools.Tests.PdfToSafe.PageContentVsAnnotationsMeasurement.WhatThePageHoldsThatTheAnnotationsOnlyFilterThrowsAway
+
+This test may, or may not be the source of the crash.
+
+Attachments:
+  C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\TestResults\659fa663-7fe7-490e-95d8-1c66b1156786\testhost_27288_20261019T154427_hangdump.dmp
+  C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\TestResults\659fa663-7fe7-490e-95d8-1c66b1156786\Sequence_a50350dade4e48fea742cf66c0d4d37b.xml

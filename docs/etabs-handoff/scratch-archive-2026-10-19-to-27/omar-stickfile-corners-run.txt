@@ -1,0 +1,18 @@
+stickfile : 143 E 3rd Hotel Architectural 2026-10-01 - KOR prelim markup.pdf
+job       : 143 E 3rd Hotel Architectural 2026-10-01 - KOR prelim markup
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\omar-stickfile-corners
+rules     : KorStandards
+
+
+pages read: 11   plan sheets: 8   views written: 8
+storeys   : 40   with a floor: 40
+members   : 898 walls   626 columns   52 floors
+
+  model   : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\omar-stickfile-corners\out.e2k
+  report  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\omar-stickfile-corners\report.txt
+  levels  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\omar-stickfile-corners\levels.csv
+  sheets  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\omar-stickfile-corners\sheets.csv
+  questions: C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\omar-stickfile-corners\questions.xlsx   (2 waiting on the engineer)
+C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\omar-stickfile-corners\model.svg  (40 storeys drawn)
+C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\omar-stickfile-corners\model.png
+  render  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\omar-stickfile-corners\model.png

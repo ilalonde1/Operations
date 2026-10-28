@@ -1,0 +1,9 @@
+BeamSectionParser.cs:MaxMm
+BeamSectionParser.cs:MinMm
+ColumnSectionParser.cs:MaxMm
+ColumnSectionParser.cs:MinMm
+F2kModelPrep.cs:MinMm
+F2kModelPrep.cs:MinThicknessMm
+F2kModelPrep.cs:SnapMm
+F2kModelPrep.cs:minSeg
+F2kWriter.cs:MaxPointsPerRow

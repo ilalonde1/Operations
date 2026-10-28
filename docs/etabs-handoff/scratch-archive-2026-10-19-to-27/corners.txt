@@ -1,0 +1,40 @@
+B1    plates 2: x 51.5-56.1 y 13.7-40.5 | x 16.6-21.3 y 13.7-40.5   columns 31, outside every plate 29
+B2    plates 2: x 51.5-56.1 y 13.7-40.5 | x 16.6-21.3 y 13.7-40.5   columns 0, outside every plate 0
+L2    plates 2: x 51.8-64.7 y 9.0-45.0 | x 46.3-51.2 y 8.7-37.1   columns 39, outside every plate 29
+L1    plates 2: x 51.8-64.7 y 9.0-45.0 | x 46.3-51.2 y 8.7-37.1   columns 32, outside every plate 18
+L4    plates 3: x 51.8-64.7 y 9.0-45.0 | x 17.0-29.8 y 9.0-45.0 | x 46.3-51.2 y 8.7-37.1   columns 20, outside every plate 0
+L3    plates 3: x 51.8-64.7 y 9.0-45.0 | x 17.0-29.8 y 9.0-45.0 | x 46.3-51.2 y 8.7-37.1   columns 39, outside every plate 15
+L6    plates 2: x 17.0-29.8 y 9.0-49.7 | x 51.8-64.5 y 10.5-47.2   columns 21, outside every plate 3
+L5    plates 2: x 17.0-29.8 y 9.0-49.7 | x 51.8-64.5 y 10.5-47.2   columns 20, outside every plate 3
+L35   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L34   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L33   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L32   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L31   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L30   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L29   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L28   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L27   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L26   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L25   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L24   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L23   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L22   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L21   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L20   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L19   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L18   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L17   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L16   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L15   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L14   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L13   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L12   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L11   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L10   plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L9    plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L8    plates 1: x 51.8-64.6 y 9.1-45.0   columns 11, outside every plate 0
+L7    plates 1: x 51.8-64.6 y 9.1-45.0   columns 21, outside every plate 11
+L37   plates 2: x 17.0-29.7 y 9.0-45.0 | x 51.8-63.2 y 10.5-40.5   columns 35, outside every plate 6
+L36   plates 2: x 17.0-29.7 y 9.0-45.0 | x 51.8-63.2 y 10.5-40.5   columns 17, outside every plate 14
+ROOF  plates 1: x 17.0-28.3 y 10.5-45.0   columns 43, outside every plate 21

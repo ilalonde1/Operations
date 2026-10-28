@@ -1,0 +1,85 @@
+
+=== 31065-01: banked a053548746d5904a, today b4a41fa0d922f5d4, all seven off 83c7e7ee1fc3e5c3 (does NOT give back the baseline)
+   15 storey(s) moved banked -> today; 15 still moved with all seven off
+   L1         UNATTRIBUTED (moved with all seven off too) | columns 63 -> 57, walls 65 -> 65  [lost columns 8, gained columns 2, lost walls 9, gained walls 9]  plates 19,352 12,533 454 454 -> 10,323 7,874 3,483
+   L2         UNATTRIBUTED (moved with all seven off too) | columns 106 -> 98, walls 90 -> 88  [lost columns 8, gained columns 0, lost walls 2, gained walls 0]  plates 14,718 4,749 -> 14,848 7,803 2,271 826 105
+   L3         UNATTRIBUTED (moved with all seven off too) | columns 92 -> 91, walls 47 -> 45  [lost columns 1, gained columns 0, lost walls 2, gained walls 0]
+   L4         UNATTRIBUTED (moved with all seven off too) | columns 92 -> 91, walls 51 -> 49  [lost columns 1, gained columns 0, lost walls 2, gained walls 0]
+   L5         UNATTRIBUTED (moved with all seven off too) | columns 76 -> 70, walls 68 -> 50  [lost columns 6, gained columns 0, lost walls 18, gained walls 0]  plates - -> 7,918 7,245 1,575 573 47 sq ft
+   L6         UNATTRIBUTED (moved with all seven off too) | columns 44 -> 44, walls 39 -> 38  [lost columns 0, gained columns 0, lost walls 1, gained walls 0]
+   L7         UNATTRIBUTED (moved with all seven off too) | columns 44 -> 44, walls 30 -> 30  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 6,991 671 -> 6,991 6,934 sq ft
+   L9         UNATTRIBUTED (moved with all seven off too) | columns 44 -> 44, walls 30 -> 30  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 6,991 671 -> 6,991 6,934 sq ft
+   P1         UNATTRIBUTED (moved with all seven off too) | columns 60 -> 60, walls 64 -> 66  [lost columns 1, gained columns 1, lost walls 8, gained walls 10]  plates 22,646 13,843 454 454 -> 22,568 12,437 1,7
+   P2         UNATTRIBUTED (moved with all seven off too) | columns 61 -> 61, walls 56 -> 58  [lost columns 0, gained columns 0, lost walls 6, gained walls 8]  plates 22,669 13,807 454 454 -> 22,672 13,816 454 
+   P3         UNATTRIBUTED (moved with all seven off too) | columns 0 -> 0, walls 0 -> 0  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 22,681 14,043 626 451 451 -> 22,684 14,019 626 
+   L11        UNATTRIBUTED (moved with all seven off too) | columns 44 -> 44, walls 30 -> 30  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 6,991 671 -> 6,991 6,934 sq ft
+   L13        UNATTRIBUTED (moved with all seven off too) | columns 44 -> 44, walls 30 -> 30  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 6,991 671 -> 6,991 6,934 sq ft
+   L15        UNATTRIBUTED (moved with all seven off too) | columns 44 -> 44, walls 30 -> 30  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 6,991 671 -> 6,991 6,934 sq ft
+   L17        UNATTRIBUTED (moved with all seven off too) | columns 44 -> 44, walls 30 -> 30  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 6,991 671 -> 6,991 6,934 sq ft
+
+=== 31130-01: banked 077a204573329e12, today 7d147069149e3643, all seven off 94cc9a6f3ccb9d84 (does NOT give back the baseline)
+   13 storey(s) moved banked -> today; 9 still moved with all seven off
+   L1         UNATTRIBUTED (moved with all seven off too) | columns 91 -> 90, walls 69 -> 68  [lost columns 1, gained columns 0, lost walls 16, gained walls 15]  plates 17,205 15,906 -> 15,906 11,937 2,047 1,94
+   L2         UNATTRIBUTED (moved with all seven off too) | columns 53 -> 50, walls 54 -> 54  [lost columns 3, gained columns 0, lost walls 0, gained walls 0]  plates 9,944 5,071 -> 8,389 4,290 1,796 1,506 1,42
+   L3         UNATTRIBUTED (moved with all seven off too) | columns 58 -> 59, walls 20 -> 20  [lost columns 0, gained columns 1, lost walls 0, gained walls 0]
+   P2         UNATTRIBUTED (moved with all seven off too) | columns 88 -> 88, walls 37 -> 38  [lost columns 0, gained columns 0, lost walls 10, gained walls 11]  plates 27,321 26,620 -> 26,620 20,569 6,726 35 s
+   P3         UNATTRIBUTED (moved with all seven off too) | columns 0 -> 0, walls 0 -> 0  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 26,314 26,076 -> 26,314 26,202 sq ft
+   L14        UNATTRIBUTED (moved with all seven off too) | columns 56 -> 56, walls 14 -> 14  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 10,956 9,860 -> 9,860 8,012 2,213 787 97 4 
+   L15        UNATTRIBUTED (moved with all seven off too) | columns 54 -> 54, walls 13 -> 13  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 9,860 8,714 -> 9,860 9,018 sq ft
+   L16        UNATTRIBUTED (moved with all seven off too) | columns 51 -> 51, walls 13 -> 13  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 9,860 8,887 -> 9,860 4,189 2,704 1,039 940 
+   L17        step 183                         | columns 47 -> 47, walls 13 -> 13  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 9,843 -> 6,434 2,783 550 58 7 4 3 3 sq ft
+   L19        step 183                         | columns 28 -> 28, walls 7 -> 7  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 9,431 -> 8,573 581 186 58 30 3 sq ft
+   L1M        step 183                         | columns 45 -> 45, walls 49 -> 49  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 17,205 15,906 -> 15,906 11,937 2,047 1,946 
+   L20        step 183                         | columns 37 -> 37, walls 9 -> 9  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 7,639 -> 6,818 711 74 28 5 3 sq ft
+   L0/P1      UNATTRIBUTED (moved with all seven off too) | columns 90 -> 90, walls 49 -> 47  [lost columns 0, gained columns 0, lost walls 13, gained walls 11]  plates 26,986 26,443 -> 26,443 19,807 7,185 sq f
+
+=== 31138-01: banked 82d4f4b44ffc02dd, today 54f4b3d9edf15885, all seven off 92f3152ffc8db175 (does NOT give back the baseline)
+   9 storey(s) moved banked -> today; 4 still moved with all seven off
+   L1         step 183                         | columns 27 -> 27, walls 45 -> 45  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 18,198 -> 9,880 5,126 2,785 294 161 26 14 5
+   L2         UNATTRIBUTED (moved with all seven off too) | columns 52 -> 39, walls 78 -> 79  [lost columns 13, gained columns 0, lost walls 5, gained walls 6]  plates 12,307 -> 4,730 2,151 1,827 965 646 595 57
+   L3         UNATTRIBUTED (moved with all seven off too) | columns 46 -> 45, walls 17 -> 17  [lost columns 1, gained columns 0, lost walls 0, gained walls 0]  plates 12,405 -> 12,715 sq ft
+   L4         UNATTRIBUTED (moved with all seven off too) | columns 34 -> 34, walls 13 -> 13  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 12,405 -> 12,715 sq ft
+   L5         step 183                         | columns 34 -> 34, walls 14 -> 14  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 12,685 -> 10,224 2,312 80 69 sq ft
+   P1         UNATTRIBUTED (moved with all seven off too) | columns 25 -> 25, walls 42 -> 42  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 18,374 -> 9,704 8,537 86 78 11 sq ft
+   P3         step 183                         | columns 25 -> 25, walls 38 -> 38  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 18,413 -> 18,055 232 97 16 13 sq ft
+   L20        step 180                         | columns 18 -> 19, walls 13 -> 13  [lost columns 0, gained columns 1, lost walls 0, gained walls 0]
+   L21        step 183                         | columns 19 -> 19, walls 11 -> 11  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 9,507 -> 7,215 1,387 801 74 31 sq ft
+
+=== 31168-01: banked 6321f1e8db458818, today 96ae1e3cea5e2243, all seven off 288ebb9481980904 (does NOT give back the baseline)
+   10 storey(s) moved banked -> today; 4 still moved with all seven off
+   L1         step 183                         | columns 27 -> 27, walls 41 -> 41  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 36,356 -> 6,511 5,268 4,008 3,999 2,889 2,8
+   L2         step 183                         | columns 62 -> 62, walls 27 -> 27  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 23,045 12,573 12,507 -> 12,507 11,073 4,188
+   L3         step 183                         | columns 26 -> 26, walls 33 -> 33  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 9,870 9,867 -> 9,868 9,200 380 287 2 sq ft
+   P1         step 183                         | columns 114 -> 114, walls 61 -> 61  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 44,421 41,299 3,624 -> 42,749 41,299 3,62
+   L10        UNATTRIBUTED (moved with all seven off too) | columns 50 -> 50, walls 42 -> 41  [lost columns 0, gained columns 0, lost walls 1, gained walls 0]
+   L11        UNATTRIBUTED (moved with all seven off too) | columns 50 -> 50, walls 41 -> 42  [lost columns 0, gained columns 0, lost walls 0, gained walls 1]
+   A-L1       step 183                         | columns 123 -> 123, walls 81 -> 81  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 40,842 -> 38,765 2,078 sq ft
+   C-L3       step 183                         | columns 36 -> 36, walls 17 -> 17  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 11,885 -> 6,030 1,730 1,523 719 460 343 297
+   A-L34      UNATTRIBUTED (moved with all seven off too) | columns 50 -> 50, walls 11 -> 11  [lost columns 0, gained columns 0, lost walls 1, gained walls 1]
+   A-L36      UNATTRIBUTED (moved with all seven off too) | columns 2 -> 2, walls 5 -> 5  [lost columns 0, gained columns 0, lost walls 1, gained walls 1]
+
+=== 31170-01-arch: banked 7c916cef5adf0164, today 8dc548b03afb2550, all seven off 4c2c7df7abfa989e (does NOT give back the baseline)
+   6 storey(s) moved banked -> today; 6 still moved with all seven off
+   L1         UNATTRIBUTED (moved with all seven off too) | columns 51 -> 51, walls 56 -> 56  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 32,076 8,159 -> 32,076 7,831 sq ft
+   L3         UNATTRIBUTED (moved with all seven off too) | columns 51 -> 51, walls 47 -> 47  [lost columns 0, gained columns 0, lost walls 3, gained walls 3]
+   L4         UNATTRIBUTED (moved with all seven off too) | columns 51 -> 51, walls 43 -> 43  [lost columns 0, gained columns 0, lost walls 3, gained walls 3]
+   L5         UNATTRIBUTED (moved with all seven off too) | columns 51 -> 51, walls 42 -> 42  [lost columns 0, gained columns 0, lost walls 3, gained walls 3]
+   L6         UNATTRIBUTED (moved with all seven off too) | columns 45 -> 45, walls 40 -> 40  [lost columns 0, gained columns 0, lost walls 3, gained walls 3]
+   L7         UNATTRIBUTED (moved with all seven off too) | columns 34 -> 34, walls 21 -> 21  [lost columns 0, gained columns 0, lost walls 3, gained walls 3]
+
+=== 31202-01: banked cf8d08671c9ef00f, today 47e8d8f95064b0df, all seven off da2dcc6aee79a57a (does NOT give back the baseline)
+   14 storey(s) moved banked -> today; 14 still moved with all seven off
+   L1         UNATTRIBUTED (moved with all seven off too) | columns 0 -> 0, walls 0 -> 0  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 34,052 -> 34,064 sq ft
+   L2         UNATTRIBUTED (moved with all seven off too) | columns 72 -> 69, walls 41 -> 42  [lost columns 3, gained columns 0, lost walls 1, gained walls 2]
+   L3         UNATTRIBUTED (moved with all seven off too) | columns 72 -> 69, walls 27 -> 27  [lost columns 3, gained columns 0, lost walls 0, gained walls 0]  plates 36,220 -> 36,302 sq ft
+   L4         UNATTRIBUTED (moved with all seven off too) | columns 67 -> 67, walls 42 -> 42  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 36,189 -> 36,317 sq ft
+   L5         UNATTRIBUTED (moved with all seven off too) | columns 67 -> 67, walls 42 -> 43  [lost columns 0, gained columns 0, lost walls 0, gained walls 1]  plates 35,968 -> 29,625 5,418 542 300 83 sq ft
+   L7         UNATTRIBUTED (moved with all seven off too) | columns 55 -> 55, walls 28 -> 28  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 28,585 -> 28,657 sq ft
+   L8         UNATTRIBUTED (moved with all seven off too) | columns 55 -> 55, walls 19 -> 19  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 28,585 -> 28,657 sq ft
+   L9         UNATTRIBUTED (moved with all seven off too) | columns 55 -> 55, walls 19 -> 19  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 28,585 -> 28,657 sq ft
+   L10        UNATTRIBUTED (moved with all seven off too) | columns 55 -> 55, walls 19 -> 19  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 28,585 -> 28,657 sq ft
+   L11        UNATTRIBUTED (moved with all seven off too) | columns 55 -> 55, walls 19 -> 19  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 28,585 -> 28,657 sq ft
+   L12        UNATTRIBUTED (moved with all seven off too) | columns 55 -> 55, walls 19 -> 19  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 28,585 -> 28,657 sq ft
+   L13        UNATTRIBUTED (moved with all seven off too) | columns 55 -> 55, walls 19 -> 19  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 28,287 -> 19,300 2,624 2,560 1,848 1,478 24
+   ROOF       UNATTRIBUTED (moved with all seven off too) | columns 49 -> 51, walls 51 -> 45  [lost columns 0, gained columns 2, lost walls 9, gained walls 3]  plates 8,736 1,308 1,260 856 -> 9,683 sq ft
+   PENTHOUSE  UNATTRIBUTED (moved with all seven off too) | columns 3 -> 3, walls 39 -> 26  [lost columns 0, gained columns 0, lost walls 14, gained walls 1]

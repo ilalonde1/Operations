@@ -1,0 +1,9 @@
+Drift judging: the engineer's model is read without this tool's own objects; the record corrected where it was not
+
+31168's yardstick holds our earlier output, and judge_drift_moves.py read KF84 - our 22,663 sq ft C-LEVEL 3 outline - as the
+engineer's (ModelYardstick.GeneratedObject's rule, K-letter-digits names, now applied here). The drift record's 31168 L1/L2
+"matches hers" are withdrawn (31168 is not judged against hers), and the C-L3 verdict now stands on its drawing, S2.40.1
+(looked at: the level 3 slab runs to the outer outline, 14" printed in the west bays and the south strip).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

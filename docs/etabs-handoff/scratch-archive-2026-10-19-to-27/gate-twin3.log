@@ -1,0 +1,25 @@
+baseline: ledger-sets-2026-09-24-run45-step140.csv (295 rows); judging 2 set(s) she has modelled
+census...
+  census of 2026-10-27 19:29 UTC reused (1196 job folders; --census retakes it)
+rules: KorStandards; work: C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gate-twin3
+1 set(s) to analyze; tool built 2026-10-27 20:57 UTC; run d808d99c-749c-43b0-aa99-135f1e8353bc
+  [1/1] 31130-01 model: 24 storeys, 469 walls, 1311 columns, 19/33 placed; yardstick:18 shared storeys, 260/623 of ours within 100 mm (frame from columns)  321 s
+
+1 sets: 1 built, 0 reused from their last run; 5 min; run d808d99c-749c-43b0-aa99-135f1e8353bc
+  1 of 1 build a model; 0 the analyzer failed on
+  of the 1 with a model: 33 plan views, 19 set on the grid by axis name; 24 storeys, 24 with a plate; 469 walls, 1,311 columns
+  sets with every view placed: 0 of 1; with a plate on every storey: 1 of 1
+  yardsticks: 1 sets have the engineer's model; 1 share a storey with columns; frames from grids 0, from columns 1
+    ours -> theirs: 260 of 623 of our columns within 100 mm of one of theirs (42%); theirs -> ours: 260 of 574 (45%)
+    1 set(s) with 25-49% of our columns within 100 mm: 31130-01
+  59 pages read: 33 plans, 0 failed; plans not placed on a grid: 14
+
+the gate: 1 set(s) the engineer has a model of, judged against the bank
+  job         her plates we read: was -> now (of hers)        thickness agree   her openings we have
+  REISS31130-01          250,285 ->      253,460 ( 91%)     +3,175    14 ->  14 of  17     33 ->   33 of   33
+  totals: her plates we read 250,285 -> 253,460 sq ft of 277,357 (90% -> 91%); thickness 14 -> 14 of 17; her openings we have 33 -> 33 of 33 (the 1 of 1 set(s) judged both times whose frame registers)
+  storeys we plate that her model does not name: 1 of 1 set(s) measured now, 5 storey(s), 160,183 sq ft - the bank predates this figure, so a rise is not judged against it:
+    31130-01: 5 storey(s), 160,183 sq ft
+  1 set(s) READ A DIFFERENT STICK FILE than the bank did, so no rule is answerable for them:
+    31130-01
+  no set lost: the bank may take this.

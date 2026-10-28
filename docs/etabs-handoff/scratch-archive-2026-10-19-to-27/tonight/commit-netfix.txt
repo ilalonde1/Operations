@@ -1,0 +1,28 @@
+WallNetwork moves an end only along its wall: no averaged tilts, no crooked headers, no wall joined to a copy of itself
+
+Board 54 / oversight.Mistake 64-65: the two regressions 0f3e4ee4 brought to the metric sets, fixed against the invariant check
+committed first (36d12618).
+- SnapNearbyEnds: the joint is weighted by length, and an end that would turn its wall more than
+  WallNetworkInvariant.ToleranceDegrees to reach it stays a joint of its own; ends of two near-copies (one wall drawn twice:
+  parallel within 2 deg, under a thickness apart, sharing half) are never fused.
+- FindOpenings: ASSUMED - no header where it would run more than ToleranceDegrees off either jamb (what metric got at 3 mm
+  before 0f3e4ee4); the doorway stays a gap. Halifax P1's skew header is one (its A17 question for Jim).
+- Classifier RunsInto: a near-copy is not something a stub runs into (31087's copies 21 mm apart met within the inch).
+- WallNetworkInvariant: SELF counts any contact (a shared end or within an inch), not only shared ends - the probe showed the
+  check passing 31087 while both copies stayed walls; HEADER holds an end to the jamb's AXIS (pass 1 carries jambs along it -
+  30990 S1.21, 295 mm), not its drawn segment.
+
+Known answers, each run on this build or with the change stashed:
+- network-check, change stashed (0f3e4ee4 + the check): fails, 32 of 57 sets, 142 of 1,309 sheets (TILT 123, HEADER 147,
+  SELF 16), Halifax P1 HEADER 1; with RunsInto alone stashed, 31087 SELF 8 on 4 sheets.
+- network-check, this build: Halifax (ft) 0 of 24 sheets break it; the 57 gate sets 0 of 1,309.
+- TheNetworkMovesEndsOnlyAlongTheirWallsTests (31087's doubled column, 30864's offset short wall, 31076's jambs out of
+  line): 3 of 3 fail with the change stashed, 3 of 3 pass on it.
+- Local wall/DXF classes (Halifax units, WallNetworkTests, DxfToEtabsTests, ColumnsSayWhatMadeThem, the new tests, constant
+  triage): 22 of 22.
+
+NOT RUN, in ee's server window: the fast suite (14 test files open the rules DB), ModelCoverageTests, the before/after gate
+pair and the full suite. Not settled until they are.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

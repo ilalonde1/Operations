@@ -1,0 +1,14 @@
+stickfile : 31065-01 - 2026-07-08 - 5380-Heather Street - Stickfile (up to SSI-04)-OAP.pdf
+job       : 31065-01
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31065-154+152-153-off
+rules     : KorStandards
+
+
+pages read: 73   plan sheets: 40   views written: 51
+storeys   : 24   with a floor: 22
+members   : 798 walls   1203 columns   55 floors
+
+  model   : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31065-154+152-153-off\out.e2k
+  report  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31065-154+152-153-off\report.txt
+  levels  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31065-154+152-153-off\levels.csv
+  sheets  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31065-154+152-153-off\sheets.csv

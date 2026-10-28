@@ -1,0 +1,143 @@
+== off none: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [38 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [1 m]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [13 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 149: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [38 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [43 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [10 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 150: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [34 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [45 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [9 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 151: Failed:     2, Passed:     4
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [35 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 228.
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [11 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 152: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [30 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [42 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [7 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 153: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [27 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [39 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [7 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 154: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [25 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 405.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [31 s]
+   31138 2170 W 1st: 174 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [6 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 155: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [21 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 326.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [27 s]
+   31138 2170 W 1st: 34 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (884,-745) from LEVEL P4; wall at (884,-
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [6 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 156: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [20 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [25 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [5 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 157: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [16 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 447.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [22 s]
+   31138 2170 W 1st: 184 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [4 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 158: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [17 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [22 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [4 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 159: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [17 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [20 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [4 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 160: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [15 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [24 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [4 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 161: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [18 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [22 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [4 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 162: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [18 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [23 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [4 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 163: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [18 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [24 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [4 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 164: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [17 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [22 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [4 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 165: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [18 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [23 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [4 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 166: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [18 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [24 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [4 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81
+== off 167: Failed:     2, Passed:     4
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [17 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [23 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+== off 168: Failed:     3, Passed:     3
+TheModelStillCarriesTheSameStructure(name: "31138 2170 W 1st") [17 s]
+   31138 2170 W 1st walls: expected about 204 (±21), got 458.
+EveryDrawnMemberIsModelledOrAlreadyThere(name: "31138 2170 W 1st") [23 s]
+   31138 2170 W 1st: 215 drawn member(s) were read and then neither modelled nor found in the existing model, against 0 recorded. This number may only come down. First few: wall at (837,-446) from Str-Structural Plan - D
+OpeningsAndHeadersAreAttachedToWhatTheyBelongTo(name: "31168 YMCA Langara") [4 s]
+   31168 YMCA Langara: 29 opening(s) cut where the storey has no plate: KO1, KO78, KO79, KO80, KO81

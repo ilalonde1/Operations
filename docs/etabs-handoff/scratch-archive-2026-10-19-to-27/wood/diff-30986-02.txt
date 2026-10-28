@@ -1,0 +1,30 @@
+L6: columns 9 -> 9, walls 144 -> 144  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 5,710 5,650 585 495 -> - sq ft
+L5: columns 2 -> 2, walls 125 -> 125  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 12,662 963 -> - sq ft
+L4: columns 2 -> 2, walls 122 -> 134  [lost columns 0, gained columns 0, lost walls 0, gained walls 12]  plates 5,710 5,650 498 484 -> - sq ft
+   GAINED wall    at (24,158, 48,163) 4 long
+   GAINED wall    at (24,158, 49,103) 1,877 long
+   GAINED wall    at (24,158, 50,043) 4 long
+   GAINED wall    at (24,158, 50,654) 1,217 long
+   GAINED wall    at (27,423, 52,860) 4,336 long
+   GAINED wall    at (33,154, 51,890) 1,390 long
+   GAINED wall    at (34,983, 52,872) 5,944 long
+   GAINED wall    at (39,319, 51,890) 1,725 long
+   GAINED wall    at (40,987, 44,155) 2,826 long
+   GAINED wall    at (41,499, 47,498) 1,520 long
+   GAINED wall    at (42,333, 51,890) 1,863 long
+   GAINED wall    at (54,351, 46,660) 1,535 long
+where the members went (12 place(s) whose storeys changed):
+  wall lengthened: 12
+     at (24,158, 48,163) 4 long: L6 L5 -> L6 L5 L4
+     at (24,158, 49,103) 1,877 long: L6 L5 -> L6 L5 L4
+     at (24,158, 50,043) 4 long: L6 L5 -> L6 L5 L4
+     at (24,158, 50,654) 1,217 long: L6 L5 -> L6 L5 L4
+     at (27,423, 52,860) 4,336 long: L5 -> L5 L4
+     at (33,154, 51,890) 1,390 long: L6 L5 -> L6 L5 L4
+     at (34,983, 52,872) 5,944 long: L6 L5 -> L6 L5 L4
+     at (39,319, 51,890) 1,725 long: L5 -> L5 L4
+     at (40,987, 44,155) 2,826 long: L6 L5 -> L6 L5 L4
+     at (41,499, 47,498) 1,520 long: L6 L5 -> L6 L5 L4
+     at (42,333, 51,890) 1,863 long: L5 -> L5 L4
+     at (54,351, 46,660) 1,535 long: L5 -> L5 L4
+plates moved 3, columns lost 0 / gained 0, walls lost 0 / gained 12

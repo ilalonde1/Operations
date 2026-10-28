@@ -1,0 +1,139 @@
+
+ETABS model takeoff - 2308 members priced (concrete in cubic metres, formwork in square metres).
+Concrete: 13,222.7 m3   Reinforcing: 1,688,066 kg   Formwork: 59,231 mý
+  1,036 mý of openings deducted from the slabs they are cut in.
+
+Per storey - concrete is the model's own geometry; reinforcing is the calibrated density estimate:
+  ELV
+     Slab     -         35 MPa        10.9 m3      1,103 kg        105 mý
+     Wall     -         35 MPa        10.2 m3      1,720 kg        102 mý
+  L1
+     Slab     -         35 MPa     4,255.3 m3    429,181 kg      8,937 mý
+     Wall     -         35 MPa       609.6 m3    103,071 kg      4,441 mý
+     Wall     -         55 MPa       224.7 m3     37,988 kg        964 mý
+     Column   -         50 MPa       129.3 m3     53,715 kg        856 mý
+  L10
+     Slab     -         35 MPa       182.9 m3     18,447 kg      1,025 mý
+     Wall     -         45 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         45 MPa        13.3 m3      5,524 kg        111 mý
+     Column   -         35 MPa         1.4 m3        563 kg         12 mý
+  L11
+     Slab     -         35 MPa       182.7 m3     18,429 kg      1,024 mý
+     Wall     -         35 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         35 MPa        14.1 m3      5,856 kg        119 mý
+     Column   -         45 MPa         0.6 m3        232 kg          4 mý
+  L12
+     Slab     -         35 MPa       182.9 m3     18,447 kg      1,025 mý
+     Wall     -         35 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         35 MPa        14.1 m3      5,856 kg        119 mý
+     Column   -         45 MPa         0.6 m3        232 kg          4 mý
+  L13
+     Slab     -         35 MPa       182.7 m3     18,429 kg      1,024 mý
+     Wall     -         35 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         35 MPa        14.1 m3      5,856 kg        119 mý
+     Column   -         45 MPa         0.6 m3        232 kg          4 mý
+  L14
+     Slab     -         35 MPa       182.9 m3     18,447 kg      1,025 mý
+     Wall     -         35 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         35 MPa        14.1 m3      5,856 kg        119 mý
+     Column   -         45 MPa         0.6 m3        232 kg          4 mý
+  L15
+     Slab     -         35 MPa       182.7 m3     18,429 kg      1,024 mý
+     Wall     -         35 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         35 MPa        14.1 m3      5,856 kg        119 mý
+     Column   -         45 MPa         0.6 m3        232 kg          4 mý
+  L16
+     Slab     -         35 MPa       182.9 m3     18,447 kg      1,025 mý
+     Wall     -         35 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         35 MPa        14.1 m3      5,856 kg        119 mý
+     Column   -         45 MPa         0.6 m3        232 kg          4 mý
+  L17
+     Slab     -         35 MPa       182.7 m3     18,429 kg      1,024 mý
+     Wall     -         35 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         35 MPa        14.1 m3      5,856 kg        119 mý
+     Column   -         45 MPa         0.6 m3        232 kg          4 mý
+  L18
+     Slab     -         35 MPa       182.9 m3     18,447 kg      1,025 mý
+     Wall     -         35 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         35 MPa        14.1 m3      5,856 kg        119 mý
+     Column   -         45 MPa         0.6 m3        232 kg          4 mý
+  L19
+     Slab     -         35 MPa       311.2 m3     31,386 kg      1,450 mý
+     Wall     -         35 MPa        56.7 m3      9,593 kg        248 mý
+     Column   -         35 MPa        14.9 m3      6,172 kg        125 mý
+     Column   -         45 MPa         0.6 m3        244 kg          5 mý
+  L2
+     Slab     -         35 MPa       242.2 m3     24,424 kg      1,368 mý
+     Wall     -         55 MPa        69.2 m3     11,707 kg        302 mý
+     Column   -         50 MPa        26.8 m3     11,119 kg        241 mý
+     Column   -         45 MPa         2.9 m3      1,193 kg         23 mý
+  L3
+     Slab     -         35 MPa       241.9 m3     24,397 kg      1,365 mý
+     Wall     -         55 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         50 MPa        22.1 m3      9,176 kg        200 mý
+     Column   -         45 MPa         0.6 m3        232 kg          4 mý
+  L4
+     Slab     -         35 MPa       243.3 m3     24,536 kg      1,368 mý
+     Wall     -         55 MPa        56.7 m3      9,593 kg        248 mý
+     Column   -         50 MPa        23.3 m3      9,665 kg        210 mý
+     Column   -         45 MPa         0.6 m3        244 kg          5 mý
+  L5
+     Slab     -         35 MPa       257.6 m3     25,985 kg      1,366 mý
+     Wall     -         55 MPa        56.7 m3      9,593 kg        248 mý
+     Column   -         50 MPa        19.9 m3      8,252 kg        174 mý
+     Column   -         45 MPa         0.6 m3        244 kg          5 mý
+  L6
+     Slab     -         35 MPa       182.8 m3     18,434 kg      1,024 mý
+     Wall     -         45 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         45 MPa        13.3 m3      5,524 kg        111 mý
+     Column   -         35 MPa         1.4 m3        563 kg         12 mý
+  L7
+     Slab     -         35 MPa       182.7 m3     18,429 kg      1,024 mý
+     Wall     -         45 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         45 MPa        13.3 m3      5,524 kg        111 mý
+     Column   -         35 MPa         1.4 m3        563 kg         12 mý
+  L8
+     Slab     -         35 MPa       182.9 m3     18,447 kg      1,025 mý
+     Wall     -         45 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         45 MPa        13.3 m3      5,524 kg        111 mý
+     Column   -         35 MPa         1.4 m3        563 kg         12 mý
+  L9
+     Slab     -         35 MPa       182.7 m3     18,429 kg      1,024 mý
+     Wall     -         45 MPa        53.8 m3      9,102 kg        235 mý
+     Column   -         45 MPa        13.3 m3      5,524 kg        111 mý
+     Column   -         35 MPa         1.4 m3        563 kg         12 mý
+  P1
+     Slab     parking   35 MPa     1,085.6 m3    109,489 kg      5,425 mý
+     Wall     -         35 MPa       238.3 m3     40,298 kg      1,913 mý
+     Wall     -         55 MPa       112.3 m3     18,989 kg        480 mý
+     Column   -         50 MPa        63.6 m3     26,409 kg        421 mý
+  P2
+     Slab     parking   35 MPa       995.6 m3    100,413 kg      5,010 mý
+     Wall     -         35 MPa       238.3 m3     40,298 kg      1,913 mý
+     Wall     -         55 MPa       112.3 m3     18,989 kg        480 mý
+     Column   -         50 MPa        63.6 m3     26,409 kg        421 mý
+  Roof
+     Slab     roof      35 MPa        56.2 m3      6,667 kg        335 mý
+     Wall     -         35 MPa        43.8 m3      7,398 kg        217 mý
+     Column   -         35 MPa         4.6 m3      1,914 kg         46 mý
+
+WHAT THESE NUMBERS REST ON - every inference, named:
+   [HEIGHT_FROM_STOREY] walls and columns are priced over the full rise from their own storey to the next floor above it. A member the drawings stop short of that floor is over-measured by the difference.
+   [WALL_VARIANT_UNSPLIT] shear and non-shear walls are not distinguished, so every wall takes the default reinforcing ratio. The generator gives every wall a pier label, so a pier cannot be used as evidence of a shear wall. Split by hand where it matters.
+   [SLAB_VARIANT_DEFAULTED] no roof or parkade word matched these storeys, so their slabs take the default reinforcing ratio rather than an occupancy one: ELV, L1, L10, L11, L12, L13, L14, L15, L16, L17, L18, L19, L2, L3, L4, L5, L6, L7, L8, L9.
+
+NOT PRICED - 12 item(s), listed so nothing is silently dropped:
+   beam x7
+      L1               B2       line type "BEAM" is not a column; beams and braces are not priced by this reader.
+      L1               B1       line type "BEAM" is not a column; beams and braces are not priced by this reader.
+      L1               B3       line type "BEAM" is not a column; beams and braces are not priced by this reader.
+      . and 4 more.
+   area x4
+      L5               A19      section "None" is not declared in $ SLAB PROPERTIES or $ WALL PROPERTIES.
+      L5               A20      section "None" is not declared in $ SLAB PROPERTIES or $ WALL PROPERTIES.
+      L1               A42      section "None" is not declared in $ SLAB PROPERTIES or $ WALL PROPERTIES.
+      . and 1 more.
+   foundation x1
+      P2               -        footings, pile caps, piles and grade beams are below the lowest modelled storey and are not in an ETABS superstructure model. Quantify them by hand.
+
+  ->  C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/takeoff/31065-hers.xlsx

@@ -1,0 +1,47 @@
+Test run for C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\bin\Debug\net8.0-windows10.0.19041.0\Kor.Operations.EngineeringTools.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:01.13]     Kor.Operations.EngineeringTools.Tests.PdfToSafe.TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.BothRoutesWriteTheSameMarkupDxf(layerByColour: True) [FAIL]
+[xUnit.net 00:00:01.14]     Kor.Operations.EngineeringTools.Tests.PdfToSafe.TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.BothRoutesWriteTheSameMarkupDxf(layerByColour: False) [FAIL]
+  Failed Kor.Operations.EngineeringTools.Tests.PdfToSafe.TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.BothRoutesWriteTheSameMarkupDxf(layerByColour: True) [441 ms]
+  Error Message:
+   Assert.NotEmpty() Failure: Collection was empty
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Tests.PdfToSafe.TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.BothRoutesWriteTheSameMarkupDxf(Boolean layerByColour) in C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\PdfToSafe\TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.cs:line 50
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+  Standard Output Messages:
+ layerByColour=True: App POLYLINE=25, TEXT=0; CLI POLYLINE=25, TEXT=0
+
+
+  Failed Kor.Operations.EngineeringTools.Tests.PdfToSafe.TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.BothRoutesWriteTheSameMarkupDxf(layerByColour: False) [47 ms]
+  Error Message:
+   Assert.NotEmpty() Failure: Collection was empty
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Tests.PdfToSafe.TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.BothRoutesWriteTheSameMarkupDxf(Boolean layerByColour) in C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\PdfToSafe\TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.cs:line 50
+   at InvokeStub_TheMarkupDxfIsTheSameFromTheAppAndTheCliTests.BothRoutesWriteTheSameMarkupDxf(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Standard Output Messages:
+ layerByColour=False: App POLYLINE=25, TEXT=0; CLI POLYLINE=25, TEXT=0
+
+
+The active test run was aborted. Reason: Test host process crashed
+Data collector 'Blame' message: The specified inactivity time of 2 minutes has elapsed. Collecting hang dumps from testhost and its child processes.
+Data collector 'Blame' message: Dumping 27352 - testhost.
+Results File: C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\verifyA3b\app-pdftosafe.trx
+
+Failed!  - Failed:     2, Passed:   426, Skipped:     0, Total:   428, Duration: 8 s - Kor.Operations.EngineeringTools.Tests.dll (net8.0)
+
+Test Run Aborted.
+The active Test Run was aborted because the host process exited unexpectedly. Please inspect the call stack above, if available, to get more information about where the exception originated from.
+The test running when the crash occurred: 
+Kor.Operations.EngineeringTools.Tests.PdfToSafe.WhereTheMarkupLandedMeasurement.NoMarkupLandsOutsideTheDrawing
+Kor.Operations.EngineeringTools.Tests.PdfToSafe.PageContentVsAnnotationsMeasurement.WhatThePageHoldsThatTheAnnotationsOnlyFilterThrowsAway
+
+This test may, or may not be the source of the crash.
+
+Attachments:
+  C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\TestResults\0ac05c24-5ef5-4205-983d-d002c25c1461\testhost_27352_20261019T152930_hangdump.dmp
+  C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\TestResults\0ac05c24-5ef5-4205-983d-d002c25c1461\Sequence_40c622cd92c54c069a9bea75cc5f05f7.xml

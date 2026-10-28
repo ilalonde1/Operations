@@ -1,0 +1,12 @@
+A suite report is diffed against a known-failures file, never counted from memory: NEW / KNOWN / FIXED
+
+Kor.Operations.EngineeringTools.Core.Tests/known-failures.txt: the 4 Core failures on record (NBC 9.8.x 30-day, Ian's; 31138 live
+baseline; SixSetsBuildAsBanked; ShiftedOnThePage), each with why and since. tools/SuiteDiff/suite_diff.py <log> prints NEW / KNOWN /
+FIXED against it and the run's own total, exit 1 on anything NEW. Mitigation of oversight.Mistake 36 (2026-10-27: a midpoint report
+told operations-ee '3 known' for 4).
+
+Proved on real logs: this morning's suite at cc4434ab -> NEW 1 (CompiledDefaults..., fixed by 7c6bba98), KNOWN 4 of 4, exit 1;
+last night's at 62bbbadb -> NEW 0, KNOWN 4, exit 0.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

@@ -1,0 +1,7 @@
+repo C:\VIsual Studio Projects\Operations-baseline  commit 26567639  dirty 0  started 2026-10-19T12:44:08
+build-core exit 0  10s
+build-app exit 0  25s
+test-core-fast exit 0  21s
+test-app-pdftosafe exit -1  110s
+test-core-full exit -1  10s
+finished 2026-10-19T12:47:05

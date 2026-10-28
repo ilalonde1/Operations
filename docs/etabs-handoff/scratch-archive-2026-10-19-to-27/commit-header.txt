@@ -1,0 +1,14 @@
+A doorway header between walls of two thicknesses takes the thinner - and the report says so, ASSUMED
+
+The drawing does not say how thick a header over a doorway is; WallNetwork gives it the thinner of the two walls it
+stands between. On Halifax that is one core doorway on 22 storeys, between a 20" and a 24" wall. Ian 2026-10-24: "20"
+I guess?? Like any other ambiguity - note it". WallOpening now carries the thicker wall (ThickerWall), and the composer
+writes one ASSUMED line naming every such header, its storey and both thicknesses, with TO CHECK for the engineer.
+
+The model does not change: Halifax's ETABS stage, run on its own command from a local copy of its DXFs, gives a
+byte-identical e2k with and without this; the report gains the one line (22 headers, as the Virtual Drafter's own
+e2k_headers check counts). New test AHeaderBetweenWallsOfTwoThicknessesTakesTheThinnerAndIsNotedAsAssumed. Core fast
+1,652 of 1,652.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

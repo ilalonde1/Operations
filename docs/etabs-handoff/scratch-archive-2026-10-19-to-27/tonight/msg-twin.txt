@@ -1,0 +1,26 @@
+The WRONG TWIN columns traced to their sheets: all 7 are drawn transitions the build reproduces, not a twin chosen wrongly
+
+tools/CorpusGateBisect/twin_trace.py carries every placed view's KOR_V_COL outlines through sheets.csv's placement (d92e50b1) and
+lists, for each WRONG TWIN that column_stack_near_miss.py finds, the sheets that draw a column within 700 mm and where.
+tools/CorpusGateBisect/twin_look.py renders the named views' linework through the same placement around one point, to LOOK.
+
+Run on corpus-gate run 5c60023a (2026-10-27 14:31-14:53, --jobs 31065-01,31170-01, aa73cd4a code), near-miss with the
+engineer's model and the gate's column registration (31065 -31880,-37741; 31170 61667,-25536): the same 7 as 10-26,
+31065 L2 x3 and 31170 L7 x4.
+
+  31170, 4 of 4: drawn at the twin's own place (0 mm) by S2.07.1 LEVEL 6 PLAN only; L1-L5's sheets draw it 203-322 mm away,
+  where the stack and the engineer's model have it. Rendered: three are the SAME 300 x 760 column turned 90 degrees about a
+  shared corner (centre moves (760-300)/2 on both axes: +229,+215 / +230,-53 / -227,-228); the fourth is the same size and way
+  round, about 210 mm east. No size step at any of them.
+  31065, 3 of 3: drawn by S2.04.1.1 LEVEL 1 PLAN; the L2-L18 sheets draw the stack. Rendered: two are size changes, the
+  L1 box differing from L2's in both sides (390 x 750 under 500 x 920; a 500 square under 920 x 300), no face shared; the third
+  is the centre of a 400 x 875 box the L1 sheet draws on a layer other than KOR_V_COL.
+
+So the build keeps what the lowest sheet of each run draws, and the engineer's model keeps the column straight. Which is right
+is the engineer's: no code changes here. The near-miss tool's WRONG TWIN label reads these as a choice between twins; they are
+not two readings of one drawing.
+
+COVERS / DOES NOT / same-class fault missed: in each script's header.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

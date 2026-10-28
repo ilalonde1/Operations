@@ -1,0 +1,22 @@
+stickfile : 31117-01 2026-03-19 2726-2730 W16th Ave Stickfile - SSI#5.pdf
+job       : 31117-01
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\s150\on
+rules     : KorStandards
+
+scale     : not given; 96 assumed (1/8" = 1'-0"). Pass --scale if the set draws at another.
+
+pages read: 27   plan sheets: 9   views written: 12
+storeys   : 7   with a floor: 5
+members   : 256 walls   41 columns   5 floors
+
+  model   : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s150/on\out.e2k
+  report  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s150/on\report.txt
+  levels  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s150/on\levels.csv
+  sheets  : C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/s150/on\sheets.csv
+
+READ THESE FIRST:
+  - S2.02_1_2.dxf: NOT PLACED - nothing in this sheet's title says which level it draws, so its structure reached no storey. The reader looks for a level number, a range ("LEVEL 9-19"), a parkade level, the roof, or a storey named by a word. TO FIX: tell us the level for this drawing in the workbook - t ...
+  - S2.02_2_1.dxf: NOT PLACED - nothing in this sheet's title says which level it draws, so its structure reached no storey. The reader looks for a level number, a range ("LEVEL 9-19"), a parkade level, the roof, or a storey named by a word. TO FIX: tell us the level for this drawing in the workbook - t ...
+  - S2.03_1_2.dxf: NOT PLACED - nothing in this sheet's title says which level it draws, so its structure reached no storey. The reader looks for a level number, a range ("LEVEL 9-19"), a parkade level, the roof, or a storey named by a word. TO FIX: tell us the level for this drawing in the workbook - t ...
+  - S2.03_2_1.dxf: NOT PLACED - nothing in this sheet's title says which level it draws, so its structure reached no storey. The reader looks for a level number, a range ("LEVEL 9-19"), a parkade level, the roof, or a storey named by a word. TO FIX: tell us the level for this drawing in the workbook - t ...
+  - S2.09_1_1.dxf: NOT PLACED - nothing in this sheet's title says which level it draws, so its structure reached no storey. The reader looks for a level number, a range ("LEVEL 9-19"), a parkade level, the roof, or a storey named by a word. TO FIX: tell us the level for this drawing in the workbook - t ...

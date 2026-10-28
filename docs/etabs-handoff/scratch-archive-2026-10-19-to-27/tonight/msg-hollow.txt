@@ -1,0 +1,19 @@
+A column drawn only as its outline: measured, too rare to fix - 18 hollow squares on 2 of 57 gate sets (tool on record)
+
+40112-01 S2.03's SC1 HSS columns are hollow squares (no fill, no hatch) and the reader takes columns from filled or hatched
+shapes, so they are not read. Before any fix, the class was measured over every placed plan page of the 57-set corpus gate
+(689 pages): unfilled closed column-size SQUARES (150-1,200 mm a side) 18, on 2 of 57 sets (30990: 17, 31168: 1); CIRCLES 39,124 -
+grid bubbles and section marks at 1/8", which a round outline column cannot be told from by shape. 40112's own SC1 is not
+counted: it is drawn as separate strokes, not one closed path. Operations-ee (Ian's proxy): no fix; the measure stays on record.
+
+tools/CorpusGateBisect/hollow_column_outlines.py finds the candidates and tries to judge each against the engineer's columns.
+Its REGISTRATION IS NOT TRUSTWORTHY and its header says so first: two page->sheet votes were tried and both fail (filled shapes
+are too few on a steel page; stroke endpoints pick wrong quarter turns - 31130 pages at q1/q3 where q0 is right), and the build
+does not record where it placed each sheet. Read its candidate counts, not its "on hers / on nothing" verdicts, until sheets.csv
+carries each page's page->model transform (the next item).
+
+Separately, for Ian (scope, not a defect): the reader reads steel beams (40112 S2.03: 3,085 polylines on BEAM) but no model writes
+a beam - 0 of 56 gate models carry a BEAM line.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

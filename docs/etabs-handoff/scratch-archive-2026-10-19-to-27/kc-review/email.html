@@ -1,0 +1,14 @@
+<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1C2530">
+<p>Hi Griffin,</p>
+<p>I've been through KorConcrete properly: the installer, the launcher, the engine and the interface, including running it on a test PC and trying to break it. The full review is attached.</p>
+<p>Short version: it's well built. The update signing, the engine's token and host checks, and the installer all held up. Two things to sort before the team uses it:</p>
+<ol>
+<li><b>The install folder on FS01.</b> All staff can currently write to it, and the installer is what carries your signing key. We'll lock it down to you and IT, and the installer should be signed.</li>
+<li><b>Terminal servers.</b> To answer your question: yes, we have one (KOR-RDS01). Hold off installing it there for now. The review explains why, and the fix.</li>
+</ol>
+<p>I also wanted you to see where it sits alongside what I've been building. Omar marked up the architect's PDF for 143 E 3rd Hotel, and my tools turned that PDF, on its own, into an ETABS model: 41 storeys, with every wall labelled as a pier. I fed that model straight into your engine, and it read every storey with walls and our pier labels, so the two connect. There are two unit issues on your side (lengths read as feet, and f'c from an LB/MM model), covered in the last section of the review.</p>
+<p>Omar's markup, the model, the storey picture and the build report are attached so you can try it yourself. Omar is still reviewing the model, so treat it as a working example rather than a checked one.</p>
+<p>There's one question in there I'd really like your answer on: does KorConcrete already handle the engineer's side of the load prep, meaning secondary loads, live load reduction and Rd/Ro? That's the piece that would join the two ends.</p>
+<p>Could we grab half an hour this week? I'd like to talk about where this goes next.</p>
+<p>Thanks,<br>Ian</p>
+</div>

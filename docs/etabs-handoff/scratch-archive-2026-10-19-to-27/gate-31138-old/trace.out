@@ -1,0 +1,39 @@
+31138-01: 3 OFF HER STACK column(s); 27 placed view(s), 20 unplaced
+
+L2 (76974 44066)
+  model L3      : nothing within 700 mm
+  model L1      : (76921 43572) 497 mm
+  view S2.01_1_FOUNDATIONS CONCRETE OUTLINE.dxf                     [P5] draws (76921 43572) 497 mm from the twin
+  view S2.03_1_LEVEL P5 PLAN CONCRETE OUTLINE.dxf                   [P5] draws (76921 43572) 497 mm from the twin
+  view S2.04_1_LEVEL P4 PLAN CONCRETE OUTLINE.dxf                   [P4] draws (76921 43572) 497 mm from the twin
+  view S2.06_1_LEVEL P3 PLAN CONCRETE OUTLINE.dxf                   [P3] draws (76921 43572) 497 mm from the twin
+  view S2.08_1_LEVEL P2 PLAN CONCRETE OUTLINE.dxf                   [P2] draws (76921 43572) 497 mm from the twin
+  view S2.10_1_LEVEL P1 PLAN CONCRETE OUTLINE.dxf                   [P1] draws (76921 43572) 497 mm from the twin
+  view S2.12_2_LEVEL 1 AT 55'-0 PLAN CONCRETE OUTLINE.dxf           [L1] draws (76974 44066) 0 mm from the twin
+  view S2.14_1_LEVEL 1 AT 64'-1 PLAN CONCRETE OUTLINE.dxf           [L1] draws (76950 44562) 496 mm from the twin
+
+L2 (61125 35164)
+  model L3      : nothing within 700 mm
+  model L1      : (61125 34530) 634 mm
+  view S2.01_1_FOUNDATIONS CONCRETE OUTLINE.dxf                     [P5] draws (61125 34530) 634 mm from the twin
+  view S2.03_1_LEVEL P5 PLAN CONCRETE OUTLINE.dxf                   [P5] draws (61125 34530) 634 mm from the twin
+  view S2.04_1_LEVEL P4 PLAN CONCRETE OUTLINE.dxf                   [P4] draws (61125 34530) 634 mm from the twin
+  view S2.06_1_LEVEL P3 PLAN CONCRETE OUTLINE.dxf                   [P3] draws (61125 34530) 634 mm from the twin
+  view S2.08_1_LEVEL P2 PLAN CONCRETE OUTLINE.dxf                   [P2] draws (61125 34530) 634 mm from the twin
+  view S2.10_1_LEVEL P1 PLAN CONCRETE OUTLINE.dxf                   [P1] draws (61125 34530) 634 mm from the twin
+  view S2.12_2_LEVEL 1 AT 55'-0 PLAN CONCRETE OUTLINE.dxf           [L1] draws (61125 35164) 0 mm from the twin
+  view S2.14_1_LEVEL 1 AT 64'-1 PLAN CONCRETE OUTLINE.dxf           [L1] draws (61125 34682) 482 mm from the twin
+
+L2 (41898 47394)
+  model L3      : nothing within 700 mm
+  model L1      : (41896 47104) 290 mm
+  view S2.01_1_FOUNDATIONS CONCRETE OUTLINE.dxf                     [P5] draws (41896 47104) 290 mm from the twin
+  view S2.03_1_LEVEL P5 PLAN CONCRETE OUTLINE.dxf                   [P5] draws (41896 47104) 290 mm from the twin
+  view S2.04_1_LEVEL P4 PLAN CONCRETE OUTLINE.dxf                   [P4] draws (41896 47104) 290 mm from the twin
+  view S2.06_1_LEVEL P3 PLAN CONCRETE OUTLINE.dxf                   [P3] draws (41896 47104) 290 mm from the twin
+  view S2.08_1_LEVEL P2 PLAN CONCRETE OUTLINE.dxf                   [P2] draws (41896 47104) 290 mm from the twin
+  view S2.10_1_LEVEL P1 PLAN CONCRETE OUTLINE.dxf                   [P1] draws (41896 47104) 290 mm from the twin
+  view S2.12_2_LEVEL 1 AT 55'-0 PLAN CONCRETE OUTLINE.dxf           [L1] draws (41898 47394) 0 mm from the twin
+  view S2.14_1_LEVEL 1 AT 64'-1 PLAN CONCRETE OUTLINE.dxf           [L1] draws (41898 47648) 254 mm from the twin
+
+unplaced: S2.02_1_FOUNDATIONS REINFORCING.dxf; S2.05_1_LEVEL P4 REINFORCING SLAB.dxf; S2.07_1_LEVEL P3 REINFORCING SLAB.dxf; S2.09_1_LEVEL P2 REINFORCING SLAB.dxf; S2.11_1_LEVEL P1 REINFORCING SLAB.dxf; S2.12_1_LEVEL 1 MEZZ. AT 55'-0 PART PLAN CONCRETE OUTLINE.dxf; S2.13_1_LEVEL 1 AT 55'-0 & LEVEL 1 MEZZ. AT 55'-0 REINFORCING SLAB.dxf; S2.14_2_LEVEL 1 MEZZ. AT 64'-1 PART PLAN CONCRETE OUTLINE.dxf; S2.15_1_LEVEL 1 AT 64'-1 & LEVEL 1 MEZZ. AT 64'-1 REINFORCING SLAB.dxf; S2.17_1_LEVEL 2 REINFORCING SLAB.dxf; S2.19_1_LEVEL 3 REINFORCING SLAB.dxf; S2.21_1_LEVEL 4 REINFORCING SLAB.dxf; S2.23_1_LEVEL 5 REINFORCING SLAB.dxf; S2.25_1_LEVEL 6 REINFORCING SLAB.dxf; S2.27_1_LEVEL 7 & 8, 9 REINFORCING SLABS.dxf; S2.29_1_LEVEL 10 & 11, 12 REINFORCING SLABS.dxf; S2.31_1_LEVEL 13 & 14 REINFORCING SLABS.dxf; S2.33_1_LEVEL 15 & 16 REINFORCING SLABS.dxf; S2.37_1_LEVEL 20 & LEVEL 21 AMENITY REINFORCING SLABS.dxf; S2.39_1_LEVEL 22 MECH. & ROOF REINFORCING SLABS.dxf

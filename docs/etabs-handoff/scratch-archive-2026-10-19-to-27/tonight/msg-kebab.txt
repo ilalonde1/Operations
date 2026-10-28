@@ -1,0 +1,20 @@
+Step 185's two options carry their rule keys: LegendFrameMinSqft, and the defaults guard reads NotAFloor as not-a-floor
+
+The full suite at cc4434ab failed CompiledDefaultsAreTheBankedRowsTests.EveryNumericOptionIsARuleOrDeclaredNotOne on step 185's
+two options: the guard derives each option's key by kebab-casing its name, and "LegendFrameMinSqFt" gave dxf.legend-frame-min-
+sq-ft (the row, migration 124, is dxf.legend-frame-min-sqft), "LegendFrameIsNotAFloor" gave dxf.legend-frame-is-not-afloor
+(the row, 123/126, is ...-is-not-a-floor). The rows and the code's own keys were right; the names did not reach them. It is not
+a fast test, so the fast runs did not catch it.
+
+- The option is renamed LegendFrameMinSqft (5 lines; no row, no key, no value changes).
+- The guard's Kebab also splits a capital that starts a word after another capital ("NotAFloor" -> "not-a-floor").
+  Measured before the change (scratchpad kebab_dump.py, every numeric option of PlanClassificationOptions and ComposeOptions
+  read from source, derived key under the old and the new rule, diffed): 1 of 70 derived keys changes -
+  LegendFrameIsNotAFloor -> dxf.legend-frame-is-not-a-floor. No other.
+
+Gates: CompiledDefaultsAreTheBankedRowsTests 4/4; Core fast 1,696/1,696. The full suite at cc4434ab (05:15-08:43 PDT, 3 h 28 m):
+1,818 passed, 5 failed, 1 skipped of 1,824 - this one, fixed here, and the 4 on record before tonight (NBC 9.8.x 30-day, Ian's;
+31138 live baseline walls 228 vs 204+-21; SixSetsBuildAsBanked byte test; TheSameDrawingsShiftedOnThePage, 31138-01).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

@@ -1,0 +1,379 @@
+baseline: ledger-sets-2026-09-24-run45-step140.csv (295 rows); judging 4 set(s) she has modelled
+census...
+  census of 2026-10-22 04:32 UTC reused (1196 job folders; --census retakes it)
+rules: KorStandards; work: C:\Users\ilalonde\AppData\Local\Temp/kor-drawings/c170on
+4 set(s) to analyze; tool built 2026-10-22 06:07 UTC; run 2431fe0a-772a-492f-9620-4ac930fb1872
+  [1/4] 31032-01 model: 8 storeys, 515 walls, 93 columns, 15/15 placed; yardstick:3 shared storeys, 44/64 of ours within 100 mm (frame from columns)  100 s
+  [2/4] 60061-03 model: 13 storeys, 187 walls, 378 columns, 7/10 placed; yardstick:11 shared storeys, 123/346 of ours within 100 mm (frame from columns)  110 s
+  [3/4] 31009-01 model: 10 storeys, 349 walls, 464 columns, 17/31 placed; yardstick:8 shared storeys, 132/379 of ours within 100 mm (frame from columns)  725 s
+  [4/4] 31101-01 model: 8 storeys, 901 walls, 221 columns, 8/12 placed; yardstick:1 shared storeys, 25/33 of ours within 100 mm (frame from columns)  1272 s
+
+4 sets: 4 built, 0 reused from their last run; 21 min; run 2431fe0a-772a-492f-9620-4ac930fb1872
+  4 of 4 build a model; 0 the analyzer failed on
+  of the 4 with a model: 68 plan views, 47 set on the grid by axis name; 39 storeys, 37 with a plate; 1,952 walls, 1,156 columns
+  sets with every view placed: 1 of 4; with a plate on every storey: 3 of 4
+  yardsticks: 4 sets have the engineer's model; 4 share a storey with columns; frames from grids 0, from columns 4
+    ours -> theirs: 324 of 822 of our columns within 100 mm of one of theirs (39%); theirs -> ours: 324 of 836 (39%)
+    1 set(s) with 75-99% of our columns within 100 mm: 31101-01
+    1 set(s) with 50-74% of our columns within 100 mm: 31032-01
+    2 set(s) with 25-49% of our columns within 100 mm: 31009-01 60061-03
+  141 pages read: 61 plans, 0 failed; plans not placed on a grid: 18
+
+the gate: 4 set(s) the engineer has a model of, judged against the bank
+  job         her plates we read: was -> now (of hers)        thickness agree   her openings we have
+  LOST 30819-01           39,476 ->            - (   -)                1 ->     of   5      1 ->      of    9
+  LOST 30838-01          479,948 ->            - (   -)               35 ->     of  37    104 ->      of  157
+  LOST 30849-01           84,233 ->            - (   -)               11 ->     of  12     10 ->      of   47
+  LOST 30864-01                0 ->            - (   -)                0 ->     of   0     39 ->      of   98
+  LOST 30933-01          216,034 ->            - (   -)                2 ->     of   4     24 ->      of   46
+  LOST 30972-01          209,434 ->            - (   -)               14 ->     of  19     28 ->      of   45
+  LOST 30986-02           19,710 ->            - (   -)                2 ->     of   2      7 ->      of   16
+  LOST 30989-01           61,823 ->            - (   -)                4 ->     of   4      5 ->      of   30
+  LOST 30990-01          139,777 ->            - (   -)                8 ->     of  10     22 ->      of   25
+  LOST 30993-01          510,530 ->            - (   -)               35 ->     of  35     76 ->      of  154
+  LOST 31003-01           33,125 ->            - (   -)                1 ->     of   2      6 ->      of   10
+  LOST 31005-01            8,035 ->            - (   -)                1 ->     of   1     26 ->      of   61
+  LOST 31006-01           22,033 ->            - (   -)                0 ->     of   1      0 ->      of    1
+  LOST 31017-01          227,331 ->            - (   -)               19 ->     of  22     19 ->      of   54
+  LOST 31029-01                0 ->            - (   -)                0 ->     of   0      0 ->      of    0
+  LOST 31037-01           25,390 ->            - (   -)                0 ->     of   2      1 ->      of    2
+  LOST 31039-01                0 ->            - (   -)                0 ->     of   0      0 ->      of    0
+  LOST 31048-01           51,296 ->            - (   -)                0 ->     of   2      0 ->      of    7
+  LOST 31053-01          116,363 ->            - (   -)               11 ->     of  14     19 ->      of   42
+  LOST 31064-01            4,536 ->            - (   -)                0 ->     of   1     10 ->      of   10
+  LOST 31065-01          246,648 ->            - (   -)               18 ->     of  20     62 ->      of  109
+  LOST 31066-01                0 ->            - (   -)                0 ->     of   0      0 ->      of    0
+  LOST 31076-01           12,690 ->            - (   -)                1 ->     of   1      1 ->      of    4
+  LOST 31082-01           30,253 ->            - (   -)                1 ->     of   2      3 ->      of    6
+  LOST 31083-01           19,732 ->            - (   -)                1 ->     of   2     12 ->      of   21
+  LOST 31085-01                0 ->            - (   -)                0 ->     of   0      0 ->      of    0
+  LOST 31087-01          738,099 ->            - (   -)               11 ->     of  55     83 ->      of  106
+  LOST 31093-01           42,519 ->            - (   -)                1 ->     of   1      3 ->      of    4
+  LOST 31098-01          183,446 ->            - (   -)               19 ->     of  20      2 ->      of   24
+  LOST 31104-01           72,130 ->            - (   -)                5 ->     of   5     13 ->      of   35
+  LOST 31108-01           44,913 ->            - (   -)                0 ->     of   2      1 ->      of    2
+  LOST 31117-01            5,421 ->            - (   -)                0 ->     of   1      7 ->      of    7
+  LOST 31129-01           17,694 ->            - (   -)                0 ->     of   1      3 ->      of    5
+  LOST 31130-01          250,285 ->            - (   -)               14 ->     of  17     33 ->      of   33
+  LOST 31143-01              960 ->            - (   -)                0 ->     of   1      0 ->      of    2
+  LOST 31155-01           66,281 ->            - (   -)                1 ->     of   1      6 ->      of    6
+  LOST 31158-01           15,956 ->            - (   -)                1 ->     of   2      0 ->      of    3
+  LOST 31162-01           32,547 ->            - (   -)                2 ->     of   2      2 ->      of    3
+  LOST 31165-01           85,676 ->            - (   -)                2 ->     of   3      0 ->      of    0
+  LOST 31168-01                0 ->            - (   -)                0 ->     of   0      0 ->      of    0
+  LOST 31170-01          127,090 ->            - (   -)                6 ->     of   7     12 ->      of   37
+  LOST 31171-01            7,313 ->            - (   -)                0 ->     of   1      1 ->      of    1
+  LOST 31174-01                0 ->            - (   -)                0 ->     of   0      0 ->      of    8
+  LOST 31183-01           57,281 ->            - (   -)                2 ->     of   2      2 ->      of   14
+  LOST 31185-01           27,877 ->            - (   -)                1 ->     of   1      0 ->      of    0
+  LOST 31224-01            4,268 ->            - (   -)                1 ->     of   1      1 ->      of    8
+  LOST 40112-01                0 ->            - (   -)                0 ->     of   0      0 ->      of    0
+  LOST 70057-01          207,217 ->            - (   -)                0 ->     of   3      3 ->      of    9
+  LOST 70060-01                0 ->            - (   -)                0 ->     of   0      0 ->      of    0
+  LOST 70061-01          131,202 ->            - (   -)                1 ->     of   3      0 ->      of    8
+  LOST 70063-01            4,336 ->            - (   -)                1 ->     of   2      1 ->      of    1
+  LOST 70064-01            8,139 ->            - (   -)                1 ->     of   2      2 ->      of    2
+  LOST 70065-01                0 ->            - (   -)                0 ->     of   0      0 ->      of    0
+  LOST 80064-01                0 ->            - (   -)                0 ->     of   0      0 ->      of    0
+  LOST 31032-01           30,906 ->       27,759 ( 74%)     -3,147     2 ->   2 of   3      2 ->    2 of    8
+  LOST 31101-01           31,444 ->       31,392 ( 92%)        -52     0 ->   0 of   1      1 ->    0 of    1
+  LOST 60061-03           75,501 ->       75,691 ( 66%)       +190    10 ->  10 of  11     31 ->   29 of  259
+  LOST 31009-01          100,507 ->      123,672 (109%)    +23,165     5 ->   4 of   7     12 ->   14 of   30
+       00904-01                - ->            - (   -)                  ->     of            ->      of     
+       00966-06                - ->            - (   -)                  ->     of            ->      of     
+       01195-01                - ->            - (   -)                  ->     of            ->      of     
+       01375-01                - ->            - (   -)                  ->     of            ->      of     
+       01379-01                - ->            - (   -)                  ->     of            ->      of     
+       01389-01                - ->            - (   -)                  ->     of            ->      of     
+       01448-02                - ->            - (   -)                  ->     of            ->      of     
+       01471-02                - ->            - (   -)                  ->     of            ->      of     
+       01554-01                - ->            - (   -)                  ->     of            ->      of     
+       01569-01                - ->            - (   -)                  ->     of            ->      of     
+       01589-01                - ->            - (   -)                  ->     of            ->      of     
+       01599-01                - ->            - (   -)                  ->     of            ->      of     
+       01603-01                - ->            - (   -)                  ->     of            ->      of     
+       01631-01                - ->            - (   -)                  ->     of            ->      of     
+       01653-01                - ->            - (   -)                  ->     of            ->      of     
+       01666-01                - ->            - (   -)                  ->     of            ->      of     
+       01668-01                - ->            - (   -)                  ->     of            ->      of     
+       01669-01                - ->            - (   -)                  ->     of            ->      of     
+       01672-01                - ->            - (   -)                  ->     of            ->      of     
+       01715-01                - ->            - (   -)                  ->     of            ->      of     
+       01721-01                - ->            - (   -)                  ->     of            ->      of     
+       01726-01                - ->            - (   -)                  ->     of            ->      of     
+       01728-01                - ->            - (   -)                  ->     of            ->      of     
+       01729-01                - ->            - (   -)                  ->     of            ->      of     
+       01732-01                - ->            - (   -)                  ->     of            ->      of     
+       01742-01                - ->            - (   -)                  ->     of            ->      of     
+       01744-01                - ->            - (   -)                  ->     of            ->      of     
+       01746-01                - ->            - (   -)                  ->     of            ->      of     
+       01747-01                - ->            - (   -)                  ->     of            ->      of     
+       01749-01                - ->            - (   -)                  ->     of            ->      of     
+       01761-01                - ->            - (   -)                  ->     of            ->      of     
+       01773-01                - ->            - (   -)                  ->     of            ->      of     
+       01780-01                - ->            - (   -)                  ->     of            ->      of     
+       01783-01                - ->            - (   -)                  ->     of            ->      of     
+       01787-01                - ->            - (   -)                  ->     of            ->      of     
+       01788-01                - ->            - (   -)                  ->     of            ->      of     
+       01789-01                - ->            - (   -)                  ->     of            ->      of     
+       01791-01                - ->            - (   -)                  ->     of            ->      of     
+       01797-01                - ->            - (   -)                  ->     of            ->      of     
+       01798-01                - ->            - (   -)                  ->     of            ->      of     
+       01803-01                - ->            - (   -)                  ->     of            ->      of     
+       01806-01                - ->            - (   -)                  ->     of            ->      of     
+       01810-01                - ->            - (   -)                  ->     of            ->      of     
+       01811-01                - ->            - (   -)                  ->     of            ->      of     
+       30101-12                - ->            - (   -)                  ->     of            ->      of     
+       30477-01                - ->            - (   -)                  ->     of            ->      of     
+       30553-06                - ->            - (   -)                  ->     of            ->      of     
+       30654-04                - ->            - (   -)                  ->     of            ->      of     
+       30694-01                - ->            - (   -)                  ->     of            ->      of     
+       30725-01                - ->            - (   -)                  ->     of            ->      of     
+       30743-01                - ->            - (   -)                  ->     of            ->      of     
+       30751-01                - ->            - (   -)                  ->     of            ->      of     
+       30756-01                - ->            - (   -)                  ->     of            ->      of     
+       30768-01                - ->            - (   -)                  ->     of            ->      of     
+       30780-08                - ->            - (   -)                  ->     of            ->      of     
+       30780-10                - ->            - (   -)                  ->     of            ->      of     
+       30783-01                - ->            - (   -)                  ->     of            ->      of     
+       30784-01                - ->            - (   -)                  ->     of            ->      of     
+       30798-06                - ->            - (   -)                  ->     of            ->      of     
+       30804-01                - ->            - (   -)                  ->     of            ->      of     
+       30807-01                - ->            - (   -)                  ->     of            ->      of     
+       30811-01                - ->            - (   -)                  ->     of            ->      of     
+       30816-01                - ->            - (   -)                  ->     of            ->      of     
+       30816-02                - ->            - (   -)                  ->     of            ->      of     
+       30820-01                - ->            - (   -)                  ->     of            ->      of     
+       30820-02                - ->            - (   -)                  ->     of            ->      of     
+       30823-01                - ->            - (   -)                  ->     of            ->      of     
+       30824-01                - ->            - (   -)                  ->     of            ->      of     
+       30825-01                - ->            - (   -)                  ->     of            ->      of     
+       30826-01                - ->            - (   -)                  ->     of            ->      of     
+       30827-01                - ->            - (   -)                  ->     of            ->      of     
+       30830-01                - ->            - (   -)                  ->     of            ->      of     
+       30832-01                - ->            - (   -)                  ->     of            ->      of     
+       30833-01                - ->            - (   -)                  ->     of            ->      of     
+       30834-01                - ->            - (   -)                  ->     of            ->      of     
+       30836-01                - ->            - (   -)                  ->     of            ->      of     
+       30840-01                - ->            - (   -)                  ->     of            ->      of     
+       30841-01                - ->            - (   -)                  ->     of            ->      of     
+       30848-01                - ->            - (   -)                  ->     of            ->      of     
+       30852-01                - ->            - (   -)                  ->     of            ->      of     
+       30853-01                - ->            - (   -)                  ->     of            ->      of     
+       30865-01                - ->            - (   -)                  ->     of            ->      of     
+       30865-05                - ->            - (   -)                  ->     of            ->      of     
+       30867-01                - ->            - (   -)                  ->     of            ->      of     
+       30869-01                - ->            - (   -)                  ->     of            ->      of     
+       30874-01                - ->            - (   -)                  ->     of            ->      of     
+       30878-01                - ->            - (   -)                  ->     of            ->      of     
+       30878-02                - ->            - (   -)                  ->     of            ->      of     
+       30884-01                - ->            - (   -)                  ->     of            ->      of     
+       30886-01                - ->            - (   -)                  ->     of            ->      of     
+       30888-01                - ->            - (   -)                  ->     of            ->      of     
+       30892-01                - ->            - (   -)                  ->     of            ->      of     
+       30893-01                - ->            - (   -)                  ->     of            ->      of     
+       30894-01                - ->            - (   -)                  ->     of            ->      of     
+       30905-01                - ->            - (   -)                  ->     of            ->      of     
+       30907-01                - ->            - (   -)                  ->     of            ->      of     
+       30908-01                - ->            - (   -)                  ->     of            ->      of     
+       30909-01                - ->            - (   -)                  ->     of            ->      of     
+       30911-01                - ->            - (   -)                  ->     of            ->      of     
+       30912-01                - ->            - (   -)                  ->     of            ->      of     
+       30913-01                - ->            - (   -)                  ->     of            ->      of     
+       30919-01                - ->            - (   -)                  ->     of            ->      of     
+       30924-01                - ->            - (   -)                  ->     of            ->      of     
+       30925-01                - ->            - (   -)                  ->     of            ->      of     
+       30926-01                - ->            - (   -)                  ->     of            ->      of     
+       30927-01                - ->            - (   -)                  ->     of            ->      of     
+       30931-01                - ->            - (   -)                  ->     of            ->      of     
+       30932-01                - ->            - (   -)                  ->     of            ->      of     
+       30934-01                - ->            - (   -)                  ->     of            ->      of     
+       30937-01                - ->            - (   -)                  ->     of            ->      of     
+       30940-01                - ->            - (   -)                  ->     of            ->      of     
+       30941-01                - ->            - (   -)                  ->     of            ->      of     
+       30942-01                - ->            - (   -)                  ->     of            ->      of     
+       30947-01                - ->            - (   -)                  ->     of            ->      of     
+       30948-01                - ->            - (   -)                  ->     of            ->      of     
+       30949-01                - ->            - (   -)                  ->     of            ->      of     
+       30954-01                - ->            - (   -)                  ->     of            ->      of     
+       30955-01                - ->            - (   -)                  ->     of            ->      of     
+       30956-01                - ->            - (   -)                  ->     of            ->      of     
+       30957-01                - ->            - (   -)                  ->     of            ->      of     
+       30960-01                - ->            - (   -)                  ->     of            ->      of     
+       30960-02                - ->            - (   -)                  ->     of            ->      of     
+       30961-01                - ->            - (   -)                  ->     of            ->      of     
+       30961-02                - ->            - (   -)                  ->     of            ->      of     
+       30971-01                - ->            - (   -)                  ->     of            ->      of     
+       30973-01                - ->            - (   -)                  ->     of            ->      of     
+       30974-01                - ->            - (   -)                  ->     of            ->      of     
+       30977-01                - ->            - (   -)                  ->     of            ->      of     
+       30978-01                - ->            - (   -)                  ->     of            ->      of     
+       30980-01                - ->            - (   -)                  ->     of            ->      of     
+       30982-01                - ->            - (   -)                  ->     of            ->      of     
+       30983-01                - ->            - (   -)                  ->     of            ->      of     
+       30984-01                - ->            - (   -)                  ->     of            ->      of     
+       30985-01                - ->            - (   -)                  ->     of            ->      of     
+       30986-01                - ->            - (   -)                  ->     of            ->      of     
+       30988-01                - ->            - (   -)                  ->     of            ->      of     
+       30992-01                - ->            - (   -)                  ->     of            ->      of     
+       30994-01                - ->            - (   -)                  ->     of            ->      of     
+       30996-02                - ->            - (   -)                  ->     of            ->      of     
+       30997-01                - ->            - (   -)                  ->     of            ->      of     
+       31001-01                - ->            - (   -)                  ->     of            ->      of     
+       31004-01                - ->            - (   -)                  ->     of            ->      of     
+       31007-01                - ->            - (   -)                  ->     of            ->      of     
+       31013-01                - ->            - (   -)                  ->     of            ->      of     
+       31014-01                - ->            - (   -)                  ->     of            ->      of     
+       31015-01                - ->            - (   -)                  ->     of            ->      of     
+       31016-01                - ->            - (   -)                  ->     of            ->      of     
+       31019-01                - ->            - (   -)                  ->     of            ->      of     
+       31020-01                - ->            - (   -)                  ->     of            ->      of     
+       31023-01                - ->            - (   -)                  ->     of            ->      of     
+       31024-01                - ->            - (   -)                  ->     of            ->      of     
+       31036-01                - ->            - (   -)                  ->     of            ->      of     
+       31040-01                - ->            - (   -)                  ->     of            ->      of     
+       31041-01                - ->            - (   -)                  ->     of            ->      of     
+       31041-02                - ->            - (   -)                  ->     of            ->      of     
+       31042-01                - ->            - (   -)                  ->     of            ->      of     
+       31044-02                - ->            - (   -)                  ->     of            ->      of     
+       31052-01                - ->            - (   -)                  ->     of            ->      of     
+       31057-01                - ->            - (   -)                  ->     of            ->      of     
+       31067-01                - ->            - (   -)                  ->     of            ->      of     
+       31073-01                - ->            - (   -)                  ->     of            ->      of     
+       31074-01                - ->            - (   -)                  ->     of            ->      of     
+       31075-02                - ->            - (   -)                  ->     of            ->      of     
+       31083-04                - ->            - (   -)                  ->     of            ->      of     
+       31088-01                - ->            - (   -)                  ->     of            ->      of     
+       31089-01                - ->            - (   -)                  ->     of            ->      of     
+       31091-01                - ->            - (   -)                  ->     of            ->      of     
+       31094-01                - ->            - (   -)                  ->     of            ->      of     
+       31099-01                - ->            - (   -)                  ->     of            ->      of     
+       31103-01                - ->            - (   -)                  ->     of            ->      of     
+       31106-01                - ->            - (   -)                  ->     of            ->      of     
+       31107-01                - ->            - (   -)                  ->     of            ->      of     
+       31116-01                - ->            - (   -)                  ->     of            ->      of     
+       31118-01                - ->            - (   -)                  ->     of            ->      of     
+       31120-01                - ->            - (   -)                  ->     of            ->      of     
+       31121-01                - ->            - (   -)                  ->     of            ->      of     
+       31122-01                - ->            - (   -)                  ->     of            ->      of     
+       31128-01                - ->            - (   -)                  ->     of            ->      of     
+       31131-01                - ->            - (   -)                  ->     of            ->      of     
+       31132-01                - ->            - (   -)                  ->     of            ->      of     
+       31133-01                - ->            - (   -)                  ->     of            ->      of     
+       31134-01                - ->            - (   -)                  ->     of            ->      of     
+       31139-01                - ->            - (   -)                  ->     of            ->      of     
+       31142-01                - ->            - (   -)                  ->     of            ->      of     
+       31146-01                - ->            - (   -)                  ->     of            ->      of     
+       31149-01                - ->            - (   -)                  ->     of            ->      of     
+       31150-01                - ->            - (   -)                  ->     of            ->      of     
+       31152-01                - ->            - (   -)                  ->     of            ->      of     
+       31166-01                - ->            - (   -)                  ->     of            ->      of     
+       31167-01                - ->            - (   -)                  ->     of            ->      of     
+       31178-01                - ->            - (   -)                  ->     of            ->      of     
+       31179-01                - ->            - (   -)                  ->     of            ->      of     
+       31180-01                - ->            - (   -)                  ->     of            ->      of     
+       31186-01                - ->            - (   -)                  ->     of            ->      of     
+       31193-01                - ->            - (   -)                  ->     of            ->      of     
+       31194-01                - ->            - (   -)                  ->     of            ->      of     
+       31198-01                - ->            - (   -)                  ->     of            ->      of     
+       31199-01                - ->            - (   -)                  ->     of            ->      of     
+       31204-01                - ->            - (   -)                  ->     of            ->      of     
+       31207-01                - ->            - (   -)                  ->     of            ->      of     
+       31210-01                - ->            - (   -)                  ->     of            ->      of     
+       31226-01                - ->            - (   -)                  ->     of            ->      of     
+       31229-01                - ->            - (   -)                  ->     of            ->      of     
+       31230-01                - ->            - (   -)                  ->     of            ->      of     
+       31233-01                - ->            - (   -)                  ->     of            ->      of     
+       31234-01                - ->            - (   -)                  ->     of            ->      of     
+       31237-01                - ->            - (   -)                  ->     of            ->      of     
+       40102-01                - ->            - (   -)                  ->     of            ->      of     
+       40106-01                - ->            - (   -)                  ->     of            ->      of     
+       40107-01                - ->            - (   -)                  ->     of            ->      of     
+       40107-02                - ->            - (   -)                  ->     of            ->      of     
+       40108-04                - ->            - (   -)                  ->     of            ->      of     
+       40109-01                - ->            - (   -)                  ->     of            ->      of     
+       40112-03                - ->            - (   -)                  ->     of            ->      of     
+       40116-01                - ->            - (   -)                  ->     of            ->      of     
+       40117-01                - ->            - (   -)                  ->     of            ->      of     
+       50026-01                - ->            - (   -)                  ->     of            ->      of     
+       50046-01                - ->            - (   -)                  ->     of            ->      of     
+       50046-07                - ->            - (   -)                  ->     of            ->      of     
+       60058-01                - ->            - (   -)                  ->     of            ->      of     
+       60059-01                - ->            - (   -)                  ->     of            ->      of     
+       60061-01                - ->            - (   -)                  ->     of            ->      of     
+       60062-01                - ->            - (   -)                  ->     of            ->      of     
+       60065-01                - ->            - (   -)                  ->     of            ->      of     
+       60067-01                - ->            - (   -)                  ->     of            ->      of     
+       70058-01                - ->            - (   -)                  ->     of            ->      of     
+       70059-01                - ->            - (   -)                  ->     of            ->      of     
+       70062-01                - ->            - (   -)                  ->     of            ->      of     
+       80045-04                - ->            - (   -)                  ->     of            ->      of     
+       80062-01                - ->            - (   -)                  ->     of            ->      of     
+       80063-01                - ->            - (   -)                  ->     of            ->      of     
+       80065-01                - ->            - (   -)                  ->     of            ->      of     
+       80066-01                - ->            - (   -)                  ->     of            ->      of     
+       90097-01                - ->            - (   -)                  ->     of            ->      of     
+       90101-01                - ->            - (   -)                  ->     of            ->      of     
+       90102-01                - ->            - (   -)                  ->     of            ->      of     
+       90105-01                - ->            - (   -)                  ->     of            ->      of     
+  totals: her plates we read 238,358 -> 258,514 sq ft of 298,572 (80% -> 87%); thickness 17 -> 16 of 22; her openings we have 46 -> 45 of 298
+  58 set(s) STOP THE BANK - each with its reason:
+    30819-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none, her openings we have fell 1 -> none
+    30838-01: judged at the bank, not judged now, her thicknesses we agree with fell 35 -> none, her openings we have fell 104 -> none
+    30849-01: judged at the bank, not judged now, her thicknesses we agree with fell 11 -> none, her openings we have fell 10 -> none
+    30864-01: judged at the bank, not judged now, her openings we have fell 39 -> none
+    30933-01: judged at the bank, not judged now, her thicknesses we agree with fell 2 -> none, her openings we have fell 24 -> none
+    30972-01: judged at the bank, not judged now, her thicknesses we agree with fell 14 -> none, her openings we have fell 28 -> none
+    30986-02: judged at the bank, not judged now, her thicknesses we agree with fell 2 -> none, her openings we have fell 7 -> none
+    30989-01: judged at the bank, not judged now, her thicknesses we agree with fell 4 -> none, her openings we have fell 5 -> none
+    30990-01: judged at the bank, not judged now, her thicknesses we agree with fell 8 -> none, her openings we have fell 22 -> none
+    30993-01: judged at the bank, not judged now, her thicknesses we agree with fell 35 -> none, her openings we have fell 76 -> none
+    31003-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none, her openings we have fell 6 -> none
+    31005-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none, her openings we have fell 26 -> none
+    31006-01: judged at the bank, not judged now
+    31017-01: judged at the bank, not judged now, her thicknesses we agree with fell 19 -> none, her openings we have fell 19 -> none
+    31029-01: judged at the bank, not judged now
+    31037-01: judged at the bank, not judged now, her openings we have fell 1 -> none
+    31039-01: judged at the bank, not judged now
+    31048-01: judged at the bank, not judged now
+    31053-01: judged at the bank, not judged now, her thicknesses we agree with fell 11 -> none, her openings we have fell 19 -> none
+    31064-01: judged at the bank, not judged now, her openings we have fell 10 -> none
+    31065-01: judged at the bank, not judged now, her thicknesses we agree with fell 18 -> none, her openings we have fell 62 -> none
+    31066-01: judged at the bank, not judged now
+    31076-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none, her openings we have fell 1 -> none
+    31082-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none, her openings we have fell 3 -> none
+    31083-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none, her openings we have fell 12 -> none
+    31085-01: judged at the bank, not judged now
+    31087-01: judged at the bank, not judged now, her thicknesses we agree with fell 11 -> none, her openings we have fell 83 -> none
+    31093-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none, her openings we have fell 3 -> none
+    31098-01: judged at the bank, not judged now, her thicknesses we agree with fell 19 -> none, her openings we have fell 2 -> none
+    31104-01: judged at the bank, not judged now, her thicknesses we agree with fell 5 -> none, her openings we have fell 13 -> none
+    31108-01: judged at the bank, not judged now, her openings we have fell 1 -> none
+    31117-01: judged at the bank, not judged now, her openings we have fell 7 -> none
+    31129-01: judged at the bank, not judged now, her openings we have fell 3 -> none
+    31130-01: judged at the bank, not judged now, her thicknesses we agree with fell 14 -> none, her openings we have fell 33 -> none
+    31143-01: judged at the bank, not judged now
+    31155-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none, her openings we have fell 6 -> none
+    31158-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none
+    31162-01: judged at the bank, not judged now, her thicknesses we agree with fell 2 -> none, her openings we have fell 2 -> none
+    31165-01: judged at the bank, not judged now, her thicknesses we agree with fell 2 -> none
+    31168-01: judged at the bank, not judged now
+    31170-01: judged at the bank, not judged now, her thicknesses we agree with fell 6 -> none, her openings we have fell 12 -> none
+    31171-01: judged at the bank, not judged now, her openings we have fell 1 -> none
+    31174-01: judged at the bank, not judged now
+    31183-01: judged at the bank, not judged now, her thicknesses we agree with fell 2 -> none, her openings we have fell 2 -> none
+    31185-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none
+    31224-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none, her openings we have fell 1 -> none
+    40112-01: judged at the bank, not judged now
+    70057-01: judged at the bank, not judged now, her openings we have fell 3 -> none
+    70060-01: judged at the bank, not judged now
+    70061-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none
+    70063-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none, her openings we have fell 1 -> none
+    70064-01: judged at the bank, not judged now, her thicknesses we agree with fell 1 -> none, her openings we have fell 2 -> none
+    70065-01: judged at the bank, not judged now
+    80064-01: judged at the bank, not judged now
+    31032-01: her plate area fell 3,147 sq ft (tolerance 200)
+    31101-01: her openings we have fell 1 -> 0
+    60061-03: her openings we have fell 31 -> 29
+    31009-01: her thicknesses we agree with fell 5 -> 4
+  to find which rule took them: --bisect KOR_STEP130_OFF,KOR_STEP131_OFF,KOR_STEP133_OFF,KOR_STEP134_OFF,KOR_STEP135_OFF,KOR_STEP136_OFF,KOR_STEP137_OFF,KOR_STEP138_OFF,KOR_STEP139_OFF,KOR_STEP140_OFF,KOR_STEP144_OFF,KOR_STEP145_OFF,KOR_STEP149_OFF,KOR_STEP150_OFF,KOR_STEP151_OFF,KOR_STEP152_OFF,KOR_STEP153_OFF,KOR_STEP154_OFF,KOR_STEP155_OFF,KOR_STEP156_OFF,KOR_STEP157_OFF,KOR_STEP158_OFF,KOR_STEP159_OFF,KOR_STEP160_OFF,KOR_STEP161_OFF,KOR_STEP162_OFF,KOR_STEP163_OFF,KOR_STEP164_OFF,KOR_STEP165_OFF,KOR_STEP166_OFF,KOR_STEP167_OFF,KOR_STEP168_OFF,KOR_STEP169_OFF,KOR_STEP170_OFF,KOR_STEP171_OFF,KOR_STEP172_OFF,KOR_STEP173_OFF

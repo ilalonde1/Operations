@@ -1,0 +1,18 @@
+REBAR TAKEOFF & CHANGE — ISSUE TO ISSUE | 
+5350-5430 Heather Street (31065-01)   |   IFT Addendum (2025-10-07)  ->  IFC (2026-03-06) | 
+⚠ 3 field-grid change(s) need a manual area before they can be priced — see the orange 'ENTER AREA' cells on 'Priced changes'. | 
+REBAR WEIGHT (high-level takeoff) | 
+IFT Addendum (2025-10-07) | 2052
+IFC (2026-03-06) | 2047
+Change | -4.8
+REINFORCING CHANGES (detected) | 
+Sheets compared | 72
+Sheets with rebar changes | 32
+  content changed / new / removed | 32 / 0 / 0
+THE STORY | 
+Rough rebar weight is essentially unchanged issue to issue (2052 t -> 2047 t, Δ -4.8 t). | 
+32 of 72 sheets carry a reinforcing change (a mix of increases and reductions) - see 'Changes by sheet'. | 
+Weight = standard density scaled per issue by the reinforcing intensity in each issue's own call-outs, x concrete volume (see 'Density basis'). | 
+The detailing changed, but the rough total steel did not move materially - so a budget increase is unit-rate / estimating basis, not net added steel. | 
+The changed call-outs that state a bar count and length weigh +15,965 lb net (+7.2 t); 134 more changed call-out(s) state no count or length and are not in that figure. It is the part of the change that can be weighed exactly, not the whole - the rough total above is the whole-building estimate. | 
+Weight is a high-level / order-of-magnitude takeoff (calibratable). Change detection is exact text comparison. | 

@@ -1,0 +1,203 @@
+  views 0: 
+  furniture regions 5 (light blue): furniture: REFERENCE NOTES:; furniture: CONCRETE COLUMN REFERENCE NOTE:; furniture: REVISIONS:; furniture: ISSUES; title block
+  match lines 0 (magenta)
+31065-01 - 2026-07-08 - 5380-Heather Street - Stickfile (up to SSI-04)-OAP.pdf p46 1:100 @ 40 dpi  C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/plates/ov-p46.png
+  slabs 0 (grey)   columns 21 (blue)   walls 11 (dark red)   footings 0 (orange; 0 without a label, magenta)   grid axes 11 (cyan: X 9,10,11,12,13; Y F,E,D,C,B,A)   lines 759 (red)   mark-shaped words 40 (green)
+  filled walls 11 (dark red), by thickness and colour:
+      6 in thick #D0D0D0:    2 wall(s), length 75-178 in
+     12 in thick #D0D0D0:    1 wall(s), length 278-278 in
+     20 in thick #D0D0D0:    2 wall(s), length 278-302 in
+     24 in thick #D0D0D0:    6 wall(s), length 16-93 in
+  face-line rule, every pair of cut-pen lines 94"+ long (153 lines):
+      cut pen w0.96
+      emitted line 278" w0.96 at (60805,34692) mm
+      emitted line 302" w0.96 at (60505,34193) mm
+      emitted line 278" w0.96 at (60805,41068) mm
+      emitted line 278" w0.96 at (60805,41567) mm
+      emitted line 278" w0.96 at (60805,38680) mm
+      emitted line 206" w0.96 at (61718,38379) mm
+      emitted line 178" w0.96 at (60805,39798) mm
+      emitted line 178" w0.96 at (60805,39950) mm
+      emitted line 126" w0.60 at (63026,37461) mm
+      emitted line 126" w0.60 at (63026,37463) mm
+      emitted line 126" w0.60 at (60410,37461) mm
+      emitted line 126" w0.60 at (60410,37463) mm
+      emitted line 133" w0.96 at (51664,24206) mm
+      emitted line 144" w0.96 at (55141,24903) mm
+      emitted line 108" w0.96 at (58314,24731) mm
+      emitted line 224" w0.96 at (62522,24452) mm
+      emitted line 221" w0.96 at (68144,49790) mm
+      emitted line 141" w0.96 at (46698,44878) mm
+      emitted line 144" w0.96 at (46698,39922) mm
+      emitted line 476" w0.96 at (47892,32055) mm
+      emitted line 176" w0.96 at (60827,41068) mm
+      emitted line 741" w0.96 at (78018,33860) mm
+      emitted line 134" w0.96 at (76594,43269) mm
+      emitted line 133" w0.96 at (74888,44962) mm
+      emitted line 487" w0.96 at (71552,24452) mm
+      emitted line 218" w0.96 at (47938,51573) mm
+      emitted line 169" w0.96 at (63254,52195) mm
+      emitted line 158" w0.96 at (61252,54343) mm
+      emitted line 277" w0.96 at (55730,55253) mm
+      emitted line 168" w0.96 at (50074,54343) mm
+      emitted line 109" w0.60 at (61654,41063) mm
+      emitted line 102" w0.60 at (60056,38680) mm
+      emitted line 107" w0.60 at (48793,39453) mm
+      emitted line 102" w0.60 at (48793,44387) mm
+      emitted line 113" w0.60 at (58249,26450) mm
+      emitted line 105" w0.60 at (66794,26463) mm
+      emitted line 218" w0.60 at (70885,25853) mm
+      emitted line 399" w0.60 at (73643,31179) mm
+      emitted line 120" w0.60 at (72830,37768) mm
+      emitted line 143" w0.60 at (73643,41104) mm
+      emitted line 109" w0.60 at (72699,44300) mm
+      emitted line 229" w0.60 at (62569,25121) mm
+      emitted line 227" w0.60 at (60386,49831) mm
+      emitted line 290" w0.60 at (51560,48997) mm
+      emitted line 148" w0.24 at (58217,47295) mm
+      emitted line 145" w0.24 at (63331,47744) mm
+      emitted line 157" w0.24 at (71706,32736) mm
+      emitted line 106" w0.48 at (47032,49869) mm
+      emitted line 146" w0.48 at (71793,30662) mm
+      emitted line 429" w0.24 at (10044,8399) mm
+      emitted line 173" w0.24 at (10566,6428) mm
+      emitted line 173" w0.24 at (11599,6428) mm
+      emitted line 173" w0.24 at (15289,6428) mm
+      emitted line 173" w0.24 at (4856,6428) mm
+      emitted line 429" w0.24 at (10044,4326) mm
+      emitted line 95" w0.24 at (4798,5831) mm
+      emitted line 181" w0.60 at (11041,6274) mm
+      emitted line 116" w0.24 at (12427,7516) mm
+      emitted line 112" w0.24 at (12626,7267) mm
+      emitted line 112" w0.24 at (12626,6818) mm
+      emitted line 135" w0.24 at (12827,6570) mm
+      emitted line 156" w0.24 at (13191,6485) mm
+      emitted line 153" w0.24 at (13439,6284) mm
+      emitted line 127" w0.24 at (13705,6100) mm
+      emitted line 122" w0.24 at (14057,6003) mm
+      emitted line 118" w0.24 at (14277,5774) mm
+      emitted line 96" w0.24 at (14459,5508) mm
+      lines 278"/278" 94.0" apart at (60805,41068) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/206" 105.8" apart at (60805,41068) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/176" 0.0" apart at (60805,41068) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/134" 86.7" apart at (60805,41068) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/278" 113.7" apart at (60805,41567) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/178" 69.7" apart at (60805,41567) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/178" 63.7" apart at (60805,41567) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/134" 67.0" apart at (60805,41567) mm: not a pair, the gap is outside wall thicknesses
+      lines 278"/176" 94.0" apart at (60805,38680) mm: not a pair, the gap is outside wall thicknesses
+      lines 206"/178" 61.8" apart at (61718,38379) mm: not a pair, the gap is outside wall thicknesses
+      lines 206"/176" 105.8" apart at (61718,38379) mm: not a pair, the gap is outside wall thicknesses
+      lines 133"/144" 49.0" apart at (51664,24206) mm: not a pair, they overlap by only 8"
+      lines 224"/487" 0.0" apart at (62522,24452) mm: not a pair, the gap is outside wall thicknesses
+      lines 141"/144" 0.0" apart at (46698,44878) mm: not a pair, the gap is outside wall thicknesses
+      lines 141"/476" 47.0" apart at (46698,44878) mm: not a pair, they overlap by only -197"
+      lines 141"/218" 48.8" apart at (46698,44878) mm: not a pair, they overlap by only -84"
+      lines 144"/476" 47.0" apart at (46698,39922) mm: not a pair, they overlap by only 0"
+      lines 144"/218" 48.8" apart at (46698,39922) mm: not a pair, they overlap by only -278"
+      lines 476"/218" 1.8" apart at (47892,32055) mm: not a pair, the gap is outside wall thicknesses
+      lines 176"/134" 86.7" apart at (60827,41068) mm: not a pair, the gap is outside wall thicknesses
+      lines 158"/277" 35.8" apart at (61252,54343) mm: not a pair, they overlap by only 0"
+      lines 158"/168" 0.0" apart at (61252,54343) mm: not a pair, the gap is outside wall thicknesses
+      lines 277"/168" 35.8" apart at (55730,55253) mm: not a pair, they overlap by only 0"
+      cut line 133" at (51664,24206) mm: no partner a wall's thickness away
+      cut line 144" at (55141,24903) mm: no partner a wall's thickness away
+      cut line 108" at (58314,24731) mm: no partner a wall's thickness away
+      cut line 224" at (62522,24452) mm: no partner a wall's thickness away
+      cut line 221" at (68144,49790) mm: no partner a wall's thickness away
+      cut line 141" at (46698,44878) mm: no partner a wall's thickness away
+      cut line 144" at (46698,39922) mm: no partner a wall's thickness away
+      cut line 476" at (47892,32055) mm: no partner a wall's thickness away
+      cut line 741" at (78018,33860) mm: no partner a wall's thickness away
+      cut line 134" at (76594,43269) mm: no partner a wall's thickness away
+      cut line 133" at (74888,44962) mm: no partner a wall's thickness away
+      cut line 487" at (71552,24452) mm: no partner a wall's thickness away
+      cut line 218" at (47938,51573) mm: no partner a wall's thickness away
+      cut line 169" at (63254,52195) mm: no partner a wall's thickness away
+      cut line 158" at (61252,54343) mm: no partner a wall's thickness away
+      cut line 277" at (55730,55253) mm: no partner a wall's thickness away
+      cut line 168" at (50074,54343) mm: no partner a wall's thickness away
+      pair 278" x 19.7" (ends 19.7"/19.7") at (60805,34442) mm: under a wall or column already read
+      pair 278" x 19.7" (ends 19.7"/19.7") at (60805,41317) mm: under a wall or column already read
+      pair 206" x 11.8" (ends 11.8"/11.8") at (61718,38530) mm: under a wall or column already read
+      pair 178" x 6.0" (ends 6.0"/6.0") at (60805,39874) mm: under a wall or column already read
+      pair 178" x 44.0" (ends 44.0"/44.0") at (60805,40509) mm: its first face is another wall's, on its other side
+      pair 178" x 44.0" (ends 44.0"/44.0") at (60805,39239) mm: its first face is another wall's, on its other side
+      pair 178" x 50.0" (ends 50.0"/50.0") at (60805,40433) mm: its first face is another wall's, on its other side
+      pair 178" x 50.0" (ends 50.0"/50.0") at (60805,39315) mm: its first face is another wall's, on its other side
+      pair 176" x 19.7" (ends 19.7"/19.7") at (60827,41317) mm: under a wall or column already read
+      pair 176" x 44.0" (ends 44.0"/44.0") at (60827,40509) mm: its first face is another wall's, on its other side
+      pair 176" x 50.0" (ends 50.0"/50.0") at (60827,40433) mm: its second face is another wall's, on its other side
+      pair 156" x 55.8" (ends 55.8"/55.8") at (61081,39088) mm: its second face is another wall's, on its other side
+      slab pass: not offered - a wall's whole face 0: 
+      slab pass: not offered - a section cut's run 0: 
+      slab pass: ends at columns (step 97; centre ft: ends): (180.1,156.8):2 (236.9,119.5):2 (224.7,106.2):2 (159.8,158.7):1-lone (202.9,105.7):1-lone (239.8,139.7):1-lone (213.7,84.7):1-lone
+      slab pass: 6 edge end(s) joined through 3 column(s)
+      slab pass: 0 void(s) by their words (step 106): 
+      slab pass: stair at (198,132) ft: 3 flight(s), box 115 sq ft, 2 of 155 cell(s) hold a flight (arranged 706 + wall edges 44 + door edges 0), ring(s) sq ft: 148
+      slab pass: 1 stair well(s) (step 105; sq ft at centre ft): 148 (200,132)
+      slab pass: OPEN TO BELOW (step 164): 0 OPEN, 0 BELOW, 0 together, of 0 page words [containing OPEN: ]
+      slab pass: 3 X mark(s) (an opening's mark, step 104; reach ft at centre ft [column ft, wall ft]): 10 (207,123)[12.2,0.5] 10 (198,123)[12.7,0.2] 2 (178,121)[12.1,8.8]
+      slab pass: 3 stair flight(s) (step 105; treads, extent ft, centre ft [column ft, wall ft]): 7 5.5x3.7 (195,133)[14.4,2.1] 9 7.3x3.7 (203,133)[21.8,2.1] 8 6.4x3.7 (196,129)[18.5,2.1]
+      slab pass: lone column at (159.8,158.7) ft: arrangement points within 1.5 m (offset in, degree): (-9,9)d2 (9,9)d2 (9,-9)d2 (-9,-9)d2 (4,15)d3 (4,15)d2 (-32,12)d4 (-32,12)d1 (-30,17)d2 (-32,17)d2 (-32,-39)d2
+      slab pass: lone column at (202.9,105.7) ft: arrangement points within 1.5 m (offset in, degree): (-17,7)d1 (17,7)d1
+      slab pass: lone column at (239.8,139.7) ft: arrangement points within 1.5 m (offset in, degree): (15,-6)d1 (-15,-6)d1 (-15,13)d2 (22,13)d2
+      slab pass: lone column at (213.7,84.7) ft: arrangement points within 1.5 m (offset in, degree): (-6,12)d1 (-6,-12)d1 (13,-17)d2 (13,26)d2 (10,-54)d2
+      slab pass: 0 end(s) short of another edge's middle by under the bridge (a T drawn short): 
+      slab pass: 39 dangling end(s) (degree one; nearest other body): (58594,40606)mm 18.0in (73402,46656)mm 9.5in (73643,36250)mm 32.0in (72830,36250)mm 7.3in (65557,48362)mm 28.8in (47887,48658)mm 0.2in (58217,45419)mm 117.6in (58217,49170)mm 15.7in (65168,47744)mm 24.3in (61493,47744)mm 15.8in (73702,32736)mm 2.3in (69710,32736)mm 15.7in (51956,28215)mm 19.7in (45682,49869)mm 88.8in (69943,30662)mm 63.3in (71988,22754)mm 8.0in (4602,8399)mm 12.4in (10566,4229)mm 3.8in (10566,8628)mm 3.4in (11599,4229)mm 3.8in (11599,8628)mm 2.9in (15354,8628)mm 8.8in (4923,8628)mm 9.0in (4602,4326)mm 7.3in (15486,4326)mm 10.2in (8589,4627)mm 8.5in (8869,4623)mm 11.0in (11041,8568)mm 6.7in (11041,3979)mm 13.7in (9796,6299)mm 10.5in (9305,6477)mm 5.1in (14817,7662)mm 0.7in (62294,32402)mm 70.5in (61417,32402)mm 70.5in (72712,42435)mm 19.2in (73461,42435)mm 7.2in (64973,26115)mm 19.2in (64973,25514)mm 6.7in (77986,42482)mm 9.8in
+      slab pass: arrangement 159 cell(s); columns in a cell 9 of 21; largest (sq ft, holds): 907 208 196 73 71 69 59 53 50 41*
+      slab pass: 44 open chain(s) in the arrangement; longest (ft, ends in ft): 120 (256.8,139.3)[15.8]-(195.8,81.5)[0.7] | 67 (195.8,81.5)[0.7]-(241.6,100.6)[3.3] | 47 (164.6,84.1)[5.4]-(157.1,125.0)[1.0] | 46 (207.5,164.2)[7.9]-(241.6,153.1)[5.6] | 43 (241.6,153.1)[5.6]-(238.9,118.9)[0.6] | 29 (241.6,153.1)[5.6]-(256.8,139.3)[15.8] | 13 (207.5,164.2)[7.9]-(215.1,158.7)[9.4] | 13 (241.6,107.4)[10.2]-(228.7,107.4)[2.5] | 12 (191.0,149.0)[7.4]-(191.0,161.3)[5.7] | 12 (241.6,100.6)[3.3]-(229.5,100.6)[4.2] | 12 (213.8,156.6)[10.6]-(201.8,156.6)[2.1] | 12 (241.6,107.4)[10.2]-(241.6,118.9)[3.3] | 11 (186.4,80.8)[7.5]-(175.3,82.6)[0.6] | 8 (32.1,20.7)[125.2]-(30.7,22.4)[126.7] | 8 (168.8,86.7)[7.1]-(170.5,92.6)[7.8] | 7 (157.3,163.6)[4.2]-(149.9,163.6)[9.2] | 7 (241.6,100.6)[3.3]-(241.6,107.4)[10.2] | 7 (29.1,15.2)[128.2]-(34.6,16.4)[122.7] | 7 (157.1,159.6)[1.9]-(157.1,153.1)[4.8] | 4 (236.2,74.7)[10.6]-(233.9,73.0)[11.7] | 3 (204.4,106.3)[0.0]-(201.5,106.3)[-0.0] | 2 (238.6,139.2)[0.0]-(241.0,139.2)[-0.0] | 2 (213.2,85.7)[-0.0]-(213.2,83.7)[-0.0] | 2 (27.1,14.5)[130.2]-(28.2,15.2)[129.1] | 2 (192.2,133.2)[14.0]-(192.2,134.7)[12.5] | 1 (15.7,15.2)[141.6]-(16.9,15.2)[140.4] | 1 (30.5,22.4)[126.8]-(30.5,21.3)[126.8] | 1 (36.2,14.2)[121.1]-(36.2,13.1)[121.1] | 1 (15.1,27.6)[142.2]-(16.1,27.6)[141.2] | 1 (256.8,139.3)[15.8]-(255.9,139.4)[14.8] | 1 (50.0,14.2)[107.5]-(50.8,14.2)[106.6] | 1 (240.8,153.1)[5.6]-(241.6,153.1)[5.6] | 1 (16.1,27.6)[141.2]-(16.2,28.3)[141.2] | 1 (34.7,27.6)[122.7]-(34.7,28.3)[122.7] | 1 (38.1,27.6)[119.3]-(38.1,28.3)[119.3] | 1 (50.4,28.3)[106.9]-(50.4,27.6)[107.0] | 1 (15.1,14.2)[142.2]-(15.7,14.2)[141.6] | 1 (36.2,27.6)[121.1]-(36.2,28.1)[121.1] | 0 (34.7,13.9)[122.7]-(34.7,14.2)[122.7] | 0 (38.1,13.9)[119.3]-(38.1,14.2)[119.3] | 0 (241.6,107.4)[10.2]-(241.8,107.4)[10.2] | 0 (207.5,164.2)[7.9]-(207.5,164.3)[7.9] | 0 (48.6,25.1)[108.8]-(48.6,25.1)[108.7] | 0 (157.1,159.6)[1.9]-(157.1,159.6)[1.9]
+      slab pass: chain 120 ft: start (256.8,139.3) body 0.0in on SLABEDGE (256.9,142.0)-(255.0,80.2); end 1.6in of SLABEDGE (256.7,139.3)-(255.9,139.4) | end (195.8,81.5) body 0.0in on SLABEDGE (195.8,81.5)-(195.8,86.8); end 0.0in of SLABEDGE (195.8,81.5)-(195.8,86.8)
+      slab pass: chain 67 ft: start (195.8,81.5) body 0.0in on SLABEDGE (195.8,81.5)-(195.8,86.8); end 0.0in of SLABEDGE (195.8,80.2)-(195.8,81.5) | end (241.6,100.6) body 0.0in on SLABEDGE (241.6,85.7)-(241.6,118.9); end 0.0in of SLABEDGE (241.6,100.6)-(229.5,100.6)
+      slab pass: chain 47 ft: start (164.6,84.1) body 0.0in on SLABEDGE (157.1,85.3)-(164.7,84.1); end 0.3in of SLABEDGE (164.6,84.1)-(167.8,83.6) | end (157.1,125.0) body 0.0in on SLABEDGE (153.2,125.0)-(160.1,125.0); end 14.7in of SLABEDGE (158.8,124.0)-(157.8,124.0)
+      slab pass: arranged within 1 m of (78276,42472) mm: 3: SLABEDGE (74888,43269)-(78300,43269) | SLABEDGE (78300,43269)-(77737,24452) | SLABEDGE (78236,42473)-(77986,42482)
+      slab pass: arranged within 1 m of (59677,24854) mm: 5: SLABEDGE (65367,24452)-(59677,24452) | SLABEDGE (59677,24452)-(59677,24854) | SLABEDGE (59677,24854)-(59677,26450) | SLABEDGE (56951,24608)-(59677,24854) | SLABEDGE (59677,24854)-(65460,25387)
+      slab pass: 1 cell(s) of 500 sq ft or more: 907 sq ft x 157..208 y 159..181 ft, 1 hole(s)
+      slab pass: arranged within 600 mm of the pinch (46422,3859) mm: 0: 
+      slab pass: column at (179.0,106.8) ft is in no cell; the outside reaches it through a gap 19 in wide at (152.3,12.7) ft
+      slab pass: arranged within 600 mm of the pinch (62262,32239) mm: 1: SLABEDGE (62294,32402)-(61417,32402)
+      slab pass: column at (202.9,105.7) ft is in no cell; the outside reaches it through a gap 13 in wide at (204.3,105.8) ft
+      slab pass: arranged within 600 mm of the pinch (46242,3859) mm: 0: 
+      slab pass: column at (197.1,83.0) ft is in no cell; the outside reaches it through a gap 19 in wide at (151.7,12.7) ft
+      slab pass: biggest cells (step 116 study): 907 sq ft holds False wraps False outside True holes 1 | 208 sq ft holds False wraps False outside True holes 0 | 196 sq ft holds False wraps False outside True holes 9
+      slab pass: cells by selection (step 116 study): holding structure 20 (196 sq ft), wrapping 0, enclosed 96 (423 sq ft), open to the page 43 (1795 sq ft)
+      slab pass: 759 of 759 lines offered; walk 37 loop(s), 68 piece(s); walk found a floor: False; arranged 706; refused: -; rings 65 (sq ft: 376,139,134,73,50,15); floors (big enough, structure stands in) 0; the three largest rings: 376 sq ft (True, 8, 8), 5 of 23 vertices in an X, extent x 185.9..213.0 y 119.5..136.4 ft | 139 sq ft (False, 0, 0), 0 of 50 vertices in an X, extent x 37.3..50.3 y 14.4..28.8 ft | 134 sq ft (False, 0, 0), 0 of 49 vertices in an X, extent x 37.3..50.2 y 14.4..27.6 ft
+  pens of stroked lines 48"+: w0.24x133 w0.48x10 w0.60x99 w0.96x46 w1.20x9
+  pens of filled walls' outlines: 
+  filled walls with no stroke of their own: 7
+  pens of lines along filled walls' long edges: w0.96x19
+  filled shape of wall proportions not read as a wall: 4 pts, 290 in long, 23.7-23.7 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #D0D0D0, no stroke, at (64635,37880) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 271 in long, 23.7-23.7 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #D0D0D0, no stroke, at (56976,38130) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 230 in long, 43.5-43.5 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #000000, no stroke, at (85727,20602) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 50 in long, 6.3-6.3 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #000000, no stroke, at (84988,52459) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 136 in long, 20.0-20.0 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (13324,5389) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 137 in long, 20.0-20.0 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (7300,5389) mm
+  filled shape of wall proportions not read as a wall: 4 pts, 127 in long, 12.8-12.8 in thick, faces 0.00 deg apart, fills 1.00 of its box, colour #F0F0F0, no stroke, at (87456,22443) mm
+  wall   301.5 x  19.7 in   centre ( 60505, 34442) mm   outline pts 4
+      on it, the wall itself (path 4):  301.5 x  19.7 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall   277.8 x  19.7 in   centre ( 60805, 41317) mm   outline pts 4
+      on it, the wall itself (path 9):  277.8 x  19.7 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall   277.8 x  11.8 in   centre ( 60805, 38530) mm   outline pts 4
+      on it, the wall itself (path 10):  277.8 x  11.8 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall   177.5 x   6.0 in   centre ( 60805, 39874) mm   outline pts 4
+      on it, the wall itself (path 11):  177.5 x   6.0 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    93.2 x  23.7 in   centre ( 64635, 37603) mm   outline pts 4
+      on it, painted after (path 1):   23.7 x  93.2 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 3):   23.7 x 290.3 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    93.2 x  23.7 in   centre ( 56976, 37603) mm   outline pts 4
+      on it, painted after (path 6):   23.7 x  93.2 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 8):   23.7 x 270.7 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    75.0 x   5.8 in   centre ( 59027, 37427) mm   outline pts 4
+      on it, the wall itself (path 12):    5.8 x  75.0 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    69.0 x  23.7 in   centre ( 64635, 40691) mm   outline pts 4
+      on it, painted after (path 0):   23.7 x  69.0 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 3):   23.7 x 290.3 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    69.0 x  23.7 in   centre ( 56976, 40691) mm   outline pts 4
+      on it, painted after (path 5):   23.7 x  69.0 in  colour #000000  unfilled unstroked closed  pts 4
+      on it, painted after (path 8):   23.7 x 270.7 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    35.3 x  23.7 in   centre ( 64635, 34641) mm   outline pts 4
+      on it, painted after (path 2):   23.7 x  35.3 in  colour #000000  unfilled unstroked closed  pts 5
+      on it, painted after (path 3):   23.7 x 290.3 in  colour #D0D0D0  filled unstroked closed  pts 4
+  wall    15.7 x  23.7 in   centre ( 56976, 34891) mm   outline pts 4
+      on it, painted after (path 7):   23.7 x  15.7 in  colour #000000  unfilled unstroked closed  pts 5
+      on it, painted after (path 8):   23.7 x 270.7 in  colour #D0D0D0  filled unstroked closed  pts 4

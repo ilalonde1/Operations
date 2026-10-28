@@ -1,0 +1,13 @@
+PARKED - Step 170: a stroke continuing a kept edge in line is offered whole (31168 C-L3) - NOT for develop until part plans hold
+
+f5a74e04's drawn-twice rule offered only the stretch of a stroke past a kept edge it OVERLAPS; a stroke continuing a kept
+edge end to end overlaps nothing and was dropped, so 31168 building C level 3 (S2.40.1) lost its outline's east side - the
+ring open 25 in, the floor 23,199 -> 11,885 sq ft, 6 columns on no floor. The rule is now GeometryFilterService.
+StretchesNoKeptEdgeCovers, with ALineDrawnTwiceOffersTheStretchNoKeptEdgeCoversTests (red without the continuation clause,
+1 of 5; green 5 of 5). Core fast 1,692/1,692; Halifax 1898f6b4 identical. Six sets vs 506be566: 31168 C-L3 and 31130 L15
+fixed (looked at); 31170-arch L5 REGRESSES - the A423 part plan's floor now reaches past the overall plan, escapes the
+part-plan absorption (steps 103/176, nine-tenths of ground) and stands as a second plate. Characterised in
+docs/pdf-intake/step170-prediction.md; lands after the absorption rule is measured.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

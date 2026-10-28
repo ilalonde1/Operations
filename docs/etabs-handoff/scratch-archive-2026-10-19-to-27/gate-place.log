@@ -1,0 +1,44 @@
+baseline: ledger-sets-2026-09-24-run45-step140.csv (295 rows); judging 3 set(s) she has modelled
+census...
+  00 Templates: 1 job folder(s)
+  01 Small Jobs: 290 job folder(s)
+  03 Residential: 692 job folder(s)
+  04 Commercial: 53 job folder(s)
+  05 Office: 34 job folder(s)
+  06 Hotel: 52 job folder(s)
+  07 Industrial-Garage: 16 job folder(s)
+  08 Inst-Rec-Church: 11 job folder(s)
+  09 Reno-Seismic-Resto: 47 job folder(s)
+rules: KorStandards; work: C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gate-place
+3 set(s) to analyze; tool built 2026-10-27 19:27 UTC; run f5f55456-16c3-40ed-af16-fbb41eed2170
+  [1/3] 31183-01 model: 20 storeys, 742 walls, 743 columns, 11/25 placed; yardstick:14 shared storeys, 379/497 of ours within 100 mm (frame from columns)  196 s
+  [2/3] 31048-01 model: 7 storeys, 1733 walls, 882 columns, 10/36 placed; yardstick:2 shared storeys, 74/202 of ours within 100 mm (frame from columns)  193 s
+  [3/3] 31130-01 model: 24 storeys, 469 walls, 1311 columns, 19/33 placed; yardstick:18 shared storeys, 260/623 of ours within 100 mm (frame from columns)  412 s
+
+3 sets: 3 built, 0 reused from their last run; 7 min; run f5f55456-16c3-40ed-af16-fbb41eed2170
+  3 of 3 build a model; 0 the analyzer failed on
+  of the 3 with a model: 94 plan views, 40 set on the grid by axis name; 51 storeys, 39 with a plate; 2,944 walls, 2,936 columns
+  sets with every view placed: 0 of 3; with a plate on every storey: 1 of 3
+  yardsticks: 3 sets have the engineer's model; 3 share a storey with columns; frames from grids 0, from columns 3
+    ours -> theirs: 713 of 1322 of our columns within 100 mm of one of theirs (54%); theirs -> ours: 713 of 1278 (56%)
+    1 set(s) with 75-99% of our columns within 100 mm: 31183-01
+    2 set(s) with 25-49% of our columns within 100 mm: 31048-01 31130-01
+  154 pages read: 88 plans, 0 failed; plans not placed on a grid: 51
+
+the gate: 3 set(s) the engineer has a model of, judged against the bank
+  job         her plates we read: was -> now (of hers)        thickness agree   her openings we have
+  FRAME31048-01           51,296 ->      106,074 ( 71%)    +54,778     0 ->   1 of   2      0 ->    6 of    7
+  REISS31183-01           57,281 ->       74,275 ( 29%)    +16,994     2 ->   3 of   5      2 ->   15 of   42
+  REISS31130-01          250,285 ->      253,460 ( 91%)     +3,175    14 ->  14 of  17     33 ->   33 of   33
+  totals: her plates we read 250,285 -> 253,460 sq ft of 277,357 (90% -> 91%); thickness 14 -> 14 of 17; her openings we have 33 -> 33 of 33 (the 1 of 3 set(s) judged both times whose frame registers)
+  2 of the 3 set(s) judged both times are NOT JUDGED on plate, thickness, openings or over-read: the frame does not register (our columns' median distance from hers over 1,000 mm at the bank or now), so a move there is the frame's. Their only judges are the render and the six-set gate:
+    31048-01: median 1,553 -> 1,364 mm
+    31183-01: median 4,105 -> 2 mm
+  storeys we plate that her model does not name: 3 of 3 set(s) measured now, 10 storey(s), 305,380 sq ft - the bank predates this figure, so a rise is not judged against it:
+    31130-01: 5 storey(s), 160,183 sq ft
+    31048-01: 2 storey(s), 80,623 sq ft
+    31183-01: 3 storey(s), 64,574 sq ft
+  2 set(s) READ A DIFFERENT STICK FILE than the bank did, so no rule is answerable for them:
+    31183-01
+    31130-01
+  no set lost: the bank may take this.

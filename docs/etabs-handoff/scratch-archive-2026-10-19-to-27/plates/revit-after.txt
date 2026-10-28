@@ -1,0 +1,49 @@
+level                            slab     wall   column      fdn
+(none)                              0        0        0       76
+ELEVATOR ROOF - TN                  2        0        0        0
+ELEVATOR ROOF - TS                  6        0        0        0
+LEVEL 1 - TN                     1566      154      193        0
+LEVEL 1 - TS                      811      184      144        0
+LEVEL 10 - TN                     126        0        0        0
+LEVEL 10 - TS                     126        0        0        0
+LEVEL 11 - TN                     126        0        0        0
+LEVEL 11 - TS                     126        0        0        0
+LEVEL 12 - TS                     126        0        0        0
+LEVEL 12-TN                       126        0        0        0
+LEVEL 13 - TS                     126        0        0        0
+LEVEL 13 TN                       126        0        0        0
+LEVEL 14 - TS                     126        0        0        0
+LEVEL 14 TN                       126        0        0        0
+LEVEL 15 - TS                     126        0        0        0
+LEVEL 15 TN                       126        0        0        0
+LEVEL 16 - TS                     126        0        0        0
+LEVEL 16 -TN                      126        0        0        0
+LEVEL 17 - TS                     126        0        0        0
+LEVEL 17 -TN                      126        0        0        0
+LEVEL 18 - TS                     126        0        0        0
+LEVEL 18 TN                       126        0        0        0
+LEVEL 19 - TN                     190       44        7        0
+LEVEL 19 - TS                     195       57       10        0
+LEVEL 2 - TN                      274        0       74        0
+LEVEL 2 - TS                      400        0       79        0
+LEVEL 3 - TN                      273        0        0        0
+LEVEL 3 - TS                      199        0        0        0
+LEVEL 4 - MID-ST                    0        0        0        0
+LEVEL 4 - TN                      316       14        1        0
+LEVEL 4 - TS                      198        0       25        0
+LEVEL 5 - TN                      271        3       34        0
+LEVEL 5 - TS                      186        0       38        0
+LEVEL 6 - TN                      126        0        0        0
+LEVEL 6 - TS                      126        0        0        0
+LEVEL 7 - TN                      126        0        0        0
+LEVEL 7 - TS                      126        0        0        0
+LEVEL 8 - TN                      126        0        0        0
+LEVEL 8 - TS                      126        0        0        0
+LEVEL 9 - TN                      126        0        0        0
+LEVEL 9 - TS                      126        0        0        0
+LEVEL P1                          604       52        3        0
+LEVEL P2                          785        8        0        0
+LEVEL P3                          489     2459      206     1665
+ROOF - TN                          42       16        0        0
+ROOF - TS                          59       15        0        0
+T.O.SOG                             0      369        0        0

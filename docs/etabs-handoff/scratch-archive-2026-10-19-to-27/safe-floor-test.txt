@@ -1,0 +1,162 @@
+  Determining projects to restore...
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1902: Package 'SixLabors.ImageSharp' 3.1.12 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-gwg2-r3hj-4w44 [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-j3p4-wp97-rph4 [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-j9gm-c75j-xc9q [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-jjfr-hcj7-qf5w [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1902: Package 'SixLabors.ImageSharp' 3.1.12 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-wmxv-xphr-5c9g [C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj]
+  All projects are up-to-date for restore.
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1902: Package 'SixLabors.ImageSharp' 3.1.12 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-gwg2-r3hj-4w44
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-j3p4-wp97-rph4
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-j9gm-c75j-xc9q
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1903: Package 'SixLabors.ImageSharp' 3.1.12 has a known high severity vulnerability, https://github.com/advisories/GHSA-jjfr-hcj7-qf5w
+C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj : warning NU1902: Package 'SixLabors.ImageSharp' 3.1.12 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-wmxv-xphr-5c9g
+  Kor.Operations.EngineeringTools.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.dll
+  Kor.Operations.EngineeringTools.TakeoffCli -> C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.TakeoffCli\bin\Debug\net8.0\takeoff.dll
+  Kor.Operations.EngineeringTools.Core.Tests -> C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll
+Test run for C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:03.18]     Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(model: "pdf-only-31168-01.e2k") [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(model: "pdf-only-31168-01.e2k") [1 s]
+  Error Message:
+   pdf-only-31168-01.e2k, 58 storeys:
+B-L39: SAFE floors/walls/columns 1/23/41, model 1/17/41
+B-L38: SAFE floors/walls/columns 1/28/30, model 1/22/30
+B-L37: SAFE floors/walls/columns 1/27/30, model 1/21/30
+B-L36: SAFE floors/walls/columns 1/27/24, model 1/21/24
+B-L35: SAFE floors/walls/columns 1/27/24, model 1/21/24
+B-L34: SAFE floors/walls/columns 1/27/24, model 1/21/24
+A-L34: SAFE floors/walls/columns 1/11/50, model 1/9/50
+B-L33: SAFE floors/walls/columns 1/27/24, model 1/21/24
+A-L33: SAFE floors/walls/columns 1/14/26, model 1/12/26
+B-L32: SAFE floors/walls/columns 1/27/24, model 1/21/24
+A-L32: SAFE floors/walls/columns 1/14/26, model 1/12/26
+B-L31: SAFE floors/walls/columns 1/27/24, model 1/21/24
+A-L31: SAFE floors/walls/columns 1/14/26, model 1/12/26
+B-L30: SAFE floors/walls/columns 1/27/24, model 1/21/24
+A-L30: SAFE floors/walls/columns 1/14/26, model 1/12/26
+B-L29: SAFE floors/walls/columns 1/22/24, model 1/16/24
+A-L29: SAFE floors/walls/columns 1/14/26, model 1/12/26
+B-L28: SAFE floors/walls/columns 1/22/24, model 1/16/24
+A-L28: SAFE floors/walls/columns 1/14/26, model 1/12/26
+B-L27: SAFE floors/walls/columns 1/27/24, model 1/21/24
+A-L27: SAFE floors/walls/columns 1/14/26, model 1/12/26
+L26: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L25: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L24: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L23: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L22: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L21: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L20: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L19: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L18: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L17: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L16: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L15: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L14: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L13: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L12: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L11: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L10: SAFE floors/walls/columns 2/42/50, model 2/34/50
+L9: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L8: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L7: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L6: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L5: SAFE floors/walls/columns 2/41/50, model 2/33/50
+L4: SAFE floors/walls/columns 2/32/50, model 2/24/50
+L3: SAFE floors/walls/columns 2/33/26, model 2/27/26
+L1: SAFE floors/walls/columns 1/41/27, model 1/36/27
+A-L1: SAFE floors/walls/columns 1/81/123, model 1/77/123
+P1: SAFE floors/walls/columns 3/61/114, model 3/58/114
+P2: SAFE floors/walls/columns 2/55/113, model 2/52/113
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(String model) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\PdfToSafe\AFloorOfTheBuildingGoesToSafeWholeTests.cs:line 62
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+[xUnit.net 00:00:03.34]     Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(model: "pdf-only-31170-01-arch.e2k") [FAIL]
+[xUnit.net 00:00:03.57]     Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(model: "pdf-only-31130-01.e2k") [FAIL]
+[xUnit.net 00:00:03.87]     Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(model: "pdf-only-31138-01.e2k") [FAIL]
+[xUnit.net 00:00:03.99]     Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(model: "pdf-only-31202-01.e2k") [FAIL]
+[xUnit.net 00:00:04.33]     Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(model: "pdf-only-31065-01.e2k") [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(model: "pdf-only-31170-01-arch.e2k") [158 ms]
+  Error Message:
+   pdf-only-31170-01-arch.e2k, 8 storeys:
+L7: SAFE floors/walls/columns 1/21/34, model 1/10/34
+L6: SAFE floors/walls/columns 2/40/45, model 2/10/45
+L5: SAFE floors/walls/columns 1/42/51, model 1/10/51
+L4: SAFE floors/walls/columns 1/43/51, model 1/10/51
+L3: SAFE floors/walls/columns 1/47/51, model 1/13/51
+L2: SAFE floors/walls/columns 1/46/52, model 1/15/52
+L1: SAFE floors/walls/columns 2/56/51, model 2/51/51
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(String model) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\PdfToSafe\AFloorOfTheBuildingGoesToSafeWholeTests.cs:line 62
+   at InvokeStub_AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(model: "pdf-only-31130-01.e2k") [234 ms]
+  Error Message:
+   System.IO.DirectoryNotFoundException : Could not find a part of the path 'C:\Users\ilalonde\AppData\Local\Temp\kor-safe-floor-354eab8aab4d4a95bbfdb39b243c6188\L0\P1.f2k'.
+  Stack Trace:
+     at Microsoft.Win32.SafeHandles.SafeFileHandle.CreateFile(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+   at System.IO.Strategies.FileStreamHelpers.ChooseStrategyCore(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+   at System.IO.StreamWriter.ValidateArgsAndOpenPath(String path, Boolean append, Encoding encoding, Int32 bufferSize)
+   at System.IO.StreamWriter..ctor(String path, Boolean append, Encoding encoding)
+   at Kor.Operations.EngineeringTools.PdfToSafe.BuildingFloorToSafe.Write(String e2kPath, String storey, String f2kPath, ExportSettings settings) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\PdfToSafe\BuildingFloorToSafe.cs:line 245
+   at Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(String model) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\PdfToSafe\AFloorOfTheBuildingGoesToSafeWholeTests.cs:line 56
+   at InvokeStub_AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(model: "pdf-only-31138-01.e2k") [295 ms]
+  Error Message:
+   pdf-only-31138-01.e2k, 27 storeys:
+L2: SAFE floors/walls/columns 1/78/52, model 1/72/52
+L1: SAFE floors/walls/columns 1/45/27, model 1/42/27
+P1: SAFE floors/walls/columns 1/42/25, model 1/39/25
+P2: SAFE floors/walls/columns 1/40/25, model 1/37/25
+P3: SAFE floors/walls/columns 1/38/25, model 1/35/25
+P4: SAFE floors/walls/columns 1/37/28, model 1/34/28
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(String model) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\PdfToSafe\AFloorOfTheBuildingGoesToSafeWholeTests.cs:line 62
+   at InvokeStub_AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(model: "pdf-only-31202-01.e2k") [118 ms]
+  Error Message:
+   pdf-only-31202-01.e2k, 14 storeys:
+ROOF: SAFE floors/walls/columns 4/51/49, model 4/50/49
+L5: SAFE floors/walls/columns 1/42/67, model 1/41/67
+L4: SAFE floors/walls/columns 1/42/67, model 1/41/67
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(String model) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\PdfToSafe\AFloorOfTheBuildingGoesToSafeWholeTests.cs:line 62
+   at InvokeStub_AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(model: "pdf-only-31065-01.e2k") [347 ms]
+  Error Message:
+   pdf-only-31065-01.e2k, 22 storeys:
+L19: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L18: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L17: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L16: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L15: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L14: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L13: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L12: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L11: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L10: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L9: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L8: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L7: SAFE floors/walls/columns 2/30/44, model 2/24/44
+L6: SAFE floors/walls/columns 2/39/44, model 2/33/44
+L4: SAFE floors/walls/columns 2/51/92, model 2/44/92
+L3: SAFE floors/walls/columns 2/47/92, model 2/40/92
+L2: SAFE floors/walls/columns 2/90/106, model 2/78/106
+L1: SAFE floors/walls/columns 4/65/63, model 4/59/63
+P1: SAFE floors/walls/columns 4/64/60, model 4/58/60
+P2: SAFE floors/walls/columns 4/56/61, model 4/51/61
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Intake.AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(String model) in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\PdfToSafe\AFloorOfTheBuildingGoesToSafeWholeTests.cs:line 62
+   at InvokeStub_AFloorOfTheBuildingGoesToSafeWholeTests.EveryFloorIsWrittenWithTheModelsMembersAndNothingDangling(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+
+Failed!  - Failed:     6, Passed:     1, Skipped:     0, Total:     7, Duration: 1 s - Kor.Operations.EngineeringTools.Core.Tests.dll (net8.0)

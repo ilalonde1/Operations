@@ -1,0 +1,9 @@
+7 near-miss column(s) of 1294
+  L20      (62844 48947) stack misses by 314 mm  NOT JUDGED (hers inf mm)
+  L20      (56327 41036) stack misses by 331 mm  NOT JUDGED (hers inf mm)
+  L20      (56479 46645) stack misses by 660 mm  NOT JUDGED (hers inf mm)
+  L17      (106480 50916) stack misses by 195 mm  NOT JUDGED (hers inf mm)
+  L17      (113060 52294) stack misses by 438 mm  NOT JUDGED (hers inf mm)
+  L14      (114533 47205) stack misses by 290 mm  WRONG TWIN (hers 379 mm)
+  L3       (117288 55372) stack misses by 315 mm  NOT JUDGED (hers 5,084 mm)
+WRONG TWIN: 1

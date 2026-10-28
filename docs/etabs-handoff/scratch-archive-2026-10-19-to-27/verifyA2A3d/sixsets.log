@@ -1,0 +1,5 @@
+started 2026-10-19T19:34:20
+test exit 1
+Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline [31 m 3 s]
+Failed!  - Failed:     1, Passed:     1, Skipped:     0, Total:     2, Duration: 23 ms - Kor.Operations.EngineeringTools.Core.Tests.dll (net8.0)
+finished 2026-10-19T20:05:30

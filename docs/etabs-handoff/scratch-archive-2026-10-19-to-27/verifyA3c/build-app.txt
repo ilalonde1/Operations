@@ -1,0 +1,22 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Kor.EmailSearch.Core -> C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\bin\Debug\netstandard2.0\Kor.EmailSearch.Core.dll
+  Kor.EmailCommon -> C:\VIsual Studio Projects\Operations\Kor.EmailCommon\bin\Debug\net8.0\Kor.EmailCommon.dll
+  Kor.Operations.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.Core\bin\Debug\net8.0\Kor.Operations.Core.dll
+  Kor.Operations.Architecture -> C:\VIsual Studio Projects\Operations\Kor.Operations.Architecture\bin\Debug\net8.0-windows\archmap.dll
+  Kor.Opportunities.Core -> C:\VIsual Studio Projects\Operations\Kor.Opportunities.Core\bin\Debug\net8.0\Kor.Opportunities.Core.dll
+  Kor.Operations.NetworkOps.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.NetworkOps.Core\bin\Debug\net8.0\Kor.Operations.NetworkOps.Core.dll
+  Kor.Operations.Rendering -> C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\bin\Debug\net8.0\Kor.Operations.Rendering.dll
+  Kor.Operations.Data -> C:\VIsual Studio Projects\Operations\Kor.Operations.Data\bin\Debug\net8.0-windows\Kor.Operations.Data.dll
+  Kor.Operations.Graph -> C:\VIsual Studio Projects\Operations\Kor.Operations.Graph\bin\Debug\net8.0\Kor.Operations.Graph.dll
+  Kor.Operations.Business -> C:\VIsual Studio Projects\Operations\Kor.Operations.Business\bin\Debug\net8.0-windows\Kor.Operations.Business.dll
+  Kor.Operations.EngineeringTools.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.dll
+  Kor.Opportunities.Data -> C:\VIsual Studio Projects\Operations\Kor.Opportunities.Data\bin\Debug\net8.0\Kor.Opportunities.Data.dll
+  Kor.Operations.App -> C:\VIsual Studio Projects\Operations\Kor.Operations.App\bin\Debug\net8.0-windows10.0.19041.0\Kor.Operations.App.dll
+  Kor.Operations.EngineeringTools.Tests -> C:\VIsual Studio Projects\Operations\Kor.Operations.App\EngineeringTools.Tests\bin\Debug\net8.0-windows10.0.19041.0\Kor.Operations.EngineeringTools.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:24.89

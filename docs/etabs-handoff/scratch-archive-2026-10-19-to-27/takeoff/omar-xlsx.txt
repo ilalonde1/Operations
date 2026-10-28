@@ -1,0 +1,45 @@
+=== Takeoff 52x13
+143 E 3rd Hotel - KOR markup ETABS model takeoff  Structural Quantity Takeoff |  |  |  |  |  |  |  |  |  |  |  | 
+    |    Generated 2026-10-21    |    Metric units |  |  |  |  |  |  |  |  |  |  |  | 
+Reinforcing is a calibrated estimate — edit the orange densities on 'Basis & Density' and every floor recomputes. Concrete volume is the generated ETABS model's own geometry — the slab outlines, wall thicknesses and column sections read fro
+ | Concrete (m³) |  |  |  |  | Reinforcing (kg) — calibratable |  |  |  |  |  | 
+Level | Slab | Wall | Column | Foundation* | Total | Slab | Wall | Column | Foundation* | Total | Reinf.
+intensity
+(kg/m³) | Formwork
+(m²)
+B1 | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A6,'Detail (calc)'!$B$3:$B$123,"Slab") | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A6,'Detail (calc)'!$B$3:$B$123,"Wall") | =SUMIFS('Detail (calc)'
+B2 | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A7,'Detail (calc)'!$B$3:$B$123,"Slab") | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A7,'Detail (calc)'!$B$3:$B$123,"Wall") | =SUMIFS('Detail (calc)'
+L1 | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A8,'Detail (calc)'!$B$3:$B$123,"Slab") | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A8,'Detail (calc)'!$B$3:$B$123,"Wall") | =SUMIFS('Detail (calc)'
+L10 | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A9,'Detail (calc)'!$B$3:$B$123,"Slab") | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A9,'Detail (calc)'!$B$3:$B$123,"Wall") | =SUMIFS('Detail (calc)
+L11 | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A10,'Detail (calc)'!$B$3:$B$123,"Slab") | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A10,'Detail (calc)'!$B$3:$B$123,"Wall") | =SUMIFS('Detail (cal
+L12 | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A11,'Detail (calc)'!$B$3:$B$123,"Slab") | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A11,'Detail (calc)'!$B$3:$B$123,"Wall") | =SUMIFS('Detail (cal
+L13 | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A12,'Detail (calc)'!$B$3:$B$123,"Slab") | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A12,'Detail (calc)'!$B$3:$B$123,"Wall") | =SUMIFS('Detail (cal
+L14 | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A13,'Detail (calc)'!$B$3:$B$123,"Slab") | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A13,'Detail (calc)'!$B$3:$B$123,"Wall") | =SUMIFS('Detail (cal
+L15 | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A14,'Detail (calc)'!$B$3:$B$123,"Slab") | =SUMIFS('Detail (calc)'!$E$3:$E$123,'Detail (calc)'!$A$3:$A$123,$A14,'Detail (calc)'!$B$3:$B$123,"Wall") | =SUMIFS('Detail (cal
+=== Detail (calc) 123x8
+Live calc — concrete × density (density from the Basis & Density sheet). Do not edit; calibrate on Basis & Density. |  |  |  |  |  |  | 
+Level | Bucket | Element | Variant | Concrete | key | Density | Reinforcing
+B1 | Slab | Slab | parking | 107.29 | Slab|parking | =VLOOKUP(F3,'Basis & Density'!$A:$D,4,FALSE) | =E3*G3
+B1 | Wall | Wall | (default) | 269.98 | Wall|(default) | =VLOOKUP(F4,'Basis & Density'!$A:$D,4,FALSE) | =E4*G4
+B1 | Column | Column | (default) | 7.44 | Column|(default) | =VLOOKUP(F5,'Basis & Density'!$A:$D,4,FALSE) | =E5*G5
+B2 | Slab | Slab | parking | 136.06 | Slab|parking | =VLOOKUP(F6,'Basis & Density'!$A:$D,4,FALSE) | =E6*G6
+L1 | Slab | Slab | (default) | 130.03 | Slab|(default) | =VLOOKUP(F7,'Basis & Density'!$A:$D,4,FALSE) | =E7*G7
+L1 | Wall | Wall | (default) | 413.3 | Wall|(default) | =VLOOKUP(F8,'Basis & Density'!$A:$D,4,FALSE) | =E8*G8
+L1 | Column | Column | (default) | 11.17 | Column|(default) | =VLOOKUP(F9,'Basis & Density'!$A:$D,4,FALSE) | =E9*G9
+L10 | Slab | Slab | (default) | 118.77 | Slab|(default) | =VLOOKUP(F10,'Basis & Density'!$A:$D,4,FALSE) | =E10*G10
+L10 | Wall | Wall | (default) | 141.79 | Wall|(default) | =VLOOKUP(F11,'Basis & Density'!$A:$D,4,FALSE) | =E11*G11
+L10 | Column | Column | (default) | 9.91 | Column|(default) | =VLOOKUP(F12,'Basis & Density'!$A:$D,4,FALSE) | =E12*G12
+L11 | Slab | Slab | (default) | 118.77 | Slab|(default) | =VLOOKUP(F13,'Basis & Density'!$A:$D,4,FALSE) | =E13*G13
+L11 | Wall | Wall | (default) | 141.79 | Wall|(default) | =VLOOKUP(F14,'Basis & Density'!$A:$D,4,FALSE) | =E14*G14
+=== Basis & Density 24x8
+Basis, Density & Calibration |  |  |  |  |  |  | 
+ | Edit the orange density cells (kg/m³) to calibrate — every floor's reinforcing and the totals recompute. |  |  |  |  |  | 
+key | Element | Variant | Density (kg/m³) |  |  |  | 
+Slab|(default) | Slab | (default) | 100.9 |  |  |  | 
+Slab|parking | Slab | parking | 100.9 |  |  |  | 
+Slab|roof | Slab | roof | 118.7 |  |  |  | 
+Wall|(default) | Wall | (default) | 169.1 |  |  |  | 
+Column|(default) | Column | (default) | 415.3 |  |  |  | 
+ | How to use & basis |  |  |  |  |  | 
+ | Concrete volume is the generated ETABS model's own geometry — the slab outlines, wall thicknesses and column sections read from the drawings, placed on their storeys and checked against the shipped-model invariants. The takeoff and the e
+ | footings, pile caps, piles and grade beams are below the lowest modelled storey and are not in an ETABS superstructure model. Quantify them by hand. |  |  |  |  |  | 

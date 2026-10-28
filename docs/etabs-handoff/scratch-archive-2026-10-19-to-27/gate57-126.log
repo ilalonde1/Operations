@@ -1,0 +1,458 @@
+baseline: ledger-sets-2026-09-24-run45-step140.csv (295 rows); judging 59 set(s) she has modelled
+census...
+  census of 2026-10-27 07:11 UTC reused (1196 job folders; --census retakes it)
+rules: KorStandards; work: C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gate57-126
+57 set(s) to analyze; tool built 2026-10-27 10:52 UTC; run f98c7cf2-ad45-45fe-957f-16046cab59c1
+  [1/57] 31016-01 no model: 9 page(s) were read and none produced a structural view. They typed as unknown 9; 0 carried a readable title and 0 a sheet number. NO PAGE HAS A READABLE TITLE, and a page is taken for a structural plan from its title, so nothing could be. TO FIX: this is a title-block the reader cannot read - the words may be drawn as linework rather than text, or set out in columns it assembles in the wrong order. Send one page and it becomes a rule for every set from this office; or name the plan pages for this run with --pages.; yardstick: no shared storey with columns  4 s
+  [2/57] 31129-01 model: 7 storeys, 610 walls, 61 columns, 12/12 placed; yardstick:1 shared storeys, 19/20 of ours within 100 mm (frame from columns)  186 s
+  [3/57] 30989-01 model: 27 storeys, 506 walls, 593 columns, 17/24 placed; yardstick:23 shared storeys, 309/522 of ours within 100 mm (frame from columns)  189 s
+  [4/57] 31085-01 model: 7 storeys, 842 walls, 152 columns, 11/14 placed; yardstick: no shared storey with columns  206 s
+  [5/57] 31017-01 model: 31 storeys, 520 walls, 830 columns, 24/32 placed; yardstick:24 shared storeys, 167/598 of ours within 100 mm (frame from columns)  200 s
+  [6/57] 31029-01 model: 2 storeys, 10 walls, 1 columns, 1/5 placed; yardstick: no shared storey with columns  12 s
+  [7/57] 60061-03 model: 13 storeys, 187 walls, 378 columns, 7/10 placed; yardstick:11 shared storeys, 123/346 of ours within 100 mm (frame from columns)  115 s
+  [8/57] 31087-01 model: 60 storeys, 1194 walls, 1634 columns, 20/39 placed; yardstick:55 shared storeys, 1341/1502 of ours within 100 mm (frame from columns)  86 s
+  [9/57] 30819-01 model: 8 storeys, 283 walls, 95 columns, 3/10 placed; yardstick:5 shared storeys, 4/25 of ours within 100 mm (frame from columns)  322 s
+  [10/57] 31053-01 model: 21 storeys, 306 walls, 578 columns, 17/31 placed; yardstick:18 shared storeys, 133/465 of ours within 100 mm (frame from columns)  323 s
+  [11/57] 31032-01 model: 8 storeys, 467 walls, 92 columns, 15/15 placed; yardstick:3 shared storeys, 44/64 of ours within 100 mm (frame from columns)  141 s
+  [12/57] 31064-01 model: 3 storeys, 980 walls, 68 columns, 30/34 placed; yardstick:1 shared storeys, 1/1 of ours within 100 mm (frame from columns)  165 s
+  [13/57] 30990-01 model: 25 storeys, 853 walls, 1488 columns, 29/53 placed; yardstick:11 shared storeys, 344/390 of ours within 100 mm (frame from columns)  472 s
+  [14/57] 31037-01 model: 4 storeys, 49 walls, 407 columns, 5/9 placed; yardstick:2 shared storeys, 84/102 of ours within 100 mm (frame from columns)  327 s
+  [15/57] 30838-01 model: 44 storeys, 1950 walls, 1553 columns, 44/54 placed; yardstick:40 shared storeys, 400/863 of ours within 100 mm (frame from columns)  350 s
+  [16/57] 31170-01 model: 9 storeys, 139 walls, 330 columns, 9/18 placed; yardstick:7 shared storeys, 287/323 of ours within 100 mm (frame from columns)  859 s
+  [17/57] 30849-01 model: 14 storeys, 265 walls, 362 columns, 14/17 placed; yardstick:13 shared storeys, 221/335 of ours within 100 mm (frame from columns)  160 s
+  [18/57] 31171-01 model: 7 storeys, 253 walls, 27 columns, 10/10 placed; yardstick:1 shared storeys, 3/3 of ours within 100 mm (frame from columns)  73 s
+  [19/57] 31174-01 model: 7 storeys, 82 walls, 46 columns, 7/11 placed; yardstick:5 shared storeys, 5/5 of ours within 100 mm (frame from columns)  42 s
+  [20/57] 31093-01 model: 5 storeys, 478 walls, 81 columns, 12/14 placed; yardstick:2 shared storeys, 35/78 of ours within 100 mm (frame from columns)  260 s
+  [21/57] 30864-01 model: 41 storeys, 595 walls, 974 columns, 18/42 placed; yardstick: no shared storey with columns  239 s
+  [22/57] 70057-01 model: 5 storeys, 148 walls, 53 columns, 21/25 placed; yardstick:3 shared storeys, 4/15 of ours within 100 mm (frame from columns)  780 s
+  [23/57] 31130-01 model: 24 storeys, 469 walls, 1311 columns, 19/33 placed; yardstick:18 shared storeys, 260/623 of ours within 100 mm (frame from columns)  1167 s
+  [24/57] 70060-01 model: 3 storeys, 14 walls, 0 columns, 3/5 placed; yardstick: no shared storey with columns  94 s
+  [25/57] 31183-01 model: 20 storeys, 742 walls, 743 columns, 11/25 placed; yardstick:14 shared storeys, 379/497 of ours within 100 mm (frame from columns)  316 s
+  [26/57] 31039-01 model: 36 storeys, 718 walls, 1247 columns, 39/57 placed; yardstick: no shared storey with columns  802 s
+  [27/57] 31185-01 model: 4 storeys, 282 walls, 68 columns, 15/18 placed; yardstick:2 shared storeys, 54/62 of ours within 100 mm (frame from columns)  109 s
+  [28/57] 31224-01 model: 6 storeys, 155 walls, 45 columns, 11/18 placed; yardstick:4 shared storeys, 12/15 of ours within 100 mm (frame from columns)  58 s
+  [29/57] 31143-01 model: 7 storeys, 926 walls, 67 columns, 9/10 placed; yardstick:1 shared storeys, 13/30 of ours within 100 mm (frame from columns)  251 s
+  [30/57] 70061-01 model: 5 storeys, 138 walls, 291 columns, 10/17 placed; yardstick:3 shared storeys, 236/279 of ours within 100 mm (frame from columns)  360 s
+  [31/57] 70063-01 model: 4 storeys, 38 walls, 19 columns, 4/10 placed; yardstick:2 shared storeys, 6/6 of ours within 100 mm (frame from columns)  44 s
+  [32/57] 30933-01 model: 18 storeys, 651 walls, 1240 columns, 19/21 placed; yardstick:4 shared storeys, 286/392 of ours within 100 mm (frame from columns)  679 s
+  [33/57] 70064-01 model: 4 storeys, 39 walls, 23 columns, 4/8 placed; yardstick:2 shared storeys, 9/10 of ours within 100 mm (frame from columns)  29 s
+  [34/57] 70065-01 model: 4 storeys, 40 walls, 6 columns, 4/10 placed; yardstick: no shared storey with columns  35 s
+  [35/57] 40112-01 model: 3 storeys, 43 walls, 53 columns, 3/4 placed; yardstick: no shared storey with columns  231 s
+  [36/57] 31048-01 model: 7 storeys, 1733 walls, 882 columns, 10/36 placed; yardstick:2 shared storeys, 74/202 of ours within 100 mm (frame from columns)  365 s
+  [37/57] 31155-01 model: 8 storeys, 812 walls, 183 columns, 8/10 placed; yardstick:1 shared storeys, 8/14 of ours within 100 mm (frame from columns)  500 s
+  [38/57] 30972-01 model: 20 storeys, 477 walls, 476 columns, 31/48 placed; yardstick:19 shared storeys, 313/453 of ours within 100 mm (frame from columns)  428 s
+  [39/57] 31158-01 model: 8 storeys, 243 walls, 40 columns, 10/10 placed; yardstick:2 shared storeys, 4/23 of ours within 100 mm (frame from columns)  87 s
+  [40/57] 30993-01 model: 41 storeys, 1107 walls, 702 columns, 28/79 placed; yardstick:36 shared storeys, 186/556 of ours within 100 mm (frame from columns)  1604 s
+  [41/57] 31066-01 model: 7 storeys, 810 walls, 21 columns, 8/15 placed; yardstick: no shared storey with columns  322 s
+  [42/57] 31003-01 model: 7 storeys, 914 walls, 190 columns, 10/12 placed; yardstick:2 shared storeys, 52/57 of ours within 100 mm (frame from columns)  572 s
+  [43/57] 31076-01 model: 8 storeys, 583 walls, 31 columns, 10/11 placed; yardstick:1 shared storeys, 15/15 of ours within 100 mm (frame from columns)  77 s
+  [44/57] 30986-02 model: 8 storeys, 536 walls, 109 columns, 12/14 placed; yardstick:4 shared storeys, 54/88 of ours within 100 mm (frame from columns)  274 s
+  [45/57] 31162-01 model: 8 storeys, 721 walls, 49 columns, 10/10 placed; yardstick:3 shared storeys, 21/46 of ours within 100 mm (frame from columns)  382 s
+  [46/57] 31005-01 model: 25 storeys, 414 walls, 269 columns, 25/57 placed; yardstick:18 shared storeys, 0/104 of ours within 100 mm  399 s
+  [47/57] 31168-01 model: 64 storeys, 1498 walls, 2435 columns, 54/73 placed; yardstick: no shared storey with columns  400 s
+  [48/57] 31082-01 model: 7 storeys, 283 walls, 66 columns, 15/19 placed; yardstick:2 shared storeys, 47/54 of ours within 100 mm (frame from columns)  767 s
+  [49/57] 80064-01 model: 3 storeys, 212 walls, 159 columns, 9/25 placed; yardstick: no shared storey with columns  1404 s
+  [50/57] 31098-01 model: 25 storeys, 470 walls, 645 columns, 15/29 placed; yardstick:22 shared storeys, 345/528 of ours within 100 mm (frame from columns)  2246 s
+  [51/57] 31065-01 model: 25 storeys, 774 walls, 1168 columns, 26/51 placed; yardstick:21 shared storeys, 514/608 of ours within 100 mm (frame from columns)  2797 s
+  [52/57] 31006-01 model: 6 storeys, 583 walls, 44 columns, 7/18 placed; yardstick:1 shared storeys, 7/10 of ours within 100 mm (frame from columns)  584 s
+  [53/57] 31083-01 model: 7 storeys, 243 walls, 561 columns, 10/21 placed; yardstick:2 shared storeys, 114/217 of ours within 100 mm (frame from columns)  196 s
+  [54/57] 31009-01 model: 10 storeys, 349 walls, 466 columns, 17/31 placed; yardstick:8 shared storeys, 132/381 of ours within 100 mm (frame from columns)  669 s
+  [55/57] 31101-01 model: 8 storeys, 900 walls, 221 columns, 8/12 placed; yardstick:1 shared storeys, 25/33 of ours within 100 mm (frame from columns)  1165 s
+  [56/57] 31108-01 model: 7 storeys, 252 walls, 124 columns, 9/10 placed; yardstick:2 shared storeys, 35/56 of ours within 100 mm (frame from columns)  73 s
+  [57/57] 31117-01 model: 7 storeys, 373 walls, 100 columns, 9/9 placed; yardstick:2 shared storeys, 20/32 of ours within 100 mm (frame from columns)  53 s
+
+57 sets: 57 built, 0 reused from their last run; 78 min; run f98c7cf2-ad45-45fe-957f-16046cab59c1
+  56 of 57 build a model; 0 the analyzer failed on
+    no model, 1 set(s): 9 page(s) were read and none produced a structural view. They typed as unknown 9; 0 carried a readable title and 0 a sheet number. NO PAGE HAS A READABLE TITLE, and a page is taken for a structural plan from its title, so nothing could be. TO FIX: this is a title-block the reader cannot read - the words may be drawn as linework rather than text, or set out in columns it assembles in the wrong order. Send one page and it becomes a rule for every set from this office; or name the plan pages for this run with --pages.
+  of the 56 with a model: 1315 plan views, 818 set on the grid by axis name; 802 storeys, 651 with a plate; 29,259 walls, 23,857 columns
+  sets with every view placed: 6 of 56; with a plate on every storey: 10 of 56
+  yardsticks: 57 sets have the engineer's model; 46 share a storey with columns; frames from grids 1, from columns 45
+    ours -> theirs: 6745 of 11048 of our columns within 100 mm of one of theirs (61%); theirs -> ours: 6745 of 12324 (55%)
+    5 set(s) with 100-124% of our columns within 100 mm: 31064-01 31076-01 31171-01 31174-01 70063-01
+    14 set(s) with 75-99% of our columns within 100 mm: 30990-01 31003-01 31037-01 31065-01 31082-01 31087-01 31101-01 31129-01 31170-01 31183-01 31185-01 31224-01 ...
+    12 set(s) with 50-74% of our columns within 100 mm: 30849-01 30933-01 30972-01 30986-02 30989-01 31006-01 31032-01 31083-01 31098-01 31108-01 31117-01 31155-01
+    12 set(s) with 25-49% of our columns within 100 mm: 30838-01 30993-01 31009-01 31017-01 31048-01 31053-01 31093-01 31130-01 31143-01 31162-01 60061-03 70057-01
+    3 set(s) with 0-24% of our columns within 100 mm: 30819-01 31005-01 31158-01
+  2232 pages read: 1083 plans, 0 failed; plans not placed on a grid: 392
+
+the gate: 56 set(s) the engineer has a model of, judged against the bank
+  job         her plates we read: was -> now (of hers)        thickness agree   her openings we have
+  LOST 31104-01           72,130 ->            - (   -)                5 ->     of   5     13 ->      of   35
+  LOST 31165-01           85,676 ->            - (   -)                2 ->     of   3      0 ->      of    0
+  LOST 30933-01          216,034 ->      214,940 ( 91%)     -1,094     2 ->   1 of   4     24 ->   22 of   46
+  LOST 31037-01           25,390 ->       24,890 ( 39%)       -500     0 ->   0 of   2      1 ->    1 of    2
+  LOST 31101-01           31,444 ->       31,444 ( 92%)         +0     0 ->   0 of   1      1 ->    0 of    1
+  LOST 31117-01            5,421 ->        5,426 ( 33%)         +5     0 ->   0 of   1      7 ->    4 of    7
+  LOST 30993-01          510,530 ->      512,797 ( 92%)     +2,267    35 ->  35 of  35     76 ->   75 of  154
+  LOST 31162-01           32,547 ->       46,181 (116%)    +13,634     2 ->   2 of   3      2 ->    2 of    3
+  LOST 31009-01          100,507 ->      123,923 (109%)    +23,416     5 ->   4 of   7     12 ->   14 of   30
+  FRAME31048-01           51,296 ->      106,074 ( 71%)    +54,778     0 ->   1 of   2      0 ->    6 of    7
+       31017-01          227,331 ->      262,275 ( 64%)    +34,944    19 ->  21 of  23     19 ->   22 of   59
+       31143-01              960 ->       22,709 ( 93%)    +21,749     0 ->   0 of   1      0 ->    2 of    2
+  FRAME30986-02           19,710 ->       39,178 ( 68%)    +19,468     2 ->   2 of   3      7 ->    9 of   16
+       31006-01           22,033 ->       40,243 (591%)    +18,210     0 ->   0 of   1      0 ->    0 of    1
+       30990-01          139,777 ->      157,859 ( 72%)    +18,082     8 ->   9 of  10     22 ->   23 of   25
+  REISS31183-01           57,281 ->       74,275 ( 29%)    +16,994     2 ->   3 of   5      2 ->   15 of   42
+  FRAME31005-01            8,035 ->       24,482 ( 16%)    +16,448     1 ->   3 of   3     26 ->  108 of  129
+  REISS31083-01           19,732 ->       34,865 ( 47%)    +15,132     1 ->   1 of   2     12 ->   16 of   21
+  REISS30838-01          479,948 ->      493,281 ( 84%)    +13,333    35 ->  37 of  38    104 ->  103 of  157
+       31003-01           33,125 ->       43,128 ( 63%)    +10,003     1 ->   1 of   2      6 ->    7 of   10
+       31087-01          738,099 ->      746,899 ( 91%)     +8,799    11 ->  13 of  55     83 ->   84 of  106
+       31174-01                0 ->        8,766 ( 38%)     +8,766     0 ->   1 of   4      0 ->    0 of    8
+       31224-01            4,268 ->       12,569 ( 69%)     +8,301     1 ->   4 of   4      1 ->    7 of    8
+       30989-01           61,823 ->       68,239 ( 30%)     +6,416     4 ->  21 of  21      5 ->    6 of   75
+  REISS31065-01          246,648 ->      252,796 ( 87%)     +6,148    18 ->  20 of  21     62 ->   56 of  109
+       30849-01           84,233 ->       88,485 ( 72%)     +4,252    11 ->  12 of  12     10 ->   13 of   47
+       31082-01           30,253 ->       33,568 ( 84%)     +3,315     1 ->   1 of   2      3 ->    3 of    6
+  REISS31130-01          250,285 ->      253,460 ( 91%)     +3,175    14 ->  14 of  17     33 ->   33 of   33
+       30972-01          209,434 ->      211,900 ( 86%)     +2,465    14 ->  17 of  19     28 ->   30 of   45
+       31129-01           17,694 ->       19,915 ( 56%)     +2,221     0 ->   0 of   1      3 ->    4 of    5
+       31032-01           30,906 ->       32,819 ( 88%)     +1,913     2 ->   2 of   3      2 ->    2 of    8
+  REISS31098-01          183,446 ->      184,950 ( 87%)     +1,504    19 ->  20 of  20      2 ->   23 of   24
+  REISS31170-01          127,090 ->      128,575 ( 92%)     +1,485     6 ->   7 of   7     12 ->   13 of   37
+  FRAME70057-01          207,217 ->      208,424 (145%)     +1,207     0 ->   0 of   3      3 ->    3 of    9
+       60061-03           75,501 ->       75,960 ( 67%)       +459    10 ->  10 of  11     31 ->   33 of  259
+       31053-01          116,363 ->      116,117 ( 73%)       -246    11 ->  11 of  14     19 ->   19 of   42
+       70061-01          131,202 ->      131,421 ( 60%)       +219     1 ->   2 of   3      0 ->    0 of    8
+  FRAME30819-01           39,476 ->       39,577 ( 78%)       +101     1 ->   1 of   5      1 ->    1 of    9
+  REISS70063-01            4,336 ->        4,398 ( 66%)        +61     1 ->   1 of   2      1 ->    1 of    1
+       31185-01           27,877 ->       27,905 ( 87%)        +28     1 ->   1 of   1      0 ->    0 of    0
+       31171-01            7,313 ->        7,311 ( 96%)         -1     0 ->   0 of   1      1 ->    1 of    1
+  REISS31093-01           42,519 ->       42,520 ( 63%)         +1     1 ->   1 of   1      3 ->    3 of    4
+       31076-01           12,690 ->       12,691 ( 91%)         +0     1 ->   1 of   1      1 ->    2 of    4
+       00904-01                - ->            - (   -)                  ->     of            ->      of     
+       00966-06                - ->            - (   -)                  ->     of            ->      of     
+       01195-01                - ->            - (   -)                  ->     of            ->      of     
+       01375-01                - ->            - (   -)                  ->     of            ->      of     
+       01379-01                - ->            - (   -)                  ->     of            ->      of     
+       01389-01                - ->            - (   -)                  ->     of            ->      of     
+       01448-02                - ->            - (   -)                  ->     of            ->      of     
+       01471-02                - ->            - (   -)                  ->     of            ->      of     
+       01554-01                - ->            - (   -)                  ->     of            ->      of     
+       01569-01                - ->            - (   -)                  ->     of            ->      of     
+       01589-01                - ->            - (   -)                  ->     of            ->      of     
+       01599-01                - ->            - (   -)                  ->     of            ->      of     
+       01603-01                - ->            - (   -)                  ->     of            ->      of     
+       01631-01                - ->            - (   -)                  ->     of            ->      of     
+       01653-01                - ->            - (   -)                  ->     of            ->      of     
+       01666-01                - ->            - (   -)                  ->     of            ->      of     
+       01668-01                - ->            - (   -)                  ->     of            ->      of     
+       01669-01                - ->            - (   -)                  ->     of            ->      of     
+       01672-01                - ->            - (   -)                  ->     of            ->      of     
+       01715-01                - ->            - (   -)                  ->     of            ->      of     
+       01721-01                - ->            - (   -)                  ->     of            ->      of     
+       01726-01                - ->            - (   -)                  ->     of            ->      of     
+       01728-01                - ->            - (   -)                  ->     of            ->      of     
+       01729-01                - ->            - (   -)                  ->     of            ->      of     
+       01732-01                - ->            - (   -)                  ->     of            ->      of     
+       01742-01                - ->            - (   -)                  ->     of            ->      of     
+       01744-01                - ->            - (   -)                  ->     of            ->      of     
+       01746-01                - ->            - (   -)                  ->     of            ->      of     
+       01747-01                - ->            - (   -)                  ->     of            ->      of     
+       01749-01                - ->            - (   -)                  ->     of            ->      of     
+       01761-01                - ->            - (   -)                  ->     of            ->      of     
+       01773-01                - ->            - (   -)                  ->     of            ->      of     
+       01780-01                - ->            - (   -)                  ->     of            ->      of     
+       01783-01                - ->            - (   -)                  ->     of            ->      of     
+       01787-01                - ->            - (   -)                  ->     of            ->      of     
+       01788-01                - ->            - (   -)                  ->     of            ->      of     
+       01789-01                - ->            - (   -)                  ->     of            ->      of     
+       01791-01                - ->            - (   -)                  ->     of            ->      of     
+       01797-01                - ->            - (   -)                  ->     of            ->      of     
+       01798-01                - ->            - (   -)                  ->     of            ->      of     
+       01803-01                - ->            - (   -)                  ->     of            ->      of     
+       01806-01                - ->            - (   -)                  ->     of            ->      of     
+       01810-01                - ->            - (   -)                  ->     of            ->      of     
+       01811-01                - ->            - (   -)                  ->     of            ->      of     
+       30101-12                - ->            - (   -)                  ->     of            ->      of     
+       30477-01                - ->            - (   -)                  ->     of            ->      of     
+       30553-06                - ->            - (   -)                  ->     of            ->      of     
+       30654-04                - ->            - (   -)                  ->     of            ->      of     
+       30694-01                - ->            - (   -)                  ->     of            ->      of     
+       30725-01                - ->            - (   -)                  ->     of            ->      of     
+       30743-01                - ->            - (   -)                  ->     of            ->      of     
+       30751-01                - ->            - (   -)                  ->     of            ->      of     
+       30756-01                - ->            - (   -)                  ->     of            ->      of     
+       30768-01                - ->            - (   -)                  ->     of            ->      of     
+       30780-08                - ->            - (   -)                  ->     of            ->      of     
+       30780-10                - ->            - (   -)                  ->     of            ->      of     
+       30783-01                - ->            - (   -)                  ->     of            ->      of     
+       30784-01                - ->            - (   -)                  ->     of            ->      of     
+       30798-06                - ->            - (   -)                  ->     of            ->      of     
+       30804-01                - ->            - (   -)                  ->     of            ->      of     
+       30807-01                - ->            - (   -)                  ->     of            ->      of     
+       30811-01                - ->            - (   -)                  ->     of            ->      of     
+       30816-01                - ->            - (   -)                  ->     of            ->      of     
+       30816-02                - ->            - (   -)                  ->     of            ->      of     
+       30820-01                - ->            - (   -)                  ->     of            ->      of     
+       30820-02                - ->            - (   -)                  ->     of            ->      of     
+       30823-01                - ->            - (   -)                  ->     of            ->      of     
+       30824-01                - ->            - (   -)                  ->     of            ->      of     
+       30825-01                - ->            - (   -)                  ->     of            ->      of     
+       30826-01                - ->            - (   -)                  ->     of            ->      of     
+       30827-01                - ->            - (   -)                  ->     of            ->      of     
+       30830-01                - ->            - (   -)                  ->     of            ->      of     
+       30832-01                - ->            - (   -)                  ->     of            ->      of     
+       30833-01                - ->            - (   -)                  ->     of            ->      of     
+       30834-01                - ->            - (   -)                  ->     of            ->      of     
+       30836-01                - ->            - (   -)                  ->     of            ->      of     
+       30840-01                - ->            - (   -)                  ->     of            ->      of     
+       30841-01                - ->            - (   -)                  ->     of            ->      of     
+       30848-01                - ->            - (   -)                  ->     of            ->      of     
+       30852-01                - ->            - (   -)                  ->     of            ->      of     
+       30853-01                - ->            - (   -)                  ->     of            ->      of     
+       30864-01                0 ->            0 (   -)         +0     0 ->   0 of   0     39 ->   42 of  149
+       30865-01                - ->            - (   -)                  ->     of            ->      of     
+       30865-05                - ->            - (   -)                  ->     of            ->      of     
+       30867-01                - ->            - (   -)                  ->     of            ->      of     
+       30869-01                - ->            - (   -)                  ->     of            ->      of     
+       30874-01                - ->            - (   -)                  ->     of            ->      of     
+       30878-01                - ->            - (   -)                  ->     of            ->      of     
+       30878-02                - ->            - (   -)                  ->     of            ->      of     
+       30884-01                - ->            - (   -)                  ->     of            ->      of     
+       30886-01                - ->            - (   -)                  ->     of            ->      of     
+       30888-01                - ->            - (   -)                  ->     of            ->      of     
+       30892-01                - ->            - (   -)                  ->     of            ->      of     
+       30893-01                - ->            - (   -)                  ->     of            ->      of     
+       30894-01                - ->            - (   -)                  ->     of            ->      of     
+       30905-01                - ->            - (   -)                  ->     of            ->      of     
+       30907-01                - ->            - (   -)                  ->     of            ->      of     
+       30908-01                - ->            - (   -)                  ->     of            ->      of     
+       30909-01                - ->            - (   -)                  ->     of            ->      of     
+       30911-01                - ->            - (   -)                  ->     of            ->      of     
+       30912-01                - ->            - (   -)                  ->     of            ->      of     
+       30913-01                - ->            - (   -)                  ->     of            ->      of     
+       30919-01                - ->            - (   -)                  ->     of            ->      of     
+       30924-01                - ->            - (   -)                  ->     of            ->      of     
+       30925-01                - ->            - (   -)                  ->     of            ->      of     
+       30926-01                - ->            - (   -)                  ->     of            ->      of     
+       30927-01                - ->            - (   -)                  ->     of            ->      of     
+       30931-01                - ->            - (   -)                  ->     of            ->      of     
+       30932-01                - ->            - (   -)                  ->     of            ->      of     
+       30934-01                - ->            - (   -)                  ->     of            ->      of     
+       30937-01                - ->            - (   -)                  ->     of            ->      of     
+       30940-01                - ->            - (   -)                  ->     of            ->      of     
+       30941-01                - ->            - (   -)                  ->     of            ->      of     
+       30942-01                - ->            - (   -)                  ->     of            ->      of     
+       30947-01                - ->            - (   -)                  ->     of            ->      of     
+       30948-01                - ->            - (   -)                  ->     of            ->      of     
+       30949-01                - ->            - (   -)                  ->     of            ->      of     
+       30954-01                - ->            - (   -)                  ->     of            ->      of     
+       30955-01                - ->            - (   -)                  ->     of            ->      of     
+       30956-01                - ->            - (   -)                  ->     of            ->      of     
+       30957-01                - ->            - (   -)                  ->     of            ->      of     
+       30960-01                - ->            - (   -)                  ->     of            ->      of     
+       30960-02                - ->            - (   -)                  ->     of            ->      of     
+       30961-01                - ->            - (   -)                  ->     of            ->      of     
+       30961-02                - ->            - (   -)                  ->     of            ->      of     
+       30971-01                - ->            - (   -)                  ->     of            ->      of     
+       30973-01                - ->            - (   -)                  ->     of            ->      of     
+       30974-01                - ->            - (   -)                  ->     of            ->      of     
+       30977-01                - ->            - (   -)                  ->     of            ->      of     
+       30978-01                - ->            - (   -)                  ->     of            ->      of     
+       30980-01                - ->            - (   -)                  ->     of            ->      of     
+       30982-01                - ->            - (   -)                  ->     of            ->      of     
+       30983-01                - ->            - (   -)                  ->     of            ->      of     
+       30984-01                - ->            - (   -)                  ->     of            ->      of     
+       30985-01                - ->            - (   -)                  ->     of            ->      of     
+       30986-01                - ->            - (   -)                  ->     of            ->      of     
+       30988-01                - ->            - (   -)                  ->     of            ->      of     
+       30992-01                - ->            - (   -)                  ->     of            ->      of     
+       30994-01                - ->            - (   -)                  ->     of            ->      of     
+       30996-02                - ->            - (   -)                  ->     of            ->      of     
+       30997-01                - ->            - (   -)                  ->     of            ->      of     
+       31001-01                - ->            - (   -)                  ->     of            ->      of     
+       31004-01                - ->            - (   -)                  ->     of            ->      of     
+       31007-01                - ->            - (   -)                  ->     of            ->      of     
+       31013-01                - ->            - (   -)                  ->     of            ->      of     
+       31014-01                - ->            - (   -)                  ->     of            ->      of     
+       31015-01                - ->            - (   -)                  ->     of            ->      of     
+       31016-01                - ->            - (   -)                  ->     of            ->      of     
+       31019-01                - ->            - (   -)                  ->     of            ->      of     
+       31020-01                - ->            - (   -)                  ->     of            ->      of     
+       31023-01                - ->            - (   -)                  ->     of            ->      of     
+       31024-01                - ->            - (   -)                  ->     of            ->      of     
+       31029-01                0 ->            0 (   -)         +0     0 ->   0 of   0      0 ->    0 of    0
+       31036-01                - ->            - (   -)                  ->     of            ->      of     
+  REISS31039-01                0 ->            0 (   -)         +0     0 ->   0 of   0      0 ->    0 of    0
+       31040-01                - ->            - (   -)                  ->     of            ->      of     
+       31041-01                - ->            - (   -)                  ->     of            ->      of     
+       31041-02                - ->            - (   -)                  ->     of            ->      of     
+       31042-01                - ->            - (   -)                  ->     of            ->      of     
+       31044-02                - ->            - (   -)                  ->     of            ->      of     
+       31052-01                - ->            - (   -)                  ->     of            ->      of     
+       31057-01                - ->            - (   -)                  ->     of            ->      of     
+       31064-01            4,536 ->        4,536 ( 21%)         +0     0 ->   0 of   1     10 ->   10 of   10
+       31066-01                0 ->            0 (   -)         +0     0 ->   0 of   0      0 ->    0 of    0
+       31067-01                - ->            - (   -)                  ->     of            ->      of     
+       31073-01                - ->            - (   -)                  ->     of            ->      of     
+       31074-01                - ->            - (   -)                  ->     of            ->      of     
+       31075-02                - ->            - (   -)                  ->     of            ->      of     
+       31083-04                - ->            - (   -)                  ->     of            ->      of     
+       31085-01                0 ->            0 (   -)         +0     0 ->   0 of   0      0 ->    0 of    0
+       31088-01                - ->            - (   -)                  ->     of            ->      of     
+       31089-01                - ->            - (   -)                  ->     of            ->      of     
+       31091-01                - ->            - (   -)                  ->     of            ->      of     
+       31094-01                - ->            - (   -)                  ->     of            ->      of     
+       31099-01                - ->            - (   -)                  ->     of            ->      of     
+       31103-01                - ->            - (   -)                  ->     of            ->      of     
+       31106-01                - ->            - (   -)                  ->     of            ->      of     
+       31107-01                - ->            - (   -)                  ->     of            ->      of     
+       31108-01           44,913 ->       44,913 ( 86%)         +0     0 ->   0 of   2      1 ->    1 of    2
+       31116-01                - ->            - (   -)                  ->     of            ->      of     
+       31118-01                - ->            - (   -)                  ->     of            ->      of     
+       31120-01                - ->            - (   -)                  ->     of            ->      of     
+       31121-01                - ->            - (   -)                  ->     of            ->      of     
+       31122-01                - ->            - (   -)                  ->     of            ->      of     
+       31128-01                - ->            - (   -)                  ->     of            ->      of     
+       31131-01                - ->            - (   -)                  ->     of            ->      of     
+       31132-01                - ->            - (   -)                  ->     of            ->      of     
+       31133-01                - ->            - (   -)                  ->     of            ->      of     
+       31134-01                - ->            - (   -)                  ->     of            ->      of     
+       31139-01                - ->            - (   -)                  ->     of            ->      of     
+       31142-01                - ->            - (   -)                  ->     of            ->      of     
+       31146-01                - ->            - (   -)                  ->     of            ->      of     
+       31149-01                - ->            - (   -)                  ->     of            ->      of     
+       31150-01                - ->            - (   -)                  ->     of            ->      of     
+       31152-01                - ->            - (   -)                  ->     of            ->      of     
+       31155-01           66,281 ->       66,281 (106%)         +0     1 ->   1 of   1      6 ->    6 of    6
+       31158-01           15,956 ->       15,956 ( 38%)         +0     1 ->   1 of   2      0 ->    0 of    3
+       31166-01                - ->            - (   -)                  ->     of            ->      of     
+       31167-01                - ->            - (   -)                  ->     of            ->      of     
+  REISS31168-01                0 ->            0 (   -)         +0     0 ->   0 of   0      0 ->    0 of    0
+       31178-01                - ->            - (   -)                  ->     of            ->      of     
+       31179-01                - ->            - (   -)                  ->     of            ->      of     
+       31180-01                - ->            - (   -)                  ->     of            ->      of     
+       31186-01                - ->            - (   -)                  ->     of            ->      of     
+       31193-01                - ->            - (   -)                  ->     of            ->      of     
+       31194-01                - ->            - (   -)                  ->     of            ->      of     
+       31198-01                - ->            - (   -)                  ->     of            ->      of     
+       31199-01                - ->            - (   -)                  ->     of            ->      of     
+       31204-01                - ->            - (   -)                  ->     of            ->      of     
+       31207-01                - ->            - (   -)                  ->     of            ->      of     
+       31210-01                - ->            - (   -)                  ->     of            ->      of     
+       31226-01                - ->            - (   -)                  ->     of            ->      of     
+       31229-01                - ->            - (   -)                  ->     of            ->      of     
+       31230-01                - ->            - (   -)                  ->     of            ->      of     
+       31233-01                - ->            - (   -)                  ->     of            ->      of     
+       31234-01                - ->            - (   -)                  ->     of            ->      of     
+       31237-01                - ->            - (   -)                  ->     of            ->      of     
+       40102-01                - ->            - (   -)                  ->     of            ->      of     
+       40106-01                - ->            - (   -)                  ->     of            ->      of     
+       40107-01                - ->            - (   -)                  ->     of            ->      of     
+       40107-02                - ->            - (   -)                  ->     of            ->      of     
+       40108-04                - ->            - (   -)                  ->     of            ->      of     
+       40109-01                - ->            - (   -)                  ->     of            ->      of     
+       40112-01                0 ->            0 (   -)         +0     0 ->   0 of   0      0 ->    0 of    0
+       40112-03                - ->            - (   -)                  ->     of            ->      of     
+       40116-01                - ->            - (   -)                  ->     of            ->      of     
+       40117-01                - ->            - (   -)                  ->     of            ->      of     
+       50026-01                - ->            - (   -)                  ->     of            ->      of     
+       50046-01                - ->            - (   -)                  ->     of            ->      of     
+       50046-07                - ->            - (   -)                  ->     of            ->      of     
+       60058-01                - ->            - (   -)                  ->     of            ->      of     
+       60059-01                - ->            - (   -)                  ->     of            ->      of     
+       60061-01                - ->            - (   -)                  ->     of            ->      of     
+       60062-01                - ->            - (   -)                  ->     of            ->      of     
+       60065-01                - ->            - (   -)                  ->     of            ->      of     
+       60067-01                - ->            - (   -)                  ->     of            ->      of     
+       70058-01                - ->            - (   -)                  ->     of            ->      of     
+       70059-01                - ->            - (   -)                  ->     of            ->      of     
+       70060-01                0 ->            0 (   -)         +0     0 ->   0 of   0      0 ->    0 of    0
+       70062-01                - ->            - (   -)                  ->     of            ->      of     
+       70064-01            8,139 ->        8,139 ( 93%)         +0     1 ->   1 of   2      2 ->    2 of    2
+       70065-01                0 ->            0 (   -)         +0     0 ->   0 of   0      0 ->    0 of    0
+       80045-04                - ->            - (   -)                  ->     of            ->      of     
+       80062-01                - ->            - (   -)                  ->     of            ->      of     
+       80063-01                - ->            - (   -)                  ->     of            ->      of     
+  REISS80064-01                0 ->            0 (   -)         +0     0 ->   0 of   0      0 ->    0 of    0
+       80065-01                - ->            - (   -)                  ->     of            ->      of     
+       80066-01                - ->            - (   -)                  ->     of            ->      of     
+       90097-01                - ->            - (   -)                  ->     of            ->      of     
+       90101-01                - ->            - (   -)                  ->     of            ->      of     
+       90102-01                - ->            - (   -)                  ->     of            ->      of     
+       90105-01                - ->            - (   -)                  ->     of            ->      of     
+  totals: her plates we read 4,203,139 -> 4,430,098 sq ft of 5,538,789 (76% -> 80%); thickness 219 -> 253 of 338; her openings we have 642 -> 662 of 1496 (the 49 of 56 set(s) judged both times whose frame registers)
+  7 of the 56 set(s) judged both times are NOT JUDGED on plate, thickness, openings or over-read: the frame does not register (our columns' median distance from hers over 1,000 mm at the bank or now), so a move there is the frame's. Their only judges are the render and the six-set gate:
+    31048-01: median 1,553 -> 1,364 mm
+    30986-02: median 3,057 -> 84 mm
+    31183-01: median 4,105 -> 2 mm
+    31005-01: median 3,934 -> 3,919 mm
+    31098-01: median 1,909 -> 10 mm
+    70057-01: median 3,674 -> 3,674 mm
+    30819-01: median 5,144 -> 5,144 mm
+  storeys we plate that her model does not name: 50 of 56 set(s) measured now, 95 storey(s), 2,419,468 sq ft - the bank predates this figure, so a rise is not judged against it:
+    70057-01: 2 storey(s), 657,833 sq ft
+    31130-01: 5 storey(s), 160,183 sq ft
+    80064-01: 2 storey(s), 143,946 sq ft
+    30993-01: 3 storey(s), 137,975 sq ft
+    31048-01: 2 storey(s), 80,623 sq ft
+    31155-01: 2 storey(s), 78,119 sq ft
+    30933-01: 2 storey(s), 66,598 sq ft
+    31183-01: 3 storey(s), 64,574 sq ft
+    70061-01: 1 storey(s), 60,527 sq ft
+    31093-01: 2 storey(s), 57,095 sq ft
+    31087-01: 4 storey(s), 53,820 sq ft
+    30864-01: 5 storey(s), 53,400 sq ft
+    31053-01: 2 storey(s), 53,047 sq ft
+    70060-01: 1 storey(s), 52,704 sq ft
+    31083-01: 2 storey(s), 49,237 sq ft
+    30990-01: 3 storey(s), 47,148 sq ft
+    31017-01: 3 storey(s), 45,779 sq ft
+    31003-01: 2 storey(s), 44,674 sq ft
+    31065-01: 2 storey(s), 43,704 sq ft
+    31168-01: 1 storey(s), 42,096 sq ft
+    31037-01: 1 storey(s), 33,849 sq ft
+    31101-01: 1 storey(s), 30,630 sq ft
+    31185-01: 1 storey(s), 28,341 sq ft
+    31170-01: 1 storey(s), 25,642 sq ft
+    31082-01: 2 storey(s), 24,835 sq ft
+    31129-01: 2 storey(s), 24,486 sq ft
+    31009-01: 1 storey(s), 21,898 sq ft
+    31032-01: 2 storey(s), 20,225 sq ft
+    31076-01: 2 storey(s), 19,845 sq ft
+    30849-01: 1 storey(s), 18,790 sq ft
+    30989-01: 3 storey(s), 17,504 sq ft
+    30819-01: 1 storey(s), 16,228 sq ft
+    30986-02: 1 storey(s), 15,088 sq ft
+    31158-01: 1 storey(s), 14,270 sq ft
+    31064-01: 1 storey(s), 13,613 sq ft
+    31171-01: 2 storey(s), 13,045 sq ft
+    31005-01: 2 storey(s), 11,186 sq ft
+    31117-01: 2 storey(s), 11,086 sq ft
+    31085-01: 2 storey(s), 10,193 sq ft
+    31098-01: 1 storey(s), 9,870 sq ft
+    31039-01: 2 storey(s), 8,600 sq ft
+    31066-01: 1 storey(s), 7,067 sq ft
+    31029-01: 1 storey(s), 5,513 sq ft
+    30838-01: 3 storey(s), 5,421 sq ft
+    70065-01: 3 storey(s), 5,195 sq ft
+    31224-01: 1 storey(s), 4,665 sq ft
+    70064-01: 1 storey(s), 4,470 sq ft
+    31174-01: 1 storey(s), 2,434 sq ft
+    31108-01: 2 storey(s), 1,861 sq ft
+    70063-01: 1 storey(s), 534 sq ft
+  12 set(s) READ A DIFFERENT STICK FILE than the bank did, so no rule is answerable for them (2 of them would otherwise have stopped the bank):
+    31183-01
+    31083-01
+    30838-01: RE-ISSUED, so no rule is answerable: her openings we have fell 104 -> 103
+    31065-01: RE-ISSUED, so no rule is answerable: her openings we have fell 62 -> 56
+    31130-01
+    31098-01
+    31170-01
+    70063-01
+    31093-01
+    31039-01
+    31168-01
+    80064-01
+  9 set(s) STOP THE BANK - each with its reason:
+    31104-01: judged at the bank, not judged now, her thicknesses we agree with fell 5 -> none, her openings we have fell 13 -> none
+    31165-01: judged at the bank, not judged now, her thicknesses we agree with fell 2 -> none
+    30933-01: her thicknesses we agree with fell 2 -> 1, her openings we have fell 24 -> 22
+    31037-01: her plate area fell 500 sq ft (tolerance 322)
+    31101-01: her openings we have fell 1 -> 0
+    31117-01: her openings we have fell 7 -> 4
+    30993-01: her openings we have fell 76 -> 75
+    31162-01: storeys over half again her area 0 -> 1
+    31009-01: her thicknesses we agree with fell 5 -> 4
+  to find which rule took them: --bisect KOR_STEP130_OFF,KOR_STEP131_OFF,KOR_STEP133_OFF,KOR_STEP134_OFF,KOR_STEP135_OFF,KOR_STEP136_OFF,KOR_STEP137_OFF,KOR_STEP138_OFF,KOR_STEP139_OFF,KOR_STEP140_OFF,KOR_STEP144_OFF,KOR_STEP145_OFF,KOR_STEP149_OFF,KOR_STEP150_OFF,KOR_STEP151_OFF,KOR_STEP152_OFF,KOR_STEP153_OFF,KOR_STEP154_OFF,KOR_STEP155_OFF,KOR_STEP156_OFF,KOR_STEP157_OFF,KOR_STEP158_OFF,KOR_STEP159_OFF,KOR_STEP160_OFF,KOR_STEP161_OFF,KOR_STEP162_OFF,KOR_STEP163_OFF,KOR_STEP164_OFF,KOR_STEP165_OFF,KOR_STEP166_OFF,KOR_STEP167_OFF,KOR_STEP168_OFF,KOR_STEP169_OFF,KOR_STEP170_OFF,KOR_STEP171_OFF,KOR_STEP172_OFF,KOR_STEP173_OFF,KOR_STEP174_OFF,KOR_STEP175_OFF,KOR_STEP176_OFF,KOR_STEP177_OFF,KOR_STEP179_OFF,KOR_STEP180_OFF,KOR_STEP182_OFF,KOR_STEP183_OFF,KOR_STEP184_OFF,KOR_STEP185_OFF

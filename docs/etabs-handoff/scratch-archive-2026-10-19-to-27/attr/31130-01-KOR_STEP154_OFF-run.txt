@@ -1,0 +1,14 @@
+stickfile : 31130-01 UPLANDS LOT 12 2026-05-20 Stick file.pdf
+job       : 31130-01
+out       : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31130-01-KOR_STEP154_OFF
+rules     : KorStandards
+
+
+pages read: 60   plan sheets: 34   views written: 34
+storeys   : 24   with a floor: 24
+members   : 478 walls   1297 columns   44 floors
+
+  model   : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31130-01-KOR_STEP154_OFF\out.e2k
+  report  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31130-01-KOR_STEP154_OFF\report.txt
+  levels  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31130-01-KOR_STEP154_OFF\levels.csv
+  sheets  : C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a\scratchpad\attr\31130-01-KOR_STEP154_OFF\sheets.csv

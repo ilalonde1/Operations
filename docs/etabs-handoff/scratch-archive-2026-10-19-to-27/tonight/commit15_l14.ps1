@@ -1,0 +1,7 @@
+# oversight.Commitment 15: append the 31130 result (traced today) and the 10-26 L14 column's whereabouts, as VD asked.
+Add-Type -AssemblyName System.Data
+$cn = New-Object System.Data.SqlClient.SqlConnection($env:KOR_ENGINEERINGTOOLS_STANDARDSDB); $cn.Open()
+$c = $cn.CreateCommand()
+$c.CommandText = "UPDATE oversight.Commitment SET Evidence = Evidence + @e, UpdatedAtUtc = SYSDATETIMEOFFSET() OUTPUT inserted.Id, LEN(inserted.Evidence) WHERE Id = 15 AND Owner = N'PDF Ingestor' AND State = N'done'"
+[void]$c.Parameters.AddWithValue("@e", " || 15:2x: 31130 (gate run d808d99c, the 2026-09-18 PDF): 1 OFF HER STACK, L1 (75631, 45175), drawn by S2.03.1 P1/L0 PLAN as 1070x610 flush on W and S faces with P2's 610x760 - a drawn transition, offset (230, 75) = 240 mm measured. The 10-26 L14 one (six-set build, the OLD 2026-05-20 PDF) is NOT LOST: counted by position in one frame (registrations 253,708-9 / 316,577; scratchpad tonight/l14_where.py), today's L14 has a column at (114773, 46673), 584 mm from the 10-26 point, standing on L13's at the same place; the engineer's L13/L14 column is at (114532, 46826), so today's is about 285 mm off hers on BOTH storeys - a stack that moves together, which the near-miss check cannot see (its documented blind spot). Not traced: it is a different PDF issue from 10-26, and whether the 2026-09-18 drawing moved that column is unread. 31138 x3: board 49.")
+$r = $c.ExecuteReader(); while ($r.Read()) { "{0} evidence {1} chars" -f $r[0], $r[1] }; $r.Close(); $cn.Close(); Get-Date -Format HH:mm:ss

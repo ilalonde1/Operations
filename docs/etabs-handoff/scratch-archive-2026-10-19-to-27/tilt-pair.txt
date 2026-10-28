@@ -1,0 +1,57 @@
+30819-01   off-axis   13 of   288 ->   13 of   287
+30838-01   off-axis    0 of  2097 ->    0 of  2093
+30849-01   off-axis    1 of   266 ->    5 of   269   <-- MORE
+30864-01   off-axis    0 of   618 ->   16 of   652   <-- MORE
+30933-01   off-axis    0 of   657 ->    2 of   671   <-- MORE
+30972-01   off-axis    2 of   535 ->    4 of   544   <-- MORE
+30986-02   off-axis    0 of   581 ->    1 of   576   <-- MORE
+30989-01   off-axis    0 of   528 ->    1 of   481   <-- MORE
+30990-01   off-axis    0 of  1085 ->    1 of  1093   <-- MORE
+30993-01   off-axis    8 of  1158 ->   10 of  1133   <-- MORE
+31003-01   off-axis    3 of  1076 ->    9 of  1111   <-- MORE
+31005-01   off-axis    0 of   439 ->    0 of   402
+31006-01   off-axis    0 of   600 ->    1 of   597   <-- MORE
+31009-01   off-axis    0 of   363 ->    1 of   366   <-- MORE
+31017-01   off-axis    0 of   596 ->    3 of   600   <-- MORE
+31029-01   off-axis    0 of    10 ->    0 of    10
+31032-01   off-axis    0 of   494 ->   11 of   505   <-- MORE
+31037-01   off-axis    0 of    50 ->    0 of    50
+31039-01   off-axis    0 of   805 ->    2 of   806   <-- MORE
+31048-01   off-axis    0 of  1882 ->   32 of  1973   <-- MORE
+31053-01   off-axis    0 of   334 ->    0 of   334
+31064-01   off-axis    0 of  1066 ->   23 of  1073   <-- MORE
+31065-01   off-axis    1 of   908 ->    1 of   878
+31066-01   off-axis    0 of   844 ->    0 of   853
+31076-01   off-axis    0 of   643 ->   38 of   681   <-- MORE
+31082-01   off-axis    0 of   300 ->   10 of   316   <-- MORE
+31083-01   off-axis    0 of   246 ->    0 of   246
+31085-01   off-axis    0 of    87 ->    0 of    87
+31087-01   off-axis    0 of  1374 ->    0 of  1263
+31093-01   off-axis    0 of   484 ->    6 of   486   <-- MORE
+31098-01   off-axis    0 of   566 ->    0 of   517
+31101-01   off-axis    0 of  1042 ->    3 of  1056   <-- MORE
+31108-01   off-axis    0 of   254 ->    0 of   263
+31117-01   off-axis    0 of   399 ->    5 of   420   <-- MORE
+31129-01   off-axis    0 of   690 ->    0 of   706
+31130-01   off-axis    5 of   476 ->    5 of   507
+31143-01   off-axis    0 of  1053 ->    7 of  1065   <-- MORE
+31155-01   off-axis    0 of   994 ->   19 of  1019   <-- MORE
+31158-01   off-axis    0 of   249 ->    0 of   253
+31162-01   off-axis    0 of   741 ->    7 of   756   <-- MORE
+31168-01   off-axis    4 of  1806 ->    4 of  1765
+31170-01   off-axis    0 of   145 ->    0 of   167
+31171-01   off-axis    0 of   282 ->    3 of   286   <-- MORE
+31174-01   off-axis    0 of   108 ->    0 of   108
+31183-01   off-axis  178 of   746 ->  189 of   760   <-- MORE
+31185-01   off-axis    0 of   303 ->    1 of   338   <-- MORE
+31224-01   off-axis    0 of   157 ->    0 of   159
+40112-01   off-axis    0 of    46 ->    0 of    46
+60061-03   off-axis    0 of   195 ->    0 of   195
+70057-01   off-axis    0 of   159 ->    0 of   154
+70060-01   off-axis    0 of    15 ->    0 of    15
+70061-01   off-axis    0 of   145 ->    0 of   143
+70063-01   off-axis    0 of    38 ->    0 of    38
+70064-01   off-axis    0 of    39 ->    0 of    39
+70065-01   off-axis    0 of    42 ->    0 of    42
+80064-01   off-axis    1 of   222 ->    1 of   228
+TOTAL 56 sets: off-axis 216 -> 434; sets with MORE: 27, fewer: 0

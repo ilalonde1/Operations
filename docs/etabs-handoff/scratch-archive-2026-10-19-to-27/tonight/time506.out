@@ -1,0 +1,8 @@
+10:38:07 round 0 A 9774f9cf (parent):    323 s, load before 3%, exit 0, e2k 7d147069149e
+10:43:18 round 0 B 506be566:    309 s, load before 44%, exit 0, e2k ac91bf3b7cb5
+10:48:32 round 1 A 9774f9cf (parent):    313 s, load before 43%, exit 0, e2k 7d147069149e
+10:52:34 round 1 B 506be566:    240 s, load before 2%, exit 0, e2k ac91bf3b7cb5
+10:57:21 round 2 A 9774f9cf (parent):    285 s, load before 19%, exit 0, e2k 7d147069149e
+11:01:44 round 2 B 506be566:    262 s, load before 29%, exit 0, e2k ac91bf3b7cb5
+A 9774f9cf (parent): 285, 313, 323 s - median 313
+B 506be566: 240, 262, 309 s - median 262

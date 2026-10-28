@@ -1,0 +1,36 @@
+PDF intake steps 149-168: a marked-up PDF builds an ETABS model (143 E 3rd Hotel)
+
+Every rule has its KOR_STEP<n>_OFF knob, its docs/pdf-intake/step<n>-prediction.md and its place on corpus-gate's
+bisect line. Rows: KorStandards migration 103 (KOR.Drafter) - dxf.pdf.upper-roof-words, dxf.pdf.markup-structure-colours.
+
+Reading the engineer's markup:
+- 152 markup colour declares the member: 800000 WALL, FFFF00 WALL-BELOW? (arriving from below), 0080C0 / FFFF80 BEAM?
+- 153 a page in structure ink is read markup-only; 156 his own title names a plan
+- 165 a "-BELOW" member stays on its storey and gives way to one already written there (written in a second phase)
+- report.txt "Markup fills": every undeclared markup fill colour, the check for the class "a fill no colour names is cut"
+
+Openings:
+- 160 a markup-only read carries the page's X marks, wells and stair boxes (grown to the wall faces within a flight's width)
+- 163 a floor taken from the perimeter walls keeps the holes inside it
+- 164 a cell that says OPEN with BELOW is a void, traced over the room's square lines
+- 167 an opening cut above and below runs through the storey between (ASSUMED, listed)
+- 168 carried openings on their own layers, cut in whatever floor holds them; a void by its words is exempt from the
+  column-in-hole rule; a concave opening keeps its drawn order (angle-sorting made a star of B1's room)
+
+Storeys and placement:
+- 151 a gridless set registers on its members; 155 a shift is judged by the members that could stand on it; 157 siblings first
+- 158 UPPER ROOF is a storey above ROOF; 159 a member rises to it only where its floor is over it
+- 166 a plan's parkade level is covered under any parkade word (B2 = P2): the parkade was modelled four times
+- 161 a floor from the walls stays within the walls; 162 overlapping column footprints on ONE storey are one column
+
+Also: 149 a three-corner fill is a filled triangle; 150 storey-alone view titles; 154 a long face pairs every short face
+along it; ModelQuestionnaire matches the level flag case-sensitively (the thickness note was asked as "which level");
+SixSets gate reads the local mirror only; SlabPassTraceProbe takes KOR_SLAB_TRACE_PDF; the F10 column-inch test uses
+half-inch columns and OverlappingColumnFootprintsAreOneColumn pins step 162.
+
+Fast Core 1,634 of 1,634. Six-set gate NOT green - it moves (31202 gains an UPPER ROOF storey; 31065, 31170, 31138
+small plate, wall and column moves) and is waiting on the corpus gate against the engineers' models, which needs the
+yardsticks re-exported on KOR-210. Not banked until then; any rule that loses is one knob.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_017nbqs46QzvmvMBb1TThjxf

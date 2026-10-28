@@ -1,0 +1,4 @@
+ROOF: columns 24 -> 24, walls 336 -> 336  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 20,840 1,312 -> - sq ft
+L6: columns 3 -> 3, walls 165 -> 165  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 10,737 1,312 -> - sq ft
+L5: columns 3 -> 3, walls 161 -> 161  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 1,312 -> - sq ft
+plates moved 3, columns lost 0 / gained 0, walls lost 0 / gained 0

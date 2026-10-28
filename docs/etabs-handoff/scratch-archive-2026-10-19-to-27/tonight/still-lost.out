@@ -1,0 +1,58 @@
+31170-01-arch L3 @ 8ed10d03: 6 moves
+31170-01-arch L4 @ 8ed10d03: 6 moves
+31170-01-arch L5 @ 8ed10d03: 6 moves
+31170-01-arch L6 @ 8ed10d03: 6 moves
+31170-01-arch L7 @ 8ed10d03: 6 moves
+31138-01 L2 @ 8ed10d03: 13 moves
+     LOST   column at (34,770, 34,453) 0 long - today: present  -> not live
+     LOST   column at (41,896, 43,064) 0 long - today: ABSENT  -> LIVE FAULT
+     LOST   column at (41,898, 47,648) 0 long - today: present  -> not live
+     LOST   column at (61,125, 34,682) 0 long - today: ABSENT  -> LIVE FAULT
+     LOST   column at (76,950, 44,562) 0 long - today: ABSENT  -> LIVE FAULT
+     GAINED wall   at (49,681, 35,190) 6,070 long - today: present  -> LIVE FAULT
+31065-01 L2 @ 8ed10d03: 8 moves
+     LOST   column at (19,433, 25,051) 0 long - today: ABSENT  -> LIVE FAULT
+31202-01 ROOF @ d2cec177: 27 moves
+     LOST   wall   at (32,499, 47,167) 12,166 long - today: present  -> not live
+     GAINED column at (32,994, 60,960) 0 long - today: present  -> LIVE FAULT
+     GAINED column at (39,496, 60,960) 0 long - today: present  -> LIVE FAULT
+     GAINED wall   at (24,282, 27,660) 4,218 long - today: present  -> LIVE FAULT
+     GAINED wall   at (24,282, 34,392) 8,636 long - today: present  -> LIVE FAULT
+     GAINED wall   at (24,282, 41,097) 4,166 long - today: present  -> LIVE FAULT
+     GAINED wall   at (24,282, 45,568) 4,166 long - today: present  -> LIVE FAULT
+     GAINED wall   at (24,282, 52,273) 8,636 long - today: present  -> LIVE FAULT
+     GAINED wall   at (24,282, 59,066) 4,340 long - today: present  -> LIVE FAULT
+     GAINED wall   at (26,491, 55,738) 11,664 long - today: present  -> LIVE FAULT
+     GAINED wall   at (32,459, 43,844) 11,176 long - today: present  -> LIVE FAULT
+     GAINED wall   at (74,396, 45,358) 5,803 long - today: present  -> LIVE FAULT
+31065-01 L1 @ 8fa0d9d6: 22 moves
+31065-01 P1 @ 8fa0d9d6: 18 moves
+31065-01 P2 @ 8fa0d9d6: 14 moves
+     GAINED wall   at (77,692, 40,449) 25,333 long - today: present  -> LIVE FAULT
+     GAINED wall   at (77,934, 48,975) 8,289 long - today: present  -> LIVE FAULT
+     GAINED wall   at (78,087, 53,466) 702 long - today: present  -> LIVE FAULT
+31130-01 L1 @ 8fa0d9d6: 25 moves
+     LOST   wall   at (137,611, 64,319) 2,654 long - today: present  -> not live
+     LOST   wall   at (137,611, 66,525) 1,759 long - today: present  -> not live
+     GAINED wall   at (135,973, 63,005) 1,997 long - today: present  -> LIVE FAULT
+     GAINED wall   at (146,198, 64,806) 15,917 long - today: present  -> LIVE FAULT
+     GAINED wall   at (147,320, 32,526) 2,873 long - today: ABSENT  -> not live
+31130-01 P2 @ 8fa0d9d6: 21 moves
+     LOST   wall   at (138,780, 49,588) 7,169 long - today: present  -> not live
+     LOST   wall   at (150,673, 33,998) 2,944 long - today: ABSENT  -> LIVE FAULT
+     GAINED wall   at (137,832, 65,646) 301 long - today: present  -> LIVE FAULT
+     GAINED wall   at (138,315, 67,192) 215 long - today: present  -> LIVE FAULT
+     GAINED wall   at (150,844, 34,510) 3,968 long - today: present  -> LIVE FAULT
+31130-01 L0/P1 @ 8fa0d9d6: 23 moves
+     LOST   wall   at (137,611, 64,319) 2,654 long - today: present  -> not live
+     LOST   wall   at (137,611, 66,525) 1,759 long - today: present  -> not live
+     LOST   wall   at (150,659, 33,998) 2,944 long - today: present  -> not live
+     GAINED wall   at (135,973, 63,005) 1,997 long - today: present  -> LIVE FAULT
+     GAINED wall   at (148,472, 64,117) 20,465 long - today: present  -> LIVE FAULT
+31065-01 L1 @ 674b2890: 12 moves
+31065-01 P1 @ 674b2890: 1 moves
+31138-01 L2 @ 674b2890: 3 moves
+     LOST   column at (61,125, 34,560) 0 long - today: ABSENT  -> LIVE FAULT
+     GAINED column at (61,125, 35,164) 0 long - today: present  -> LIVE FAULT
+31138-01 L20 @ 674b2890: 1 moves
+     GAINED column at (45,047, 45,653) 0 long - today: present  -> LIVE FAULT

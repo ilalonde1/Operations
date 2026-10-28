@@ -1,0 +1,49 @@
+2026-10-21T04:06
+Still waiting on the engine suite. While it runs, I've checked what the app has beyond SAFE. You're right that SAFE has had most of the attention. The comparison and the rebar takeoff for Rory are in the app, under the Engineering Tools tile, in one window called **Structural Quantity Takeoff**.
+
+**What each app window does today** (from the code; I haven't run any of them this session):
+
+| Window | In | Out |
+|---|---|---|
+| Structural Quantity Takeoff, takeoff | Revit schedule CSVs **or a finished ETABS model (.e2k)** | Per-floor concrete, rebar and formwork, as .xlsx |
+| Structural Quantity Takeoff, compare | Two drawing issues as PDFs (IFT → IFC) | Every rebar change as .xlsx (priced if you give weights), plus a PDF with the changes highlighted on the drawings |
+| Structural PDF Import | A marked-up PDF | One storey: SAFE .f2k, ETABS .e2k, DXF, direct push to SAFE/ETABS/SAP2000. Now also the whole building as an ETABS model |
+| Drawings to ETABS | DXFs plus the job's reference .e2k | The ETABS model |
+
+Two older takeoff windows are still registered but nothing opens them. That's the C4 "leave" decision.
+
+**Command line only:** the PDF-only concrete takeoff (`vector-takeoff`), the IFC and Revit takeoffs, set and model comparisons (`set-diff`, `model-diff`, `e2k-compare`), and the PDF-against-DXF overlay.
+
+**Two things you should know:**
+1. **The pieces don't connect yet.** The takeoff window already reads an ETABS model, so the whole-building model from a PDF could go straight into quantities: PDF in, model, concrete/rebar/formwork out. Nobody has tested that path.
+2. **Deleting the vision commands cost `vector-takeoff` something.** Its design used vision to classify sheets and locate slab plates. It now runs only its no-vision mode, and how good that is hasn't been measured against the 31065 answer key since.
+
+**What I'd do next:** run each app tool on a real set and look at the output, the same way I did for SAFE. First the rebar compare on the 31065 IFT/IFC drawings already on your Desktop, then the takeoff on Omar's whole-building model and on 31065. Each gets a list of what's wrong.
+
+Do you want that, or something else first?
+-----
+2026-10-21T22:30
+## Where things stand
+
+**What you asked for (10-20):** "Do it all, start with the rebar compare." That means running each part of your PDF app on real drawing sets, looking at what comes out, and fixing what's wrong. Last night was the overnight measuring run you approved at 10 AM yesterday.
+
+**What last night's run does:** it rebuilds about 57 past KOR jobs from their PDF stick files, compares each against the ETABS model the engineer actually built, and records whether we're closer or further off than before. It's the check that the 20 fixes made last week (steps 149–168) help overall and didn't quietly break other jobs.
+
+**Result:**
+- **Better overall.**
+  - Floor plate read: 73% → 75% of the engineer's area.
+  - Openings picked up: 683 → 762 (of her 1,706).
+  - Slab thicknesses that agree with hers: 244 → 237 of 340, a small step back.
+- **6 jobs got worse.** I traced each one:
+  - 3 were caused by rules and are now fixed and committed (31117, 31064 and 31017). 31017, a 24-storey tower, had its tower floors squashed together. It now stands at the right floor heights and matches the engineer's model.
+  - 1 (30972) is partly better, partly worse. I kept the fix and noted the part that's still wrong.
+  - 2 (31104 and 31165) weren't a rule problem: those jobs were re-issued under new file names this month, and the search that finds drawing sets doesn't pick them up yet.
+
+**Bottom line:** the app is measurably better than a week ago. Everything is committed, and all 1,636 fast tests pass.
+
+**Next:** run the takeoff (quantities) on Omar's whole-building model and on 31065. That's the next item on your "do it all" list.
+
+**Two questions for you, when you have a minute:**
+1. **NBC 30-day check:** before it can run, the National Building Code copy KOR holds has to be loaded into the app. Do you want me to load it?
+2. **Rory's demo workbook (2026-06-26):** some of its rows are wrong. Should I make a corrected v2 and mark the old one SUPERSEDED?
+-----

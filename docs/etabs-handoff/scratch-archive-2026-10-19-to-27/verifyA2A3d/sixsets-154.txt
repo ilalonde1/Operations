@@ -1,0 +1,181 @@
+Test run for C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\bin\Debug\net8.0\Kor.Operations.EngineeringTools.Core.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:31:04.68]     Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline [FAIL]
+  Failed Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline [31 m 3 s]
+  Error Message:
+   The six-set gate: these sets no longer build byte-identical to their baselines. Look at what moved (TestResults/six-sets/<job>-diff.txt, and render both models), then either fix the rule or bank the new models by replacing Baselines/pdf-only-<job>.e2k in the same commit:
+  31130-01: plates moved 0, columns lost 0 / gained 1, walls lost 1 / gained 0
+  31138-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 1
+  31065-01: plates moved 1, columns lost 6 / gained 19, walls lost 1 / gained 5
+  31202-01: plates moved 0, columns lost 0 / gained 0, walls lost 1 / gained 2
+  31170-01-arch: plates moved 3, columns lost 0 / gained 0, walls lost 15 / gained 15
+  Stack Trace:
+     at Kor.Operations.EngineeringTools.Core.Tests.Intake.SixSetsBuildAsBankedTests.EveryBankedSetBuildsByteIdenticalToItsBaseline() in C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\Intake\SixSetsBuildAsBankedTests.cs:line 172
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Standard Output Messages:
+ 31130-01: read (manifest missing)
+ 31130-01: plates moved 0, columns lost 0 / gained 1, walls lost 1 / gained 0
+ L3: columns 58 -> 59, walls 20 -> 20  [lost columns 0, gained columns 1, lost walls 0, gained walls 0]
+    GAINED column  at (141,900, 57,189)
+ L1: columns 91 -> 91, walls 69 -> 68  [lost columns 0, gained columns 0, lost walls 1, gained walls 0]
+    LOST wall      at (135,019, 65,646) 101 long
+ where the members went (2 place(s) whose storeys changed):
+   column lengthened: 1
+      at (141,900, 57,189): L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 -> L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3
+   wall vanished: 1
+      at (135,019, 65,646) 101 long: L1 -> -
+ plates moved 0, columns lost 0 / gained 1, walls lost 1 / gained 0
+ 
+ 31138-01: read (manifest changed: reader source or options)
+ 31138-01: plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 1
+ L2: columns 52 -> 52, walls 78 -> 79  [lost columns 0, gained columns 0, lost walls 0, gained walls 1]
+    GAINED wall    at (49,681, 35,190) 6,070 long
+ where the members went (1 place(s) whose storeys changed):
+   wall new: 1
+      at (49,681, 35,190) 6,070 long: - -> L2
+ plates moved 0, columns lost 0 / gained 0, walls lost 0 / gained 1
+ 
+ 31065-01: read (manifest missing)
+ 31065-01: plates moved 1, columns lost 6 / gained 19, walls lost 1 / gained 5
+ L2: columns 106 -> 100, walls 90 -> 90  [lost columns 6, gained columns 0, lost walls 0, gained walls 0]
+    LOST column    at (65,028, 38,739)
+    LOST column    at (68,806, 49,390)
+    LOST column    at (69,020, 42,211)
+    LOST column    at (72,208, 36,428)
+    LOST column    at (73,086, 42,587)
+    LOST column    at (73,203, 48,597)
+ L1: columns 63 -> 82, walls 65 -> 67  [lost columns 0, gained columns 19, lost walls 0, gained walls 2]  plates 19,352 12,533 454 454 -> 19,352 2,579 558 454 454 433 sq ft
+    GAINED column  at (46,133, 53,253)
+    GAINED column  at (46,154, 26,615)
+    GAINED column  at (46,330, 47,229)
+    GAINED column  at (48,713, 48,359)
+    GAINED column  at (50,633, 53,516)
+    GAINED column  at (54,896, 47,805)
+    GAINED column  at (56,708, 53,901)
+    GAINED column  at (59,912, 22,773)
+    GAINED column  at (60,452, 48,154)
+    GAINED column  at (65,126, 25,821)
+    GAINED column  at (65,585, 22,921)
+    GAINED column  at (67,970, 36,775)
+    ... and 7 more (a sample is printed; the count is in the storey line)
+    GAINED wall    at (56,233, 33,634) 648 long
+    GAINED wall    at (56,233, 41,288) 648 long
+ P1: columns 60 -> 60, walls 64 -> 66  [lost columns 0, gained columns 0, lost walls 1, gained walls 3]
+    LOST wall      at (-14,366, 37,398) 36,341 long
+    GAINED wall    at (-14,366, 37,461) 36,216 long
+    GAINED wall    at (-4,452, 19,353) 19,827 long
+    GAINED wall    at (5,692, 37,162) 7,658 long
+ where the members went (33 place(s) whose storeys changed):
+   column lengthened: 19
+      at (46,133, 53,253): L2 -> L2 L1
+      at (46,154, 26,615): L4 L3 L2 -> L4 L3 L2 L1
+      at (46,330, 47,229): L4 L3 L2 -> L4 L3 L2 L1
+      at (48,713, 48,359): L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3 L2 -> L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3 L2 L1
+      at (50,633, 53,516): L4 L3 L2 -> L4 L3 L2 L1
+      at (54,896, 47,805): L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3 L2 -> L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3 L2 L1
+      at (56,708, 53,901): L5 L4 L3 L2 -> L5 L4 L3 L2 L1
+      at (59,912, 22,773): L4 L3 L2 -> L4 L3 L2 L1
+      at (60,452, 48,154): L5 L4 L3 L2 -> L5 L4 L3 L2 L1
+      at (65,126, 25,821): L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3 L2 -> L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3 L2 L1
+      at (65,585, 22,921): L4 L3 L2 -> L4 L3 L2 L1
+      at (67,970, 36,775): L2 -> L2 L1
+      ... and 7 more
+   column shortened: 5
+      at (68,806, 49,390): L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3 L2 -> L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3
+      at (69,020, 42,211): L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3 L2 -> L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3
+      at (72,208, 36,428): L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3 L2 -> L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3
+      at (73,086, 42,587): L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3 L2 -> L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3
+      at (73,203, 48,597): L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3 L2 -> L19 L18 L17 L16 L15 L14 L13 L12 L11 L10 L9 L8 L7 L6 L5 L4 L3
+   column vanished: 1
+      at (65,028, 38,739): L2 -> -
+   wall lengthened: 2
+      at (56,233, 33,634) 648 long: L2 -> L2 L1
+      at (56,233, 41,288) 648 long: L2 -> L2 L1
+   wall new: 4
+      at (-14,366, 37,461) 36,216 long: - -> P1
+      at (-4,452, 19,353) 19,827 long: - -> P1
+      at (5,692, 37,162) 7,658 long: - -> P1
+      at (38,310, 54,652) 3,128 long: - -> P2
+   wall vanished: 2
+      at (-14,366, 37,398) 36,341 long: P1 -> -
+      at (38,310, 54,650) 3,128 long: P2 -> -
+ plates moved 1, columns lost 6 / gained 19, walls lost 1 / gained 5
+ 
+ 31202-01: read (manifest missing)
+ 31202-01: plates moved 0, columns lost 0 / gained 0, walls lost 1 / gained 2
+ L2: columns 72 -> 72, walls 41 -> 42  [lost columns 0, gained columns 0, lost walls 1, gained walls 2]
+    LOST wall      at (39,573, 61,645) 12,139 long
+    GAINED wall    at (39,115, 67,944) 916 long
+    GAINED wall    at (39,573, 61,760) 12,368 long
+ where the members went (3 place(s) whose storeys changed):
+   wall new: 2
+      at (39,115, 67,944) 916 long: - -> L2
+      at (39,573, 61,760) 12,368 long: - -> L2
+   wall vanished: 1
+      at (39,573, 61,645) 12,139 long: L2 -> -
+ plates moved 0, columns lost 0 / gained 0, walls lost 1 / gained 2
+ 
+ 31168-01: read (manifest changed: reader source or options)
+ 31168-01: byte-identical
+ 31170-01-arch: read (manifest missing)
+ 31170-01-arch: plates moved 3, columns lost 0 / gained 0, walls lost 15 / gained 15
+ L7: columns 34 -> 34, walls 21 -> 21  [lost columns 0, gained columns 0, lost walls 3, gained walls 3]
+    LOST wall      at (18,922, 39,904) 5,182 long
+    LOST wall      at (19,659, 37,314) 1,778 long
+    LOST wall      at (20,446, 42,698) 2,743 long
+    GAINED wall    at (18,846, 40,006) 5,385 long
+    GAINED wall    at (19,697, 37,314) 1,702 long
+    GAINED wall    at (20,332, 42,698) 2,972 long
+ L6: columns 45 -> 45, walls 40 -> 40  [lost columns 0, gained columns 0, lost walls 3, gained walls 3]  plates 32,076 8,957 -> 32,076 9,716 sq ft
+    LOST wall      at (18,922, 39,904) 5,182 long
+    LOST wall      at (19,659, 37,314) 1,778 long
+    LOST wall      at (20,446, 42,698) 2,743 long
+    GAINED wall    at (18,846, 40,006) 5,385 long
+    GAINED wall    at (19,697, 37,314) 1,702 long
+    GAINED wall    at (20,332, 42,698) 2,972 long
+ L5: columns 51 -> 51, walls 42 -> 42  [lost columns 0, gained columns 0, lost walls 3, gained walls 3]  plates 32,076 -> 32,076 9,513 sq ft
+    LOST wall      at (18,922, 39,904) 5,182 long
+    LOST wall      at (19,659, 37,314) 1,778 long
+    LOST wall      at (20,446, 42,698) 2,743 long
+    GAINED wall    at (18,846, 40,006) 5,385 long
+    GAINED wall    at (19,697, 37,314) 1,702 long
+    GAINED wall    at (20,332, 42,698) 2,972 long
+ L4: columns 51 -> 51, walls 43 -> 43  [lost columns 0, gained columns 0, lost walls 3, gained walls 3]
+    LOST wall      at (18,922, 39,930) 5,131 long
+    LOST wall      at (19,659, 37,364) 1,778 long
+    LOST wall      at (20,446, 42,698) 2,743 long
+    GAINED wall    at (18,846, 40,031) 5,334 long
+    GAINED wall    at (19,697, 37,364) 1,702 long
+    GAINED wall    at (20,332, 42,698) 2,972 long
+ L3: columns 51 -> 51, walls 47 -> 47  [lost columns 0, gained columns 0, lost walls 3, gained walls 3]
+    LOST wall      at (18,922, 39,930) 5,131 long
+    LOST wall      at (19,659, 37,364) 1,778 long
+    LOST wall      at (20,446, 42,698) 2,743 long
+    GAINED wall    at (18,846, 40,031) 5,334 long
+    GAINED wall    at (19,697, 37,364) 1,702 long
+    GAINED wall    at (20,332, 42,698) 2,972 long
+ L1: columns 51 -> 51, walls 56 -> 56  [lost columns 0, gained columns 0, lost walls 0, gained walls 0]  plates 32,076 8,159 -> 32,076 9,445 sq ft
+ where the members went (10 place(s) whose storeys changed):
+   wall new: 5
+      at (18,846, 40,006) 5,385 long: - -> L7 L6 L5
+      at (18,846, 40,031) 5,334 long: - -> L4 L3
+      at (19,697, 37,314) 1,702 long: - -> L7 L6 L5
+      at (19,697, 37,364) 1,702 long: - -> L4 L3
+      at (20,332, 42,698) 2,972 long: - -> L7 L6 L5 L4 L3
+   wall vanished: 5
+      at (18,922, 39,904) 5,182 long: L7 L6 L5 -> -
+      at (18,922, 39,930) 5,131 long: L4 L3 -> -
+      at (19,659, 37,314) 1,778 long: L7 L6 L5 -> -
+      at (19,659, 37,364) 1,778 long: L4 L3 -> -
+      at (20,446, 42,698) 2,743 long: L7 L6 L5 L4 L3 -> -
+ plates moved 3, columns lost 0 / gained 0, walls lost 15 / gained 15
+ 
+
+
+Data collector 'Blame' message: All tests finished running, Sequence file will not be generated.
+
+Failed!  - Failed:     1, Passed:     1, Skipped:     0, Total:     2, Duration: 23 ms - Kor.Operations.EngineeringTools.Core.Tests.dll (net8.0)
