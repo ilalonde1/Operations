@@ -2071,8 +2071,19 @@ public static class StructuralPlanClassifier
         // joined into a network before anything downstream sees them.
         if (options.ConnectWalls && result.Walls.Count > 1)
         {
+            // A wall the drawing stops at each face of a column runs through it (board 52) - before the network, so a cross
+            // wall meeting the joined run is still split into a joint with it.
+            var through = WallNetwork.JoinThroughColumns(result.Walls, result.Columns, 1.0 / options.UnitInInches, out int joinedThrough);
+            if (joinedThrough > 0)
+            {
+                result.Walls.Clear();
+                result.Walls.AddRange(through);
+                result.Flags.Add($"{joinedThrough} wall run(s) the drawing broke for a column were joined through it, as one wall with the column in it.");
+            }
             result.WallsBeforeNetwork.AddRange(result.Walls);
-            var connected = WallNetwork.Connect(result.Walls, 1.0 / options.UnitInInches);
+            // A copy: Connect hands back its own input when it has fewer than two walls, and the join above can leave one -
+            // clearing result.Walls would then empty what is about to be added back (board 52's first green run, 2026-10-28).
+            var connected = WallNetwork.Connect(result.Walls, 1.0 / options.UnitInInches).ToList();
             result.Walls.Clear();
             result.Walls.AddRange(connected);
         }

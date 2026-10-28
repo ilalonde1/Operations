@@ -225,6 +225,66 @@ public static class WallNetwork
         return Math.Min(d, 360.0 - d);
     }
 
+    /// <summary>
+    /// A WALL BROKEN FOR A COLUMN RUNS THROUGH IT (2026-10-27, board 52; VD's decision). A drawing stops a wall at each face of a
+    /// column standing in it; the opening finder then read the two pieces as jambs and spanned a header across the column - 84
+    /// of 3,177 headers on the 57 gate sets, 79 of 2,833 before tonight's network work. The engineer's model runs the wall
+    /// through (30972 P3; Jim on Halifax's south-west wall: "one continuous 8 in wall with the 12x30 columns in it"). Two pieces
+    /// join when they are parallel within <see cref="WallNetworkInvariant.ToleranceDegrees"/>, in line within 3 in, of
+    /// thickness within 4 in, and a column's centre lies between their facing ends within 300 mm of the line, the gap no wider
+    /// than the column's extent along the wall plus 6 in (ASSUMED slack). The joined wall runs far end to far end on the longer
+    /// piece's line, so it turns nothing; joins repeat until none is left (wall, column, wall, column, wall).
+    /// </summary>
+    /// <param name="inch">How many of the drawing's units make an inch.</param>
+    public static List<WallAxis> JoinThroughColumns(IReadOnlyList<WallAxis> walls, IReadOnlyList<ColumnFootprint> columns, double inch, out int joined)
+    {
+        var list = walls.ToList();
+        joined = 0;
+        if (columns.Count == 0) return list;
+        double reach = 300.0 / 25.4 * inch, slack = 6.0 * inch, inLine = 3.0 * inch, thick = 4.0 * inch;
+        while (true)
+        {
+            (int I, int J, WallAxis Merged, double Gap) best = (-1, -1, null!, double.MaxValue);
+            for (int i = 0; i < list.Count; i++)
+            for (int j = i + 1; j < list.Count; j++)
+            {
+                var a = list[i]; var b = list[j];
+                if (a.Length < 1e-9 || b.Length < 1e-9) continue;
+                if (Math.Abs(a.Thickness - b.Thickness) > thick) continue;
+                double ax = (a.End.X - a.Start.X) / a.Length, ay = (a.End.Y - a.Start.Y) / a.Length;
+                double bx = (b.End.X - b.Start.X) / b.Length, by = (b.End.Y - b.Start.Y) / b.Length;
+                if (Math.Asin(Math.Min(1.0, Math.Abs(ax * by - ay * bx))) * 180.0 / Math.PI > WallNetworkInvariant.ToleranceDegrees) continue;
+                var (lng, sht) = a.Length >= b.Length ? (a, b) : (b, a);
+                double ux = (lng.End.X - lng.Start.X) / lng.Length, uy = (lng.End.Y - lng.Start.Y) / lng.Length;
+                double Along(DxfPoint p) => (p.X - lng.Start.X) * ux + (p.Y - lng.Start.Y) * uy;
+                double Across(DxfPoint p) => Math.Abs((p.X - lng.Start.X) * -uy + (p.Y - lng.Start.Y) * ux);
+                if (Across(sht.Start) > inLine || Across(sht.End) > inLine) continue;
+                double s0 = Math.Min(Along(sht.Start), Along(sht.End)), s1 = Math.Max(Along(sht.Start), Along(sht.End));
+                double gapFrom, gapTo;
+                if (s0 >= lng.Length) { gapFrom = lng.Length; gapTo = s0; }
+                else if (s1 <= 0) { gapFrom = s1; gapTo = 0; }
+                else continue;                                   // overlapping pieces are not a broken run
+                double gap = gapTo - gapFrom;
+                if (gap <= 1e-9) continue;
+                bool holdsColumn = columns.Any(c =>
+                {
+                    double t = Along(c.Center);
+                    if (t <= gapFrom || t >= gapTo || Across(c.Center) > reach) return false;
+                    double r = (c.AxisAngleDegrees - Math.Atan2(uy, ux) * 180.0 / Math.PI) * Math.PI / 180.0;
+                    double extent = Math.Abs(c.Depth * Math.Cos(r)) + Math.Abs(c.Width * Math.Sin(r));   // Depth runs along the column's axis
+                    return gap <= Math.Max(c.Width, c.Depth) + slack && gap <= extent + slack;
+                });
+                if (!holdsColumn || gap >= best.Gap) continue;
+                var from = new DxfPoint(lng.Start.X + ux * Math.Min(0.0, s0), lng.Start.Y + uy * Math.Min(0.0, s0));
+                double far = Math.Max(lng.Length, s1);
+                var to = new DxfPoint(lng.Start.X + ux * far, lng.Start.Y + uy * far);
+                best = (i, j, new WallAxis(from, to, lng.Thickness, lng.Layer), gap);
+            }
+            if (best.I < 0) return list;
+            list.RemoveAt(best.J); list.RemoveAt(best.I); list.Add(best.Merged); joined++;
+        }
+    }
+
     /// <summary>The same test on two finished centrelines - the classifier's stub rule asks it of what a short wall runs into.</summary>
     internal static bool NearCopies(WallAxis a, WallAxis b)
         => NearCopies(new Axis { A = a.Start, B = a.End, Thickness = a.Thickness, Layer = a.Layer }, new Axis { A = b.Start, B = b.End, Thickness = b.Thickness, Layer = b.Layer });
