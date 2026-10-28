@@ -1,0 +1,35 @@
+armed nil claims                      : 354
+  cleared by a run asking a DIFFERENT question : 24 of 354
+  cleared by the SAME run/command              : 307 of 354
+
+most runs of one instrument behind a single claim (a general-purpose runner shows high):
+   484 runs  oq.py
+   236 runs  q.py
+    84 runs  bridge_play.py
+    51 runs  Invoke-KorSqlScript.ps1
+    43 runs  oqwide.py
+    29 runs  e2k_slab_thickness.py
+    23 runs  run-composer.ps1
+    21 runs  release-kor-ops-app-local.ps1
+
+never armed: 20 - the inline/heredoc gap. Every one of them:
+  041ad0a7-482 @150    ## Starting state matches the runbook. No discrepancies. I read both PDFs in full. Since `netops network` does
+  330b29d7-4cc @558    Checked, not argued: the ETABS 21 interop (v1.15) vs the ETABS 23 interop (v2.14) that the plugin is compiled 
+  570463ed-ac1 @659    Yeah — this screenshot is the "mess" made visible, and it's worse than just APP003/004. Look at the folder lis
+  570463ed-ac1 @944    I can't give you 100% on everything — and after this week, I owe you the honesty of saying exactly which parts
+  570463ed-ac1 @3205   Done — cleanly: - **E: shadow copy cap: 1.5 TB → 150 GB** ✅ - **All 8 shadow copies still present** — nothing 
+  570463ed-ac1 @3846   On it — you're in the Export wizard on the FS01 7/15 point. Finish it to F: (has the room). Clicks: 1. **Next*
+  570463ed-ac1 @6559   "Nothing returned" almost certainly means the `$f` folder variable came back **empty** — if the job's log fold
+  570463ed-ac1 @6880   First — breathe. **Nothing broke.** The guard did exactly its job: it hit a hang, stopped, and reported instea
+  570463ed-ac1 @7012   Good catch — it doesn't, and it matters. Two things need adding: **tell T-Net to preserve the good 7/7 backup 
+  570463ed-ac1 @7496   You guessed right — and this time it's **verified, straight from the email**, not a theory. Every retry says t
+  7138a95f-bd0 @127    9 of the 10 P340s are now on the quiet profile. KOR-EDMONTON-01 was offline, so it didn't get the change. On a
+  7138a95f-bd0 @162    All 14 flagged machines are now on the quiet profile except KOR-EDMONTON-01, which was offline both times I tr
+  86f7e6a6-403 @145    Nothing was ever flagged malicious (0 of 1,046 scan results). Last check: what Webroot logged around the scree
+  b4fb1767-8b7 @96     They stop Claude from taking action you didn't ask for. If a shell command falls into one of a few risky categ
+  b7cf9386-127 @278    Here's the plain-English version. ## How it's supposed to work On the 1st of every month, a robot on the serve
+  c89860e3-b97 @205    You're right, and that's on me. That's exactly what was happening. `grep -r` reads the contents of every file 
+  c89860e3-b97 @216    I've stopped touching anything. Let me answer you straight. What I was thinking: you asked for the BK01 admin 
+  eb9075b2-d49 @151    **Correction:** I can't prove there is no PDF-to-Revit code, so here is only what my searches turned up, with 
+  eb9075b2-d49 @173    **Correction:** I can't prove there is no PDF-to-Revit code, so here is only what my searches turned up, with 
+  efe46d18-70c @86     It was never saved as a PDF. On 2026-09-21 we made it as a web page, published here: **https://claude.ai/artif

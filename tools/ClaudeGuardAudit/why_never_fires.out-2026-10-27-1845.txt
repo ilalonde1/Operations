@@ -1,0 +1,25 @@
+nil claims examined: 372 over 62 of 62 transcripts
+
+   329 of 372  armed, cleared by BEHAVIOUR (a run found something)
+    21 of 372  armed, cleared by UNREADABLE output (no nil marker either)
+    20 of 372  never armed - no edited script was run
+     1 of 372  armed, cleared by WORDS (self-test vocabulary)
+     1 of 372  armed, cleared as FOREIGN nils (another tool's numbers)
+     0 of 372  armed, cleared as INDIRECT (unattributable run)
+     0 of 372  REFUSED
+
+disagreements with verdict(): 0 of 372  (must be 0, or this breakdown is not trustworthy)
+
+instruments the guard armed on, most frequent first:
+    34  oq.py
+    17  publish.ps1
+     9  Test-GitMirrorRestore.ps1
+     9  Invoke-KorSqlScript.ps1
+     6  claude_api_guard_test.py
+     6  build.ps1
+     5  measure.py
+     5  target144.py
+     4  release-kor-ops-app-local.ps1
+     4  proof-step9-cleanup.ps1
+     4  q.py
+     3  veeam-302n.ps1

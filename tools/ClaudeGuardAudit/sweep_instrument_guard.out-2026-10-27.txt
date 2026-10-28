@@ -1,0 +1,72 @@
+known answer, must REFUSE : REFUSED
+known answer, must ALLOW  : ALLOWED
+
+  032e0782-85ce-4f47-93bd-8d5d4f7b0496.jso recs 47239   texts 1049  nils 10   refused 0
+  041ad0a7-4826-4590-aa58-9d7ef943a114.jso recs 2425    texts 134   nils 3    refused 0
+  08e12e06-8e57-427f-aa59-0300d6cd0365.jso recs 178     texts 4     nils 0    refused 0
+  1054c964-3508-4806-856b-dbe6def72a1e.jso recs 120     texts 4     nils 0    refused 0
+  148862fb-f10e-4990-bc8a-1e495dbf2d24.jso recs 2451    texts 38    nils 0    refused 0
+  15ea206c-afc7-4fd2-8f80-966477209cef.jso recs 316     texts 19    nils 1    refused 0
+  185c837f-93e1-444c-91f8-b53e15b89404.jso recs 1561    texts 49    nils 0    refused 0
+  32f94af3-6ecc-435c-be08-7714ec29dbe8.jso recs 53349   texts 3304  nils 22   refused 0
+  330b29d7-4cc3-4a8b-997e-bd3d37dc77d4.jso recs 1028    texts 16    nils 1    refused 0
+  35e8d584-4dae-419b-9df7-831075f268c1.jso recs 33      texts 1     nils 0    refused 0
+  35e9bb3e-7e32-48a8-ab03-1a0658f35089.jso recs 247     texts 4     nils 0    refused 0
+  372fa4b9-e213-489d-bc4c-6d61aa280708.jso recs 78695   texts 2500  nils 33   refused 0
+  3e2826cb-9187-4386-844b-46cb8f311262.jso recs 737     texts 25    nils 2    refused 0
+  450dbd37-e9ca-43ed-ad02-75dbdcfdb800.jso recs 370     texts 16    nils 1    refused 0
+  4a6d43c2-2e16-4c74-8216-6ffef0405fa7.jso recs 3059    texts 146   nils 4    refused 0
+  570463ed-ac15-462a-9561-764b15674065.jso recs 9122    texts 705   nils 9    refused 0
+  59b9146d-45e5-4933-a86a-5e82e9ab9cc8.jso recs 215     texts 7     nils 0    refused 0
+  5a91fce2-6b3b-4409-81f9-1a6969853c7e.jso recs 21513   texts 248   nils 7    refused 0
+  5cc92f9e-4865-4b6d-bef8-4d1ec84ddaa9.jso recs 4050    texts 299   nils 3    refused 0
+  66bb3ae1-97e6-4a09-b7bf-5e87fa4759e1.jso recs 3314    texts 74    nils 0    refused 0
+  6b3b880f-cc0c-4c5b-96e9-a1e59d601b34.jso recs 16897   texts 1312  nils 21   refused 0
+  6d99801c-8311-4516-9307-b8908f3a7470.jso recs 36      texts 1     nils 0    refused 0
+  6ef604b7-1230-4dfb-bb42-4880de60064e.jso recs 214     texts 5     nils 0    refused 0
+  7138a95f-bd0d-4021-be95-1594f90338a8.jso recs 168     texts 11    nils 2    refused 0
+  77870d79-06b8-4e0f-bab8-293a7a9c177f.jso recs 267     texts 4     nils 0    refused 0
+  78430378-8393-4167-817a-abbb9745b1a2.jso recs 43      texts 1     nils 0    refused 0
+  79f4ec16-7d71-458a-81e1-eef82e450721.jso recs 384     texts 10    nils 0    refused 0
+  7c853fbd-56ec-4750-835f-9918e45fc027.jso recs 64      texts 1     nils 0    refused 0
+  8377a49b-3a6b-471c-af32-5214d1650b26.jso recs 528     texts 19    nils 0    refused 0
+  83a5dc7e-e748-4149-880a-aba8804efccf.jso recs 109416  texts 1675  nils 22   refused 0
+  862ce6a2-b3a0-49c5-bb11-9bf3128d335b.jso recs 186     texts 7     nils 0    refused 0
+  86f7e6a6-4036-4a4a-8515-d6fe1342eca1.jso recs 17129   texts 714   nils 8    refused 0
+  87ca1d9c-0468-48e6-a03e-1377a8e8b412.jso recs 315     texts 10    nils 0    refused 0
+  8831d90e-7a20-4c09-b9e6-5c7c4a005c92.jso recs 11659   texts 730   nils 3    refused 0
+  912461f4-d333-42a6-8a2a-c879ddd0d90b.jso recs 11417   texts 1000  nils 13   refused 0
+  92278189-bae3-4ce1-ba52-1be96acb2986.jso recs 311     texts 18    nils 0    refused 0
+  9316d149-876b-4bea-b428-9d82d723dbbf.jso recs 7391    texts 287   nils 4    refused 0
+  96542a94-287d-41e4-9f72-ba1b4de3cfa5.jso recs 509     texts 15    nils 0    refused 0
+  a193ec37-921f-4a8e-825d-e317c5d245ca.jso recs 2403    texts 67    nils 0    refused 0
+  a37fd416-ae19-492d-96a4-98f2a6636754.jso recs 101     texts 3     nils 0    refused 0
+  b221c80f-1373-4675-a451-059539c9dbdc.jso recs 59      texts 1     nils 0    refused 0
+  b4fb1767-8b7a-4426-88a2-6a043a7e9f84.jso recs 176     texts 5     nils 1    refused 0
+  b5cb2cd1-fa39-479d-9ad1-29bcdbcf9166.jso recs 142     texts 2     nils 0    refused 0
+  b7cf9386-1270-4a6a-a0d6-a2818fe51ed6.jso recs 1768    texts 95    nils 1    refused 0
+  bbb74b93-cb04-44bb-b519-2b1c17b35261.jso recs 365     texts 13    nils 0    refused 0
+  c671822d-f2ab-4ee6-a69c-b62f6a642b41.jso recs 296     texts 10    nils 0    refused 0
+  c6cb3844-7bd5-4066-9852-d025d5cb7c40.jso recs 15782   texts 1023  nils 52   refused 0
+  c89860e3-b97b-4e76-8dec-4b99f2492f14.jso recs 235     texts 8     nils 2    refused 0
+  c8ebd39e-abde-48e3-8bc4-60224564b1c2.jso recs 45      texts 2     nils 0    refused 0
+  ccde56af-ac18-4897-a430-6d9cc3dffe3c.jso recs 1259    texts 82    nils 1    refused 0
+  d39df85a-81bc-4f92-b53d-5012b71b36ec.jso recs 361     texts 16    nils 0    refused 0
+  d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a.jso recs 60360   texts 1930  nils 26   refused 0
+  dd5e3d5d-ec22-4052-96ba-a2511c574af2.jso recs 34872   texts 1999  nils 46   refused 0
+  e08542df-fc7a-4b52-9f1b-dda51de03304.jso recs 84      texts 2     nils 0    refused 0
+  e680f693-f362-47f2-9e4e-5f933ce46ab7.jso recs 248     texts 6     nils 0    refused 0
+  e6a79658-a4db-42d5-a557-6b54a54a40c3.jso recs 250     texts 10    nils 0    refused 0
+  e9776216-3708-4eae-8b89-b66a6d97e11e.jso recs 532     texts 8     nils 0    refused 0
+  eb9075b2-d490-4cb3-95ab-afbc215de871.jso recs 74225   texts 1767  nils 49   refused 0
+  efe46d18-70cf-4abe-a96e-0eca6201a29a.jso recs 150     texts 3     nils 1    refused 0
+  f6ff24dd-eb16-46aa-9a07-076e5850b27a.jso recs 64136   texts 2122  nils 20   refused 0
+  f72915b4-9585-48c6-b760-e60670aa7c86.jso recs 48      texts 1     nils 0    refused 0
+  fea70c97-f12c-42e5-9247-b79760f5ec47.jso recs 315     texts 12    nils 1    refused 0
+
+TOTALS over 62 of 62 transcripts in the folder
+  records                 : 665168
+  assistant texts         : 23649
+  carrying a nil          : 369
+  REFUSED                 : 0 of 369 nil claims
+
