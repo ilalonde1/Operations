@@ -1,0 +1,12 @@
+[
+ {
+  "title": "A SIMPLE-recovery log file that is huge but nearly empty: shrink it once",
+  "appliesTo": "device:KOR-APP01",
+  "symptom": "A database log file is many GB on disk while almost none of it is used. 27 Oct: KorEmailIndex_log.ldf was 10,183 MB with 6 MB used, in D:\\SQLData on KOR-APP01\\SQLEXPRESS.",
+  "cause": "A one-off large load or long transaction grew the log once; under SIMPLE recovery the space is reused but never handed back to the disk. It is not a fault that recurs nightly.",
+  "check": "As sysadmin in that database: SELECT total_log_size_in_bytes, used_log_space_in_bytes FROM sys.dm_db_log_space_usage; and size*8/1024 from sys.master_files. Confirm recovery_model_desc = SIMPLE and that no heavy work is running on that database.",
+  "fix": "When nothing heavy is running: DBCC SHRINKFILE (N'<logical log name>', 1024) once, then read both numbers again. 27 Oct 17:11: 10,183 MB -> 1,031 MB (sys.master_files 1,032 MB), mdf untouched, about 9.1 GB back on D:. Do not schedule shrinks; if the log grows back to the same size, find the transaction that grows it instead. Proof: board row 36.",
+  "tags": "sql,log,shrink,disk,APP01,KorEmailIndex",
+  "plain": "Remembers how a mostly-empty 10 GB database log on APP01 was safely cut to 1 GB, and when not to repeat it."
+ }
+]

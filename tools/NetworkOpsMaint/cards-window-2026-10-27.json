@@ -1,0 +1,42 @@
+[
+ {
+  "title": "SQL Server 2022 CU on APP01: stage it, Ian runs it, one restart, read the build back",
+  "appliesTo": "device:KOR-APP01",
+  "symptom": "KOR-APP01\\SQLEXPRESS sits on an RTM-GDR build (16.0.1210.3) with no cumulative update; Windows Update does not offer the CU.",
+  "cause": "SQL CUs are not offered through Windows Update for this instance; they come from the Microsoft Update Catalog.",
+  "check": "SELECT SERVERPROPERTY('ProductVersion'), SERVERPROPERTY('ProductUpdateLevel'). 27 Oct before: 16.0.1210.3; after: 16.0.4305.5 CU27.",
+  "fix": "Download the CU from the Update Catalog ON APP01 into D:\\Installers, verify size + SHA-256 + Authenticode (27 Oct: KB5126934, 491,045,896 B, SHA-256 8F1A7F0A...E962E7E2). A copy-only CHECKSUM backup of KorStandards first, RESTORE VERIFYONLY. Ian runs the installer at the console (runbook on his Desktop). Setup exit 0 with 'Pending' = reboot required: restart APP01 once, then read version, 22/22 ONLINE, Agent, Worker, NetworkOps. After CU27 the PolyBase services, Launchpad and telemetry were Stopped (Automatic); nothing uses them. Proof: board rows 46 and 37.",
+  "tags": "sql,cu,patch,APP01,KB5126934",
+  "plain": "Remembers how APP01's SQL Server was safely brought up to CU27 and how to confirm it."
+ },
+ {
+  "title": "Two update installs on one server at once: one fails with 0x80240009 / 0x80240016",
+  "appliesTo": "kind:Server",
+  "symptom": "An install-updates run reports 'Installed 2 of 3, 1 failed' or '0 of 2, 2 failed' while someone is also installing updates on the box (27 Oct: Ian over RDP on FS01 and DC01 during NetworkOps' runs).",
+  "cause": "Windows Update runs one install at a time; the second caller gets WU_E_OPERATIONINPROGRESS (0x80240009) or WU_E_INSTALL_NOT_ALLOWED (0x80240016). Nothing is broken.",
+  "check": "Read the WU history on the box (Microsoft.Update.Session QueryHistory) and Get-HotFix for the KBs: 27 Oct FS01 showed the 20:53 failures then all 3 Succeeded at 20:55; DC01 had both KBs in Get-HotFix, build 26100.33650.",
+  "fix": "Do not re-run blindly: read history + Get-HotFix + pending-restart flags first. If everything is in and nothing is pending, it is done. Agree who installs before starting; one installer per box.",
+  "tags": "updates,windows-update,0x80240009,0x80240016,servers",
+  "plain": "Explains why an update run can report failures when two people install at once, and how to check whether anything is really missing."
+ },
+ {
+  "title": "A NetworkOps 'Queued' reply is not a result: read the run before reporting it",
+  "appliesTo": "any",
+  "symptom": "networkops_run_fix answers 'Queued ... audited as action N' and the work is reported as started or done, but the action failed at once (27 Oct: install-updates-restart on FS01, confirmed=false, refused as disruptive and unconfirmed).",
+  "cause": "Queuing and running are separate: refusals and failures land in the action's result, which the queued reply cannot show. A disruptive fix on a server is refused unless confirmed=true.",
+  "check": "networkops_runs (or the device's actions) shows each action's real state: queued, running, done: <detail>, failed: <reason>.",
+  "fix": "Report a netops action only from its result read back. Pass confirmed=true for an authorized disruptive fix. Owed code change: run_fix refuses an unconfirmed disruptive fix in its own reply. Proof: oversight.Mistake 69; action 11429 refused, 11430 ran.",
+  "tags": "netops,mcp,run_fix,queued,claims",
+  "plain": "Reminds every session that a queued fix has not happened yet, and to check its result first."
+ },
+ {
+  "title": "The look guard: claims made from a command's silence or a summary line",
+  "appliesTo": "any",
+  "symptom": "A session says 'done', 'deployed' or 'went' when the only evidence is that a command returned, or a one-line summary, with no read of the changed thing.",
+  "cause": "Momentum: the claim is written from the act, not from a look at its result.",
+  "check": "tools/claude_look_guard.py (VD, 328c8ef and later) blocks Stop and SendMessage when a change kind has no later look of its kind (KorStandards oversight.LookRule). 16/16 tests at first release; a dry run on the 27 Oct transcript showed 0 unlooked.",
+  "fix": "Do the look of the right kind, or word the message as only what was looked at. Its stated blind spot: it cannot judge whether the look was complete (one page of 26 satisfies it), and a NetworkOps action is not yet one of its change kinds (Mistake 69).",
+  "tags": "guard,hook,claims,look",
+  "plain": "Records why sessions are now stopped from claiming 'done' without checking, and what the check still cannot see."
+ }
+]
