@@ -66,12 +66,19 @@ import re
 import sys
 
 # Repo rule 7: raw strings for every regex.
+#
+# Widened 2026-10-27 19:0x, after measuring that this guard NEVER EXAMINED ITS OWN FOUNDING CASE. The cadtest
+# answer was written "None of the ~3.9 GB came from that checkout, and nothing I ran removed cadtest" - and
+# "none of the" is not "none of them", "nothing I ran removed" is not "nothing was deleted". The arming and the
+# exits were measured over 62 transcripts before anyone thought to check whether the detector saw the one claim
+# the whole file exists for. A gate's coverage is the narrowest of its stages, not the one that was measured.
 NIL_CLAIM = re.compile(
     r"\b0 of \d+\b"
     r"|\bdelta:?\s*0\b"
     r"|\bnone (?:found|matched|of them|present)\b"
+    r"|\bnone of (?:the|those|these|it|that)\b"
     r"|\bno (?:\w+\s+){0,3}(?:were |was )?(?:found|present|detected|returned|deleted|changed)\b"
-    r"|\bnothing (?:was |is |had )?(?:found|changed|deleted|written|returned|touched)\b"
+    r"|\bnothing (?:\w+\s+){0,3}(?:found|changed|deleted|removed|written|returned|touched|matched)\b"
     r"|\bnobody (?:did|had|touched)\b", re.I)
 
 # Evidence IN WORDS that the instrument was exercised on an answer already KNOWN. One of two accepted forms, and

@@ -165,6 +165,34 @@ CASES = [
       rec_text("assistant", NIL)], {}, False),
 ]
 
+# The detector is a separate stage from the exits, and it had its own hole: the claim this whole file exists
+# for was phrased in words NIL_CLAIM did not match, so the guard never looked at it. Verbatim from the
+# transcript, 2026-10-27. A gate's coverage is the narrowest of its stages.
+DETECT = [
+    ("the founding case, as actually written",
+     "No. None of the ~3.9 GB came from that checkout, and nothing I ran removed cadtest, "
+     "cad-pdf or results.", True),
+    ("nothing + an interposed subject", "nothing I ran removed cadtest", True),
+    ("none of the, not none of them", "None of the ~3.9 GB came from that checkout", True),
+    ("an ordinary count is not a nil", "3 of 62 transcripts carried a deletion", False),
+    ("a positive finding is not a nil", "145 buttons: certain 50, likely 27", False),
+]
+
+import importlib.util  # noqa: E402  - after the fixtures, so the guard's own path is the only import of it
+
+_spec = importlib.util.spec_from_file_location("guard_mod", GUARD)
+_g = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_g)
+
+detect_passed = 0
+for name, text, must_detect in DETECT:
+    got = bool(_g.NIL_CLAIM.search(text))
+    ok = got == must_detect
+    detect_passed += ok
+    print(("  OK   " if ok else "  FAIL ") + "detect: " + name
+          + ("   -> nil" if got else "   -> not a nil"))
+print()
+
 passed = 0
 for name, records, extra, must_block in CASES:
     out = run(records, extra)
@@ -174,5 +202,6 @@ for name, records, extra, must_block in CASES:
     print(("  OK   " if ok else "  FAIL ") + name + ("   -> blocked" if blocked else "   -> allowed"))
 
 print()
-print("self-test: {0} of {1}".format(passed, len(CASES)))
-sys.exit(0 if passed == len(CASES) else 1)
+print("self-test: {0} of {1} decisions, {2} of {3} detections".format(
+    passed, len(CASES), detect_passed, len(DETECT)))
+sys.exit(0 if (passed == len(CASES) and detect_passed == len(DETECT)) else 1)
