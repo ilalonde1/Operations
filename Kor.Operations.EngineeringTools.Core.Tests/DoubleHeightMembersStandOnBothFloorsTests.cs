@@ -89,6 +89,80 @@ public class DoubleHeightMembersStandOnBothFloorsTests
         Assert.Equal(0, Filled(Two(12), 6));     // a foot apart: two columns
     }
 
+    /// <summary>
+    /// Board row 77: one wall read off four sheets whose drafting drifts a few millimetres sheet by sheet is one stack. On 31053
+    /// the wall at y 60,133 ends at 34,280 on L6, 34,276 on L7, 34,280 on L8 and 34,276 on L9; keyed by its exact ends, the
+    /// "34,280" stack saw L7 empty and copied its L8 wall there, the "34,276" stack saw L8 empty and copied its L9 wall there,
+    /// and every storey held the wall twice - 1,026 of the 1,028 overlapping wall pairs on the 57 gate sets are two sheets'
+    /// copies (docs/etabs-handoff/corpus/walls-modelled-twice-2026-10-28-d4352fc0-by-sheet.txt).
+    /// WHAT THIS COVERS: four walls, 0.16 in apart at one end, one per storey, a 6 in reach: nothing filled, each storey one wall;
+    /// with no reach they are four stacks as before. WHAT IT DOES NOT: two walls on one storey (they share a storey, so they
+    /// stay two stacks - the composer's own within-an-inch check is what keeps those apart).
+    /// </summary>
+    [Fact]
+    public void OneWallReadOffSheetsAFewMillimetresApartIsOneStack()
+    {
+        string[] Lines() => new List<string>
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"L9\"  HEIGHT 120", "  STORY \"L8\"  HEIGHT 120", "  STORY \"L7\"  HEIGHT 120", "  STORY \"L6\"  HEIGHT 120", "  STORY \"Base\"  HEIGHT 0",
+            "$ POINT COORDINATES",
+            "  POINT \"KP1\"  0  100", "  POINT \"KP2\"  287.16  100", "  POINT \"KP3\"  287  100",
+            "$ AREA CONNECTIVITIES",
+            "  AREA  \"KW1\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  1  1  0  0",
+            "  AREA  \"KW2\"  PANEL  4  \"KP1\"  \"KP3\"  \"KP3\"  \"KP1\"  1  1  0  0",
+            "  AREA  \"KW3\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  1  1  0  0",
+            "  AREA  \"KW4\"  PANEL  4  \"KP1\"  \"KP3\"  \"KP3\"  \"KP1\"  1  1  0  0",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KW1\"  \"L6\"  SECTION \"KOR-W14\"",
+            "  AREAASSIGN  \"KW2\"  \"L7\"  SECTION \"KOR-W14\"",
+            "  AREAASSIGN  \"KW3\"  \"L8\"  SECTION \"KOR-W14\"",
+            "  AREAASSIGN  \"KW4\"  \"L9\"  SECTION \"KOR-W14\"",
+        }.ToArray();
+
+        var drifted = E2kDocument.Parse(Lines());
+        int filled = drifted.ModelDoubleHeightMembersOnBothFloors(sameColumnReach: 6);
+        var onStorey = drifted.StoreysByObject().SelectMany(kv => kv.Value.Select(s => (Storey: s, Obj: kv.Key)))
+            .GroupBy(x => x.Storey).ToDictionary(g => g.Key, g => g.Count());
+
+        Assert.Equal(0, filled);
+        Assert.All(new[] { "L6", "L7", "L8", "L9" }, s => Assert.Equal(1, onStorey.GetValueOrDefault(s)));
+    }
+
+    /// <summary>
+    /// Board row 77's guard: a wall far below on the same line is not the same stack. The first gate run of the wall merge joined
+    /// 30993's UPPER ROOF wall KW998 with L2's KW227 (76 mm apart, 35 storeys down); the carry-down works on a stack's BOTTOM storey,
+    /// so it looked at L2, and KW998 was never carried onto AMANITY. Two wall stacks join only when a storey of one is next to a
+    /// storey of the other. WHAT THIS COVERS: a hanging top-storey wall over a plate one storey down is carried onto the storey
+    /// between though a wall 3 in off its line stands three storeys lower. WHAT IT DOES NOT: two stacks on neighbouring storeys
+    /// that really are two walls a few inches apart (the reach decides those, as for columns).
+    /// </summary>
+    [Fact]
+    public void AWallFarBelowOnTheSameLineDoesNotStopTheCarryDown()
+    {
+        var doc = E2kDocument.Parse(new[]
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"UPPER\"  HEIGHT 120", "  STORY \"AMEN\"  HEIGHT 120", "  STORY \"ROOF\"  HEIGHT 120",
+            "  STORY \"L2\"  HEIGHT 120", "  STORY \"L1\"  HEIGHT 120", "  STORY \"Base\"  HEIGHT 0",
+            "$ POINT COORDINATES",
+            "  POINT \"KP1\"  0  100", "  POINT \"KP2\"  287  100", "  POINT \"KP3\"  0  103", "  POINT \"KP4\"  287  103",
+            "  POINT \"KP5\"  -50  0", "  POINT \"KP6\"  350  0", "  POINT \"KP7\"  350  200", "  POINT \"KP8\"  -50  200",
+            "$ AREA CONNECTIVITIES",
+            "  AREA  \"KW1\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  1  1  0  0",
+            "  AREA  \"KW2\"  PANEL  4  \"KP3\"  \"KP4\"  \"KP4\"  \"KP3\"  1  1  0  0",
+            "  AREA  \"KF1\"  FLOOR  4  \"KP5\"  \"KP6\"  \"KP7\"  \"KP8\"",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KW1\"  \"UPPER\"  SECTION \"KOR-W14\"",
+            "  AREAASSIGN  \"KW2\"  \"L2\"  SECTION \"KOR-W14\"",
+            "  AREAASSIGN  \"KF1\"  \"ROOF\"  SECTION \"KOR-S8\"",
+        });
+
+        doc.ModelDoubleHeightMembersOnBothFloors(sameColumnReach: 6);
+
+        Assert.Contains("AMEN", doc.StoreysByObject()["KW1"]);
+    }
+
     /// <summary>The filled assign copies the real one, so it carries the same section.</summary>
     [Fact]
     public void TheFilledStoreyCarriesTheSameSectionAsTheFloorAbove()

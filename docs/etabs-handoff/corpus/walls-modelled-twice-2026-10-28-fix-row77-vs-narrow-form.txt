@@ -1,0 +1,29 @@
+# board row 77: wall stacks within the reach that share no storey AND stand on neighbouring storeys are one stack (E2kDocument.ModelDoubleHeightMembersOnBothFloors) - gate pair, like-for-like, 2026-10-28
+# before gw-narrow = 290e844a + HoldsColumn (develop's geometry since 83a1bbc0); after gw-r77b = 71e78416 + g__EndsOf, Core.dll 36c7e1b6 (run 2); both on the local corpus mirror root
+  after run recorded its own bin: 1.0.0+71e784162a64763ac8b9ccd56c7197e53844c67b   [run-done.txt]
+  before bin: 1.0.0+290e844aebf3b318628114ec1bb26727153fa8dc - matches the claim 290e844a+HoldsColumn
+  after bin: 1.0.0+71e784162a64763ac8b9ccd56c7197e53844c67b - matches the claim 71e78416+g__EndsOf
+  before root: C:\Users\ilalonde\AppData\Local\Temp\kor-corpus-mirror\Projects   [run-root.txt]
+  after root: C:\Users\ilalonde\AppData\Local\Temp\kor-corpus-mirror\Projects   [run-root.txt]
+57 of 57 job(s) comparable; 0 dropped
+
+# verdicts (LOST lines against the September bank): identical, 8 each
+
+== C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gw-narrow
+walls 28258; overlapping pairs 1028; dangling ends 5791; sets with either 56
+== C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gw-r77b
+walls 27923; overlapping pairs 694; dangling ends 5768; sets with either 56
+
+== C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gw-narrow
+headers over a column: 26 of 3139; by drawing unit: mm 26 of 3139
+== C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gw-r77b
+headers over a column: 26 of 3139; by drawing unit: mm 26 of 3139
+
+# members (gate_pair_moves.py): lost walls by the distance to the nearest surviving wall: 201 <= 5 mm, 58 at 5-50, 39 at 50-500, 0 beyond; columns untouched
+  no model: 31016-01 (before NO model, after NO)
+re-placed members: 0 closer to hers, 0 further, 0 same within 50 mm; unpaired: 298 lost, 12 gained
+changed: 30838-01 (8), 30849-01 (1), 30864-01 (3), 30933-01 (4), 30972-01 (8), 30986-02 (3), 30989-01 (2), 30990-01 (5), 30993-01 (5), 31003-01 (1), 31006-01 (1), 31017-01 (1), 31032-01 (2), 31039-01 (1), 31048-01 (3), 31053-01 (5), 31065-01 (2), 31076-01 (3), 31083-01 (1), 31085-01 (1), 31087-01 (3), 31098-01 (4), 31101-01 (4), 31108-01 (2), 31117-01 (4), 31129-01 (3), 31130-01 (1), 31155-01 (3), 31158-01 (1), 31168-01 (2), 31170-01 (2), 31183-01 (1), 31224-01 (1), 40112-01 (1), 60061-03 (2), 70057-01 (1)
+     12 GAINED wall
+    298 LOST   wall
+
+# run 1 (no neighbour guard) took 1,028 -> 716 overlaps but lost 30993 AMANITY's KW998: its UPPER ROOF stack merged with L2's KW227 (76 mm off, 35 storeys down) and the carry-down, which works on a stack's bottom storey, no longer saw it hanging. Run 2 keeps it (KW998 on AMANITY, read back).

@@ -1441,6 +1441,54 @@ public sealed class E2kDocument
                 }
             }
             foreach (string key in merged) stacks.Remove(key);
+
+            // ONE WALL READ OFF SHEETS A FEW MILLIMETRES APART IS ONE STACK (board row 77, 2026-10-28). Step 180 left walls as
+            // they were, and drafting drifts a wall's end sheet by sheet: 31053's wall at y 60,133 ends at 34,280 on L6, 34,276 on
+            // L7, 34,280 on L8 and 34,276 on L9, so each exact-key stack saw an "empty" storey between two it held and copied its
+            // wall into it - every storey carried the wall twice, 1,026 of 1,028 overlapping wall pairs on the 57 gate sets
+            // (docs/etabs-handoff/corpus/walls-modelled-twice-2026-10-28-d4352fc0-by-sheet.txt). The same test as a column's, for
+            // the wall's two ends, either way round: two WALL stacks whose ends both lie within the reach, and that share no
+            // storey, are one wall; two that share a storey are two walls and stay apart.
+            // ⚠ AND THEY MUST STAND ON NEIGHBOURING STOREYS. The first gate run merged 30993's UPPER ROOF wall KW998 with L2's
+            // KW227, 76 mm apart 35 storeys down: the stack then reached L2, the carry-down no longer saw KW998 hanging, and
+            // AMANITY lost the wall it carried down to. Drift interleaves storey by storey (L6 / L7 / L8 / L9), so a storey of one
+            // stack must be next to a storey of the other.
+            static ((double X, double Y) A, (double X, double Y) B)? EndsOf(string key)
+            {
+                var places = key.Split('|').Distinct(StringComparer.Ordinal).ToList();
+                if (places.Count != 2) return null;
+                var parsed = places.Select(pl => pl.Split(',')).ToList();
+                if (parsed.Any(p => p.Length != 2)) return null;
+                var c = System.Globalization.CultureInfo.InvariantCulture;
+                if (!double.TryParse(parsed[0][0], System.Globalization.NumberStyles.Float, c, out double ax) || !double.TryParse(parsed[0][1], System.Globalization.NumberStyles.Float, c, out double ay)
+                    || !double.TryParse(parsed[1][0], System.Globalization.NumberStyles.Float, c, out double bx) || !double.TryParse(parsed[1][1], System.Globalization.NumberStyles.Float, c, out double by))
+                    return null;
+                return ((ax, ay), (bx, by));
+            }
+            bool Close((double X, double Y) p, (double X, double Y) q) => (p.X - q.X) * (p.X - q.X) + (p.Y - q.Y) * (p.Y - q.Y) <= sameColumnReach * sameColumnReach;
+            var wallStacks = stacks
+                .Where(s => s.Value.Values.All(o => o.StartsWith("KW", StringComparison.Ordinal)) && EndsOf(s.Key) is not null)
+                .Select(s => (Key: s.Key, Ends: EndsOf(s.Key)!.Value))
+                .ToList();
+            var mergedWalls = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < wallStacks.Count; i++)
+            {
+                if (mergedWalls.Contains(wallStacks[i].Key)) continue;
+                var into = stacks[wallStacks[i].Key];
+                var (a1, b1) = wallStacks[i].Ends;
+                for (int j = i + 1; j < wallStacks.Count; j++)
+                {
+                    var (key, (a2, b2)) = wallStacks[j];
+                    if (mergedWalls.Contains(key)) continue;
+                    if (!((Close(a1, a2) && Close(b1, b2)) || (Close(a1, b2) && Close(b1, a2)))) continue;
+                    var other = stacks[key];
+                    if (other.Keys.Any(into.ContainsKey)) continue;
+                    if (!other.Keys.Any(r => into.ContainsKey(r - 1) || into.ContainsKey(r + 1))) continue;   // neighbouring storeys only
+                    foreach (var (row, obj) in other) into[row] = obj;
+                    mergedWalls.Add(key);
+                }
+            }
+            foreach (string key in mergedWalls) stacks.Remove(key);
         }
 
         // WHAT HOLDS A MEMBER UP: a plate on the storey its base lands on, under its own position.
