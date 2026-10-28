@@ -24,6 +24,14 @@
 // SAME-CLASS FAULT IT MISSES: an object ETABS imports at a different PLACE but with the same section and storey - counts
 // agree. ETABS's own text twin (.$et) is kept so that comparison can be made against the .e2k.
 //
+// ⚠ A MANUAL PRE-DELIVERY CHECK, NOT A BUILD GATE: it needs Ian's signed-in console session on KOR-210 (his ETABS Sign-in
+// seat; SYSTEM has neither the licence nor a desktop), so it runs when Ian says so, before a model goes to an engineer.
+// HISTORY: our output was opened in ETABS once before, by hand - 24 Aug, ETABS 22.6.0 on KOR-210, Analyze > Check Model run
+// twice (8 warnings, then 3 benign slab-edge mesh slivers; docs/KOR-DxfToEtabs-Handoff-2026-08-24.md). Check Model's list
+// is still read that way, by hand. WHICH ETABS: the engineers' models are in both - of their .EDBs exported in Sept, 92
+// opened in ETABS 22.6 and 9 more needed ETABS 23 (the newer jobs; docs/pdf-intake/part-2-s31-s60.md) - so a model is
+// checked in both when it matters; a newer importer accepting a file does not prove the older one will (--etabs).
+//
 // REUSED (Operations tools/EtabsExportE2k/Program.cs, 2026-09-11 on KOR-210): start a fresh ETABS from the named exe
 // through cHelper.CreateObject, never attach to one a person has open; resolve ETABSv1.dll from that ETABS's folder,
 // never ship it (ETABS refuses a client carrying its own copy); open a copy; ApplicationExit(false). From
