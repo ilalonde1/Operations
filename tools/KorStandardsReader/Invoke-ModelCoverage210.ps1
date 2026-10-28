@@ -13,7 +13,8 @@
 #
 # IN ORDER, stopping at the first failure:
 #   1. the login reads: SUSER_SNAME() and the row count of analysis.vw_RuleSetting, as rules_reader
-#   2. the login cannot write: DELETE TOP (0) FROM analysis.vw_RuleSetting inside a rolled-back transaction must be refused
+#   2. the login cannot write: HAS_PERMS_BY_NAME on the view must read SELECT=1 and INSERT/UPDATE/DELETE/ALTER/CONTROL=0, and
+#      a DELETE TOP (0) on -WriteProbe (analysis.Ruling), through dynamic SQL in a rolled-back transaction, must be refused
 #      with 229 - zero rows either way, so the proof cannot change anything even if the grant were wrong
 #   3. dotnet test --filter FullyQualifiedName~ModelCoverageTests, its summary line shown with passed / failed / total
 # Writes C:\KOR-Test\modelcoverage-<sha8>-<utc>.log (the test output; no secret is in it - checked, see the end).
@@ -25,7 +26,8 @@ param(
     [Parameter(Mandatory)][string]$Archive,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{40}$')][string]$Sha,
     [string]$Work = 'C:\KOR-Test',
-    [string]$Server = 'KOR-APP01\SQLEXPRESS'
+    [string]$Server = 'KOR-APP01\SQLEXPRESS',
+    [ValidatePattern('^[A-Za-z_]+\.[A-Za-z_]+$')][string]$WriteProbe = 'analysis.Ruling'   # a table the rules live in (RuleSettings.cs writes it)
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Security
@@ -73,17 +75,26 @@ $rules = Query "SELECT COUNT(*) FROM analysis.vw_RuleSetting"
 if ($who -ne 'rules_reader' -or [int]$rules -le 0) { throw "step 1 failed: expected rules_reader reading at least one rule" }
 
 # 2. cannot write
+# ⚠ about PERMISSION, never a write against the view: vw_RuleSetting is a UNION and SQL Server will not compile one on it,
+# a refusal that would read as "cannot write" even with DELETE held (db/146's first apply, 2026-10-28 14:1x). So: what the
+# login holds on the view, from HAS_PERMS_BY_NAME, and a zero-row write on a table the rules live in, which must be 229.
+$held = Query @"
+SELECT STRING_AGG(p + '=' + CAST(HAS_PERMS_BY_NAME(N'analysis.vw_RuleSetting', N'OBJECT', p) AS varchar(2)), ' ')
+FROM (VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'), ('ALTER'), ('CONTROL')) v(p)
+"@
+"2. holds on analysis.vw_RuleSetting: $held"
+if ($held -ne 'SELECT=1 INSERT=0 UPDATE=0 DELETE=0 ALTER=0 CONTROL=0') { throw "step 2 failed: the login holds more (or less) than SELECT on the view: $held" }
 $refused = $null
-try { Query "BEGIN TRANSACTION; DELETE TOP (0) FROM analysis.vw_RuleSetting; ROLLBACK;" | Out-Null }
+try { Query "BEGIN TRANSACTION; EXEC (N'DELETE TOP (0) FROM $WriteProbe;'); IF @@TRANCOUNT > 0 ROLLBACK;" | Out-Null }
 catch {
     # PowerShell wraps a .NET method's exception (MethodInvocationException): find the SqlException under it
     $e = $_.Exception; while ($e -and -not ($e -is [System.Data.SqlClient.SqlException])) { $e = $e.InnerException }
     if (-not $e) { throw }
     $refused = $e
 }
-if (-not $refused) { throw "step 2 failed: a DELETE on analysis.vw_RuleSetting was NOT refused - the login can write" }
+if (-not $refused) { throw "step 2 failed: a DELETE on $WriteProbe was NOT refused - the login can write" }
 if ($refused.Number -ne 229) { throw "step 2: refused, but with $($refused.Number) ($($refused.Message)), not 229 permission denied" }
-"2. cannot write: DELETE on analysis.vw_RuleSetting refused - $($refused.Number) $($refused.Message)"
+"   cannot write: DELETE on $WriteProbe refused - $($refused.Number) $($refused.Message)"
 
 # 3. the tests, inheriting the connection through this process's environment only
 $env:KOR_ENGINEERINGTOOLS_STANDARDSDB = $conn
