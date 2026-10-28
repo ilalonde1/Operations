@@ -1,0 +1,12 @@
+[
+ {
+  "title": "STALE BUILD on a machine NOT opted in to the folded bridge: a second Revit of the same year held the tools' DLLs; it clears itself",
+  "appliesTo": "app:revit",
+  "symptom": "STALE BUILD in the ribbon/log on a machine that is NOT opted in to the folded bridge; loader.log shows \"copy skipped for KOR.RevitTools.dll\" / \"Core.dll\" and \"cache NOT stamped current\".",
+  "cause": "The loader's cache is the folder Revit loads its assemblies from, so any assembly a running Revit of that year already holds cannot be replaced. Starting a second Revit of the same year makes its loader's sync fail on exactly those files. NOT the same as card 35: there the opted-in year's own instance locks the bridge DLL and the advice can never work; here the lock is transient.",
+  "check": "C:\\ProgramData\\KOR\\logs\\loader.log for \"copy skipped for KOR.RevitTools\" with \"NOT stamped current\"; count running Revit.exe of that year.",
+  "fix": "None needed: this is the loader's designed degradation, documented in KOR.RevitTools\\docs\\DEPLOYMENT-ARCHITECTURE.md as \"a file is locked mid-sync (second Revit instance of the same year)\". It clears itself: close ALL Revit windows of that year, then start one. The warning's advice is correct here.",
+  "tags": "revit,loader,stale-build,lock,second-instance",
+  "plain": "Explains that a 'Revit tools out of date' warning after opening a second Revit window is harmless and clears once all windows of that year are closed and one is reopened. Proof: KOR-306, 2026-10-27 14:41:50, two files skipped, one not-stamped event in 64 log lines (a second Revit 2026 started 10:29:29 held them); 6 of 6 earlier 2026 sync attempts since 10-13 succeeded (Revit Fleet, actions 11491/11497/11498). Also seen on KOR-305 2026, 23 Oct 16:45:13 (NetworkOps read 11494)."
+ }
+]
