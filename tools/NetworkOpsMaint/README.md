@@ -16,5 +16,8 @@ where it runs and what it changes. Run scripts on servers through NetworkOps (`n
 | mcp-call.ps1 | HTTP JSON-RPC to APP01 /mcp with `netops token`, cert pinned |
 | bank-cards.ps1 / accept-cards.ps1 | Bank and accept NetworkOps knowledge cards through the service's own API |
 | cards-*.json / card-shrink-*.json | The cards banked 27 Oct (cards 14-33) |
+| fs01-wrapped-exe-census.ps1 | Read-only on FS01: zip-wrapped executables in Library\03 Programs, top vs nested per product folder (28 Oct, action 11530) |
+| make-remote-unwrap.ps1 | Builds a netops-run copy of tools\Expand-WrappedExecutables.ps1 with its parameters fixed in and `exit` turned into `return` (a script that exits publishes no result) |
+| make-fs01-unwrap-task.ps1 | From that copy, builds a launcher (a one-off SYSTEM task under E:\IT\netops-unwrap\<stamp>, for runs longer than netops' 90 s) and a status reader (shared read of result.txt; unregisters the task once done.txt exists). Used 28 Oct: 1,271 nested installer exes restored on FS01 (actions 11553, 11724-11726) |
 
 Evidence and decisions live in KorStandards `oversight` (board rows 30-46, Mistake 69) and NetworkOps.KnowledgeCards.
