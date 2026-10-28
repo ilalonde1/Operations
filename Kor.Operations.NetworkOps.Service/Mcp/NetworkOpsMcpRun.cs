@@ -76,9 +76,9 @@ public sealed class NetworkOpsMcpRun
         [Description("The machine name, e.g. KOR-206-N or KOR-APP01. One machine.")] string host,
         [Description("The PowerShell to run on it (up to 20,000 characters). Return plain values or a [pscustomobject].")] string script,
         [Description("Why, in a sentence -- recorded as the action's purpose.")] string purpose,
-        [Description("Seconds to wait, 10-300 (default 90).")] int? timeoutSeconds,
-        [Description("For a protected machine only: who approved this one action, as they said it.")] string? approvedBy,
-        CancellationToken ct)
+        [Description("Seconds to wait, 10-300 (default 90).")] int? timeoutSeconds = null,
+        [Description("For a protected machine only: who approved this one action, as they said it.")] string? approvedBy = null,
+        CancellationToken ct = default)
     {
         var options = services.GetRequiredService<IOptions<NetworkOpsOptions>>().Value;
         var by = By(services);
@@ -99,11 +99,11 @@ public sealed class NetworkOpsMcpRun
         [Description("The source folder, as that machine sees it: C:\\folder or \\\\server\\share\\folder.")] string source,
         [Description("The destination folder, as that machine sees it.")] string destination,
         [Description("Why, in a sentence -- recorded as the action's purpose.")] string purpose,
-        [Description("Which files: one name or wildcard (default *.*, every file, with subfolders).")] string? files,
-        [Description("true to replace files that already exist at the destination (default false: keep them).")] bool? overwrite,
-        [Description("Seconds to wait for the copy to finish before returning State=running, 0-240 (default 120).")] int? waitSeconds,
-        [Description("For a protected machine only: who approved this one action, as they said it.")] string? approvedBy,
-        CancellationToken ct)
+        [Description("Which files: one name or wildcard (default *.*, every file, with subfolders).")] string? files = null,
+        [Description("true to replace files that already exist at the destination (default false: keep them).")] bool? overwrite = null,
+        [Description("Seconds to wait for the copy to finish before returning State=running, 0-240 (default 120).")] int? waitSeconds = null,
+        [Description("For a protected machine only: who approved this one action, as they said it.")] string? approvedBy = null,
+        CancellationToken ct = default)
     {
         var options = services.GetRequiredService<IOptions<NetworkOpsOptions>>().Value;
         var by = By(services);
@@ -121,8 +121,8 @@ public sealed class NetworkOpsMcpRun
     public static async Task<object> CopyStatus(IServiceProvider services,
         [Description("The machine the copy runs on.")] string host,
         [Description("The copyId networkops_copy returned, e.g. 20261027-061500-a1b2c3.")] string copyId,
-        [Description("For a protected machine only: who approved reading it.")] string? approvedBy,
-        CancellationToken ct)
+        [Description("For a protected machine only: who approved reading it.")] string? approvedBy = null,
+        CancellationToken ct = default)
     {
         var options = services.GetRequiredService<IOptions<NetworkOpsOptions>>().Value;
         var by = By(services);

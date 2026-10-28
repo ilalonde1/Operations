@@ -30,8 +30,8 @@ public sealed class NetworkOpsMcpActions
         "networkops_findings or networkops_device.")]
     public static async Task<object> Acknowledge(IServiceProvider services,
         [Description("The finding's id (from networkops_findings / networkops_device).")] long findingId,
-        [Description("Why, in a few words -- recorded on the finding.")] string? note,
-        CancellationToken ct)
+        [Description("Why, in a few words -- recorded on the finding.")] string? note = null,
+        CancellationToken ct = default)
     {
         var store = services.GetRequiredService<NetworkOpsStore>();
         var by = By(services);
@@ -65,9 +65,10 @@ public sealed class NetworkOpsMcpActions
     public static async Task<object> RunFix(IServiceProvider services,
         [Description("The machine name, e.g. KOR-206-N.")] string host,
         [Description("The fix id (a FixCatalog id, e.g. repair-wmi, free-disk-space, restart-pc).")] string fixId,
-        [Description("The fix's input, if it needs one (most do not).")] string? param,
-        [Description("Pass true to go ahead with a disruptive fix (any restart), whoever is on the machine.")] bool confirmed,
-        CancellationToken ct)
+        [Description("The fix's input, if it needs one (most do not).")] string? param = null,
+        // false = refused for any disruptive fix (FixCatalog.Unconfirmed): leaving it out can never restart a machine.
+        [Description("Pass true to go ahead with a disruptive fix (any restart), whoever is on the machine.")] bool confirmed = false,
+        CancellationToken ct = default)
     {
         var store = services.GetRequiredService<NetworkOpsStore>();
         var options = services.GetRequiredService<IOptions<NetworkOpsOptions>>().Value;
