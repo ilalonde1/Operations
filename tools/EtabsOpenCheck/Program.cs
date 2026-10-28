@@ -6,7 +6,8 @@
 //     EtabsOpenCheck <model.e2k> <outDir> [--etabs "C:\Program Files\Computers and Structures\ETABS 23\ETABS.exe"]
 //
 // It copies the .e2k into <outDir> and opens THE COPY (the deliverable is never written), then writes <outDir>\report.txt:
-//   1. the import: File.ImportFile(TextFile) - ETABS 23's API returns a code and no log (ETABS 22's FillImportLog is gone),
+//   1. the import: File.ImportFile(TextFile) - the API returns a code and no log (ETABS 22.6 and 23.3 alike: the same
+//      ImportFile(FileName, FileType, Type) in both, read off each ETABSv1.dll on KOR-210, 2026-10-28),
 //      so every file ETABS writes into <outDir> during the import is listed, and any text one copied into the report
 //      verbatim; and a picture of the screen is taken if the import has not returned in 60 s (a dialog waiting for a click)
 //   2. ETABS's own counts against the .e2k's: storeys and their elevations (ft), frames by section, areas by property,
@@ -30,7 +31,10 @@
 // twice (8 warnings, then 3 benign slab-edge mesh slivers; docs/KOR-DxfToEtabs-Handoff-2026-08-24.md). Check Model's list
 // is still read that way, by hand. WHICH ETABS: the engineers' models are in both - of their .EDBs exported in Sept, 92
 // opened in ETABS 22.6 and 9 more needed ETABS 23 (the newer jobs; docs/pdf-intake/part-2-s31-s60.md) - so a model is
-// checked in both when it matters; a newer importer accepting a file does not prove the older one will (--etabs).
+// checked in both when it matters; a newer importer accepting a file does not prove the older one will (--etabs). The
+// same binary runs on both: the 14 API methods it calls have the same signatures in 22.6 (API 2.8) and 23.3 (API 2.16).
+// Halifax 31180 v3, 28 Oct, both versions: import 0, 0 count differences, analysis model 0, and each one's re-saved text
+// model holds 433 of 433 column-storeys at the e2k's storey, place and section.
 //
 // REUSED (Operations tools/EtabsExportE2k/Program.cs, 2026-09-11 on KOR-210): start a fresh ETABS from the named exe
 // through cHelper.CreateObject, never attach to one a person has open; resolve ETABSv1.dll from that ETABS's folder,
