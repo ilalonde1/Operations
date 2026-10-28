@@ -1,0 +1,2398 @@
+{
+ "job": "jobs/31180-01-halifax/job.json",
+ "note": "Frozen 2026-10-28 10:3x from C:/KOR.Drafter-work/31180-01-halifax/run.json: runs started on or after 27 Oct 12:00, steps cut to step/gate/passed/exit",
+ "runs": [
+  {
+   "started": "2026-10-27T13:45:23",
+   "finished": "2026-10-27T13:45:27",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T13:46:01",
+   "finished": "2026-10-27T13:46:08",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T13:57:22",
+   "finished": "2026-10-27T13:57:27",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T13:57:41",
+   "finished": null,
+   "steps": [
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 2
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T13:58:54",
+   "finished": "2026-10-27T13:59:00",
+   "steps": [
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": true
+    },
+    {
+     "step": "walls and columns to the storey they stand in",
+     "exit": 0
+    },
+    {
+     "step": "render every storey",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T14:07:00",
+   "finished": "2026-10-27T14:07:05",
+   "steps": [
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": true
+    },
+    {
+     "step": "walls and columns to the storey they stand in",
+     "exit": 0
+    },
+    {
+     "step": "render every storey",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T14:09:05",
+   "finished": "2026-10-27T14:09:08",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T14:12:21",
+   "finished": "2026-10-27T14:12:25",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T14:13:38",
+   "finished": "2026-10-27T14:13:42",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T14:14:10",
+   "finished": "2026-10-27T14:14:14",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T14:23:18",
+   "finished": "2026-10-27T14:23:22",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T14:24:32",
+   "finished": "2026-10-27T14:24:38",
+   "steps": [
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": true
+    },
+    {
+     "step": "walls and columns to the storey they stand in",
+     "exit": 0
+    },
+    {
+     "step": "render every storey",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T14:27:42",
+   "finished": "2026-10-27T14:27:46",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T14:28:55",
+   "finished": null,
+   "steps": [
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 1
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": false
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T14:29:36",
+   "finished": "2026-10-27T14:29:45",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    },
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": true
+    },
+    {
+     "step": "walls and columns to the storey they stand in",
+     "exit": 0
+    },
+    {
+     "step": "render every storey",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T17:16:25",
+   "finished": "2026-10-27T17:16:29",
+   "steps": [
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": true
+    },
+    {
+     "step": "walls and columns to the storey they stand in",
+     "exit": 0
+    },
+    {
+     "step": "render every storey",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T22:49:03",
+   "finished": "2026-10-27T22:49:14",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    },
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": true
+    },
+    {
+     "step": "walls and columns to the storey they stand in",
+     "exit": 0
+    },
+    {
+     "step": "render every storey",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T22:53:28",
+   "finished": "2026-10-27T22:53:31",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T22:53:55",
+   "finished": "2026-10-27T22:53:58",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T22:54:26",
+   "finished": null,
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    },
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 1
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": false
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T22:58:10",
+   "finished": "2026-10-27T22:58:15",
+   "steps": [
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "no plate on a foundation storey (slab on grade)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": true
+    },
+    {
+     "step": "walls and columns to the storey they stand in",
+     "exit": 0
+    },
+    {
+     "step": "render every storey",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T22:59:14",
+   "finished": "2026-10-27T22:59:22",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    },
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "no plate on a foundation storey (slab on grade)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": true
+    },
+    {
+     "step": "walls and columns to the storey they stand in",
+     "exit": 0
+    },
+    {
+     "step": "render every storey",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T23:00:48",
+   "finished": "2026-10-27T23:00:56",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    },
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "no plate on a foundation storey (slab on grade)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": true
+    },
+    {
+     "step": "walls and columns to the storey they stand in",
+     "exit": 0
+    },
+    {
+     "step": "render every storey",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T23:26:24",
+   "finished": null,
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 3,LEVEL 4,LEVEL 5,LEVE)",
+     "exit": 1
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T23:26:40",
+   "finished": "2026-10-27T23:26:48",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "outline from columns LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 3,LEVEL 4,LEVEL 5,LEVE)",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 2)",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 21 AMENITY)",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T23:31:12",
+   "finished": "2026-10-27T23:31:32",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "the engineer's slab edge LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "the engineer's slab edge ROOF",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 3,LEVEL 4,LEVEL 5,LEVE)",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 2)",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 21 AMENITY)",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    },
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "no plate on a foundation storey (slab on grade)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": true
+    },
+    {
+     "step": "walls and columns to the storey they stand in",
+     "exit": 0
+    },
+    {
+     "step": "render every storey",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T23:32:18",
+   "finished": "2026-10-27T23:32:32",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "the engineer's slab edge LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "the engineer's slab edge ROOF",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 3,LEVEL 4,LEVEL 5,LEVE)",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 2)",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 21 AMENITY)",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    },
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "no plate on a foundation storey (slab on grade)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": true
+    },
+    {
+     "step": "walls and columns to the storey they stand in",
+     "exit": 0
+    },
+    {
+     "step": "render every storey",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-27T23:33:32",
+   "finished": "2026-10-27T23:33:45",
+   "steps": [
+    {
+     "step": "dump annotations",
+     "exit": 0
+    },
+    {
+     "step": "read the markup",
+     "exit": 0
+    },
+    {
+     "step": "openings from the architect's background",
+     "exit": 0
+    },
+    {
+     "step": "openings into the manifest",
+     "exit": 0
+    },
+    {
+     "step": "grids",
+     "exit": 0
+    },
+    {
+     "step": "the engineer's slab edge LEVEL 22 MECH.",
+     "exit": 0
+    },
+    {
+     "step": "the engineer's slab edge ROOF",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 3,LEVEL 4,LEVEL 5,LEVE)",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 2)",
+     "exit": 0
+    },
+    {
+     "step": "balconies from the architect (LEVEL 21 AMENITY)",
+     "exit": 0
+    },
+    {
+     "step": "snap columns (A16)",
+     "exit": 0
+    },
+    {
+     "step": "revit-to-dxf",
+     "exit": 0
+    },
+    {
+     "step": "dxf-to-etabs",
+     "exit": 0
+    },
+    {
+     "step": "slab thickness",
+     "exit": 0
+    },
+    {
+     "step": "column f'c and angles, walls at the storey's f'c (A7)",
+     "exit": 0
+    },
+    {
+     "step": "slivers",
+     "exit": 0
+    },
+    {
+     "step": "drop panels on no sketched wall",
+     "exit": 0
+    },
+    {
+     "step": "header depth (the engineer's ruling)",
+     "exit": 0
+    },
+    {
+     "step": "no plate on a foundation storey (slab on grade)",
+     "exit": 0
+    },
+    {
+     "step": "column sizes per storey (schedule)",
+     "exit": 0
+    },
+    {
+     "step": "gate: e2k vs schedule",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS column sizes = the schedule",
+     "passed": true
+    },
+    {
+     "step": "gate: e2k vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS model = the read",
+     "passed": true
+    },
+    {
+     "step": "walls and columns to the storey they stand in",
+     "exit": 0
+    },
+    {
+     "step": "render every storey",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T00:21:15",
+   "finished": null,
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T00:22:03",
+   "finished": null,
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "open the job model detached",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "'31180-01 Halifax_R26_detached' names exactly one open document",
+     "passed": true
+    },
+    {
+     "step": "read the model's levels",
+     "exit": 0
+    },
+    {
+     "gate": "every level of the engineer's section is in the model",
+     "passed": true
+    },
+    {
+     "step": "set the levels to the engineer's section",
+     "exit": 0
+    },
+    {
+     "gate": "levels read back at the engineer's elevations",
+     "passed": true
+    },
+    {
+     "step": "build requests",
+     "exit": 0
+    },
+    {
+     "step": "build in Revit",
+     "exit": 0
+    },
+    {
+     "gate": "every build request answered ok",
+     "passed": true
+    },
+    {
+     "step": "worksets, footings, read-back, save",
+     "exit": 0
+    },
+    {
+     "gate": "worksets, footings, read-back and save answered ok",
+     "passed": true
+    },
+    {
+     "step": "close the built model",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "gate: Revit vs plan",
+     "exit": 1
+    },
+    {
+     "gate": "Revit model = the read",
+     "passed": false
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T00:39:12",
+   "finished": null,
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "open the job model detached",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "'31180-01 Halifax_R26_detached_1' names exactly one open document",
+     "passed": true
+    },
+    {
+     "step": "read the model's levels",
+     "exit": 0
+    },
+    {
+     "gate": "every level of the engineer's section is in the model",
+     "passed": true
+    },
+    {
+     "step": "set the levels to the engineer's section",
+     "exit": 0
+    },
+    {
+     "gate": "levels read back at the engineer's elevations",
+     "passed": true
+    },
+    {
+     "step": "build requests",
+     "exit": 0
+    },
+    {
+     "step": "build in Revit",
+     "exit": 0
+    },
+    {
+     "gate": "every build request answered ok",
+     "passed": true
+    },
+    {
+     "step": "worksets, footings, read-back, save",
+     "exit": 0
+    },
+    {
+     "gate": "worksets, footings, read-back and save answered ok",
+     "passed": true
+    },
+    {
+     "step": "close the built model",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-take-active-slot",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-close-1",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": false
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T00:50:57",
+   "finished": null,
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "open the job model detached",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "'31180-01 Halifax_R26_detached' names exactly one open document",
+     "passed": false
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T00:53:17",
+   "finished": null,
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "open the job model detached",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "'31180-01 Halifax_R26_detached' names exactly one open document",
+     "passed": true
+    },
+    {
+     "step": "read the model's levels",
+     "exit": 0
+    },
+    {
+     "gate": "every level of the engineer's section is in the model",
+     "passed": true
+    },
+    {
+     "step": "set the levels to the engineer's section",
+     "exit": 0
+    },
+    {
+     "gate": "levels read back at the engineer's elevations",
+     "passed": true
+    },
+    {
+     "step": "build requests",
+     "exit": 0
+    },
+    {
+     "step": "build in Revit",
+     "exit": 0
+    },
+    {
+     "gate": "every build request answered ok",
+     "passed": true
+    },
+    {
+     "step": "worksets, footings, read-back, save",
+     "exit": 0
+    },
+    {
+     "gate": "worksets, footings, read-back and save answered ok",
+     "passed": true
+    },
+    {
+     "step": "close the built model",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "gate: Revit vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "Revit model = the read",
+     "passed": true
+    },
+    {
+     "step": "gate: Revit vs ETABS",
+     "exit": 1
+    },
+    {
+     "gate": "Revit = ETABS",
+     "passed": false
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T01:05:22",
+   "finished": "2026-10-28T01:15:11",
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "open the job model detached",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "'31180-01 Halifax_R26_detached_1' names exactly one open document",
+     "passed": true
+    },
+    {
+     "step": "read the model's levels",
+     "exit": 0
+    },
+    {
+     "gate": "every level of the engineer's section is in the model",
+     "passed": true
+    },
+    {
+     "step": "set the levels to the engineer's section",
+     "exit": 0
+    },
+    {
+     "gate": "levels read back at the engineer's elevations",
+     "passed": true
+    },
+    {
+     "step": "build requests",
+     "exit": 0
+    },
+    {
+     "step": "build in Revit",
+     "exit": 0
+    },
+    {
+     "gate": "every build request answered ok",
+     "passed": true
+    },
+    {
+     "step": "worksets, footings, read-back, save",
+     "exit": 0
+    },
+    {
+     "gate": "worksets, footings, read-back and save answered ok",
+     "passed": true
+    },
+    {
+     "step": "close the built model",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-close-0",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "gate: Revit vs plan",
+     "exit": 0
+    },
+    {
+     "gate": "Revit model = the read",
+     "passed": true
+    },
+    {
+     "step": "gate: Revit vs ETABS",
+     "exit": 0
+    },
+    {
+     "gate": "Revit = ETABS",
+     "passed": true
+    },
+    {
+     "step": "gate: ETABS heights vs Revit",
+     "exit": 0
+    },
+    {
+     "gate": "ETABS heights = Revit heights",
+     "passed": true
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T01:15:36",
+   "finished": null,
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "drafted set",
+     "exit": 1
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T02:10:43",
+   "finished": null,
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-close-0",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "drafted set",
+     "exit": 0
+    },
+    {
+     "gate": "every drafting request answered ok",
+     "passed": true
+    },
+    {
+     "gate": "the plotted set came back from the Revit machine",
+     "passed": true
+    },
+    {
+     "step": "the Revit model, drawn",
+     "exit": 1
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T03:50:49",
+   "finished": "2026-10-28T04:59:44",
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "drafted set",
+     "exit": 0
+    },
+    {
+     "gate": "every drafting request answered ok",
+     "passed": true
+    },
+    {
+     "gate": "the plotted set came back from the Revit machine",
+     "passed": true
+    },
+    {
+     "step": "the Revit model, drawn",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-close-0",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T05:33:55",
+   "finished": "2026-10-28T06:52:45",
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "drafted set",
+     "exit": 0
+    },
+    {
+     "gate": "every drafting request answered ok",
+     "passed": true
+    },
+    {
+     "gate": "the plotted set came back from the Revit machine",
+     "passed": true
+    },
+    {
+     "step": "the Revit model, drawn",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T06:55:29",
+   "finished": "2026-10-28T06:56:18",
+   "steps": [
+    {
+     "step": "engineer page html",
+     "exit": 0
+    },
+    {
+     "step": "engineer page pdf",
+     "exit": 0
+    },
+    {
+     "step": "the ETABS model, drawn",
+     "exit": 0
+    },
+    {
+     "step": "circles on the engineer's sheets",
+     "exit": 0
+    },
+    {
+     "step": "one PDF",
+     "exit": 0
+    },
+    {
+     "step": "what changed since the previous issue",
+     "exit": 0
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T07:06:47",
+   "finished": null,
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T07:33:16",
+   "finished": null,
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "drafted set",
+     "exit": 1
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T07:38:59",
+   "finished": null,
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-take-active-slot",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-close-1",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    },
+    {
+     "step": "drafted set",
+     "exit": 0
+    },
+    {
+     "gate": "every drafting request answered ok",
+     "passed": true
+    },
+    {
+     "gate": "the plotted set came back from the Revit machine",
+     "passed": true
+    },
+    {
+     "gate": "the cover sheets checked on the plot: nothing outside the border, no note over another",
+     "passed": false
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T09:10:37",
+   "finished": null,
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-close-0",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    }
+   ]
+  },
+  {
+   "started": "2026-10-28T10:23:44",
+   "finished": null,
+   "steps": [
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-take-active-slot",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-close-1",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "step": "docs-ping",
+     "exit": 0
+    },
+    {
+     "gate": "this job's leftover documents closed",
+     "passed": true
+    }
+   ]
+  }
+ ]
+}

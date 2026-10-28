@@ -1,0 +1,29 @@
+Frozen 2026-10-28 10:3x: the dated phrases of "One Machine - the plan" (https://claude.ai/artifact/A98BTSXDnbEeNrFuxgL5eM), rev 49,
+copied verbatim from a Claude Docs search read for "Oct" (29 hits). Only the sentence carrying each stamp is kept.
+Sent 26 Oct. Next: read his Bluebeam replies when they come and apply them.
+Rebuilt on the new standard, done 15:37; all 26 pages looked at; v2 is at the top of the Halifax folder. Sent 26 Oct. Next: his markup back, read and applied.
+Sent 26 Oct evening. Next: his ticks on the 61 and his answers on page 2 come back.
+One way to draft wood frame, recorded in KorStandards as assumed with who confirms (Virtual Drafter, 26 Oct)
+The catalogue is Nelson's masters: 578 details, 518 placeable, live on the 5 reachable machines (Standard Details, 26 Oct)
+The revision round is one app command, proven against the hand-made Griffin round (Virtual Drafter, 26 Oct)
+Griffin's revised sheets and model ready (Virtual Drafter, 26 Oct)
+The three faults your clicks found on 302N tonight fixed in ONE Revit tools publish (Revit Fleet, 26 Oct night, published on your proxy word)
+26 Oct night: the member moves rendered and judged; the nested-zone fix landed (proven red first, Halifax identical)
+The Drafter places a standard detail from the catalogue by number - DONE 26 Oct 23:31 (Virtual Drafter + Standard Details).
+The drafters' file generated from Nelson's CAD and the catalogue - DONE 27 Oct 05:42 (Standard Details; go given by the Virtual Drafter as your proxy).
+The bridge ships inside the one Revit deploy path - DONE 27 Oct 10:30 (Revit Fleet + Virtual Drafter, published on your "publish").
+The test that rewrites a live rule row isolated - DONE 27 Oct (PDF Ingestor, 62bbbadb)
+NetworkOps as the only road to the machines (NetworkOps, done 26 Oct night, service 0.66.1).
+Overnight 26-27 Oct, landed and verified: the Revit tools fix published to all eight years (22:46); ... Still running at 07:00: PDF Ingestor's full test suite, ends about 08:30.
+27 Oct afternoon. Jim's review of Halifax v2 is in code and in KorStandards. ... Two items are left: the PDF Ingestor's fix for one closed core door (due 18:40), and the Revit build, after Standard Details' run 2 and the server maintenance window (19:10-19:55).
+28 Oct, 10:15 - Halifax v3 not delivered. I:\Dev\Drafter\31180-01-halifax still holds v2. The Revit model passed every gate at 01:15 (Revit = read 0, Revit = ETABS 0, heights 433/433).
+The framing view type and per-level templates in the template - DONE 27 Oct, now in the master (Standard Details).
+Edgar drafted the one way (Virtual Drafter). 27 Oct night: beams at real sections wired. Jason's July round is a back-check of all seven framing levels (read 27 Oct, one page per level). Next: level 2 built and looked at in Revit after 05:30.
+Engineer replies read from Bluebeam (reader built 26 Oct, self-tested)
+A test seam for the Revit add-in - DONE 27 Oct (Revit Fleet, 0cfca36)
+Legend boxes read as floors fixed; 7 unregistered frames judged - DONE 27 Oct (PDF Ingestor, cc4434ab + 4e164b4a)
+Sign in to NetworkOps - done 10:11, 27 Oct. The bridge fold was published on your word at 10:30.
+Publish bridge 1.0.57 - published on your word at 15:15, 27 Oct: all 8 Revit years carry 1.0.57 with a valid signature.
+One palette click on 302N when you are next in Revit there - DONE 26 Oct 22:24, two placements
+Which is the master a change is made in - ANSWERED 26 Oct: in CAD.
+Reboots RDS01, APP01, FS01, DC01 for SureBackup - error read 27 Oct (NetworkOps): DC01 has had a restart pending since the 23 Oct updates.
