@@ -68,7 +68,9 @@
                 </StackPanel>
                 <StackPanel Grid.Column="2" Margin="0,0,12,0">
                     <TextBlock Text="Words in the clause" Style="{StaticResource Contracts.Label}"/>
-                    <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Height="30" VerticalContentAlignment="Center" KeyDown="SearchBox_KeyDown"/>
+                    <!-- Padding 8,0 not the theme's 8,5: at Height 30 the theme padding leaves 18 px for a 13 px line and the
+                         text rendered clipped to its top edge (seen live 2026-10-28, drive_contracts_shots 4-words.png). -->
+                    <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Height="30" Padding="8,0" VerticalContentAlignment="Center" KeyDown="SearchBox_KeyDown"/>
                 </StackPanel>
                 <CheckBox Grid.Column="3" Content="Signed agreements only" IsChecked="{Binding SignedOnly}" VerticalAlignment="Bottom" Margin="0,0,16,6"/>
                 <Button Grid.Column="4" x:Name="SearchButton" Content="Search" Click="Search_Click" IsEnabled="{Binding CanSearch}"

@@ -26,6 +26,31 @@ def norm(p):
     p = re.sub(r"^[A-Za-z]:/", "", p)
     return p.lower()
 
+def pursuit_key(relpath):
+    """A pursuit without a job number is keyed on its Project Opportunities folder: 'OPP:<pursuit folder>'.
+    The folder is the first one under the stage folder (Pending / Submitted to Client / Rejected / ...)
+    that is a pursuit, not a bucket. Buckets: a numbered ALL-CAPS folder ('3. PENDING PROPOSALS'), a
+    numbered 'Archived'/'Proposals' folder ('0. Archived Proposals (1998-2017)'), a bare year ('2007').
+    '4. Fraser Health Authority' is numbered but is a pursuit. A file lying directly in the stage folder
+    or in a bucket is keyed on its own name, without the extension. Clipped to 60 at a word boundary.
+    Seen 2026-10-28: 79 clauses keyed 'OPP:3. PENDING PROPOSALS' were five different pursuits."""
+    parts = re.split(r"[\\/]", relpath)
+    idx = next((i for i, p in enumerate(parts) if p.lower() == "project opportunities"), None)
+    if idx is None or len(parts) < idx + 3:
+        return ""
+    folders, file_name = parts[idx + 2:-1], parts[-1]
+    def is_bucket(name):
+        if re.fullmatch(r"(19|20)\d\d(\s*-\s*(19|20)\d\d)?", name):   # '2007', '2013-2017'
+            return True
+        if re.match(r"^\d+\.\s", name):
+            rest = re.sub(r"^\d+\.\s+", "", name)
+            return rest == rest.upper() or re.search(r"archived|proposals", rest, re.I) is not None
+        return False
+    name = next((f for f in folders if not is_bucket(f)), None) or os.path.splitext(file_name)[0]
+    if len(name) > 60:
+        name = name[:60].rsplit(" ", 1)[0].rstrip(" -(")
+    return "OPP:" + name
+
 inventory = {}
 for r in csv.DictReader(open(os.path.join(inv_dir, "inventory.csv"), encoding="utf-8", newline="")):
     inventory[norm(r["FullName"])] = r
@@ -94,11 +119,7 @@ for d in docs:
     if (d["Job"] or inv.get("Job", "")).startswith("99999"):
         role = "other"          # KOR's own internal job numbers (employer programs, admin), not client work
     job = d["Job"] or inv.get("Job", "")
-    if job:
-        key = job
-    else:
-        mo = re.search(r"Project Opportunities[\\/][^\\/]+[\\/]([^\\/]+)", d["RelPath"], re.I)
-        key = "OPP:" + mo.group(1)[:60] if mo else ""
+    key = job if job else pursuit_key(d["RelPath"])
     doc_meta[d["DocId"]] = {
         "Key": key,
         "Job": job, "ClientName": inv.get("ClientName", ""), "ProjectName": inv.get("ProjectName", ""),

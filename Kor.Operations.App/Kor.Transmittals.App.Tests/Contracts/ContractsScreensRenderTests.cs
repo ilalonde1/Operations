@@ -65,6 +65,7 @@ public sealed class ContractsScreensRenderTests
                 written += Render(new ContractsWindow(vm), Path.Combine(dir, "positions.png"));
 
                 vm.SignedOnly = true;
+                vm.SearchText = "insurance proceeds";   // a typed term must render whole in the Words box (it clipped live 2026-10-28)
                 vm.SearchAsync().GetAwaiter().GetResult();
                 Assert.True(vm.Rows.All(r => r.Status == "Signed"), "Signed-only search returned an unsigned row.");
                 written += Render(new ContractsWindow(vm), Path.Combine(dir, "positions-signed-only.png"));

@@ -104,24 +104,54 @@ Job,ClientName,ProjectName,assignment_subconsultants,confidentiality,consequenti
 80064-01,Ventana Construction Corp.,BLAA 3676 Kensington Ave Burnaby,DL,DL,DL,DL,DL,DL,DLP,DL,DL,DL,,DL,DL,DL,DL,DL,DL,DL
 90070-15,Mishree Concepts Ltd.,601 Stamps Landing Renovations,DL,DL,,DL,,DL,DL,DL,DL,,,DL,DL,DL,,DL,DL,DL
 90097-01,Bosa Development California Inc.,777 Front Street San Diego,,,,,,,,,,,,,P,,,,,
-OPP:0. Archived Proposals (1998-2017),,,DLP,DL,,DLP,DLP,DL,DLP,,,,,DLP,DLP,DL,,P,DL,DL
-OPP:3. PENDING PROPOSALS,,,DLP,DL,DL,DLP,DLP,DL,DLP,DL,DL,DL,,DLP,DLP,DL,DL,DL,DL,DL
+OPP:#30381 Anthem 17 Lonsdale blank -Consultant Agreement,,,DL,DL,,DL,DL,DL,DL,,,,,DL,DL,DL,,,DL,DL
 OPP:4. Fraser Health Authority,,,DL,DL,DL,DL,DL,D,DL,DL,D,DL,,DL,DL,DL,DL,DL,DL,D
 OPP:Abbotsford Firehall KW (DUE JAN 23),,,DL,DL,DL,DL,,DL,DL,,DL,,,DL,DL,,,,DL,DL
 OPP:Bingham Hill 159 East Hastings Vancouver JM KW (DUE JUL 2),,,DL,DL,,DL,DL,DL,DL,DL,DL,,,DL,DL,DL,DL,DL,DL,DL
 OPP:GKC Architecture Swartz Bay Victoria (DUE JUL 31),,,DL,DL,DL,DL,,DL,DL,DL,DL,,,DL,DL,DL,DL,DL,DL,DL
-OPP:Gilic Developments 1112 West Pender Vancouver Confidentialit,,,,EL,,EL,,,,,,,,EL,EL,EL,,,EL,
-OPP:KOR Terms and Conditions - CAN - EDIT.docx,,,,,,P,P,,,P,,,,P,,P,P,P,P,P
-OPP:Kor Structural - Short Form Agreement re L4 Canopy Glass - A,,,,,,,,,,,,,,DL,DL,,,,,
+OPP:Gilic Developments 1112 West Pender Vancouver,,,,EL,,EL,,,,,,,,EL,EL,EL,,,EL,
+OPP:JB&P Fee Proposal -Studio One - MHPM Brujjon South Surrey,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:JB&P Structural Fee Proposal  -DGBK--MHPM Brujjon South,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:JBP Fee Proposal for  Newton Snrs Rec Cntr Addition Nov,,,P,,,P,P,,P,,,,,P,,,,,,
+OPP:KOR Terms and Conditions - CAN - EDIT,,,,,,P,P,,,P,,,,P,,P,P,P,P,P
+OPP:Kor Structural - Short Form Agreement re L4 Canopy Glass,,,,,,,,,,,,,,DL,DL,,,,,
+OPP:MQN Architects Chrysler Canada Fee Proposal Form 04172013,,,,,,,,,,,,,,,P,,,,,
 OPP:NSDA 1441 Ironwood St Campbell River BC JD RB (DUE APR 29),,,,DL,,DL,,DL,,DL,,,,DL,DL,DL,,,DL,DL
 OPP:NSDA 5389 Imperial St Burnaby JD JS (DUE OCT 7),,,,DL,,DL,,DL,,DL,,,,DL,DL,DL,,,DL,DL
-OPP:NSDA Architects 1801 Capilano Rd North Vancouver JD (DUE OCT,,,,DL,,DL,,DL,,DL,,,,DL,DL,DL,,,DL,DL
-OPP:NSDA Architects BC Housing 152 St & 19 Ave Surrey BC JD JM (,,,,DL,,DL,,DL,,DL,,,,DL,DL,DL,,,DL,DL
+OPP:NSDA Architects 1801 Capilano Rd North Vancouver JD (DUE,,,,DL,,DL,,DL,,DL,,,,DL,DL,DL,,,DL,DL
+OPP:NSDA Architects BC Housing 152 St & 19 Ave Surrey BC JD JM,,,,DL,,DL,,DL,,DL,,,,DL,DL,DL,,,DL,DL
 OPP:Omicron 12439 Harris Rd Pitt Meadows CM JM (DUE JUN 10),,,DL,DL,DL,DL,DL,DL,DL,DL,,DL,,DL,DL,DL,DL,DL,DL,DL
+OPP:PCY -Marriott Hotel Fee Proposal from John Bryson,,,P,,,,P,,P,,,,,,P,,,,,
+OPP:Shape Abby Lane JAN 26-2010 Abbotsford FEE PROPOSAL LEED,,,P,,,P,P,,P,,,,,P,,,,P,,
+OPP:Shape Abby Lane NOV 24 Abbotsford FEE PROPOSAL LEED REVISED,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Shape Abby Lane SC Abbotsford FEE PROPOSAL LTR,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Shape Abby Lane SC Abbotsford FEE PROPOSAL LTR rev Aug 26,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Standard JB fee proposal 121401 jbfp6,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Standard JB fee proposal November 2001 jbfp6,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Standard format fee proposal-5-tilt-up,,,P,,,,P,,P,,,,,P,P,,,,,
+OPP:Standard format fee proposal-6-tilt-up,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Suterbrook Pcl B -John Markulin's fee proposal Dec 8-2009,,,P,,,,P,,P,,,,,P,P,,,P,,
+OPP:UBC Childcare Expansion FEE PROPOSAL ON HOLD 102609jzfps2009,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Urban One DB - Esquimalt DCC,,,P,,,P,P,,P,,,,,P,P,,,,,
+OPP:Urban One Renfrew & King Edward Vancouver JM,,,DL,DL,DL,DL,DL,DL,DL,DL,DL,DL,,DL,DL,DL,DL,DL,DL,DL
 OPP:Wesgroup 1008 West 41st Ave (at Oak St) Vancouver BC,,,DL,DL,DL,DL,,DL,DL,DL,,D,,DL,DL,,DL,DL,DL,DL
 OPP:Wesgroup 2733 W Broadway JM JS (DUE Feb 13),,,DL,DL,,DL,,DL,,DL,,,,,DL,,,DL,DL,DL
 OPP:Wesgroup 3456 Fraser St Vancouver BC,,,DL,DL,DL,DL,,DL,DL,DL,,DL,,DL,DL,,DL,DL,DL,DL
 OPP:Wesgroup RD Parcel 19 Vancouver JM OAP (DUE AUG 1),,,DL,DL,,DL,,DL,,DL,,DL,,,DL,,,DL,DL,DL
+OPP:Wesgroup RFP -Sapperton Ph 1 Exhibit E Proposal Form,,,,,,,P,,,,,,,,,,,,,
 OPP:Wesgroup River District Parcel 14,,,DL,DL,DL,DL,,DL,DL,DL,,,,DL,DL,,DL,DL,DL,DL
 OPP:Wesgroup River District Parcel 30 JM JS DUE OCT 16),,,DL,DL,DL,DL,,DL,DL,DL,,,,DL,DL,,DL,DL,DL,DL
 OPP:Wndr Architect 1801 Capilano Rd North Vancouver KW JM,,,,DL,,DL,,DL,,DL,,,,DL,DL,DL,,,DL,DL
+OPP:Z-2006 Calif fee proposal -Code updated San Diego-jb,,,P,,,,P,,P,,,,,P,P,,,,,
+OPP:Z-JZ fee proposal standard   2010,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Z-Standard  JM Fee Proposal - TILT-UP  jbfp,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Z-Standard BDC -JB fee proposal 2004,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Z-Standard BDC -SAN DIEGO JB Fee proposal 2004,,,P,,,,P,,P,,,,,P,P,,,,,
+OPP:Z-Standard JB fee proposal 2003,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Z-Standard JB fee proposal 2004,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Z-Standard JB fee proposal 2010,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Z-Standard JB fee proposal Tilt-up  2003,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Z-Standard JM Fee Proposal        2010,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Z-Standard JM Fee Proposal 2007 -FEE TABLE,,,P,,,,P,,P,,,,,P,,,,,,
+OPP:Z-Standard JM Fee Proposal 2007 -FEE TABLE & PROMO MIXED USE,,,P,,,,P,,P,,,,,P,P,,,,,
+OPP:Z-Standard format fee proposal-NSDA 2006 JM,,,P,,,,P,,P,,,,,P,,,,,,
