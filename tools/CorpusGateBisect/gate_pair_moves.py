@@ -21,12 +21,21 @@ Exit 0 always (a report); 2 on bad arguments.
 import contextlib, filecmp, io, os, re, shutil, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from judge_drift_moves import diff, judge_members   # noqa: E402
+from pair_guard import check_pair                   # noqa: E402
 
 if len(sys.argv) < 4:
     print(__doc__); sys.exit(2)
 before_w, after_w, out = sys.argv[1:4]
 only = set(sys.argv[4].split(",")) if len(sys.argv) > 4 else None
-jobs = sorted(j for j in os.listdir(after_w) if os.path.isdir(os.path.join(after_w, j)) and (only is None or j in only))
+# The two sides must be COMPARABLE before any difference between them means anything. Which bins built
+# them is the caller's claim to make (pair_guard's CLI takes it); what is recorded in the work dirs -
+# the projects root and the per-job view lists - is checked here, every run. On 2026-10-28 a share
+# census was compared against the local mirror and the difference read as the wall-join's doing: it
+# took 31085-01 from 3 storeys to 7, and held a branch for a day (board 76). A root that differs or is
+# unrecorded refuses the run; a job whose views differ is dropped by name and the rest carries on.
+comparable, _dropped = check_pair(before_w, after_w)
+jobs = sorted(j for j in os.listdir(after_w) if os.path.isdir(os.path.join(after_w, j))
+              and (only is None or j in only) and j in set(comparable))
 same, changed, missing = [], [], []
 tot = [0, 0, 0, 0, 0]   # closer, further, same, lost unpaired, gained unpaired
 for job in jobs:
