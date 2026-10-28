@@ -24,7 +24,37 @@ internal static class CorpusGateVerb
 {
     public static bool Matches(string[] args) => args.Length >= 1 && args[0].Equals("corpus-gate", StringComparison.OrdinalIgnoreCase);
 
+    // THE RUN RECORDS ITS OWN ROOT AND ITS OWN EXIT (2026-10-28). A gate pair compared a run built on the share's census
+    // with one built on the local mirror, and 31085 read 3 storeys on one and 7 on the other - the comparison took the
+    // root off a folder name and "finished" off a gate.log summary, and both were wrong (oversight.Mistake 88). So the
+    // work dir carries run-root.txt (the projects root this run read, written once the arguments are final) and
+    // run-done.txt (exit code, start and end UTC, the Core build's version), which tools/CorpusGateBisect/pair_guard.py
+    // reads instead of inferring them. A run still going has no run-done.txt; a killed one never gets one.
+    private static string? recordedWork;
+
     public static int Run(string[] args)
+    {
+        var started = DateTime.UtcNow;
+        int exit = -1;
+        recordedWork = null;
+        try
+        {
+            exit = RunGate(args);
+            return exit;
+        }
+        finally
+        {
+            if (recordedWork is not null)
+                File.WriteAllText(Path.Combine(recordedWork, "run-done.txt"),
+                    $"exit {exit}{(exit == -1 ? " (threw)" : "")}\nstarted {started:yyyy-MM-dd HH:mm:ss} UTC\nfinished {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC\nbin {CoreVersion()}\n");
+        }
+    }
+
+    private static string CoreVersion() =>
+        typeof(CorpusAnalyzer).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion ?? "unknown";
+
+    private static int RunGate(string[] args)
     {
         string root = PublishDiscovery.ProjectsRoot;
         string work = Path.Combine(DrawingMirror.Root, "corpus");
@@ -55,6 +85,12 @@ internal static class CorpusGateVerb
             else if (args[i].Equals("--recompose", StringComparison.OrdinalIgnoreCase)) recompose = true;
             else root = args[i];
         }
+
+        Directory.CreateDirectory(work);
+        File.WriteAllText(Path.Combine(work, "run-root.txt"),
+            $"{root} (written by corpus-gate {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC; bin {CoreVersion()})\n");
+        File.Delete(Path.Combine(work, "run-done.txt"));        // a marker left by the last run in this dir says nothing about this one
+        recordedWork = work;
 
         baseline ??= NewestBankedLedger();
         if (baseline is null || !File.Exists(baseline))
