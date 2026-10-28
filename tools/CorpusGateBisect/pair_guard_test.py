@@ -33,6 +33,7 @@ FIX2M = os.path.join(E4, "gw-fix2m")                 # the mirror, d4352fc0-equi
 B52W = os.path.join(E4, "gw-b52")                    # the mirror, with the join
 SHAREW = os.path.join(E4, "gw-before")               # the share, recorded after the fact
 NOROOT = os.path.join(E4, "gw-pair")                 # a run whose root nobody can now state
+MARKER = os.path.join(E4, "gw-marker")               # a real run of corpus-gate d54a76b3, which records both
 D435 = os.path.join(E4, "tonight", "takeoff-bin-d435")
 B52BIN = r"C:\w\b52\Kor.Operations.EngineeringTools.TakeoffCli\bin\Debug\net8.0"
 
@@ -58,6 +59,11 @@ CASES = [
      "is NOT in"),
     ("a bin folder with no Core.dll", FIX2M, B52W,
      {"before": (E4, "b94b8d33"), "after": (B52BIN, "77b56e29")}, True, "no Kor.Operations"),
+    # corpus-gate d54a76b3 records the run's own exit and its own bin; gw-marker is a real run of it
+    ("a run that recorded exit 2 - it did not finish its work", MARKER, B52W, None, True,
+     "did not finish its work"),
+    ("a claim that disagrees with the bin the RUN recorded", MARKER, B52W,
+     {"before": (D435, "b94b8d33"), "after": (B52BIN, "77b56e29")}, True, "run was made by"),
 ]
 
 
@@ -97,6 +103,14 @@ for name, before, after, claims, want_refused, because in CASES:
         if line.startswith("REFUSED") or line.startswith("dropped:"):
             print("           " + line)
 
+# ---- the markers corpus-gate now writes, read as facts rather than inferred
+for label, work, want_bin, want_src in (("gw-marker (d54a76b3 run)", MARKER, "1.0.0+59fb132b", "run-done.txt"),
+                                        ("gw-b52 (hand-written root)", B52W, None, "not recorded")):
+    sha, how = pg.recorded_bin(work)
+    ok = (sha or "").startswith(want_bin or "\0") if want_bin else (sha is None and how == want_src)
+    passed += ok
+    print(("  OK   " if ok else "  FAIL ") + f"{label}: run recorded bin {sha} [{how}]")
+
 # ---- refusal 3, and its measured blind spot. gw-narrow was mid-run at 11:49 and gw-fix2m was still
 # judging PAST its end-of-run summary - so one is caught and the other is not, and both are asserted.
 # A live folder cannot be asserted forever: a case whose folder has moved on says so instead of failing.
@@ -128,7 +142,7 @@ dropped = sorted(l.split("dropped: ")[1].split(" (")[0] for l in lines if l.star
 print(f"         like-for-like dropped by name: {dropped}")
 
 print()
-WANT = len(CASES) + 3 - skipped
+WANT = len(CASES) + 3 + 2 - skipped     # cases + the three run-state checks + the two marker reads
 print("self-test: {0} of {1} decisions ({2} not runnable now), {3} of {4} detections, both-values {5}".format(
     passed, WANT, skipped, detect, len(DETECT), "yes" if both else "NO"))
 sys.exit(0 if (passed == WANT and detect == len(DETECT) and both) else 1)

@@ -22,10 +22,15 @@ THE THREE REFUSALS
   2. PROJECTS ROOT (whole run). Both sides must name the same root: run-root.txt in the work dir, or
      failing that the job count on gate.log's census line, which is an INFERENCE and says so. Neither
      present on a side = refused, not guessed.
-  3. A RUN STILL GOING (whole run). A gate.log that has not reached its end-of-run summary is a run
-     still in flight, and its work dir is a moving target: 80064-01's view list changed under this
-     guard between two reads four minutes apart. A MISSING gate.log is not evidence either way and is
-     not treated as one.
+     Since corpus-gate d54a76b3 the run also RECORDS the bin it ran with, and that is checked against
+     the claim as well - it is the only thing tying the work dir to a build, because a bin folder holds
+     whatever is on disk now. A folder whose DLL disagrees with the run's own record did not produce
+     that work dir, and says so.
+  3. A RUN THAT DID NOT FINISH ITS WORK (whole run). run-done.txt is the fact: exit 0 or 1 are the
+     gate's own verdicts, anything else - including a throw - is a partial run. Without that marker
+     (a dir written before d54a76b3) it falls back to INFERRING it from a gate.log short of its
+     end-of-run summary, which is how 80064-01's view list moved under this guard between two reads
+     four minutes apart. A dir with neither file is not called unfinished for it.
   4. VIEWS (per job). A job whose <job>/dxf/ file lists differ between the sides is DROPPED by name with
      its counts, and the rest of the run carries on.
 
@@ -106,10 +111,41 @@ def recorded_root(work):
     return None, "nothing recorded"
 
 
+def recorded_bin(work):
+    """(the bin the RUN recorded, where it was read) or (None, ...). This is the only thing that ties a
+    work dir to a binary: a --before-bin folder says what is on disk now, not what produced the run."""
+    for name, pat in (("run-done.txt", re.compile(r"^bin\s+(\S+)", re.M)),
+                      ("run-root.txt", re.compile(r";\s*bin\s+([^)\s]+)"))):
+        p = os.path.join(work, name)
+        if os.path.isfile(p):
+            m = pat.search(io.open(p, encoding="utf-8", errors="replace").read())
+            if m:
+                return m.group(1), name
+    return None, "not recorded"
+
+
 def still_running(work):
-    """A reason the run behind this work dir has not finished, or None. Evidence of incompleteness
-    only: a gate.log short of its end-of-run summary. A work dir with NO gate.log says nothing either
-    way and is not called unfinished for it - absence of evidence is not evidence."""
+    """A reason this run's outputs cannot be trusted as a finished run, or None.
+
+    run-done.txt is the fact and is read first (corpus-gate d54a76b3 writes it in a finally, and
+    deletes it at the start of each run, so it speaks only for the last run in the dir). Exit 0 and 1
+    are the gate's own verdicts - 1 is the ordinary LOST-against-the-bank result - and anything else,
+    including a throw, is a run that did not do its work.
+
+    Without that marker it falls back to the INFERENCE it used before: a gate.log short of its
+    end-of-run summary is a run still going. That fallback carries the blind spot in the header, and
+    is only for work dirs written before d54a76b3. A dir with NEITHER file says nothing either way and
+    is not called unfinished for it: absence of evidence is not evidence."""
+    d = os.path.join(work, "run-done.txt")
+    if os.path.isfile(d):
+        first = (io.open(d, encoding="utf-8", errors="replace").read().strip().splitlines() or [""])[0]
+        m = re.match(r"exit\s+(-?\d+)", first)
+        if not m:
+            return f"{os.path.basename(work)}: run-done.txt does not start with an exit line ({first!r})"
+        if int(m.group(1)) not in (0, 1):
+            return (f"{os.path.basename(work)}: the run recorded {first!r} - it did not finish its work, "
+                    f"so its outputs are partial (0 and 1 are the gate's own verdicts; anything else is not)")
+        return None
     g = os.path.join(work, "gate.log")
     if not os.path.isfile(g):
         return None
@@ -117,7 +153,8 @@ def still_running(work):
     if END_OF_RUN.search(text):
         return None
     return (f"{os.path.basename(work)}: gate.log has {text.count(chr(10)) + 1} line(s) and no "
-            f"end-of-run summary - that run is still going, so its work dir is a moving target")
+            f"end-of-run summary - that run is still going, so its work dir is a moving target "
+            f"(INFERRED: this dir predates run-done.txt)")
 
 
 def views(work, job):
@@ -130,6 +167,15 @@ def check_pair(before_work, after_work, claims=None, raise_on_refuse=True, log=p
     Returns (ok_jobs, dropped) where dropped is [(job, reason)]."""
     refusals = []
 
+    # What the RUN recorded about its own binary. A fact, where it exists, and the only thing that ties
+    # the work dir to a build: the bin folder a caller names holds whatever is on disk at this moment.
+    ran_with = {}
+    for side, work in (("before", before_work), ("after", after_work)):
+        sha, how = recorded_bin(work)
+        ran_with[side] = sha
+        if sha:
+            log(f"  {side} run recorded its own bin: {sha}   [{how}]")
+
     if claims:
         for side, work in (("before", before_work), ("after", after_work)):
             if side not in claims:
@@ -140,12 +186,19 @@ def check_pair(before_work, after_work, claims=None, raise_on_refuse=True, log=p
             refusals += problems
             if not problems:
                 log(f"  {side} bin: {stamped} - matches the claim {claimed}")
+            if ran_with[side]:
+                sha = claim.split("+")[0].lower()
+                if not ran_with[side].split("+", 1)[-1].startswith(sha):
+                    refusals.append(f"{side} run was made by {ran_with[side]}, but the claim says {claim}")
+                elif stamped and stamped != ran_with[side]:
+                    refusals.append(f"{side} bin folder holds {stamped}, but the run was made by "
+                                    f"{ran_with[side]} - that folder did not produce this work dir")
 
     roots = {}
     for side, work in (("before", before_work), ("after", after_work)):
         going = still_running(work)
         if going:
-            refusals.append(f"{side} is still running - {going}")
+            refusals.append(f"{side} is not a finished run - {going}")
         root, how = recorded_root(work)
         roots[side] = root
         if root is None:
