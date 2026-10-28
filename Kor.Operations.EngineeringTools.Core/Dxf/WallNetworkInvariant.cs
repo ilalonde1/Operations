@@ -19,6 +19,15 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 /// (walls moved after classification); columns; a wall moved sideways but still parallel (a lateral shift up to the snap is
 /// allowed - it is a joint, not a tilt). SAME-CLASS FAULT IT MISSES: a tilt under <see cref="ToleranceDegrees"/> - 25 mm over
 /// 5 m is 0.29 degrees and passes; and a near-copy joined to one other wall as well as to itself reads as joined.</para>
+///
+/// <para>TWO LOOSENINGS, each from evidence (2026-10-27), and what each now lets through:
+/// (1) HEADER holds an opening's end to its jamb's AXIS and the jamb to within one span, not to the jamb's drawn segment - 30990
+/// S1.21's jambs were carried 295 mm along their own axes to corners and the header between them was on axis. LETS THROUGH: a
+/// header ending on a jamb's line up to a span away from where that jamb was drawn - a jamb dragged far along its axis to meet
+/// a door it does not reach would pass.
+/// (2) SELF counts any contact within an inch, not only shared ends - that TIGHTENS what it catches (31087's copies 21 mm apart
+/// touched with no end shared), but a wall within an inch of a third, unrelated wall is no longer "joined only to itself".
+/// LETS THROUGH: a doubled outline that also grazes another wall within an inch.</para>
 /// </summary>
 public static class WallNetworkInvariant
 {
