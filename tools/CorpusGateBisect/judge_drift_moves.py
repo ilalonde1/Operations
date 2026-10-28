@@ -121,7 +121,7 @@ def diff(a, b):
     return res
 
 
-def judge_members(out, job, c, prev, storeys):
+def judge_members(out, job, c, prev, storeys, show_pairs=False):
     a, b = e2k_in(os.path.join(out, job, prev)), e2k_in(os.path.join(out, job, c))
     hm = members(os.path.join(YARD, job.split("-arch")[0] + ".e2k"))
     before, after = members(a), members(b)
@@ -139,6 +139,9 @@ def judge_members(out, job, c, prev, storeys):
             ul.discard(i); ug.discard(j)
             x, y = dh(lost[i]), dh(gained[j])
             score[0 if y < x - 50 else 1 if y > x + 50 else 2] += 1
+            if show_pairs and abs(y - x) > 50:   # gate_pair_moves.py (2026-10-27): each re-placed member that moved relative to hers
+                print(f"    MOVED  {lost[i][1]:<6} ({lost[i][2]:,.0f}, {lost[i][3]:,.0f}) -> ({gained[j][2]:,.0f}, {gained[j][3]:,.0f}) {d:,.0f} mm; "
+                      f"hers {x:,.0f} -> {y:,.0f} mm  {'FURTHER' if y > x else 'CLOSER'}")
         print(f"{job} {st} (hers {hs or 'NONE'}) @ {c}: {len(lost)} lost, {len(gained)} gained; {len(lost) - len(ul)} re-placed "
               f"({score[0]} closer to hers, {score[1]} further, {score[2]} same within 50 mm)")
         for i in sorted(ul):

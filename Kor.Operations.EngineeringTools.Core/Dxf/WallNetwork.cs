@@ -48,7 +48,7 @@ public static class WallNetwork
     private const double ReachFactor = 1.25;
 
     /// <summary>Ends this close after crossing are the same joint, in inches.</summary>
-    private const double SnapTolerance = 2.0;
+    internal const double SnapTolerance = 2.0;   // internal: WallNetworkInvariant allows a lateral shift up to it
 
     /// <param name="walls">The centrelines, in the drawing's unit.</param>
     /// <param name="inch">How many of the drawing's units make an inch: 1 in an inch drawing, 25.4 in millimetres, 1/12 in feet.</param>

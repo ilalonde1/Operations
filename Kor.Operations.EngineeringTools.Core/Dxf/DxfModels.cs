@@ -280,6 +280,9 @@ public sealed record ColumnFootprint(
 public sealed class PlanGeometrySet
 {
     public List<WallAxis> Walls { get; } = new();
+    /// <summary>The walls as they stood just before <see cref="WallNetwork.Connect"/> joined them (empty when it did not run): what
+    /// <see cref="WallNetworkInvariant"/> holds the network's moves against (2026-10-27). Nothing downstream reads it.</summary>
+    public List<WallAxis> WallsBeforeNetwork { get; } = new();
     /// <summary>Walls the plan tags as partitions (stud, gypsum): footprints that are not modelled, kept so a twin drawn untagged on another sheet is left out too (step 34).</summary>
     public List<PlanLoop> Partitions { get; } = new();
     public List<ColumnFootprint> Columns { get; } = new();

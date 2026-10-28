@@ -2071,6 +2071,7 @@ public static class StructuralPlanClassifier
         // joined into a network before anything downstream sees them.
         if (options.ConnectWalls && result.Walls.Count > 1)
         {
+            result.WallsBeforeNetwork.AddRange(result.Walls);
             var connected = WallNetwork.Connect(result.Walls, 1.0 / options.UnitInInches);
             result.Walls.Clear();
             result.Walls.AddRange(connected);

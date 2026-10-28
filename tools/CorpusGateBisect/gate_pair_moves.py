@@ -45,7 +45,7 @@ for job in jobs:
         changed.append((job, [])); print(f"== {job}: bytes differ, no member moved (names / order / plates only)"); continue
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        judge_members(out, job, "after", "before", storeys)
+        judge_members(out, job, "after", "before", storeys, show_pairs=True)   # MOVED lines: every re-placed member closer/further
     text = buf.getvalue()
     for m in re.finditer(r"\((\d+) closer to hers, (\d+) further, (\d+) same within 50 mm\)", text):
         for k in range(3): tot[k] += int(m.group(k + 1))

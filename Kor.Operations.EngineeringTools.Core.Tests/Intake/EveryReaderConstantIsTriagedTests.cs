@@ -211,6 +211,7 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["WallNetwork.cs:ParallelDegrees"] = Tolerance("centrelines parallel"),
         ["WallNetwork.cs:ReachFactor"] = Tolerance("a centreline carried past its end"),
         ["WallNetwork.cs:SnapTolerance"] = Tolerance("ends this close are one joint"),
+        ["WallNetworkInvariant.cs:ToleranceDegrees"] = Tolerance("a wall turned more than this by the network is tilted"),
         ["WallOutlineDecomposer.cs:ParallelDot"] = Tolerance("opposite faces of one wall"),
         ["WallOutlineDecomposer.cs:ThicknessSlack"] = Tolerance("CAD export drift"),
         ["WallOutlineDecomposer.cs:slack"] = Tolerance("CAD export drift"),
