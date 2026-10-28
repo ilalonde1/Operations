@@ -1,0 +1,10 @@
+unit 0.0393700787401575 in; segments 3700; walls before 24, after 23, openings 4
+before  (   9762,  39429)-(  11798,  39429) t 480 bearing   0.00
+before  (   9792,  43072)-(   9736,  41183) t 142 bearing  88.32
+before  (   9807,  40888)-(  11554,  40888) t 585 bearing   0.00
+before  (   9673,  39098)-(   9629,  37659) t 144 bearing  88.27
+after   (   9683,  39429)-(  11798,  39429) t 480 bearing   0.00
+after   (   9792,  43072)-(   9728,  40888) t 142 bearing  88.32
+after   (   9728,  40888)-(  11554,  40888) t 585 bearing   0.00
+after   (   9683,  39429)-(   9629,  37659) t 144 bearing  88.27
+OPENING (   9728,  40888)-(   9683,  39429) t 142 bearing  88.24
