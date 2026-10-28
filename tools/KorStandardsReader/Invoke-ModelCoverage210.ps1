@@ -82,6 +82,10 @@ $who = Query "SELECT SUSER_SNAME()"
 $rules = Query "SELECT COUNT(*) FROM analysis.vw_RuleSetting"
 "1. reads: logged in as $who; analysis.vw_RuleSetting returns $rules row(s)"
 if ($who -ne 'rules_reader' -or [int]$rules -le 0) { throw "step 1 failed: expected rules_reader reading at least one rule" }
+# no role that reads or writes everything (the Virtual Drafter's ask, 14:1x): db_datareader would undo the one-view grant
+$roles = Query "SELECT CONCAT('db_datareader=', IS_ROLEMEMBER('db_datareader'), ' db_datawriter=', IS_ROLEMEMBER('db_datawriter'), ' db_owner=', IS_ROLEMEMBER('db_owner'))"
+"   roles: $roles"
+if ($roles -ne 'db_datareader=0 db_datawriter=0 db_owner=0') { throw "step 1 failed: rules_reader is in a role that reaches past the view: $roles" }
 
 # 2. cannot write
 # ⚠ about PERMISSION, never a write against the view: vw_RuleSetting is a UNION and SQL Server will not compile one on it,
@@ -114,9 +118,11 @@ $exit = $LASTEXITCODE
 Remove-Item Env:\KOR_ENGINEERINGTOOLS_STANDARDSDB
 $conn = $null
 
-$summary = Select-String -Path $log -Pattern '^\s*(Passed|Failed)!\s+-' | Select-Object -Last 1
+# verbosity=normal ends "Test Run Successful." / "Total tests: N" / "Passed: N" (/ "Failed: N"), not minimal's "Passed! -"
+# line - the first run on 210 (2026-10-28 14:39, 11 of 11) was reported as unfinished for that
+$summary = @(Select-String -Path $log -Pattern '^\s*(Test Run (Successful|Failed|Aborted)\.|Total tests:|Passed:|Failed:|Skipped:)\s*\d*' | ForEach-Object { $_.Line.Trim() })
 "3. dotnet test exit $exit"
-if ($summary) { "   $($summary.Line.Trim())" } else { "   no summary line in $log - the run did not finish; read the log" }
+if ($summary.Count -gt 0) { "   " + ($summary -join '  ') } else { "   no summary line in $log - the run did not finish; read the log" }
 $skips = @(Select-String -Path $log -Pattern '^\s+Skipped\s').Count
 "   skipped test lines in the log: $skips"
 # the log must not hold the secret: the connection string's password key is the marker
