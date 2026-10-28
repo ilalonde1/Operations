@@ -58,14 +58,15 @@ public sealed class NetworkOpsMcpActions
 
     [McpServerTool(Name = "networkops_run_fix"), Description(
         "Run a catalog fix on a machine through its agent as SYSTEM -- the SAME path as the Command Center's Fix, audited " +
-        "as an action. A DISRUPTIVE fix (one that restarts the PC) is REFUSED while someone is actively using the machine " +
-        "unless you pass confirmed=true. The fix id is a FixCatalog id (e.g. repair-wmi, free-disk-space, restart-pc); a " +
-        "finding's rule often implies its fix.")]
+        "as an action. A DISRUPTIVE fix (one that restarts the machine, server or PC, idle or in use) is REFUSED unless you " +
+        "pass confirmed=true. The fix id is a FixCatalog id (e.g. repair-wmi, free-disk-space, restart-pc); a finding's rule " +
+        "often implies its fix. A reply with an actionId means QUEUED, NOT RUN: read the result with networkops_runs before " +
+        "reporting it.")]
     public static async Task<object> RunFix(IServiceProvider services,
         [Description("The machine name, e.g. KOR-206-N.")] string host,
         [Description("The fix id (a FixCatalog id, e.g. repair-wmi, free-disk-space, restart-pc).")] string fixId,
         [Description("The fix's input, if it needs one (most do not).")] string? param,
-        [Description("Pass true to go ahead with a disruptive fix on a machine someone is actively using.")] bool confirmed,
+        [Description("Pass true to go ahead with a disruptive fix (any restart), whoever is on the machine.")] bool confirmed,
         CancellationToken ct)
     {
         var store = services.GetRequiredService<NetworkOpsStore>();
@@ -76,18 +77,20 @@ public sealed class NetworkOpsMcpActions
             return new { error = $"No machine named '{host}' is monitored." };
         var by = By(services);
         var request = System.Text.Json.JsonSerializer.Serialize(new { param, confirmed, presence = dev.Presence, via = "mcp" });
-        // The same refusals as POST /api/devices/{id}/fixes: unknown/invalid param, wrong target, and disruptive-on-active.
+        // The same refusals as POST /api/devices/{id}/fixes, in its words: unknown/invalid param, wrong target, and ANY
+        // unconfirmed disruptive fix -- refused here, in this reply, never queued to fail later in ActionRunner (27 Oct: FS01
+        // queued unconfirmed, failed at once, and "Queued" was reported as started).
+        var unconfirmed = FixCatalog.Unconfirmed(fix, dev.Name, dev.PresenceState, dev.Presence, confirmed);
         string? refuse = FixCatalog.Invalid(fix, param)
             ?? (dev.Source == "Rack" && !Sweep.ActionRunner.CanRun(options, dev.Name, fix)
                 ? (fix.Target == FixCatalog.Esxi ? $"{dev.Name} is not an ESXi host" : $"{dev.Name} is not a Windows server APP01 can run fixes on") : null)
             ?? (dev.Source != "Rack" && fix.Target == FixCatalog.Esxi ? $"{fix.Title} is for an ESXi host, not a PC" : null)
-            ?? (fix.Disruptive && dev.PresenceState == "Active" && !confirmed
-                ? $"someone is using {dev.Name} right now ({dev.Presence}): pass confirmed=true to go ahead" : null);
+            ?? (unconfirmed is null ? null : unconfirmed + " (pass confirmed=true)");
         if (refuse is not null)
         {
             await store.RecordRefusedActionAsync(deviceId, fix.Id, by, request, refuse, ct);
             Serilog.Log.ForContext("Area", "Mcp").Information("mcp run-fix {Fix} on {Host} by {By}: REFUSED ({Why})", fix.Id, host, by, refuse);
-            return new { host, fixId = fix.Id, refused = refuse, needsConfirmation = fix.Disruptive && dev.PresenceState == "Active" && !confirmed };
+            return new { host, fixId = fix.Id, refused = refuse, needsConfirmation = unconfirmed is not null };
         }
         if (await store.QueueFixOnceAsync(deviceId, fix.Id, by, request, ct) is not { } actionId)
         {
@@ -95,6 +98,7 @@ public sealed class NetworkOpsMcpActions
             return new { host, fixId = fix.Id, refused = NetworkOpsStore.AlreadyInFlight, needsConfirmation = false };
         }
         Serilog.Log.ForContext("Area", "Mcp").Information("mcp run-fix {Fix} on {Host} by {By}: queued action {ActionId}", fix.Id, host, by, actionId);
-        return new { host, fixId = fix.Id, actionId, message = $"Queued '{fix.Title}' on {host}, audited as action {actionId}. Read it back with networkops_device, or it clears on the next check." };
+        return new { host, fixId = fix.Id, actionId, state = "queued, NOT run",
+            message = $"Queued, NOT run: '{fix.Title}' on {host}, audited as action {actionId}. It has not started; read its result with networkops_runs before reporting it." };
     }
 }

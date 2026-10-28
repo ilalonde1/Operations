@@ -165,6 +165,16 @@ public static class FixCatalog
         _ => null,
     };
 
+    /// <summary>Why a disruptive fix is refused for want of confirmation, or null. EVERY disruptive fix needs it: presence only
+    /// shapes the wording, it never waives it. One rule for every road that queues a fix (the page, "Fix on all N", the MCP
+    /// tool), checked BEFORE anything is queued -- the MCP tool gated on presence alone, so on a server (no presence) it queued
+    /// the fix and ActionRunner refused it a moment later, after the caller had read "Queued" as started (27 Oct, FS01).</summary>
+    public static string? Unconfirmed(FixAction a, string device, string? presenceState, string? presence, bool confirmed)
+        => !a.Disruptive || confirmed ? null
+            : presenceState == "Active"
+                ? $"someone is using {device} right now ({presence}): confirm to {a.Title.ToLowerInvariant()}"
+                : $"{a.Title} will interrupt {device}: confirm to go ahead";
+
     /// <summary>The script that runs on the machine: the fix's body, with its input bound as a single-quoted PowerShell string.</summary>
     public static string Script(FixAction a, string? param)
     {

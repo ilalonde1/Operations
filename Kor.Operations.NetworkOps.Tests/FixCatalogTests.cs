@@ -170,6 +170,52 @@ public sealed class FixCatalogTests
     public void Only_the_restarts_are_disruptive()
         => Assert.Equal(["restart-pc", FixCatalog.UpdateBios, FixCatalog.InstallUpdatesRestart], FixCatalog.All.Where(f => f.Disruptive).Select(f => f.Id));
 
+    // 27 Oct: networkops_run_fix queued install-updates-restart on KOR-FS01 unconfirmed (a server has no presence, and the MCP
+    // tool only asked for confirmation when someone was Active), ActionRunner refused it at once, and "Queued" was reported as
+    // started. Every disruptive fix needs confirmation whoever is on the machine, refused before anything is queued.
+    [Theory]
+    [InlineData(null, null)]          // a rack server
+    [InlineData("Idle", "idle 40 min")]
+    [InlineData("Locked", "locked")]
+    [InlineData("Active", "Administrator · active")]
+    public void Every_disruptive_fix_is_refused_unconfirmed_whoever_is_on_the_machine(string? state, string? presence)
+    {
+        foreach (var f in FixCatalog.All.Where(f => f.Disruptive))
+        {
+            Assert.NotNull(FixCatalog.Unconfirmed(f, "KOR-FS01 (file server)", state, presence, confirmed: false));
+            Assert.Null(FixCatalog.Unconfirmed(f, "KOR-FS01 (file server)", state, presence, confirmed: true));
+        }
+        foreach (var f in FixCatalog.All.Where(f => !f.Disruptive))
+            Assert.Null(FixCatalog.Unconfirmed(f, "KOR-FS01 (file server)", state, presence, confirmed: false));
+    }
+
+    // Covers: every road that QUEUES a fix -- the page's POST, "Fix on all N" and the MCP tool -- asks the one shared rule.
+    // Does NOT cover: a new road added later that queues through QueueFixOnceAsync without asking it (name it here when one
+    // is added), nor the update batch, which has its own confirmed-only rule (UpdateBatch.cs, audit 2026-10-16 1.1).
+    [Fact]
+    public void Every_road_that_queues_a_fix_asks_the_one_confirmation_rule()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !Directory.Exists(Path.Combine(root.FullName, "Kor.Operations.NetworkOps.Agent"))) root = root.Parent;
+        var service = Path.Combine(root!.FullName, "Kor.Operations.NetworkOps.Service");
+        var queuers = Directory.EnumerateFiles(service, "*.cs", SearchOption.AllDirectories)
+            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") && !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+            .Select(p => (Path: p, Src: File.ReadAllText(p)))
+            .Where(x => x.Src.Contains("QueueFixOnceAsync(") && !x.Path.EndsWith("NetworkOpsStore.CommandCenter.cs") && !Regex.IsMatch(x.Src, @"Task<[^>]*>\s+QueueFixOnceAsync\("))
+            .ToList();
+        Assert.Contains(queuers, x => x.Path.EndsWith(Path.Combine("Mcp", "NetworkOpsMcpActions.cs")));
+        Assert.Contains(queuers, x => x.Path.EndsWith(Path.Combine("Api", "ApiHost.cs")));
+        // The update installs queue through UpdatesApi, whose decisions come from UpdateBatch's own rule: refused whenever unconfirmed.
+        var updates = Assert.Single(queuers, x => x.Path.EndsWith(Path.Combine("Updates", "UpdatesApi.cs")));
+        Assert.Contains("UpdateBatch.", updates.Src);
+        Assert.Matches(new Regex(@"if \(!confirmed\)\s*\r?\n\s*return new BatchDecision\("), File.ReadAllText(Path.Combine(service, "Updates", "UpdateBatch.cs")));
+        foreach (var (path, src) in queuers.Where(x => x != updates))
+        {
+            Assert.Contains("FixCatalog.Unconfirmed(", src);
+            Assert.DoesNotMatch(new Regex(@"Disruptive\s*&&\s*dev\.PresenceState"), src);
+        }
+    }
+
     [Theory]
     [InlineData("[{\"Result\":\"Freed 3.2 GB on C:\",\"Steps\":[]}]", "Freed 3.2 GB on C:")]
     [InlineData("[\"hello\"]", "hello")]

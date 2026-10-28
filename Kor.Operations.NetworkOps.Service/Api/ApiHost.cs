@@ -327,11 +327,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                 // EVERY disruptive fix needs explicit confirmation -- presence only shapes the warning, it never waives it.
                 // (Gating on PresenceState=="Active" meant a restart on a server or an idle PC, whose presence is null, fired
                 // with no confirmation at all -- the opposite of the standing rule. Audit 2026-10-06, finding #1.)
-                ?? (fix.Disruptive && !body.Confirmed
-                    ? (dev.PresenceState == "Active"
-                        ? $"someone is using {dev.Name} right now ({dev.Presence}): confirm to {fix.Title.ToLowerInvariant()}"
-                        : $"{fix.Title} will interrupt {dev.Name}: confirm to go ahead")
-                    : null);
+                ?? Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Unconfirmed(fix, dev.Name, dev.PresenceState, dev.Presence, body.Confirmed);
             if (refuse is not null)
             {
                 await s.RecordRefusedActionAsync(id, fix.Id, by, request, refuse, ct);
@@ -376,9 +372,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                     (dev.Source == "Rack" && !Sweep.ActionRunner.CanRun(o.Value, dev.Name, fix)
                         ? (fix.Target == Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Esxi ? $"{dev.Name} is not an ESXi host" : $"{dev.Name} is not a Windows server APP01 can run fixes on") : null)
                     ?? (dev.Source != "Rack" && fix.Target == Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Esxi ? $"{fix.Title} is for an ESXi host, not a PC" : null)
-                    ?? (needsConfirm
-                        ? (dev.PresenceState == "Active" ? $"someone is using {dev.Name} right now ({dev.Presence}): confirm to {fix.Title.ToLowerInvariant()}" : $"{fix.Title} will interrupt {dev.Name}: confirm to go ahead")
-                        : null);
+                    ?? Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Unconfirmed(fix, dev.Name, dev.PresenceState, dev.Presence, body.Confirmed);
                 if (refuse is not null)
                 {
                     await s.RecordRefusedActionAsync(id, fix.Id, by, "{}", refuse, ct);
