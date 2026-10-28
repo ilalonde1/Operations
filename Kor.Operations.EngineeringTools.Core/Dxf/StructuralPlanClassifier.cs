@@ -2132,7 +2132,7 @@ public static class StructuralPlanClassifier
         // attached to nothing at one end — three of them on 31138.
         if (options.ConnectWalls && result.Walls.Count > 1)
             result.WallOpenings.AddRange(
-                WallNetwork.FindOpenings(result.Walls, options.MinOpeningSpan, options.MaxOpeningSpan, 1.0 / options.UnitInInches));
+                WallNetwork.FindOpenings(result.Walls, options.MinOpeningSpan, options.MaxOpeningSpan, 1.0 / options.UnitInInches, result.Columns));
 
         // A HOLE THROUGH HALF A FLOOR IS NOT A HOLE. IT IS THE OTHER EDGE OF THE SLAB.
         //

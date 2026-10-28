@@ -1,0 +1,159 @@
+# board 52 narrow form (FindOpenings refuses a gap holding a column) vs d4352fc0-equivalent, like-for-like 2026-10-28
+# before gw-fix2m = takeoff-bin-d435 (1.0.0+b94b8d33); after gw-narrow = 290e844a + HoldsColumn (Core.dll 9693f3c0); both KOR_PROJECTS_ROOT = local corpus mirror
+  before bin: 1.0.0+b94b8d331b3d862fbb4b5a75d9f8e8f4f01b7741 - matches the claim b94b8d33
+  after bin: 1.0.0+290e844aebf3b318628114ec1bb26727153fa8dc - matches the claim 290e844a+HoldsColumn
+  before root: C:\Users\ilalonde\AppData\Local\Temp\kor-corpus-mirror\Projects   [run-root.txt]
+  after root: C:\Users\ilalonde\AppData\Local\Temp\kor-corpus-mirror\Projects   [run-root.txt]
+57 of 57 job(s) comparable; 0 dropped
+== C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gw-fix2m
+headers over a column: 84 of 3198; by drawing unit: mm 84 of 3198
+  31053-01 (mm): 10 of 29
+      L2         KS2    (38535,72896)-(39334,72896) span 799  column (38942,72821) 75 off the line
+      L2         KS3    (27457,72896)-(28270,72896) span 813  column (27861,72821) 75 off the line
+      L2         KS4    (32996,72896)-(33809,72896) span 813  column (33403,72821) 75 off the line
+  31085-01 (mm): 10 of 89
+      L3         KS2    (27700,65840)-(28460,65840) span 760  column (28080,65917) 77 off the line
+      L3         KS3    (47817,65840)-(48577,65840) span 760  column (48197,65917) 77 off the line
+      L3         KS4    (41111,65840)-(41871,65840) span 760  column (41491,65917) 77 off the line
+  30972-01 (mm): 9 of 64
+      P3         KS1    (48894,38202)-(48894,39116) span 914  column (49097,38659) 203 off the line
+      P3         KS2    (46712,47744)-(47626,47744) span 914  column (47169,47616) 128 off the line
+      P3         KS3    (38710,47744)-(40217,47744) span 1508  column (39592,47644) 99 off the line
+  31003-01 (mm): 8 of 187
+      L1         KS1    (85976,38782)-(86335,38180) span 701  column (86062,38390) 127 off the line
+      L1         KS4    (90028,31963)-(90352,31410) span 641  column (90081,31622) 126 off the line
+      L1         KS5    (88018,35344)-(88341,34791) span 641  column (88070,35004) 126 off the line
+  31017-01 (mm): 8 of 76
+      P1         KS1    (63539,52104)-(64504,52105) span 965  column (64022,52054) 50 off the line
+      L1         KS2    (63539,52105)-(64504,52105) span 965  column (64022,52054) 51 off the line
+      L1         KS3    (45290,52104)-(46432,52104) span 1142  column (45861,52105) 1 off the line
+  31183-01 (mm): 5 of 10
+      P1         KS2    (90826,28983)-(91166,27817) span 1214  column (90995,28399) 1 off the line
+      P1         KS4    (98756,33226)-(99083,32303) span 979  column (98920,32762) 1 off the line
+      L1         KS8    (96792,36598)-(97511,36831) span 756  column (97016,36671) 1 off the line
+  30864-01 (mm): 4 of 40
+      P3         KS1    (50461,33790)-(50461,34692) span 902  column (50459,34241) 2 off the line
+      L2         KS24   (53806,18345)-(54720,18345) span 914  column (54254,18396) 51 off the line
+      ROOF       KS36   (34169,43104)-(34169,44852) span 1748  column (34169,44312) 0 off the line
+  31065-01 (mm): 4 of 157
+      P2         KS1    (993,50216)-(993,51109) span 893  column (842,50667) 150 off the line
+      L3         KS35   (19634,24735)-(19634,25362) span 627  column (19835,25051) 201 off the line
+      L4         KS40   (19634,24735)-(19634,25362) span 627  column (19835,25051) 201 off the line
+  31155-01 (mm): 4 of 181
+      L4         KS61   (52255,31593)-(52722,31125) span 661  column (52489,31361) 2 off the line
+      L5         KS92   (52255,31593)-(52722,31125) span 661  column (52489,31361) 2 off the line
+      L6         KS123  (52255,31593)-(52722,31125) span 661  column (52489,31361) 2 off the line
+  31087-01 (mm): 3 of 181
+      L2         KS21   (55396,50796)-(55396,51706) span 910  column (55396,51253) 0 off the line
+      L2         KS22   (55396,48382)-(55396,49296) span 914  column (55396,48839) 0 off the line
+      L2         KS23   (55396,40465)-(55396,41380) span 914  column (55396,40922) 0 off the line
+  31143-01 (mm): 3 of 128
+      L2         KS4    (68812,53216)-(69750,53216) span 939  column (69334,53369) 153 off the line
+      L3         KS30   (26201,53216)-(27343,53216) span 1142  column (26907,53238) 22 off the line
+      L3         KS43   (74999,37210)-(74999,38811) span 1601  column (75116,38540) 117 off the line
+  30993-01 (mm): 2 of 84
+      P2         KS2    (30529,3414)-(30529,4023) span 610  column (30529,3719) 0 off the line
+      UPPER ROOF KS84   (59369,54185)-(59369,54795) span 610  column (59217,54490) 152 off the line
+  31048-01 (mm): 2 of 199
+      L5         KS56   (16723,25854)-(16847,27601) span 1752  column (16475,26557) 297 off the line
+      L6         KS85   (16723,25854)-(16847,27601) span 1752  column (16475,26557) 297 off the line
+  31224-01 (mm): 2 of 3
+      L2         KS1    (15646,59810)-(16256,59810) span 610  column (15951,59786) 24 off the line
+      L2         KS2    (15649,50713)-(16258,50713) span 610  column (15953,50688) 24 off the line
+  30819-01 (mm): 1 of 5
+      L1         KS4    (27186,46407)-(27186,47577) span 1170  column (27186,46992) 0 off the line
+  30849-01 (mm): 1 of 4
+      L2         KS4    (40697,24067)-(41997,24067) span 1300  column (41837,24067) 0 off the line
+  30990-01 (mm): 1 of 268
+      L1         KS21   (72827,42534)-(74245,42534) span 1418  column (73278,42683) 149 off the line
+  31005-01 (mm): 1 of 25
+      L1         KS1    (39216,57806)-(39216,58416) span 610  column (39216,58111) 0 off the line
+  31009-01 (mm): 1 of 15
+      L2         KS15   (57688,42979)-(58639,42979) span 951  column (58450,43001) 22 off the line
+  31083-01 (mm): 1 of 3
+      L2         KS3    (47274,32455)-(47274,33065) span 610  column (46994,32760) 280 off the line
+  31093-01 (mm): 1 of 7
+      L1         KS1    (-12603,27462)-(-12603,28072) span 610  column (-12527,27767) 76 off the line
+  31098-01 (mm): 1 of 96
+      L2         KS10   (17000,12029)-(17963,12029) span 963  column (17481,12131) 102 off the line
+  40112-01 (mm): 1 of 3
+      L1         KS3    (49310,11528)-(49310,10106) span 1422  column (49310,11223) 0 off the line
+  80064-01 (mm): 1 of 15
+      L2         KS3    (85526,93792)-(86416,94031) span 921  column (85996,93815) 100 off the line
+== C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gw-narrow
+headers over a column: 26 of 3139; by drawing unit: mm 26 of 3139
+  31003-01 (mm): 5 of 184
+      L3         KS47   (43495,66422)-(45082,66074) span 1625  column (43644,66388) 2 off the line
+      L3         KS48   (53004,31820)-(54629,31820) span 1626  column (54375,31820) 0 off the line
+      L4         KS68   (32884,29737)-(34006,29737) span 1122  column (33851,29737) 0 off the line
+  31017-01 (mm): 4 of 72
+      C2         KS19   (72644,45675)-(72645,47199) span 1524  column (72568,46782) 76 off the line
+      C2         KS20   (72644,40639)-(72645,42163) span 1524  column (72568,41448) 76 off the line
+      C3         KS31   (72644,45675)-(72645,47199) span 1524  column (72568,46782) 76 off the line
+  30972-01 (mm): 3 of 57
+      P3         KS1    (46407,25601)-(47147,25601) span 740  column (46929,25601) 0 off the line
+      P2         KS3    (46407,25601)-(47147,25601) span 740  column (46929,25601) 0 off the line
+      P1         KS8    (46228,47744)-(47626,47744) span 1398  column (47169,47616) 128 off the line
+  31143-01 (mm): 3 of 128
+      L2         KS4    (68812,53216)-(69750,53216) span 939  column (69334,53369) 153 off the line
+      L3         KS30   (26201,53216)-(27343,53216) span 1142  column (26907,53238) 22 off the line
+      L3         KS43   (74999,37210)-(74999,38811) span 1601  column (75116,38540) 117 off the line
+  30864-01 (mm): 2 of 38
+      ROOF       KS34   (34169,43104)-(34169,44852) span 1748  column (34169,44312) 0 off the line
+      L30        KS37   (34169,43104)-(34169,44852) span 1748  column (34169,44312) 0 off the line
+  31048-01 (mm): 2 of 199
+      L5         KS56   (16723,25854)-(16847,27601) span 1752  column (16475,26557) 297 off the line
+      L6         KS85   (16723,25854)-(16847,27601) span 1752  column (16475,26557) 297 off the line
+  30819-01 (mm): 1 of 5
+      L1         KS4    (27186,46407)-(27186,47577) span 1170  column (27186,46992) 0 off the line
+  30849-01 (mm): 1 of 4
+      L2         KS4    (40697,24067)-(41997,24067) span 1300  column (41837,24067) 0 off the line
+  30990-01 (mm): 1 of 268
+      L1         KS21   (72827,42534)-(74245,42534) span 1418  column (73278,42683) 149 off the line
+  31009-01 (mm): 1 of 15
+      L2         KS15   (57688,42979)-(58639,42979) span 951  column (58450,43001) 22 off the line
+  31053-01 (mm): 1 of 20
+      L3         KS3    (17699,72896)-(18687,72896) span 988  column (18282,72821) 75 off the line
+  31183-01 (mm): 1 of 6
+      L1         KS6    (96792,36598)-(97511,36831) span 756  column (97016,36671) 1 off the line
+  40112-01 (mm): 1 of 3
+      L1         KS3    (49310,11528)-(49310,10106) span 1422  column (49310,11223) 0 off the line
+
+# the 26 left, each by the column's size (gap wider than largest side + 6 in = ASSUMED slack) - tools/CorpusGateBisect/header_over_column_why.py:
+31003-01 L3     KS47   span  1625 column 533x305 limit 686  off   2  gap wider than column + 6 in
+31003-01 L3     KS48   span  1626 column 305x203 limit 457  off   0  gap wider than column + 6 in
+31003-01 L4     KS68   span  1122 column 305x203 limit 457  off   0  gap wider than column + 6 in
+31003-01 L5     KS110  span  1122 column 305x203 limit 457  off   0  gap wider than column + 6 in
+31003-01 L6     KS152  span  1122 column 305x203 limit 457  off   0  gap wider than column + 6 in
+31017-01 C2     KS19   span  1524 column 610x457 limit 762  off  76  gap wider than column + 6 in
+31017-01 C2     KS20   span  1524 column 1143x457 limit 1295  off  76  gap wider than column + 6 in
+31017-01 C3     KS31   span  1524 column 610x457 limit 762  off  76  gap wider than column + 6 in
+31017-01 C3     KS32   span  1524 column 1143x457 limit 1295  off  76  gap wider than column + 6 in
+30972-01 P3     KS1    span   740 column 432x305 limit 584  off   0  gap wider than column + 6 in
+30972-01 P2     KS3    span   740 column 432x305 limit 584  off   0  gap wider than column + 6 in
+30972-01 P1     KS8    span  1398 column 914x457 limit 1067  off 128  gap wider than column + 6 in
+31143-01 L2     KS4    span   939 column 203x203 limit 356  off 153  gap wider than column + 6 in
+31143-01 L3     KS30   span  1142 column 229x203 limit 381  off  22  gap wider than column + 6 in
+31143-01 L3     KS43   span  1601 column 203x203 limit 356  off 117  gap wider than column + 6 in
+30864-01 ROOF   KS34   span  1748 column 330x203 limit 483  off   0  gap wider than column + 6 in
+30864-01 L30    KS37   span  1748 column 330x203 limit 483  off   0  gap wider than column + 6 in
+31048-01 L5     KS56   span  1752 column 279x203 limit 432  off 297  gap wider than column + 6 in
+31048-01 L6     KS85   span  1752 column 279x203 limit 432  off 297  gap wider than column + 6 in
+30819-01 L1     KS4    span  1170 column 762x305 limit 914  off   0  gap wider than column + 6 in
+30849-01 L2     KS4    span  1300 column 330x203 limit 483  off   0  gap wider than column + 6 in
+30990-01 L1     KS21   span  1418 column 889x508 limit 1041  off 149  gap wider than column + 6 in
+31009-01 L2     KS15   span   951 column 381x203 limit 533  off  22  gap wider than column + 6 in
+31053-01 L3     KS3    span   988 column 762x356 limit 914  off  75  gap wider than column + 6 in
+31183-01 L1     KS6    span   756 column 508x330 limit 660  off   1  gap wider than column + 6 in
+40112-01 L1     KS3    span  1422 column 406x203 limit 559  off   0  gap wider than column + 6 in
+gap wider than the largest column side + 6 in: 26 of 26
+
+== C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gw-fix2m
+walls 28258; overlapping pairs 1028; dangling ends 5791; sets with either 56
+== C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gw-narrow
+walls 28258; overlapping pairs 1028; dangling ends 5791; sets with either 56
+
+39 of 57 set(s) byte-identical; 17 differ; 1 without a model on a side
+  no model: 31016-01 (before NO model, after NO)
+re-placed members: 1 closer to hers, 0 further, 0 same within 50 mm; unpaired: 58 lost, 0 gained
+changed: 30864-01 (2), 30972-01 (3), 30993-01 (1), 31003-01 (1), 31005-01 (1), 31017-01 (2), 31053-01 (2), 31065-01 (4), 31083-01 (1), 31085-01 (1), 31087-01 (1), 31093-01 (1), 31098-01 (1), 31155-01 (4), 31183-01 (2), 31224-01 (1), 80064-01 (1)

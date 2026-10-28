@@ -344,8 +344,9 @@ public static class WallNetwork
     /// The 3 in off line, 4 in of thickness and 6 in of shared middle are inches, scaled by <paramref name="inch"/>
     /// (2026-10-27: in a millimetre model they were 3, 4 and 6 mm).
     /// </summary>
+    /// <param name="columns">This sheet's columns: a gap that holds one is not a doorway (<see cref="HoldsColumn"/>).</param>
     public static IReadOnlyList<WallOpening> FindOpenings(
-        IReadOnlyList<WallAxis> walls, double minSpan, double maxSpan, double inch = 1.0)
+        IReadOnlyList<WallAxis> walls, double minSpan, double maxSpan, double inch = 1.0, IReadOnlyList<ColumnFootprint>? columns = null)
     {
         var found = new List<WallOpening>();
         var used = new HashSet<(int, int)>();
@@ -385,6 +386,7 @@ public static class WallNetwork
             // drawing got before (its 3 mm found none of these) - rather than a crooked one; the doorway is still a gap.
             double hx = best.Q.X - best.P.X, hy = best.Q.Y - best.P.Y, hl = Math.Sqrt(hx * hx + hy * hy);
             if (hl > 1e-9 && Math.Max(Off(hx, hy, hl, ax, ay, la), Off(hx, hy, hl, bx, by, lb)) > WallNetworkInvariant.ToleranceDegrees) continue;
+            if (columns is { Count: > 0 } && HoldsColumn(best.P, best.Q, columns, inch)) continue;
             if (!used.Add((i, j))) continue;
 
             found.Add(new WallOpening(best.P, best.Q, Math.Min(a.Thickness, b.Thickness), a.Layer) { ThickerWall = Math.Max(a.Thickness, b.Thickness) });
@@ -408,6 +410,32 @@ public static class WallNetwork
         }
 
         return kept;
+    }
+
+    /// <summary>
+    /// A GAP THAT HOLDS A COLUMN IS NOT A DOORWAY (2026-10-28, board 52's narrow form; VD's decision). A drawing stops a wall at
+    /// each face of a column standing in it, and the finder read the two pieces as jambs and spanned a header across the column:
+    /// 84 of 3,177 headers on the 57 gate sets (tools/CorpusGateBisect/header_over_column.py). The walls stay as drawn - the full
+    /// join that runs one wall through the column is board 76, held because it disturbed T joints, chaining and the perimeter-wall
+    /// floor. A column holds the gap when its centre lies between the two ends and within 300 mm of the line between them, and the
+    /// gap is no wider than the column's largest side, nor its extent along the gap, plus 6 in (ASSUMED slack): a wider gap is a
+    /// doorway beside a column. 30972 P3/P2 (744 mm, 432x305 column, the engineer runs the wall through) stay a stated exception.
+    /// </summary>
+    internal static bool HoldsColumn(DxfPoint p, DxfPoint q, IReadOnlyList<ColumnFootprint> columns, double inch)
+    {
+        double gap = p.DistanceTo(q);
+        if (gap < 1e-9) return false;
+        double ux = (q.X - p.X) / gap, uy = (q.Y - p.Y) / gap;
+        double reach = 300.0 / 25.4 * inch, slack = 6.0 * inch;
+        double along = Math.Atan2(uy, ux) * 180.0 / Math.PI;
+        return columns.Any(c =>
+        {
+            double t = (c.Center.X - p.X) * ux + (c.Center.Y - p.Y) * uy;
+            if (t <= 0 || t >= gap || Math.Abs((c.Center.X - p.X) * -uy + (c.Center.Y - p.Y) * ux) > reach) return false;
+            double r = (c.AxisAngleDegrees - along) * Math.PI / 180.0;
+            double extent = Math.Abs(c.Depth * Math.Cos(r)) + Math.Abs(c.Width * Math.Sin(r));   // Depth runs along the column's axis
+            return gap <= Math.Max(c.Width, c.Depth) + slack && gap <= extent + slack;
+        });
     }
 
     /// <summary>The angle in degrees between two directions, either way round (0-90).</summary>
