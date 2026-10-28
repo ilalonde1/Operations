@@ -24,7 +24,11 @@
 #   pwsh tools\Expand-WrappedExecutables.ps1 -Root "C:\Users\administrator\Desktop\Revit 2026 - (EN)" -Apply
 #   -Quick          : with -Check, compare an existing .exe by LENGTH only (seconds instead of minutes on a 2 GB tree, so
 #                     it fits NetworkOps' 90 s road); the output says "length-checked", never "identical".
-param([Parameter(Mandatory)][string]$Root, [switch]$Apply, [switch]$Quick)
+#   -NestedOnly     : only the executables BELOW each installer root (the shallowest folder on a path that holds a
+#                     wrapped exe, e.g. "Revit 2026 - (EN)" with its Setup.zip); the root's own zips stay wrapped, so the
+#                     right-click fix holds for what people open. For the share itself (Ian, 28 Oct 12:0x).
+#   -Summary        : one row per installer root instead of one line per file (for a whole share).
+param([Parameter(Mandatory)][string]$Root, [switch]$Apply, [switch]$Quick, [switch]$NestedOnly, [switch]$Summary)
 $ErrorActionPreference = 'Stop'
 if ($Apply -and $Quick) { 'REFUSED: -Quick is for -Check only; -Apply always verifies every byte'; exit 2 }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -46,30 +50,63 @@ function Same-AsEntry($entry, [string]$path) {
     } finally { $a.Dispose(); $b.Dispose() }
 }
 
-$wrapped = 0; $restored = 0; $present = 0; $missing = 0; $failed = 0; $other = 0
-foreach ($zip in [IO.Directory]::EnumerateFiles($Root, '*.zip', [IO.SearchOption]::AllDirectories)) {
+# Pass 1: every wrapped executable (a .zip whose ONLY entry is an .exe), at any depth.
+$failed = 0; $other = 0
+$items = foreach ($zip in [IO.Directory]::EnumerateFiles($Root, '*.zip', [IO.SearchOption]::AllDirectories)) {
     $archive = $null
-    try { $archive = [IO.Compression.ZipFile]::OpenRead($zip) } catch { "UNREADABLE: $zip"; $failed++; continue }
+    try { $archive = [IO.Compression.ZipFile]::OpenRead($zip) } catch { Write-Output "UNREADABLE: $zip"; $failed++; continue }
     try {
         if ($archive.Entries.Count -ne 1 -or $archive.Entries[0].FullName -notmatch '\.exe$') { $other++; continue }
-        $wrapped++
-        $entry = $archive.Entries[0]
-        $exe = Join-Path ([IO.Path]::GetDirectoryName($zip)) $entry.Name
-        if (Test-Path -LiteralPath $exe) {
-            $same = if ($Quick) { ([IO.FileInfo]$exe).Length -eq $entry.Length } else { Same-AsEntry $entry $exe }
-            if ($same) { $present++ } else { "DIFFERENT (left as is): $exe"; $failed++ }
-            continue
-        }
-        if (-not $Apply) { "MISSING: $exe"; $missing++; continue }
-        [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $exe)
-        if (Same-AsEntry $entry $exe) { "restored: $exe ($($entry.Length) B, verified)"; $restored++ }
-        else { Remove-Item -LiteralPath $exe -Force; "FAILED verify (removed): $exe"; $failed++ }
+        [pscustomobject]@{ Zip = $zip; Dir = [IO.Path]::GetDirectoryName($zip); Name = $archive.Entries[0].Name; Root = $null }
     } finally { if ($archive) { $archive.Dispose() } }
 }
+$items = @($items | Where-Object { $_ -is [pscustomobject] })
+$unreadableLines = @($items | Where-Object { $_ -is [string] })
+
+# Installer root of each: the SHALLOWEST folder on its path (at or below -Root) that directly holds a wrapped exe. Its own
+# zips are what a person opens (Setup.zip); everything wrapped in a folder below it is part of that installer's tree.
+$holders = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+foreach ($i in $items) { [void]$holders.Add($i.Dir) }
+$rootFull = [IO.Path]::GetFullPath($Root).TrimEnd('\')
+foreach ($i in $items) {
+    $d = $i.Dir; $i.Root = $d
+    while ($d.Length -gt $rootFull.Length) {
+        $d = [IO.Path]::GetDirectoryName($d)
+        if ($null -eq $d -or $d.Length -lt $rootFull.Length) { break }
+        if ($holders.Contains($d)) { $i.Root = $d }
+    }
+}
+$nestedCount = @($items | Where-Object { $_.Dir -ne $_.Root }).Count
+$targets = if ($NestedOnly) { @($items | Where-Object { $_.Dir -ne $_.Root }) } else { $items }
+
+# Pass 2: check or unwrap each target.
+$restored = 0; $present = 0; $missing = 0; $missingBytes = 0L
+$byRoot = @{}
+foreach ($i in $targets) {
+    if (-not $byRoot.ContainsKey($i.Root)) { $byRoot[$i.Root] = [pscustomobject]@{ InstallerRoot = $i.Root.Substring([Math]::Min($i.Root.Length, $rootFull.Length + 1)); Targets = 0; Missing = 0; MissingGB = 0.0; Restored = 0; Present = 0; Failed = 0 } }
+    $r = $byRoot[$i.Root]; $r.Targets++
+    $archive = [IO.Compression.ZipFile]::OpenRead($i.Zip)
+    try {
+        $entry = $archive.Entries[0]
+        $exe = Join-Path $i.Dir $i.Name
+        if (Test-Path -LiteralPath $exe) {
+            $same = if ($Quick) { ([IO.FileInfo]$exe).Length -eq $entry.Length } else { Same-AsEntry $entry $exe }
+            if ($same) { $present++; $r.Present++ } else { if (-not $Summary) { "DIFFERENT (left as is): $exe" }; $failed++; $r.Failed++ }
+            continue
+        }
+        if (-not $Apply) { if (-not $Summary) { "MISSING: $exe" }; $missing++; $r.Missing++; $r.MissingGB = [Math]::Round($r.MissingGB + $entry.Length / 1GB, 2); $missingBytes += $entry.Length; continue }
+        [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $exe)
+        if (Same-AsEntry $entry $exe) { if (-not $Summary) { "restored: $exe ($($entry.Length) B, verified)" }; $restored++; $r.Restored++ }
+        else { Remove-Item -LiteralPath $exe -Force; "FAILED verify (removed): $exe"; $failed++; $r.Failed++ }
+    } finally { $archive.Dispose() }
+}
+$unreadableLines
+if ($Summary) { $byRoot.Values | Sort-Object Targets -Descending | Format-Table -AutoSize | Out-String -Width 240 }
+$scope = if ($NestedOnly) { "$($targets.Count) NESTED (installer-root zips kept as they are: $($items.Count - $nestedCount))" } else { "$($targets.Count)" }
 if ($Apply) {
-    "TOTAL ${wrapped} wrapped executables under ${Root}: restored $restored, already there and identical $present, failed $failed; other zips left alone $other"
+    "TOTAL ${scope} wrapped executables under ${Root} in $($byRoot.Count) installer roots: restored $restored, already there and identical $present, failed $failed; other zips left alone $other"
     exit $failed
 }
 $how = if ($Quick) { 'present, same length (length-checked only)' } else { 'present and identical' }
-"CHECK ${wrapped} wrapped executables under ${Root}: missing $missing, $how $present, different/unreadable $failed; other zips $other"
+"CHECK ${scope} wrapped executables under ${Root} in $($byRoot.Count) installer roots: missing $missing ($([Math]::Round($missingBytes / 1GB, 2)) GB to write), $how $present, different/unreadable $failed; other zips $other"
 exit ($missing + $failed)

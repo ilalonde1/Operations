@@ -60,6 +60,27 @@ try {
     $p = Join-Path $t 'ODIS\DownloadManager.exe'; [IO.File]::WriteAllBytes($p, [byte[]](1, 2, 3))
     $out = & $shell -NoProfile -File $tool -Root $t -Apply; $code = $LASTEXITCODE
     Check ($code -eq 1 -and [IO.File]::ReadAllBytes($p).Length -eq 3) "a different existing .exe is reported (exit 1) and left as is, got exit $code"
+
+    # -NestedOnly on a SHARE-shaped tree (what Ian approved for FS01): each installer root keeps its own zips wrapped,
+    # everything wrapped below a root is restored. Two roots: a Revit-like tree, and a driver folder of side-by-side exes.
+    $s = Join-Path $t 'share'
+    $rv = Join-Path $s 'Autodesk\Revit 2026 - (EN)'
+    $files = [ordered]@{
+        "$rv\Setup.exe" = (Bytes 4000 10); "$rv\ODIS\DownloadManager.exe" = (Bytes 9000 11); "$rv\x64\a\b\deep.exe" = (Bytes 7000 12)
+        "$s\Brother\Drv1.exe" = (Bytes 3000 13); "$s\Brother\Drv2.exe" = (Bytes 3100 14); "$s\Brother\Sub\inner.exe" = (Bytes 3200 15)
+    }
+    foreach ($k in $files.Keys) { Wrap $k $files[$k] }
+    $keep = "$rv\Setup.exe", "$s\Brother\Drv1.exe", "$s\Brother\Drv2.exe"
+    $unwrap = "$rv\ODIS\DownloadManager.exe", "$rv\x64\a\b\deep.exe", "$s\Brother\Sub\inner.exe"
+    $out = & $shell -NoProfile -File $tool -Root $s -NestedOnly -Summary; $code = $LASTEXITCODE
+    Check ($code -eq 3) "-NestedOnly dry run: 3 nested missing (exit 3), got $code"
+    Check ("$out" -like '*CHECK 3 NESTED (installer-root zips kept as they are: 3) wrapped executables*in 2 installer roots: missing 3*') "-NestedOnly dry run total: $($out[-1])"
+    Check ("$out" -like '*Autodesk\Revit 2026 - (EN)*' -and "$out" -like '*Brother*' -and "$out" -notlike '*MISSING:*') "-Summary prints one row per installer root, no per-file lines"
+    $out = & $shell -NoProfile -File $tool -Root $s -NestedOnly -Apply; $code = $LASTEXITCODE
+    Check ($code -eq 0) "-NestedOnly -Apply exits 0, got $code"
+    foreach ($p in $unwrap) { Check ((Test-Path -LiteralPath $p) -and ([Convert]::ToBase64String([IO.File]::ReadAllBytes($p)) -eq [Convert]::ToBase64String($files[$p]))) "-NestedOnly restored byte-identical: $($p.Substring($s.Length + 1))" }
+    foreach ($p in $keep) { Check (-not (Test-Path -LiteralPath $p)) "-NestedOnly left the installer root's own zip wrapped: $($p.Substring($s.Length + 1))" }
+    Check (@(Get-ChildItem -LiteralPath $s -Recurse -Filter *.zip).Count -eq 6) "-NestedOnly deleted no zip (6 of 6 still there)"
 } finally {
     if (Test-Path -LiteralPath $t) { Remove-Item -LiteralPath $t -Recurse -Force }
 }
