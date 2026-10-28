@@ -43,6 +43,9 @@ if not (server and database and user and pwd):
 cmd = ["sqlcmd", "-S", server, "-d", database, "-U", user,
        "-b", "-W", "-s", "|", "-w", "400",
        "-l", "15", "-t", "120"]   # login 15 s, query 120 s: a VPN stall is an error, never a hang
-cmd += sys.argv[1:]
-r = subprocess.run(cmd, env=dict(os.environ, SQLCMDPASSWORD=pwd))
+# sqlcmd -q runs the query and then STAYS OPEN reading stdin; -Q runs it and exits. Every caller here means "run and
+# exit", so -q is passed as -Q and stdin is closed: four background oq.py calls (10-25, 10-26 x2, 10-28 00:34) sat idle
+# for hours holding KOR-APP01:1433 because their stdin never closed - the silent-hang class, found by NetworkOps' lister
+cmd += ["-Q" if x == "-q" else x for x in sys.argv[1:]]
+r = subprocess.run(cmd, env=dict(os.environ, SQLCMDPASSWORD=pwd), stdin=subprocess.DEVNULL)
 sys.exit(r.returncode)
