@@ -1,0 +1,110 @@
+== C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/d8312bb3-eb17-42ed-b4ca-1ec6d7f8399a/scratchpad/gw-fix2
+headers over a column: 84 of 3177; by drawing unit: mm 84 of 3177
+  31053-01 (mm): 10 of 29
+      L2         KS2    (38535,72896)-(39334,72896) span 799  column (38942,72821) 75 off the line
+      L2         KS3    (27457,72896)-(28270,72896) span 813  column (27861,72821) 75 off the line
+      L2         KS4    (32996,72896)-(33809,72896) span 813  column (33403,72821) 75 off the line
+      L2         KS5    (42701,72896)-(43514,72896) span 813  column (43107,72821) 75 off the line
+      L2         KS6    (42551,70153)-(43514,70153) span 963  column (43032,70076) 77 off the line
+      L3         KS8    (38535,72896)-(39334,72896) span 799  column (38942,72821) 75 off the line
+      L3         KS9    (27457,72896)-(28270,72896) span 813  column (27861,72821) 75 off the line
+      L3         KS10   (32996,72896)-(33809,72896) span 813  column (33403,72821) 75 off the line
+      L3         KS11   (21914,72896)-(22730,72896) span 817  column (22322,72821) 75 off the line
+      L3         KS12   (17699,72896)-(18687,72896) span 988  column (18282,72821) 75 off the line
+  31085-01 (mm): 10 of 11
+      L3         KS2    (77609,65844)-(78371,65844) span 762  column (77990,65920) 76 off the line
+      L3         KS3    (27696,65844)-(28458,65844) span 762  column (28077,65920) 76 off the line
+      L3         KS4    (20459,65844)-(21221,65844) span 762  column (20840,65920) 76 off the line
+      L3         KS5    (47813,65844)-(48575,65844) span 762  column (48194,65920) 76 off the line
+      L3         KS6    (54671,65844)-(55433,65844) span 762  column (55052,65920) 76 off the line
+      L3         KS7    (34402,65844)-(35164,65844) span 762  column (34783,65920) 76 off the line
+      L3         KS8    (41107,65844)-(41869,65844) span 762  column (41488,65920) 76 off the line
+      L3         KS9    (61123,65844)-(61885,65844) span 762  column (61504,65920) 76 off the line
+      L3         KS10   (71208,65844)-(71970,65844) span 762  column (71589,65920) 76 off the line
+      L3         KS11   (64807,65844)-(65569,65844) span 762  column (65188,65920) 76 off the line
+  30972-01 (mm): 9 of 64
+      P3         KS1    (48894,38202)-(48894,39116) span 914  column (49097,38659) 203 off the line
+      P3         KS2    (46712,47744)-(47626,47744) span 914  column (47169,47616) 128 off the line
+      P3         KS3    (38710,47744)-(40217,47744) span 1508  column (39592,47644) 99 off the line
+      P3         KS5    (46407,25601)-(47147,25601) span 740  column (46929,25601) 0 off the line
+      P2         KS7    (46407,25601)-(47147,25601) span 740  column (46929,25601) 0 off the line
+      P2         KS8    (39303,47744)-(40217,47744) span 914  column (39760,47616) 128 off the line
+      P2         KS9    (46712,47744)-(47626,47744) span 914  column (47169,47616) 128 off the line
+      P1         KS11   (39303,47744)-(40217,47744) span 914  column (39760,47616) 128 off the line
+      P1         KS12   (46712,47744)-(47626,47744) span 914  column (47169,47616) 128 off the line
+  31003-01 (mm): 8 of 187
+      L1         KS1    (85976,38782)-(86335,38180) span 701  column (86062,38390) 127 off the line
+      L1         KS4    (90028,31963)-(90352,31410) span 641  column (90081,31622) 126 off the line
+      L1         KS5    (88018,35344)-(88341,34791) span 641  column (88070,35004) 126 off the line
+      L3         KS50   (43495,66422)-(45082,66074) span 1625  column (43644,66388) 2 off the line
+      L3         KS51   (53004,31820)-(54629,31820) span 1626  column (54375,31820) 0 off the line
+      L4         KS71   (32884,29737)-(34006,29737) span 1122  column (33851,29737) 0 off the line
+      L5         KS113  (32884,29737)-(34006,29737) span 1122  column (33851,29737) 0 off the line
+      L6         KS155  (32884,29737)-(34006,29737) span 1122  column (33851,29737) 0 off the line
+  31017-01 (mm): 8 of 76
+      P1         KS1    (63539,52104)-(64504,52105) span 965  column (64022,52054) 50 off the line
+      L1         KS2    (63539,52105)-(64504,52105) span 965  column (64022,52054) 51 off the line
+      L1         KS3    (45290,52104)-(46432,52104) span 1142  column (45861,52105) 1 off the line
+      L1         KS4    (55068,52104)-(56212,52105) span 1144  column (55640,52105) 1 off the line
+      C2         KS23   (72644,45675)-(72645,47199) span 1524  column (72568,46782) 76 off the line
+      C2         KS24   (72644,40639)-(72645,42163) span 1524  column (72568,41448) 76 off the line
+      C3         KS35   (72644,45675)-(72645,47199) span 1524  column (72568,46782) 76 off the line
+      C3         KS36   (72644,40639)-(72645,42163) span 1524  column (72568,41448) 76 off the line
+  31183-01 (mm): 5 of 10
+      P1         KS3    (98756,33222)-(99083,32299) span 979  column (98920,32758) 1 off the line
+      L1         KS4    (66517,49055)-(67116,49177) span 611  column (66859,48912) 208 off the line
+      L1         KS8    (96791,36593)-(97511,36826) span 756  column (97015,36666) 1 off the line
+      L1         KS9    (98758,33223)-(99045,32410) span 862  column (98901,32814) 1 off the line
+      L1         KS10   (117763,43982)-(118870,44416) span 1188  column (118272,44183) 1 off the line
+  30864-01 (mm): 4 of 40
+      P3         KS1    (50461,33790)-(50461,34692) span 902  column (50459,34241) 2 off the line
+      L2         KS24   (53806,18345)-(54720,18345) span 914  column (54254,18396) 51 off the line
+      ROOF       KS36   (34169,43104)-(34169,44852) span 1748  column (34169,44312) 0 off the line
+      L30        KS39   (34169,43104)-(34169,44852) span 1748  column (34169,44312) 0 off the line
+  31065-01 (mm): 4 of 157
+      P2         KS1    (993,50216)-(993,51109) span 893  column (842,50667) 150 off the line
+      L3         KS35   (19634,24735)-(19634,25362) span 627  column (19835,25051) 201 off the line
+      L4         KS40   (19634,24735)-(19634,25362) span 627  column (19835,25051) 201 off the line
+      L5         KS45   (19634,24735)-(19634,25362) span 627  column (19835,25051) 201 off the line
+  31155-01 (mm): 4 of 181
+      L4         KS61   (52255,31593)-(52722,31125) span 661  column (52489,31361) 2 off the line
+      L5         KS92   (52255,31593)-(52722,31125) span 661  column (52489,31361) 2 off the line
+      L6         KS123  (52255,31593)-(52722,31125) span 661  column (52489,31361) 2 off the line
+      ROOF       KS154  (52255,31593)-(52722,31125) span 661  column (52489,31361) 2 off the line
+  31087-01 (mm): 3 of 181
+      L2         KS21   (55396,50796)-(55396,51706) span 910  column (55396,51253) 0 off the line
+      L2         KS22   (55396,48382)-(55396,49296) span 914  column (55396,48839) 0 off the line
+      L2         KS23   (55396,40465)-(55396,41380) span 914  column (55396,40922) 0 off the line
+  31143-01 (mm): 3 of 128
+      L2         KS4    (68812,53216)-(69750,53216) span 939  column (69334,53369) 153 off the line
+      L3         KS30   (26201,53216)-(27343,53216) span 1142  column (26907,53238) 22 off the line
+      L3         KS43   (74999,37210)-(74999,38811) span 1601  column (75116,38540) 117 off the line
+  30993-01 (mm): 2 of 84
+      P2         KS2    (30529,3414)-(30529,4023) span 610  column (30529,3719) 0 off the line
+      UPPER ROOF KS84   (59369,54185)-(59369,54795) span 610  column (59217,54490) 152 off the line
+  31048-01 (mm): 2 of 199
+      L5         KS56   (16723,25854)-(16847,27601) span 1752  column (16475,26557) 297 off the line
+      L6         KS85   (16723,25854)-(16847,27601) span 1752  column (16475,26557) 297 off the line
+  31224-01 (mm): 2 of 3
+      L2         KS1    (15646,59810)-(16256,59810) span 610  column (15951,59786) 24 off the line
+      L2         KS2    (15649,50713)-(16258,50713) span 610  column (15953,50688) 24 off the line
+  30819-01 (mm): 1 of 5
+      L1         KS4    (27186,46407)-(27186,47577) span 1170  column (27186,46992) 0 off the line
+  30849-01 (mm): 1 of 4
+      L2         KS4    (40697,24067)-(41997,24067) span 1300  column (41837,24067) 0 off the line
+  30990-01 (mm): 1 of 268
+      L1         KS21   (72827,42534)-(74245,42534) span 1418  column (73278,42683) 149 off the line
+  31005-01 (mm): 1 of 25
+      L1         KS1    (39216,57806)-(39216,58416) span 610  column (39216,58111) 0 off the line
+  31009-01 (mm): 1 of 15
+      L2         KS15   (57688,42979)-(58639,42979) span 951  column (58450,43001) 22 off the line
+  31083-01 (mm): 1 of 3
+      L2         KS3    (47274,32455)-(47274,33065) span 610  column (46994,32760) 280 off the line
+  31093-01 (mm): 1 of 7
+      L1         KS1    (-12603,27462)-(-12603,28072) span 610  column (-12527,27767) 76 off the line
+  31098-01 (mm): 1 of 96
+      L2         KS10   (17000,12029)-(17963,12029) span 963  column (17481,12131) 102 off the line
+  40112-01 (mm): 1 of 3
+      L1         KS3    (49310,11528)-(49310,10106) span 1422  column (49310,11223) 0 off the line
+  80064-01 (mm): 1 of 15
+      L2         KS3    (85526,93792)-(86416,94031) span 921  column (85996,93815) 100 off the line
