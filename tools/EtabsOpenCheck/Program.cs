@@ -16,6 +16,11 @@
 //   4. ETABS's window as ETABS draws it after the import, as PNG (window-*.png) - the look at the deliverable as the
 //      engineer sees it
 //   5. the model saved as <outDir>\etabs-check.EDB (+ ETABS's own text twin .$et) - evidence beside, never the package
+//   6. with --gravity [--expect-kip N]: self-weight only, run twice on the copy - AS DELIVERED, then PINNED (UX UY UZ) at
+//      every Base point, a test assumption - each saved as gravity-<tag>.EDB; for each: RunAnalysis's code, ETABS's
+//      analysis .LOG verbatim (instability, lost digits), the base reaction FZ against N (KOR.Drafter e2k_selfweight.py),
+//      and each storey's largest vertical (and horizontal) movement. COVERS: does it stand under its own weight, does the
+//      weight add up. DOES NOT: loads beyond self-weight, lateral, P-delta, cracked stiffness, design, springs.
 // ETABS is closed at the end without saving anything else. Only the ETABS this tool started is ever closed or ended.
 //
 // COVERS: does it import (return code, what ETABS wrote, any dialog on screen); does ETABS hold the same storeys,
@@ -187,6 +192,14 @@ internal static class Program
             int saved = model.File.Save(Path.Combine(_out, "etabs-check.EDB"));
             Say($"5. saved as {Path.Combine(_out, "etabs-check.EDB")}: {saved}");
             exit = ret == 0 && diffs == 0 && am == 0 ? 0 : 2;
+
+            // 6. --gravity: self-weight only, on THIS copy, twice - as delivered, then pinned at Base (a test assumption)
+            if (args.Any(x => x.Equals("--gravity", StringComparison.OrdinalIgnoreCase)))
+            {
+                double expect = args.SkipWhile(x => !x.Equals("--expect-kip", StringComparison.OrdinalIgnoreCase)).Skip(1).Select(v => double.Parse(v, CultureInfo.InvariantCulture)).FirstOrDefault();
+                Gravity(model, "as-delivered", pin: false, expect);
+                Gravity(model, "pinned-at-base", pin: true, expect);
+            }
         }
         finally
         {
@@ -196,6 +209,108 @@ internal static class Program
         }
         Say(exit == 0 ? "VERDICT: imports, every count agrees, the analysis model builds" : "VERDICT: see the lines above");
         return exit;
+    }
+
+    // A linear static case of the file's own "Dead" pattern (SELFWEIGHT 1 - the e2k declares no case, and ETABS adds none
+    // on import), run alone; the analysis log verbatim, the total base reaction against the hand-worked self-weight, and the
+    // largest vertical movement on each storey. pin: UX UY UZ at every point on the Base storey - the firm's commonest
+    // support (5,480 of 6,173 restrained points in the 59 engineers' models we hold) - a TEST assumption on this copy only.
+    private static void Gravity(cSapModel model, string tag, bool pin, double expectKip)
+    {
+        Say($"6. GRAVITY ({tag}{(pin ? ": UX UY UZ pinned at every Base point - a test assumption, this copy only" : ": supports exactly as the e2k has them")})");
+        model.SetModelIsLocked(false);
+        if (pin)
+        {
+            int n = 0; string[] names = Array.Empty<string>();
+            model.PointObj.GetNameListOnStory("Base", ref n, ref names);
+            var fix = new[] { true, true, true, false, false, false };
+            int set = names.Count(p => { var v = (bool[])fix.Clone(); return model.PointObj.SetRestraint(p, ref v) == 0; });
+            Say($"   pinned {set} of {n} point(s) on Base");
+        }
+        // EVERY STEP SAYS ITS CODE (2026-10-28, first run: RunAnalysis 0 in 3-5 s, no log, no results - and nothing said
+        // which step had not taken). The patterns and cases as ETABS holds them, before and after.
+        int npat = 0; string[] pats = Array.Empty<string>();
+        model.LoadPatterns.GetNameList(ref npat, ref pats);
+        Say($"   load patterns: {string.Join(", ", pats.Select(p => { double m = 0; model.LoadPatterns.GetSelfWTMultiplier(p, ref m); return $"{p} (self-weight x{m:g})"; }))}");
+        Say($"   cases before: {Cases(model)}");
+        Say($"   StaticLinear.SetCase(KOR-Dead): {model.LoadCases.StaticLinear.SetCase("KOR-Dead")}");
+        string[] lt = { "Load" }, ln = { pats.FirstOrDefault(p => p.Equals("Dead", StringComparison.OrdinalIgnoreCase)) ?? "Dead" }; double[] sf = { 1.0 };
+        Say($"   StaticLinear.SetLoads(KOR-Dead, {ln[0]} x1): {model.LoadCases.StaticLinear.SetLoads("KOR-Dead", 1, ref lt, ref ln, ref sf)}");
+        string edb = Path.Combine(_out, $"gravity-{tag}.EDB");
+        Say($"   saved {Path.GetFileName(edb)}: {model.File.Save(edb)}");
+        Say($"   SetRunCaseFlag(all, off): {model.Analyze.SetRunCaseFlag("", false, true)}; SetRunCaseFlag(KOR-Dead, on): {model.Analyze.SetRunCaseFlag("KOR-Dead", true, false)}");
+        Say($"   cases to run: {Cases(model)}");
+        // THE SOLVER, said and run in-process (2026-10-28 rerun: case set and flagged, RunAnalysis 0 in 3-5 s, status 1 "not
+        // run", no file written - the solver never started, and nothing said why). SolverProcessType 1 = inside ETABS's own
+        // process ("GUI process"); every other solver setting is kept as ETABS has it. The screen is pictured every 2 s
+        // during the run and once after, so a message box ETABS raises is caught.
+        int stype = 0, ptype = 0, par = 0, fsize = 0, threads = 0; string stiff = "";
+        model.Analyze.GetSolverOption_3(ref stype, ref ptype, ref par, ref fsize, ref threads, ref stiff);
+        Say($"   solver as ETABS has it: type {stype}, process type {ptype} (0 auto, 1 GUI process, 2 separate), parallel runs {par}, response file max {fsize} MB, threads {threads}, stiffness case '{stiff}'");
+        Say($"   SetSolverOption_3(process type 1): {model.Analyze.SetSolverOption_3(stype, 1, par, fsize, threads, stiff)}");
+        var before = DateTime.Now.AddSeconds(-2);
+        var running = new CancellationTokenSource(); int shot = 0;
+        var shots = new Thread(() => { while (!running.IsCancellationRequested && shot < 30) { Thread.Sleep(2000); if (!running.IsCancellationRequested) CaptureScreen($"run-{tag}-{++shot:D2}"); } }) { IsBackground = true };
+        shots.Start();
+        var sw = Stopwatch.StartNew();
+        int run = model.Analyze.RunAnalysis();
+        running.Cancel();
+        Say($"   RunAnalysis: {run} in {sw.Elapsed.TotalSeconds:F1} s; {shot} picture(s) taken during it");
+        CaptureScreen($"run-{tag}-after");
+        int nc = 0; string[] cn = Array.Empty<string>(); int[] cs = Array.Empty<int>();
+        model.Analyze.GetCaseStatus(ref nc, ref cn, ref cs);
+        Say($"   case status (1 not run, 2 could not start, 3 not finished, 4 finished): {string.Join(", ", Enumerable.Range(0, nc).Select(i => $"{cn[i]}={cs[i]}"))}");
+        var written = Directory.GetFiles(_out, "*", SearchOption.AllDirectories).Where(f => File.GetLastWriteTime(f) >= before).OrderBy(f => f).ToList();
+        Say($"   ETABS wrote during the run: {string.Join(", ", written.Select(f => Path.GetRelativePath(_out, f)))}");
+        foreach (var log in written.Where(f => f.EndsWith(".LOG", StringComparison.OrdinalIgnoreCase)))
+        {
+            var lines = File.ReadAllLines(log);
+            Say($"   analysis log {Path.GetRelativePath(_out, log)}, {lines.Length} line(s), verbatim:");
+            foreach (var l in lines) Say($"   | {l}");
+        }
+        if (run != 0 || !Enumerable.Range(0, nc).Any(i => cn[i] == "KOR-Dead" && cs[i] == 4)) { Say("   KOR-Dead did not finish - no results read"); return; }
+
+        model.Results.Setup.DeselectAllCasesAndCombosForOutput();
+        model.Results.Setup.SetCaseSelectedForOutput("KOR-Dead");
+        int nr = 0; string[] lc = Array.Empty<string>(), st = Array.Empty<string>(); double[] sn = Array.Empty<double>(), fx = Array.Empty<double>(), fy = Array.Empty<double>(), fz = Array.Empty<double>(), mx = Array.Empty<double>(), my = Array.Empty<double>(), mz = Array.Empty<double>();
+        double gx = 0, gy = 0, gz = 0;
+        model.Results.BaseReact(ref nr, ref lc, ref st, ref sn, ref fx, ref fy, ref fz, ref mx, ref my, ref mz, ref gx, ref gy, ref gz);
+        if (nr > 0)
+        {
+            double kip = fz[0] / 1000;
+            Say($"   base reaction FZ {kip:N1} kip (FX {fx[0] / 1000:N1}, FY {fy[0] / 1000:N1}); hand-worked self-weight {(expectKip > 0 ? $"{expectKip:N1} kip -> {(kip - expectKip) / expectKip:P2}" : "not given (--expect-kip)")}");
+        }
+        else Say("   no base reaction returned");
+
+        int nd = 0; string[] obj = Array.Empty<string>(), elm = Array.Empty<string>(), dlc = Array.Empty<string>(), dst = Array.Empty<string>();
+        double[] dsn = Array.Empty<double>(), u1 = Array.Empty<double>(), u2 = Array.Empty<double>(), u3 = Array.Empty<double>(), r1 = Array.Empty<double>(), r2 = Array.Empty<double>(), r3 = Array.Empty<double>();
+        model.Results.JointDispl("All", eItemTypeElm.GroupElm, ref nd, ref obj, ref elm, ref dlc, ref dst, ref dsn, ref u1, ref u2, ref u3, ref r1, ref r2, ref r3);
+        var storeyOf = new Dictionary<string, string>();
+        int ns = 0; string[] stories = Array.Empty<string>();
+        model.Story.GetNameList(ref ns, ref stories);
+        foreach (var s in stories.Append("Base"))
+        {
+            int np = 0; string[] pts = Array.Empty<string>();
+            model.PointObj.GetNameListOnStory(s, ref np, ref pts);
+            foreach (var p in pts) storeyOf[p] = s;
+        }
+        Say($"   joint displacements: {nd} result(s); largest |UZ| (in) and |UX|,|UY| (in) per storey:");
+        foreach (var g in Enumerable.Range(0, nd).GroupBy(i => storeyOf.GetValueOrDefault(obj[i], "?")).OrderByDescending(g => g.Key == "Base" ? -1 : Array.IndexOf(stories, g.Key)))
+        {
+            int w = g.OrderByDescending(i => Math.Abs(u3[i])).First();
+            Say($"     {g.Key,-18} UZ {u3[w] * 12,9:F3} at {obj[w],-8} max |UX| {g.Max(i => Math.Abs(u1[i])) * 12:F3} |UY| {g.Max(i => Math.Abs(u2[i])) * 12:F3}");
+        }
+    }
+
+    private static string Cases(cSapModel model)
+    {
+        int n = 0; string[] names = Array.Empty<string>(); bool[] run = Array.Empty<bool>();
+        model.Analyze.GetRunCaseFlag(ref n, ref names, ref run);
+        return n == 0 ? "(none)" : string.Join(", ", Enumerable.Range(0, n).Select(i =>
+        {
+            eLoadCaseType type = default; int sub = 0; model.LoadCases.GetTypeOAPI(names[i], ref type, ref sub);
+            return $"{names[i]} [{type}] {(run[i] ? "RUN" : "off")}";
+        }));
     }
 
     private static int Compare(string what, Dictionary<string, int> file, Dictionary<string, int> etabs)
@@ -232,6 +347,18 @@ internal static class Program
                 all.Save(Path.Combine(_out, name + "-screen.png"), ImageFormat.Png);
             }
             Say($"   picture: {name}.png{(h == IntPtr.Zero ? " (no window handle - screen only)" : "")} + {name}-screen.png");
+        }
+        catch (Exception ex) { Say($"   picture {name} not taken: {ex.GetType().Name}: {ex.Message}"); }
+    }
+
+    private static void CaptureScreen(string name)
+    {
+        try
+        {
+            var screen = System.Windows.Forms.Screen.PrimaryScreen!.Bounds;
+            using var all = new Bitmap(screen.Width, screen.Height);
+            using (var g = Graphics.FromImage(all)) g.CopyFromScreen(screen.Location, Point.Empty, screen.Size);
+            all.Save(Path.Combine(_out, name + ".png"), ImageFormat.Png);
         }
         catch (Exception ex) { Say($"   picture {name} not taken: {ex.GetType().Name}: {ex.Message}"); }
     }
