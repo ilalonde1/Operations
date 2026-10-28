@@ -200,6 +200,17 @@
             "statusMessage": "Marking truncated output as a sample"
           }
         ]
+      },
+      {
+        "matcher": "Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_grep_sample_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Marking a truncated search as a sample"
+          }
+        ]
       }
     ]
   }
