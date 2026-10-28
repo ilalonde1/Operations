@@ -20,6 +20,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The MCP bridge's sign-in guard (McpBridge.SignIn) is driven by a test, not only read as source (board row 72). -->
+    <InternalsVisibleTo Include="Kor.Operations.NetworkOps.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.NetworkOps.Core\Kor.Operations.NetworkOps.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.NetworkOps.Transport\Kor.Operations.NetworkOps.Transport.csproj" />
   </ItemGroup>

@@ -40,11 +40,46 @@ internal static class McpBridge
         builder.Services.AddMcpServer()
             .WithStdioServerTransport()
             .WithListToolsHandler(async (_, ct) =>
-                new ListToolsResult { Tools = [.. (await upstream.ListToolsAsync(cancellationToken: ct).ConfigureAwait(false)).Select(t => t.ProtocolTool)] })
+                new ListToolsResult { Tools = [.. (await SignIn.OrSayItLapsed(() => upstream.ListToolsAsync(cancellationToken: ct).AsTask()).ConfigureAwait(false)).Select(t => t.ProtocolTool)] })
             .WithCallToolHandler(async (ctx, ct) =>
-                await upstream.CallToolAsync(ctx.Params!, ct).ConfigureAwait(false));
+                await SignIn.OrLapsedResult(() => upstream.CallToolAsync(ctx.Params!, ct).AsTask()).ConfigureAwait(false));
         await builder.Build().RunAsync().ConfigureAwait(false);
         return 0;
+    }
+
+    // A lapsed sign-in must say so. Until 28 Oct the SDK turned the token source's SignInNeededException into its stock
+    // "An error occurred invoking '<tool>'", and Revit Fleet spent several attempts on 27 Oct ~23:50 debugging its own
+    // script (board row 72) while the CLI, on the same lapse, exited 4 "SIGN-IN NEEDED".
+    internal static class SignIn
+    {
+        public const string Lapsed = "NetworkOps SIGN-IN EXPIRED (the same fault the CLI reports as exit 4): ";
+
+        /// <summary>The sign-in fault anywhere in the chain, or null: the token is asked for inside the HTTP pipeline, so
+        /// the SDK's transport may wrap it.</summary>
+        public static SignInNeededException? Find(Exception? e)
+        {
+            for (; e is not null; e = e.InnerException)
+                if (e is SignInNeededException s) return s;
+                else if (e is AggregateException a && a.InnerExceptions.Select(Find).FirstOrDefault(x => x is not null) is { } inner) return inner;
+            return null;
+        }
+
+        /// <summary>tools/call: a lapsed sign-in comes back as a tool error whose text says what to do.</summary>
+        public static async Task<CallToolResult> OrLapsedResult(Func<Task<CallToolResult>> call)
+        {
+            try { return await call().ConfigureAwait(false); }
+            catch (Exception e) when (Find(e) is { } s)
+            {
+                return new CallToolResult { IsError = true, Content = [new TextContentBlock { Text = Lapsed + s.Message }] };
+            }
+        }
+
+        /// <summary>tools/list has no error result: an McpException is the one the SDK passes through with its own text.</summary>
+        public static async Task<T> OrSayItLapsed<T>(Func<Task<T>> call)
+        {
+            try { return await call().ConfigureAwait(false); }
+            catch (Exception e) when (Find(e) is { } s) { throw new ModelContextProtocol.McpException(Lapsed + s.Message, e); }
+        }
     }
 }
 
