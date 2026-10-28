@@ -8,6 +8,9 @@
 //
 // Usage: takeoff corpus-gate [<projectsRoot>] [--baseline <ledger csv>] [--work <dir>] [--jobs a,b] [--parallel N]
 //                            [--rules-db <conn>] [--yardsticks <dir>] [--out <csv>] [--no-build] [--bisect KNOB,KNOB]
+//                            [--pdf job=path[;job=path]]
+//   --pdf        build that job from THIS stick file instead of the census's newest (an older issue a finding was made on;
+//                a local path - the mirror's copy - reads nothing over the share). A job or file not found stops the gate.
 //   --bisect     after a loss, re-read the LOST sets with each knob (KOR_STEP<n>_OFF) to name the rule that took them
 //   --baseline   the banked ledger to judge against (default: the newest docs/etabs-handoff/corpus/ledger-sets-*.csv)
 //   --jobs       judge these sets instead of every set of the baseline that has her model
@@ -26,6 +29,7 @@ internal static class CorpusGateVerb
         string root = PublishDiscovery.ProjectsRoot;
         string work = Path.Combine(DrawingMirror.Root, "corpus");
         string? baseline = null, jobs = null, rulesDb = null, yardsticks = null, outCsv = null, bisect = null;
+        var pins = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         int parallel = 12;
         bool build = true, recompose = false;
         for (int i = 1; i < args.Length; i++)
@@ -38,6 +42,15 @@ internal static class CorpusGateVerb
             else if (args[i].Equals("--yardsticks", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) yardsticks = args[++i];
             else if (args[i].Equals("--out", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) outCsv = args[++i];
             else if (args[i].Equals("--bisect", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) bisect = args[++i];
+            else if (args[i].Equals("--pdf", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+            {
+                foreach (string pin in args[++i].Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    int eq = pin.IndexOf('=');
+                    if (eq <= 0) { Console.Error.WriteLine($"--pdf wants job=path, got '{pin}'"); return 2; }
+                    pins[pin[..eq].Trim()] = pin[(eq + 1)..].Trim().Trim('"');
+                }
+            }
             else if (args[i].Equals("--no-build", StringComparison.OrdinalIgnoreCase)) build = false;
             else if (args[i].Equals("--recompose", StringComparison.OrdinalIgnoreCase)) recompose = true;
             else root = args[i];
@@ -72,6 +85,13 @@ internal static class CorpusGateVerb
             var problems = new List<string>();
             Console.WriteLine("census...");
             var census = StickFileCorpus.CensusCached(root, problems, TimeSpan.FromHours(12), false, line => Console.WriteLine("  " + line), parallel: 12);
+            if (pins.Count > 0)
+            {
+                var pinProblems = new List<string>();
+                census = StickFileCorpus.PinIssues(census, pins, pinProblems);
+                if (pinProblems.Count > 0) { foreach (string p in pinProblems) Console.Error.WriteLine(p); return 2; }
+                foreach (var (job, path) in pins) Console.WriteLine($"  {job}: pinned to {path}");
+            }
             var (options, rulesSource) = PdfIntakeOptions.For(rulesDb ?? Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable));
             Console.WriteLine($"rules: {rulesSource}; work: {work}");
             // --recompose: THE VIEWS OF THE LAST RUN STAND AND ONLY THE COMPOSER RUNS AGAIN (2026-09-23). A rule on
@@ -117,7 +137,8 @@ internal static class CorpusGateVerb
             Console.WriteLine($"  bisecting {report.Losses.Count} lost set(s) over {knobs.Count} knob(s): {string.Join(", ", knobs)}");
             var problems = new List<string>();
             var census = StickFileCorpus.CensusCached(root, problems, TimeSpan.FromHours(12), false, _ => { }, parallel: 12);
-            var (options, _) = PdfIntakeOptions.For(rulesDb ?? Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable));
+            if (pins.Count > 0) census = StickFileCorpus.PinIssues(census, pins, problems);   // the same pins the gate read, checked there
+            var (options, _)= PdfIntakeOptions.For(rulesDb ?? Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable));
             foreach (var lost in report.Losses)
             {
                 Console.WriteLine($"  {lost.Job}: {lost.BeforeSqFt:N0} -> {lost.AfterSqFt:N0} sq ft of her {lost.HersSqFt:N0}");

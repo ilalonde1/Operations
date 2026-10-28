@@ -81,4 +81,42 @@ public sealed class TheCorpusCensusCountsWhatEachJobHoldsTests
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
     }
+
+    /// <summary>
+    /// corpus-gate --pdf job=path (2026-10-27, board 49): the pinned job reads that one file, dated from its name, and nothing
+    /// else changes. COVERS: the pin replacing a newer issue; a job not pinned left as it was; a job the census lacks and a file
+    /// that is not there each a problem line, never a guess. DOES NOT: the verb's argument parsing, or a run that reads the pin.
+    /// </summary>
+    [Fact]
+    public void APinnedIssueReplacesTheNewestForThatJobOnly()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), $"kor-pin-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(dir);
+            string old = Path.Combine(dir, "31138-01 2026-09-01_2170 W 1st Ave_Str Set.pdf");
+            File.WriteAllText(old, "old issue");
+            StickFileCorpus.JobCensus Job(string job, string newest) => new("03 Residential", Path.Combine(dir, job), job,
+                [new StickFileCorpus.Issue(newest, "2026-10-01", true, 5)], [], [], null, 1, 0);
+            var census = new[] { Job("31138-01", @"X:\31138-01 2026-10-01 Stickfile.pdf"), Job("31130-01", @"X:\31130-01 2026-09-18 Stickfile.pdf") };
+
+            var problems = new List<string>();
+            var pinned = StickFileCorpus.PinIssues(census, new Dictionary<string, string> { ["31138-01"] = old, ["99999-01"] = old, ["31130-01"] = Path.Combine(dir, "gone.pdf") }, problems);
+
+            var p = Assert.Single(pinned[0].StructuralIssues);
+            Assert.Equal(Path.GetFullPath(old), p.Path);
+            Assert.Equal("2026-09-01", p.Date);
+            Assert.True(p.DateFromName);
+            Assert.Equal(new FileInfo(old).Length, p.Bytes);
+            Assert.Equal(p, pinned[0].Newest);
+            Assert.Same(census[1], pinned[1]);                                    // a missing file leaves the job as it was
+            Assert.Equal(2, problems.Count);
+            Assert.Contains(problems, x => x.Contains("99999-01", StringComparison.Ordinal) && x.Contains("no such job", StringComparison.Ordinal));
+            Assert.Contains(problems, x => x.Contains("31130-01", StringComparison.Ordinal) && x.Contains("no file at", StringComparison.Ordinal));
+        }
+        finally
+        {
+            if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
+        }
+    }
 }

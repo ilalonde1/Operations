@@ -158,6 +158,30 @@ public static class StickFileCorpus
         return taken;
     }
 
+    /// <summary>
+    /// A NAMED ISSUE IN PLACE OF THE NEWEST (2026-10-27, board 49). The census reads each job's newest stick file, so a
+    /// finding made on an older issue - 31138's three L2 columns, built from the 2026-09-01 set the six-set test banks -
+    /// could not be rebuilt by the gate at all, and only CorpusAnalyzer writes the placement a trace reads. Each pinned
+    /// job's issues become that one file, dated from its name (else its last-write date, flagged as the census does);
+    /// every other job is returned as it was. A job the census does not have, or a file that does not exist, is a
+    /// problem line and the job is left out of the pins, never guessed.
+    /// </summary>
+    public static IReadOnlyList<JobCensus> PinIssues(IReadOnlyList<JobCensus> census, IReadOnlyDictionary<string, string> pins, IList<string> problems)
+    {
+        foreach (var (job, _) in pins)
+            if (!census.Any(j => j.Job.Equals(job, StringComparison.OrdinalIgnoreCase)))
+                problems.Add($"--pdf {job}: no such job in the census");
+        return census.Select(j =>
+        {
+            var pin = pins.FirstOrDefault(p => p.Key.Equals(j.Job, StringComparison.OrdinalIgnoreCase));
+            if (pin.Key is null) return j;
+            var file = new FileInfo(pin.Value);
+            if (!file.Exists) { problems.Add($"--pdf {j.Job}: no file at {pin.Value}"); return j; }
+            string? named = DateInName(file.Name);
+            return j with { StructuralIssues = [new Issue(file.FullName, named ?? file.LastWriteTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), named is not null, file.Length)] };
+        }).ToList();
+    }
+
     /// <summary>The census as kept between runs: where it was taken, when, and every job folder.</summary>
     public sealed record KeptCensus(string Root, DateTime TakenUtc, IReadOnlyList<JobCensus> Jobs);
 
