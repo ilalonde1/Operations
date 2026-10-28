@@ -10,11 +10,14 @@ The known answers were established on 2026-10-28 (board 76) BEFORE this guard ex
   - gw-fix2m vs gw-b52 is the like-for-like pair, bar the jobs whose view lists differ.
 Reads only. Nothing is built, nothing is run, no work directory is written to.
 
-⚠ These are LIVE folders in another session's scratchpad, not fixtures: gw-b52's view list for 80064-01
-changed between two runs four minutes apart while that session re-ran it. So this asserts the guard's
-DECISIONS - which pairs it refuses and which it passes - and only prints the dropped job names, which
-are whatever is true at the moment. When the scratchpad is cleared the cases stop being runnable; at
-that point the honest thing is to rebuild a pair rather than to weaken what is asserted here.
+⚠ These are LIVE folders in another session's scratchpad, not fixtures: 80064-01's view list changed
+between two runs four minutes apart while gw-fix2m was still being written (gw-b52 finished at 11:12;
+gw-fix2m and gw-narrow were the live ones). So this asserts the guard's DECISIONS and, for a refusal,
+WHY - and only prints the dropped job names, which are whatever is true at the moment. Asserting the
+reason matters more than it looks: gw-before recorded no root when these cases were written and does
+now, so the "no root recorded" case would have gone on passing while testing something else.
+When the scratchpad is cleared the cases stop being runnable; the honest thing then is to rebuild a
+pair, not to weaken what is asserted here.
 """
 import io
 import os
@@ -28,26 +31,33 @@ E4 = (r"C:\Users\ilalonde\AppData\Local\Temp\claude"
 FIX2 = os.path.join(E4, "gw-fix2")                   # the share census
 FIX2M = os.path.join(E4, "gw-fix2m")                 # the mirror, d4352fc0-equivalent bin
 B52W = os.path.join(E4, "gw-b52")                    # the mirror, with the join
-NOROOT = os.path.join(E4, "gw-before")               # a run that recorded nothing
+SHAREW = os.path.join(E4, "gw-before")               # the share, recorded after the fact
+NOROOT = os.path.join(E4, "gw-pair")                 # a run whose root nobody can now state
 D435 = os.path.join(E4, "tonight", "takeoff-bin-d435")
 B52BIN = r"C:\w\b52\Kor.Operations.EngineeringTools.TakeoffCli\bin\Debug\net8.0"
 
 TRUE_CLAIM = {"before": (D435, "b94b8d33"), "after": (B52BIN, "77b56e29")}
 
-# name -> (before work, after work, claims, must refuse?)
+# (name, before work, after work, claims, must refuse?, a phrase the refusal must carry)
+# The last column is what stops a case passing for a reason that is not the one it was written for.
 CASES = [
-    ("the pair that caused this: share census vs mirror", FIX2, B52W, None, True),
-    ("like-for-like, both the mirror", FIX2M, B52W, None, False),
-    ("a side that recorded no root at all - refused, not guessed", NOROOT, B52W, None, True),
+    ("the pair that caused this: share census vs mirror", FIX2, B52W, None, True,
+     "projects root differs"),
+    ("like-for-like, both the mirror", FIX2M, B52W, None, False, None),
+    ("a run whose root nobody can state - refused, not guessed", NOROOT, B52W, None, True,
+     "root unknown"),
+    ("the share, recorded after the fact, against the mirror", SHAREW, B52W, None, True,
+     "projects root differs"),
     ("a claimed sha the bin does not carry (d4352fc0 vs b94b8d33)", FIX2M, B52W,
-     {"before": (D435, "d4352fc0"), "after": (B52BIN, "77b56e29")}, True),
-    ("the claim that is true of both bins", FIX2M, B52W, TRUE_CLAIM, False),
+     {"before": (D435, "d4352fc0"), "after": (B52BIN, "77b56e29")}, True, "vs claimed d4352fc0"),
+    ("the claim that is true of both bins", FIX2M, B52W, TRUE_CLAIM, False, None),
     ("a marker the bin does carry (+JoinThroughColumns)", FIX2M, B52W,
-     {"before": (D435, "b94b8d33"), "after": (B52BIN, "77b56e29+JoinThroughColumns")}, False),
+     {"before": (D435, "b94b8d33"), "after": (B52BIN, "77b56e29+JoinThroughColumns")}, False, None),
     ("a marker the bin does NOT carry", FIX2M, B52W,
-     {"before": (D435, "b94b8d33+JoinThroughColumns"), "after": (B52BIN, "77b56e29")}, True),
+     {"before": (D435, "b94b8d33+JoinThroughColumns"), "after": (B52BIN, "77b56e29")}, True,
+     "is NOT in"),
     ("a bin folder with no Core.dll", FIX2M, B52W,
-     {"before": (E4, "b94b8d33"), "after": (B52BIN, "77b56e29")}, True),
+     {"before": (E4, "b94b8d33"), "after": (B52BIN, "77b56e29")}, True, "no Kor.Operations"),
 ]
 
 
@@ -76,11 +86,13 @@ for label, folder, want_sha, marker, marker_in in DETECT:
 
 print()
 passed = 0
-for name, before, after, claims, want_refused in CASES:
+for name, before, after, claims, want_refused, because in CASES:
     refused, lines = run(before, after, claims)
-    ok = refused == want_refused
+    right_reason = because is None or any(because in l for l in lines)
+    ok = refused == want_refused and right_reason
     passed += ok
-    print(("  OK   " if ok else "  FAIL ") + name + ("   -> REFUSED" if refused else "   -> passed"))
+    print(("  OK   " if ok else "  FAIL ") + name + ("   -> REFUSED" if refused else "   -> passed")
+          + ("" if right_reason else f"   -> but not for {because!r}"))
     for line in lines:
         if line.startswith("REFUSED") or line.startswith("dropped:"):
             print("           " + line)
