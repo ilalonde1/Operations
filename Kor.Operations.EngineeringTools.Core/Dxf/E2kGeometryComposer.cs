@@ -591,20 +591,36 @@ public static class E2kGeometryComposer
         // 31138 carried six pairs of columns 2 mm apart on every storey from L11 to L20 (2026-09-12). A
         // column's joint is the joint of any column already placed within an inch of it. A building has
         // no two columns an inch apart; ShippedModelInvariants refuses a model with a pair.
-        var columnJoints = new List<(string Name, double X, double Y)>();
-        (string Name, double X, double Y)? ColumnJointNear(double x, double y, double reach = 0)
+        // ⚠ AN INCH FOR THE SAME COLUMN, HALF AN INCH FOR A NEW SIZE (2026-10-28, board row 79). A column reduced 2 in and held
+        // flush to one face moves its centre exactly an inch - Halifax's C15 (16x30 -> 14x30 flush west) and C12 (18x30 ->
+        // 16x30) - and at an inch that transition took the joint of the column below, so ETABS centred every such reduction
+        // while the read and the DXFs had it flush (Jim's review items 48-49). Half an inch for every column fixed that and
+        // split 55 unchanged stacks on the 57 sets (gate gw-r79: same section above and below, 13-25 mm apart - 45 on 31065),
+        // which is sheet drift, the thing an inch is for. So each joint keeps the sizes of the columns standing on it: within
+        // half an inch is always that joint; out to an inch only for a column the same size as one already on it.
+        var columnJoints = new List<(string Name, double X, double Y, HashSet<(bool, double, double)> Sizes)>();
+        (string Name, double X, double Y, HashSet<(bool, double, double)> Sizes)? ColumnJointNear(
+            double x, double y, (bool, double, double)? size = null, double reach = 0)
         {
-            double within = Math.Max(inch, reach);
+            // ⚠ THE FIRST THAT QUALIFIES, NOT THE NEAREST (2026-10-28, row 79's third instance). Nearest was tried for Halifax's
+            // C15 - flush on its L2 sheet, centred on L3-20's, the same 14x30 an inch apart - and on 31065 it let alternate
+            // typical sheets that draw one unchanged column 23 mm apart keep a joint each: a zig-zag on seven storeys (gate
+            // r79c). Two sheets disagreeing by under an inch about an unchanged column are drift, and drift is ONE stack; which
+            // place wins is first-come, as it always was. Halifax's disagreement is the read's to settle (Jim items 50-51).
             foreach (var j in columnJoints)
-                if (LoopGeometry.Within(Math.Sqrt((j.X - x) * (j.X - x) + (j.Y - y) * (j.Y - y)), within))
+            {
+                double apart = Math.Sqrt((j.X - x) * (j.X - x) + (j.Y - y) * (j.Y - y));
+                double within = Math.Max(size is { } s && j.Sizes.Contains(s) ? inch : 0.5 * inch, reach);
+                if (LoopGeometry.Within(apart, within))
                     return j;
+            }
             return null;
         }
-        string ColumnJointAt(double x, double y)
+        string ColumnJointAt(double x, double y, (bool, double, double) size)
         {
-            if (ColumnJointNear(x, y) is { } near) return near.Name;
+            if (ColumnJointNear(x, y, size) is { } near) { near.Sizes.Add(size); return near.Name; }
             string made = PointAt(x, y);
-            columnJoints.Add((made, x, y));
+            columnJoints.Add((made, x, y, new HashSet<(bool, double, double)> { size }));
             return made;
         }
         var placedWalls = new PlacedMembers(inch);
@@ -1156,7 +1172,8 @@ public static class E2kGeometryComposer
                 // columns whose centres are closer than the larger one's side stand inside each other, and no building has that.
                 // ON ITS OWN STOREY ONLY: a column offset from the one below it (a transfer, a step in the grid) is two columns,
                 // and the first cut snapped across storeys - 126 to 207 columns moved 0.3-0.7 m on each of the six banked sets.
-                if (ColumnJointNear(x, y) is { } sameJoint) { x = sameJoint.X; y = sameJoint.Y; }
+                var size = (column.IsRound, Math.Min(w, d), Math.Max(w, d));
+                if (ColumnJointNear(x, y, size) is { } sameJoint) { x = sameJoint.X; y = sameJoint.Y; }
                 // OVERLAP MEANS THE FOOTPRINTS MEET (2026-10-21): centres closer than half the two sizes together. The larger
                 // side alone as the reach merged neighbours that stand apart - 41 of ours on 31065, 31138 and 31202, seven
                 // of them columns of hers, and a round column on 31138 swallowed by a square one. L37's pairs (231 and 295 mm
@@ -1181,7 +1198,7 @@ public static class E2kGeometryComposer
                     continue;
                 }
 
-                string at = ColumnJointAt(x, y);
+                string at = ColumnJointAt(x, y, size);
 
                 // The section is claimed only once the column is certain to be written. Claimed any
                 // earlier, a column that is then skipped as one the engineer already has leaves its

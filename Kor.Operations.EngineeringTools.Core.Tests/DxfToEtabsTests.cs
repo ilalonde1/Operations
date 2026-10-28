@@ -1416,6 +1416,97 @@ public class E2kDocumentTests
     }
 
     /// <summary>
+    /// Board row 79: a column reduced 2 in and held flush to one face moves its centre exactly an inch, and that is a
+    /// transition the engineer drew, not a second reading of the same column. The composer took "a column within an inch of
+    /// any joint already placed" as the same column ACROSS storeys, so Halifax's C15 (P1 16x30 -> L1 14x30 flush west) and
+    /// C12 (L1 18x30 -> L2 16x30 flush west) were modelled centred in ETABS while the read and the DXFs had them flush - Jim's
+    /// review items 48-49. WHAT THIS COVERS: a 16x30 on LEVEL 2 and a 14x30 on LEVEL 3 an inch west (west faces flush) keep
+    /// their own centres, one inch apart; a column 0.2 in off the one below still takes its joint (sheet drift); and a column
+    /// the SAME size 0.7 in off the one below takes its joint too - half an inch for every column split 55 unchanged stacks
+    /// 13-25 mm apart on the 57 sets (gate gw-r79), so out to an inch is still drift for a column whose size did not change.
+    /// WHAT IT DOES NOT: two readings on ONE storey (PlacedMembers and step 162, the tests around this one); a reduction drawn
+    /// flush that moves the centre LESS than half an inch (a 1 in reduction) - that still takes the joint below.
+    /// </summary>
+    [Fact]
+    public void AColumnHeldFlushAboveAReductionKeepsItsOwnCentre()
+    {
+        static PlanGeometrySet Plan(double x, double width)
+        {
+            var g = new PlanGeometrySet();
+            g.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(120, 0), 12, "JBP_V-WALL"));
+            g.Columns.Add(new ColumnFootprint(new DxfPoint(x, 50), width, 30, "JBP_V_COL"));
+            return g;
+        }
+        static List<double> ColumnXs(double xAbove, double widthAbove = 14)
+        {
+            var doc = E2kDocument.Parse(Reference);
+            var stories = doc.ReadStories();
+            E2kGeometryComposer.Compose(doc, new[]
+            {
+                new StoryPlacement(stories.Single(s => s.Name == "LEVEL 2"), Plan(50, 16), "l2.dxf"),
+                new StoryPlacement(stories.Single(s => s.Name == "LEVEL 3"), Plan(xAbove, widthAbove), "l3.dxf"),
+            }, new ComposeOptions { MembersRiseToStoreyAbove = false });
+            var points = doc.LinesOf("POINT COORDINATES")
+                .Select(l => System.Text.RegularExpressions.Regex.Match(l, "POINT\\s+\"(\\S+)\"\\s+(\\S+)\\s+(\\S+)"))
+                .Where(m => m.Success).ToDictionary(m => m.Groups[1].Value, m => double.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture));
+            return doc.LinesOf("LINE CONNECTIVITIES")
+                .Select(l => System.Text.RegularExpressions.Regex.Match(l, "LINE\\s+\"KC\\S*\"\\s+COLUMN\\s+\"(\\S+)\""))
+                .Where(m => m.Success && points.ContainsKey(m.Groups[1].Value)).Select(m => points[m.Groups[1].Value]).Distinct().OrderBy(x => x).ToList();
+        }
+
+        Assert.Equal(new[] { 49.0, 50.0 }, ColumnXs(49));     // flush west: an inch apart, two places
+        Assert.Equal(new[] { 50.0 }, ColumnXs(49.8));         // 0.2 in of drift: one joint
+        Assert.Equal(new[] { 50.0 }, ColumnXs(49.3, 16));     // the same 16x30 0.7 in off: drift, one joint
+    }
+
+    /// <summary>
+    /// Board row 79, the second instance: two typical sheets that draw an UNCHANGED column a little under an inch apart are
+    /// one column - one stack - whichever sheet is read first. 31065's 14x34 at x -8,555.6 on its even storeys and -8,578.9
+    /// on its odd ones: choosing the NEAREST qualifying joint (gate r79c, 2026-10-28) let every odd storey keep its own and
+    /// zig-zagged the stack on seven storeys. That change was made for Halifax's C15, whose L2 sheet (flush) and L3-20 sheet
+    /// (centred) disagree by an inch about the same 14x30 - the same shape, which no geometric rule can resolve both ways:
+    /// that disagreement is the read's to settle (items 50-51), and here the first-come joint wins, as it always has.
+    /// WHAT THIS COVERS: same size, 0.9 in apart, alternating storeys, composed odd-first: one place. WHAT IT DOES NOT: which
+    /// of the two places wins (first-come); a size change (AColumnHeldFlushAboveAReductionKeepsItsOwnCentre).
+    /// </summary>
+    [Fact]
+    public void AnUnchangedColumnDrawnAlternatelyByTwoSheetsIsOneStack()
+    {
+        var reference = Reference.ToList();
+        int at = reference.FindIndex(l => l.Contains("\"LEVEL 3\""));
+        reference.InsertRange(at, new[] { "  STORY \"LEVEL 5\"  HEIGHT 120", "  STORY \"LEVEL 4\"  HEIGHT 120" });
+        var doc = E2kDocument.Parse(reference.ToArray());
+        var stories = doc.ReadStories();
+        static PlanGeometrySet Plan(double x, double width)
+        {
+            var g = new PlanGeometrySet();
+            g.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(120, 0), 12, "JBP_V-WALL"));
+            g.Columns.Add(new ColumnFootprint(new DxfPoint(x, 50), width, 30, "JBP_V_COL"));
+            return g;
+        }
+        E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(stories.Single(s => s.Name == "LEVEL 2"), Plan(50, 16), "l2.dxf"),     // a different size below
+            new StoryPlacement(stories.Single(s => s.Name == "LEVEL 5"), Plan(49.1, 14), "l5.dxf"),   // odd sheet, read first
+            new StoryPlacement(stories.Single(s => s.Name == "LEVEL 4"), Plan(50, 14), "l4.dxf"),     // even sheet
+            new StoryPlacement(stories.Single(s => s.Name == "LEVEL 3"), Plan(49.1, 14), "l3.dxf"),   // odd sheet again
+        }, new ComposeOptions { MembersRiseToStoreyAbove = false });
+
+        var points = doc.LinesOf("POINT COORDINATES")
+            .Select(l => System.Text.RegularExpressions.Regex.Match(l, "POINT\\s+\"(\\S+)\"\\s+(\\S+)\\s+(\\S+)"))
+            .Where(m => m.Success).ToDictionary(m => m.Groups[1].Value, m => double.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture));
+        var pointOf = doc.LinesOf("LINE CONNECTIVITIES")
+            .Select(l => System.Text.RegularExpressions.Regex.Match(l, "LINE\\s+\"(KC\\S*)\"\\s+COLUMN\\s+\"(\\S+)\""))
+            .Where(m => m.Success).ToDictionary(m => m.Groups[1].Value, m => m.Groups[2].Value);
+        List<double> XOn(string storey) => doc.LinesOf("LINE ASSIGNS")
+            .Select(l => System.Text.RegularExpressions.Regex.Match(l, "LINEASSIGN\\s+\"(KC\\S*)\"\\s+\"" + storey + "\""))
+            .Where(m => m.Success && pointOf.ContainsKey(m.Groups[1].Value)).Select(m => points[pointOf[m.Groups[1].Value]]).ToList();
+
+        Assert.Single(XOn("LEVEL 3"));
+        Assert.Equal(XOn("LEVEL 4"), XOn("LEVEL 3"));         // L3 and L4: the same 14x30 0.9 in apart is one stack, not a zig-zag
+    }
+
+    /// <summary>
     /// Step 162 (2026-10-19): two column footprints whose centres are closer than the larger one's side stand inside each
     /// other - one column drawn twice (143 E 3rd's L37: the tower's 14 x 36 risen from L36's plan and the roof plan's
     /// 18 x 18, 231 and 295 mm apart). WHAT THIS COVERS: two 24" readings 1.06" and 23" apart are one; 25" apart, two.
