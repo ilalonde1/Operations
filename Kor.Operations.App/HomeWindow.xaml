@@ -292,6 +292,22 @@
                     </StackPanel>
                 </Button>
 
+                <Button x:Name="ContractsCard" Style="{StaticResource HomeCardButton}" Click="OpenContracts_Click">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                            <TextBlock Text="📜" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="Contracts" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                        <TextBlock Text="What KOR has signed, clause by clause, from every client agreement on file."
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
+                                Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
+
                 <Button x:Name="FeeProposalBuilderCard" Style="{StaticResource HomeCardButton}" Click="OpenFeeProposal_Click">
                     <StackPanel>
                         <Grid>

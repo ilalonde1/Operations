@@ -19,4 +19,6 @@ internal static class KnownRoles
     internal const string Opportunities = "Opportunities";
     internal const string BusinessDevelopment = "BusinessDevelopment";
     internal const string BdDirector = "BdDirector";
+    /// <summary>Home → Contracts (the clause library). Ian 2026-10-28: Rory alone to start.</summary>
+    internal const string Contracts = "Contracts";
 }

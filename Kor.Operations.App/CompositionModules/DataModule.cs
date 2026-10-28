@@ -27,6 +27,8 @@ internal static class DataModule
         services.AddSingleton<IProposalBlockLibraryStore>(sp => sp.GetRequiredService<SqlProposalBlockLibraryStore>());
         services.AddSingleton<SqlFeeProposalStore>(_ => new SqlFeeProposalStore(databaseOptions.KorTransmittalsDb));
         services.AddSingleton<IFeeProposalStore>(sp => sp.GetRequiredService<SqlFeeProposalStore>());
+        services.AddSingleton<SqlContractClauseStore>(_ => new SqlContractClauseStore(databaseOptions.KorTransmittalsDb));
+        services.AddSingleton<IContractClauseStore>(sp => sp.GetRequiredService<SqlContractClauseStore>());
         services.AddSingleton<SqlBrochureProposalStore>(_ => new SqlBrochureProposalStore(databaseOptions.KorTransmittalsDb));
         services.AddSingleton<IBrochureProposalStore>(sp => sp.GetRequiredService<SqlBrochureProposalStore>());
         services.AddSingleton(sp => ActivatorUtilities.CreateInstance<PreferencesRepository>(sp, databaseOptions.KorTransmittalsDb));

@@ -1,0 +1,142 @@
+<Window x:Class="Kor.Operations.App.Contracts.ContractsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        Title="Contracts — Positions on file"
+        Width="1480"
+        Height="860"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI"
+        Loaded="Window_Loaded">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <Style x:Key="Contracts.Grid" TargetType="DataGrid" BasedOn="{StaticResource KorDataGridBase}">
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+            <Setter Property="SelectionUnit" Value="FullRow"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource Panel.Border}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Panel.Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="RowHeight" Value="30"/>
+        </Style>
+        <Style x:Key="Contracts.Label" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <controls:KorHeader x:Name="HeaderBar"
+                            Grid.Row="0"
+                            Margin="2,0,2,8"
+                            HeaderText="Contracts"
+                            SubtitleText="What KOR has signed, clause by clause, from every client agreement on file"
+                            AvatarDiameter="64"
+                            AvatarBorderThickness="2"/>
+
+        <!-- Filters -->
+        <Border Grid.Row="1" Margin="12,0,12,8" Padding="12,10" CornerRadius="6"
+                Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="240"/>
+                    <ColumnDefinition Width="280"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                    <TextBlock Text="Topic" Style="{StaticResource Contracts.Label}"/>
+                    <ComboBox x:Name="TopicBox" ItemsSource="{Binding Topics}" SelectedItem="{Binding SelectedTopic}" DisplayMemberPath="Label" Height="30"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                    <TextBlock Text="Client" Style="{StaticResource Contracts.Label}"/>
+                    <ComboBox x:Name="ClientBox" ItemsSource="{Binding Clients}" SelectedItem="{Binding SelectedClient}" Height="30"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Margin="0,0,12,0">
+                    <TextBlock Text="Words in the clause" Style="{StaticResource Contracts.Label}"/>
+                    <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Height="30" VerticalContentAlignment="Center" KeyDown="SearchBox_KeyDown"/>
+                </StackPanel>
+                <CheckBox Grid.Column="3" Content="Signed agreements only" IsChecked="{Binding SignedOnly}" VerticalAlignment="Bottom" Margin="0,0,16,6"/>
+                <Button Grid.Column="4" x:Name="SearchButton" Content="Search" Click="Search_Click" IsEnabled="{Binding CanSearch}"
+                        Style="{StaticResource Button.Primary}" MinWidth="110" Height="32" VerticalAlignment="Bottom"/>
+            </Grid>
+        </Border>
+
+        <!-- Results and the selected clause -->
+        <Grid Grid.Row="2" Margin="12,0,12,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="2*"/>
+            </Grid.ColumnDefinitions>
+
+            <DataGrid x:Name="PositionsGrid" Grid.Column="0" Style="{StaticResource Contracts.Grid}"
+                      ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Client" Binding="{Binding Client}" Width="190"/>
+                    <DataGridTextColumn Header="Job" Binding="{Binding Job}" Width="76"/>
+                    <DataGridTextColumn Header="Year" Binding="{Binding Year}" Width="54"/>
+                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="104"/>
+                    <DataGridTextColumn Header="§" Binding="{Binding Section}" Width="56"/>
+                    <DataGridTextColumn Header="Clause" Binding="{Binding Preview}" Width="*"/>
+                    <DataGridTextColumn Header="Words" Binding="{Binding Words}" Width="58"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <Border Grid.Column="2" Padding="14,12" CornerRadius="6"
+                    Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Pick a clause on the left." Foreground="{StaticResource Text.Secondary}"
+                               Visibility="{Binding HasNoSelection, Converter={StaticResource BoolToVis}}"/>
+                    <StackPanel Grid.Row="0" Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}">
+                        <TextBlock FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap">
+                            <Run Text="{Binding SelectedRow.Client, Mode=OneWay}"/><Run Text="  ·  "/><Run Text="{Binding SelectedRow.Job, Mode=OneWay}"/><Run Text="  ·  "/><Run Text="{Binding SelectedRow.Year, Mode=OneWay}"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,2,0,0">
+                            <Run Text="{Binding SelectedRow.Status, Mode=OneWay}"/><Run Text="  ·  §"/><Run Text="{Binding SelectedRow.Section, Mode=OneWay}"/><Run Text="  ·  "/><Run Text="{Binding SelectedRow.TopicLabels, Mode=OneWay}"/>
+                        </TextBlock>
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Text="{Binding SelectedRow.SourceLabel, Mode=OneWay}" Foreground="{StaticResource Text.Secondary}"
+                               FontSize="12" TextWrapping="Wrap" Margin="0,6,0,8"
+                               Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}"/>
+                    <TextBox Grid.Row="2" x:Name="ClauseText" Text="{Binding SelectedRow.Text, Mode=OneWay}" IsReadOnly="True"
+                             TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"
+                             BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" Padding="8" FontSize="13"
+                             Background="{StaticResource App.Background}"
+                             Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}"/>
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0"
+                                Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}">
+                        <Button Content="Open the source folder" Click="OpenSource_Click" Style="{StaticResource Button.Secondary}" MinWidth="170" Height="30" Margin="0,0,8,0"/>
+                        <Button Content="Copy clause" Click="CopyClause_Click" Style="{StaticResource Button.Secondary}" MinWidth="110" Height="30"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <DockPanel Grid.Row="3" Margin="12,8,12,10">
+            <ProgressBar DockPanel.Dock="Right" IsIndeterminate="True" Width="120" Height="6" Margin="12,0,0,0"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
+            <TextBlock Text="{Binding Status}" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+        </DockPanel>
+    </Grid>
+</Window>

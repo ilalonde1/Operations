@@ -89,6 +89,8 @@ internal static class AppModule
 
         services.AddTransient<BrochureBuilderViewModel>();
         services.AddTransient<FeeProposalBuilderViewModel>();
+        services.AddTransient<App.Contracts.ContractPositionsViewModel>();
+        services.AddTransient<App.Contracts.ContractsWindow>();
         // Round 38a: promoted to Singleton so the upcoming PM Tools window split
         // (Workload Meeting + PM Capacity & Risk) can share one VM across both
         // windows — the per-row priority ComboBox in the capacity window writes

@@ -161,6 +161,13 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenContracts_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<App.Contracts.ContractsWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void OpenFeeProposal_Click(object sender, RoutedEventArgs e)
         {
             var win = Kor.Operations.Services.AppServices.Get<App.FeeProposal.FeeProposalBuilderWindow>();
@@ -264,6 +271,9 @@ namespace Kor.Operations
                 var canSeeFeeProposalBuilder = SecurityGroupAccess.IsUserInGroup(KnownRoles.FeeProposalBuilder, userIdentity);
                 FeeProposalBuilderCard.Visibility = canSeeFeeProposalBuilder ? Visibility.Visible : Visibility.Collapsed;
 
+                var canSeeContracts = SecurityGroupAccess.IsUserInGroup(KnownRoles.Contracts, userIdentity);
+                ContractsCard.Visibility = canSeeContracts ? Visibility.Visible : Visibility.Collapsed;
+
                 var canSeeEngineeringTools = SecurityGroupAccess.IsUserInGroup(KnownRoles.EngineeringTools, userIdentity);
                 EngineeringToolsTileHost.Visibility = canSeeEngineeringTools ? Visibility.Visible : Visibility.Collapsed;
 
@@ -336,6 +346,7 @@ namespace Kor.Operations
             OpportunitiesTileHost.Visibility = state.Opportunities;
             BusinessDevelopmentTileHost.Visibility = state.BusinessDevelopment;
             BdReportsTileHost.Visibility = state.BdReports;
+            ContractsCard.Visibility = Visibility.Collapsed;   // restricted fallback: the clause library is gated, so hidden when the lookup fails
         }
 
         private void RebuildHomeCardsLayout()
@@ -358,6 +369,7 @@ namespace Kor.Operations
                 StandardDetailsTileHost,
                 BusinessDevelopmentTileHost,
                 BdReportsTileHost,
+                ContractsCard,
                 GeneralToolsCard,
                 FeeProposalBuilderCard,
                 OpportunitiesTileHost,
