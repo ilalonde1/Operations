@@ -27,6 +27,8 @@ foreach ($c in $cards) {
   $tok = [regex]::Match($p.markdown, "'X-Prompt-Token' = '([^']+)'").Groups[1].Value
   if (-not $p.runId -or -not $tok) { "$i. NO RUN/TOKEN in the rendered prompt"; continue }
   $card = [ordered]@{ title = $c.title; appliesTo = $c.appliesTo; symptom = $c.symptom; cause = $c.cause; check = $c.check; fix = $c.fix; tags = $c.tags; plain = $c.plain }
+  # "amends": <card id> supersedes an accepted card (db/KorNetworkOps/012): accepted, it retires the old one, which is kept.
+  if ($c.amends) { $card.amends = [long]$c.amends }
   $o = Post "api/prompt-runs/$($p.runId)/outcome" @{ outcome = 'solved'; summary = "Known solution banked by operations-e6 on 27 Oct 2026 at Ian's request (recorded in NetworkOps' own DB): $($c.title)"; learned = $null; card = $card } @{ 'X-Prompt-Token' = $tok }
   "$i. run $($p.runId): $($o.Status) $($o.Body)"
 }
