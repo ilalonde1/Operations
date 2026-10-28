@@ -19,6 +19,13 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 ///
 /// Coordinates are made exactly equal, which is what matters: the composer names joints by rounded
 /// position, so two walls sharing a coordinate share a joint in the file ETABS reads.
+///
+/// ⚠ EVERY LENGTH HERE IS IN INCHES AND IS SCALED BY <c>inch</c>, THE DRAWING UNITS IN ONE INCH (2026-10-27).
+/// The classifier runs in the model's unit, and these literals were applied in it as they stood: in a feet model the
+/// 2 in snap was 2 ft, so Halifax LEVEL 1's corner ends 329 mm apart were averaged into a tilted joint, and the 2 in
+/// of reach became 2 ft and carried a wall end 1145 mm across its own 969 mm door; in a millimetre model - every PDF-route
+/// build - the same 2 in was 2 mm, and the door finder's "within 4 in of the same thickness" was 4 mm.
+/// AModelIsTheSameInInchesAndMillimetresTests composes the Halifax core in all three units and diffs them.
 /// </summary>
 public static class WallNetwork
 {
@@ -40,10 +47,12 @@ public static class WallNetwork
     /// <summary>How far past its drawn end a centreline may be carried, as a multiple of the pair's thickness.</summary>
     private const double ReachFactor = 1.25;
 
-    /// <summary>Ends this close after crossing are the same joint.</summary>
+    /// <summary>Ends this close after crossing are the same joint, in inches.</summary>
     private const double SnapTolerance = 2.0;
 
-    public static IReadOnlyList<WallAxis> Connect(IReadOnlyList<WallAxis> walls)
+    /// <param name="walls">The centrelines, in the drawing's unit.</param>
+    /// <param name="inch">How many of the drawing's units make an inch: 1 in an inch drawing, 25.4 in millimetres, 1/12 in feet.</param>
+    public static IReadOnlyList<WallAxis> Connect(IReadOnlyList<WallAxis> walls, double inch = 1.0)
     {
         if (walls.Count < 2) return walls;
 
@@ -52,9 +61,10 @@ public static class WallNetwork
             .Select(w => new Axis { A = w.Start, B = w.End, Thickness = w.Thickness, Layer = w.Layer })
             .ToList();
 
-        CarryEndsToCorners(axes);
-        SnapNearbyEnds(axes);
-        var split = SplitAtTJunctions(axes);
+        double snap = SnapTolerance * inch;
+        CarryEndsToCorners(axes, inch);
+        SnapNearbyEnds(axes, snap);
+        var split = SplitAtTJunctions(axes, snap);
 
         return split
             .Where(a => a.Length > 1e-6)
@@ -71,7 +81,7 @@ public static class WallNetwork
     /// wall meeting two others resolves to its two nearest corners rather than to whichever pair
     /// happened to be considered first.
     /// </summary>
-    private static void CarryEndsToCorners(List<Axis> axes)
+    private static void CarryEndsToCorners(List<Axis> axes, double inch)
     {
         var moves = new List<(double Distance, int AxisIndex, int Which, DxfPoint To)>();
 
@@ -82,9 +92,9 @@ public static class WallNetwork
             var b = axes[j];
             if (!TryCross(a, b, out var cross)) continue;
 
-            double reach = (a.Thickness + b.Thickness) / 2.0 * ReachFactor + 2.0;
-            if (!TryEndToMove(a, cross, reach, out int endA, out double da)) continue;
-            if (!TryEndToMove(b, cross, reach, out int endB, out double db)) continue;
+            double reach = (a.Thickness + b.Thickness) / 2.0 * ReachFactor + 2.0 * inch;
+            if (!TryEndToMove(a, cross, reach, b.Thickness, out int endA, out double da)) continue;
+            if (!TryEndToMove(b, cross, reach, a.Thickness, out int endB, out double db)) continue;
 
             moves.Add((da, i, endA, cross));
             moves.Add((db, j, endB, cross));
@@ -122,8 +132,14 @@ public static class WallNetwork
     /// <summary>
     /// Which end of this wall the crossing belongs to, if any. A crossing that falls in the body of
     /// the wall is not an end to be moved.
+    ///
+    /// "The body" was the middle half of the wall's length, and a SHORT wall's corner falls in it. Halifax LEVEL 1's
+    /// corner piece is 1027 mm long and runs on to the far face of the 24 in wall it turns into, so the centrelines cross
+    /// 275 mm in from its end - t = 0.27 - and the L was never joined: both pieces stood alone, under 48 in, and became
+    /// columns (2026-10-27). A crossing inside the wall is a corner when what lies beyond it is no more than the other
+    /// wall's half thickness, with the same reach factor: the wall stops at the other's far face. A T is a wall running on.
     /// </summary>
-    private static bool TryEndToMove(Axis axis, DxfPoint cross, double reach, out int which, out double distance)
+    private static bool TryEndToMove(Axis axis, DxfPoint cross, double reach, double otherThickness, out int which, out double distance)
     {
         which = -1;
         distance = 0;
@@ -133,15 +149,15 @@ public static class WallNetwork
         if (lengthSquared < 1e-9) return false;
 
         double t = ((cross.X - axis.A.X) * dx + (cross.Y - axis.A.Y) * dy) / lengthSquared;
-        if (t > 0.25 && t < 0.75) return false;          // mid-span: a T-junction, not a corner
-
         which = t < 0.5 ? 0 : 1;
         distance = cross.DistanceTo(axis.End(which));
+        if (t > 0.25 && t < 0.75 && LoopGeometry.Beyond(distance, otherThickness / 2.0 * ReachFactor))
+            return false;                                // mid-span: a T-junction, not a corner
         return LoopGeometry.Within(distance, reach);
     }
 
     /// <summary>Pass 2 — ends left within a whisker of each other become one joint.</summary>
-    private static void SnapNearbyEnds(List<Axis> axes)
+    private static void SnapNearbyEnds(List<Axis> axes, double snap)
     {
         var ends = new List<(int AxisIndex, int Which)>();
         for (int i = 0; i < axes.Count; i++) { ends.Add((i, 0)); ends.Add((i, 1)); }
@@ -159,7 +175,7 @@ public static class WallNetwork
 
             var p = axes[ends[i].AxisIndex].End(ends[i].Which);
             var q = axes[ends[k].AxisIndex].End(ends[k].Which);
-            if (LoopGeometry.Within(p.DistanceTo(q), SnapTolerance)) { int a = Find(i), b = Find(k); if (a != b) clusterOf[a] = b; }
+            if (LoopGeometry.Within(p.DistanceTo(q), snap)) { int a = Find(i), b = Find(k); if (a != b) clusterOf[a] = b; }
         }
 
         var members = new Dictionary<int, List<int>>();
@@ -185,7 +201,7 @@ public static class WallNetwork
     /// Without this the stem of a T shares no joint with the wall it runs into: ETABS meshes them
     /// independently and the connection carries nothing.
     /// </summary>
-    private static List<Axis> SplitAtTJunctions(List<Axis> axes)
+    private static List<Axis> SplitAtTJunctions(List<Axis> axes, double snap)
     {
         var joints = new List<DxfPoint>();
         foreach (var axis in axes) { joints.Add(axis.A); joints.Add(axis.B); }
@@ -210,7 +226,7 @@ public static class WallNetwork
             joints.Add(cross);
         }
 
-        static bool Inside(Axis axis, DxfPoint at)
+        bool Inside(Axis axis, DxfPoint at)
         {
             double dx = axis.B.X - axis.A.X, dy = axis.B.Y - axis.A.Y;
             double lengthSquared = dx * dx + dy * dy;
@@ -220,7 +236,7 @@ public static class WallNetwork
             if (t <= 0.001 || t >= 0.999) return false;
 
             var onAxis = new DxfPoint(axis.A.X + dx * t, axis.A.Y + dy * t);
-            return LoopGeometry.Within(onAxis.DistanceTo(at), SnapTolerance);
+            return LoopGeometry.Within(onAxis.DistanceTo(at), snap);
         }
 
         var result = new List<Axis>();
@@ -234,13 +250,13 @@ public static class WallNetwork
             var cuts = new List<double>();
             foreach (var joint in joints)
             {
-                if (LoopGeometry.Within(joint.DistanceTo(axis.A), SnapTolerance) || LoopGeometry.Within(joint.DistanceTo(axis.B), SnapTolerance)) continue;
+                if (LoopGeometry.Within(joint.DistanceTo(axis.A), snap) || LoopGeometry.Within(joint.DistanceTo(axis.B), snap)) continue;
 
                 double t = ((joint.X - axis.A.X) * dx + (joint.Y - axis.A.Y) * dy) / lengthSquared;
                 if (t <= 0.001 || t >= 0.999) continue;
 
                 var onAxis = new DxfPoint(axis.A.X + dx * t, axis.A.Y + dy * t);
-                if (LoopGeometry.Beyond(onAxis.DistanceTo(joint), SnapTolerance)) continue;
+                if (LoopGeometry.Beyond(onAxis.DistanceTo(joint), snap)) continue;
 
                 if (!cuts.Any(c => Math.Abs(c - t) < 1e-6)) cuts.Add(t);
             }
@@ -252,11 +268,11 @@ public static class WallNetwork
             foreach (double t in cuts)
             {
                 var at = new DxfPoint(axis.A.X + dx * t, axis.A.Y + dy * t);
-                if (LoopGeometry.Beyond(from.DistanceTo(at), SnapTolerance))
+                if (LoopGeometry.Beyond(from.DistanceTo(at), snap))
                     result.Add(new Axis { A = from, B = at, Thickness = axis.Thickness, Layer = axis.Layer });
                 from = at;
             }
-            if (LoopGeometry.Beyond(from.DistanceTo(axis.B), SnapTolerance))
+            if (LoopGeometry.Beyond(from.DistanceTo(axis.B), snap))
                 result.Add(new Axis { A = from, B = axis.B, Thickness = axis.Thickness, Layer = axis.Layer });
         }
 
@@ -275,9 +291,12 @@ public static class WallNetwork
     /// fall in one tight cluster of 142 between 36" and 48" — door width — with nothing at all
     /// below 18", and a separate group beyond 120" that is different walls rather than one wall
     /// with a hole in it.
+    ///
+    /// The 3 in off line, 4 in of thickness and 6 in of shared middle are inches, scaled by <paramref name="inch"/>
+    /// (2026-10-27: in a millimetre model they were 3, 4 and 6 mm).
     /// </summary>
     public static IReadOnlyList<WallOpening> FindOpenings(
-        IReadOnlyList<WallAxis> walls, double minSpan, double maxSpan)
+        IReadOnlyList<WallAxis> walls, double minSpan, double maxSpan, double inch = 1.0)
     {
         var found = new List<WallOpening>();
         var used = new HashSet<(int, int)>();
@@ -296,10 +315,10 @@ public static class WallNetwork
             // In line with one another, not merely pointing the same way.
             if (Math.Abs(ax * by - ay * bx) / (la * lb) > 0.2) continue;
             double offset = Math.Abs((b.Start.X - a.Start.X) * (-ay / la) + (b.Start.Y - a.Start.Y) * (ax / la));
-            if (LoopGeometry.Beyond(offset, 3.0)) continue;
+            if (LoopGeometry.Beyond(offset, 3.0 * inch)) continue;
 
             // Similar thickness, or it is a different wall that happens to line up.
-            if (LoopGeometry.Beyond(Math.Abs(a.Thickness - b.Thickness), 4.0)) continue;
+            if (LoopGeometry.Beyond(Math.Abs(a.Thickness - b.Thickness), 4.0 * inch)) continue;
 
             (DxfPoint P, DxfPoint Q, double D) best = (default, default, double.MaxValue);
             foreach (var p in new[] { a.Start, a.End })
@@ -328,7 +347,7 @@ public static class WallNetwork
         foreach (var opening in found.OrderBy(o => Math.Round(o.Start.DistanceTo(o.End), 6)))
         {
             var mid = new DxfPoint((opening.Start.X + opening.End.X) / 2, (opening.Start.Y + opening.End.Y) / 2);
-            if (kept.Any(k => LoopGeometry.Within(DistanceToSegment(mid, k.Start, k.End), 6.0))) continue;
+            if (kept.Any(k => LoopGeometry.Within(DistanceToSegment(mid, k.Start, k.End), 6.0 * inch))) continue;
             kept.Add(opening);
         }
 

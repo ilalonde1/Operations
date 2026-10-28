@@ -58,12 +58,40 @@ public sealed class AModelIsTheSameInInchesAndMillimetresTests
         IReadOnlyList<string> JointsInInches, IReadOnlyList<string> Placements,
         double FcPsi, double EPsi, double WeightPerCubicInch, IReadOnlyList<StoryLevel> StoriesInInches);
 
-    private static Shape Compose(string root, string tag, double unit, int insunits, string levelsUnit)
+    /// <summary>
+    /// Halifax LEVEL 1's core (31180, VD's read 2026-10-27 13:58), the twelve wall outlines as drawn in millimetres, moved near
+    /// the origin and stated in inches: a 24 in wall broken by a 969 mm and a 1195 mm door on two sides, a 12 in cross wall
+    /// whose end stands inside it, a 6 in wall, and two L corners whose short pieces run on to the far face of the wall
+    /// they turn into - the centrelines cross 275 mm in from the short piece's end.
+    /// </summary>
+    private static List<string> HalifaxCore(double unit, int insunits)
+    {
+        double U(double inches) => inches * unit;
+        double X(double mm) => U(mm / 25.4 - 1400);
+        double Y(double mm) => U(mm / 25.4 - 1000);
+        var lines = new List<string> { "0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", insunits.ToString(CultureInfo.InvariantCulture), "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES" };
+        lines.AddRange(Rectangle("JBP_C_SLABEDG", U(0), U(0), U(600), U(500)));
+        foreach (var (x0, y0, x1, y1) in HalifaxWalls)
+            lines.AddRange(Rectangle("JBP_V-WALL", X(x0), Y(y0), X(x1), Y(y1)));
+        lines.AddRange(["0", "ENDSEC", "0", "EOF"]);
+        return lines;
+    }
+
+    /// <summary>The twelve outlines' extents in mm, as ezdxf printed them from LEVEL 1.dxf at 14:03 on 2026-10-27.</summary>
+    private static readonly (double X0, double Y0, double X1, double Y1)[] HalifaxWalls =
+    [
+        (45576, 27981, 46084, 35905), (40369, 35748, 43173, 36358), (44142, 35748, 46116, 36358), (40369, 27596, 43173, 28206),
+        (44142, 27596, 46116, 28206), (38168, 30341, 38676, 33582), (42845, 27849, 43150, 35990), (44286, 29349, 44438, 34517),
+        (38117, 28082, 38726, 29383), (38147, 35748, 39174, 36358), (38168, 34612, 38676, 35912), (38147, 27596, 39174, 28206),
+    ];
+
+    private static Shape Compose(string root, string tag, double unit, int insunits, string levelsUnit,
+        Func<double, int, List<string>>? plan = null)
     {
         string dir = Path.Combine(root, tag);
         Directory.CreateDirectory(dir);
-        File.WriteAllLines(Path.Combine(dir, "--Structural Plan - LEVEL 1 PLAN - CONCRETE OUTLINE.dxf"), Plan(unit, insunits, 0, secondColumn: true));
-        File.WriteAllLines(Path.Combine(dir, "--Structural Plan - LEVEL 2 PLAN - CONCRETE OUTLINE.dxf"), Plan(unit, insunits, 2, secondColumn: false));
+        File.WriteAllLines(Path.Combine(dir, "--Structural Plan - LEVEL 1 PLAN - CONCRETE OUTLINE.dxf"), plan?.Invoke(unit, insunits) ?? Plan(unit, insunits, 0, secondColumn: true));
+        File.WriteAllLines(Path.Combine(dir, "--Structural Plan - LEVEL 2 PLAN - CONCRETE OUTLINE.dxf"), plan?.Invoke(unit, insunits) ?? Plan(unit, insunits, 2, secondColumn: false));
         string levels = Path.Combine(root, tag + "-levels.csv");
         File.WriteAllLines(levels, [$"LEVEL 1,0", $"LEVEL 2,{N(144 * unit)}", $"LEVEL 3,{N(288 * unit)}"]);
         string output = Path.Combine(root, tag + ".e2k");
@@ -178,6 +206,71 @@ public sealed class AModelIsTheSameInInchesAndMillimetresTests
                     Assert.InRange(Math.Abs(expected.Elevation - actual.Elevation), 0.0, 1e-4);
                     Assert.InRange(Math.Abs(expected.ElevationBelow - actual.ElevationBelow), 0.0, 1e-4);
                 }
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// THE WALL NETWORK IN THREE UNITS (2026-10-27). WallNetwork's snap (2 in), reach (+ 2 in) and door finder (3, 4 and 6 in)
+    /// were inch literals run in the model's unit: Halifax LEVEL 1, a feet model, came out with its 969 mm doors closed and its
+    /// four corner pieces tilted (VD, from its own 1.e2k), and every millimetre model had them 25.4 times too tight.
+    /// COVERS: Halifax's core composed in inches, millimetres and feet - every joint, every member's kind, storey, section and
+    /// joints compared - and, in the inch model, the answer itself: both doors on both sides carry a header, both L corners
+    /// meet at their centrelines' crossing, no wall panel is off the drawing's two axes, and no wall became a column.
+    /// DOES NOT: a reference-model build, more than this one plan's corners and doors, walls drawn at an angle.
+    /// A same-class fault it would NOT catch: an inch literal on a path this plan never reaches (a pier, a curved wall,
+    /// the slab reader), or one that happens to give the same topology in all three units at these sizes.
+    /// </summary>
+    [Fact]
+    public void HalifaxsCoreIsTheSameWallNetworkInInchesMillimetresAndFeet()
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"kor-units-core-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var inches = Compose(root, "in", 1.0, 1, "in", HalifaxCore);
+            var millimetres = Compose(root, "mm", 25.4, 4, "mm", HalifaxCore);
+            var feet = Compose(root, "ft", 1.0 / 12.0, 2, "ft", HalifaxCore);
+
+            // The inch model is the answer, checked outright: a differential cannot see a fault every unit shares.
+            static (double X, double Y, double Z) P(string at)
+            {
+                var v = at.Split(',').Select(s => double.Parse(s, CultureInfo.InvariantCulture)).ToArray();
+                return (v[0], v[1], v[2]);
+            }
+            var panels = inches.Placements.Where(p => p.StartsWith("PANEL ", StringComparison.Ordinal))
+                .Select(p => p[(p.IndexOf(']') + 2)..].Split(' ').Select(P).ToList()).ToList();
+            var headers = panels.Where(js => js.Any(j => Math.Abs(j.Z) > 1e-6)).ToList();
+            var walls = panels.Where(js => js.All(j => Math.Abs(j.Z) <= 1e-6)).ToList();
+            double X(double mm) => mm / 25.4 - 1400;
+            double Y(double mm) => mm / 25.4 - 1000;
+            bool Near((double X, double Y, double Z) j, double x, double y) => Math.Abs(j.X - x) <= 0.5 && Math.Abs(j.Y - y) <= 0.5;
+            bool HeaderBetween(double xa, double xb, double y) => headers.Any(js => js.Any(j => Near(j, xa, y)) && js.Any(j => Near(j, xb, y)));
+
+            Assert.Equal(0, inches.Columns);                                  // the corner pieces are walls joined into an L, not columns
+            foreach (double y in new[] { Y(36053), Y(27901) })
+            {
+                Assert.True(HeaderBetween(X(42997.5), X(44142), y), $"no header over the 969 mm door at y {y:0.##} in");
+                Assert.True(HeaderBetween(X(39174), X(40369), y), $"no header over the 1195 mm door at y {y:0.##} in");
+            }
+            foreach (var (x, y) in new[] { (X(38421.5), Y(27901)), (X(38422), Y(36053)) })
+                Assert.True(walls.Count(js => js.Any(j => Near(j, x, y))) >= 2, $"the L corner at ({x:0.##}, {y:0.##}) in is not one joint of two walls");
+            var tilted = walls.Where(js => js.Any(a => js.Any(b => Math.Abs(a.X - b.X) > 0.01 && Math.Abs(a.Y - b.Y) > 0.01))).ToList();
+            Assert.True(tilted.Count == 0, $"{tilted.Count} wall panel(s) off the drawing's axes: " + string.Join("; ", tilted.Select(js => string.Join(" ", js.Select(j => $"{j.X:0.##},{j.Y:0.##}")))));
+
+            foreach (var (unit, model) in new[] { ("mm", millimetres), ("ft", feet) })
+            {
+                Assert.Equal(inches.Columns, model.Columns);
+                Assert.Equal(inches.Walls, model.Walls);
+                Assert.Equal(inches.Joints, model.Joints);
+                Assert.True(inches.JointsInInches.SequenceEqual(model.JointsInInches),
+                    $"{unit}: joints differ from the inch model - only in inches: {string.Join(" ", inches.JointsInInches.Except(model.JointsInInches))}; only in {unit}: {string.Join(" ", model.JointsInInches.Except(inches.JointsInInches))}");
+                Assert.True(inches.Placements.SequenceEqual(model.Placements),
+                    $"{unit}: members differ from the inch model - only in inches: {string.Join(" | ", inches.Placements.Except(model.Placements))}; only in {unit}: {string.Join(" | ", model.Placements.Except(inches.Placements))}");
             }
         }
         finally

@@ -2071,7 +2071,7 @@ public static class StructuralPlanClassifier
         // joined into a network before anything downstream sees them.
         if (options.ConnectWalls && result.Walls.Count > 1)
         {
-            var connected = WallNetwork.Connect(result.Walls);
+            var connected = WallNetwork.Connect(result.Walls, 1.0 / options.UnitInInches);
             result.Walls.Clear();
             result.Walls.AddRange(connected);
         }
@@ -2090,7 +2090,7 @@ public static class StructuralPlanClassifier
         // should be — "a short face joined to other walls is part of a core and stays a wall" —
         // and she marked these very elements as missing return WALLS.
         bool RunsInto(WallAxis stub) => result.Walls.Any(other =>
-            !ReferenceEquals(other, stub) && LoopGeometry.SegmentsMeet(stub.Start, stub.End, other.Start, other.End, 1.0));
+            !ReferenceEquals(other, stub) && LoopGeometry.SegmentsMeet(stub.Start, stub.End, other.Start, other.End, 1.0 / options.UnitInInches));   // an inch, in the drawing's unit (2026-10-27)
 
         // Same half-inch of slack as the rectangle test above: a wall drawn at exactly 48" measures
         // a fraction under it after the export, and must not change from a wall into a column for
@@ -2101,7 +2101,7 @@ public static class StructuralPlanClassifier
         // thickness is a wall whatever it is joined to; converting it made an 8x38 column that no
         // engineer would draw and threw away the shear it was drawn to carry.
         var stubs = result.Walls
-            .Where(w => LoopGeometry.Beyond(options.MinWallLength - 0.5, w.Length) && !Joined(w.Start) && !Joined(w.End) && !RunsInto(w))
+            .Where(w => LoopGeometry.Beyond(options.MinWallLength - 0.5 / options.UnitInInches, w.Length) && !Joined(w.Start) && !Joined(w.End) && !RunsInto(w))
             .Where(w => w.Thickness <= 0 || w.Length / w.Thickness <= options.MaxColumnAspect)
             .ToList();
 
@@ -2128,7 +2128,7 @@ public static class StructuralPlanClassifier
         // attached to nothing at one end — three of them on 31138.
         if (options.ConnectWalls && result.Walls.Count > 1)
             result.WallOpenings.AddRange(
-                WallNetwork.FindOpenings(result.Walls, options.MinOpeningSpan, options.MaxOpeningSpan));
+                WallNetwork.FindOpenings(result.Walls, options.MinOpeningSpan, options.MaxOpeningSpan, 1.0 / options.UnitInInches));
 
         // A HOLE THROUGH HALF A FLOOR IS NOT A HOLE. IT IS THE OTHER EDGE OF THE SLAB.
         //
