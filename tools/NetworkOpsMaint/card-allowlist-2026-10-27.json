@@ -1,0 +1,12 @@
+[
+ {
+  "title": "A cleanup is an ALLOW list of named kinds, never \"older than N days minus exclusions\"",
+  "appliesTo": "any",
+  "symptom": "A Temp or folder cleanup is built as \"everything older than N days, minus the things we thought to exclude\", reviewed, approved, and about to run.",
+  "cause": "An exclusion list is an absence claim with a scope the author chose: it protects only the names someone thought of. 27 Oct, KOR-1001 %TEMP%: the approved list (28,799 items, two reviewers) excluded claude*, kor-*, joebrain*, bch*, and still held ~120 of Ian's personal and BD items (ianbrain-*, venturebrain-*, traderbrain day files, BdDirectorWindow.xaml.bak, a bids-and-tenders screenshot, mvep).",
+  "check": "Every line of the list must belong to a kind named in advance AND verified by content, not by name alone (27 Oct: a VS Installer unpack dir counts only if it holds InstallCleanup.exe and Microsoft.VisualStudio.Setup.ToastNotification.exe; 58 of 3,055 random-named dirs qualified). Grep the final list for the owner's words (joe, brain, trader, venture, bd, bid, mve, market, kor, claude) on names that are not random/GUID.",
+  "fix": "Build the list from an ALLOW list (27 Oct: VS Installer unpack dirs, the m3xr33yb VS package cache, plain *.tmp older than 24 h), show the owner the list and its hash, delete exactly those lines after a hash check, skip anything locked, then re-measure. 27 Oct 22:50: 505 of 505 deleted, 0 skipped, 12.81 GB freed (75.76 -> 62.96 GB). Never touch Temp\\claude\\ (session scratchpads) or kor-* (test drawing cache, gate files). Proof: oversight.Mistake 71.",
+  "tags": "cleanup,temp,disk,allow-list,safety",
+  "plain": "Explains why a cleanup must list exactly what it deletes, after a near-miss that would have deleted Ian's own files."
+ }
+]
