@@ -71,6 +71,8 @@ $localZip   = Join-Path $PublishRoot "$tag.zip"
 $destZip    = Join-Path $ShareNewDir "$tag.zip"
 
 function Folder-SizeMB($p) { [math]::Round((Get-ChildItem $p -Recurse -File -EA SilentlyContinue | Measure-Object Length -Sum).Sum/1MB,1) }
+# Files an exe writes beside itself at runtime; never grafted forward, never allowed in the zip, ignored by parity.
+$leavingsPattern = '^Kor\.Operations\.App\.exe\.WebView2/|^logs/|\.log$'
 
 # --- Guard: never clobber an existing package on the share ---
 if (Test-Path $destZip) { throw "$tag.zip already exists on the share. Pick a new version or remove it deliberately first." }
@@ -95,6 +97,12 @@ if ($SkipPublish -and (Test-Path (Join-Path $stageDir 'Kor.Operations.App.exe'))
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed ($LASTEXITCODE)." }
 }
 Write-Host ("  staged: " + (Folder-SizeMB $stageDir) + " MB") -ForegroundColor Gray
+# The published config's hash, recorded before anything runs: the app REWRITES its own .dll.config on first start
+# (17 KB with comments -> 8 KB without), and V30.zip shipped that rewritten file. The leavings guard below compares.
+$configHashFile = Join-Path $PublishRoot "$tag.config.sha256"
+if (-not $SkipPublish -or -not (Test-Path $configHashFile)) {
+    (Get-FileHash (Join-Path $stageDir 'Kor.Operations.App.dll.config') -Algorithm SHA256).Hash | Set-Content $configHashFile
+}
 
 # --- 2. Cull .playwright (app never drives a browser at runtime) ---
 $pw = Join-Path $stageDir '.playwright'
@@ -114,6 +122,15 @@ if ($AddinPublishDir) {
     Write-Host "EmailFilerv2 $addinVersion copied in from $AddinPublishDir" -ForegroundColor Cyan
 }
 
+# --- 3b/4. Graft + zip, ONCE: the zip built at stage time is the zip that ships ---
+# Between -StageOnly and -SkipPublish the staged exe is LAUNCHED for the live sweep, and the app writes beside itself:
+# Kor.Operations.App.exe.WebView2\ (BD Reports' browser user data, 73 files / 56 MB) and its own .dll.config. V31's
+# first ship (2026-10-28 17:10) re-zipped the folder after the sweep and carried that onto the share; caught by an
+# entry-by-entry diff against V30, pulled back and re-shipped. So a -SkipPublish run reuses the local V<N>.zip from
+# the stage run when it exists, and never re-zips a folder an exe has run in.
+if ($SkipPublish -and (Test-Path $localZip)) {
+    Write-Host ("SkipPublish: reusing " + $localZip + " built " + (Get-Item $localZip).LastWriteTime.ToString('yyyy-MM-dd HH:mm') + " (not re-zipping the staged folder: the sweep has run in it)") -ForegroundColor Yellow
+} else {
 # --- 3b. Graft carry-forward files from the previous zip (add-in, minus .playwright) ---
 $existing = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 Get-ChildItem $stageDir -Recurse -File | ForEach-Object { [void]$existing.Add($_.FullName.Substring($stageDir.Length + 1).Replace('\','/')) }
@@ -123,6 +140,10 @@ foreach ($e in $zip.Entries) {
     if ($e.FullName -match '/$') { continue }
     $rel = $e.FullName -replace '^V\d+/', ''
     if ($rel -match '^\.playwright/') { continue }
+    # Never carry forward what an exe wrote at runtime: V30.zip holds 242 files of Kor.Operations.App.exe.WebView2\
+    # (BD Reports' browser user data, left by the 22 Oct sweep of its staged exe), and the graft would hand them to
+    # every later package for ever. Same class as the guard below.
+    if ($rel -match $leavingsPattern) { continue }
     if ($existing.Contains($rel)) { continue }
     $dest = Join-Path $stageDir ($rel -replace '/','\')
     $destDir = Split-Path $dest -Parent
@@ -138,16 +159,33 @@ if ([System.IO.File]::Exists($localZip)) { [System.IO.File]::Delete($localZip) }
 Write-Host "Zipping $tag ..." -ForegroundColor Cyan
 [System.IO.Compression.ZipFile]::CreateFromDirectory($stageDir, $localZip, [System.IO.Compression.CompressionLevel]::Optimal, $true)
 Write-Host ("  $tag.zip = " + [math]::Round((Get-Item $localZip).Length/1MB,1) + " MB") -ForegroundColor Green
-
-# --- Parity check vs previous: only intended diff is the .playwright cull ---
+}
+# --- Runtime leavings guard: the zip must hold nothing an exe wrote (a run in the staged folder leaves these) ---
 function Get-FileEntries($path) {
     $z = [System.IO.Compression.ZipFile]::OpenRead($path)
     $s = $z.Entries | Where-Object { $_.FullName -notmatch '/$' } | ForEach-Object { ($_.FullName -replace '^V\d+/','') }
     $z.Dispose(); return $s
 }
+$leavings = @(Get-FileEntries $localZip | Where-Object { $_ -match $leavingsPattern })
+if ($leavings.Count -gt 0) {
+    Write-Host "RUNTIME LEAVINGS in ${tag}.zip ($($leavings.Count) entries), e.g.:" -ForegroundColor Red
+    $leavings | Select-Object -First 5 | ForEach-Object { Write-Host "   - $_" }
+    throw "The zip carries files an exe wrote at runtime. Delete $localZip and re-stage; do not launch the exe in $stageDir before zipping."
+}
+$zr = [System.IO.Compression.ZipFile]::OpenRead($localZip)
+$cfgEntry = $zr.Entries | Where-Object { $_.FullName -eq "$tag/Kor.Operations.App.dll.config" }
+$cfgTmp = Join-Path ([System.IO.Path]::GetTempPath()) "$tag-config-check.config"
+[System.IO.Compression.ZipFileExtensions]::ExtractToFile($cfgEntry, $cfgTmp, $true); $zr.Dispose()
+$cfgHash = (Get-FileHash $cfgTmp -Algorithm SHA256).Hash; Remove-Item $cfgTmp -Force
+if ((Test-Path $configHashFile) -and $cfgHash -ne (Get-Content $configHashFile -Raw).Trim()) {
+    throw "The zip's Kor.Operations.App.dll.config is not the published one (the app rewrote it after the stage). Delete $localZip and re-stage."
+}
+Write-Host "Leavings guard OK: no runtime files in the zip; the config is the published one." -ForegroundColor Green
+
+# --- Parity check vs previous: only intended diff is the .playwright cull ---
 $fp = Get-FileEntries $prevZip.FullName
 $fn = [System.Collections.Generic.HashSet[string]]::new([string[]](Get-FileEntries $localZip), [System.StringComparer]::OrdinalIgnoreCase)
-$missingOther = @($fp | Where-Object { $_ -notmatch '^\.playwright/' -and -not $fn.Contains($_) })
+$missingOther = @($fp | Where-Object { $_ -notmatch '^\.playwright/' -and $_ -notmatch $leavingsPattern -and -not $fn.Contains($_) })
 if ($missingOther.Count -gt 0) {
     Write-Host "PARITY FAIL — non-playwright files present in $($prevZip.Name) but missing from ${tag}:" -ForegroundColor Red
     $missingOther | Select-Object -First 30 | ForEach-Object { Write-Host "   - $_" }
