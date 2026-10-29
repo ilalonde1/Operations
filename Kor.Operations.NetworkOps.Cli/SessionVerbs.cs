@@ -49,6 +49,7 @@ internal static class SessionVerbs
         var confirmed = false;
         var scan = false;
         var overwrite = false;
+        var fresh = false;
         for (var i = 1; i < args.Length; i++)
         {
             switch (args[i])
@@ -74,6 +75,7 @@ internal static class SessionVerbs
                 case "--copy" when i + 1 < args.Length: copyId = args[++i]; break;
                 case "--approved-by" when i + 1 < args.Length: approvedBy = args[++i]; break;
                 case "--overwrite": overwrite = true; break;
+                case "--fresh": fresh = true; break;
                 case "--wait" when i + 1 < args.Length && int.TryParse(args[i + 1], out var w): wait = w; i++; break;
                 default: Console.Error.WriteLine($"Unknown argument for {verb}: {args[i]}"); return 2;
             }
@@ -88,6 +90,15 @@ internal static class SessionVerbs
         {
             // A NetworkOps access token (the same the verbs send), on stdout -- for the MCP endpoint or any client that
             // authenticates as the signed-in person. Sign-in (MFA) prompts go to stderr, so `netops token` pipes cleanly.
+            // --fresh: renew the sign-in NOW with a full sign-in + MFA, so the 12-h clock restarts at a time that suits Ian
+            // instead of lapsing mid-run (28 Oct: due 00:55, mid Halifax run). Prints the new status, not the token.
+            if (verb == "token" && fresh)
+            {
+                await server.AccessTokenAsync(ct, fresh: true);
+                Console.WriteLine(Kor.Operations.NetworkOps.Core.Actions.SignInClock.Judge(
+                    Kor.Operations.NetworkOps.Core.Actions.SignInClock.Read(), DateTimeOffset.Now).Line);
+                return 0;
+            }
             if (verb == "token") { Console.WriteLine(await server.AccessTokenAsync(ct)); return 0; }
             if (verb == "knowledge") return await KnowledgeAsync(server, search, all, ct);
             if (verb == "findings") return await FindingsAsync(server, hostsArg, ct);

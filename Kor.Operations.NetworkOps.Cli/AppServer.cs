@@ -69,7 +69,9 @@ internal sealed class AppServer : IDisposable
     /// <summary>An access token for NetworkOps (the same one the verbs send), for `netops token` -- so a client that is not
     /// this CLI (e.g. the MCP endpoint over HTTP) can authenticate as the signed-in person. Sign-in prompts go to stderr;
     /// the token is the only thing on stdout.</summary>
-    public Task<string> AccessTokenAsync(CancellationToken ct) => TokenAsync(ct);
+    /// <param name="fresh">Skip the silent token and sign in again in full (Prompt.ForceLogin), so Conditional Access asks
+    /// for MFA now and its 12-hour sign-in frequency restarts from this moment (`netops token --fresh`).</param>
+    public Task<string> AccessTokenAsync(CancellationToken ct, bool fresh = false) => TokenAsync(ct, fresh);
 
     /// <summary>How long an interactive sign-in may wait for the person before the CLI gives up and says so.</summary>
     public static readonly TimeSpan InteractiveSignInWait = TimeSpan.FromMinutes(3);
@@ -84,7 +86,7 @@ internal sealed class AppServer : IDisposable
     internal static bool CanPrompt(bool inputRedirected, string? overrideVar)
         => overrideVar switch { "1" => true, "0" => false, _ => !inputRedirected };
 
-    private async Task<string> TokenAsync(CancellationToken ct)
+    private async Task<string> TokenAsync(CancellationToken ct, bool fresh = false)
     {
         _pca ??= await BuildPcaAsync().ConfigureAwait(false);
         var scopes = new[] { Scope };
@@ -92,7 +94,7 @@ internal sealed class AppServer : IDisposable
         string? claims = null;
         try
         {
-            if (account is not null) return (await _pca.AcquireTokenSilent(scopes, account).ExecuteAsync(ct).ConfigureAwait(false)).AccessToken;
+            if (account is not null && !fresh) return (await _pca.AcquireTokenSilent(scopes, account).ExecuteAsync(ct).ConfigureAwait(false)).AccessToken;
         }
         catch (MsalUiRequiredException ex) { claims = ex.Claims; }
 
@@ -104,6 +106,8 @@ internal sealed class AppServer : IDisposable
         Console.Error.WriteLine($"netops: signing in to NetworkOps (a browser window opens for MFA; giving up after {InteractiveSignInWait.TotalMinutes:0} min)...");
         var again = _pca.AcquireTokenInteractive(scopes);
         if (account is not null) again = again.WithAccount(account);
+        // a fresh sign-in must not be answered from the browser's existing session: ForceLogin makes Entra ask again
+        if (fresh) again = again.WithPrompt(Prompt.ForceLogin);
         if (!string.IsNullOrEmpty(claims)) again = again.WithClaims(claims);
         using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
         wait.CancelAfter(InteractiveSignInWait);
