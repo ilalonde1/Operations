@@ -114,6 +114,22 @@ internal static class Program
         {
             cSapModel model = etabs.SapModel;
 
+            // --read-results <EDB> <case>: an EDB already ANALYSED (by hand in the GUI - the API's RunAnalysis would not start
+            // the solver, 2026-10-28), opened and its results read; nothing is run, ETABS exits without saving
+            int rr = Array.FindIndex(args, x => x.Equals("--read-results", StringComparison.OrdinalIgnoreCase));
+            if (rr >= 0 && rr + 2 < args.Length)
+            {
+                string analysed = Path.GetFullPath(args[rr + 1]), rcase = args[rr + 2];
+                double expect = args.SkipWhile(x => !x.Equals("--expect-kip", StringComparison.OrdinalIgnoreCase)).Skip(1).Select(v => double.Parse(v, CultureInfo.InvariantCulture)).FirstOrDefault();
+                Say($"R. OpenFile({analysed}): {model.File.OpenFile(analysed)}");
+                model.SetPresentUnits(eUnits.lb_ft_F);
+                int nc = 0; string[] cn = Array.Empty<string>(); int[] cs = Array.Empty<int>();
+                model.Analyze.GetCaseStatus(ref nc, ref cn, ref cs);
+                Say($"   case status (4 finished): {string.Join(", ", Enumerable.Range(0, nc).Select(i => $"{cn[i]}={cs[i]}"))}");
+                ReadResults(model, rcase, expect);
+                return 0;
+            }
+
             // 1. THE IMPORT - watched: a dialog waiting for a click never returns, and the picture shows which one
             var startFiles = Directory.GetFiles(_out).ToDictionary(f => f, f => File.GetLastWriteTimeUtc(f));
             var importDone = new ManualResetEventSlim();
@@ -269,9 +285,15 @@ internal static class Program
             foreach (var l in lines) Say($"   | {l}");
         }
         if (run != 0 || !Enumerable.Range(0, nc).Any(i => cn[i] == "KOR-Dead" && cs[i] == 4)) { Say("   KOR-Dead did not finish - no results read"); return; }
+        ReadResults(model, "KOR-Dead", expectKip);
+    }
 
+    // The results of one finished case: the total base reaction against the hand-worked self-weight, and each storey's
+    // largest vertical and horizontal movement (inches). Reads only.
+    private static void ReadResults(cSapModel model, string caseName, double expectKip)
+    {
         model.Results.Setup.DeselectAllCasesAndCombosForOutput();
-        model.Results.Setup.SetCaseSelectedForOutput("KOR-Dead");
+        Say($"   SetCaseSelectedForOutput({caseName}): {model.Results.Setup.SetCaseSelectedForOutput(caseName)}");
         int nr = 0; string[] lc = Array.Empty<string>(), st = Array.Empty<string>(); double[] sn = Array.Empty<double>(), fx = Array.Empty<double>(), fy = Array.Empty<double>(), fz = Array.Empty<double>(), mx = Array.Empty<double>(), my = Array.Empty<double>(), mz = Array.Empty<double>();
         double gx = 0, gy = 0, gz = 0;
         model.Results.BaseReact(ref nr, ref lc, ref st, ref sn, ref fx, ref fy, ref fz, ref mx, ref my, ref mz, ref gx, ref gy, ref gz);
