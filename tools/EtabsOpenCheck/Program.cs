@@ -11,7 +11,8 @@
 //      so every file ETABS writes into <outDir> during the import is listed, and any text one copied into the report
 //      verbatim; and a picture of the screen is taken if the import has not returned in 60 s (a dialog waiting for a click)
 //   2. ETABS's own counts against the .e2k's: storeys and their elevations (ft), frames by section, areas by property,
-//      openings - every difference listed
+//      openings, and restrained points by storey and DOF set (POINTASSIGN ... RESTRAINT; since 28 Oct) - every
+//      difference listed
 //   3. Analyze.CreateAnalysisModel's return code - the API's nearest thing to Check Model, which it does not expose
 //   4. ETABS's window as ETABS draws it after the import, as PNG (window-*.png) - the look at the deliverable as the
 //      engineer sees it
@@ -24,7 +25,8 @@
 // ETABS is closed at the end without saving anything else. Only the ETABS this tool started is ever closed or ended.
 //
 // COVERS: does it import (return code, what ETABS wrote, any dialog on screen); does ETABS hold the same storeys,
-// elevations, frames per section, areas per property and openings as the file; does the analysis model build.
+// elevations, frames per section, areas per property, openings and restrained points (per storey and DOF set) as the
+// file; does the analysis model build.
 // DOES NOT: Analyze > Check Model's own list (not in the API); per-storey plan views (the API cannot change the view, so
 // the picture is whatever ETABS shows on opening); loads, materials' values, section dimensions, design.
 // SAME-CLASS FAULT IT MISSES: an object ETABS imports at a different PLACE but with the same section and storey - counts
@@ -191,6 +193,7 @@ internal static class Program
             diffs += Compare("areas by property", want.AreasByProperty, byProp);
             Say($"   openings: file {want.Openings}, ETABS {openings}{(want.Openings != openings ? "  DIFFERENT" : "")}");
             if (want.Openings != openings) diffs++;
+            diffs += Restraints(model, want, sn.Take(nStory).Append("Base"));
             Say($"   counts: {diffs} difference(s)");
 
             // 4. THE LOOK - ETABS's window as it draws the imported model
@@ -335,6 +338,32 @@ internal static class Program
         }));
     }
 
+    // THE SUPPORTS (2026-10-28, the first file to carry them: KOR.Drafter e2k_base_supports.py's 46 POINTASSIGN ...
+    // RESTRAINT "UX UY UZ" on Base). Restrained points by storey and DOF set, the file's POINTASSIGN lines against what
+    // ETABS holds after the import - a support the importer drops reads as a difference, not as silence. The walls'
+    // AREAASSIGN ... ADDRESTRAINT is counted and named, not compared: on 28 Oct it made no point restraint on import.
+    private static int Restraints(cSapModel model, E2k want, IEnumerable<string> storeys)
+    {
+        try
+        {
+            string[] dof = { "UX", "UY", "UZ", "RX", "RY", "RZ" };
+            var got = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (var s in storeys)
+            {
+                int n = 0; string[] pts = Array.Empty<string>();
+                model.PointObj.GetNameListOnStory(s, ref n, ref pts);
+                foreach (var p in pts)
+                {
+                    bool[] v = new bool[6]; model.PointObj.GetRestraint(p, ref v);
+                    if (v.Any(x => x)) { string k = $"{s} | {string.Join(" ", dof.Where((_, i) => v[i]))}"; got[k] = got.GetValueOrDefault(k) + 1; }
+                }
+            }
+            Say($"   the file also carries {want.AreaAddRestraints} wall AREAASSIGN ADDRESTRAINT line(s) - not compared (no point restraint came of them on import, 28 Oct)");
+            return Compare("restrained points by storey | DOFs", want.PointRestraints, got);
+        }
+        catch (Exception ex) { Say($"   restraints NOT READ: {ex.GetType().Name}: {ex.Message}"); return 1; }
+    }
+
     private static int Compare(string what, Dictionary<string, int> file, Dictionary<string, int> etabs)
     {
         int d = 0;
@@ -399,7 +428,7 @@ internal static class Program
 /// <summary>What the .e2k says: storeys with elevations (ft, from the base up), frames by section, areas by property,
 /// openings - each assignment one object, as ETABS makes them.</summary>
 internal sealed record E2k(List<(string Name, double Elevation)> Storeys, Dictionary<string, int> FramesBySection,
-    Dictionary<string, int> AreasByProperty, int Openings)
+    Dictionary<string, int> AreasByProperty, int Openings, Dictionary<string, int> PointRestraints, int AreaAddRestraints)
 {
     public static E2k Read(string path)
     {
@@ -423,6 +452,12 @@ internal sealed record E2k(List<(string Name, double Elevation)> Storeys, Dictio
             if (m.Groups[2].Success) areas[m.Groups[2].Value] = areas.GetValueOrDefault(m.Groups[2].Value) + 1;
             else openings++;
         }
-        return new E2k(storeys, frames, areas, openings);
+        // POINTASSIGN "pt" "storey" RESTRAINT "UX UY UZ" - keyed "storey | DOFs", the DOFs in ETABS's order
+        string[] order = { "UX", "UY", "UZ", "RX", "RY", "RZ" };
+        var restraints = Regex.Matches(t, @"^\s*POINTASSIGN\s+""[^""]+""\s+""([^""]+)""\s+RESTRAINT\s+""([^""]*)""", RegexOptions.Multiline)
+            .GroupBy(m => $"{m.Groups[1].Value} | {string.Join(" ", order.Where(d => m.Groups[2].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(d, StringComparer.OrdinalIgnoreCase)))}")
+            .ToDictionary(g => g.Key, g => g.Count());
+        int areaAdd = Regex.Matches(t, @"^\s*AREAASSIGN\b.*\bADDRESTRAINT\b", RegexOptions.Multiline).Count;
+        return new E2k(storeys, frames, areas, openings, restraints, areaAdd);
     }
 }
