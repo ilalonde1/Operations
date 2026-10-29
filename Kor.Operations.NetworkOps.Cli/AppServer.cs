@@ -73,6 +73,28 @@ internal sealed class AppServer : IDisposable
     /// for MFA now and its 12-hour sign-in frequency restarts from this moment (`netops token --fresh`).</param>
     public Task<string> AccessTokenAsync(CancellationToken ct, bool fresh = false) => TokenAsync(ct, fresh);
 
+    /// <summary>Whether NetworkOps would sign in WITHOUT a person right now: one AcquireTokenSilent, never a prompt.
+    /// true = signed in; false = a sign-in is needed (no account, or MSAL says interaction is required -- MFA due, consent,
+    /// revoked); null = could not tell (network, Entra, or the timeout), with the reason. For `netops signin-status`: the
+    /// truth comes from Entra, not from a clock (29 Oct: with the CA policy off, the 12-h clock said "lapsed" while every
+    /// silent call worked).</summary>
+    public async Task<(bool? SignedIn, string Why)> SilentStateAsync(TimeSpan timeout)
+    {
+        using var cts = new CancellationTokenSource(timeout);
+        try
+        {
+            _pca ??= await BuildPcaAsync().ConfigureAwait(false);
+            var account = (await _pca.GetAccountsAsync().ConfigureAwait(false)).FirstOrDefault();
+            if (account is null) return (false, "no NetworkOps account in this PC's token cache");
+            await _pca.AcquireTokenSilent(new[] { Scope }, account).ExecuteAsync(cts.Token).ConfigureAwait(false);
+            return (true, "a silent token was issued");
+        }
+        catch (MsalUiRequiredException ex) { return (false, $"Entra wants a sign-in ({ex.ErrorCode})"); }
+        catch (OperationCanceledException) { return (null, $"no answer from Entra within {timeout.TotalSeconds:0} s"); }
+        catch (MsalException ex) { return (null, $"MSAL {ex.ErrorCode}"); }
+        catch (HttpRequestException ex) { return (null, $"network: {ex.Message}"); }
+    }
+
     /// <summary>How long an interactive sign-in may wait for the person before the CLI gives up and says so.</summary>
     public static readonly TimeSpan InteractiveSignInWait = TimeSpan.FromMinutes(3);
 

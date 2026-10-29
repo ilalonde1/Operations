@@ -46,8 +46,13 @@ if (verb == "watchdog")
 if (verb == "mcp")
     return await Kor.Operations.NetworkOps.Cli.McpBridge.RunAsync();
 
-// When the NetworkOps sign-in needs MFA again (Core/Actions/SignInClock). Reads one local file: no network, no MSAL, so
-// a hook can run it on every prompt. --hook speaks only from 2 h before the lapse (or after it) and always exits 0.
+// Is the NetworkOps sign-in good? The TRUTH is one silent token attempt (AppServer.SilentStateAsync: no prompt, 5 s):
+// issued = signed in; "interaction required" = a sign-in is needed. The MFA clock (Core/Actions/SignInClock) is secondary:
+// it adds the early warning ("lapses at HH:MM") while the silent attempt still works. 29 Oct: with the CA policy off the
+// clock alone said "lapsed at 10:14 -- every call exits 4" while every silent call worked, and told Ian to sign in for
+// nothing. --hook (UserPromptSubmit) speaks only when a sign-in is needed, or the clock's warning window is open while
+// signed in; it says nothing when it cannot tell (network down) rather than nag every prompt; always exits 0.
+// Exit codes without --hook: 0 signed in, 1 signed in but the clock's warning window is open, 3 could not tell, 4 needed.
 // --seed records a renewal that happened before the clock existed, e.g. --seed 2026-10-28T13:02:51 --via "Ian, ...".
 if (verb == "signin-status")
 {
@@ -65,16 +70,25 @@ if (verb == "signin-status")
         { Console.Error.WriteLine("netops signin-status --seed needs a past time and --via \"who/how\""); return 2; }
         Kor.Operations.NetworkOps.Core.Actions.SignInClock.Record($"seeded: {via}", at);
     }
-    var reading = Kor.Operations.NetworkOps.Core.Actions.SignInClock.Judge(Kor.Operations.NetworkOps.Core.Actions.SignInClock.Read(), DateTimeOffset.Now);
-    if (!hook || reading.State is Kor.Operations.NetworkOps.Core.Actions.SignInClock.State.Soon or Kor.Operations.NetworkOps.Core.Actions.SignInClock.State.Lapsed)
-        Console.WriteLine(reading.Line);
-    return hook ? 0 : reading.State switch
+    var clock = Kor.Operations.NetworkOps.Core.Actions.SignInClock.Judge(Kor.Operations.NetworkOps.Core.Actions.SignInClock.Read(), DateTimeOffset.Now);
+    var (signedIn, why) = await new Kor.Operations.NetworkOps.Cli.AppServer(TimeSpan.FromSeconds(30)).SilentStateAsync(TimeSpan.FromSeconds(5));
+    const string renew = "renew when it suits you: `netops token --fresh` in a terminal on this PC, or open the KOR Operations app";
+    string line; int code; bool speak;
+    if (signedIn == false)
+    { line = $"NetworkOps sign-in NEEDED: {why}; every netops call exits 4 until Ian signs in. To {renew}."; code = 4; speak = true; }
+    else if (signedIn == null)
+    { line = $"NetworkOps sign-in: could not check ({why}). MFA clock: {clock.Line}"; code = 3; speak = false; }
+    else if (clock.State == Kor.Operations.NetworkOps.Core.Actions.SignInClock.State.Soon)
+    { line = $"NetworkOps sign-in good now ({why}), but {clock.Line}"; code = 1; speak = true; }
+    else
     {
-        Kor.Operations.NetworkOps.Core.Actions.SignInClock.State.Ok => 0,
-        Kor.Operations.NetworkOps.Core.Actions.SignInClock.State.Soon => 1,
-        Kor.Operations.NetworkOps.Core.Actions.SignInClock.State.Lapsed => 4,
-        _ => 3,
-    };
+        var note = clock.State == Kor.Operations.NetworkOps.Core.Actions.SignInClock.State.Lapsed
+            ? $" The MFA clock says it would have lapsed at {clock.LapsesAt?.ToLocalTime():yyyy-MM-dd HH:mm}, but Entra still issues tokens silently (its sign-in frequency is not being enforced)."
+            : $" MFA clock: {clock.Line}";
+        line = $"NetworkOps sign-in: signed in ({why}).{note}"; code = 0; speak = false;
+    }
+    if (!hook || speak) Console.WriteLine(line);
+    return hook ? 0 : code;
 }
 
 // What a Claude session uses: everything through NetworkOps on APP01, never from this PC to the machine (SessionVerbs.cs).
