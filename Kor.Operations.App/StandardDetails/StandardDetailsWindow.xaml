@@ -338,12 +338,12 @@
                             </GroupStyle>
                         </DataGrid.GroupStyle>
                         <DataGrid.Columns>
-                            <DataGridTextColumn x:Name="ListIdColumn" Header="DETAIL #" Binding="{Binding DetailNumber}" Width="118">
+                            <DataGridTextColumn x:Name="ListIdColumn" Header="DETAIL #" Binding="{Binding ListId}" Width="118">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Margin" Value="10,0,0,0"/><Setter Property="FontSize" Value="12.5"/><Setter Property="Foreground" Value="#FF3B434C"/></Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="TITLE" Binding="{Binding Title}" Width="*">
+                            <DataGridTextColumn Header="TITLE" Binding="{Binding ListTitle}" Width="*">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/><Setter Property="Margin" Value="0,0,10,0"/><Setter Property="FontSize" Value="13"/><Setter Property="Foreground" Value="#FF252B31"/></Style>
                                 </DataGridTextColumn.ElementStyle>
@@ -442,6 +442,13 @@
                                            FontSize="12.5"
                                            FontWeight="SemiBold"
                                            Foreground="#FF1E6B3A"/>
+                            </StackPanel>
+                            <!-- a sheet: the details printed on it; a click opens that detail (board row 103) -->
+                            <StackPanel x:Name="SheetDetailsPanel" Margin="0,10,0,0" Visibility="Collapsed">
+                                <TextBlock x:Name="SheetDetailsHeader" FontSize="12.5" FontWeight="SemiBold" Foreground="#FF5D6670" Margin="0,0,0,6"/>
+                                <ScrollViewer MaxHeight="104" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <WrapPanel x:Name="SheetDetailsWrap"/>
+                                </ScrollViewer>
                             </StackPanel>
                         </StackPanel>
                         <Border x:Name="DetailStatusPill" HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="16" Padding="12,5" Background="#FFEFF1F3" Visibility="Collapsed">
