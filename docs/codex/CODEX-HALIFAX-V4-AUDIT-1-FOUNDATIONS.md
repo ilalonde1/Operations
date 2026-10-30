@@ -1,7 +1,8 @@
 # CODEX — Halifax v4 adversarial audit 1 of 3: FOUNDATIONS
 
-Reading set: ~105 KB of source (measured at handover; see the table). Reasoning: medium. Expected time: under 20 minutes.
-Repo: `C:\VIsual Studio Projects\KOR.Drafter`, commit `<PACKAGE_COMMIT>` (filled in at handover). Read files AT THAT COMMIT.
+Reading set: 105,745 bytes of source (measured 30 Oct at f02c52d). Reasoning: medium. Expected time: under 20 minutes.
+Repo: `C:\VIsual Studio Projects\KOR.Drafter`, commit `f02c52d` (branch standard-details-rendered-image-store; the
+working tree is at that commit). Read the files as they are in that tree.
 
 ## Paste this to Codex
 
