@@ -183,6 +183,8 @@ public partial class StandardDetailsWindow : Window
                 : "This is the actual drawing. Approve it and it goes into the drafters' palette.";
         DrawingFootnote.Visibility = Visibility.Collapsed;
         SetDetailTypeControl(row, row.IsDetail);
+        // a sheet's type is not a detail type: its Change Type picker goes, its Open PDF (same flag above) stays
+        if (row.IsSheet) DetailTypePanel.Visibility = Visibility.Collapsed;
         ShowPreviewEmpty(row.IsPart ? "Loading part image…" : "Loading drawing…");
     }
 
@@ -217,7 +219,9 @@ public partial class StandardDetailsWindow : Window
 
     private void SetDrawingFootnote(string detailNumber)
     {
-        DrawingFootnote.Text = $"KOR-Standards-Authoring-R25.rvt  ·  {detailNumber}";
+        // every stored drawing is exported from Nelson's master (detail_drawings.py, 30 Oct: RenderedImage.Source
+        // reads "R24 ..."), not from the authoring file this line used to name
+        DrawingFootnote.Text = $"KOR-Standard-Details-R24.rvt  ·  {detailNumber}";
         DrawingFootnote.Visibility = Visibility.Visible;
     }
 

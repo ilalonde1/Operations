@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using Microsoft.Data.SqlClient;
 using Microsoft.Win32;
 using Serilog;
@@ -235,7 +236,7 @@ public partial class StandardDetailsWindow
                         LatestStatusText = string.IsNullOrWhiteSpace(d.Confidence) ? "unverified" : d.Confidence,
                         StatusLabel = DetailStatusLabel(d),
                         RightSubtitle = _sheetsMode
-                            ? $"{d.DetailNumber}  ·  {SheetCollectionDisplay(d.ViewGroup)}  ·  {DetailTypeDisplay(d.Kind, d.IsSheet)}  ·  {StatusWord(DetailStatusLabel(d))}"
+                            ? $"{d.DetailNumber}  ·  {SheetCollectionDisplay(d.ViewGroup)}  ·  {StatusWord(DetailStatusLabel(d))}"
                             : $"{d.DetailNumber}  ·  {(string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline)}  ·  {DetailTypeDisplay(d.Kind, d.IsSheet)}  ·  {StatusWord(DetailStatusLabel(d))}"
                     }).ToList();
                 }
@@ -389,13 +390,47 @@ public partial class StandardDetailsWindow
 
     private async void CatalogTab_Checked(object sender, RoutedEventArgs e)
     {
-        var parts = ReferenceEquals(sender, PartsTab);
-        var sheets = ReferenceEquals(sender, SheetsTab);
+        if (_switchingTab) return;
+        await SwitchCatalogModeAsync(ReferenceEquals(sender, PartsTab), ReferenceEquals(sender, SheetsTab));
+    }
+
+    private bool _switchingTab;
+
+    // A sheet's "details on this sheet" button: back to Details, the list reloaded, that detail selected.
+    // The search box is set to the number only when the current filters hide it.
+    private async Task JumpToDetailAsync(string detailNumber)
+    {
+        _switchingTab = true;
+        try { DetailsTab.IsChecked = true; }
+        finally { _switchingTab = false; }
+        await SwitchCatalogModeAsync(false, false);
+        var row = _documentSnapshot.FirstOrDefault(x => string.Equals(x.DetailNumber, detailNumber, StringComparison.OrdinalIgnoreCase));
+        if (row is null)
+        {
+            SearchBox.Text = detailNumber;
+            await LoadDocumentsUiAsync();
+            row = _documentSnapshot.FirstOrDefault(x => string.Equals(x.DetailNumber, detailNumber, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (row is null)
+        {
+            SetActivityMessage($"{detailNumber} is not in the catalogue list.", BannerTone.Warning);
+            return;
+        }
+
+        DocumentsGrid.SelectedItem = row;
+        DocumentsGrid.ScrollIntoView(row);
+    }
+
+    private async Task SwitchCatalogModeAsync(bool parts, bool sheets)
+    {
         if (!_uiReady || (parts == _partsMode && sheets == _sheetsMode)) return;
         _partsMode = parts;
         _sheetsMode = sheets;
         ListIdColumn.Header = _partsMode ? "PART" : _sheetsMode ? "SHEET" : "DETAIL #";
         ListGroupColumn.Header = _partsMode ? "PALETTE" : _sheetsMode ? "COLLECTION" : "DISCIPLINE";
+        // sheets are grouped under their collection's header, so the column would only repeat it and squeeze the title
+        ListGroupColumn.Visibility = _sheetsMode ? Visibility.Collapsed : Visibility.Visible;
         KindFilterCombo.IsEnabled = !_partsMode;
         ApplyCatalogModeLayout(null);
         await LoadDocumentsUiAsync();
@@ -535,7 +570,49 @@ public partial class StandardDetailsWindow
 
         UpdateDetailPane(selected);
         await LoadPreviewAsync(selected);
+        await LoadSheetDetailsAsync(selected);
         UpdateSelectionSummary();
+    }
+
+    // A selected SHEET lists the details printed on it (DetailOccurrence.OnSheet); anything else hides the panel.
+    private async Task LoadSheetDetailsAsync(DocumentRow? row)
+    {
+        SheetDetailsWrap.Children.Clear();
+        SheetDetailsPanel.Visibility = Visibility.Collapsed;
+        if (row is not { IsSheet: true } || _korStandardsRepo is null) return;
+
+        IReadOnlyList<(string DetailNumber, string Title)> details;
+        try { details = await _korStandardsRepo.LoadDetailsOnSheetAsync(row.DetailNumber); }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Standard Details: details on sheet {Sheet} failed to load.", row.DetailNumber);
+            return;
+        }
+
+        if (!ReferenceEquals(DocumentsGrid.SelectedItem, row)) return;   // the selection moved on
+        SheetDetailsHeader.Text = details.Count == 0
+            ? "No catalogued details are recorded on this sheet."
+            : $"Details on this sheet ({details.Count}) - click one to open it";
+        foreach (var (number, title) in details)
+        {
+            var label = title.Length > 46 ? title[..45] + "…" : title;
+            var button = new Button
+            {
+                Content = $"{number}  {label}",
+                Tag = number,
+                ToolTip = $"{number}  {title}",
+                Margin = new Thickness(0, 0, 6, 6),
+                Padding = new Thickness(9, 4, 9, 4),
+                FontSize = 12,
+                Cursor = Cursors.Hand,
+                Background = new SolidColorBrush(Color.FromRgb(0xF1, 0xF3, 0xF5)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0xE1, 0xE4, 0xE8)),
+            };
+            button.Click += async (_, _) => await JumpToDetailAsync(number);
+            SheetDetailsWrap.Children.Add(button);
+        }
+
+        SheetDetailsPanel.Visibility = Visibility.Visible;
     }
 
     private void VersionsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateSelectionSummary();
@@ -1558,6 +1635,11 @@ public partial class StandardDetailsWindow
         // is the sheet collection instead. Editing off that would write the wrong value.
         public string Discipline { get; set; } = string.Empty;
         public bool IsSheet { get; set; }
+        // What the list's first two columns show. A sheet's catalogue title is "<sheet number> <name>" (db 153);
+        // its list row shows the sheet number and the name - the KOR-D number stays the row's identity (preview,
+        // details on the sheet, jump) and is in the subtitle. Everything else shows its number and title.
+        public string ListId => IsSheet && Title.IndexOf(' ') > 0 ? Title[..Title.IndexOf(' ')] : DetailNumber;
+        public string ListTitle => IsSheet && Title.IndexOf(' ') > 0 ? Title[(Title.IndexOf(' ') + 1)..] : Title;
         public string ViewGroup { get; set; } = string.Empty;
         public bool IsDetail { get; set; }
         public bool IsPart { get; set; }

@@ -31,7 +31,12 @@ internal sealed class KorStandardsReadRepository
 
     internal async Task<IReadOnlyList<PaletteDetailRow>> LoadPaletteDetailsAsync(string query, string? discipline = null, string? kind = null, bool? isSheet = null, bool orderByViewGroup = false)
     {
-        const string sql = @"
+        // Sheets live in their own view since db 155: vw_PaletteCatalog is also what the Revit
+        // palette reads, and it must never offer a sheet as a detail to place. A sheet's title starts
+        // with its own number (S1.01 …), so within a collection sheets list in sheet order.
+        var source = isSheet == true ? "detail.vw_SheetCatalog" : "detail.vw_PaletteCatalog";
+        var within = isSheet == true ? "MIN(Title)" : "DetailNumber";
+        var sql = $@"
 SELECT DetailNumber,
        MIN(Title) AS Title,
        MIN(Discipline) AS Discipline,
@@ -42,13 +47,13 @@ SELECT DetailNumber,
        MAX(CAST(IsPlaceable AS int)) AS IsPlaceable,
        MAX(CAST(VariantsDiverge AS int)) AS VariantsDiverge,
        COUNT(*) AS VariantCount
-FROM detail.vw_PaletteCatalog
+FROM {source}
 WHERE (@q = '' OR DetailNumber LIKE @like OR Title LIKE @like)
   AND (@discipline IS NULL OR Discipline = @discipline)
   AND (@kind IS NULL OR Kind = @kind)
   AND (@isSheet IS NULL OR IsSheet = @isSheet)
 GROUP BY DetailNumber
-ORDER BY CASE WHEN @orderByViewGroup = 1 THEN MIN(ViewGroup) ELSE N'' END, DetailNumber;";
+ORDER BY CASE WHEN @orderByViewGroup = 1 THEN MIN(ViewGroup) ELSE N'' END, {within};";
 
         var q = query?.Trim() ?? string.Empty;
         var rows = new List<PaletteDetailRow>();
@@ -117,6 +122,35 @@ ORDER BY DetailNumber;";
             {
                 rows.Add(detailNumber);
             }
+        }
+
+        return rows;
+    }
+
+    /// <summary>The live details printed on a catalogue SHEET (board row 103): every detail whose occurrence
+    /// records that sheet's number (DetailOccurrence.OnSheet), keyed by the sheet entry's own KOR-D number.</summary>
+    internal async Task<IReadOnlyList<(string DetailNumber, string Title)>> LoadDetailsOnSheetAsync(string sheetDetailNumber)
+    {
+        const string sql = @"
+SELECT d.DetailNumber, MIN(d.Title) AS Title
+FROM detail.DetailOccurrence o
+JOIN detail.Detail d ON d.Id = o.DetailId
+WHERE o.OnSheet = (SELECT TOP 1 s.SheetNumber FROM detail.vw_SheetCatalog s WHERE s.DetailNumber = @dn)
+  AND d.IsSheet = 0
+  AND d.RetiredAtUtc IS NULL
+GROUP BY d.DetailNumber
+ORDER BY d.DetailNumber;";
+
+        var rows = new List<(string, string)>();
+        await using var cn = new SqlConnection(_connectionString);
+        await cn.OpenAsync();
+        await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        AddNVarChar(cmd, "@dn", 64, sheetDetailNumber.Trim());
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+        {
+            rows.Add((r.GetStringOrEmpty(0).Trim(), r.GetStringOrEmpty(1)));
         }
 
         return rows;
