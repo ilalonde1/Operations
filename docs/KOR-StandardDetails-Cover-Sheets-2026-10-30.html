@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>KOR Standard Details — Cover Sheets</title>
+<!-- One Letter page for Ian, Monday with Jim (board row 103). Styling copied verbatim from KOR-StandardDetails-Gatekeeper-2026-09-28.html so the cards match. Screens: StandardDetailsLiveRenderTests (EngineeringTools.Tests), the live catalogue on 30 Oct. Render with tools\Format-BdWebPdf.ps1. -->
+<style>
+  :root {
+    --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+    --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+    --accent:#FF5B35; --accent-ink:#C6360F;
+    --good:#1E7D3A; --warn:#A9741A;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono:"Cascadia Code", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+      --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87;
+      --line:#29323B; --line-strong:#38434E; --slate:#7E97AC; --slate-deep:#C4D3DF;
+      --accent:#FF7150; --accent-ink:#FF9276; }
+  }
+  :root[data-theme="dark"] { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+    --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B; --line-strong:#38434E;
+    --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:9.6pt; line-height:1.34; -webkit-font-smoothing:antialiased; }
+
+  .top { background:linear-gradient(180deg,var(--slate-deep),var(--slate));
+    color:#EAF0F5; border-bottom:2.5px solid var(--accent); padding:11px 20px;
+    display:flex; align-items:baseline; justify-content:space-between; gap:1rem; }
+  .top h1 { margin:0; font-size:17pt; font-weight:700; letter-spacing:-.01em; color:#fff; }
+  .top .ey { font-family:var(--mono); font-size:7.2pt; letter-spacing:.2em;
+    text-transform:uppercase; color:#FFB59F; }
+  .top .who { font-family:var(--mono); font-size:7.6pt; letter-spacing:.14em; text-transform:uppercase;
+    color:#fff; background:rgba(255,255,255,.17); border:1px solid rgba(255,255,255,.28);
+    border-radius:5px; padding:.22em .7em; white-space:nowrap; }
+  .top p { margin:.15rem 0 0; font-size:9.2pt; color:#CBD8E2; max-width:40rem; }
+
+  .body { padding:11px 20px 0; }
+  /* align-items:start, or every card stretches to match the tallest in its row and a short one
+     ends up with a block of empty space under it. */
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:.55rem; align-items:start; }
+
+  .task { background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    border-left:3px solid var(--accent); padding:.5rem .65rem .55rem; break-inside:avoid; }
+  .task h3 { margin:0 0 .3rem; font-size:10.4pt; display:flex; align-items:baseline; gap:.45rem; }
+  .task h3 .n { font-family:var(--mono); font-weight:700; color:var(--accent-ink); font-size:8.6pt; }
+  ol { margin:0; padding-left:1.05rem; }
+  ol li { margin-bottom:.16rem; font-size:8.9pt; color:var(--ink-soft); line-height:1.33; }
+  ol li b { color:var(--ink); font-weight:650; }
+  .task .after { margin:.3rem 0 0; font-size:8.4pt; color:var(--ink-faint); font-style:italic; }
+
+  .btn { font-family:var(--mono); font-size:8.2pt; background:var(--slate); color:#fff;
+    border-radius:4px; padding:.05em .38em; white-space:nowrap; }
+  .path { font-family:var(--mono); font-size:8.2pt; color:var(--accent-ink); }
+
+  .foot-strip { display:grid; grid-template-columns:2fr 1fr; gap:.55rem; margin-top:.55rem; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    padding:.5rem .65rem; break-inside:avoid; }
+  .card.habit { border-left:3px solid var(--good);
+    background:color-mix(in srgb, var(--good) 8%, var(--surface)); }
+  .card h4 { margin:0 0 .25rem; font-family:var(--mono); font-size:7.6pt; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent-ink); font-weight:700; }
+  .card.habit h4 { color:var(--good); }
+  .card p { margin:0; font-size:8.5pt; color:var(--ink-soft); line-height:1.35; }
+  .card p b { color:var(--ink); }
+  .words { display:flex; flex-wrap:wrap; gap:.15rem .9rem; }
+  .words span { font-size:8.5pt; color:var(--ink-soft); }
+  .words b { color:var(--ink); font-weight:650; }
+
+  .foot { padding:7px 20px 0; font-size:7.4pt; color:var(--ink-faint); font-family:var(--mono); }
+
+  @page { size:Letter; margin:9mm 10mm; }
+  @media print {
+    :root { --ground:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F3F1; --ink:#1C2530;
+      --ink-soft:#55636F; --ink-faint:#8A97A2; --line:#E5E4E1; --slate:#3F5364;
+      --slate-deep:#2C3A47; --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A; }
+    body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact;
+      color-scheme:light; }
+    .btn { color:#fff !important; }
+  }
+</style>
+
+<style>
+  .shot { margin:0 0 .55rem; border:1px solid var(--line-strong); border-radius:8px; overflow:hidden; background:var(--surface); break-inside:avoid; }
+  .shot img { display:block; width:100%; max-height:4.05in; object-fit:contain; background:#fff; }
+  .shot .cap { font-size:8.2pt; color:var(--ink-soft); padding:.3rem .6rem; border-top:1px solid var(--line); }
+  .shot .cap b { color:var(--ink); }
+  .facts { display:grid; grid-template-columns:1fr 1fr; gap:.55rem; margin-top:.55rem; }
+  .facts ul { margin:0; padding-left:1rem; }
+  .facts li { font-size:8.4pt; color:var(--ink-soft); margin-bottom:.12rem; }
+  .facts li b { color:var(--ink); }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <div class="ey">KOR Structural · Standard Details</div>
+      <h1>Where the cover sheets are</h1>
+      <p>Nelson's master sheets are now in the catalogue: 57 general-notes and typical-detail sheets, in five collections, each with its drawing.</p>
+    </div>
+    <div class="who">For Monday with Jim</div>
+  </div>
+  <div class="body">
+    <div class="shot">
+      <img src="KOR-StandardDetails-Cover-Sheets-2026-10-30/sheets-tab-S1.03.png" alt="The Sheets tab with S1.03 selected">
+      <div class="cap"><b>Sheets tab, S1.03 selected.</b> Left: the sheets under their collection. Right: the sheet as Nelson's master prints it, and the 30 details on it.</div>
+    </div>
+    <div class="grid">
+    <div class="task">
+      <h3><span class="n">1</span>Find a cover sheet</h3>
+      <ol>
+        <li>Open <span class="btn">KOR Operations</span> → <span class="btn">Standard Details</span>.</li>
+        <li>Click <span class="btn">Sheets</span> (top left, beside Details and Parts).</li>
+        <li>Pick a collection: <b>Concrete tower E, E1, D</b> or <b>Wood frame E1, D</b>.</li>
+      </ol>
+    </div>
+    <div class="task">
+      <h3><span class="n">2</span>Look at it</h3>
+      <ol>
+        <li>Click the sheet. Its drawing shows on the right.</li>
+        <li>Click the drawing to zoom, or <span class="btn">Open PDF</span> for the full sheet.</li>
+      </ol>
+    </div>
+    <div class="task">
+      <h3><span class="n">3</span>Go to a detail on it</h3>
+      <ol>
+        <li>Under the sheet's title: <b>Details on this sheet</b>.</li>
+        <li>Click one. The app opens it in <span class="btn">Details</span> with its own drawing.</li>
+      </ol>
+    </div>
+    <div class="task">
+      <h3><span class="n">4</span>Before the demo</h3>
+      <ol>
+        <li>This is the <b>new build</b>. The app installed on staff PCs today shows an empty Sheets tab.</li>
+        <li>Releasing the new build is your call.</li>
+      </ol>
+    </div>
+    </div>
+    <div class="facts">
+      <div class="card">
+        <h4>Measured on 30 Oct</h4>
+        <ul>
+          <li><b>57 of 57</b> sheets in the catalogue, one entry each; <b>688 of 688</b> entries have a drawing.</li>
+          <li><b>0 of 57</b> sheet drawings print another firm, another job or a placeholder (the office's term list). Printed with the clean title blocks.</li>
+          <li><b>57 of 57</b> sheets are full or flush right. 5 are part-filled; each sits as far right as its family's full sheets.</li>
+          <li>Left out until Nelson places them: S4.02, S5.05, S6.01, Sx.x2.</li>
+        </ul>
+      </div>
+      <div class="card habit">
+        <h4>One question for Jim</h4>
+        <p>"Top to bottom, right to left": down columns, or along rows? Nelson's master does both: <b>39 of 57</b> sheets read in columns, <b>14</b> in rows (the shear-wall sheets among them). New sheets use columns until he says.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot">KOR Structural · Standard Details · cover sheets · 2026-10-30 · 631 details, 57 sheets in 5 collections</div>
+</body></html>
