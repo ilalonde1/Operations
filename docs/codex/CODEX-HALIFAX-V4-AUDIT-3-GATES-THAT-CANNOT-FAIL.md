@@ -1,7 +1,8 @@
 # CODEX — Halifax v4 adversarial audit 3 of 3: GATES THAT CANNOT FAIL
 
-Reading set: ~95 KB of source (measured at handover; see the table). Reasoning: medium. Expected time: under 20 minutes.
-Repo: `C:\VIsual Studio Projects\KOR.Drafter`, commit `<PACKAGE_COMMIT>` (filled in at handover). Read files AT THAT COMMIT.
+Reading set: about 100 KB of source (measured 30 Oct at 8dcaeeb). Reasoning: medium. Expected time: under 20 minutes.
+Repo: `C:\VIsual Studio Projects\KOR.Drafter`, commit `8dcaeeb` (branch standard-details-rendered-image-store; the
+working tree is at that commit). Read the files as they are in that tree.
 
 ## Paste this to Codex
 
