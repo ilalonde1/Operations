@@ -262,6 +262,23 @@ API marker into `docs/codex/` or the Director, Knowledge or CLI code paths, and 
 that fires `/ask`, a `run-now`, or api.anthropic.com. Only a user message containing
 `IAN-APPROVED-API-USE` lifts it. The existing `/ask` and COO card are Ian's call, not precedent.
 
+## 15. HOW WE BUILD IS EDICT: the process is a product.
+
+Ian, 31 Oct 2026: "The ability to develop efficiently is just as or more powerful than the applications that are
+built" - and "only so far as it doesn't cut IQ". The method is `docs/HOW-WE-BUILD.md`, binding on every session:
+- The swarm stays (a module per session, a lead holding the plan), but runs lean: workers report only at DONE or
+  for a DECISION; status lives on the oversight board, not in messages; the lead keeps its context small.
+- Wisdom lives outside sessions (rules, memory, hooks, checks, KorStandards, RESUME notes). Sessions run a
+  deliverable or a day; a real handover before any restart; a fresh session answers five questions from it first.
+- Faults are caught before the expensive step: read checks, then offline replay, then Revit. Checks read what was
+  built, not only our requests.
+- Every piece of work starts with goal, done-when and budget. Every deliverable ships with a scorecard (cost,
+  reruns, faults caught by checks vs by people, messages per decision) and a ten-minute review.
+- Ian hears three things only: a change to a deliverable, a decision that is his, an answer to what he asked.
+
+What it cost not to: 30 Oct, Halifax v4 shipped right but exhausted a 20x weekly allowance and $1,000 of credits -
+six sessions days old, every message relayed through the lead, four full reruns, side threads reported as news.
+
 ## Environment facts worth not rediscovering
 
 - Rules live in `KorStandards` on `KOR-APP01\SQLEXPRESS`, schema `analysis`. A missing rule stops a
