@@ -106,7 +106,7 @@ LOOKED["a grep that mentions model-render"] = (
     "Found it - done.")
 # --- REFUSED: the real model-render run still counts
 MISSES["a real takeoff model-render run"] = (
-    [B(r'"C:\KOR.Drafter-work\_tools\takeoff\0f3e4ee4\takeoff.exe" model-render model.e2k model.png')],
+    [B(r'"C:\VIsual Studio Projects\KOR.Drafter-work\_tools\takeoff\0f3e4ee4\takeoff.exe" model-render model.e2k model.png')],
     "Rendered - done.", "drawing")
 # --- ALLOWED: no completion claim at all
 NO_CLAIM = ([E(r"C:\x\tools\drafted_set.py")], "Working on the drawing changes next.")
