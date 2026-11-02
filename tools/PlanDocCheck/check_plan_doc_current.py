@@ -48,7 +48,7 @@ The ledger's "cleared" is the writer's own word; `doc` is the check of that word
 
 Usage (exit 0 = current or owed within grace, 1 = STALE, 2 = cannot judge / refused):
   python check_plan_doc_current.py owed  [--ledger <work>\doc-owed.jsonl] [--grace-min 60] [--now ...]
-  python check_plan_doc_current.py owed --hook --ledger "C:\VIsual Studio Projects\KOR.Drafter-work\*\doc-owed.jsonl"
+  python check_plan_doc_current.py owed --hook --ledger "C:\VIsual Studio Projects\KOR.Drafter\work\*\doc-owed.jsonl"
       (a Claude Code UserPromptSubmit hook: one "[plan doc, <job>] STALE ..." block per job that owes, nothing when
       current or when no job has a ledger yet, and ALWAYS exit 0 -- a hook's exit 2 would drop the prompt)
   python check_plan_doc_current.py clear --doc-stamp "28 Oct, 10:15" --rev 49 --by "Virtual Drafter" [--ledger ...]
@@ -66,8 +66,8 @@ import sys
 
 MONTHS = {m: i + 1 for i, m in enumerate("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split())}
 PART_END = {"morning": (12, 0), "afternoon": (18, 0), "evening": (21, 0), "night": (23, 59)}
-DEFAULT_RUN_JSON = r"C:\VIsual Studio Projects\KOR.Drafter-work\31180-01-halifax\run.json"
-DEFAULT_LEDGER = r"C:\VIsual Studio Projects\KOR.Drafter-work\31180-01-halifax\doc-owed.jsonl"
+DEFAULT_RUN_JSON = r"C:\VIsual Studio Projects\KOR.Drafter\work\31180-01-halifax\run.json"
+DEFAULT_LEDGER = r"C:\VIsual Studio Projects\KOR.Drafter\work\31180-01-halifax\doc-owed.jsonl"
 
 # "[HH:MM, ]D Mon[th][, | at ]HH:MM | D Mon morning/afternoon/evening/night"
 STAMP = re.compile(
@@ -177,7 +177,7 @@ def main(argv=None):
     src.add_argument("--doc-stamp", help='one stamp, e.g. "28 Oct, 10:15"')
     d.add_argument("--run-json", default=DEFAULT_RUN_JSON)
     o = sub.add_parser("owed", help="what the plan doc owes, from doc-owed.jsonl (no doc read)")
-    o.add_argument("--ledger", default=DEFAULT_LEDGER, help="a path or a glob, e.g. C:\\VIsual Studio Projects\\KOR.Drafter-work\\*\\doc-owed.jsonl")
+    o.add_argument("--ledger", default=DEFAULT_LEDGER, help="a path or a glob, e.g. C:\\VIsual Studio Projects\\KOR.Drafter\\work\\*\\doc-owed.jsonl")
     o.add_argument("--hook", action="store_true",
                    help="for a Claude Code hook: print only STALE / unreadable ledgers, silent when current, ALWAYS exit 0")
     c = sub.add_parser("clear", help="after writing the doc: record that it covers everything up to its stamp")
