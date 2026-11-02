@@ -284,6 +284,12 @@ six sessions days old, every message relayed through the lead, four full reruns,
 - Rules live in `KorStandards` on `KOR-APP01\SQLEXPRESS`, schema `analysis`. A missing rule stops a
   production run by design; there is no fallback value.
 - Migrations live in `C:\VIsual Studio Projects\KOR.Drafter\db\`, not in this repo.
+- **The DB system:** `KOR-APP01\SQLEXPRESS` holds ONE MS SQL database per app, KOR and personal alike (KorStandards,
+  KorOpportunitiesDb, KorInspections, KorNetworkOps ... and IanBrain, JoeBrain, TraderBrain, VentureBrain, DemoStudio).
+  Each has its own SQL login (never a Windows user); its scripts live in its owning repo's `db\<Database>\`.
+  LocalDB is for design-time and tests only. A new store is a new database here, created by Ian as sa: never
+  propose another engine without reading `SELECT name FROM sys.databases` first (2 Nov: SQLite, then LocalDB, were
+  proposed for a board without looking; Ian: "You're not aware of our DB system???").
 - The full test suite takes about **7 minutes** because ~20 of its tests rebuild both reference
   buildings from real drawings. Do not start one and then keep editing.
 
