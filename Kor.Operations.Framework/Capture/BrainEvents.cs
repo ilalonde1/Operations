@@ -1,0 +1,135 @@
+using System.Text.RegularExpressions;
+using Microsoft.Data.SqlClient;
+
+namespace Kor.Operations.Framework.Capture;
+
+/// <summary>One row of brain.Event (KorStandards migration 168). Column limits are the table's.</summary>
+public sealed record BrainEvent(string Module, string Kind, string? Repo, string? Commit, string? Ref, string? Outcome,
+                                string? Detail, string Actor);
+
+/// <summary>A row read back from brain.Event.</summary>
+public sealed record StoredEvent(int Id, DateTimeOffset AtUtc, string Module, string Kind, string? Repo, string? Commit,
+                                 string? Ref, string? Outcome, string? Detail, string Actor);
+
+/// <summary>A row read back from brain.LaneState (162).</summary>
+public sealed record StoredLaneState(int Id, string Lane, string ResumeBlock, string WrittenBy, DateTimeOffset WrittenAtUtc);
+
+/// <summary>
+/// Writes and reads the K3 records as korbrain_app (brain_rw: SELECT/INSERT/UPDATE, DELETE denied - 162). Every text
+/// value is fitted to its column and stripped of secret-shaped lines BEFORE it is sent: the table refuses
+/// Password= / Pwd= / sk-ant- / AccountKey= (CK_Event_NoSecret, CK_LaneState_NoSecret), and a refused row in hook mode
+/// would be a silently lost event.
+/// </summary>
+public static class BrainStore
+{
+    public static readonly string[] Kinds =
+        { "commit", "merge", "checkout", "push", "test", "build", "migration", "review", "board", "gate", "compact", "session-end" };
+
+    private static readonly Regex Hex40 = new("^[0-9a-f]{40}$", RegexOptions.CultureInvariant);
+
+    /// <summary>A lowercase 40-hex sha, or null (CK_Event_Commit refuses anything else).</summary>
+    public static string? Sha(string? value)
+    {
+        var v = value?.Trim();
+        return v is not null && Hex40.IsMatch(v) ? v : null;
+    }
+
+    public static BrainEvent Fit(BrainEvent e) => e with
+    {
+        Module = Clip(e.Module, 60) ?? "unknown",
+        Kind = e.Kind,
+        Repo = Clip(e.Repo, 80),
+        Commit = Sha(e.Commit),
+        Ref = Clip(Redact.Text(e.Ref), 400),
+        Outcome = Clip(e.Outcome, 20),
+        Detail = Redact.Text(e.Detail),
+        Actor = Clip(Redact.Text(e.Actor), 100) ?? "unknown",
+    };
+
+    public static int Insert(BrainEvent e)
+    {
+        if (!Kinds.Contains(e.Kind)) throw new ArgumentException($"kind '{e.Kind}' is not one brain.Event accepts");
+        var f = Fit(e);
+        using var cn = KorStandardsConnection.Open(KorStandardsConnection.Login.Brain);
+        using var cmd = new SqlCommand(
+            "INSERT brain.Event (Module, Kind, Repo, [Commit], Ref, Outcome, Detail, Actor) OUTPUT INSERTED.Id " +
+            "VALUES (@m, @k, @r, @c, @ref, @o, @d, @a)", cn) { CommandTimeout = 15 };
+        cmd.Parameters.Add("@m", System.Data.SqlDbType.NVarChar, 60).Value = f.Module;
+        cmd.Parameters.Add("@k", System.Data.SqlDbType.NVarChar, 16).Value = f.Kind;
+        cmd.Parameters.Add("@r", System.Data.SqlDbType.NVarChar, 80).Value = (object?)f.Repo ?? DBNull.Value;
+        cmd.Parameters.Add("@c", System.Data.SqlDbType.Char, 40).Value = (object?)f.Commit ?? DBNull.Value;
+        cmd.Parameters.Add("@ref", System.Data.SqlDbType.NVarChar, 400).Value = (object?)f.Ref ?? DBNull.Value;
+        cmd.Parameters.Add("@o", System.Data.SqlDbType.NVarChar, 20).Value = (object?)f.Outcome ?? DBNull.Value;
+        cmd.Parameters.Add("@d", System.Data.SqlDbType.NVarChar, -1).Value = (object?)f.Detail ?? DBNull.Value;
+        cmd.Parameters.Add("@a", System.Data.SqlDbType.NVarChar, 100).Value = f.Actor;
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    public static int InsertLaneState(string lane, string resumeBlock, string writtenBy)
+    {
+        using var cn = KorStandardsConnection.Open(KorStandardsConnection.Login.Brain);
+        using var cmd = new SqlCommand(
+            "INSERT brain.LaneState (Lane, ResumeBlock, WrittenBy) OUTPUT INSERTED.Id VALUES (@l, @b, @w)", cn) { CommandTimeout = 15 };
+        cmd.Parameters.Add("@l", System.Data.SqlDbType.NVarChar, 60).Value = Clip(lane, 60) ?? "unknown";
+        cmd.Parameters.Add("@b", System.Data.SqlDbType.NVarChar, -1).Value = Redact.Text(resumeBlock) ?? "";
+        cmd.Parameters.Add("@w", System.Data.SqlDbType.NVarChar, 100).Value = Clip(Redact.Text(writtenBy), 100) ?? "unknown";
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    public static IReadOnlyList<StoredEvent> Last(string module, int count, string? kind = null)
+    {
+        using var cn = KorStandardsConnection.Open(KorStandardsConnection.Login.Brain);
+        using var cmd = new SqlCommand(
+            "SELECT TOP (@n) Id, AtUtc, Module, Kind, Repo, [Commit], Ref, Outcome, Detail, Actor FROM brain.Event " +
+            "WHERE Module = @m AND (@k IS NULL OR Kind = @k) ORDER BY Id DESC", cn) { CommandTimeout = 30 };
+        cmd.Parameters.Add("@n", System.Data.SqlDbType.Int).Value = Math.Clamp(count, 1, 1000);
+        cmd.Parameters.Add("@m", System.Data.SqlDbType.NVarChar, 60).Value = module;
+        cmd.Parameters.Add("@k", System.Data.SqlDbType.NVarChar, 16).Value = (object?)kind ?? DBNull.Value;
+        var rows = new List<StoredEvent>();
+        using var r = cmd.ExecuteReader();
+        while (r.Read())
+            rows.Add(new StoredEvent(r.GetInt32(0), r.GetDateTimeOffset(1), r.GetString(2), r.GetString(3), Str(r, 4),
+                                     Str(r, 5), Str(r, 6), Str(r, 7), Str(r, 8), r.GetString(9)));
+        return rows;
+    }
+
+    public static StoredLaneState? LaneStateById(int id)
+    {
+        using var cn = KorStandardsConnection.Open(KorStandardsConnection.Login.Brain);
+        using var cmd = new SqlCommand(
+            "SELECT Id, Lane, ResumeBlock, WrittenBy, WrittenAtUtc FROM brain.LaneState WHERE Id = @id", cn) { CommandTimeout = 30 };
+        cmd.Parameters.Add("@id", System.Data.SqlDbType.Int).Value = id;
+        using var r = cmd.ExecuteReader();
+        return r.Read() ? new StoredLaneState(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetDateTimeOffset(4)) : null;
+    }
+
+    private static string? Str(SqlDataReader r, int i) => r.IsDBNull(i) ? null : r.GetString(i);
+
+    internal static string? Clip(string? s, int max)
+    {
+        if (s is null) return null;
+        s = s.Trim();
+        if (s.Length == 0) return null;
+        return s.Length <= max ? s : s[..(max - 3)] + "...";
+    }
+}
+
+/// <summary>
+/// Removes every line carrying a marker the brain tables refuse (CK_Event_NoSecret, CK_LaneState_NoSecret - LIKE under a
+/// case-insensitive collation, so matched case-insensitively here). The line is replaced by a notice, never kept.
+/// </summary>
+public static class Redact
+{
+    private static readonly Regex Marker = new(@"password=|pwd=|sk-ant-|accountkey=", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    public static bool HasSecretMarker(string? s) => s is not null && Marker.IsMatch(s);
+
+    public static string? Text(string? s)
+    {
+        if (s is null || !Marker.IsMatch(s)) return s;
+        var lines = s.Split('\n');
+        for (var i = 0; i < lines.Length; i++)
+            if (Marker.IsMatch(lines[i])) lines[i] = "[line removed by kor: secret marker]";
+        return string.Join('\n', lines);
+    }
+}
