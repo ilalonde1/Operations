@@ -293,6 +293,11 @@ six sessions days old, every message relayed through the lead, four full reruns,
 - **Every new board row carries a Budget** (KorStandards 163, 2 Nov - Framework F2): `oversight.Commitment` refuses a
   row added without one (CK_Commitment_Budget). Goal = What, finish line = DoneWhen, Budget = time, runs and what it
   may read. Rows from before 163 keep NULL. Each lead's rows are shown at session start; work them to zero.
+- **Every commit is reviewed before it is pushed** (Framework F3, 2 Nov): the pre-push hook in every KOR repo refuses a
+  commit (made after 2026-11-02 19:36) with no 'approve' in `oversight.Review`. Before pushing, run
+  `python -I "C:/VIsual Studio Projects/Framework/tools/kor_review.py" review` in the repo: one fresh `claude -p`
+  session reviews each unpushed commit (about $0.3-0.6 each) and records its verdict. On 'changes', fix and commit
+  again - never `--no-verify`. Verdicts: `kor_review.py verdicts`, or `oversight.vw_ReviewNow`.
 - The full test suite takes about **7 minutes** because ~20 of its tests rebuild both reference
   buildings from real drawings. Do not start one and then keep editing.
 
