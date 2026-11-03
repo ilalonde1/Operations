@@ -36,6 +36,17 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "Bash|PowerShell|Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe enforce --module \"Operations\" --hook",
+            "timeout": 15,
+            "statusMessage": "Checking the call against the recorded lessons (Knowledge IDE K7: brain.Check)"
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
