@@ -4,7 +4,8 @@
 
 **The Operations lead has not run a session under this handover yet.** At its first close it replaces this block
 with its own state. Until then, these are the verified facts (20:55):
-- **Git:** `develop` = `origin/develop` = f716a752, 0 ahead, working tree clean. Everything is pushed.
+- **Git:** everything up to this handover commit was pushed (origin/develop f716a752 at 20:55). Read
+  `git status -sb` for now - this line cannot describe its own commit.
 - **Board:** Owner `Operations` has 0 open rows. When Ian asks for a change or an addition, FIRST add it as a row
   (What = the goal, DoneWhen = the finish line, Budget = time / runs / what it may read - the board refuses a row
   without a Budget), then work it, then close it with its evidence. Your rows show at every session start.
@@ -13,7 +14,8 @@ with its own state. Until then, these are the verified facts (20:55):
   Write new memory with kor_brain (`.claude/CLAUDE.md` says how); the file memory folder is a frozen fallback.
 - **Before any push:** every commit needs a fresh-session review -
   `python -I "C:\VIsual Studio Projects\Framework\tools\kor_review.py" review` (about $0.3-0.6 each); fix what it
-  finds. The pre-push hook refuses an unreviewed commit. Pushing to GitHub: Ian has told the Framework lead to do it.
+  finds. The pre-push hook refuses an unreviewed commit. GitHub pushes stay Ian's (question 4 below); he has had the
+  Framework lead push for him - commit, get the review, and leave the push to the Framework lead or Ian.
 - **BD:** never the Anthropic API (a guard refuses it in the Director / Knowledge / CLI code and in Codex briefs).
   Deploying the BD app to APP01 is Ian's call.
 
