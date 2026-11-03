@@ -9,15 +9,27 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python -I \"C:/VIsual Studio Projects/Framework/tools/board_render.py\" --owner Operations",
-            "timeout": 200,
-            "statusMessage": "Reading this lead's rows off the board (the source of truth)"
+            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part record --hook",
+            "timeout": 30,
+            "statusMessage": "Reading what this module knows: five questions, resume, open issues, stale records, decisions (Knowledge IDE K6)"
           },
           {
             "type": "command",
-            "command": "python -I \"C:/VIsual Studio Projects/Framework/tools/kor_brain.py\" render --lane \"Operations\"",
-            "timeout": 200,
-            "statusMessage": "Reading this lead's memory and resume state from the DB (F7)"
+            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part board --owner Operations --hook",
+            "timeout": 30,
+            "statusMessage": "Reading this lead's rows off the board (the source of truth; Knowledge IDE K6)"
+          }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe fresh --file-changed --hook",
+            "timeout": 15,
+            "statusMessage": "Is a changed file the source of a current record? (Knowledge IDE K5/K6; matcher omitted so every watchPaths file fires it)"
           }
         ]
       }
