@@ -207,7 +207,8 @@ public static class EnrollCheck
             foreach (var guard in repo.PrePushGuards)
                 if (!lines.Any(l => l.Replace('\\', '/').Contains(guard, StringComparison.OrdinalIgnoreCase)))
                     findings.Add($".git/hooks/pre-push no longer runs its guard {guard}");
-            if (!lines.Contains("exit $rc")) findings.Add(".git/hooks/pre-push does not end with its guards' result (exit $rc)");
+            // its LAST code line (review row 285: "contains" let `exit $rc` then `exit 0` through)
+            if (lines.LastOrDefault() != "exit $rc") findings.Add(".git/hooks/pre-push does not end with its guards' result (exit $rc)");
         }
         return findings;
     }

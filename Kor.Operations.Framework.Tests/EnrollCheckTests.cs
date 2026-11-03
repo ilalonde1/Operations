@@ -207,6 +207,19 @@ public class EnrollCheckTests
         finally { Directory.Delete(dir, true); }
     }
 
+    [Fact]
+    public void APrePushThatThrowsAwayItsGuardsResultAfterExitRcFails()
+    {
+        // review row 285: `exit $rc` still in the file, but an `exit 0` after it decides
+        var dir = CopyRealHooks();
+        try
+        {
+            File.AppendAllText(Path.Combine(dir, "pre-push"), "exit 0\n");
+            Assert.Contains(EnrollCheck.GitHookFindings(dir, This), f => f.Contains("does not end with its guards' result"));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
     // ---- sessions -----------------------------------------------------------------------------------------------------
     [Theory]
     [InlineData(3, 0, true)]
@@ -219,12 +232,14 @@ public class EnrollCheckTests
     [Fact]
     public void TheLiveSessionCountsReadBrainEvent()
     {
-        // Operations wired capture-start and capture-end on 3 Nov (c8f9b4c9): both were written there that day
+        // Operations wired capture-start and capture-end on 3 Nov (c8f9b4c9): both were written there that day (a
+        // session-end at 11:18:47 -07:00, read 3 Nov) - so both halves of the count are checked against brain.Event
+        // (review row 285: `ran >= 0` could not fail)
         var (ran, started) = EnrollCheck.SessionCounts("Operations", 7);
         Assert.True(started > 0, $"Operations: {started} session-start in 7 days");
+        Assert.True(ran > 0, $"Operations: {ran} session(s) with a session-end or compact in 7 days");
         var (ran0, started0) = EnrollCheck.SessionCounts("no-such-module-" + Guid.NewGuid().ToString("N")[..6], 7);
         Assert.Equal((0, 0), (ran0, started0));
-        Assert.True(ran >= 0);
     }
 
     // ---- the verb -----------------------------------------------------------------------------------------------------
