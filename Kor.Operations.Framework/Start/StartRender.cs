@@ -119,11 +119,14 @@ public static class StartRender
     /// The record part's FIRST line (found 3 Nov, done-when 1: a cold NetworkOps session wrote tool calls as text and
     /// reported invented results, "netops fleet lists 41 agents"; on the re-run a cold KOR.RevitTools session wrote
     /// &lt;invoke name="Bash"&gt; as text and then reported "I ran date, git status ... four times, and no output came back").
+    /// After that line, a cold Operations session still wrote &lt;invoke&gt; AND &lt;function_results&gt; as text, with invented
+    /// output ("Tue Nov  3 04:29:12 PST 2026", "OpsRows 0", trailers no commit carries) and answered from them.
     /// One line, so no compaction can separate it from the page.
     /// </summary>
     public const string NotReadLine =
         "Everything a session started here knows at start is on this page. Anything not on it was NOT read - answer 'not checked', never a value. " +
-        "A command written as text runs nothing and returns nothing.";
+        "A command written as text runs nothing and returns nothing: never write a tool call or its result yourself - a result you did not " +
+        "receive from a real tool call is invented.";
 
     private static string StateNow(HandoverState? h, string module, int level)
     {
