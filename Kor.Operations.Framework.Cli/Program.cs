@@ -19,7 +19,14 @@ public static partial class Program
     public static readonly string DefaultHookErrorLog =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KOR", "kor-hook-errors.log");
 
-    public static int Main(string[] args) => Run(args, ReadStdin, Console.Out, Console.Error, DefaultHookErrorLog);
+    public static int Main(string[] args)
+    {
+        // UTF-8 on a redirected stdout/stderr (found 3 Nov 03:3x: `kor start --text > key.txt` wrote cp1252, so every
+        // non-ASCII character in a record reached a pipe - a hook, a Bash tool - as invalid UTF-8). Hook JSON was unaffected
+        // (System.Text.Json escapes non-ASCII), plain text was not.
+        try { Console.OutputEncoding = new UTF8Encoding(false); } catch (IOException) { } catch (PlatformNotSupportedException) { }
+        return Run(args, ReadStdin, Console.Out, Console.Error, DefaultHookErrorLog);
+    }
 
     /// <summary>For tests: no stdin, and hook failures logged to a throwaway file, never the real log.</summary>
     internal static int Run(string[] args, TextWriter output, TextWriter error) =>

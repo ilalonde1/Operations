@@ -448,6 +448,25 @@ public class StartTests
     }
 
     [Fact]
+    public void ARedirectedStdoutIsUtf8()
+    {
+        // the real assembly in its own process, stdout redirected as a hook or a pipe sees it; an unknown verb in hook mode
+        // prints one line naming it - no database is touched
+        var dll = Path.Combine(AppContext.BaseDirectory, "kor.dll");
+        var psi = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        psi.ArgumentList.Add(dll);
+        psi.ArgumentList.Add("café-ó-→");
+        psi.ArgumentList.Add("--hook");
+        using var p = Process.Start(psi)!;
+        using var ms = new MemoryStream();
+        p.StandardOutput.BaseStream.CopyTo(ms);
+        Assert.True(p.WaitForExit(30_000));
+        var bytes = ms.ToArray();
+        var text = new System.Text.UTF8Encoding(false, throwOnInvalidBytes: true).GetString(bytes);   // throws on cp1252 bytes
+        Assert.Contains("unknown verb 'café-ó-→'", text);
+    }
+
+    [Fact]
     public void HookAllPartsIsRefusedQuietlyAndExitsZero()
     {
         var output = new StringWriter();
