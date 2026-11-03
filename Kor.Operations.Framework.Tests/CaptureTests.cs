@@ -223,8 +223,7 @@ public class CaptureTests
         Assert.Equal(Path.GetFullPath("C:/Program Files (x86)/x"), DirFor("cd \"C:/Program Files (x86)/x\" && dotnet test", "C:/a"));
         Assert.Equal(Path.GetFullPath("C:/x"), DirFor("cd C:/x 2>/dev/null && dotnet test", "C:/a"));
         Assert.Equal(Path.GetFullPath("C:/x"), DirFor("(cd C:/x && dotnet test)", "C:/a"));
-        // review row 95: cmd's drive switch is a flag before a folder; alone, /d is Git Bash's D:/.
-        Assert.Equal(Path.GetFullPath("C:/x"), DirFor("cd /d C:/x && dotnet test", "C:/a"));
+        // Alone, /d is Git Bash's D:/ (cmd's "cd /d C:/x" is a two-argument cd: UNKNOWN, see below).
         Assert.Equal(Path.GetFullPath("D:/"), DirFor("cd /d && dotnet test", "C:/a"));
     }
 
@@ -248,6 +247,8 @@ public class CaptureTests
     [InlineData("pushd && dotnet test")]              // a bare pushd swaps the top two folders
     [InlineData("cd -X C:/x && dotnet test")]         // an option not modelled
     [InlineData("cd C:/Program\\ Files/x && dotnet test")]   // review row 95: an escaped space would give half a path
+    [InlineData("cd /d C:/x; dotnet test")]                  // review row 96: bash/PowerShell refuse a 2nd argument
+    [InlineData("cd C:/x C:/y && dotnet test")]
     public void AnUnmodelledCdMakesTheFolderUnknown(string command)
     {
         Assert.Null(DirFor(command, "C:/a"));

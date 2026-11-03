@@ -49,7 +49,9 @@ public static class ToolClassifier
     /// resolves against the folder current at that point; a Git Bash path (/c/x) becomes C:/x. These make the folder
     /// UNKNOWN until an absolute cd or a popd - the event then carries no repo/commit rather than a guessed one: a bare
     /// cd or pushd (review row 94), cd -, an option not in the known list, ~, $VAR, %VAR%, a backslash-escaped space
-    /// (review row 95). cmd's "cd /d C:\x" reads C:\x; "/d" alone is Git Bash's D:/. Still wrong, same class:
+    /// (review row 95) - which also catches a Windows folder ending in a backslash (cd C:\x\ &amp;&amp; ...), lost coverage
+    /// on the safe side - and a second folder argument (review row 96: cmd's "cd /d C:/x" reaches this code only from
+    /// bash or PowerShell, where it fails; "/d" alone is Git Bash's D:/). Still wrong, same class:
     /// a cd inside a subshell that ended before the tool ( (cd x; make) &amp;&amp; dotnet test ) is replayed as if it
     /// persisted; a cd hidden behind a function or alias, or run by a script the command calls, is not seen.
     /// </summary>
@@ -84,14 +86,17 @@ public static class ToolClassifier
     {
         // A backslash-escaped space (cd C:/Program\ Files/x) would split the folder in two: UNKNOWN, never half a path.
         if (args.Contains("\\ ")) return null;
-        var tokens = ArgToken.Matches(args).Select(t => t.Value).ToList();
+        // Redirections end the arguments (cd C:/x 2>/dev/null).
+        var tokens = ArgToken.Matches(args).Select(t => t.Value).TakeWhile(v => !Regex.IsMatch(v, @"^\d*[<>]")).ToList();
         for (var i = 0; i < tokens.Count; i++)
         {
             var v = tokens[i];
             if (CdFlags.Contains(v.ToLowerInvariant())) continue;
-            // cmd's "cd /d C:\x" switches drive: "/d" followed by a folder is that flag (alone, it is Git Bash's D:/).
-            if (v.Equals("/d", StringComparison.OrdinalIgnoreCase) && i + 1 < tokens.Count) continue;
             if (v.StartsWith('-')) return null;               // "-" (previous folder) or an option not modelled
+            // A second folder argument: bash's cd refuses it ("too many arguments") and Set-Location has no slot for it,
+            // so the folder did not change as written - e.g. cmd's "cd /d C:/x", which only bash or PowerShell runs
+            // here (review row 96). UNKNOWN, never the second argument.
+            if (i + 1 < tokens.Count) return null;
             return v.Trim('"', '\'');
         }
         return null;
