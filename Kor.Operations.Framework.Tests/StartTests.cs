@@ -197,7 +197,11 @@ public class StartTests
     {
         // seen live 3 Nov 02:24 on Framework: Office cut to its header while legacy rows still rendered below it
         var text = StartRender.Record(BigState(issues, stale, 1150, 12000), StartRender.HookBudget);
-        Assert.Contains("[resume cut at 3000", text);                         // a section above legacy was cut ...
+        // a section above legacy was cut: no record's full 300-char description renders, so the records section is below
+        // its level 0 (40 records of ~330 chars are more than the budget). Not "[resume cut at 3000", which is the resume's
+        // fixed cap and shows even when nothing was compacted (review row 202).
+        Assert.Contains(new string('d', 300), StartRender.Record(BigState(issues, stale, 1150, 12000), null));   // uncut: they render
+        Assert.DoesNotContain(new string('d', 300), text);
         Assert.DoesNotContain("legacy-0 ", text);                             // ... so no legacy row renders
         Assert.Contains("LEGACY MEMORY: 1150 imported rows cut at the session-start limit", text);
     }
@@ -447,23 +451,40 @@ public class StartTests
         finally { File.Delete(log); }
     }
 
-    [Fact]
-    public void ARedirectedStdoutIsUtf8()
+    [Theory]
+    // stdout: an unknown verb in hook mode prints one line naming it. stderr: a bad --part is refused before any database
+    // is opened ("kor: --part is record, board or all, not '...'", exit 1). Neither touches the database.
+    [InlineData(false, "café-ó-→", "--hook", "unknown verb 'café-ó-→'")]
+    [InlineData(true, "start", "--module zz --part café-ó-→", "--part is record, board or all, not 'café-ó-→'")]
+    public async Task ARedirectedStdoutAndStderrAreUtf8(bool stderr, string verb, string args, string expected)
     {
-        // the real assembly in its own process, stdout redirected as a hook or a pipe sees it; an unknown verb in hook mode
-        // prints one line naming it - no database is touched
+        // The real assembly in its own process, both streams redirected as a hook or a pipe sees them. Needs `dotnet` on
+        // PATH and kor.dll in the test output folder (the ProjectReference to the Cli project, AssemblyName kor) - review
+        // row 209. Both streams are drained concurrently so neither can fill and block the child; it is killed if late.
         var dll = Path.Combine(AppContext.BaseDirectory, "kor.dll");
+        Assert.True(File.Exists(dll), $"kor.dll is not in the test output folder: {dll}");
         var psi = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
         psi.ArgumentList.Add(dll);
-        psi.ArgumentList.Add("café-ó-→");
-        psi.ArgumentList.Add("--hook");
+        psi.ArgumentList.Add(verb);
+        foreach (var a in args.Split(' ')) psi.ArgumentList.Add(a);
         using var p = Process.Start(psi)!;
-        using var ms = new MemoryStream();
-        p.StandardOutput.BaseStream.CopyTo(ms);
-        Assert.True(p.WaitForExit(30_000));
-        var bytes = ms.ToArray();
-        var text = new System.Text.UTF8Encoding(false, throwOnInvalidBytes: true).GetString(bytes);   // throws on cp1252 bytes
-        Assert.Contains("unknown verb 'café-ó-→'", text);
+        try
+        {
+            using MemoryStream outMs = new(), errMs = new();
+            var outCopy = p.StandardOutput.BaseStream.CopyToAsync(outMs);
+            var errCopy = p.StandardError.BaseStream.CopyToAsync(errMs);
+            Assert.True(p.WaitForExit(30_000), "kor did not exit in 30 s");
+            await Task.WhenAll(outCopy, errCopy);
+            var strict = new System.Text.UTF8Encoding(false, throwOnInvalidBytes: true);   // throws on OEM code page bytes
+            var outText = strict.GetString(outMs.ToArray());
+            var errText = strict.GetString(errMs.ToArray());
+            Assert.Contains(expected, stderr ? errText : outText);
+            Assert.Equal(stderr ? 1 : 0, p.ExitCode);
+        }
+        finally
+        {
+            if (!p.HasExited) p.Kill(entireProcessTree: true);
+        }
     }
 
     [Fact]
@@ -621,7 +642,7 @@ public class StartLiveTests(Xunit.Abstractions.ITestOutputHelper log)
         Assert.Equal(0, Program.Run(new[] { "start", "--module", Lane, "--part", "record", "--hook", "--cache-dir", CacheDir() }, () => garbage,
                                     output, new StringWriter(), Path.Combine(Path.GetTempPath(), $"kor-k6-{Guid.NewGuid():N}.log"), db));
         using var doc = JsonDocument.Parse(output.ToString());
-        Assert.StartsWith("KNOWN AT START", doc.RootElement.GetProperty("hookSpecificOutput").GetProperty("additionalContext").GetString());
+        Assert.StartsWith(StartRender.NotReadLine + "\nKNOWN AT START", doc.RootElement.GetProperty("hookSpecificOutput").GetProperty("additionalContext").GetString());
     }
 
     [Fact]

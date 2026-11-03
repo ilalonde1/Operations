@@ -41,6 +41,15 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
     public const string IndexName = "_index";
     public const string OfficeLane = "Office";
 
+    /// <summary>The handover's STATE NOW section at HEAD (null: not read - a test's hand-built state).</summary>
+    public HandoverState? Handover { get; init; }
+
+    /// <summary>Query checks run in the read phase and not yet recorded: <see cref="Record"/> writes them.</summary>
+    public IReadOnlyList<(StoredRecord Issue, CheckResult Result)> PendingChecks { get; init; } = Array.Empty<(StoredRecord, CheckResult)>();
+
+    /// <summary>Resolutions <see cref="Record"/> wrote at this start (after the read: not among <see cref="Records"/>).</summary>
+    public int ResolvedAtStart { get; init; }
+
     /// <summary>The session-start hook's view: which session is starting, and how (startup|resume|clear|compact|fork),
     /// and its transcript (the hook input's transcript_path).</summary>
     public sealed record Start(string? SessionId, string? Source, string? TranscriptPath = null);
@@ -99,19 +108,29 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
     }
 
     /// <summary>
-    /// K6 - known at start. ONE korbrain_app unit of work (the caller's): the module's open query-kind issues are checked
-    /// first (K5b, at most <paramref name="checkCap"/> in all; each query runs in its own rolled-back connection BEFORE this
-    /// unit of work writes anything, so none can wait on it), then K5 freshness (one read, git, one idempotent write), then
-    /// ONE batch of reads: live records, open issues (vw_OpenIssues), the Office lane, the resume candidates, the last
-    /// session-end and the last 10 events. The caller commits (kor.exe) or never does (a test).
+    /// K6 - known at start, on ONE unit of work (a test's rolled-back one): <see cref="Read"/> then <see cref="Record"/>.
+    /// The installed kor.exe runs the two on separate units of work (Program.Start): the read in a SNAPSHOT transaction that
+    /// writes nothing, so a start never waits on, nor deadlocks with, another session's open transaction (migration 174).
     /// </summary>
     public static ModuleState Load(BrainDb db, string module, Start start, string? fromDir = null, TimeSpan? freshnessCap = null,
+                                   TimeSpan? checkCap = null, Freshness.HeadReader? reader = null) =>
+        Record(db, Read(db, module, start, fromDir, freshnessCap, checkCap, reader), start.SessionId);
+
+    /// <summary>
+    /// The READ phase - it writes nothing. The module's open query-kind issues are run (K5b, at most
+    /// <paramref name="checkCap"/> in all, each in its own rolled-back connection) and kept as <see cref="PendingChecks"/>;
+    /// K5 freshness is computed (one read, git) but not written; then ONE batch of reads: live records, open issues
+    /// (vw_OpenIssues), the Office lane, the resume candidates, the last session-end and the last 10 events; then the
+    /// handover's STATE NOW at HEAD (git, no DB). A record's Status is the freshness verdict where one was reached (the
+    /// read may precede the write that records it).
+    /// </summary>
+    public static ModuleState Read(BrainDb db, string module, Start start, string? fromDir = null, TimeSpan? freshnessCap = null,
                                    TimeSpan? checkCap = null, Freshness.HeadReader? reader = null)
     {
-        StartTrace.Mark("connected");
-        var checkLines = RunQueryChecks(db, module, fromDir, checkCap ?? TimeSpan.FromSeconds(2), start.SessionId);
+        StartTrace.Mark($"connected ({db.Isolation})");
+        var (checkLines, pending) = RunQueryChecks(db, module, fromDir, checkCap ?? TimeSpan.FromSeconds(2));
         StartTrace.Mark("query checks");
-        var fresh = Freshness.CheckModule(db, module, fromDir, reader, freshnessCap);
+        var fresh = Freshness.CheckModule(db, module, fromDir, reader, freshnessCap, write: false);
         StartTrace.Mark("freshness");
         using var c = db.Command(Batch, 30);
         c.Parameters.Add("@m", SqlDbType.NVarChar, 60).Value = module;
@@ -135,9 +154,63 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
         StartTrace.Mark("batch read");
         var transcript = start.Source == "compact" ? NewestCompactSummary(start.TranscriptPath) : null;
         if (start.Source == "compact") StartTrace.Mark("transcript read");
-        return new ModuleState(module, DateTimeOffset.Now, fresh, records, open, office,
-                               ChooseResume(resumes, start, transcript), end, events, checkLines);
+        var verdicts = fresh.Rows.Where(x => x.Verdict != Verdict.Unverifiable)
+                            .ToDictionary(x => x.Id, x => x.Verdict == Verdict.Current ? "current" : "stale");
+        StartRecord AsChecked(StartRecord x) =>
+            verdicts.TryGetValue(x.Id, out var v) && x.Status is "current" or "stale" && x.Status != v ? x with { Status = v } : x;
+        var five = records.FirstOrDefault(x => x.Name == FiveQuestionsName);
+        var handover = HandoverState.Read(five, module, fromDir);
+        StartTrace.Mark("handover read");
+        return new ModuleState(module, DateTimeOffset.Now, fresh, records.Select(AsChecked).ToList(), open, office,
+                               ChooseResume(resumes, start, transcript), end, events, checkLines)
+        {
+            Handover = handover,
+            PendingChecks = pending,
+        };
     }
+
+    /// <summary>
+    /// The WRITE phase: freshness verdicts (one idempotent UPDATE) and each pending query check (its event, and a pass
+    /// resolves / a fail of a resolved issue opens its regression). An issue resolved here leaves the open list. The
+    /// caller commits (kor.exe, through the start gate) or never does (a test).
+    /// </summary>
+    public static ModuleState Record(BrainDb db, ModuleState read, string? session)
+    {
+        Freshness.Write(db, read.Fresh.Rows);
+        StartTrace.Mark("freshness written");
+        if (read.PendingChecks.Count == 0) return read with { Fresh = read.Fresh with { Written = true } };
+        var actor = BrainStore.Clip(RecordStore.Actor() + " (kor start)", 100)!;
+        var lines = read.CheckLines.ToList();
+        var resolved = new HashSet<int>();
+        foreach (var (issue, result) in read.PendingChecks)
+        {
+            var o = IssueResolver.CheckAndRecord(db, issue, result, actor, session);
+            if (o.ResolutionId is not null) resolved.Add(issue.Id);
+            lines.Add(o.Line);
+        }
+        StartTrace.Mark("query checks recorded");
+        return read with
+        {
+            Fresh = read.Fresh with { Written = true },
+            CheckLines = lines,
+            OpenIssues = read.OpenIssues.Where(i => !resolved.Contains(i.Id)).ToList(),
+            ResolvedAtStart = resolved.Count,
+            PendingChecks = Array.Empty<(StoredRecord, CheckResult)>(),
+        };
+    }
+
+    /// <summary>
+    /// The read phase stands alone when the write phase could not run (a lock timeout or a deadlock against another
+    /// session's open transaction): nothing was recorded, and the page says so - the view itself is the snapshot's.
+    /// </summary>
+    public static ModuleState NotRecorded(ModuleState read, string why) => read with
+    {
+        CheckLines = read.CheckLines
+            .Concat(read.PendingChecks.Select(p => $"#{p.Issue.Id} {p.Issue.Name}: {p.Result.Outcome} - NOT recorded ({why})"))
+            .Append($"freshness verdicts NOT recorded ({why}) - kor fresh --module \"{read.Module}\" records them")
+            .ToList(),
+        PendingChecks = Array.Empty<(StoredRecord, CheckResult)>(),
+    };
 
     /// <summary>
     /// On a compact start, an own compaction row younger than this is THIS compaction's summary, already stored. Measured
@@ -265,26 +338,24 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
     private static string? S(SqlDataReader r, int i) => r.IsDBNull(i) ? null : r.GetString(i);
 
     /// <summary>
-    /// K5b at start: the module's OPEN query-kind issues, each run (its own rolled-back connection - all of them before
-    /// this unit of work writes, so none can wait on our locks), then each result recorded here (a pass resolves). Past
-    /// the cap the rest are named, not run.
+    /// K5b at start: the module's OPEN query-kind issues, each run (its own rolled-back connection, before anything is
+    /// written, so none can wait on our locks). The results are recorded by <see cref="Record"/>. Past the cap the rest
+    /// are named, not run.
     /// </summary>
-    private static List<string> RunQueryChecks(BrainDb db, string module, string? fromDir, TimeSpan cap, string? session)
+    private static (List<string> Lines, List<(StoredRecord Issue, CheckResult Result)> Pending) RunQueryChecks(
+        BrainDb db, string module, string? fromDir, TimeSpan cap)
     {
         var issues = RecordStore.IssuesToCheck(db, module, resolved: false, new[] { "query" });
         var lines = new List<string>();
-        if (issues.Count == 0) return lines;
-        var clock = System.Diagnostics.Stopwatch.StartNew();
         var results = new List<(StoredRecord Issue, CheckResult Result)>();
+        if (issues.Count == 0) return (lines, results);
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         foreach (var i in issues)
         {
             var left = cap - clock.Elapsed;
             if (left <= TimeSpan.Zero) { lines.Add($"#{i.Id} {i.Name}: not checked - the {Freshness.Secs(cap)} s start cap was spent"); continue; }
             results.Add((i, IssueCheck.Run(i, left < TimeSpan.FromSeconds(1) ? TimeSpan.FromSeconds(1) : left, fromDir)));
         }
-        var actor = RecordStore.Actor() + " (kor start)";
-        foreach (var (issue, result) in results)
-            lines.Add(IssueResolver.CheckAndRecord(db, issue, result, BrainStore.Clip(actor, 100)!, session).Line);
-        return lines;
+        return (lines, results);
     }
 }

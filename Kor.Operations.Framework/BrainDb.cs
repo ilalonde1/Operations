@@ -18,13 +18,74 @@ public sealed class BrainDb : IDisposable
     /// <summary>True for a test's unit of work: it can never be committed.</summary>
     public bool RolledBackOnly { get; }
 
+    /// <summary>The transaction's isolation as asked for: "READ COMMITTED" (the default) or "SNAPSHOT".</summary>
+    public string Isolation { get; }
+
     private bool _committed;
 
-    private BrainDb(SqlConnection cn, SqlTransaction tx, bool rolledBackOnly)
+    private BrainDb(SqlConnection cn, SqlTransaction tx, bool rolledBackOnly, string isolation = "READ COMMITTED")
     {
         Cn = cn;
         Tx = tx;
         RolledBackOnly = rolledBackOnly;
+        Isolation = isolation;
+    }
+
+    /// <summary>
+    /// A READ-ONLY unit of work (its Commit throws, Dispose rolls back): SNAPSHOT when <paramref name="snapshot"/> - the
+    /// last committed version of each row, no shared locks, so it never waits on nor deadlocks with another session's
+    /// open transaction (migration 174 allows it in KorStandards) - else READ COMMITTED, named explicitly so a pooled
+    /// connection's earlier level is never inherited.
+    /// </summary>
+    public static BrainDb OpenRead(KorStandardsConnection.Login login, bool snapshot)
+    {
+        var cn = KorStandardsConnection.Open(login);
+        try
+        {
+            return new BrainDb(cn, cn.BeginTransaction(snapshot ? System.Data.IsolationLevel.Snapshot : System.Data.IsolationLevel.ReadCommitted),
+                               rolledBackOnly: true, snapshot ? "SNAPSHOT" : "READ COMMITTED");
+        }
+        catch { cn.Dispose(); throw; }
+    }
+
+    /// <summary>
+    /// kor start's reads: <paramref name="work"/> on <see cref="OpenRead"/> under SNAPSHOT; if the database refuses
+    /// snapshot (SQL 3952 - ALLOW_SNAPSHOT_ISOLATION off) it is run again under READ COMMITTED; a deadlock (1205, only
+    /// possible on that fallback) is run once more, whole. Work given here must only read.
+    /// </summary>
+    public static T Read<T>(KorStandardsConnection.Login login, Func<BrainDb, T> work) =>
+        ReadWithFallback(snapshot =>
+        {
+            using var db = OpenRead(login, snapshot);
+            return work(db);
+        }, IsSnapshotRefused, IsDeadlock, Thread.Sleep);
+
+    /// <summary>The policy of <see cref="Read{T}"/>, testable without a database: attempt(true) is SNAPSHOT.</summary>
+    public static T ReadWithFallback<T>(Func<bool, T> attempt, Func<Exception, bool> isSnapshotRefused, Func<Exception, bool> isDeadlock,
+                                        Action<TimeSpan> sleep) =>
+        RetryOnceOnDeadlock(() =>
+        {
+            try { return attempt(true); }
+            catch (Exception e) when (isSnapshotRefused(e)) { return attempt(false); }
+        }, isDeadlock, sleep);
+
+    /// <summary>SQL error 3952: snapshot isolation is not allowed in this database.</summary>
+    public static bool IsSnapshotRefused(Exception e) => HasNumber(e, 3952);
+
+    /// <summary>
+    /// SQL 1222 (lock request time out - <c>SET LOCK_TIMEOUT</c>) or 1205: kor start's WRITE phase met another session's
+    /// open transaction. The start shows its read and says nothing was recorded.
+    /// </summary>
+    public static bool IsBlockedWrite(Exception e) => HasNumber(e, 1222) || HasNumber(e, 1205) || HasNumber(e, 3960);
+
+    private static bool HasNumber(Exception e, int n) =>
+        e is SqlException s && (s.Number == n || s.Errors.Cast<SqlError>().Any(x => x.Number == n));
+
+    /// <summary>A failed statement no longer waits more than <paramref name="ms"/> for a lock (SQL 1222 instead).</summary>
+    public void SetLockTimeout(int ms)
+    {
+        using var c = Command($"SET LOCK_TIMEOUT {ms:D}");
+        c.ExecuteNonQuery();
     }
 
     public static BrainDb Open(KorStandardsConnection.Login login = KorStandardsConnection.Login.Brain)
@@ -94,6 +155,5 @@ public sealed class BrainDb : IDisposable
     }
 
     /// <summary>SQL error 1205 (this transaction was the deadlock victim), anywhere in the exception's errors.</summary>
-    public static bool IsDeadlock(Exception e) =>
-        e is SqlException s && (s.Number == 1205 || s.Errors.Cast<SqlError>().Any(x => x.Number == 1205));
+    public static bool IsDeadlock(Exception e) => HasNumber(e, 1205);
 }

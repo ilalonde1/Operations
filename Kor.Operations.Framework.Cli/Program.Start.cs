@@ -15,6 +15,9 @@ namespace Kor.Operations.Framework.Cli;
 /// </summary>
 public static partial class Program
 {
+    /// <summary>kor start's write phase waits at most this long for any one lock (SET LOCK_TIMEOUT), then records nothing.</summary>
+    internal static readonly TimeSpan StartWriteLockWait = TimeSpan.FromSeconds(2);
+
     private static readonly JsonSerializerOptions HookJson = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
     private static int StartVerb(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? db, string hookErrorLog)
@@ -51,22 +54,43 @@ public static partial class Program
         if (part is "record" or "all")
         {
             var start = new ModuleState.Start(session, source, transcript);
-            (string, IReadOnlyList<string>) Work(BrainDb d)
+            (string, IReadOnlyList<string>) Show(ModuleState s)
             {
-                var s = ModuleState.Load(d, module, start, dir, freshnessCap: TimeSpan.FromSeconds(5));
                 var rendered = (StartRender.Record(s, budget), StartRender.WatchPaths(s.Fresh));
                 StartTrace.Mark("rendered");
                 return rendered;
             }
-            // The installed kor commits its freshness writes and query-check results ONLY through the gate: a part the
-            // deadline already called late rolls back (review row 193). A caller's unit of work (a test) is never committed.
-            var r = StartPart.Run(gate => db is not null ? Work(db) : BrainDb.RetryOnceOnDeadlock(() =>
+            // The installed kor: (1) READS in a SNAPSHOT transaction that writes nothing (BrainDb.Read: READ COMMITTED if
+            // the database refuses snapshot) - found 3 Nov: while a kor test suite held rolled-back transactions, starts
+            // came back PART LATE and "UNREADABLE: deadlocked"; (2) WRITES the freshness verdicts and query-check results in
+            // a unit of work of its own that waits at most WriteLockWait for a lock, and commits ONLY through the gate - a
+            // part the deadline already called late rolls back (review row 193). A write that meets another session's open
+            // transaction records nothing and the page says so; the page is the read's either way.
+            // A caller's unit of work (a test) does both on it and is never committed.
+            var r = StartPart.Run(gate =>
                 {
-                    using var own = BrainDb.Open();
-                    var result = Work(own);
-                    if (!gate.TryCommit(own.Commit)) throw new OperationCanceledException("kor start: the record part was late - rolled back");
-                    return result;
-                }, BrainDb.IsDeadlock, Thread.Sleep),
+                    if (db is not null) return Show(ModuleState.Load(db, module, start, dir, freshnessCap: TimeSpan.FromSeconds(5)));
+                    var read = BrainDb.Read(KorStandardsConnection.Login.Brain,
+                                            d => ModuleState.Read(d, module, start, dir, freshnessCap: TimeSpan.FromSeconds(5)));
+                    ModuleState shown;
+                    try
+                    {
+                        shown = BrainDb.RetryOnceOnDeadlock(() =>
+                        {
+                            using var w = BrainDb.Open();
+                            w.SetLockTimeout((int)StartWriteLockWait.TotalMilliseconds);
+                            var s = ModuleState.Record(w, read, start.SessionId);
+                            if (!gate.TryCommit(w.Commit)) throw new OperationCanceledException("kor start: the record part was late - rolled back");
+                            return s;
+                        }, BrainDb.IsDeadlock, Thread.Sleep);
+                    }
+                    catch (Exception e) when (BrainDb.IsBlockedWrite(e))
+                    {
+                        Log(e);
+                        shown = ModuleState.NotRecorded(read, $"another session's open transaction held a lock: SQL {((Microsoft.Data.SqlClient.SqlException)e).Number}");
+                    }
+                    return Show(shown);
+                },
                 StartCache.PathFor(cacheDir, module, "record", hook), budget, deadline,
                 $"read the record by hand: kor memory --module \"{module}\" and kor events --module \"{module}\"", () => DateTime.Now, Log);
             texts.Add(r.Text);
@@ -79,9 +103,8 @@ public static partial class Program
             var command = BoardRender.FullBoardCommand(module, BoardState.Distinct(owners), noHelpers);
             var r = StartPart.Run(() =>
                 {
-                    // the board is only READ: its unit of work is never committed
-                    using var b = BrainDb.OpenRolledBack(KorStandardsConnection.Login.Board);
-                    var state = BoardState.Load(b, owners, withHelpers: !noHelpers);
+                    // the board is only READ: SNAPSHOT (READ COMMITTED if refused), never committed
+                    var state = BrainDb.Read(KorStandardsConnection.Login.Board, b => BoardState.Load(b, owners, withHelpers: !noHelpers));
                     return (BoardRender.Render(state, DateTime.Now, budget, command), (IReadOnlyList<string>)Array.Empty<string>());
                 },
                 StartCache.PathFor(cacheDir, module, "board", hook), budget, deadline,

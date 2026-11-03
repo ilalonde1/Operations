@@ -21,8 +21,9 @@ public static partial class Program
 
     public static int Main(string[] args)
     {
-        // UTF-8 on a redirected stdout/stderr (found 3 Nov 03:3x: `kor start --text > key.txt` wrote cp1252, so every
-        // non-ASCII character in a record reached a pipe - a hook, a Bash tool - as invalid UTF-8). Hook JSON was unaffected
+        // UTF-8 on a redirected stdout/stderr (found 3 Nov 03:3x: `kor start --text > key.txt` wrote the console's OEM code
+        // page - é as 0x82, ó as 0xA2, so 437/850, not cp1252 (review row 209) - and every non-ASCII character in a record
+        // reached a pipe - a hook, a Bash tool - as invalid UTF-8). Hook JSON was unaffected
         // (System.Text.Json escapes non-ASCII), plain text was not.
         try { Console.OutputEncoding = new UTF8Encoding(false); } catch (IOException) { } catch (PlatformNotSupportedException) { }
         return Run(args, ReadStdin, Console.Out, Console.Error, DefaultHookErrorLog);

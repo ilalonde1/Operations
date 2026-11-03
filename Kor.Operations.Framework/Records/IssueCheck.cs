@@ -128,18 +128,23 @@ public static class IssueCheck
         if (sql is null) return new CheckResult("error", repo, commit, "a query check ref is 'brain:SELECT ...' or 'board:SELECT ...'");
         try
         {
-            using var q = BrainDb.OpenRolledBack(login);   // never committed: a check reads, it never writes
-            using var c = q.Command(sql, Math.Max(1, (int)timeout.TotalSeconds));
-            using var r = c.ExecuteReader();
-            int? pass = null;
-            var rows = 0;
-            while (r.Read())
+            // never committed: a check reads, it never writes - under SNAPSHOT (READ COMMITTED if refused), so a check at
+            // kor start never waits on another session's open transaction (3 Nov, migration 174)
+            var (rows, pass) = BrainDb.Read(login, q =>
             {
-                rows++;
-                var col = Enumerable.Range(0, r.FieldCount).FirstOrDefault(i => string.Equals(r.GetName(i), "Pass", StringComparison.OrdinalIgnoreCase), -1);
-                if (r.FieldCount != 1 || col < 0 || r.GetFieldType(col) != typeof(bool) || r.IsDBNull(col)) pass = -1;
-                else pass = r.GetBoolean(col) ? 1 : 0;
-            }
+                using var c = q.Command(sql, Math.Max(1, (int)timeout.TotalSeconds));
+                using var r = c.ExecuteReader();
+                int? p = null;
+                var n = 0;
+                while (r.Read())
+                {
+                    n++;
+                    var col = Enumerable.Range(0, r.FieldCount).FirstOrDefault(i => string.Equals(r.GetName(i), "Pass", StringComparison.OrdinalIgnoreCase), -1);
+                    if (r.FieldCount != 1 || col < 0 || r.GetFieldType(col) != typeof(bool) || r.IsDBNull(col)) p = -1;
+                    else p = r.GetBoolean(col) ? 1 : 0;
+                }
+                return (n, p);
+            });
             if (rows != 1 || pass is null or -1)
                 return new CheckResult("error", repo, commit, $"a query check returns exactly 1 row with 1 bit column Pass - got {rows} row(s)");
             return new CheckResult(pass == 1 ? "pass" : "fail", repo, commit, $"Pass = {pass == 1}");

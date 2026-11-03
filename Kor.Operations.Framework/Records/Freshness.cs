@@ -45,9 +45,10 @@ public static class Freshness
         "AND NOT (m.Kind = N'issue' AND ISNULL(m.CheckKind, N'') IN (N'test', N'gate', N'query'))";   // ISNULL: a pre-171 issue stays checked
 
     /// <param name="budget">time cap (the SessionStart hook); null = none. See <see cref="FreshnessReport.Partial"/>.</param>
+    /// <param name="write">false: compute only (kor start's read phase; it writes the verdicts later with <see cref="Write"/>).</param>
     public static FreshnessReport CheckModule(BrainDb db, string module, string? fromDir = null, HeadReader? reader = null,
-                                              TimeSpan? budget = null) =>
-        Check(db, $"{Live} AND m.Lane = @a", module, null, fromDir, reader, write: true, budget);
+                                              TimeSpan? budget = null, bool write = true) =>
+        Check(db, $"{Live} AND m.Lane = @a", module, null, fromDir, reader, write, budget);
 
     /// <summary>Every live record citing the repo (any lane) - after a commit, merge or checkout in it.</summary>
     public static FreshnessReport CheckRepo(BrainDb db, string repoLeaf, string? fromDir = null, HeadReader? reader = null) =>

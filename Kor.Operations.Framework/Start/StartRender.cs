@@ -6,8 +6,9 @@ namespace Kor.Operations.Framework.Start;
 
 /// <summary>
 /// K6 - the record part of a session's start (Framework docs/KNOWLEDGE-IDE-SPEC-K5-K6.md). Sections in priority order:
-/// header (module, HEAD per repo, freshness counts, when read); FIVE QUESTIONS (the module's <c>_five-questions</c> record);
-/// RESUME (cap 3,000) + the last session-end + the other recent resumes one line each; OPEN ISSUES; STALE with the recheck
+/// header (its first line: <see cref="NotReadLine"/>; module, HEAD per repo, freshness counts, when read); FIVE QUESTIONS
+/// (the module's <c>_five-questions</c> record); STATE NOW (the handover's, at HEAD - <see cref="HandoverState"/>; cut
+/// LAST, after every other section is at its floor); RESUME (cap 3,000) + the last session-end + the other recent resumes one line each; OPEN ISSUES; STALE with the recheck
 /// commands; DECISIONS / DEAD ENDS / LESSONS / FINDINGS / OTHER (current only, each with repo:path@commit7); LAST EVENTS
 /// (10); OFFICE LESSONS (cap 2,500); LEGACY MEMORY (the imported rows).
 /// Over the hook budget it compacts FROM THE BOTTOM: legacy memory fills only the room left, then each section from the
@@ -39,6 +40,7 @@ public static class StartRender
         {
             new("header", 0, _ => Header(s)),
             new("five", 2, l => FiveQuestions(five, staleIds, l)),
+            new("state", 2, l => StateNow(s.Handover, m, l)),
             new("resume", 2, l => Resume(s, l)),
             new("issues", 3, l => Issues(s.OpenIssues, l)),
             new("stale", 3, l => Stale(stale, unverifiable, l)),
@@ -47,6 +49,9 @@ public static class StartRender
             new("office", 2, l => Office(s.Office, l)),
         };
         var levels = new int[sections.Count];
+        // cut from the bottom up, except STATE NOW: it is cut last, after every other section is at its floor (only the
+        // issue and stale ids and the resume's first 1,500 chars outlive it)
+        var cutOrder = Enumerable.Range(0, sections.Count).Reverse().OrderBy(i => sections[i].Name == "state" ? 1 : 0).ToList();
         string Compose()
         {
             var parts = sections.Select((x, i) => x.Render(levels[i])).Where(t => t.Length > 0).ToList();
@@ -61,7 +66,7 @@ public static class StartRender
         var text = Compose();
         while (budget is not null && text.Length > budget)
         {
-            var pick = Enumerable.Range(0, sections.Count).Reverse().FirstOrDefault(i => levels[i] < sections[i].MaxLevel, -1);
+            var pick = cutOrder.FirstOrDefault(i => levels[i] < sections[i].MaxLevel, -1);
             if (pick < 0) break;
             levels[pick]++;
             text = Compose();
@@ -95,9 +100,10 @@ public static class StartRender
         var f = s.Fresh;
         var heads = f.RepoHeads.Count == 0 ? "no source-cited record read a repo"
             : string.Join(", ", f.RepoHeads.Select(h => $"{h.Key} {(h.Value is null ? "UNREADABLE" : h.Value[..Math.Min(7, h.Value.Length)])}"));
-        var resolutions = s.Records.Count(r => r.Kind == "resolution");
+        var resolutions = s.Records.Count(r => r.Kind == "resolution") + s.ResolvedAtStart;
         var lines = new List<string>
         {
+            NotReadLine,
             $"KNOWN AT START - module '{s.Module}' (KorStandards brain, read {Stamp(s.ReadAt)}). Ids: record #N = brain.Memory, " +
             "resume LaneState #N = brain.LaneState, event #N = brain.Event. A record's body: kor memory --module \"" + s.Module +
             "\"; this page uncut: kor start --module \"" + s.Module + "\" --text.",
@@ -106,6 +112,30 @@ public static class StartRender
             $" | open issues: {s.OpenIssues.Count} | resolutions in history: {resolutions}",
         };
         if (s.CheckLines.Count > 0) lines.Add("QUERY CHECKS AT START: " + string.Join(" | ", s.CheckLines));
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>
+    /// The record part's FIRST line (found 3 Nov, done-when 1: a cold NetworkOps session wrote tool calls as text and
+    /// reported invented results, "netops fleet lists 41 agents"). One line, so no compaction can separate it from the page.
+    /// </summary>
+    public const string NotReadLine =
+        "Everything a session started here knows at start is on this page. Anything not on it was NOT read - answer 'not checked', never a value.";
+
+    private static string StateNow(HandoverState? h, string module, int level)
+    {
+        if (h is null) return "";
+        if (h.Section is null)
+            return $"STATE NOW: not read - {h.Why}. Answer anything that needs the module's current state 'not checked'.";
+        var head = $"STATE NOW - the module's current state, from its handover at HEAD ({h.Where}):";
+        var lines = new List<string> { head };
+        if (h.Dirty) lines.Add("the handover has uncommitted changes - commit them to show them here");
+        lines.Add(level switch
+        {
+            0 => h.Section,
+            1 => HandoverState.CapLines(h.Section, 1500, h.Path),
+            _ => $"[STATE NOW cut at the session-start limit - kor start --module \"{module}\" --text, or git show HEAD:{h.Path}]",
+        });
         return string.Join("\n", lines);
     }
 
