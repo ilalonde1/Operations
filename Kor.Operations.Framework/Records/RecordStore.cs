@@ -109,9 +109,12 @@ public static class RecordStore
     {
         Validate(r);
         using var c = db.Command(
+            // OUTPUT ... INTO a table variable: a plain OUTPUT is refused (error 334) on a table with an enabled trigger,
+            // and migration 171 adds triggers to brain.Memory (TR_Memory_Restate, TR_Memory_EvidenceAppendOnly).
+            "DECLARE @id TABLE (Id int); " +
             "INSERT brain.Memory (Lane, Name, Kind, Description, Body, Source, CreatedBy, SourceKind, SourceRepo, SourceCommit, " +
-            "SourcePath, SourceBlob, SourceRef, SourceHash) OUTPUT INSERTED.Id " +
-            "VALUES (@l, @n, @k, @d, @b, @s, @cb, @sk, @sr, @sc, @sp, @sb, @sref, @sh)");
+            "SourcePath, SourceBlob, SourceRef, SourceHash) OUTPUT INSERTED.Id INTO @id " +
+            "VALUES (@l, @n, @k, @d, @b, @s, @cb, @sk, @sr, @sc, @sp, @sb, @sref, @sh); SELECT Id FROM @id;");
         c.Parameters.Add("@l", SqlDbType.NVarChar, 60).Value = r.Lane;
         c.Parameters.Add("@n", SqlDbType.NVarChar, 120).Value = r.Name;
         c.Parameters.Add("@k", SqlDbType.NVarChar, 10).Value = r.Kind;

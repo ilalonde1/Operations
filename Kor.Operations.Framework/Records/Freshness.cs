@@ -11,7 +11,9 @@ public enum Verdict { Current, Stale, Unverifiable }
 public sealed record Checked(int Id, string Lane, string Name, string Kind, string SourceKind, string? Repo, string? Path,
                              string? Blob, string? HeadBlob, Verdict Verdict, string Why);
 
-public sealed record FreshnessReport(IReadOnlyList<Checked> Rows, IReadOnlyDictionary<string, string?> RepoHeads, bool Written)
+/// <param name="Partial">the time budget ran out: some rows are Unverifiable "cap hit" and were not written.</param>
+public sealed record FreshnessReport(IReadOnlyList<Checked> Rows, IReadOnlyDictionary<string, string?> RepoHeads, bool Written,
+                                     bool Partial = false, TimeSpan Elapsed = default)
 {
     public int Count(Verdict v) => Rows.Count(r => r.Verdict == v);
 }
@@ -39,8 +41,10 @@ public static class Freshness
     private const string Live =
         "m.RetiredAtUtc IS NULL AND m.Status IN (N'current', N'stale') AND m.SourceKind IN (N'git', N'file')";
 
-    public static FreshnessReport CheckModule(BrainDb db, string module, string? fromDir = null, HeadReader? reader = null) =>
-        Check(db, $"{Live} AND m.Lane = @a", module, null, fromDir, reader, write: true);
+    /// <param name="budget">time cap (the SessionStart hook); null = none. See <see cref="FreshnessReport.Partial"/>.</param>
+    public static FreshnessReport CheckModule(BrainDb db, string module, string? fromDir = null, HeadReader? reader = null,
+                                              TimeSpan? budget = null) =>
+        Check(db, $"{Live} AND m.Lane = @a", module, null, fromDir, reader, write: true, budget);
 
     /// <summary>Every live record citing the repo (any lane) - after a commit, merge or checkout in it.</summary>
     public static FreshnessReport CheckRepo(BrainDb db, string repoLeaf, string? fromDir = null, HeadReader? reader = null) =>
@@ -79,14 +83,25 @@ public static class Freshness
                               string? Blob, string? Ref, string? Hash);
 
     private static FreshnessReport Check(BrainDb db, string where, string a, string? b, string? fromDir, HeadReader? reader,
-                                         bool write)
+                                         bool write, TimeSpan? budget = null)
     {
         reader ??= GitHead;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var partial = false;
+        // The budget is checked before each repo's git read and before the file sources: past it, what is left is
+        // reported Unverifiable ("cap hit") and NOT written; what was already checked is written as usual.
+        bool Over() => budget is { } cap && clock.Elapsed >= cap && (partial = true);
+        string CapWhy() => $"cap hit after {clock.Elapsed.TotalSeconds:0.#} s - not checked";
         var rows = Load(db, where, a, b);
         var results = new List<Checked>();
         var heads = new Dictionary<string, string?>(StringComparer.Ordinal);
         foreach (var group in rows.Where(r => r.SourceKind == "git").GroupBy(r => r.Repo ?? ""))
         {
+            if (Over())
+            {
+                results.AddRange(group.Select(r => Result(r, null, Verdict.Unverifiable, CapWhy())));
+                continue;
+            }
             var dir = group.Key.Length == 0 ? null : RepoLocator.Find(group.Key, fromDir);
             if (dir is null)
             {
@@ -116,6 +131,7 @@ public static class Freshness
         }
         foreach (var r in rows.Where(r => r.SourceKind == "file"))
         {
+            if (Over()) { results.Add(Result(r, null, Verdict.Unverifiable, CapWhy())); continue; }
             string? hash;
             try { hash = r.Ref is not null && File.Exists(r.Ref) ? Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(r.Ref))).ToLowerInvariant() : null; }
             catch (Exception e) { results.Add(Result(r, null, Verdict.Unverifiable, $"cannot read {r.Ref}: {e.Message}")); continue; }
@@ -126,7 +142,7 @@ public static class Freshness
         }
         results.Sort((x, y) => x.Id.CompareTo(y.Id));
         if (write) Write(db, results);
-        return new FreshnessReport(results, heads, write);
+        return new FreshnessReport(results, heads, write, partial, clock.Elapsed);
     }
 
     private static Checked Result(Row r, string? head, Verdict v, string why) =>

@@ -24,11 +24,13 @@ public class SkeletonTests
     [Fact]
     public void HookModeUnknownVerbExitsZero()
     {
-        // A hook must never fail the session: an unknown verb in --hook mode exits 0 and prints nothing.
+        // A hook must never fail the session: an unknown verb in --hook mode exits 0 - and says so in ONE line naming the
+        // verb and this kor's version (review row 146: an old kor.exe under a newer settings.json must be visible).
         var output = new StringWriter();
         var error = new StringWriter();
         Assert.Equal(0, Program.Run(new[] { "no-such-verb", "--hook" }, output, error));
-        Assert.Equal("", output.ToString());
+        var line = Assert.Single(output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        Assert.StartsWith("kor: unknown verb 'no-such-verb' - kor ", line);
         Assert.Equal("", error.ToString());   // review row 81: usage must not be printed in hook mode either
     }
 

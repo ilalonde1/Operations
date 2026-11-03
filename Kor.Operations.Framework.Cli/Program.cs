@@ -47,15 +47,43 @@ public static class Program
                 "fresh" => Fresh(o, stdin, output, hook, db),
                 "recheck" => Recheck(o, output, db),
                 "record" => Record(o, output, db),
-                _ => hook ? 0 : Usage(error),
+                _ => hook ? UnknownInHook(o, output) : Usage(error),
             };
         }
         catch (Exception e)
         {
-            if (hook) { LogHookError(hookErrorLog, o, e); return 0; }
+            if (hook)
+            {
+                LogHookError(hookErrorLog, o, e);
+                // review row 146: a silent fresh hook cannot be told from a broken one - it always says it could not check
+                if (IsFreshModule(o)) output.WriteLine($"kor fresh: COULD NOT CHECK - {OneLine(e.Message)} (logged)");
+                return 0;
+            }
             error.WriteLine($"kor: {e.Message}");
             return 1;
         }
+    }
+
+    private static bool IsFreshModule(Options o) => o.Positional.FirstOrDefault() == "fresh" && o.Get("--file-changed") is null;
+
+    private static string OneLine(string? s)
+    {
+        var t = Redact.Text(s)?.ReplaceLineEndings(" ").Trim();
+        if (string.IsNullOrEmpty(t)) return "no reason given";
+        return t.Length <= 300 ? t : t[..297] + "...";
+    }
+
+    /// <summary>
+    /// An unknown verb in hook mode prints ONE line naming it and this kor's version, never the usage (review row 81), so
+    /// an old kor.exe under a newer settings.json is visible (review row 146). Still exit 0.
+    /// </summary>
+    private static int UnknownInHook(Options o, TextWriter output)
+    {
+        var verb = o.Positional.FirstOrDefault();
+        output.WriteLine(string.IsNullOrEmpty(verb)
+            ? $"kor: no verb given ({VersionText()})"
+            : $"kor: unknown verb '{OneLine(verb)}' - {VersionText()} is older than the hook that calls it, or the hook is wrong");
+        return 0;
     }
 
     internal sealed record Options(List<string> Positional, Dictionary<string, string> Named)
@@ -63,7 +91,7 @@ public static class Program
         private static readonly string[] Valued =
         {
             "--module", "--dir", "--result", "--last", "--kind", "--because", "--body-file", "--source-path", "--name",
-            "--says", "--source",
+            "--says", "--source", "--cap",
         };
 
         private static readonly string[] Flags = { "--full", "--file-changed" };
@@ -100,39 +128,59 @@ public static class Program
         if (hookName != "pre-push" && e.Repo is not null)
         {
             var dir = o.Get("--dir") ?? Environment.CurrentDirectory;
-            var run = Task.Run(() => BrainDb.Use(db, d => Freshness.CheckRepo(d, e.Repo, dir)));
-            var line = "";
-            try
-            {
-                // A caller's unit of work (a test) is never left in use by an abandoned task: wait it out (review row 139).
-                if (db is not null ? run.Wait(Timeout.Infinite) : run.Wait(FreshnessCap))
-                {
-                    var r = run.Result;
-                    line = $"freshness of repo {e.Repo}: {r.Rows.Count} checked, {r.Count(Verdict.Current)} current, " +
-                           $"{r.Count(Verdict.Stale)} stale, {r.Count(Verdict.Unverifiable)} unverifiable";
-                }
-                else line = $"freshness of repo {e.Repo}: over {FreshnessCap.TotalSeconds:0} s - not waited for";
-            }
-            catch (AggregateException x) { line = $"freshness of repo {e.Repo} failed: {x.InnerException?.Message}"; LogHookError(hookErrorLog, o, x.InnerException ?? x); }
+            // A caller's unit of work (a test) is never left in use by an abandoned task: wait it out (review row 139).
+            var line = RecheckWithin(e.Repo, () => BrainDb.Use(db, d => Freshness.CheckRepo(d, e.Repo, dir)),
+                                     db is not null ? Timeout.InfiniteTimeSpan : FreshnessCap,
+                                     x => LogHookError(hookErrorLog, o, x));
             if (!hook) output.WriteLine(line);
         }
         return 0;
     }
 
-    internal static TimeSpan FreshnessCap = TimeSpan.FromSeconds(3);
+    internal static readonly TimeSpan FreshnessCap = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// Runs the re-check on its own task and waits at most <paramref name="cap"/>: over the cap it is not waited for (the
+    /// process ends and its uncommitted transaction rolls back); a failure is logged. Either way the line says what
+    /// happened - the git command is never failed or held.
+    /// </summary>
+    internal static string RecheckWithin(string repo, Func<FreshnessReport> check, TimeSpan cap, Action<Exception> log)
+    {
+        var run = Task.Run(check);
+        try
+        {
+            if (!run.Wait(cap)) return $"freshness of repo {repo}: over {cap.TotalSeconds:0.#} s - not waited for";
+            var r = run.Result;
+            return $"freshness of repo {repo}: {r.Rows.Count} checked, {r.Count(Verdict.Current)} current, " +
+                   $"{r.Count(Verdict.Stale)} stale, {r.Count(Verdict.Unverifiable)} unverifiable";
+        }
+        catch (AggregateException x)
+        {
+            var inner = x.InnerException ?? x;
+            log(inner);
+            return $"freshness of repo {repo} failed: {inner.Message}";
+        }
+    }
 
     // ---- K5: nothing stale ------------------------------------------------------------------------------------------
     private static int Fresh(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? db)
     {
         if (o.Get("--file-changed") is not null) return FileChanged(stdin, output, hook, db);
         var module = o.Get("--module") ?? throw new ArgumentException("fresh needs --module <lane> (or --file-changed)");
-        var report = BrainDb.Use(db, d => Freshness.CheckModule(d, module, o.Get("--dir")));
-        var heads = string.Join(", ", report.RepoHeads.Select(h => $"{h.Key} {(h.Value is null ? "UNREADABLE" : h.Value[..7])}"));
+        var cap = double.TryParse(o.Get("--cap"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var s)
+                  && s >= 0 ? TimeSpan.FromSeconds(s) : FreshCap;
+        // The cap is honoured inside the check (it stops before the next repo and reports the rest unchecked); the hard
+        // wait (cap + grace) covers a hang inside one call. A caller's unit of work (a test) is always waited out.
+        var report = CappedCheck(() => BrainDb.Use(db, d => Freshness.CheckModule(d, module, o.Get("--dir"), budget: cap)),
+                                 db is not null ? Timeout.InfiniteTimeSpan : cap + FreshGrace);
+        if (report is null)
+        {
+            output.WriteLine($"kor fresh: PARTIAL - cap hit after {(cap + FreshGrace).TotalSeconds:0.#} s - {module}: nothing came back in time (not waited for)");
+            return 0;
+        }
+        // Review row 146: hook or not, ONE verdict line always comes first - a silent hook could not be told from a broken one.
+        output.WriteLine(VerdictLine(module, report));
         var stale = report.Rows.Where(r => r.Verdict != Verdict.Current).ToList();
-        if (hook && stale.Count == 0) return 0;   // a hook prints only when it has something to say
-        output.WriteLine($"kor fresh: module {module} - {report.Rows.Count} source-checked record(s): {report.Count(Verdict.Current)} current, " +
-                         $"{report.Count(Verdict.Stale)} STALE, {report.Count(Verdict.Unverifiable)} unverifiable" +
-                         (heads.Length > 0 ? $" (HEAD {heads})" : ""));
         foreach (var r in hook ? stale : report.Rows)
         {
             var tag = r.Verdict switch { Verdict.Stale => "STALE", Verdict.Unverifiable => "UNVERIFIABLE", _ => "current" };
@@ -143,19 +191,62 @@ public static class Program
         return 0;
     }
 
+    /// <summary>The SessionStart hook runs for 30 s; kor fresh stops checking at 10 s and reports what it has.</summary>
+    internal static readonly TimeSpan FreshCap = TimeSpan.FromSeconds(10);
+
+    /// <summary>Beyond the cap, how long to wait for a check stuck inside one call (a connect, a git read) before giving up.</summary>
+    internal static readonly TimeSpan FreshGrace = TimeSpan.FromSeconds(5);
+
+    /// <summary>The report, or null when it did not come back within <paramref name="hard"/>. A failure is rethrown as itself.</summary>
+    internal static FreshnessReport? CappedCheck(Func<FreshnessReport> check, TimeSpan hard)
+    {
+        var run = Task.Run(check);
+        try { return run.Wait(hard) ? run.Result : null; }
+        catch (AggregateException x) when (x.InnerException is not null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(x.InnerException).Throw();
+            throw;
+        }
+    }
+
+    internal static string VerdictLine(string module, FreshnessReport r)
+    {
+        var heads = string.Join(", ", r.RepoHeads.Select(h => $"{h.Key} {(h.Value is null ? "UNREADABLE" : h.Value[..7])}"));
+        var counts = $"{r.Count(Verdict.Current)} current, {r.Count(Verdict.Stale)} stale, {r.Count(Verdict.Unverifiable)} unverifiable";
+        var at = heads.Length > 0 ? $" at HEAD {heads}" : " (no source-checked records)";
+        return r.Partial
+            ? $"kor fresh: PARTIAL - cap hit after {r.Elapsed.TotalSeconds:0.#} s - {module}: {counts}{at}"
+            : $"kor fresh: {module} - {counts}{at}";
+    }
+
     /// <summary>
-    /// "path[@rev]" -> (path, rev). The rev starts at the last '@' that does not open a reflog selector, so
-    /// "docs/a.md@HEAD@{1}" is (docs/a.md, HEAD@{1}) (review row 139); no rev = HEAD.
+    /// "path[@rev]" -> (path, rev), decided by GIT, not by the text (review row 140: a path may hold '@', as in
+    /// node_modules/@scope/x.js). Each '@' that does not open a reflog selector ("@{") is tried from the right, then the
+    /// whole text as a path at HEAD; the first (path, rev) where <c>rev:path</c> is a tracked blob wins. None -> the whole
+    /// text at HEAD, which RecordStore.At then refuses with its reason.
     /// </summary>
-    internal static (string Path, string Rev) SplitGitSource(string spec)
+    /// <param name="tracked">(rev, path) -> is path tracked at rev; the real one asks git in the repo.</param>
+    internal static (string Path, string Rev) SplitGitSource(string spec, Func<string, string, bool> tracked)
     {
         if (string.IsNullOrWhiteSpace(spec)) throw new ArgumentException("--source git: needs a path");
         for (var at = spec.LastIndexOf('@'); at > 0; at = spec.LastIndexOf('@', at - 1))
-            if (at + 1 < spec.Length && spec[at + 1] != '{') return (spec[..at], spec[(at + 1)..]);
+        {
+            if (at + 1 >= spec.Length || spec[at + 1] == '{') continue;
+            var (path, rev) = (spec[..at], spec[(at + 1)..]);
+            if (tracked(rev, path)) return (path, rev);
+        }
         return (spec, "HEAD");
     }
 
-    /// <summary>FileChanged hook:a terminal message when an edited file is the source of a live record. Writes nothing.</summary>
+    internal static Func<string, string, bool> TrackedIn(string dir) => (rev, path) =>
+    {
+        var top = Git.TopLevel(dir);
+        if (top is null) return false;
+        try { return Git.Run(top, "rev-parse", "--verify", "--quiet", $"{rev}:{RecordStore.Relative(top, path)}") is not null; }
+        catch (RecordRefusedException) { return false; }   // not a path inside the repo
+    };
+
+    /// <summary>FileChanged hook: a terminal message when an edited file is the source of a live record. Writes nothing.</summary>
     private static int FileChanged(Func<string?> stdin, TextWriter output, bool hook, BrainDb? db)
     {
         using var doc = System.Text.Json.JsonDocument.Parse(stdin() ?? throw new ArgumentException("fresh --file-changed reads the hook JSON on stdin"));
@@ -231,8 +322,9 @@ public static class Program
         var src = o.Get("--source") ?? throw new ArgumentException("record needs --source git:path[@rev]");
         if (!src.StartsWith("git:", StringComparison.Ordinal))
             throw new RecordRefusedException("only git:path[@rev] sources are written before K4 (run:/query: need migration 171)");
-        var (path, rev) = SplitGitSource(src[4..]);
-        var source = RecordStore.At(o.Get("--dir") ?? Environment.CurrentDirectory, path, rev);
+        var where = o.Get("--dir") ?? Environment.CurrentDirectory;
+        var (path, rev) = SplitGitSource(src[4..], TrackedIn(where));
+        var source = RecordStore.At(where, path, rev);
         var by = RecordStore.Actor();
         var rec = new NewRecord(lane, name, kind, says, body, by, source);
         return BrainDb.Use(db, d =>
@@ -345,7 +437,7 @@ public static class Program
         error.WriteLine("       kor capture-git <post-commit|post-merge|post-checkout|pre-push> [git's hook args] [--result N] [--module M] [--dir D] [--hook]");
         error.WriteLine("       kor capture-tool|capture-compact|capture-end [--module M] [--hook]   (hook JSON on stdin)");
         error.WriteLine("       kor events --module M [--last N] [--kind K] [--full]");
-        error.WriteLine("       kor fresh --module M [--dir D] [--hook] | kor fresh --file-changed [--hook]   (FileChanged JSON on stdin)");
+        error.WriteLine("       kor fresh --module M [--dir D] [--cap SECONDS (10)] [--hook] | kor fresh --file-changed [--hook]   (FileChanged JSON on stdin)");
         error.WriteLine("       kor recheck <id> confirm|supersede|withdraw --because \"...\" [--body-file F] [--says D] [--source-path P] [--dir D]");
         error.WriteLine("       kor record --module M --kind finding|decision|dead-end|lesson --name N --says D --source git:path[@rev] [--body-file F] [--dir D]");
         return 2;

@@ -19,8 +19,10 @@ namespace Kor.Operations.Framework.Tests;
 /// (no writer makes one yet). Same-class miss: a record citing a repo that sits anywhere but beside this checkout reads
 /// unverifiable here though it may be current.
 /// </summary>
-public class FreshnessTests
+public class FreshnessTests(Xunit.Abstractions.ITestOutputHelper log)
 {
+    private readonly Xunit.Abstractions.ITestOutputHelper _log = log;
+
     private static readonly string Lane = $"zz-test-k5-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N")[..4]}";
     private const string Doc = "docs/KNOWLEDGE-IDE.md";
     private const string OldCommit = "3b2ce76c";
@@ -49,9 +51,11 @@ public class FreshnessTests
                                  bool retired)
     {
         using var c = db.Command(
+            "DECLARE @id TABLE (Id int); " +
             "INSERT brain.Memory (Lane, Name, Kind, Description, Body, CreatedBy, SourceKind, SourceRepo, SourceCommit, SourcePath, " +
-            "SourceBlob, Status, RetiredAtUtc, RetiredBy, RetiredBecause) OUTPUT INSERTED.Id VALUES (@l, @n, N'finding', N'd', N'b', " +
-            "N'k5-test', N'git', @r, @c, @p, @b, @s, " + (retired ? "SYSDATETIMEOFFSET(), N'k5-test', N'test'" : "NULL, NULL, NULL") + ")");
+            "SourceBlob, Status, RetiredAtUtc, RetiredBy, RetiredBecause) OUTPUT INSERTED.Id INTO @id VALUES (@l, @n, N'finding', N'd', N'b', " +
+            "N'k5-test', N'git', @r, @c, @p, @b, @s, " + (retired ? "SYSDATETIMEOFFSET(), N'k5-test', N'test'" : "NULL, NULL, NULL") +
+            "); SELECT Id FROM @id;");
         c.Parameters.Add("@l", SqlDbType.NVarChar, 60).Value = Lane;
         c.Parameters.Add("@n", SqlDbType.NVarChar, 120).Value = name;
         c.Parameters.Add("@r", SqlDbType.NVarChar, 80).Value = repo;
@@ -257,15 +261,215 @@ public class FreshnessTests
         Assert.Equal("stale", Row(db, id).Status);
     }
 
+    // --source git:path[@rev] is split where git finds the path at the rev (review rows 139, 140). The fake "git" tracks
+    // docs/a.md and node_modules/@scope/x.js at the revs a real repo would have.
+    private static bool FakeTracked(string rev, string path) =>
+        path is "docs/a.md" or "node_modules/@scope/x.js" && rev is "HEAD" or "3b2ce76c" or "HEAD@{1}" or "main@{yesterday}";
+
     [Theory]
     [InlineData("docs/a.md", "docs/a.md", "HEAD")]
     [InlineData("docs/a.md@3b2ce76c", "docs/a.md", "3b2ce76c")]
     [InlineData("docs/a.md@HEAD@{1}", "docs/a.md", "HEAD@{1}")]
     [InlineData("docs/a.md@main@{yesterday}", "docs/a.md", "main@{yesterday}")]
-    public void AGitSourceSplitsAtTheRevNotInsideAReflogSelector(string spec, string path, string rev)
+    [InlineData("node_modules/@scope/x.js", "node_modules/@scope/x.js", "HEAD")]
+    [InlineData("node_modules/@scope/x.js@3b2ce76c", "node_modules/@scope/x.js", "3b2ce76c")]
+    [InlineData("node_modules/@scope/x.js@HEAD@{1}", "node_modules/@scope/x.js", "HEAD@{1}")]
+    public void AGitSourceSplitsWhereGitFindsThePathAtTheRev(string spec, string path, string rev)
     {
-        Assert.Equal((path, rev), Program.SplitGitSource(spec));
+        Assert.Equal((path, rev), Program.SplitGitSource(spec, FakeTracked));
     }
+
+    [Fact]
+    public void AGitSourceSplitIsDecidedByTheRealRepo()
+    {
+        // Real git: Framework's docs/KNOWLEDGE-IDE.md at its first commit, and at HEAD; a path git does not know stays whole.
+        var tracked = Program.TrackedIn(FrameworkDir());
+        Assert.Equal((Doc, OldCommit), Program.SplitGitSource($"{Doc}@{OldCommit}", tracked));
+        Assert.Equal((Doc, "HEAD"), Program.SplitGitSource(Doc, tracked));
+        Assert.Equal(("node_modules/@scope/x.js", "HEAD"), Program.SplitGitSource("node_modules/@scope/x.js", tracked));
+    }
+
+    // capture-git's 3 s cap (review row 140): the installed kor.exe passes no unit of work and waits at most the cap.
+    [Fact]
+    public void TheRecheckCapStopsWaitingAndSaysSo()
+    {
+        var release = new ManualResetEventSlim();
+        var logged = new List<Exception>();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var line = Program.RecheckWithin("Framework", () => { release.Wait(TimeSpan.FromSeconds(30)); return Empty; },
+                                         TimeSpan.FromMilliseconds(200), logged.Add);
+        sw.Stop();
+        release.Set();
+        Assert.Equal("freshness of repo Framework: over 0.2 s - not waited for", line);
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5), $"waited {sw.Elapsed}");
+        Assert.Empty(logged);
+        Assert.Equal(TimeSpan.FromSeconds(3), Program.FreshnessCap);
+    }
+
+    [Fact]
+    public void TheRecheckFailureIsLoggedAndNamedNeverThrown()
+    {
+        var logged = new List<Exception>();
+        var line = Program.RecheckWithin("Framework", () => throw new InvalidOperationException("db down"),
+                                         TimeSpan.FromSeconds(3), logged.Add);
+        Assert.Equal("freshness of repo Framework failed: db down", line);
+        Assert.Equal("db down", Assert.Single(logged).Message);
+        Assert.Equal("freshness of repo Framework: 0 checked, 0 current, 0 stale, 0 unverifiable",
+                     Program.RecheckWithin("Framework", () => Empty, TimeSpan.FromSeconds(3), logged.Add));
+    }
+
+    private static readonly FreshnessReport Empty = new(Array.Empty<Checked>(), new Dictionary<string, string?>(), true);
+
+    // ---- review row 146: the fresh hook always says one verdict line, and is capped -------------------------------------
+    private static string[] Lines(StringWriter w) =>
+        w.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private (int Code, string[] Out, string Log) RunFresh(BrainDb? db, params string[] args)
+    {
+        var log = Path.Combine(Path.GetTempPath(), $"kor-k5-{Guid.NewGuid():N}.log");
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var code = Program.Run(args, () => null, output, error, log, db);
+        Assert.Equal("", error.ToString());
+        var logged = File.Exists(log) ? File.ReadAllText(log) : "";
+        if (File.Exists(log)) File.Delete(log);
+        return (code, Lines(output), logged);
+    }
+
+    [Fact]
+    public void LiveTheFreshHookPrintsExactlyOneVerdictLineWhenAllIsCurrent()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        Insert(db, "hook-current", RecordStore.AtHead(FrameworkDir(), Doc));
+        var head = Git.Run(FrameworkDir(), "rev-parse", "HEAD")!.Trim()[..7];
+        var (code, lines, _) = RunFresh(db, "fresh", "--module", Lane, "--dir", RepoDir(), "--hook");
+        Assert.Equal(0, code);
+        Assert.Equal($"kor fresh: {Lane} - 1 current, 0 stale, 0 unverifiable at HEAD Framework {head}", Assert.Single(lines));
+    }
+
+    [Fact]
+    public void LiveTheFreshHookPutsTheVerdictLineFirstThenEachStaleRecord()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        var id = Insert(db, "hook-stale", RecordStore.At(FrameworkDir(), Doc, OldCommit));
+        var (code, lines, _) = RunFresh(db, "fresh", "--module", Lane, "--dir", RepoDir(), "--hook");
+        Assert.Equal(0, code);
+        Assert.Equal(3, lines.Length);
+        Assert.StartsWith($"kor fresh: {Lane} - 0 current, 1 stale, 0 unverifiable at HEAD Framework ", lines[0]);
+        Assert.StartsWith($"STALE #{id} finding hook-stale", lines[1]);
+        Assert.StartsWith($"recheck: kor recheck {id} confirm", lines[2]);
+    }
+
+    [Fact]
+    public void LiveTheFreshHookSaysCouldNotCheckOnAnyErrorAndLogsIt()
+    {
+        // usage error (no --module)
+        var (code, lines, log) = RunFresh(null, "fresh", "--hook");
+        Assert.Equal(0, code);
+        Assert.Equal("kor fresh: COULD NOT CHECK - fresh needs --module <lane> (or --file-changed) (logged)", Assert.Single(lines));
+        Assert.Contains("fresh needs --module", log);
+        // the database gone from under it (a disposed unit of work: the connection is closed)
+        var dead = BrainDb.OpenRolledBack();
+        dead.Dispose();
+        (code, lines, log) = RunFresh(dead, "fresh", "--module", Lane, "--dir", RepoDir(), "--hook");
+        Assert.Equal(0, code);
+        var line = Assert.Single(lines);
+        Assert.StartsWith("kor fresh: COULD NOT CHECK - ", line);
+        Assert.EndsWith(" (logged)", line);
+        Assert.Contains("fresh module=" + Lane, log);
+    }
+
+    [Fact]
+    public void LiveACappedCheckWritesWhatItCheckedAndReportsTheRestUnchecked()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        // Two repos, read in Id order: Framework first, then Operations. Each git read takes 300 ms; the budget is 100 ms.
+        var fw = Insert(db, "cap-framework", RecordStore.AtHead(FrameworkDir(), Doc));
+        var ops = Insert(db, "cap-operations", RecordStore.AtHead(RepoDir(), "Kor.Operations.Framework/BrainDb.cs"));
+        Freshness.HeadReader slow = (dir, paths) => { Thread.Sleep(300); return Freshness.GitHead(dir, paths); };
+        var r = Freshness.CheckModule(db, Lane, RepoDir(), slow, TimeSpan.FromMilliseconds(100));
+        Assert.True(r.Partial);
+        Assert.Equal(Verdict.Current, Only(r, fw).Verdict);
+        Assert.Equal(Verdict.Unverifiable, Only(r, ops).Verdict);
+        Assert.StartsWith("cap hit after", Only(r, ops).Why);
+        Assert.NotNull(Row(db, fw).CheckedAtUtc);    // what it checked is written
+        Assert.Null(Row(db, ops).CheckedAtUtc);      // what it did not, is not
+        Assert.StartsWith($"kor fresh: PARTIAL - cap hit after ", Program.VerdictLine(Lane, r));
+        Assert.Contains("1 current, 0 stale, 1 unverifiable at HEAD Framework ", Program.VerdictLine(Lane, r));
+        // and through the verb: --cap 0 checks nothing, still exits 0 with one PARTIAL verdict line
+        var (code, lines, _) = RunFresh(db, "fresh", "--module", Lane, "--dir", RepoDir(), "--cap", "0", "--hook");
+        Assert.Equal(0, code);
+        Assert.StartsWith($"kor fresh: PARTIAL - cap hit after ", lines[0]);
+        Assert.Contains("0 current, 0 stale, 2 unverifiable", lines[0]);
+        Assert.Equal(10, Program.FreshCap.TotalSeconds);
+    }
+
+    [Fact]
+    public void ACappedCheckThatHangsIsNotWaitedForAndAFailureIsItself()
+    {
+        var release = new ManualResetEventSlim();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Assert.Null(Program.CappedCheck(() => { release.Wait(TimeSpan.FromSeconds(30)); return Empty; }, TimeSpan.FromMilliseconds(200)));
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5), $"waited {sw.Elapsed}");
+        release.Set();
+        var e = Assert.Throws<InvalidOperationException>(() => Program.CappedCheck(() => throw new InvalidOperationException("db down"), TimeSpan.FromSeconds(3)));
+        Assert.Equal("db down", e.Message);
+    }
+
+    // ---- 171 readiness: a plain OUTPUT clause is refused (error 334) on a table with an enabled trigger -------------------
+    // The pattern is built so this file's own text never matches it; it is proved on a known-bad and a known-good sample.
+    private static readonly System.Text.RegularExpressions.Regex PlainOutput = new(
+        @"OUTPUT\s+(?>(?:INSERTED|DELETED)\.\[?\w+\]?(?:\s*,\s*(?:INSERTED|DELETED)\.\[?\w+\]?)*)(?!\s+INTO\b)",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    [Fact]
+    public void EveryBrainOutputClauseUsesInto()
+    {
+        const string o = "OUT" + "PUT";
+        Assert.Matches(PlainOutput, $"INSERT brain.Memory (a) {o} INSERTED.Id VALUES (1)");
+        Assert.Matches(PlainOutput, $"UPDATE brain.Memory SET a = 1 {o} DELETED.Id, INSERTED.Id WHERE Id = 1");
+        Assert.DoesNotMatch(PlainOutput, $"INSERT brain.Memory (a) {o} INSERTED.Id INTO @id VALUES (1)");
+        Assert.DoesNotMatch(PlainOutput, $"UPDATE x SET a = 1 {o} DELETED.Id, INSERTED.Id INTO @t WHERE Id = 1");
+        var root = RepoDir();
+        var files = new[] { "Kor.Operations.Framework", "Kor.Operations.Framework.Cli", "Kor.Operations.Framework.Tests" }
+            .SelectMany(p => Directory.EnumerateFiles(Path.Combine(root, p), "*.cs", SearchOption.AllDirectories))
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                     && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+            .ToList();
+        Assert.True(files.Count >= 10, $"only {files.Count} source files found under {root}");
+        var plain = files.SelectMany(f => PlainOutput.Matches(File.ReadAllText(f)).Select(m => $"{Path.GetFileName(f)}: {m.Value}")).ToList();
+        Assert.True(plain.Count == 0, "OUTPUT without INTO (refused once a trigger exists): " + string.Join("; ", plain));
+        // and the writers this rests on still use the safe shape (4 = RecordStore, Event, LaneState, this file's fixture)
+        var into = files.Sum(f => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(f), @"INSERTED\.Id INTO @id").Count);
+        Assert.True(into >= 4, $"{into} OUTPUT ... INTO @id writers found");
+    }
+
+    /// <summary>
+    /// The direct proof, if korbrain_app may create a trigger: a trigger on brain.Memory inside this rolled-back
+    /// transaction, then RecordStore.Insert. If the login may not (brain_rw has SELECT/INSERT/UPDATE only - 162), the
+    /// refusal is asserted to be a PERMISSION refusal, and <see cref="EveryBrainOutputClauseUsesInto"/> is the proof.
+    /// </summary>
+    [Fact]
+    public void LiveRecordStoreInsertSurvivesATriggerOrTheLoginMayNotCreateOne()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        try
+        {
+            using (var c = db.Command("CREATE TRIGGER brain.TR_zz_test_k5_probe ON brain.Memory AFTER INSERT AS BEGIN SET NOCOUNT ON; END"))
+                c.ExecuteNonQuery();
+        }
+        catch (SqlException e)
+        {
+            Assert.True(e.Number is 2104 or 229 or 1088 or 15247 or 262 or 297,
+                        $"CREATE TRIGGER failed for a reason other than permission: {e.Number} {e.Message}");
+            _log.WriteLine($"TRIGGER PROBE: korbrain_app may not create a trigger (SQL error {e.Number}: {e.Message})");
+            return;
+        }
+        var id = Insert(db, "under-trigger", RecordStore.AtHead(FrameworkDir(), Doc));
+        Assert.NotNull(RecordStore.Get(db, id));
+        _log.WriteLine("TRIGGER PROBE: trigger created in the rolled-back transaction; RecordStore.Insert succeeded under it");
+    }
+
 
     // 13: the guarantee every live test rests on
     [Fact]
