@@ -9,8 +9,13 @@ namespace Kor.Operations.Framework.Capture;
 /// only where the tool sits in COMMAND position (start, or after ; &amp;&amp; || | ( or a call operator) of the
 /// command with its quoted text and heredoc/here-string bodies neutralised (<see cref="Neutralise"/>), so
 /// <c>grep "dotnet test" notes.md</c>, <c>git commit -m "fix; dotnet test passes"</c> and a commit-message heredoc line
-/// starting "dotnet test" are not test runs. Still a false positive: a separator inside a quote that contains an
-/// escaped quote (\"), or inside $'...' - the neutraliser does not model those.
+/// starting "dotnet test" are not test runs. The neutraliser does not model escaped quotes (\" \'), $'...' strings,
+/// or where a "&lt;&lt;TAG" really starts a heredoc. Same-class faults it therefore still has (review row 86):
+/// FALSE POSITIVE - a separator inside a quote that also holds an escaped quote; FALSE NEGATIVE - an unbalanced quote
+/// outside any string (<c>don't</c> unquoted, an escaped \') hides every later command, and a "&lt;&lt;TAG" that is
+/// not a heredoc (<c>-m "use &lt;&lt;EOF"</c>, <c>$((1&lt;&lt;2))</c>) blanks every later line until one equals TAG.
+/// Migration and gate file names are read from the neutral copy; their patterns cannot hold a blanked character, so
+/// the effect can only be a missed match, never a changed name.
 ///
 /// Outcome is read from the OUTPUT, never assumed: a fail marker beats a pass marker; with neither, a non-zero exit
 /// (PostToolUseFailure's "Exit code N") is 'fail', otherwise 'unknown'.
