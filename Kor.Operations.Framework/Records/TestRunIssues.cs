@@ -50,9 +50,7 @@ public static class TestRunIssues
         {
             foreach (var issue in issues.Where(i => i.OpenIssue && IssueCheck.ParseTestRef(i.CheckRef!)?.Fqn == fqn))
             {
-                var (head, dirty) = IssueCheck.HeadAndDirty(repoDir);
-                var r = new CheckResult(dirty is null ? "pass" : "dirty", test.Repo, head ?? test.Commit,
-                    $"capture-tool: {command}" + (dirty is null ? "" : $" - uncommitted changes, not evidence: {dirty}"), Total(output));
+                var r = Evidence(repoDir, test, command, output, "pass");
                 lines.Add(IssueResolver.CheckAndRecord(db, issue, r, actor, test.Session).Line);
             }
         }
@@ -64,13 +62,25 @@ public static class TestRunIssues
                 // The same rule as a pass and as IssueCheck (3 Nov, OverLORD: fail event #27272 cited a7d73d98 while the
                 // test had been broken in an UNCOMMITTED tree - a7d73d98 never held that code): a run in a tree with
                 // uncommitted tracked changes is 'dirty', and a dirty event never opens a regression.
-                var (head, dirty) = IssueCheck.HeadAndDirty(repoDir);
-                var r = new CheckResult(dirty is null ? "fail" : "dirty", test.Repo, head ?? test.Commit,
-                    $"capture-tool: {command}" + (dirty is null ? "" : $" - uncommitted changes, not evidence: {dirty}"), Total(output));
+                var r = Evidence(repoDir, test, command, output, "fail");
                 lines.Add(IssueResolver.CheckAndRecord(db, issue, r, actor, test.Session).Line);
             }
         }
         return lines;
+    }
+
+    /// <summary>
+    /// What a run in <paramref name="repoDir"/> proves: <paramref name="outcome"/> at the HEAD git reads there, only when the
+    /// tree is clean; 'dirty' when it has uncommitted tracked changes; 'error' when git cannot read it (review row 181: a
+    /// failed read must never pass for a clean tree) - neither of the last two resolves or regresses anything.
+    /// </summary>
+    private static CheckResult Evidence(string repoDir, BrainEvent test, string? command, string? output, string outcome)
+    {
+        var (head, dirty) = IssueCheck.HeadAndDirty(repoDir);
+        if (head is null)
+            return new CheckResult("error", test.Repo, test.Commit, $"capture-tool: {command} - git could not read {repoDir}: not evidence", Total(output));
+        return new CheckResult(dirty is null ? outcome : "dirty", test.Repo, head,
+            $"capture-tool: {command}" + (dirty is null ? "" : $" - uncommitted changes, not evidence: {dirty}"), Total(output));
     }
 
     /// <summary>Test-kind issues checked in this repo: open ones, and resolved ones with no regression yet.</summary>

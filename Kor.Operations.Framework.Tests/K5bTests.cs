@@ -311,6 +311,25 @@ public class K5bTests
         Assert.Equal((int?)issue.Id, RecordStore.Get(db, Id(cleanLine, @"REGRESSION #(\d+) open"))!.RegressionOf);
     }
 
+    // review row 181: when git cannot read the folder the run was in, the run is 'error' - never treated as a clean tree
+    [Fact]
+    public void LiveAFailWhereGitCannotReadIsAnErrorAndOpensNothing()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        using var repo = TempRepo.Create();
+        var (issue, test) = InTempRepo(db, repo, "fail-no-git", resolve: true, "fail");
+        var notRepo = Path.Combine(Path.GetTempPath(), "kor-k5b-not-a-repo-" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(notRepo);
+        try
+        {
+            var line = Assert.Single(TestRunIssues.Map(db, test, "dotnet test", TestFailOut, notRepo, "k5b-test"));
+            Assert.Equal("error", BrainStore.ChecksOf(issue.Id, db).First().Outcome);
+            Assert.DoesNotContain("REGRESSION", line);
+            Assert.Null(RecordStore.OpenIssueByName(db, Lane, $"fail-no-git (regression of #{issue.Id})"));
+        }
+        finally { Directory.Delete(notRepo); }
+    }
+
     [Fact]
     public void LiveAPassInADirtyTreeNeverResolvesAndInACleanTreeDoes()
     {
