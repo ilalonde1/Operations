@@ -67,7 +67,8 @@ MISSES["the dynamic-SQL marker line"] = (
 LOOKED = {
     "drawing run, then the PNG read": (
         [B("python tools/e2k_book.py model.e2k book.pdf"), R(r"C:\x\book-L1-core.png")], "The book is done."),
-    # row 1203: the read-back names the table it wrote (it was `SELECT @@ROWCOUNT`, which reads no row; now a MISS)
+    # row 1203: the read-back names the table it wrote (it was `SELECT @@ROWCOUNT`, which reads no row - still ALLOWED,
+    # see "1203 stated miss: SELECT @@ROWCOUNT after the write" below; review row 284)
     "write and its SELECT in one command": (
         [B("python oq.py -q \"UPDATE KorStandards.oversight.Commitment SET State=N'done' WHERE Id=1; "
            "SELECT Id, State FROM KorStandards.oversight.Commitment WHERE Id=1\"")],
@@ -154,6 +155,17 @@ LOOKED["1203 (a): PowerShell's `n before SELECT is a line break too"] = (
     [P("python oq.py -q \"UPDATE KorStandards.oversight.Mistake SET State=N'done' WHERE Id=1\""),
      P("\"USE KorStandards;`nSELECT Id, State FROM oversight.Mistake WHERE Id=1\" | Set-Content rb.sql; python oq.py -i rb.sql")],
     "Closed - done.")
+# review row 284: Select-Object -Skip N drops a fixed head, as tail -n +N does - not a cut; and a cut BEFORE the write
+# (an unrelated `git log | head`) does not touch the write's own OUTPUT rows
+LOOKED["1203 (a): OUTPUT rows through Select-Object -Skip 1 (drops sqlcmd's first line)"] = (
+    [P("python oq.py -q \"UPDATE KorStandards.oversight.Mistake SET State=N'done' OUTPUT inserted.Id, inserted.State "
+       "WHERE Id=1\" | Select-Object -Skip 1")], "Closed - done.")
+LOOKED["1203 (a): a | head BEFORE the write does not cancel its OUTPUT rows"] = (
+    [B("git log --oneline | head -3; python oq.py -q \"UPDATE KorStandards.oversight.Mistake SET State=N'done' "
+       "OUTPUT inserted.Id, inserted.State WHERE Id=1\"")], "Closed - done.")
+MISSES["1203 (a): OUTPUT rows cut by | head AFTER the write"] = (
+    [B("python oq.py -q \"UPDATE KorStandards.oversight.Mistake SET State=N'done' OUTPUT inserted.Id WHERE Id=1\" | head -1")],
+    "Closed - done.", "db-write")
 MISSES["1203 (a): the write alone - its sys.columns read comes BEFORE the UPDATE"] = (
     [WRITE_NO_OUTPUT, O("mitigationref_chars\n200")], "Mistake 138 closed - done.", "db-write")
 MISSES["1203 (a): OUTPUT rows cut by tail -3 (call 1542; the 7292 refusal, still right)"] = (
@@ -230,6 +242,10 @@ print(("PASS" if ok else "FAIL") + f"  refusal names Surface {ruling['Code']} an
 why = verdict("Row updated - done.", MISSES["1203 (a): the write alone - its sys.columns read comes BEFORE the UPDATE"][0], RULES, SURFACES) or ""
 ok = "oversight.mistake: no oversight.Surface row names it, so its look is its rows read back" in why
 print(("PASS" if ok else "FAIL") + "  refusal says no Surface row names oversight.Mistake"); fails += not ok
+# review row 284: a write announced only in its OUTPUT line names its table too (the live OutputPattern's match holds it)
+why = verdict("Placement recorded - done.", MISSES["script file announcing a write in its output"][0], RULES, SURFACES) or ""
+ok = "detail.detailplacement:" in why
+print(("PASS" if ok else "FAIL") + "  an output-announced write names its table (detail.detailplacement)"); fails += not ok
 
 
 def transcript(calls, final_text):
@@ -262,6 +278,6 @@ print(("PASS" if out == "" else "FAIL") + "  SendMessage door allows a message w
 os.unlink(t)
 
 # Every check counted: the NO_CLAIMS cases were left out (review row 24, 2 Nov: "31 checks run but the summary says 29").
-total = len(MISSES) + len(LOOKED) + 1 + len(NO_CLAIMS) + len(NO_CLAIM_1203) + 2 + 4
+total = len(MISSES) + len(LOOKED) + 1 + len(NO_CLAIMS) + len(NO_CLAIM_1203) + 3 + 4
 print(f"{total - fails} of {total} passed")
 sys.exit(1 if fails else 0)

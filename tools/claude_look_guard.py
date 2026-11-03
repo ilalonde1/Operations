@@ -43,7 +43,8 @@ Framework row 1203 (3 Nov 2026; GuardRefusal 440, 441, 893, 898 judged wrong). T
 - A db-write's look, as before, is any look (LookPattern) after its last write; now also OUTPUT inserted.*/deleted.*
   in the write itself (every row it touched, as its own result - refusal 440's write) when that command's output is
   not cut by | head, | tail (`tail -n +N`, which drops a fixed head such as sqlcmd's "Changed database context" and
-  shows every line after it, is not a cut), Select-Object -First/-Last/-Skip or grep -m. A SELECT look whose output
+  shows every line after it, is not a cut, nor is Select-Object -Skip N for the same reason), Select-Object -First/-Last
+  or grep -m, AFTER the write in that command (review row 284: not anywhere in it). A SELECT look whose output
   is cut STILL counts, as before: refusing it was tried and, on a second real transcript (Operations f6ff24dd, 839
   moments with a claim word), took refusals from 555 to 575 - 41 of the 98 moments that gained one behind greps of
   migration files the ChangePattern misreads as writes ("grep ... 'INSERT INTO ...' | head"). The refusal names the
@@ -92,7 +93,7 @@ WRITE_TABLE = re.compile(r"\b(?:INSERT\s+INTO|DELETE\s+FROM|MERGE\s+INTO|ALTER\s
                          r"|\bUPDATE\s+(" + QUALIFIED + r")\s+SET\b", re.I)
 # output cut to its first or last lines. `tail -n +N` is NOT a cut: it drops a fixed head (sqlcmd's "Changed database
 # context" line) and shows every line after it
-TRUNCATED = re.compile(r"\|\s*head\b|\|\s*tail\b(?!\s+(?:-n\s*)?\+\d)|Select-Object\s+[^|;\n]*-(?:First|Last|Skip)\b"
+TRUNCATED = re.compile(r"\|\s*head\b|\|\s*tail\b(?!\s+(?:-n\s*)?\+\d)|Select-Object\s+[^|;\n]*-(?:First|Last)\b"
                        r"|\bgrep\s+(?:-\w+\s+)*-m\s*\d", re.I)
 # the written rows returned by the write itself: each row the statement wrote, as its own result
 OUTPUT_ROWS = re.compile(r"\bOUTPUT\s+(?:inserted|deleted)\.", re.I)
@@ -259,7 +260,9 @@ def unlooked(calls, rules):
             if name in ltools:
                 # a look in the same command counts only when it comes after the change in the text
                 lm = look_in(lpat, text, read, cm.end() if cm else 0)
-                if db and cm and not lm and not TRUNCATED.search(text):
+                # the cut is looked for AFTER the write only: a `git log | head` before it does not touch its output
+                # (review row 284)
+                if db and cm and not lm and not TRUNCATED.search(text, cm.end()):
                     # row 1203: OUTPUT inserted.* / deleted.* returns every row the write touched as the statement's
                     # own result - the written rows read back, unless the output is cut (call 1542: | tail -3)
                     lm = OUTPUT_ROWS.search(text, cm.end())
