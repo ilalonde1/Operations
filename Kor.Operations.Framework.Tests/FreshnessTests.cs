@@ -288,6 +288,8 @@ public class FreshnessTests(Xunit.Abstractions.ITestOutputHelper log)
         Assert.Equal((Doc, "HEAD"), Program.SplitGitSource(Doc, tracked));
         Assert.Equal(("node_modules/@scope/x.js", "HEAD"), Program.SplitGitSource("node_modules/@scope/x.js", tracked));
         // a DIRECTORY at a revision is not a source (review row 150: rev-parse rev:dir resolves a tree)
+        var docsTree = Git.Run(FrameworkDir(), "rev-parse", "--verify", "--quiet", "HEAD:docs")?.Trim();   // precondition (row 154)
+        Assert.Equal("tree", Git.Run(FrameworkDir(), "cat-file", "-t", docsTree ?? "missing")?.Trim());
         Assert.False(tracked("HEAD", "docs"));
         Assert.Null(RecordStore.BlobAt(FrameworkDir(), "HEAD", "docs"));
         Assert.Throws<RecordRefusedException>(() => RecordStore.AtHead(FrameworkDir(), "docs"));
@@ -425,6 +427,14 @@ public class FreshnessTests(Xunit.Abstractions.ITestOutputHelper log)
 
     // ---- 171 readiness: a plain OUTPUT clause is refused (error 334) on a table with an enabled trigger -------------------
     // The pattern is built so this file's own text never matches it; it is proved on a known-bad and a known-good sample.
+    // THE PROOF USED for 171 readiness is this source-shape test: korbrain_app may not create a trigger (SQL 2104, the
+    // probe below), so no live trigger test is possible as that login.
+    // Covers: a plain OUTPUT of INSERTED./DELETED. columns (bracketed or not, one or a list) in any .cs file of
+    // Kor.Operations.Framework, .Cli and .Tests (obj/bin excluded).
+    // Does NOT cover (review row 152): an OUTPUT of an EXPRESSION (CAST(INSERTED.Id AS ...), $action); OUTPUT text split
+    // across two C# string literals; SQL outside these three projects (db/*.sql, Python tools, other apps writing
+    // brain.Memory); a MERGE without OUTPUT that 171's triggers would still fire on (that is fine - only OUTPUT breaks).
+    // Same-class miss: a writer in another repo (Framework tools/kor_brain.py) with a plain OUTPUT on brain.Memory.
     private static readonly System.Text.RegularExpressions.Regex PlainOutput = new(
         @"OUTPUT\s+(?>(?:INSERTED|DELETED)\.\[?\w+\]?(?:\s*,\s*(?:INSERTED|DELETED)\.\[?\w+\]?)*)(?!\s+INTO\b)",
         System.Text.RegularExpressions.RegexOptions.IgnoreCase);
@@ -467,7 +477,7 @@ public class FreshnessTests(Xunit.Abstractions.ITestOutputHelper log)
         }
         catch (SqlException e)
         {
-            Assert.True(e.Number is 2104 or 229 or 1088 or 15247 or 262 or 297,
+            Assert.True(e.Number == 2104,   // seen live 2 Nov: "Cannot create the trigger ... because you do not have permission"
                         $"CREATE TRIGGER failed for a reason other than permission: {e.Number} {e.Message}");
             _log.WriteLine($"TRIGGER PROBE: korbrain_app may not create a trigger (SQL error {e.Number}: {e.Message})");
             return;

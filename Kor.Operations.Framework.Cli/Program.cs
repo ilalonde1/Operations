@@ -149,7 +149,7 @@ public static class Program
         var run = Task.Run(check);
         try
         {
-            if (!run.Wait(cap)) return $"freshness of repo {repo}: over {cap.TotalSeconds:0.#} s - not waited for";
+            if (!run.Wait(cap)) return $"freshness of repo {repo}: over {Secs(cap)} s - not waited for";
             var r = run.Result;
             return $"freshness of repo {repo}: {r.Rows.Count} checked, {r.Count(Verdict.Current)} current, " +
                    $"{r.Count(Verdict.Stale)} stale, {r.Count(Verdict.Unverifiable)} unverifiable";
@@ -175,7 +175,7 @@ public static class Program
                                  db is not null ? Timeout.InfiniteTimeSpan : cap + FreshGrace);
         if (report is null)
         {
-            output.WriteLine($"kor fresh: PARTIAL - cap hit after {(cap + FreshGrace).TotalSeconds:0.#} s - {module}: nothing came back in time (not waited for)");
+            output.WriteLine($"kor fresh: PARTIAL - cap hit after {Secs(cap + FreshGrace)} s - {module}: nothing came back in time (not waited for)");
             return 0;
         }
         // Review row 146: hook or not, ONE verdict line always comes first - a silent hook could not be told from a broken one.
@@ -209,6 +209,9 @@ public static class Program
         }
     }
 
+    /// <summary>Seconds with at most one decimal, always with a '.' (review row 154: never the machine's culture).</summary>
+    internal static string Secs(TimeSpan t) => t.TotalSeconds.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
     internal static string VerdictLine(string module, FreshnessReport r)
     {
         var heads = string.Join(", ", r.RepoHeads.Select(h => $"{h.Key} {(h.Value is null ? "UNREADABLE" : h.Value[..7])}"));
@@ -218,7 +221,7 @@ public static class Program
                : r.Partial ? " - no repo was read before the cap"
                : r.Rows.Count > 0 ? "" : " (no source-checked records)";
         return r.Partial
-            ? $"kor fresh: PARTIAL - cap hit after {r.Elapsed.TotalSeconds:0.#} s - {module}: {counts}{at}"
+            ? $"kor fresh: PARTIAL - cap hit after {Secs(r.Elapsed)} s - {module}: {counts}{at}"
             : $"kor fresh: {module} - {counts}{at}";
     }
 
