@@ -52,7 +52,10 @@ public static class StartRender
             var parts = sections.Select((x, i) => x.Render(levels[i])).Where(t => t.Length > 0).ToList();
             var head = string.Join("\n", parts);
             if (legacy.Count == 0) return head;
-            var room = budget is null ? (int?)null : budget.Value - head.Length - 1;
+            // Legacy is cut FIRST: it fills the room left only while no section above it has been cut. Once one has, legacy
+            // is its one line - it never refills the room a cut section gave up (seen live 3 Nov 02:24: Office cut to its
+            // header while legacy rows still rendered below it).
+            var room = budget is null ? (int?)null : levels.Any(l => l > 0) ? 0 : budget.Value - head.Length - 1;
             return head + "\n" + Legacy(m, legacy, room);
         }
         var text = Compose();
@@ -91,7 +94,7 @@ public static class StartRender
     {
         var f = s.Fresh;
         var heads = f.RepoHeads.Count == 0 ? "no source-cited record read a repo"
-            : string.Join(", ", f.RepoHeads.Select(h => $"{h.Key} {(h.Value is null ? "UNREADABLE" : h.Value[..7])}"));
+            : string.Join(", ", f.RepoHeads.Select(h => $"{h.Key} {(h.Value is null ? "UNREADABLE" : h.Value[..Math.Min(7, h.Value.Length)])}"));
         var resolutions = s.Records.Count(r => r.Kind == "resolution");
         var lines = new List<string>
         {

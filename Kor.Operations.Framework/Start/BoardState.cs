@@ -88,7 +88,8 @@ public sealed record BoardState(IReadOnlyList<string> Owners, IReadOnlyList<Boar
     private static (IReadOnlyList<T>, string) Guarded<T>(BrainDb db, Func<IReadOnlyList<T>> read)
     {
         try { return (read(), "live"); }
-        catch (SqlException e)
+        // as board_render.load_owed: ANY failure of this one read is said on its own line, never the whole board (review row 196)
+        catch (Exception e) when (e is not OutOfMemoryException)
         {
             return (Array.Empty<T>(), "UNREADABLE: " + Reason(e));
         }

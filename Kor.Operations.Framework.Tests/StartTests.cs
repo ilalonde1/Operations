@@ -175,8 +175,39 @@ public class StartTests
         var text = StartRender.Record(s, StartRender.HookBudget);
         Assert.Contains(s.Records[0].Body!, text);                 // five questions whole
         Assert.Contains("rec-39", text);                           // the sourced records still listed
-        Assert.Contains("legacy memory cut at the session-start limit", text);
+        Assert.Contains("LEGACY MEMORY: 1150 imported rows cut at the session-start limit", text);   // a section was cut: one line
         Assert.DoesNotContain("legacy-1149", text);
+        // nothing above it cut: legacy fills exactly the room left, with its note
+        var small = s with
+        {
+            Records = s.Records.Where(r => r.Legacy || r.Name == ModuleState.FiveQuestionsName).ToList(),
+            Office = Array.Empty<StartRecord>(),
+            Events = Array.Empty<StoredEvent>(),
+        };
+        var fill = StartRender.Record(small, StartRender.HookBudget);
+        Assert.Contains("legacy memory cut at the session-start limit", fill);
+        Assert.Contains("legacy-0 ", fill);
+        Assert.True(fill.Length <= StartRender.HookBudget && fill.Length > StartRender.HookBudget - 300, $"{fill.Length}");
+    }
+
+    [Theory]
+    [InlineData(25, 30)]
+    [InlineData(0, 0)]
+    public void OnceAnySectionIsCutLegacyIsOneLineAndNeverRefillsTheRoom(int issues, int stale)
+    {
+        // seen live 3 Nov 02:24 on Framework: Office cut to its header while legacy rows still rendered below it
+        var text = StartRender.Record(BigState(issues, stale, 1150, 12000), StartRender.HookBudget);
+        Assert.Contains("[resume cut at 3000", text);                         // a section above legacy was cut ...
+        Assert.DoesNotContain("legacy-0 ", text);                             // ... so no legacy row renders
+        Assert.Contains("LEGACY MEMORY: 1150 imported rows cut at the session-start limit", text);
+    }
+
+    [Fact]
+    public void AHeadShorterThanSevenCharactersDoesNotBreakTheHeader()
+    {
+        var s = BigState(0, 0, 0, 10);
+        var odd = s with { Fresh = s.Fresh with { RepoHeads = new Dictionary<string, string?> { ["X"] = "abc", ["Y"] = null } } };
+        Assert.Contains("HEAD: X abc, Y UNREADABLE", StartRender.Record(odd, null));
     }
 
     [Fact]
@@ -291,7 +322,12 @@ public class StartTests
         var root = Path.Combine(Path.GetTempPath(), $"kor-k6-git-{Guid.NewGuid():N}");
         var repo = Path.Combine(root, "repo");
         Directory.CreateDirectory(repo);
-        string G(string dir, params string[] a) => Git.Run(dir, TimeSpan.FromSeconds(20), a) ?? throw new InvalidOperationException($"git {string.Join(' ', a)} failed");
+        // no user hooks or signing in a throwaway repo: a global core.hooksPath at the KOR hooks would write brain.Event rows
+        var noHooks = Path.Combine(root, "no-hooks");
+        Directory.CreateDirectory(noHooks);
+        string G(string dir, params string[] a) =>
+            Git.Run(dir, TimeSpan.FromSeconds(20), new[] { "-c", $"core.hooksPath={noHooks}", "-c", "commit.gpgsign=false" }.Concat(a).ToArray())
+            ?? throw new InvalidOperationException($"git {string.Join(' ', a)} failed");
         try
         {
             G(repo, "init", "-q", "-b", "main");
@@ -333,9 +369,15 @@ public class StartTests
     public void HookWithTextIsRefusedQuietlyAndExitsZero()
     {
         var output = new StringWriter();
-        Assert.Equal(0, Program.Run(new[] { "start", "--module", "zz", "--part", "record", "--hook", "--text" }, () => "{}", output,
-                                    new StringWriter(), Path.Combine(Path.GetTempPath(), $"kor-k6-{Guid.NewGuid():N}.log")));
-        Assert.Equal("", output.ToString());
+        var log = Path.Combine(Path.GetTempPath(), $"kor-k6-{Guid.NewGuid():N}.log");
+        try
+        {
+            Assert.Equal(0, Program.Run(new[] { "start", "--module", "zz", "--part", "record", "--hook", "--text" }, () => "{}", output,
+                                        new StringWriter(), log));
+            Assert.Equal("", output.ToString());
+            Assert.Contains("--hook prints the SessionStart JSON and --text prints plain text: give one (review row 194)", File.ReadAllText(log));
+        }
+        finally { File.Delete(log); }
     }
 
     [Fact]
