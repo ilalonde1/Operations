@@ -97,7 +97,9 @@ public class FileMemoryTests
     [InlineData("- [x](./feedback_one.md) - d", "feedback_one", true)]
     [InlineData("- [x](my_feedback_one.md)", "feedback_one", false)]
     [InlineData("- [x](feedback_one_more.md)", "feedback_one", false)]
-    [InlineData("- feedback_one is mentioned without its file", "feedback_one", false)]
+    [InlineData("- feedback_one is mentioned without its file", "feedback_one", true)]       // a bare stem names it too
+    [InlineData("- feedback_one-two is another stem", "feedback_one", false)]
+    [InlineData("- see the_feedback_one", "feedback_one", false)]
     public void TheIndexNamesARowByItsFileName(string index, string name, bool named) =>
         Assert.Equal(named, StartRender.NamedIn(index, name));
 }

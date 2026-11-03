@@ -446,9 +446,10 @@ public static class StartRender
     /// </summary>
     public const int UnindexedNamesMax = 4000;
 
-    /// <summary>The index links the memory as "<c>name.md</c>" (a markdown link target, or bare).</summary>
+    /// <summary>The index names the memory: "<c>name.md</c>" (a link target) or the bare stem as a whole token (measured
+    /// 3 Nov on Framework's index: 11 stems named bare, e.g. "feedback_ian_runs_codex", were listed again below it).</summary>
     internal static bool NamedIn(string index, string name) =>
-        System.Text.RegularExpressions.Regex.IsMatch(index, @"(?<![\w.-])" + System.Text.RegularExpressions.Regex.Escape(name) + @"\.md(?!\w)",
+        System.Text.RegularExpressions.Regex.IsMatch(index, @"(?<![\w.-])" + System.Text.RegularExpressions.Regex.Escape(name) + @"(?:\.md)?(?![\w-])",
                                                      System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     private static string Names(string what, List<string> names, string module)
