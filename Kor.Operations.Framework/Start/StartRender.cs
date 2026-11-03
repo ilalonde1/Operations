@@ -202,7 +202,10 @@ public static class StartRender
     /// whole entry, never split across pages (an entry longer than a page is cut with a note); a group that runs onto the
     /// next page is named again there "(continued)". Page <paramref name="page"/> of the <paramref name="pages"/> wired; a
     /// page past the content is empty (nothing printed); when the content needs more than the wired pages, the last one
-    /// ends with how many records are left and the command that reads them. No budget (--text, no --page): every record.
+    /// ends with how many records are left and the command that reads them. A group with no record gets a "none current."
+    /// line on the pages only where it fits - it never opens a page of its own and is dropped when it does not fit (the
+    /// record part's RECORDS line gives every group's count, a 0 included). No budget (--text, no --page): every record,
+    /// and every "none current." line.
     /// The records are those the record part would list - current, not imported file memory, not the five questions, not
     /// a resolution - by their STORED status (the record part's own freshness check this start is not run here).
     /// </summary>

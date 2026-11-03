@@ -145,7 +145,6 @@ public class StartSplitTests
                 for (var p = 1; p <= wired; p++)
                 {
                     var page = StartRender.RecordsPage(side, p, wired, StartRender.HookBudget);
-                    Assert.DoesNotContain("] 0 record(s) of", page);
                     Assert.DoesNotContain("... [0 record(s)", page);
                     if (page.Length == 0 || p == 1) continue;
                     var body = page.Split('\n').Skip(1).Where(l => l.Length > 0).ToList();
@@ -153,6 +152,11 @@ public class StartSplitTests
                                  $"n={n} wired={wired} page {p} holds only 'none current.' lines");
                 }
         }
+        // and when they fit they are still printed (review row 344: a change that always dropped them would pass the above)
+        var one = Side(null, new List<StartRecord> { Sourced(300_000, "decision", 280) });
+        var first = StartRender.RecordsPage(one, 1, 4, StartRender.HookBudget);
+        Assert.Contains("LESSONS: none current.", first);
+        Assert.Contains("DEAD ENDS: none current.", first);
     }
 
     [Fact]
