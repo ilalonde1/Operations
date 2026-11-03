@@ -71,6 +71,7 @@ public static partial class Program
                 "checks" => Checks(o, output, db, board),
                 "secret-scan" => SecretScan(o, stdin, output, db),
                 "state" => State(o, output, db),
+                "migration-lint" => MigrationLintVerb(o, stdin, output),
                 _ => hook ? UnknownInHook(o, output) : Usage(error),
             };
         }
@@ -118,7 +119,7 @@ public static partial class Program
         {
             "--module", "--dir", "--result", "--last", "--kind", "--because", "--body-file", "--source-path", "--name",
             "--says", "--source", "--cap", "--session", "--description", "--check", "--check-ref", "--issue",
-            "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir", "--page", "--pages",
+            "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir", "--page", "--pages", "--cutoff",
             "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what",
         };
 
@@ -548,6 +549,7 @@ public static partial class Program
         error.WriteLine("       kor secret-scan [--explain] [--offsets]   (read-only: ids and counts of brain rows holding a credential value; --offsets adds offset, length and the 40 characters BEFORE each value)");
         error.WriteLine("       kor secret-scan --text - [--what W]   (the text on stdin: 'clean' exit 0, or one refusal line exit 1 - never the value)");
         error.WriteLine("       kor state --module M (--file F | --text T)   (a resume block -> brain.LaneState; a credential value is MASKED and said in one line)");
+        error.WriteLine("       kor migration-lint <file.sql> | - --name NNN_x.sql [--cutoff N (177)]   (a migration above the cut-off: L1 a 'PROBES:' header line, L2 no hand-written probe handling without migration.usp_MigrationProbe; one line per finding, exit 1)");
         error.WriteLine("       kor start --module M [--owner O]... [--no-helpers] [--part record|state|memory|board|all] [--page N --pages M (memory)] [--hook | --text] [--dir D] [--session S] [--start-source S]   (SessionStart JSON on stdin with --hook)");
         return 2;
     }
