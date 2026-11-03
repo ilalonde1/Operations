@@ -12,7 +12,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from claude_look_guard import load_rules, verdict  # noqa: E402
+from claude_look_guard import load_rules, load_surfaces, verdict  # noqa: E402
 
 GUARD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "claude_look_guard.py")
 RULES = load_rules()
@@ -67,8 +67,10 @@ MISSES["the dynamic-SQL marker line"] = (
 LOOKED = {
     "drawing run, then the PNG read": (
         [B("python tools/e2k_book.py model.e2k book.pdf"), R(r"C:\x\book-L1-core.png")], "The book is done."),
+    # row 1203: the read-back names the table it wrote (it was `SELECT @@ROWCOUNT`, which reads no row; now a MISS)
     "write and its SELECT in one command": (
-        [B("python oq.py -q \"UPDATE KorStandards.oversight.Commitment SET State=N'done' WHERE Id=1; SELECT @@ROWCOUNT\"")],
+        [B("python oq.py -q \"UPDATE KorStandards.oversight.Commitment SET State=N'done' WHERE Id=1; "
+           "SELECT Id, State FROM KorStandards.oversight.Commitment WHERE Id=1\"")],
         "Row updated - done."),
     "build, then versions read": (
         [P(r"& .\build\build.ps1"), P("Get-ChildItem artifacts | % { $_.VersionInfo.ProductVersion }")], "Built and verified."),
@@ -123,6 +125,67 @@ MISSES["'done - when' is still a claim"] = (
     [B(r"python -I tools/render.py --job 31180")], "All done - when you're ready, merge.", "drawing")
 MISSES["'done' then a line break is still a claim"] = (
     [B(r"python -I tools/render.py --job 31180")], "All done\nWhen you're ready, merge.", "drawing")
+# --- Framework row 1203 (3 Nov): refusals 440, 441, 893 and 898 were judged wrong. The lead's read-backs were REAL:
+# OUTPUT inserted.* in the write itself, and printf "...;\nSELECT ... FROM oversight.Mistake ..." after it - where
+# \bSELECT\b finds no boundary between the n and the S. Commands verbatim from transcript d0313f99 (calls 2086, 2094,
+# 1542); the _NO_OUTPUT write is 2086 with its OUTPUT line taken out.
+WRITE_2086 = B('cd "/c/VIsual Studio Projects/Operations/tools/SqlQuery" && cat > m138.sql <<\'EOF\'\nUSE KorStandards;\n'
+               "SET NOCOUNT ON;\nSELECT c.max_length / 2 AS mitigationref_chars FROM sys.columns c WHERE c.object_id = "
+               "OBJECT_ID('oversight.Mistake') AND c.name = 'MitigationRef';\nUPDATE oversight.Mistake SET State = N'done', "
+               "ClosedAtUtc = SYSUTCDATETIME(),\n  MitigationRef = N'KorStandards 175+176; kor SecretGuard (Operations "
+               "84e7f9d7, 55bdaf48); Framework 605fdbe'\nOUTPUT inserted.Id, inserted.State, inserted.ClosedAtUtc, "
+               "inserted.MitigationRef WHERE Id = 138;\nEOF\npython -I oq.py -i m138.sql 2>&1 | tail -n +2; rm m138.sql")
+WRITE_NO_OUTPUT = ("Bash", WRITE_2086[1].replace("\nOUTPUT inserted.Id, inserted.State, inserted.ClosedAtUtc, "
+                                                 "inserted.MitigationRef WHERE Id = 138;", "\nWHERE Id = 138;"))
+assert WRITE_NO_OUTPUT[1] != WRITE_2086[1]
+READBACK_2094 = B('cd "/c/VIsual Studio Projects/Operations/tools/SqlQuery" && printf "USE KorStandards;\\nSET NOCOUNT ON;'
+                  '\\nSELECT Id, State, ClosedAtUtc, MitigationKind, MitigationRef FROM oversight.Mistake WHERE Id = 138;'
+                  '\\n" > rb138.sql && python -I oq.py -i rb138.sql 2>&1; rm rb138.sql')
+WRITE_1542_TAIL3 = B('cd "/c/VIsual Studio Projects/Operations/tools/SqlQuery" && cat > r1187.sql <<\'EOF\'\nUSE KorStandards;\n'
+                     "SET NOCOUNT ON;\nSELECT c.name FROM sys.columns c WHERE c.object_id=OBJECT_ID('oversight.Commitment') "
+                     "AND c.name IN ('Id','What');\nUPDATE oversight.Commitment SET What = REPLACE(What, N'(migration 169:', "
+                     "N'(migration 171, with K4''s schema:')\nOUTPUT inserted.Id, inserted.What WHERE Id = 1187 AND What LIKE "
+                     "N'%(migration 169:%';\nEOF\npython -I oq.py -i r1187.sql 2>&1 | tail -3; rm r1187.sql")
+LOOKED["1203 (a): a printf read-back after the write (refusal 898's moment)"] = (
+    [WRITE_NO_OUTPUT, O("mitigationref_chars\n200"), READBACK_2094], "Mistake 138 closed - done.")
+LOOKED["1203 (a): OUTPUT inserted.* in the write, through tail -n +2 (refusal 893's write)"] = (
+    [WRITE_2086, O("mitigationref_chars\n200\n138|done")], "Mistake 138 closed - done.")
+LOOKED["1203 (a): PowerShell's `n before SELECT is a line break too"] = (
+    [P("python oq.py -q \"UPDATE KorStandards.oversight.Mistake SET State=N'done' WHERE Id=1\""),
+     P("\"USE KorStandards;`nSELECT Id, State FROM oversight.Mistake WHERE Id=1\" | Set-Content rb.sql; python oq.py -i rb.sql")],
+    "Closed - done.")
+MISSES["1203 (a): the write alone - its sys.columns read comes BEFORE the UPDATE"] = (
+    [WRITE_NO_OUTPUT, O("mitigationref_chars\n200")], "Mistake 138 closed - done.", "db-write")
+MISSES["1203 (a): OUTPUT rows cut by tail -3 (call 1542; the 7292 refusal, still right)"] = (
+    [WRITE_1542_TAIL3, O("Id|What\n--|----\n1187|[KIDE K5b] ...")], "Spec built.", "db-write")
+MISSES["1203 (a): a later read-back cut by a tail"] = (
+    [B("python oq.py -q \"UPDATE KorStandards.oversight.Commitment SET State=N'done' WHERE Id=1\""),
+     B("python oq.py -q \"SELECT Id, State FROM KorStandards.oversight.Commitment WHERE Id=1\" | tail -1")],
+    "Row updated - done.", "db-write")
+MISSES["1203 (a): Select-Object -First on the read-back"] = (
+    [P("python oq.py -q \"UPDATE KorStandards.oversight.Commitment SET State=N'done' WHERE Id=1\""),
+     P("python oq.py -q \"SELECT Id, State FROM KorStandards.oversight.Commitment\" | Select-Object -First 5")],
+    "Row updated - done.", "db-write")
+# Stated misses in the guard's header, kept here so a change to them is seen: any look after the write satisfies it,
+# not only one naming the written table (requiring that took the 3 Nov dry run from 28 to 46 refusals, 18 of them
+# false); a look before the change in the same command is still not one
+LOOKED["1203 stated miss: SELECT @@ROWCOUNT after the write (reads no row)"] = (
+    [B("python oq.py -q \"UPDATE KorStandards.oversight.Commitment SET State=N'done' WHERE Id=1; SELECT @@ROWCOUNT\"")],
+    "Row updated - done.")
+LOOKED["1203 stated miss: a SELECT of another table"] = (
+    [B("python oq.py -q \"UPDATE KorStandards.oversight.Commitment SET State=N'done' WHERE Id=1\""),
+     B("python oq.py -q \"SELECT * FROM KorStandards.oversight.vw_Board\"")],
+    "Row updated - done.")
+MISSES["1203 (c): an unquoted claim word is still a claim"] = (
+    [WRITE_NO_OUTPUT], "The migration's test passes.", "db-write")
+# Stated miss in the guard's header: 893 was "in three passes" (a noun), unquoted - still refused when a look is missing
+MISSES["1203 (c) stated miss: 'in three passes' (893's word) still refuses when a look is missing"] = (
+    [WRITE_NO_OUTPUT], "Self-test: 17 cases, in three passes.", "db-write")
+NO_CLAIM_1203 = {
+    "a quoted claim word is a mention (898's sentence)":
+        "The guard blocked the first send by misreading \"passes\" as a completion claim.",
+    "single quotes, backticks and curly quotes": "It read 'done', `fixed` and “verified” as claims.",
+}
 # --- ALLOWED: no completion claim at all
 NO_CLAIM = ([E(r"C:\x\tools\drafted_set.py")], "Working on the drawing changes next.")
 # --- ALLOWED: "done-when" / "done when" names a board column, it is not a claim (row 151, 2 Nov)
@@ -148,6 +211,25 @@ for name, text in NO_CLAIMS.items():
     why = verdict(text, NO_CLAIM[0], RULES)
     print(("PASS" if why is None else "FAIL") + f"  allowed  '{name}' is not a claim")
     fails += why is not None
+# row 1203 (c): a quoted claim word, with a write left unread behind it - only the quoting lets it go
+for name, text in NO_CLAIM_1203.items():
+    why = verdict(text, [WRITE_NO_OUTPUT], RULES)
+    print(("PASS" if why is None else "FAIL") + f"  allowed  {name}" + ("" if why is None else f"  <- {why[:120]}"))
+    fails += why is not None
+
+# row 1203 (b): the refusal names the written table and, when oversight.Surface (LIVE rows) has one naming it, that
+# Surface's code and check - or says there is none and the read-back is the whole look
+SURFACES = load_surfaces()
+assert SURFACES, "no oversight.Surface rows: KorStandards unreachable and no cache"
+ruling = next((s for s in SURFACES if "analysis.Ruling" in (s.get("Name") or "")), None)
+assert ruling, "the live Surface rows no longer name analysis.Ruling - pick another table for this test"
+why = verdict("Ruling written - done.", [B("python oq.py -q \"UPDATE KorStandards.analysis.Ruling SET Value=1 WHERE Id=1\"")],
+              RULES, SURFACES) or ""
+ok = f"analysis.ruling: oversight.Surface {ruling['Code']}" in why and ruling["Check"] in why
+print(("PASS" if ok else "FAIL") + f"  refusal names Surface {ruling['Code']} and its check"); fails += not ok
+why = verdict("Row updated - done.", MISSES["1203 (a): a later read-back cut by a tail"][0], RULES, SURFACES) or ""
+ok = "oversight.commitment: no oversight.Surface row names it, so its look is its rows read back" in why
+print(("PASS" if ok else "FAIL") + "  refusal says no Surface row names oversight.Commitment"); fails += not ok
 
 
 def transcript(calls, final_text):
@@ -180,6 +262,6 @@ print(("PASS" if out == "" else "FAIL") + "  SendMessage door allows a message w
 os.unlink(t)
 
 # Every check counted: the NO_CLAIMS cases were left out (review row 24, 2 Nov: "31 checks run but the summary says 29").
-total = len(MISSES) + len(LOOKED) + 1 + len(NO_CLAIMS) + 4
+total = len(MISSES) + len(LOOKED) + 1 + len(NO_CLAIMS) + len(NO_CLAIM_1203) + 2 + 4
 print(f"{total - fails} of {total} passed")
 sys.exit(1 if fails else 0)

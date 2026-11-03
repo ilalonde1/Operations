@@ -33,6 +33,35 @@ in the OUTPUT line standards_db.run() prints, "KORSTANDARDS WRITE <table> (<n> s
 migrations 141-143, Standard Details' case; a rolled-back write prints it too - the line says the batch held writes). Same-class fault it would miss: a reply saying "the drawings are
 right" after rendering page 1 of 26 - one Read of a PNG satisfies the drawing rule.
 
+Framework row 1203 (3 Nov 2026; GuardRefusal 440, 441, 893, 898 judged wrong). Three changes:
+- A LOOK is also read AS THE SHELL RUNS IT: printf/echo -e "\n" and PowerShell `n are line breaks. The lead read
+  every row back with `printf "USE KorStandards;\nSELECT ... FROM oversight.Mistake ..." > rb.sql`, and \bSELECT\b
+  saw no SELECT (no word boundary between the n and the S), so the look could never be satisfied. That, not a
+  missing oversight.Surface row, was the cause: this guard never read Surface. A CHANGE is still matched on the raw
+  text only (a Windows path is full of \t and \n pairs), so a write spelled "\nUPDATE x SET" inside a printf is
+  still not seen - as before this fix.
+- A db-write's look, as before, is any look (LookPattern) after its last write; now also OUTPUT inserted.*/deleted.*
+  in the write itself (every row it touched, as its own result - refusal 440's write), and NOT a look whose output
+  is cut by | head, | tail (`tail -n +N`, which drops a fixed head such as sqlcmd's "Changed database context" and
+  shows every line after it, is not a cut), Select-Object -First/-Last/-Skip or grep -m. The refusal names the
+  TABLES the last write wrote (INSERT INTO / UPDATE..SET / DELETE FROM / MERGE INTO / ALTER TABLE <schema.table>,
+  or the qualified name in a "KORSTANDARDS WRITE" line) and, for each one oversight.Surface names, that Surface's
+  code and its consumers' check; with no Surface row, its rows read back ARE the whole look.
+  Tried and NOT done: requiring the read-back to NAME the written table. The dry run over the lead's 3 Nov
+  transcript (196 replies and sends with a claim word) took refusals from 28 to 46 that way, 17 of the 18 more from
+  one `grep -E "...UPDATE brain.Memory SET RetiredAtUtc"` the ChangePattern misreads as a write, and 1 from an
+  ALTER TABLE in a LocalDB rehearsal whose database was then dropped - a look that could never be done.
+  What it does NOT see: whether the look read the table that was WRITTEN (a SELECT of any table, or SELECT
+  @@ROWCOUNT, still satisfies - the miss above); whether it covered every row written (a SELECT of one Id satisfies
+  a write of ten); whether a Surface's check RAN (Check is prose and CheckSql was NULL in 8 of 8 rows on 3 Nov - the
+  refusal names the check, it cannot require it); a write whose own result was cut by a tail and then read back
+  by a later SELECT (allowed: the rows were read, the statement's own error may not have been).
+- A claim word wrapped in quotes ("passes", 'done', `fixed`) is a MENTION, not a claim, and is skipped: 898 read the
+  guard's own misfire, `misreading "passes" as a completion claim`. NOT decided, and still refused when a look is
+  missing: a claim word used as another part of speech in an unquoted sentence - 893 was "in three passes" (a noun)
+  - and a sentence ABOUT the guard that uses the word unquoted. Deciding either needs the sentence understood; a
+  regex guess would also wave through real claims ("all three passes"), so the miss stays named here.
+
 stdin  : the Stop payload (transcript_path, stop_hook_active) or the PreToolUse payload (tool_name SendMessage)
 stdout : nothing (allow); Stop -> {"decision": "block", ...}; PreToolUse -> permissionDecision "deny"
 """
@@ -50,34 +79,98 @@ CLAIM = re.compile(
     r"\b(?:done(?!-when\b| when\b)|fixed|built|rebuilt|published|deployed|applied|verified|landed|shipped|works|passes|passed"
     r"|complete|completed|ready to (?:send|issue|go)|all good|confirmed working)\b", re.I)
 COMMIT_MSG = re.compile(r"""-m\s+(?:"(?:[^"\\]|\\.)*"|'[^']*'|@'.*?'@)""", re.S)
+# row 1203: the shell's line-break escapes, so "\nSELECT" in a printf reads as a SELECT
+ESCAPES = re.compile(r"\\[nrt]|`[nrt]")
+# row 1203: a db-write's table, schema-qualified (an optional database part before it); brackets allowed
+_NAME = r"(?:\[[^\]]+\]|\w+)"
+QUALIFIED = _NAME + r"(?:\s*\.\s*" + _NAME + r")+"
+WRITE_TABLE = re.compile(r"\b(?:INSERT\s+INTO|DELETE\s+FROM|MERGE\s+INTO|ALTER\s+TABLE)\s+(" + QUALIFIED + r")"
+                         r"|\bUPDATE\s+(" + QUALIFIED + r")\s+SET\b", re.I)
+# output cut to its first or last lines. `tail -n +N` is NOT a cut: it drops a fixed head (sqlcmd's "Changed database
+# context" line) and shows every line after it
+TRUNCATED = re.compile(r"\|\s*head\b|\|\s*tail\b(?!\s+(?:-n\s*)?\+\d)|Select-Object\s+[^|;\n]*-(?:First|Last|Skip)\b"
+                       r"|\bgrep\s+(?:-\w+\s+)*-m\s*\d", re.I)
+# the written rows returned by the write itself: each row the statement wrote, as its own result
+OUTPUT_ROWS = re.compile(r"\bOUTPUT\s+(?:inserted|deleted)\.", re.I)
+QUOTES = "\"'`‘’“”"
 CACHE_S = 600
 CACHE = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "KOR", "look_rules_cache.json")
+SURFACE_CACHE = os.path.join(os.path.dirname(CACHE), "look_surface_cache.json")
 DRAFTER_TOOLS = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "KOR.Drafter", "tools"))
 
 
-def load_rules():
-    """[{Kind, ChangeTools, ChangePattern, LookTools, LookPattern, Complete}], or [] when neither DB nor cache."""
+def _cached_rows(cache, sql):
+    """Rows of `sql` from KorStandards, cached CACHE_S at `cache`; the stale cache when the DB is down; else []."""
     try:
-        st = os.stat(CACHE)
+        st = os.stat(cache)
         if time.time() - st.st_mtime < CACHE_S:
-            return json.load(open(CACHE, encoding="utf-8"))
+            return json.load(open(cache, encoding="utf-8"))
     except (OSError, ValueError):
         pass
     try:
         sys.path.insert(0, DRAFTER_TOOLS)
         import standards_db  # noqa: E402
-        rows = standards_db.rows("SELECT Kind, ChangeTools, ChangePattern, LookTools, LookPattern, OutputPattern, Complete "
-                                 "FROM oversight.LookRule WHERE RetiredAtUtc IS NULL")
+        rows = standards_db.rows(sql)
         if rows:
-            os.makedirs(os.path.dirname(CACHE), exist_ok=True)
-            json.dump(rows, open(CACHE, "w", encoding="utf-8"))
+            os.makedirs(os.path.dirname(cache), exist_ok=True)
+            json.dump(rows, open(cache, "w", encoding="utf-8"))
             return rows
     except BaseException:   # SystemExit from standards_db when the env var is missing, sqlcmd errors, timeouts
         pass
     try:
-        return json.load(open(CACHE, encoding="utf-8"))
+        return json.load(open(cache, encoding="utf-8"))
     except (OSError, ValueError):
         return []
+
+
+def load_rules():
+    """[{Kind, ChangeTools, ChangePattern, LookTools, LookPattern, Complete}], or [] when neither DB nor cache."""
+    return _cached_rows(CACHE, "SELECT Kind, ChangeTools, ChangePattern, LookTools, LookPattern, OutputPattern, Complete "
+                               "FROM oversight.LookRule WHERE RetiredAtUtc IS NULL")
+
+
+def load_surfaces():
+    """[{Code, Name, Check}] from oversight.Surface (row 1203), or [] - only ever used to NAME a check in a refusal."""
+    return _cached_rows(SURFACE_CACHE, "SELECT Code, Name, [Check] FROM oversight.Surface")
+
+
+def as_read(text):
+    """A command as the shell runs it: the escapes printf, echo -e and PowerShell turn into line breaks become one,
+    padded to the escape's two characters so every position in it is the same position in `text`. Used for LOOKS
+    only: a change is matched on the raw text, because a Windows path is full of these pairs ("\\takeoff\\takeoff.exe
+    model-render" is a drawing run, and read this way it is not - the first version of this fix lost exactly that)."""
+    return ESCAPES.sub("\n ", text)
+
+
+def look_in(lpat, raw, read, start=0):
+    """The look pattern's match in a command, on its raw text or as the shell reads it, from `start`."""
+    return lpat.search(raw, start) or lpat.search(read, start)
+
+
+def table_key(name):
+    """'KorStandards.[oversight].Commitment' -> 'oversight.commitment' (schema.table, lower case)."""
+    parts = [p.strip().strip("[]").strip() for p in name.split(".")]
+    return ".".join(parts[-2:]).lower()
+
+
+def names_table(text, key):
+    """Does `text` name the table `key` (schema.table), with or without brackets or a database part before it?"""
+    for m in re.finditer(QUALIFIED, text):
+        if table_key(m.group(0)) == key:
+            return True
+    return False
+
+
+def written_tables(text, cpat):
+    """[(table key or '*', end of the write in text)] - '*' for a write cpat sees that names no qualified table (db.run,
+    Invoke-KorSqlScript, an unqualified name). The refusal names the keys; '*' is never named."""
+    out = []; starts = set()
+    for m in WRITE_TABLE.finditer(text):
+        out.append((table_key(m.group(1) or m.group(2)), m.end())); starts.add(m.start())
+    for m in cpat.finditer(text):
+        if m.start() not in starts:
+            out.append(("*", m.end()))
+    return out
 
 
 def result_text(c):
@@ -134,52 +227,91 @@ def last_assistant_text(path):
 
 
 def unlooked(calls, rules):
-    """[(rule, last change text)] for every kind changed and not looked at since its last change."""
+    """[(rule, last change text, tables it wrote)] for every kind changed and not looked at since its last change.
+    The tables are the db-write kind's (row 1203), used only to name them and their oversight.Surface in the refusal;
+    [] for every other kind or a write that names no schema-qualified table."""
     missing = []
     for r in rules:
         ctools = set(r["ChangeTools"].split("|")); ltools = set(r["LookTools"].split("|"))
         cpat = re.compile(r["ChangePattern"], re.I); lpat = re.compile(r["LookPattern"], re.I)
         opat = re.compile(r["OutputPattern"]) if r.get("OutputPattern") else None
-        last_change = last_look = None; change_text = ""
+        db = r["Kind"] == "db-write"
+        last_change = last_look = None; change_text = ""; tables = []
         for i, (name, text) in enumerate(calls):
             if name == "__output__":
                 # a change announced in a tool's OUTPUT (141); outputs are never looks - a look is something done
-                if opat and opat.search(text):
-                    last_change, change_text = i, "output: " + opat.search(text).group(0) + " " + text[opat.search(text).end():opat.search(text).end() + 60].strip()
+                om = opat.search(text) if opat else None
+                if om:
+                    last_change, change_text = i, "output: " + om.group(0) + " " + text[om.end():om.end() + 60].strip()
+                    q = re.search(QUALIFIED, om.group(0)) if db else None
+                    tables = [table_key(q.group(0))] if q else []
                 continue
             # a commit MESSAGE describes work, it does not do it: "git commit -m 'e2k_book.py: ...'" is not a drawing
             # run (the first dry run on the 10-27 transcript flagged exactly that)
             text = COMMIT_MSG.sub("-m ''", text)
+            read = as_read(text) if name in ("Bash", "PowerShell") else text   # row 1203: for looks only
             cm = cpat.search(text) if name in ctools else None
             lm = None
             if name in ltools:
                 # a look in the same command counts only when it comes after the change in the text
-                lm = lpat.search(text, cm.end()) if cm else lpat.search(text)
+                lm = look_in(lpat, text, read, cm.end() if cm else 0)
+                if db and cm and not lm:
+                    # row 1203: OUTPUT inserted.* / deleted.* returns every row the write touched as the statement's
+                    # own result - the written rows read back
+                    lm = OUTPUT_ROWS.search(text, cm.end())
+                if db and lm and TRUNCATED.search(text):
+                    lm = None   # row 1203: a read-back cut by tail/head is not every row read back
             if cm:
                 last_change, change_text = i, text
+                tables = sorted({k for k, _ in written_tables(text, cpat) if k != "*"}) if db else []
             if lm:
                 last_look = i
         if last_change is not None and (last_look is None or last_look < last_change):
-            missing.append((r, change_text))
+            missing.append((r, change_text, tables))
     return missing
 
 
-def reason_for(missing, claim):
+def surface_for(key, surfaces):
+    """oversight.Surface rows whose Name names the table `key` (schema.table)."""
+    return [s for s in surfaces or [] if names_table(s.get("Name") or "", key)]
+
+
+def reason_for(missing, claim, surfaces=None):
     lines = [f"The text claims completion (\"{claim}\") but these changes have not been LOOKED at since their last "
              "instance (Ian: a COMPLETE LOOK before any claim; rules: KorStandards oversight.LookRule):"]
-    for r, text in missing:
+    for r, text, tables in missing:
         lines.append(f"- {r['Kind']}: last change `{text[:140]}` - complete look = {r['Complete']}")
+        for key in tables:
+            hits = surface_for(key, surfaces)
+            if not hits:
+                lines.append(f"  {key}: no oversight.Surface row names it, so its look is its rows read back: a SELECT "
+                             f"of {key} after the write (or OUTPUT inserted.* in it), with no tail/head on the output")
+            for s in hits:
+                lines.append(f"  {key}: oversight.Surface {s.get('Code')} ({s.get('Name')}) - its consumers' check: "
+                             f"{s.get('Check')}. Read the rows back (a SELECT of {key}, no tail/head), and run that check")
     lines.append("Do the look, then claim. Or reword so the text states only what was looked at.")
     return "\n".join(lines)
 
 
-def verdict(text, calls, rules):
+def claim_in(text):
+    """The first claim word that is USED, not mentioned: a word wrapped in quotes ("passes") is skipped (row 1203)."""
+    text = text or ""
+    for m in CLAIM.finditer(text):
+        before = text[m.start() - 1] if m.start() else ""
+        after = text[m.end()] if m.end() < len(text) else ""
+        if before and after and before in QUOTES and after in QUOTES:
+            continue
+        return m
+    return None
+
+
+def verdict(text, calls, rules, surfaces=None):
     """The refusal reason, or None when the text may go."""
-    m = CLAIM.search(text or "")
+    m = claim_in(text)
     if not m:
         return None
     missing = unlooked(calls, rules)
-    return reason_for(missing, m.group(0)) if missing else None
+    return reason_for(missing, m.group(0), surfaces) if missing else None
 
 
 def log_refusal(text, why, payload):
@@ -187,7 +319,7 @@ def log_refusal(text, why, payload):
     Logging can never change what this guard does."""
     try:
         sys.path.append("C:/VIsual Studio Projects/Framework/tools"); import guard_log  # noqa: E702
-        m = CLAIM.search(text or "")
+        m = claim_in(text)
         kinds = ",".join(ln[2:].split(":")[0] for ln in why.splitlines() if ln.startswith("- "))
         guard_log.record("look", kinds, text[max(0, m.start() - 150):m.end() + 150] if m else why, None, payload=payload)
     except Exception:
@@ -209,9 +341,10 @@ def main():
         calls = tool_calls(path)
     except OSError:
         return
+    surfaces = load_surfaces()
     if payload.get("tool_name") == "SendMessage":
         msg = (payload.get("tool_input") or {}).get("message") or ""
-        why = verdict(msg if isinstance(msg, str) else json.dumps(msg), calls, rules)
+        why = verdict(msg if isinstance(msg, str) else json.dumps(msg), calls, rules, surfaces)
         if why:
             log_refusal(msg if isinstance(msg, str) else json.dumps(msg), why, payload)
             json.dump({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
@@ -221,7 +354,7 @@ def main():
         return
     try:
         text = last_assistant_text(path)
-        why = verdict(text, calls, rules)
+        why = verdict(text, calls, rules, surfaces)
     except OSError:
         return
     if why:
