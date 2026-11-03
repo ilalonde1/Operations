@@ -58,7 +58,12 @@ public static class TestRunIssues
             var failed = FailedTests(output).ToHashSet(StringComparer.Ordinal);
             foreach (var issue in issues.Where(i => i.Status == "superseded" && failed.Contains(IssueCheck.ParseTestRef(i.CheckRef!)?.Fqn ?? "")))
             {
-                var r = new CheckResult("fail", test.Repo, test.Commit, $"capture-tool: {command}", Total(output));
+                // The same rule as a pass and as IssueCheck (3 Nov, OverLORD: fail event #27272 cited a7d73d98 while the
+                // test had been broken in an UNCOMMITTED tree - a7d73d98 never held that code): a run in a tree with
+                // uncommitted tracked changes is 'dirty', and a dirty event never opens a regression.
+                var (head, dirty) = IssueCheck.HeadAndDirty(repoDir);
+                var r = new CheckResult(dirty is null ? "fail" : "dirty", test.Repo, head ?? test.Commit,
+                    $"capture-tool: {command}" + (dirty is null ? "" : $" - uncommitted changes, not evidence: {dirty}"), Total(output));
                 lines.Add(IssueResolver.CheckAndRecord(db, issue, r, actor, test.Session).Line);
             }
         }
@@ -73,7 +78,8 @@ public static class TestRunIssues
             "AND m.CheckRef LIKE @r + N'/%' " +
             "AND (m.Status IN (N'current', N'stale') OR (m.Status = N'superseded' " +
             "     AND EXISTS (SELECT 1 FROM brain.Memory r WHERE r.Id = m.SupersededBy AND r.Kind = N'resolution') " +
-            "     AND NOT EXISTS (SELECT 1 FROM brain.Memory g WHERE g.RegressionOf = m.Id AND g.Kind = N'issue')))");
+            "     AND NOT EXISTS (SELECT 1 FROM brain.Memory g WHERE g.RegressionOf = m.Id AND g.Kind = N'issue'))) " +
+            "ORDER BY m.Id");   // the lines come out in issue order, never the server's choice
         c.Parameters.Add("@r", System.Data.SqlDbType.NVarChar, 80).Value = repo.Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]");
         var ids = new List<int>();
         using (var r = c.ExecuteReader()) while (r.Read()) ids.Add(r.GetInt32(0));

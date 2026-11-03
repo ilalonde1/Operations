@@ -274,9 +274,56 @@ public class K5bTests
         });
         var (code, o, e) = Run(db, json, "capture-tool", "--module", Lane);
         Assert.True(code == 0, e);
-        var reg = Id(o, @"REGRESSION #(\d+) open");
-        Assert.Equal((int?)id, RecordStore.Get(db, reg)!.RegressionOf);
-        Assert.Equal("fail", BrainStore.ChecksOf(id, db).First().Outcome);
+        // THIS issue's line (3 Nov: capture-tool also maps the REAL resolved issues with the same test - #110887 - and the
+        // first "REGRESSION #" line was theirs: shared DB rows, failing every run after the live proof made them).
+        var clean = IssueCheck.HeadAndDirty(RepoDir()).Dirty is null;
+        var check = BrainStore.ChecksOf(id, db).First();
+        Assert.Equal(clean ? "fail" : "dirty", check.Outcome);
+        if (clean) Assert.Equal((int?)id, RecordStore.Get(db, Id(o, $@"#{id} [^\n]*REGRESSION #(\d+) open"))!.RegressionOf);
+        else Assert.DoesNotMatch($@"#{id} [^\n]*REGRESSION", o);
+    }
+
+    // 12b/12c (OverLORD, 3 Nov): a test run in a tree with uncommitted tracked changes is 'dirty' - a fail never opens a
+    // regression, a pass never resolves. Driven in a throwaway repo so BOTH states are always exercised.
+    private static (StoredRecord Issue, BrainEvent Test) InTempRepo(BrainDb db, TempRepo repo, string name, bool resolve, string outcome)
+    {
+        var leaf = Git.Leaf(repo.Dir)!;
+        var head = Git.Run(repo.Dir, "rev-parse", "HEAD")!.Trim();
+        var id = Issue(db, name, "test", $"{leaf}/x/x.csproj|{Fqn}");
+        if (resolve) IssueResolver.CheckAndRecord(db, RecordStore.Get(db, id)!, new CheckResult("pass", leaf, head, "pass", 1), "k5b-test", null);
+        return (RecordStore.Get(db, id)!, new BrainEvent(Lane, "test", leaf, head, "dotnet test", outcome, null, "k5b-test", "zz-k5b-session"));
+    }
+
+    [Fact]
+    public void LiveAFailInACleanTreeOpensARegressionAndInADirtyTreeNever()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        using var repo = TempRepo.Create();
+        var (issue, test) = InTempRepo(db, repo, "fail-clean-dirty", resolve: true, "fail");
+        File.AppendAllText(Path.Combine(repo.Dir, "a.md"), "\nuncommitted break");
+        var dirtyLine = Assert.Single(TestRunIssues.Map(db, test, "dotnet test", TestFailOut, repo.Dir, "k5b-test"));
+        Assert.Equal("dirty", BrainStore.ChecksOf(issue.Id, db).First().Outcome);
+        Assert.DoesNotContain("REGRESSION", dirtyLine);
+        Assert.Null(RecordStore.OpenIssueByName(db, Lane, $"fail-clean-dirty (regression of #{issue.Id})"));
+        Git.Run(repo.Dir, "checkout", "--", "a.md");   // clean again
+        var cleanLine = Assert.Single(TestRunIssues.Map(db, test, "dotnet test", TestFailOut, repo.Dir, "k5b-test"));
+        Assert.Equal("fail", BrainStore.ChecksOf(issue.Id, db).First().Outcome);
+        Assert.Equal((int?)issue.Id, RecordStore.Get(db, Id(cleanLine, @"REGRESSION #(\d+) open"))!.RegressionOf);
+    }
+
+    [Fact]
+    public void LiveAPassInADirtyTreeNeverResolvesAndInACleanTreeDoes()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        using var repo = TempRepo.Create();
+        var (issue, test) = InTempRepo(db, repo, "pass-clean-dirty", resolve: false, "pass");
+        var command = $"dotnet test x --filter FullyQualifiedName={Fqn}";
+        File.AppendAllText(Path.Combine(repo.Dir, "a.md"), "\nuncommitted fix");
+        Assert.Contains("dirty", Assert.Single(TestRunIssues.Map(db, test, command, TestPassOut, repo.Dir, "k5b-test")));
+        Assert.True(Open(db, issue.Id));
+        Git.Run(repo.Dir, "checkout", "--", "a.md");
+        Assert.Contains("RESOLVED", Assert.Single(TestRunIssues.Map(db, test, command, TestPassOut, repo.Dir, "k5b-test")));
+        Assert.False(Open(db, issue.Id));
     }
 
     // 13: capture-tool's exact-filter pass resolves - or records 'dirty' when the tree is not clean
