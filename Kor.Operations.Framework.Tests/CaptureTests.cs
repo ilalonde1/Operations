@@ -240,6 +240,10 @@ public class CaptureTests
         new object?[] { "bash", "dotnet test && cd C:/x", null, "C:/a" },                              // after the tool: no effect
         new object?[] { "bash", "echo 'cd C:/x' && dotnet test", null, "C:/a" },                       // text, not a command
         new object?[] { "bash", "cd ./sub && dotnet test", "C:/elsewhere", "C:/a/sub" },              // ./ never uses CDPATH
+        new object?[] { "bash", "make && cd C:/x && dotnet test", null, "C:/x" },                     // && all the way: the tool ran only if cd did
+        new object?[] { "bash", "cd C:/x 2>&1 && dotnet test", null, "C:/x" },                        // row 100: 2>&1 is a redirection
+        new object?[] { "bash", "cd C:/x >&2 && dotnet test", null, "C:/x" },
+        new object?[] { "bash", "echo 'if; cd C:/y' && cd C:/x && dotnet test", null, "C:/x" },       // quoted words are data
         // -- proved: what the tool ran on
         new object?[] { "bash", "dotnet test C:/x/App.csproj", null, "C:/x/App.csproj" },
         new object?[] { "bash", "cd C:/x && dotnet build App.csproj -c Release", null, "C:/x/App.csproj" },
@@ -273,9 +277,25 @@ public class CaptureTests
         new object?[] { "bash", "popd +1; dotnet test", null, null, "with arguments" },
         new object?[] { "bash", "source env.sh && dotnet test", null, null, "'source' may change the folder" },
         new object?[] { "powershell", ". ./profile.ps1; dotnet test", null, null, "'.' may change the folder" },
-        new object?[] { "bash", "eval cd C:/x; dotnet test", null, null, "'eval' may change the folder" },
+        new object?[] { "bash", "eval x; dotnet test", null, null, "'eval' may change the folder" },
+        new object?[] { "bash", "eval cd C:/x; dotnet test", null, null, "'cd' in a position that is not modelled (after 'eval')" },
         new object?[] { "bash", "echo a) && dotnet test", null, null, "an unbalanced ')'" },
         new object?[] { "bash", "cd sub && dotnet test", "C:/elsewhere", null, "CDPATH is set" },
+        // review row 100: a folder change in a position that is not modelled, or with control flow
+        new object?[] { "bash", "{ cd C:/x; } && dotnet test", null, null, "a '{' group is not modelled" },
+        new object?[] { "bash", "if true; then cd C:/x; fi; dotnet test", null, null, "control flow ('if')" },
+        new object?[] { "bash", "if true\nthen\ncd C:/x\nfi\ndotnet test", null, null, "control flow ('if')" },
+        new object?[] { "powershell", "if ($true) { Set-Location C:/x }; dotnet test", null, null, "control flow ('if')" },
+        new object?[] { "bash", "command cd C:/x && dotnet test", null, null, "'cd' in a position that is not modelled (after 'command')" },
+        new object?[] { "bash", "builtin cd C:/x && dotnet test", null, null, "'cd' in a position that is not modelled (after 'builtin')" },
+        new object?[] { "bash", "X=1 cd C:/x && dotnet test", null, null, "'cd' in a position that is not modelled (after 'X=1')" },
+        // review row 100: the joiner BEFORE a change
+        new object?[] { "bash", "false && cd C:/x; dotnet test", null, null, "follows && and the tool does not depend on it" },
+        new object?[] { "bash", "test -d C:/y || cd C:/x; dotnet test", null, null, "follows || (it may not have run)" },
+        new object?[] { "bash", "echo | cd C:/x && dotnet test", null, null, "a pipeline stage" },
+        // review row 100: the directory stack after a step that may have changed it
+        new object?[] { "bash", "pushd C:/x; pushd C:/nope; popd; dotnet test", null, null, "may have changed the directory stack" },
+        new object?[] { "bash", "pushd C:/x; source e.sh; popd; dotnet test", null, null, "may have changed the directory stack" },
         // -- UNKNOWN: the structure is not proved
         new object?[] { "bash", "echo \\\"x\\\" && dotnet test", null, null, "an escaped quote" },
         new object?[] { "bash", "echo `pwd` && dotnet test", null, null, "a backtick" },
@@ -337,15 +357,16 @@ public class CaptureTests
     {
         using var db = BrainSession.BeginRolledBack();
         var repo = RepoDir();
+        var leaf = Git.Leaf(Git.TopLevel(repo))!;          // the checkout's own name (review row 100), never a literal
         var build = RealPowerShell("powershell-posttooluse-real.json",
             $"Set-Location '{repo.Replace('\\', '/')}'; dotnet build Kor.Operations.Framework", BuildPassOut.Replace("\n", "\r\n"), null);
-        var b = ReadBack(db, RunOk(db, new[] { "capture-tool" }, build), "Operations", "build");
-        Assert.Equal(("pass", "Operations"), (b.Outcome, b.Repo));
+        var b = ReadBack(db, RunOk(db, new[] { "capture-tool" }, build), leaf, "build");
+        Assert.Equal(("pass", leaf), (b.Outcome, b.Repo));
         Assert.Contains("\"shell\":\"powershell\"", b.Detail);
         var test = RealPowerShell("powershell-posttoolusefailure-real.json",
             $"Set-Location '{repo.Replace('\\', '/')}'; dotnet test Kor.Operations.Framework.Tests", null, "Exit code 1\r\n" + TestFailOut);
-        var f = ReadBack(db, RunOk(db, new[] { "capture-tool" }, test), "Operations", "test");
-        Assert.Equal(("fail", "Operations"), (f.Outcome, f.Repo));
+        var f = ReadBack(db, RunOk(db, new[] { "capture-tool" }, test), leaf, "test");
+        Assert.Equal(("fail", leaf), (f.Outcome, f.Repo));
     }
 
     // ---- module attribution (#125): the module is the repo the tool ran on, unless --module is given -------------------
@@ -364,8 +385,9 @@ public class CaptureTests
                 tool_input = new { command = $"cd \"{repo.Replace('\\', '/')}\" && dotnet build Kor.Operations.Framework" },
                 tool_response = new { stdout = BuildPassOut, stderr = "" },
             });
-            var row = ReadBack(db, RunOk(db, new[] { "capture-tool" }, json), "Operations", "build");
-            Assert.Equal("Operations", row.Module);
+            var leaf = Git.Leaf(Git.TopLevel(repo))!;      // the checkout's own name (review row 100), never a literal
+            var row = ReadBack(db, RunOk(db, new[] { "capture-tool" }, json), leaf, "build");
+            Assert.Equal(leaf, row.Module);
             Assert.Equal(Git.Run(repo, "rev-parse", "HEAD")!.Trim(), row.Commit);
             Assert.Contains("\"module_from\":\"the repo it ran on\"", row.Detail);
             Assert.Contains(Path.Combine(repo, "Kor.Operations.Framework").Replace("\\", "\\\\"), row.Detail);   // the project, proved

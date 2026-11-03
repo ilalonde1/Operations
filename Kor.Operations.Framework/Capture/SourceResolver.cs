@@ -18,7 +18,12 @@ namespace Kor.Operations.Framework.Capture;
 ///   Push-Location push first, popd / Pop-Location restore; in bash a ( ... ) or $( ... ) group restores the folder when
 ///   it closes (a subshell), in PowerShell it does not (the location is the runspace's). A change is proved only when it
 ///   has exactly one literal folder argument after the known flags (-P -L -e -@ -- -Path -LiteralPath), that folder
-///   exists, and it is joined to what follows by &amp;&amp;, ; , a newline or a closing ')'. UNKNOWN otherwise: no
+///   exists, it is joined to what follows by &amp;&amp;, ; , a newline or a closing ')', and to what comes before by the
+///   start, ; , a newline, '(' or a lone '&amp;' - or by &amp;&amp; when every joiner from it to the tool is &amp;&amp; too (the tool then
+///   ran only if it did). Every folder-changing word outside quotes before the tool must be such a modelled operation
+///   (after '{', 'then', 'command', 'builtin' or 'X=1' it is not), and none may stand with control flow (bash if/then/
+///   for/while/case/function..., PowerShell if/foreach/try/switch..., or a { } group). A popd after a step that may have
+///   changed the directory stack (a pushd whose target is unproved, source . eval iex) is UNKNOWN. UNKNOWN otherwise: no
 ///   argument (cd goes home, pushd swaps), '-' or '+N', another option, a second argument, ~ $VAR %VAR%, a backslash-
 ///   escaped space, a relative cd not starting with '.' while CDPATH is set (bash), a folder that does not exist (the cd failed), a change
 ///   joined by || (the tool runs only if it FAILED), | (a pipeline stage) or a lone &amp; (background), popd with
@@ -50,8 +55,20 @@ public static class SourceResolver
     public sealed record Source(string? Path, string Why);
 
     private const RegexOptions O = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
+    // A folder change in a MODELLED position: start, or right after ; & | ( or a newline. Its arguments run to the next
+    // real separator or ')'; a redirection's ">&N" stays inside them (review row 100: cd C:/x 2>&1 && ...).
     private static readonly Regex FolderOp = new(
-        @"(?:^|[;&|(\n])\s*(?:(?<pop>popd|Pop-Location)|(?<verb>cd|chdir|pushd|Set-Location|sl|Push-Location)|(?<other>source|\.|eval|exec|Invoke-Expression|iex))(?=$|[\s;&|)])(?<args>[^;&|\n)]*)", O);
+        @"(?:^|[;&|(\n])\s*(?:(?<pop>popd|Pop-Location)|(?<verb>cd|chdir|pushd|Set-Location|sl|Push-Location)|(?<other>source|\.|eval|exec|Invoke-Expression|iex))(?=$|[\s;&|)])(?<args>(?:>&\d*|[^;&|\n)])*)", O);
+    // EVERY word that changes (or may change) the folder, wherever it stands. One that is not a modelled FolderOp -
+    // after '{', 'then', 'command', 'builtin', 'X=1' ... - is UNKNOWN (review row 100), never skipped.
+    private static readonly Regex FolderWord = new(
+        @"(?<![\w./\\:$-])(?:cd|chdir|pushd|popd|Set-Location|sl|Push-Location|Pop-Location|source|eval|exec|Invoke-Expression|iex)(?![\w./\\:-])", O);
+    // Control flow: a folder change under it may or may not run. bash keywords (case-sensitive), PowerShell's (any case),
+    // and a real { or } (a bash group or a PowerShell script block).
+    private static readonly Regex BashFlow = new(
+        @"(?<![\w./\\:$-])(?:if|then|else|elif|fi|for|while|until|do|done|case|esac|select|function)(?![\w./\\:-])", RegexOptions.CultureInvariant);
+    private static readonly Regex PowerShellFlow = new(
+        @"(?<![\w./\\:$-])(?:if|else|elseif|foreach|for|while|do|until|switch|try|catch|finally|trap|function)(?![\w./\\:-])", O);
     private static readonly Regex ArgToken = new(@"""[^""]*""|'[^']*'|\S+", RegexOptions.CultureInvariant);
     private static readonly string[] CdFlags = { "-p", "-l", "-e", "-@", "--", "-path", "-literalpath" };
     private static readonly string[] ProjectExtensions = { ".csproj", ".fsproj", ".vbproj", ".proj", ".sln", ".slnx" };
@@ -73,7 +90,9 @@ public static class SourceResolver
     }
 
     // ---- the folder ---------------------------------------------------------------------------------------------------
-    private sealed record State(string? Dir, string Why, Stack<(string? Dir, string Why)> Stack);
+    /// <param name="StackUnknown">a step may have changed the directory stack in a way not modelled (a pushd that may
+    /// have failed, source / . / eval / iex): a later popd is then UNKNOWN (review row 100).</param>
+    private sealed record State(string? Dir, string Why, Stack<(string? Dir, string Why)> Stack, bool StackUnknown = false);
 
     internal static (string? Dir, string Why) Folder(string original, string neutral, bool powershell, string? cwd, int at, Probe probe)
     {
@@ -83,13 +102,30 @@ public static class SourceResolver
             ? new State(start, "the hook's cwd", new Stack<(string?, string)>())
             : new State(null, "the hook's cwd does not exist", new Stack<(string?, string)>());
 
+        // Folder operations in a modelled position, before the tool.
+        var ops = new List<Match>();
+        for (var m = FolderOp.Match(neutral); m.Success; m = m.NextMatch())
+            if (OpIndex(m) < at) ops.Add(m);
+        // Words are looked for OUTSIDE quotes only: quoted text is data (echo 'cd C:/x' changes nothing).
+        var bare = Unquoted(neutral);
+        var words = FolderWord.Matches(bare).Where(w => w.Index < at).ToList();
+        if (ops.Count > 0 || words.Count > 0)
+        {
+            // Any folder change together with control flow: whether it ran is not modelled.
+            var before = bare[..Math.Min(at, bare.Length)];
+            var flow = (powershell ? PowerShellFlow : BashFlow).Match(before);
+            if (flow.Success) return (null, $"a folder change with control flow ('{flow.Value}') is not modelled");
+            var brace = before.IndexOfAny(new[] { '{', '}' });
+            if (brace >= 0) return (null, $"a folder change with a '{before[brace]}' group is not modelled");
+            // Every folder word must BE a modelled operation; one in any other position is not modelled.
+            var modelled = ops.Select(OpIndex).ToHashSet();
+            if (words.FirstOrDefault(w => !modelled.Contains(w.Index)) is { } stray)
+                return (null, $"'{stray.Value}' in a position that is not modelled ({Before(neutral, stray.Index)})");
+        }
+
         // Events before the tool, in order: folder operations (at their verb) and, in bash, real ( and ) - subshells.
         var events = new List<(int At, Match? Op, char Paren)>();
-        for (var m = FolderOp.Match(neutral); m.Success; m = m.NextMatch())
-        {
-            var verbAt = OpIndex(m);
-            if (verbAt < at) events.Add((verbAt, m, '\0'));
-        }
+        foreach (var m in ops) events.Add((OpIndex(m), m, '\0'));
         if (!powershell)
             for (var i = 0; i < at && i < neutral.Length; i++)
                 if (neutral[i] is '(' or ')') events.Add((i, null, neutral[i]));
@@ -104,21 +140,69 @@ public static class SourceResolver
                 s = groups.Count > 0 ? groups.Pop() : s with { Dir = null, Why = "an unbalanced ')'" };
                 continue;
             }
-            s = Apply(original, neutral, op!, s, powershell, probe);
+            s = Apply(original, neutral, op!, s, powershell, probe, at);
         }
         return (s.Dir, s.Why);
+    }
+
+    /// <summary>The text with everything inside '...' or "..." blanked (the quotes stay), length kept.</summary>
+    private static string Unquoted(string neutral)
+    {
+        var c = neutral.ToCharArray();
+        char quote = '\0';
+        for (var i = 0; i < c.Length; i++)
+        {
+            if (quote == '\0') { if (c[i] is '"' or '\'') quote = c[i]; }
+            else if (c[i] == quote) quote = '\0';
+            else c[i] = ' ';
+        }
+        return new string(c);
+    }
+
+    /// <summary>The word before a position, for a reason ("after 'then'"), or "at the start".</summary>
+    private static string Before(string neutral, int index)
+    {
+        var head = neutral[..index].TrimEnd();
+        var m = Regex.Match(head, @"(\S+)$");
+        return m.Success ? $"after '{m.Value}'" : "at the start";
+    }
+
+    /// <summary>
+    /// The joiner just BEFORE an operation (review row 100): start, ';', newline, '(' or a lone '&amp;' = it runs
+    /// unconditionally. '&amp;&amp;' = it runs only if what came before succeeded: proved only when every joiner from it to the
+    /// tool is also '&amp;&amp;' (then the tool ran only if it did). '||' = it may not have run; '|' = a pipeline stage.
+    /// Null = proved; otherwise the reason it is not.
+    /// </summary>
+    private static string? Joined(string neutral, int opIndex, int argsEnd, int at, string name)
+    {
+        var head = neutral[..opIndex].TrimEnd(' ', '\t');
+        if (head.EndsWith("||")) return $"'{name}' follows || (it may not have run)";
+        if (head.EndsWith("&&"))
+        {
+            var between = neutral[argsEnd..Math.Max(argsEnd, at)].Replace("&&", "");
+            if (between.IndexOfAny(new[] { ';', '\n', '|', '&', '(', ')' }) >= 0)
+                return $"'{name}' follows && and the tool does not depend on it (it may not have run)";
+            return null;
+        }
+        if (head.EndsWith('|')) return $"'{name}' is a pipeline stage";
+        return null;
     }
 
     private static int OpIndex(Match m) =>
         m.Groups["pop"].Success ? m.Groups["pop"].Index : m.Groups["verb"].Success ? m.Groups["verb"].Index : m.Groups["other"].Index;
 
-    private static State Apply(string original, string neutral, Match m, State s, bool powershell, Probe probe)
+    private static State Apply(string original, string neutral, Match m, State s, bool powershell, Probe probe, int at)
     {
         var name = (m.Groups["pop"].Success ? m.Groups["pop"] : m.Groups["verb"].Success ? m.Groups["verb"] : m.Groups["other"]).Value;
-        if (m.Groups["other"].Success) return s with { Dir = null, Why = $"'{name}' may change the folder" };
+        if (m.Groups["other"].Success)
+            return s with { Dir = null, Why = $"'{name}' may change the folder", StackUnknown = true };
 
-        // How the change is joined to what follows: only && ; newline ) or the end prove it held.
-        var after = neutral[(m.Groups["args"].Index + m.Groups["args"].Length)..].TrimStart(' ', '\t');
+        var argsEnd = m.Groups["args"].Index + m.Groups["args"].Length;
+        // How the change is joined to what came before ...
+        if (Joined(neutral, OpIndex(m), argsEnd, at, name) is { } notProved)
+            return s with { Dir = null, Why = notProved, StackUnknown = s.StackUnknown || !m.Groups["verb"].Success || IsPush(name) };
+        // ... and to what follows: only && ; newline ) or the end prove it held.
+        var after = neutral[argsEnd..].TrimStart(' ', '\t');
         if (after.StartsWith("||")) return s with { Dir = null, Why = $"'{name}' is joined by || (what follows runs only if it failed)" };
         if (after.StartsWith('|')) return s with { Dir = null, Why = $"'{name}' is a pipeline stage" };
         if (after.StartsWith('&') && !after.StartsWith("&&")) return s with { Dir = null, Why = $"'{name}' runs in the background" };
@@ -126,18 +210,23 @@ public static class SourceResolver
         var args = original.Substring(m.Groups["args"].Index, m.Groups["args"].Length);
         if (m.Groups["pop"].Success)
         {
-            if (Tokens(args).Count > 0) return s with { Dir = null, Why = $"'{name}' with arguments" };
+            if (Tokens(args).Count > 0) return s with { Dir = null, Why = $"'{name}' with arguments", StackUnknown = true };
+            if (s.StackUnknown) return s with { Dir = null, Why = $"'{name}' after a step that may have changed the directory stack" };
             if (s.Stack.Count == 0) return s;                       // an empty stack: the folder does not change
             var (dir, why) = s.Stack.Pop();
             return s with { Dir = dir, Why = why };
         }
 
         var (target, targetWhy) = Target(args);
-        var push = name.ToLowerInvariant() is "pushd" or "push-location";
         var next = target is null ? (Dir: (string?)null, Why: $"'{name}': {targetWhy}") : Into(target, s, powershell, probe, name);
-        if (push) s.Stack.Push((s.Dir, s.Why));
+        if (!IsPush(name)) return s with { Dir = next.Dir, Why = next.Why };
+        // A pushd pushes only when it SUCCEEDS (bash): with its target unproved, whether it pushed is unknown.
+        if (next.Dir is null) return s with { Dir = null, Why = next.Why, StackUnknown = true };
+        s.Stack.Push((s.Dir, s.Why));
         return s with { Dir = next.Dir, Why = next.Why };
     }
+
+    private static bool IsPush(string name) => name.ToLowerInvariant() is "pushd" or "push-location";
 
     private static (string? Dir, string Why) Into(string target, State s, bool powershell, Probe probe, string name)
     {
