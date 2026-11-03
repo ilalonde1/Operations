@@ -229,13 +229,19 @@ public class StartSplitLiveTests
             Assert.True(st.Length <= StartRender.HookBudget);
             var p1 = Run(db, "--part", "memory", "--page", "1", "--pages", "4");
             var p2 = Run(db, "--part", "memory", "--page", "2", "--pages", "4");
+            var p3 = Run(db, "--part", "memory", "--page", "3", "--pages", "4");
+            // 3 Nov 12:53-12:55: 41 Office lessons were added and the lane's memory grew past 4 pages, so where the legacy
+            // heading lands and whether page 4 is empty are the live data's, not the code's. The heading is on one of the
+            // wired pages; "past the content prints nothing" is proved on a page no live lane reaches (20 of 20).
             var p4 = Run(db, "--part", "memory", "--page", "4", "--pages", "4");
-            Assert.Equal((0, 0, 0), (p1.Exit, p2.Exit, p4.Exit));
+            var past = Run(db, "--part", "memory", "--page", "20", "--pages", "20");
+            Assert.Equal((0, 0, 0, 0, 0), (p1.Exit, p2.Exit, p3.Exit, p4.Exit, past.Exit));
             var c1 = Context(p1.Out);
             Assert.StartsWith($"KNOWN AT START - MEMORY, page 1 of ", c1);
-            Assert.Contains("LEGACY MEMORY (", c1 + Context(p2.Out));
-            Assert.True(c1.Length <= StartRender.HookBudget && Context(p2.Out).Length <= StartRender.HookBudget);
-            Assert.Equal("", p4.Out);                                                  // past the content: nothing printed
+            var wired = new[] { p1, p2, p3, p4 }.Where(p => p.Out.Length > 0).Select(p => Context(p.Out)).ToList();
+            Assert.Contains("LEGACY MEMORY (", string.Concat(wired));
+            Assert.All(wired, c => Assert.True(c.Length <= StartRender.HookBudget));
+            Assert.Equal("", past.Out);                                                // past the content: nothing printed
             var rec = Context(Run(db, "--part", "record").Out);
             Assert.Contains(StartRender.PartsLine(Module), rec);
             Assert.DoesNotContain("LEGACY MEMORY (", rec);
