@@ -135,6 +135,33 @@ public static class SecretGuard
         return lines;
     }
 
+    /// <summary>
+    /// For a redaction migration's guard: per hit, the up to <paramref name="max"/> characters immediately BEFORE the value
+    /// (its anchor), never reaching back into an earlier hit and never starting on the low half of a surrogate pair. The
+    /// anchor ends where the value starts, so it holds no character of this value or of any earlier one. Offsets are
+    /// UTF-16 code units, 0-based - what SQL Server's SUBSTRING counts (minus 1) under a non-_SC collation.
+    /// </summary>
+    public static IReadOnlyList<(Hit Hit, int AnchorStart, string Anchor)> Anchors(string? text, int max = 40)
+    {
+        var list = new List<(Hit, int, string)>();
+        if (string.IsNullOrEmpty(text)) return list;
+        var floor = 0;
+        foreach (var h in Find(text))
+        {
+            var start = Math.Max(floor, h.Index - max);
+            if (start < h.Index && char.IsLowSurrogate(text[start])) start++;
+            list.Add((h, start, text[start..h.Index]));
+            floor = h.Index + h.Length;
+        }
+        return list;
+    }
+
+    /// <summary>One line naming what was masked: count, and per hit the rule, length and position - never the value.
+    /// Null when nothing was.</summary>
+    public static string? MaskedLine(IReadOnlyList<Hit> hits, string what) =>
+        hits.Count == 0 ? null
+        : $"masked {hits.Count} credential value(s) in the {what} before storing it ({string.Join(", ", hits.Select(h => $"{h.Rule} rule, {h.Length} characters at character {h.Index}"))}) - the rest is stored; write where a credential lives, never its value (mistake 138)";
+
     /// <summary>True when the text holds a credential value.</summary>
     public static bool Holds(string? text) => Find(text).Count > 0;
 

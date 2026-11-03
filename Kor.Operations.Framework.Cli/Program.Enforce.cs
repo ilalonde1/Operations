@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using Kor.Operations.Framework.Capture;
 using Kor.Operations.Framework.Enforce;
@@ -7,7 +8,7 @@ namespace Kor.Operations.Framework.Cli;
 
 /// <summary>
 /// K7 - enforced (Framework docs/KNOWLEDGE-IDE-SPEC-K4-K7.md, P5): a recorded issue or lesson with a check refuses the
-/// repeat. Verbs: <c>kor enforce --hook</c> (PreToolUse, Bash|PowerShell|Write|Edit), <c>check-add</c>, <c>check-retire</c>,
+/// repeat. Verbs: <c>kor enforce --hook</c> (PreToolUse, Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit), <c>check-add</c>, <c>check-retire</c>,
 /// <c>check-test</c>, <c>checks</c>. And mistake 138's read-only <c>secret-scan</c> (ids and counts only).
 /// </summary>
 public static partial class Program
@@ -36,12 +37,12 @@ public static partial class Program
             session = Str(root, "session_id");
             input = null;
             if (tool is not null && root.TryGetProperty("tool_input", out var ti) && ti.ValueKind == JsonValueKind.Object)
-                input = Str(ti, Rules.FieldOf(tool));
+                input = Str(ti, Rules.InputFieldOf(tool));
         }
         catch (JsonException) { if (!hook) output.WriteLine("allow: the input is not JSON"); return 0; }
-        if (tool is null || !Rules.Tools.Contains(tool) || string.IsNullOrEmpty(input))
+        if (tool is null || !Rules.Enforced(tool) || string.IsNullOrEmpty(input))
         {
-            if (!hook) output.WriteLine($"allow: tool {tool ?? "-"} is not enforced or has no {(tool is null ? "input" : Rules.FieldOf(tool))}");
+            if (!hook) output.WriteLine($"allow: tool {tool ?? "-"} is not enforced or has no {(tool is null ? "input" : Rules.InputFieldOf(tool))}");
             return 0;
         }
         void Log(Exception e) => LogHookError(hookErrorLog, o, e);
@@ -58,7 +59,7 @@ public static partial class Program
             return 0;
         }
         var dir = cwd is not null && Directory.Exists(cwd) ? cwd : null;
-        foreach (var c in CheckStore.For(checks, module).Where(c => c.Tool == tool).OrderBy(c => c.Id))
+        foreach (var c in CheckStore.For(checks, module).Where(c => Rules.Applies(c.Tool, tool)).OrderBy(c => c.Id))
         {
             var fails = Rules.KnownAnswerFailures(c);
             if (fails.Count > 0)
@@ -187,17 +188,63 @@ public static partial class Program
     /// Read-only: SecretGuard as a classifier over every brain.Memory Body and Description, brain.LaneState ResumeBlock and
     /// brain.Event Detail/Ref (SNAPSHOT, nothing written). Prints ONLY counts, ids, the field and the rule names - never text.
     /// </summary>
-    private static int SecretScan(Options o, TextWriter output, BrainDb? db)
+    private static int SecretScan(Options o, Func<string?> stdin, TextWriter output, BrainDb? db)
     {
+        if (o.Get("--text") is not null) return SecretScanText(o, stdin, output);
         // read only: the caller's unit of work, or a SNAPSHOT read that is never committed
         var explain = o.Get("--explain") is not null;
-        var lines = db is not null ? SecretScanLines(db, explain) : BrainDb.Read(KorStandardsConnection.Login.Brain, x => SecretScanLines(x, explain));
+        var offsets = o.Get("--offsets") is not null;
+        var lines = db is not null ? SecretScanLines(db, explain, offsets)
+                                   : BrainDb.Read(KorStandardsConnection.Login.Brain, x => SecretScanLines(x, explain, offsets));
         foreach (var l in lines) output.WriteLine(l);
         return 0;
     }
 
+    /// <summary>
+    /// <c>kor secret-scan --text -</c>: the text on stdin (kor_brain.py's note/state guard - one rule set, SecretGuard's).
+    /// Clean: prints "clean", exit 0. A value: prints SecretGuard.Refuse's one line (rule, length, where - never the value),
+    /// exit 1. No stdin: usage, exit 2. Touches no database.
+    /// </summary>
+    private static int SecretScanText(Options o, Func<string?> stdin, TextWriter output)
+    {
+        if (o.Positional.ElementAtOrDefault(1) != "-") throw new ArgumentException("secret-scan --text reads stdin: kor secret-scan --text -");
+        var text = stdin();
+        if (text is null)
+        {
+            output.WriteLine("kor secret-scan --text -: no text on stdin");
+            return 2;
+        }
+        try { SecretGuard.Refuse(text, o.Get("--what") ?? "text"); }
+        catch (SecretRefusedException e)
+        {
+            output.WriteLine(e.Message);
+            return 1;
+        }
+        output.WriteLine("clean");
+        return 0;
+    }
+
+    /// <summary>A SQL N'' expression that rebuilds <paramref name="s"/> exactly: printable ASCII in literals (quotes doubled,
+    /// '$' as NCHAR(36) so sqlcmd never reads a $(variable)), every other character as NCHAR(n).</summary>
+    internal static string SqlExpression(string s)
+    {
+        if (s.Length == 0) return "N''";
+        var parts = new List<string>();
+        var lit = new StringBuilder();
+        void Flush() { if (lit.Length > 0) { parts.Add("N'" + lit + "'"); lit.Clear(); } }
+        foreach (var ch in s)
+        {
+            if (ch >= 0x20 && ch <= 0x7E && ch != '$') lit.Append(ch == '\'' ? "''" : ch.ToString());
+            else { Flush(); parts.Add($"NCHAR({(int)ch})"); }
+        }
+        Flush();
+        return string.Join(" + ", parts);
+    }
+
     /// <param name="explain">per hit also: rule, credential word, separator, length, classes, entropy - never text.</param>
-    internal static IReadOnlyList<string> SecretScanLines(BrainDb d, bool explain = false)
+    /// <param name="offsets">per hit also: 0-based UTF-16 offset, length and the up to 40 characters BEFORE the value (its
+    /// anchor, as JSON and as a SQL expression) - for a redaction migration's guard. Never the value or anything after its start.</param>
+    internal static IReadOnlyList<string> SecretScanLines(BrainDb d, bool explain = false, bool offsets = false)
     {
         var lines = new List<string>();
         void Scan(string table, string sql, string[] fields)
@@ -218,6 +265,12 @@ public static partial class Program
                     var hits = SecretGuard.Find(r.GetString(2 + i));
                     if (hits.Count > 0) found.Add($"{fields[i]}:{string.Join("+", hits.Select(h => h.Rule).Distinct())}x{hits.Count}");
                     if (hits.Count > 0 && explain) found.AddRange(SecretGuard.Explain(r.GetString(2 + i)).Select(x => "\n      " + x));
+                    if (hits.Count > 0 && offsets)
+                        found.AddRange(SecretGuard.Anchors(r.GetString(2 + i)).Select(a =>
+                            $"\n      {table}.{fields[i]} #{id} rule={a.Hit.Rule} off0={a.Hit.Index} len={a.Hit.Length} " +
+                            $"anchorStart0={a.AnchorStart} anchorLen={a.Anchor.Length} " +
+                            $"anchor={System.Text.Json.JsonSerializer.Serialize(a.Anchor)}" +
+                            $"\n         anchorSql={SqlExpression(a.Anchor)}"));
                 }
                 if (found.Count == 0) continue;
                 flagged++;

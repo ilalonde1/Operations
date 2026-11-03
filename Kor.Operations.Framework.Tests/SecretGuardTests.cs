@@ -10,9 +10,12 @@ namespace Kor.Operations.Framework.Tests;
 /// <summary>
 /// Mistake 138 - SecretGuard. Every value below is SYNTHETIC, made up for this file (none is or was a real credential).
 /// Pure: each known-bad sample is found, each known-good rule text is not, Mask and ForGuardLog never carry the value.
-/// LIVE (rolled back, korbrain_app): kor record, kor issue and capture-compact refuse a value with exit 1 / one line and
-/// write nothing; kor start masks a value PLANTED in brain.Memory and brain.LaneState by raw SQL (the way the F7 import
-/// put one there), so it never reaches a session.
+/// LIVE (rolled back, korbrain_app): kor record and kor issue refuse a value with exit 1 / one line and write nothing;
+/// capture-compact and kor state MASK it and store the rest, saying so in one line (the hook log / stdout) that never holds
+/// the value; kor start masks a value PLANTED in brain.Memory and brain.LaneState by raw SQL (the way the F7 import put one
+/// there), so it never reaches a session; kor secret-scan --offsets locates a planted value by an offset and anchor that
+/// SQL Server's SUBSTRING agrees with (a surrogate pair, non-ASCII, a quote and '$' before it) and never prints the value
+/// or anything after its start; kor secret-scan --text - reads stdin (kor_brain.py's guard).
 /// Does NOT cover: the values SecretGuard's own summary lists as missed (short or 2-class prose values, unknown words).
 /// </summary>
 [Collection(LiveDb.Name)]
@@ -149,6 +152,15 @@ public class SecretGuardTests
         return d?.FullName ?? throw new InvalidOperationException("not inside the Operations checkout");
     }
 
+    /// <summary>As Run, with the hook log the test names (null = a throwaway one).</summary>
+    private static (int Code, string Out, string Err) RunL(BrainDb db, string? stdin, string? log, params string[] args)
+    {
+        var o = new StringWriter();
+        var e = new StringWriter();
+        var code = Program.Run(args, () => stdin, o, e, log ?? Path.Combine(Path.GetTempPath(), $"kor-k138-{Guid.NewGuid():N}.log"), db);
+        return (code, o.ToString(), e.ToString());
+    }
+
     private static (int Code, string Out, string Err) Run(BrainDb db, string? stdin, params string[] args)
     {
         var o = new StringWriter();
@@ -196,24 +208,169 @@ public class SecretGuardTests
     }
 
     [Fact]
-    public void LiveCaptureCompactRefusesASummaryHoldingAValue()
+    public void LiveCaptureCompactMasksTheValueStoresTheRestAndLogsOneLine()
+    {
+        int outside;
+        var log = Path.Combine(Path.GetTempPath(), $"kor-k138-compact-{Guid.NewGuid():N}.log");
+        using (var db = BrainDb.OpenRolledBack())
+        {
+            outside = Count(db, "SELECT COUNT(*) FROM brain.LaneState");
+            var before = Count(db, "SELECT COUNT(*) FROM brain.LaneState WHERE Lane = @l");
+            var stdin = JsonSerializer.Serialize(new
+            {
+                session_id = "zz-k138", transcript_path = "C:/x/k138.jsonl", cwd = RepoDir(), hook_event_name = "PostCompact",
+                trigger = "manual", compact_summary = $"We logged in; the admin creds: demo / {Planted}. Next: K7.",
+            });
+            // hook mode: exit 0, silent, the summary STORED with the value masked (a lost resume costs more than a token)
+            var (hc, ho, he) = RunL(db, stdin, log, "capture-compact", "--module", Lane, "--hook");
+            Assert.Equal(0, hc);
+            Assert.Equal("", ho + he);
+            Assert.Equal(before + 1, Count(db, "SELECT COUNT(*) FROM brain.LaneState WHERE Lane = @l"));
+            var stored = Scalar(db, "SELECT TOP (1) ResumeBlock FROM brain.LaneState WHERE Lane = @l ORDER BY Id DESC");
+            Assert.DoesNotContain(Planted, stored);
+            Assert.Equal($"We logged in; the admin creds: demo / [REDACTED len={Planted.Length}]. Next: K7.", stored);
+            // the compact event counts the mask
+            var detail = Scalar(db, "SELECT TOP (1) Detail FROM brain.Event WHERE Module = @l AND Kind = N'compact' ORDER BY Id DESC");
+            Assert.Equal(1, JsonDocument.Parse(detail).RootElement.GetProperty("masked_values").GetInt32());
+            // ONE line in the hook log names the mask - rule, length, where - never the value
+            var lines = File.ReadAllLines(log);
+            Assert.Single(lines);
+            Assert.Contains("masked 1 credential value(s) in the compact summary", lines[0]);
+            Assert.Contains($"{Planted.Length} characters", lines[0]);
+            Assert.DoesNotContain(Planted, lines[0]);
+            // outside hook mode the same line is printed
+            var (code, o, _) = RunL(db, stdin, null, "capture-compact", "--module", Lane);
+            Assert.Equal(0, code);
+            Assert.Contains("masked 1 credential value(s)", o);
+            Assert.DoesNotContain(Planted, o);
+        }
+        File.Delete(log);
+        using var after = BrainDb.OpenRolledBack();
+        Assert.Equal(outside, Count(after, "SELECT COUNT(*) FROM brain.LaneState"));
+    }
+
+    // ---- kor state (the C# kor_brain.py state), kor secret-scan --text - and --offsets -------------------------------------
+    [Fact]
+    public void LiveKorStateMasksAValueSaysSoInOneLineAndRecordsTheSession()
+    {
+        int outside;
+        using (var db = BrainDb.OpenRolledBack())
+        {
+            outside = Count(db, "SELECT COUNT(*) FROM brain.LaneState");
+            var block = $"STATE: K8 next.\nthe demo box password is {Planted} (rotate it)\nRESUME at step 3.";
+            var (code, o, e) = RunL(db, null, null, "state", "--module", Lane, "--text", block);
+            Assert.True(code == 0, e);
+            Assert.DoesNotContain(Planted, o + e);
+            var lines = o.Trim().Split('\n');
+            Assert.Equal(2, lines.Length);
+            Assert.StartsWith("masked 1 credential value(s) in the resume block", lines[0]);
+            Assert.Contains($"prose rule, {Planted.Length} characters at character {block.IndexOf(Planted, StringComparison.Ordinal)}", lines[0]);
+            Assert.StartsWith("brain.LaneState ", lines[1]);
+            using var c = db.Command("SELECT TOP (1) ResumeBlock, WrittenBy, Session FROM brain.LaneState WHERE Lane = @l ORDER BY Id DESC");
+            c.Parameters.Add("@l", SqlDbType.NVarChar, 60).Value = Lane;
+            using (var r = c.ExecuteReader())
+            {
+                Assert.True(r.Read());
+                Assert.Equal(block.Replace(Planted, $"[REDACTED len={Planted.Length}]"), r.GetString(0));
+                Assert.EndsWith("kor state", r.GetString(1));
+                Assert.Equal(BrainStore.CurrentSession(), r.IsDBNull(2) ? null : r.GetString(2));
+            }
+            // --file, a clean block: no mask line, stored as given
+            var file = Path.Combine(Path.GetTempPath(), $"kor-k138-state-{Guid.NewGuid():N}.md");
+            File.WriteAllText(file, "STATE: clean resume, nothing secret.");
+            var (fc, fo, fe) = RunL(db, null, null, "state", "--module", Lane, "--file", file);
+            File.Delete(file);
+            Assert.True(fc == 0, fe);
+            Assert.DoesNotContain("masked", fo);
+            Assert.Equal("STATE: clean resume, nothing secret.", Scalar(db, "SELECT TOP (1) ResumeBlock FROM brain.LaneState WHERE Lane = @l ORDER BY Id DESC"));
+            Assert.Equal(2, Count(db, "SELECT COUNT(*) FROM brain.LaneState WHERE Lane = @l"));
+            // neither or both of --file / --text: usage error, nothing written
+            Assert.Equal(1, RunL(db, null, null, "state", "--module", Lane).Code);
+            Assert.Equal(2, Count(db, "SELECT COUNT(*) FROM brain.LaneState WHERE Lane = @l"));
+        }
+        using var after = BrainDb.OpenRolledBack();
+        Assert.Equal(outside, Count(after, "SELECT COUNT(*) FROM brain.LaneState"));
+    }
+
+    [Fact]
+    public void SecretScanTextReadsStdinAndNeverPrintsTheValue()
+    {
+        var o = new StringWriter();
+        Assert.Equal(1, Program.Run(new[] { "secret-scan", "--text", "-", "--what", "body" }, () => $"the demo box password is {Planted}", o, new StringWriter(), Path.GetTempFileName()));
+        Assert.DoesNotContain(Planted, o.ToString());
+        Assert.Single(o.ToString().Trim().Split('\n'));
+        Assert.Contains("the body holds what looks like a credential value", o.ToString());
+        var clean = new StringWriter();
+        Assert.Equal(0, Program.Run(new[] { "secret-scan", "--text", "-" }, () => "never print the sa password", clean, new StringWriter(), Path.GetTempFileName()));
+        Assert.Equal("clean", clean.ToString().Trim());
+        Assert.Equal(2, Program.Run(new[] { "secret-scan", "--text", "-" }, () => null, new StringWriter(), new StringWriter(), Path.GetTempFileName()));
+    }
+
+    [Fact]
+    public void LiveSecretScanOffsetsLocatesAPlantedValueForSqlAndNeverShowsIt()
     {
         using var db = BrainDb.OpenRolledBack();
-        var before = Count(db, "SELECT COUNT(*) FROM brain.LaneState WHERE Lane = @l");
-        var stdin = JsonSerializer.Serialize(new
+        var g = RecordStore.AtHead(RepoLocator.Find("Framework", RepoDir())!, "docs/KNOWLEDGE-IDE.md");
+        // before the value: non-ASCII, a surrogate pair, a quote and a '$' - so the offset is proven in SQL's own units
+        var prefix = "Résumé \U0001F600 it's $(x) -\r\n\tthe démo box password is ";
+        var body = new string('x', 50) + prefix + Planted + " and AFTER-TEXT-K138 follows";
+        int id;
+        using (var c = db.Command(
+                   "DECLARE @id TABLE (Id int); " +
+                   "INSERT brain.Memory (Lane, Name, Kind, Description, Body, CreatedBy, SourceKind, SourceRepo, SourceCommit, SourcePath, SourceBlob) " +
+                   "OUTPUT INSERTED.Id INTO @id VALUES (@l, N'k138-offsets', N'finding', N'd', @body, N'k138-test', N'git', @r, @c, @p, @b); SELECT Id FROM @id;"))
         {
-            session_id = "zz-k138", transcript_path = "C:/x/k138.jsonl", cwd = RepoDir(), hook_event_name = "PostCompact",
-            trigger = "manual", compact_summary = $"We logged in; the admin creds: demo / {Planted}. Next: K7.",
-        });
-        var (code, o, e) = Run(db, stdin, "capture-compact", "--module", Lane);
-        Assert.Equal(1, code);
-        Assert.DoesNotContain(Planted, o + e);
-        Assert.Equal(before, Count(db, "SELECT COUNT(*) FROM brain.LaneState WHERE Lane = @l"));
-        // hook mode: exit 0 (a hook never fails the session), still nothing written
-        var (hc, ho, _) = Run(db, stdin, "capture-compact", "--module", Lane, "--hook");
-        Assert.Equal(0, hc);
-        Assert.DoesNotContain(Planted, ho);
-        Assert.Equal(before, Count(db, "SELECT COUNT(*) FROM brain.LaneState WHERE Lane = @l"));
+            c.Parameters.Add("@l", SqlDbType.NVarChar, 60).Value = Lane;
+            c.Parameters.Add("@body", SqlDbType.NVarChar, -1).Value = body;
+            c.Parameters.Add("@r", SqlDbType.NVarChar, 80).Value = g.Repo;
+            c.Parameters.Add("@c", SqlDbType.Char, 40).Value = g.Commit;
+            c.Parameters.Add("@p", SqlDbType.NVarChar, 400).Value = g.Path;
+            c.Parameters.Add("@b", SqlDbType.Char, 40).Value = g.Blob;
+            id = Convert.ToInt32(c.ExecuteScalar());
+        }
+        var (code, o, e) = RunL(db, null, null, "secret-scan", "--offsets");
+        Assert.True(code == 0, e);
+        Assert.DoesNotContain(Planted, o);
+        Assert.DoesNotContain("AFTER-TEXT-K138", o);
+        var lines = o.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+        var at = lines.FindIndex(l => l.Contains($"brain.Memory.Body #{id} "));
+        Assert.True(at >= 0, o);
+        var off0 = body.IndexOf(Planted, StringComparison.Ordinal);
+        Assert.Contains($"rule=prose off0={off0} len={Planted.Length} anchorStart0={off0 - 40} anchorLen=40 ", lines[at]);
+        var sql = lines[at + 1].Trim();
+        Assert.StartsWith("anchorSql=", sql);
+        // the printed SQL expression IS the 40 characters SQL Server's SUBSTRING finds before the value
+        using var q = db.Command($"SELECT CASE WHEN HASHBYTES('SHA2_256', SUBSTRING(Body, @o + 1 - 40, 40)) = HASHBYTES('SHA2_256', {sql["anchorSql=".Length..]}) " +
+                                 "AND DATALENGTH(SUBSTRING(Body, @o + 1, @n)) = 2 * @n THEN 1 ELSE 0 END FROM brain.Memory WHERE Id = @id");
+        q.Parameters.Add("@o", SqlDbType.Int).Value = off0;
+        q.Parameters.Add("@n", SqlDbType.Int).Value = Planted.Length;
+        q.Parameters.Add("@id", SqlDbType.Int).Value = id;
+        Assert.Equal(1, Convert.ToInt32(q.ExecuteScalar()));
+        // the anchor's JSON is exactly the 40 characters before the value
+        var json = lines[at][(lines[at].IndexOf("anchor=", StringComparison.Ordinal) + "anchor=".Length)..];
+        Assert.Equal(body.Substring(off0 - 40, 40), JsonSerializer.Deserialize<string>(json));
+    }
+
+    [Fact]
+    public void AnAnchorNeverReachesBackIntoAnEarlierValue()
+    {
+        var text = $"password={Planted};Pwd=Qm4tR8zL;";
+        var a = SecretGuard.Anchors(text);
+        Assert.Equal(2, a.Count);
+        Assert.Equal("password=", a[0].Anchor);
+        Assert.Equal(";Pwd=", a[1].Anchor);
+        Assert.DoesNotContain(Planted, a[1].Anchor);
+        // a surrogate pair cut at the 40-character mark starts the anchor one later
+        var t2 = "\U0001F600" + new string('y', 39) + " the demo box password is " + Planted;
+        var b = SecretGuard.Anchors(t2, 66).Single();
+        Assert.False(char.IsLowSurrogate(b.Anchor[0]));
+    }
+
+    private static string Scalar(BrainDb db, string sql)
+    {
+        using var c = db.Command(sql);
+        c.Parameters.Add("@l", SqlDbType.NVarChar, 60).Value = Lane;
+        return Convert.ToString(c.ExecuteScalar()) ?? "";
     }
 
     [Fact]

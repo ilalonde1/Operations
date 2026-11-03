@@ -105,13 +105,28 @@ public static class BrainStore
             cmd => Convert.ToInt32(cmd.ExecuteScalar()));
     }
 
-    /// <summary>A resume record (capture-compact's summary). Refused whole, nothing written, when it holds a credential
-    /// value (mistake 138; SecretGuard.Refuse) - checked before any connection is opened.</summary>
+    /// <summary>A resume record, refused whole, nothing written, when it holds a credential value (mistake 138;
+    /// SecretGuard.Refuse) - checked before any connection is opened. capture-compact and kor state do NOT use this: they
+    /// mask and store (<see cref="InsertLaneStateMasked"/>).</summary>
     public static int InsertLaneState(string lane, string resumeBlock, string writtenBy, BrainDb? db = null, string? session = null)
     {
         SecretGuard.Refuse(resumeBlock, "resume summary");
         SecretGuard.Refuse(writtenBy, "writer");
         return InsertLaneStateChecked(lane, resumeBlock, writtenBy, db, session);
+    }
+
+    /// <summary>
+    /// A resume record that is never lost to a credential value: each value in the block (and the writer) is MASKED
+    /// (<c>[REDACTED len=N]</c>, SecretGuard.Mask) and the rest stored - losing a resume costs more than a masked token. Used
+    /// by <c>kor state</c> and capture-compact. Returns the row id and the hits masked in the block (positions in the
+    /// ORIGINAL text; never the value), so the caller can say so in one line.
+    /// </summary>
+    public static (int Id, IReadOnlyList<SecretGuard.Hit> Masked) InsertLaneStateMasked(string lane, string resumeBlock, string writtenBy,
+                                                                                       BrainDb? db = null, string? session = null)
+    {
+        var hits = SecretGuard.Find(resumeBlock);
+        var id = InsertLaneStateChecked(lane, SecretGuard.Mask(resumeBlock) ?? "", SecretGuard.Mask(writtenBy) ?? "unknown", db, session);
+        return (id, hits);
     }
 
     private static int InsertLaneStateChecked(string lane, string resumeBlock, string writtenBy, BrainDb? db, string? session) =>

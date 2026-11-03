@@ -94,23 +94,29 @@ public static class ClaudeCapture
         return new BrainEvent(module, t.Kind, repo, commit, t.Ref, t.Outcome, detail.ToJsonString(GitCapture.Json), ActorOf(h), h.SessionId);
     }
 
-    /// <summary>PostCompact: the summary becomes the module's resume record (brain.LaneState), plus a 'compact' event.</summary>
-    public static (int? LaneStateId, int EventId) Compact(HookInput h, string? moduleOverride, BrainDb? db = null)
+    /// <summary>
+    /// PostCompact: the summary becomes the module's resume record (brain.LaneState), plus a 'compact' event. A credential
+    /// value in the summary is MASKED and the rest stored (mistake 138; a lost resume costs more than a masked token): the
+    /// hits come back so the caller logs one line naming the mask, and the event's Detail counts them. Never the value.
+    /// </summary>
+    public static (int? LaneStateId, int EventId, IReadOnlyList<SecretGuard.Hit> Masked) Compact(HookInput h, string? moduleOverride, BrainDb? db = null)
     {
         var module = ModuleOf(h, moduleOverride);
         int? laneId = null;
+        IReadOnlyList<SecretGuard.Hit> masked = Array.Empty<SecretGuard.Hit>();
         if (!string.IsNullOrWhiteSpace(h.CompactSummary))
-            laneId = BrainStore.InsertLaneState(module, h.CompactSummary!, $"compaction {h.SessionId ?? "?"}", db, h.SessionId);
+            (laneId, masked) = BrainStore.InsertLaneStateMasked(module, h.CompactSummary!, $"compaction {h.SessionId ?? "?"}", db, h.SessionId);
         var detail = JsonSerializer.Serialize(new
         {
             trigger = h.Trigger,
             lane_state_id = laneId,
             summary_chars = h.CompactSummary?.Length ?? 0,
+            masked_values = masked.Count,
             session_id = h.SessionId,
         }, GitCapture.Json);
         var id = BrainStore.Insert(new BrainEvent(module, "compact", null, null, h.TranscriptPath,
                                                   laneId is null ? "empty" : "stored", detail, ActorOf(h), h.SessionId), db);
-        return (laneId, id);
+        return (laneId, id, masked);
     }
 
     /// <summary>SessionEnd: the end and where the transcript is. No git, one insert - it must finish inside the budget.</summary>

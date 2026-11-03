@@ -30,6 +30,29 @@ public static class Rules
 
     public static string FieldOf(string tool) => tool is "Write" or "Edit" ? "file_path" : "command";
 
+    /// <summary>
+    /// Review row 231: tools that write a file but have no checks of their own - MultiEdit (tool_input.file_path) and
+    /// NotebookEdit (tool_input.notebook_path). Each is held to EVERY file_path check (Write's and Edit's), so a recorded
+    /// path rule cannot be got round through them (a MultiEdit can create a file; a NotebookEdit edits one). A check is never
+    /// recorded for them (check-add keeps <see cref="Tools"/>).
+    /// </summary>
+    public static readonly string[] FileAliases = { "MultiEdit", "NotebookEdit" };
+
+    /// <summary>Every tool kor enforce reads: <see cref="Tools"/> + <see cref="FileAliases"/>.</summary>
+    public static bool Enforced(string tool) => Tools.Contains(tool) || FileAliases.Contains(tool);
+
+    /// <summary>The tool_input field holding what a check matches: notebook_path for NotebookEdit, file_path for MultiEdit.</summary>
+    public static string InputFieldOf(string tool) => tool switch
+    {
+        "NotebookEdit" => "notebook_path",
+        "MultiEdit" => "file_path",
+        _ => FieldOf(tool),
+    };
+
+    /// <summary>Which checks (by their Tool) apply to a call of <paramref name="tool"/>.</summary>
+    public static bool Applies(string checkTool, string tool) =>
+        checkTool == tool || (FileAliases.Contains(tool) && checkTool is "Write" or "Edit");
+
     public static Shell ShellOf(string tool) => tool == "PowerShell" ? Shell.PowerShell : Shell.Bash;
 
     /// <summary>The compiled pattern, or null with the reason when it does not compile.</summary>

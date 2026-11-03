@@ -51,7 +51,7 @@ public static partial class Program
                 "ping" => PingVerb(output, hook),
                 "capture-git" => CaptureGit(o, stdin, output, hook, db, hookErrorLog),
                 "capture-tool" => CaptureTool(o, stdin, output, hook, db),
-                "capture-compact" => CaptureCompact(o, stdin, output, hook, db),
+                "capture-compact" => CaptureCompact(o, stdin, output, hook, db, hookErrorLog),
                 "capture-end" => CaptureEnd(o, stdin, output, hook, db),
                 "events" => Events(o, output, db),
                 "fresh" => Fresh(o, stdin, output, hook, db),
@@ -69,7 +69,8 @@ public static partial class Program
                 "check-retire" => CheckRetire(o, output, db),
                 "check-test" => CheckTest(o, output, db),
                 "checks" => Checks(o, output, db, board),
-                "secret-scan" => SecretScan(o, output, db),
+                "secret-scan" => SecretScan(o, stdin, output, db),
+                "state" => State(o, output, db),
                 _ => hook ? UnknownInHook(o, output) : Usage(error),
             };
         }
@@ -118,13 +119,13 @@ public static partial class Program
             "--module", "--dir", "--result", "--last", "--kind", "--because", "--body-file", "--source-path", "--name",
             "--says", "--source", "--cap", "--session", "--description", "--check", "--check-ref", "--issue",
             "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir",
-            "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd",
+            "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what",
         };
 
         /// <summary>Options given more than once, every value kept in order (check-add's examples).</summary>
         private static readonly string[] Repeated = { "--refuse", "--allow" };
 
-        private static readonly string[] Flags = { "--explain", "--full", "--file-changed", "--resolved", "--commit-hook", "--no-helpers", "--text" };
+        private static readonly string[] Flags = { "--explain", "--full", "--file-changed", "--resolved", "--commit-hook", "--no-helpers", "--text", "--offsets" };
 
         /// <summary>Every --owner given, in order (kor start --part board: one lead, several board names).</summary>
         public List<string> Owners { get; init; } = new();
@@ -405,11 +406,39 @@ public static partial class Program
         return 0;
     }
 
-    private static int CaptureCompact(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? db)
+    /// <summary>PostCompact. A credential value in the summary is masked and the rest stored; ONE line in the hook error log
+    /// names the mask (rule, length, where - never the value), and outside hook mode the same line is printed.</summary>
+    private static int CaptureCompact(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? db, string hookErrorLog)
     {
         var h = ClaudeCapture.Parse(stdin() ?? throw new ArgumentException("capture-compact reads the hook JSON on stdin"));
-        var (lane, id) = ClaudeCapture.Compact(h, o.Get("--module"), db);
+        var (lane, id, masked) = ClaudeCapture.Compact(h, o.Get("--module"), db);
+        if (SecretGuard.MaskedLine(masked, $"compact summary (brain.LaneState {lane})") is { } line)
+        {
+            LogHookLine(hookErrorLog, o, line);
+            if (!hook) output.WriteLine(line);
+        }
         if (!hook) output.WriteLine($"recorded brain.Event {id}, brain.LaneState {lane?.ToString() ?? "none (empty summary)"}");
+        return 0;
+    }
+
+    /// <summary>
+    /// kor state --module M (--file F | --text T): a resume block into brain.LaneState (the C# replacement for
+    /// <c>kor_brain.py state</c>). Session = CLAUDE_CODE_SESSION_ID. A credential value is MASKED, not refused - a lost
+    /// resume costs more than a masked token - and one line says so (rule, length, where; never the value).
+    /// </summary>
+    private static int State(Options o, TextWriter output, BrainDb? db)
+    {
+        var module = o.Get("--module") ?? throw new ArgumentException("state needs --module <lane>");
+        var file = o.Get("--file");
+        // --text is also kor start's flag, so its value is the next positional word
+        var text = o.Get("--text") is not null ? o.Positional.ElementAtOrDefault(1) : null;
+        if ((file is null) == (text is null)) throw new ArgumentException("state needs exactly one of --file F or --text T");
+        var block = text ?? File.ReadAllText(file!, new UTF8Encoding(false));
+        if (string.IsNullOrWhiteSpace(block)) throw new ArgumentException("state: the resume block is empty - nothing written");
+        var by = $"{Environment.UserName} kor state";
+        var (id, masked) = BrainStore.InsertLaneStateMasked(module, block, by, db, BrainStore.CurrentSession());
+        if (SecretGuard.MaskedLine(masked, "resume block") is { } line) output.WriteLine(line);
+        output.WriteLine($"brain.LaneState {id}: {module}, {block.Length} characters, session {BrainStore.CurrentSession() ?? "none (not in a Claude session)"}");
         return 0;
     }
 
@@ -463,6 +492,20 @@ public static partial class Program
         catch { /* a hook never fails, not even on its own log */ }
     }
 
+    /// <summary>One line in the hook log that is not a failure (capture-compact's mask). The line is SecretGuard-masked
+    /// again on the way in, so it can never carry a value.</summary>
+    private static void LogHookLine(string path, Options o, string line)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var verb = string.Join(' ', o.Positional.Take(2));
+            var module = o.Get("--module") is { } m ? $" module={m}" : "";
+            File.AppendAllText(path, $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} {verb}{module}: {Redact.Text(SecretGuard.Mask(line))}{Environment.NewLine}");
+        }
+        catch { /* a hook never fails, not even on its own log */ }
+    }
+
     internal static string VersionText()
     {
         var asm = typeof(Program).Assembly;
@@ -499,10 +542,12 @@ public static partial class Program
         error.WriteLine("       kor issue --module M --name N --description D --check test|gate|query|source --check-ref R [--source-path P] [--body-file F] [--restates ID]");
         error.WriteLine("       kor check --module M [--issue N] [--resolved] [--kinds test,gate,query] [--timeout S] | kor check --commit-hook [--dir D]");
         error.WriteLine("       kor resolve --issue N --because \"...\"   (a source-checked issue whose file changed)");
-        error.WriteLine("       kor enforce --module M --hook   (PreToolUse JSON on stdin; Bash|PowerShell|Write|Edit)");
+        error.WriteLine("       kor enforce --module M --hook   (PreToolUse JSON on stdin; Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit)");
         error.WriteLine("       kor check-add --memory ID --module M|Office --tool Bash[,PowerShell] --pattern P --refuse E [--refuse E2]... --allow A [--allow A2]... --says S");
         error.WriteLine("       kor check-retire <id> --because \"...\" | kor check-test [--module M] [--tool T --command C|--path P [--cwd D]] | kor checks [--module M] [--hits N]");
-        error.WriteLine("       kor secret-scan   (read-only: ids and counts of brain rows holding a credential value)");
+        error.WriteLine("       kor secret-scan [--explain] [--offsets]   (read-only: ids and counts of brain rows holding a credential value; --offsets adds offset, length and the 40 characters BEFORE each value)");
+        error.WriteLine("       kor secret-scan --text - [--what W]   (the text on stdin: 'clean' exit 0, or one refusal line exit 1 - never the value)");
+        error.WriteLine("       kor state --module M (--file F | --text T)   (a resume block -> brain.LaneState; a credential value is MASKED and said in one line)");
         error.WriteLine("       kor start --module M [--owner O]... [--no-helpers] [--part record|board|all] [--hook | --text] [--dir D] [--session S] [--start-source S]   (SessionStart JSON on stdin with --hook)");
         return 2;
     }

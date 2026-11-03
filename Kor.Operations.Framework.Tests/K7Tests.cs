@@ -77,7 +77,7 @@ public class K7Tests
 
     private static string Enforce(BrainDb db, BrainDb? board, string tool, string value, string? module = null, string? cwd = null)
     {
-        var (code, o, e) = Run(db, board, Hook(tool, Rules.FieldOf(tool), value, cwd), "enforce", "--module", module ?? Module, "--hook");
+        var (code, o, e) = Run(db, board, Hook(tool, Rules.InputFieldOf(tool), value, cwd), "enforce", "--module", module ?? Module, "--hook");
         Assert.True(code == 0, e);
         return o;
     }
@@ -287,6 +287,44 @@ public class K7Tests
         Assert.True(Denied(Enforce(db, board, "Write", @"C:\zzk7-forbidden\b.txt")));
         Assert.False(Denied(Enforce(db, board, "Write", @"C:\zzk7-allowed\b.txt")));
         Assert.False(Denied(Enforce(db, board, "Bash", "C:/zzk7-forbidden/b.txt")));   // a Write rule is not a Bash rule
+    }
+
+    // 13b - review row 231: a file_path rule cannot be got round through MultiEdit (file_path) or NotebookEdit (notebook_path)
+    [Fact]
+    public void Live13b_AFilePathRuleHoldsForMultiEditAndNotebookEdit()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        using var board = BrainDb.OpenRolledBack(KorStandardsConnection.Login.Board);
+        var w = Lesson(db, "k7-write-alias");
+        var (code, _, e) = Run(db, null, null, AddArgs(w, Module, "Write", @"[A-Za-z]:/zzk7-nowrite/",
+                                                        new[] { "C:/zzk7-nowrite/a.txt" }, new[] { "C:/zzk7-allowed/a.txt" }));
+        Assert.True(code == 0, e);
+        var ed = Lesson(db, "k7-edit-alias");
+        (code, _, e) = Run(db, null, null, AddArgs(ed, Module, "Edit", @"[A-Za-z]:/zzk7-noedit/",
+                                                    new[] { "C:/zzk7-noedit/a.ipynb" }, new[] { "C:/zzk7-allowed/a.ipynb" }));
+        Assert.True(code == 0, e);
+        foreach (var tool in Rules.FileAliases)
+        {
+            var w1 = Enforce(db, board, tool, @"C:\zzk7-nowrite\b.txt");
+            Assert.True(Denied(w1), $"{tool} under a Write rule: {w1}");
+            Assert.Contains($"brain.Memory #{w}", w1);
+            var e1 = Enforce(db, board, tool, @"C:\zzk7-noedit\b.ipynb");
+            Assert.True(Denied(e1), $"{tool} under an Edit rule: {e1}");
+            Assert.Contains($"brain.Memory #{ed}", e1);
+            Assert.False(Denied(Enforce(db, board, tool, @"C:\zzk7-allowed\b.ipynb")));
+        }
+        // NotebookEdit's path is notebook_path: a file_path field on it is not read (no input = allowed)
+        Assert.False(Denied(RunHook(db, board, Hook("NotebookEdit", "file_path", @"C:\zzk7-noedit\b.ipynb"))));
+        // the aliases never pick up a command rule
+        AddCheck(db, Lesson(db, "k7-alias-bash"));
+        Assert.False(Denied(Enforce(db, board, "MultiEdit", "zzk7tool --danger now")));
+    }
+
+    private static string RunHook(BrainDb db, BrainDb? board, string stdin)
+    {
+        var (code, o, e) = Run(db, board, stdin, "enforce", "--module", Module, "--hook");
+        Assert.True(code == 0, e);
+        return o;
     }
 
     // 14
