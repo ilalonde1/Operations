@@ -19,6 +19,23 @@ public sealed record BoardState(IReadOnlyList<string> Owners, IReadOnlyList<Boar
 {
     public const string OwedLead = "Framework";
 
+    /// <summary>The --tag this board was filtered by (null = the whole board), and the owners' open rows before it.</summary>
+    public string? Tag { get; init; }
+
+    public int OpenBeforeTag { get; init; }
+
+    /// <summary>
+    /// The lead, 3 Nov (ONE owner for the product: Revit Tools' rows re-owned to 'Virtual Drafter' with "[was Revit Tools] "
+    /// before What; a new RevitTools row carries "[Revit Tools]"): a row is TAGGED T when its What starts with "[was T]"
+    /// or holds "[T]" anywhere (ordinal, case-sensitive).
+    /// </summary>
+    public static bool Tagged(string? what, string tag) =>
+        what is not null && (what.StartsWith($"[was {tag}]", StringComparison.Ordinal) || what.Contains($"[{tag}]", StringComparison.Ordinal));
+
+    /// <summary>The same board with only the rows tagged <paramref name="tag"/>; the owners' full open count kept beside it.</summary>
+    public BoardState FilterByTag(string tag) =>
+        this with { Rows = Rows.Where(r => Tagged(r.What, tag)).ToList(), Tag = tag, OpenBeforeTag = Rows.Count };
+
     /// <summary>
     /// F6: each owner also brings its '&lt;owner&gt; helper' rows, added after the owners, once each; an owner already
     /// named '... helper' gets none. board_render.with_helpers.
@@ -122,9 +139,10 @@ public static class BoardRender
     public const int OwedMax = 3000;
     public const string Where = "KorStandards oversight.vw_Board";
 
-    public static string FullBoardCommand(string module, IReadOnlyList<string> givenOwners, bool noHelpers) =>
+    public static string FullBoardCommand(string module, IReadOnlyList<string> givenOwners, bool noHelpers, string? tag = null) =>
         $"C:/KOR-Operations/kor/kor.exe start --module \"{module}\" --part board " +
-        string.Join(" ", givenOwners.Select(o => $"--owner \"{o}\"")) + (noHelpers ? " --no-helpers" : "") + " --text";
+        string.Join(" ", givenOwners.Select(o => $"--owner \"{o}\"")) + (noHelpers ? " --no-helpers" : "") +
+        (tag is null ? "" : $" --tag \"{tag}\"") + " --text";
 
     /// <summary>The whole board part: the rows, then (Framework) the owed block and the guards line, which keep their room.</summary>
     public static string Render(BoardState s, DateTime now, int? budget, string fullBoardCommand)
@@ -136,15 +154,16 @@ public static class BoardRender
             var g = GuardsLine(s.Guards, s.GuardsStatus);
             tail = g is not null ? tail + "\n" + g : tail;
         }
-        return Rows(s.Owners, s.Rows, "live", budget, tail, now, fullBoardCommand);
+        return Rows(s.Owners, s.Rows, "live", budget, tail, now, fullBoardCommand, s.Tag, s.OpenBeforeTag);
     }
 
     public static string Rows(IReadOnlyList<string> owners, IReadOnlyList<BoardRow> rows, string status, int? budget, string? tail,
-                              DateTime now, string fullBoardCommand)
+                              DateTime now, string fullBoardCommand, string? tag = null, int openBeforeTag = 0)
     {
         if (!string.IsNullOrEmpty(tail))
         {
-            var head = Rows(owners, rows, status, budget is null ? null : budget - PyText.Len(tail) - 1, null, now, fullBoardCommand);
+            var head = Rows(owners, rows, status, budget is null ? null : budget - PyText.Len(tail) - 1, null, now, fullBoardCommand,
+                            tag, openBeforeTag);
             return head + "\n" + tail;
         }
         var stamp = now.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
@@ -153,6 +172,11 @@ public static class BoardRender
             ? $"THE BOARD (source of truth) - {Where}, Owners " + string.Join(", ", owners.Select(o => $"'{o}'")) +
               $" (every one of them this lead's), read {stamp}"
             : $"THE BOARD (source of truth) - {Where}, Owner '{owners[0]}', read {stamp}";
+        // --tag: said in the head line, with the owners' full count, so the filtered list is never read as the whole product
+        if (tag is not null)
+            headLine += $" - FILTERED to the rows tagged [{tag}] (What starting \"[was {tag}]\" or holding \"[{tag}]\"): " +
+                        $"{rows.Count} of the {openBeforeTag} open row(s) of " + (multi ? "these owners" : "this owner") +
+                        "; the rest are the same product's, on the unfiltered board";
         if (status != "live")
             headLine = $"!! BOARD {status} !! Read the board by hand (oq.py) before any work.\n" + headLine;
         var lines = new List<string>

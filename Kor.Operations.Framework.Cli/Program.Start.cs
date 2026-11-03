@@ -126,11 +126,14 @@ public static partial class Program
         {
             var owners = o.Owners.Count > 0 ? o.Owners : new List<string> { module };
             var noHelpers = o.Get("--no-helpers") is not null;
-            var command = BoardRender.FullBoardCommand(module, BoardState.Distinct(owners), noHelpers);
+            // --tag T: only the owners' rows tagged T (BoardState.Tagged), the header saying so with the full open count
+            var tag = o.Get("--tag") is { } t ? (string.IsNullOrWhiteSpace(t) ? throw new ArgumentException("--tag needs a name") : t) : null;
+            var command = BoardRender.FullBoardCommand(module, BoardState.Distinct(owners), noHelpers, tag);
             var r = StartPart.Run(() =>
                 {
                     // the board is only READ: SNAPSHOT (READ COMMITTED if refused), never committed
                     var state = BrainDb.Read(KorStandardsConnection.Login.Board, b => BoardState.Load(b, owners, withHelpers: !noHelpers));
+                    if (tag is not null) state = state.FilterByTag(tag);
                     return (BoardRender.Render(state, DateTime.Now, budget, command), (IReadOnlyList<string>)Array.Empty<string>());
                 },
                 StartCache.PathFor(cacheDir, module, "board", hook), budget, deadline,
