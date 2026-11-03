@@ -14,11 +14,18 @@ namespace Kor.Operations.Framework.Cli;
 /// </summary>
 public static class Program
 {
-    public static int Main(string[] args) => Run(args, ReadStdin, Console.Out, Console.Error);
+    /// <summary>Where a hook-mode failure is logged by the installed kor.exe.</summary>
+    public static readonly string DefaultHookErrorLog =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KOR", "kor-hook-errors.log");
 
-    internal static int Run(string[] args, TextWriter output, TextWriter error) => Run(args, () => null, output, error);
+    public static int Main(string[] args) => Run(args, ReadStdin, Console.Out, Console.Error, DefaultHookErrorLog);
 
-    internal static int Run(string[] args, Func<string?> stdin, TextWriter output, TextWriter error)
+    /// <summary>For tests: no stdin, and hook failures logged to a throwaway file, never the real log.</summary>
+    internal static int Run(string[] args, TextWriter output, TextWriter error) =>
+        Run(args, () => null, output, error, Path.Combine(Path.GetTempPath(), "kor-test-hook-errors.log"));
+
+    /// <param name="hookErrorLog">the file a hook-mode failure is appended to (tests pass their own, review row 85).</param>
+    internal static int Run(string[] args, Func<string?> stdin, TextWriter output, TextWriter error, string hookErrorLog)
     {
         var hook = args.Contains("--hook");
         var o = Options.Parse(args.Where(a => a != "--hook").ToArray());
@@ -38,7 +45,7 @@ public static class Program
         }
         catch (Exception e)
         {
-            if (hook) { LogHookError(args, e); return 0; }
+            if (hook) { LogHookError(hookErrorLog, o, e); return 0; }
             error.WriteLine($"kor: {e.Message}");
             return 1;
         }
@@ -136,15 +143,16 @@ public static class Program
         return read.Wait(TimeSpan.FromSeconds(5)) ? read.Result : null;
     }
 
-    private static void LogHookError(string[] args, Exception e)
+    private static void LogHookError(string path, Options o, Exception e)
     {
         try
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KOR");
-            Directory.CreateDirectory(dir);
-            var verb = string.Join(' ', args.Take(2));
-            File.AppendAllText(Path.Combine(dir, "kor-hook-errors.log"),
-                $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} {verb}: {e.GetType().Name}: {Redact.Text(e.Message)}{Environment.NewLine}");
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var verb = string.Join(' ', o.Positional.Take(2));
+            var module = o.Get("--module") is { } m ? $" module={m}" : "";
+            var where = $" cwd={Environment.CurrentDirectory}";
+            File.AppendAllText(path,
+                $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} {verb}{module}{where}: {e.GetType().Name}: {Redact.Text(e.Message)}{Environment.NewLine}");
         }
         catch { /* a hook never fails, not even on its own log */ }
     }

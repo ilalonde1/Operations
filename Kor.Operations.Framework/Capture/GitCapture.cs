@@ -55,16 +55,28 @@ public static class GitCapture
         return string.IsNullOrWhiteSpace(session) ? who : $"{who} (claude session {session.Trim()})";
     }
 
-    private static BrainEvent Commit(string top, string repo, string module, string actor)
+    /// <summary>The commit event for any revision (the hook uses HEAD; a test can name a real merge).</summary>
+    public static BrainEvent CommitAt(string dir, string rev, string? module)
+    {
+        var top = Git.TopLevel(dir) ?? throw new InvalidOperationException($"{dir} is not inside a git work tree");
+        var repo = Git.Leaf(top)!;
+        return Commit(top, repo, module ?? repo, Actor(top), rev);
+    }
+
+    private static BrainEvent Commit(string top, string repo, string module, string actor, string rev = "HEAD")
     {
         // One call for the identity: sha NUL parents NUL author NUL message.
-        var log = Git.Run(top, "log", "-1", "--format=%H%x00%P%x00%an <%ae>%x00%B", "HEAD") ?? "";
+        var log = Git.Run(top, "log", "-1", "--format=%H%x00%P%x00%an <%ae>%x00%B", rev) ?? "";
         var parts = log.Split('\0');
         var sha = parts.Length > 0 ? parts[0].Trim() : null;
         var parents = parts.Length > 1 ? parts[1].Split(' ', StringSplitOptions.RemoveEmptyEntries) : Array.Empty<string>();
         var author = parts.Length > 2 ? parts[2].Trim() : null;
         var message = parts.Length > 3 ? parts[3].Trim() : null;
-        var files = ParseDiffTree(Git.Run(top, "diff-tree", "--no-commit-id", "-r", "--root", "-M", "-z", "--no-abbrev", "HEAD"));
+        // A merge commit (a conflicted merge concluded by `git commit`) shows nothing to plain diff-tree: diff it against
+        // its first parent, so the paths and blobs K5 compares are still recorded.
+        var files = ParseDiffTree(parents.Length > 1
+            ? Git.Run(top, "diff-tree", "-r", "-M", "-z", "--no-abbrev", parents[0], rev)
+            : Git.Run(top, "diff-tree", "--no-commit-id", "-r", "--root", "-M", "-z", "--no-abbrev", rev));
         var detail = new
         {
             parent = parents.FirstOrDefault(),

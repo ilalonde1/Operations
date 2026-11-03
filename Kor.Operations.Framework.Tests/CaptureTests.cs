@@ -145,6 +145,56 @@ public class CaptureTests
         Assert.Null(ToolClassifier.Classify(command, TestPassOut));
     }
 
+    [Theory]   // review row 85: a separator inside quotes or a heredoc body is data, not a command boundary
+    [InlineData("git commit -m \"fix; dotnet test now passes\"")]
+    [InlineData("echo \"a && dotnet build\"")]
+    [InlineData("echo 'x | dotnet test'")]
+    [InlineData("git commit -m \"first line\ndotnet test was green\"")]
+    [InlineData("git commit -q -F - <<'EOF'\nK3 commit message\ndotnet test 35 of 35\nsqlcmd -i C:/x/db/169_A.sql\nEOF\ngit log -1")]
+    [InlineData("git commit -F - <<EOF\ndotnet build passes\nEOF")]
+    [InlineData("git commit -m @'\ndotnet test passes\n'@")]
+    public void TextInsideQuotesOrHeredocsIsNotACommand(string command)
+    {
+        Assert.Null(ToolClassifier.Classify(command, TestPassOut));
+    }
+
+    [Fact]
+    public void ACommandAfterAHeredocEndsIsStillSeen()
+    {
+        var t = ToolClassifier.Classify("cat > a.txt <<'EOF'\nhello; world\nEOF\ndotnet test X.Tests --filter \"A|B\"", TestPassOut);
+        Assert.Equal("test", t!.Kind);
+        Assert.Equal("dotnet test X.Tests --filter \"A|B\"", t.Ref);   // the quoted | is kept as written
+    }
+
+    [Fact]
+    public void NeutraliseKeepsTheLength()
+    {
+        const string c = "git commit -m \"a; b\" && dotnet test <<'EOF'\nx|y\nEOF";
+        Assert.Equal(c.Length, ToolClassifier.Neutralise(c).Length);
+    }
+
+    [Fact]
+    public void ANegativeExitFailsAMigrationWithNoMarker()
+    {
+        Assert.Equal("fail", ToolClassifier.Classify("sqlcmd -i C:/x/db/169_A.sql", "", exitCode: -1)!.Outcome);
+    }
+
+    [Fact]
+    public void AMergeCommitRecordsItsFilesAgainstTheFirstParent()
+    {
+        // review row 85: plain diff-tree prints nothing for a merge. A real merge from this repo's history is used.
+        var dir = RepoDir();
+        var merge = Git.Run(dir, "rev-list", "--merges", "-1", "HEAD")?.Trim();
+        Assert.False(string.IsNullOrEmpty(merge), "this repo has no merge commit to test against");
+        var e = GitCapture.CommitAt(dir, merge!, Module);
+        Assert.Equal(merge, e.Commit);
+        using var d = JsonDocument.Parse(e.Detail!);
+        Assert.Equal(2, d.RootElement.GetProperty("parents").GetArrayLength());
+        var expected = Git.Run(dir, "diff", "--name-only", $"{merge}^1", merge!)!.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+        Assert.True(expected > 0, "the chosen merge changed nothing against its first parent");
+        Assert.Equal(expected, d.RootElement.GetProperty("files_total").GetInt32());
+    }
+
     [Fact]
     public void SecretLinesNeverReachTheDetail()
     {
@@ -181,28 +231,39 @@ public class CaptureTests
     [InlineData("capture-end")]
     public void HookModeExitsZeroSilentlyOnBadStdin(string verb)
     {
+        // Each failure goes to the log the caller names (never the real one - review row 85), tagged with the module.
+        var log = TempLog();
         foreach (var input in new[] { "{not json", "[1,2]", "", null })
         {
             var output = new StringWriter();
             var error = new StringWriter();
-            Assert.Equal(0, Program.Run(new[] { verb, "--hook", "--module", Module }, () => input, output, error));
+            Assert.Equal(0, Program.Run(new[] { verb, "--hook", "--module", Module }, () => input, output, error, log));
             Assert.Equal("", output.ToString());
             Assert.Equal("", error.ToString());
         }
+        var lines = File.ReadAllLines(log);
+        Assert.Equal(4, lines.Length);
+        Assert.All(lines, l => Assert.Contains($"{verb} module={Module}", l));
+        File.Delete(log);
     }
 
     [Fact]
     public void HookModeCaptureGitOutsideARepoExitsZeroSilently()
     {
+        var log = TempLog();
         var output = new StringWriter();
         var error = new StringWriter();
         var notRepo = Path.Combine(Path.GetTempPath(), "kor-no-repo-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(notRepo);
-        Assert.Equal(0, Program.Run(new[] { "capture-git", "post-commit", "--dir", notRepo, "--hook" }, () => null, output, error));
-        Assert.Equal(0, Program.Run(new[] { "capture-git", "no-such-hook", "--hook" }, () => null, output, error));
+        Assert.Equal(0, Program.Run(new[] { "capture-git", "post-commit", "--dir", notRepo, "--hook" }, () => null, output, error, log));
+        Assert.Equal(0, Program.Run(new[] { "capture-git", "no-such-hook", "--hook" }, () => null, output, error, log));
         Assert.Equal("", output.ToString() + error.ToString());
+        Assert.Equal(2, File.ReadAllLines(log).Length);
         Directory.Delete(notRepo);
+        File.Delete(log);
     }
+
+    private static string TempLog() => Path.Combine(Path.GetTempPath(), $"kor-k3-test-{Guid.NewGuid():N}.log");
 
     // ---- LIVE: each verb writes its row, read back as korbrain_app ---------------------------------------------------
     private static string RepoDir()
@@ -216,7 +277,7 @@ public class CaptureTests
     {
         var output = new StringWriter();
         var error = new StringWriter();
-        var code = Program.Run(args, () => stdin, output, error);
+        var code = Program.Run(args, () => stdin, output, error, TempLog());
         Assert.True(code == 0, $"exit {code}: {error}");
         var text = output.ToString();
         var m = System.Text.RegularExpressions.Regex.Match(text, @"brain\.Event (\d+)");
@@ -321,7 +382,7 @@ public class CaptureTests
             tool_input = new { command = "git status --short" }, tool_response = new { stdout = "", stderr = "" },
         });
         var output = new StringWriter();
-        Assert.Equal(0, Program.Run(new[] { "capture-tool", "--module", Module }, () => json, output, new StringWriter()));
+        Assert.Equal(0, Program.Run(new[] { "capture-tool", "--module", Module }, () => json, output, new StringWriter(), TempLog()));
         Assert.Equal("nothing to record", output.ToString().Trim());
         // No row in the test module may carry this command (a count would not do: the module is shared by the class).
         Assert.DoesNotContain(BrainStore.Last(Module, 1000), r => r.Detail?.Contains("git status --short") == true || r.Ref?.Contains("git status") == true);

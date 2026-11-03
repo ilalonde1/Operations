@@ -6,8 +6,11 @@ namespace Kor.Operations.Framework.Capture;
 /// <summary>
 /// K3: what a shell command did that git does not see - a test run, a build, a migration applied, a stage-gate run.
 /// Pure: the command text and its output in, an event shape (or null = record nothing) out. A command is recognised
-/// only where the tool sits in COMMAND position (start, or after ; &amp;&amp; || | ( or a call operator), so
-/// <c>grep "dotnet test" notes.md</c> is not a test run.
+/// only where the tool sits in COMMAND position (start, or after ; &amp;&amp; || | ( or a call operator) of the
+/// command with its quoted text and heredoc/here-string bodies neutralised (<see cref="Neutralise"/>), so
+/// <c>grep "dotnet test" notes.md</c>, <c>git commit -m "fix; dotnet test passes"</c> and a commit-message heredoc line
+/// starting "dotnet test" are not test runs. Still a false positive: a separator inside a quote that contains an
+/// escaped quote (\"), or inside $'...' - the neutraliser does not model those.
 ///
 /// Outcome is read from the OUTPUT, never assumed: a fail marker beats a pass marker; with neither, a non-zero exit
 /// (PostToolUseFailure's "Exit code N") is 'fail', otherwise 'unknown'.
@@ -39,18 +42,61 @@ public static class ToolClassifier
         if (string.IsNullOrWhiteSpace(command)) return null;
         output ??= "";
         exitCode ??= ExitCodeOf(output);
+        // Match on a copy where quoted text and heredoc bodies cannot look like a command; it has the SAME length, so a
+        // match's position reads the original text (a Ref keeps --filter "A|B" as written).
+        var neutral = Neutralise(command);
         Match m;
-        if ((m = DotnetTest.Match(command)).Success)
-            return Make("test", "dotnet test" + Args(m.Groups["args"].Value), TestOutcome(output, exitCode), command, output, TestSummary);
-        if ((m = DotnetBuild.Match(command)).Success)
-            return Make("build", "dotnet build" + Args(m.Groups["args"].Value), BuildOutcome(output, exitCode), command, output, BuildSummary);
-        if ((m = Sqlcmd.Match(command)).Success)
+        if ((m = DotnetTest.Match(neutral)).Success)
+            return Make("test", "dotnet test" + Args(m.Groups["args"], command), TestOutcome(output, exitCode), command, output, TestSummary);
+        if ((m = DotnetBuild.Match(neutral)).Success)
+            return Make("build", "dotnet build" + Args(m.Groups["args"], command), BuildOutcome(output, exitCode), command, output, BuildSummary);
+        if ((m = Sqlcmd.Match(neutral)).Success)
             return Make("migration", m.Groups["file"].Value, MigrationOutcome(output, exitCode), command, output, MigrationSummary);
-        if ((m = KorSql.Match(command)).Success && SqlFile.Match(m.Groups["rest"].Value) is { Success: true } f)
+        if ((m = KorSql.Match(neutral)).Success && SqlFile.Match(m.Groups["rest"].Value) is { Success: true } f)
             return Make("migration", f.Groups["file"].Value, MigrationOutcome(output, exitCode), command, output, MigrationSummary);
-        if ((m = StageGate.Match(command)).Success)
+        if ((m = StageGate.Match(neutral)).Success)
             return Make("gate", m.Groups["file"].Value, GateOutcome(output, exitCode), command, output, GateSummary);
         return null;
+    }
+
+    private static readonly Regex HeredocStart = new(@"(?<!<)<<(?!<)-?\s*[""']?(?<tag>\w+)[""']?", RegexOptions.CultureInvariant);
+    private static readonly Regex HereStringStart = new(@"@[""']\s*$", RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// The command with every character that is DATA rather than shell structure replaced by a space, length kept:
+    /// separators (; &amp; | ( newline) inside '...' or "..." quotes, and the body lines of a bash heredoc (&lt;&lt;TAG ...
+    /// TAG) or a PowerShell here-string (@' ... '@, @" ... "@). Quote characters themselves stay, so a quoted tool path
+    /// still matches. Not handled: backslash-escaped quotes inside a quote, $'...' strings, nested command substitution.
+    /// </summary>
+    internal static string Neutralise(string command)
+    {
+        var c = command.Replace('\r', ' ').ToCharArray();
+        // 1. heredoc / here-string bodies, line by line.
+        var lines = new string(c).Split('\n');
+        var pos = 0;
+        string? endTag = null;
+        foreach (var line in lines)
+        {
+            if (endTag is not null)
+            {
+                var done = endTag == "'@" || endTag == "\"@" ? line.TrimStart().StartsWith(endTag) : line.Trim() == endTag;
+                if (done) endTag = null;
+                else for (var i = 0; i < line.Length; i++) c[pos + i] = ' ';
+            }
+            else if (HeredocStart.Match(line) is { Success: true } h) endTag = h.Groups["tag"].Value;
+            else if (HereStringStart.Match(line) is { Success: true } s) endTag = s.Value.TrimEnd()[1] + "@";
+            pos += line.Length + 1;
+        }
+        // 2. separators inside quotes (a quote may span lines).
+        char quote = '\0';
+        for (var i = 0; i < c.Length; i++)
+        {
+            var ch = c[i];
+            if (quote == '\0') { if (ch is '"' or '\'') quote = ch; }
+            else if (ch == quote) quote = '\0';
+            else if (ch is ';' or '&' or '|' or '(' or '\n') c[i] = ' ';
+        }
+        return new string(c);
     }
 
     public static int? ExitCodeOf(string output)
@@ -75,7 +121,7 @@ public static class ToolClassifier
         BuildFail.IsMatch(o) ? "fail" : BuildPass.IsMatch(o) ? "pass" : Fallback(exit);
 
     internal static string MigrationOutcome(string o, int? exit) =>
-        MigFail.IsMatch(o) || exit is > 0 ? "fail" : MigDone.IsMatch(o) ? "applied" : MigTested.IsMatch(o) ? "tested" : "unknown";
+        MigFail.IsMatch(o) || exit is > 0 or < 0 ? "fail" : MigDone.IsMatch(o) ? "applied" : MigTested.IsMatch(o) ? "tested" : "unknown";
 
     internal static string GateOutcome(string o, int? exit) =>
         o.Contains("stage_gate: PASS") ? "pass"
@@ -106,10 +152,11 @@ public static class ToolClassifier
     }
 
     /// <summary>The arguments after the verb, up to the next command or redirection.</summary>
-    private static string Args(string rest)
+    private static string Args(Group neutralRest, string original)
     {
-        var cut = Regex.Split(rest, @"&&|\|\||[|;]|\s\d?>").FirstOrDefault() ?? "";
-        cut = cut.Trim();
+        // Cut on the neutral text (a separator there is real structure), then read the same span of the original.
+        var cutLength = (Regex.Split(neutralRest.Value, @"&&|\|\||[|;]|\s\d?>").FirstOrDefault() ?? "").Length;
+        var cut = original.Substring(neutralRest.Index, cutLength).Replace('\r', ' ').Trim();
         return cut.Length == 0 ? "" : " " + cut;
     }
 
