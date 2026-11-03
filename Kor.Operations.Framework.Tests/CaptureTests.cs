@@ -179,6 +179,13 @@ public class CaptureTests
     [InlineData("pwsh -File \"C:/x/Invoke-KorSqlScript.ps1\" -Path \"C:/x/db/130_a;131_b.sql\" -Database KorStandards", "migration", "130_a;131_b.sql")]
     [InlineData("sqlcmd -S s -i \"C:/x/db/130_a(b).sql\"", "migration", "130_a(b).sql")]
     [InlineData("python -I tools/stage_gate.py run p.json; echo done", "gate", "p.json")]
+    // review row 88: a name ends where its pattern ends - never widened past ) > , - and an earlier NNN_ token is skipped
+    [InlineData("x=$(sqlcmd -S s -i db/130_a.sql)", "migration", "130_a.sql")]
+    [InlineData("sqlcmd -i db/130_a.sql>log.txt", "migration", "130_a.sql")]
+    [InlineData("sqlcmd -i db/130_a.sql,db/131_b.sql", "migration", "130_a.sql")]
+    [InlineData("Invoke-KorSqlScript -Retry 100_x -Path 130_a.sql", "migration", "130_a.sql")]
+    [InlineData("x=$(python -I tools/stage_gate.py run p.json)", "gate", "p.json")]
+    [InlineData("python -I tools/stage_gate.py run p.json>out.txt", "gate", "p.json")]
     public void FileNamesAreReadWholeFromTheOriginal(string command, string kind, string expected)
     {
         var t = ToolClassifier.Classify(command, "");
