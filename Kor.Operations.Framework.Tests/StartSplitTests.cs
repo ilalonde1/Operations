@@ -75,6 +75,72 @@ public class StartSplitTests
         Assert.Contains($"... [STATE NOW cut at {HandoverState.Cap} of {section.Length} chars", StartRender.Record(s, StartRender.HookBudget));
     }
 
+    // ---- the RECORDS pages (the lead, 3 Nov: KOR.Drafter's 107 harvested records were one count line) ----
+
+    private static readonly string[] KindOrder = { "decision", "lesson", "finding", "dead-end", "reference" };
+
+    private static StartRecord Sourced(int id, string kind, int descLength = 300) =>
+        new(id, "zz", $"rec-{kind}-{id}", kind, $"desc {id} " + new string('d', descLength), null, "current",
+            "git", "Framework", new string('a', 40), "docs/X.md", null, null, null, null);
+
+    private static List<StartRecord> ManySourced(int n, int descLength = 300) =>
+        Enumerable.Range(0, n).Select(i => Sourced(200_000 + i, KindOrder[i % KindOrder.Length], descLength)).ToList();
+
+    private static List<int> EntryIds(string page) =>
+        page.Split('\n').Select(l => System.Text.RegularExpressions.Regex.Match(l, @"^- (?:record )?#(\d+)"))
+            .Where(m => m.Success).Select(m => int.Parse(m.Groups[1].Value)).ToList();
+
+    [Theory]
+    [InlineData(20)]    // fits whole: full descriptions
+    [InlineData(153)]   // KOR.Drafter's count on 3 Nov: the ladder cuts descriptions until all fit
+    public void RecordsPagesCarryEveryRecordOnceInKindOrderNewestFirstEachWithinTheBudget(int n)
+    {
+        var records = ManySourced(n);
+        records.Add(Legacy(9, "imported-file-memory"));                                                       // never on these pages
+        records.Add(Sourced(10, "resolution"));
+        records.Add(Sourced(11, "decision") with { Status = "superseded" });
+        var side = Side(null, records);
+        var pages = Enumerable.Range(1, 4).Select(p => StartRender.RecordsPage(side, p, 4, StartRender.HookBudget)).ToList();
+        Assert.All(pages.Where(p => p.Length > 0), p => Assert.True(p.Length <= StartRender.HookBudget, $"{p.Length}"));
+        Assert.StartsWith("KNOWN AT START - RECORDS, page 1 of ", pages[0]);
+        var ids = pages.SelectMany(EntryIds).ToList();
+        var want = records.Take(n).OrderBy(r => Array.IndexOf(KindOrder, r.Kind)).ThenByDescending(r => r.Id).Select(r => r.Id).ToList();
+        Assert.Equal(want, ids);                                                                              // every one, once, in order
+        Assert.DoesNotContain("past page", string.Concat(pages));
+        if (n == 20) Assert.Contains(new string('d', 300), pages[0]);                                       // room: descriptions whole
+        else Assert.Contains("Descriptions are cut to", pages[0]);
+        Assert.Equal("", StartRender.RecordsPage(side, 10, 10, StartRender.HookBudget));                       // past the content: nothing
+        var all = StartRender.RecordsPage(side, 1, 1, null);                                                  // --text: every record whole
+        Assert.Equal(want, EntryIds(all));
+        Assert.Contains(new string('d', 300), all);
+    }
+
+    [Fact]
+    public void WhenEvenIdsAndNamesDoNotFitTheLastPageSaysHowManyAreLeftAndHowToReadThem()
+    {
+        var side = Side(null, ManySourced(3000));
+        var pages = Enumerable.Range(1, 4).Select(p => StartRender.RecordsPage(side, p, 4, StartRender.HookBudget)).ToList();
+        Assert.All(pages, p => Assert.True(p.Length <= StartRender.HookBudget, $"{p.Length}"));
+        var shown = pages.SelectMany(EntryIds).ToList();
+        Assert.Equal(shown.Count, shown.Distinct().Count());
+        var last = pages[3].Split('\n')[^1];
+        Assert.Equal($"... [{3000 - shown.Count} record(s) of 3000 are past page 4 of the session start - not read here: " +
+                     "kor start --module \"zz\" --part records --text for all]", last);
+        Assert.Contains("Only ids and names here", pages[0]);
+    }
+
+    [Fact]
+    public void TheSplitRecordPartNamesTheRecordsPagesInsteadOfListingThem()
+    {
+        var s = State(Handover(LongSection(5)), ManySourced(40)) ;
+        var split = StartRender.Record(s, StartRender.HookBudget, split: true);
+        Assert.Contains("RECORDS (current): 8 decisions, 8 lessons, 8 findings, 8 dead, 8 other - on the session-start parts " +
+                        "'KNOWN AT START - RECORDS, page N of M' beside this one", split);
+        Assert.DoesNotContain(EntryIds(split), id => id >= 200_000);
+        Assert.Contains("the RECORDS (decisions, lessons, findings, dead ends)", StartRender.PartsLine("zz"));
+        Assert.Equal(40, EntryIds(StartRender.Record(s, null)).Count(id => id >= 200_000));                   // --text: all on the one page
+    }
+
     [Fact]
     public void TheStatePartCarriesAStateNowOverTheOldCapWhole()
     {
@@ -242,7 +308,16 @@ public class StartSplitLiveTests
             Assert.Contains("LEGACY MEMORY (", string.Concat(wired));
             Assert.All(wired, c => Assert.True(c.Length <= StartRender.HookBudget));
             Assert.Equal("", past.Out);                                                // past the content: nothing printed
+            var r1 = Run(db, "--part", "records", "--page", "1", "--pages", "4");
+            var rPast = Run(db, "--part", "records", "--page", "20", "--pages", "20");
+            Assert.Equal((0, 0), (r1.Exit, rPast.Exit));
+            var rc1 = Context(r1.Out);
+            Assert.StartsWith("KNOWN AT START - RECORDS, page 1 of ", rc1);
+            Assert.True(rc1.Length <= StartRender.HookBudget, $"{rc1.Length}");
+            Assert.Equal("", rPast.Out);
             var rec = Context(Run(db, "--part", "record").Out);
+            Assert.Contains("--part records --text", rec);                                // the record part names the records pages
+            Assert.DoesNotContain("- record #", rec.Split("LAST EVENTS")[0].Split("RECORDS (current)")[^1]);
             Assert.Contains(StartRender.PartsLine(Module), rec);
             Assert.DoesNotContain("LEGACY MEMORY (", rec);
         }
@@ -306,6 +381,8 @@ public class StartSplitLiveTests
     [InlineData("--part", "state", "--page", "1")]
     [InlineData("--part", "memory", "--page", "x")]
     [InlineData("--part", "nonsense")]
+    [InlineData("--part", "records", "--page", "5", "--pages", "4")]
+    [InlineData("--part", "board", "--page", "1")]
     public void LiveABadPartOrPageIsRefused(params string[] args)
     {
         // without --hook (a hook-mode failure is logged and exits 0 by design, review row 146)

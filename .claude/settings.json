@@ -46,6 +46,30 @@
           },
           {
             "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part records --page 1 --pages 4 --hook",
+            "timeout": 30,
+            "statusMessage": "Reading this module's records from the DB, page 1 (decisions, lessons, findings, dead ends)"
+          },
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part records --page 2 --pages 4 --hook",
+            "timeout": 30,
+            "statusMessage": "Reading this module's records from the DB, page 2 (decisions, lessons, findings, dead ends)"
+          },
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part records --page 3 --pages 4 --hook",
+            "timeout": 30,
+            "statusMessage": "Reading this module's records from the DB, page 3 (decisions, lessons, findings, dead ends)"
+          },
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part records --page 4 --pages 4 --hook",
+            "timeout": 30,
+            "statusMessage": "Reading this module's records from the DB, page 4 (decisions, lessons, findings, dead ends)"
+          },
+          {
+            "type": "command",
             "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part board --owner Operations --hook",
             "timeout": 30,
             "statusMessage": "Reading this lead's rows off the board (the source of truth; Knowledge IDE K6)"

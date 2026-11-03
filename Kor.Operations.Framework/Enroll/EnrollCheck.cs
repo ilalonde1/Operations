@@ -74,11 +74,20 @@ public static class EnrollCheck
     private static readonly string[] Shell = { "Bash", "PowerShell" };
     private static readonly string[] EnforceTools = { "Bash", "PowerShell", "Write", "Edit", "MultiEdit", "NotebookEdit" };
 
+    public const int RecordsPages = 4;
+
+    private static Hook RecordsPage(int n) =>
+        new($"SessionStart kor start --part records --page {n} --pages {RecordsPages}", "SessionStart", Array.Empty<string>(), "start",
+            c => c.Opt("--part") == "records" && c.Opt("--page") == n.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                 && c.Opt("--pages") == RecordsPages.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
     public static readonly IReadOnlyList<Hook> Required = new[]
     {
         new Hook("SessionStart kor start --part record", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "record"),
         new Hook("SessionStart kor start --part state", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "state"),
         new Hook("SessionStart kor start --part memory", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "memory"),
+        // the RECORDS pages (the lead, 3 Nov): every one of the 4, each its own entry - a missing page is records not read
+        RecordsPage(1), RecordsPage(2), RecordsPage(3), RecordsPage(4),
         // --tag T alone is a board too (3 Nov: one product owner, tag-filtered board - the front-door repo's start)
         new Hook("SessionStart kor start --part board --owner ... (or --tag ...)", "SessionStart", Array.Empty<string>(), "start",
                  c => c.Opt("--part") == "board" && (c.Opt("--owner") is not null || c.Opt("--tag") is not null)),

@@ -62,7 +62,10 @@ public static class StartRender
             new("resume", 2, l => Resume(s, l)),
             new("issues", 3, l => Issues(s.OpenIssues, l)),
             new("stale", 3, l => Stale(stale, unverifiable, l)),
-            new("records", 4, l => Records(m, sourced, l)),
+            // the hook's record part (split): the records are on the RECORDS pages beside it (board row: 107 harvested
+            // KOR.Drafter records were a count line at 4,783 of 9,900) - here one line with their counts and where they are
+            split ? new("records", 0, _ => RecordsLine(m, sourced))
+                  : new("records", 4, l => Records(m, sourced, l)),
             new("events", 3, l => Events(m, s.Events, l)),
         };
         if (!split) sections.Add(new("office", 2, l => Office(s.Office, l)));
@@ -177,9 +180,154 @@ public static class StartRender
 
     /// <summary>The record part's line, in the split hook, naming the start parts beside it (board row 1198).</summary>
     public static string PartsLine(string module) =>
-        "STATE NOW, OFFICE LESSONS and LEGACY MEMORY are not on this part: each is a session-start part of its own beside it " +
-        "(blocks headed 'KNOWN AT START - STATE NOW' and 'KNOWN AT START - MEMORY, page N of M'). A part not in your context was " +
+        "STATE NOW, the RECORDS (decisions, lessons, findings, dead ends), OFFICE LESSONS and LEGACY MEMORY are not on this part: " +
+        "each is a session-start part of its own beside it (blocks headed 'KNOWN AT START - STATE NOW', 'KNOWN AT START - RECORDS, " +
+        "page N of M' and 'KNOWN AT START - MEMORY, page N of M'). A part not in your context was " +
         $"not read - answer what it would hold 'not checked'; all of it: kor start --module \"{module}\" --text.";
+
+    /// <summary>The split record part's line in place of the records: their counts and the pages that carry them.</summary>
+    private static string RecordsLine(string module, List<StartRecord> sourced) =>
+        "RECORDS (current): " + string.Join(", ", RecordGroups(sourced).Select(g => $"{g.Rows.Count} {g.Title.Split(' ')[0].ToLowerInvariant()}")) +
+        " - on the session-start parts 'KNOWN AT START - RECORDS, page N of M' beside this one, newest first; all: " +
+        $"kor start --module \"{module}\" --part records --text";
+
+    /// <summary>
+    /// The lead, 3 Nov: KOR.Drafter's 153 current records (107 just harvested) were ONE count line on a 4,783-char record
+    /// part, because the record part's ladder cut RECORDS whole. The RECORDS part carries them across pages as MEMORY does:
+    /// DECISIONS, LESSONS, FINDINGS, DEAD ENDS, then any other kind; newest first (by id) within each; each record one
+    /// whole entry, never split across pages (an entry longer than a page is cut with a note); a group that runs onto the
+    /// next page is named again there "(continued)". Page <paramref name="page"/> of the <paramref name="pages"/> wired; a
+    /// page past the content is empty (nothing printed); when the content needs more than the wired pages, the last one
+    /// ends with how many records are left and the command that reads them. No budget (--text, no --page): every record.
+    /// The records are those the record part would list - current, not imported file memory, not the five questions, not
+    /// a resolution - by their STORED status (the record part's own freshness check this start is not run here).
+    /// </summary>
+    public static string RecordsPage(StartSide side, int page, int pages, int? budget)
+    {
+        if (page < 1 || pages < page) throw new ArgumentException($"--page {page} is not within 1..{pages}");
+        var sourced = side.Records.Where(r => !r.FromFileMemory && r.Name != ModuleState.FiveQuestionsName && r.Kind != "resolution"
+                                              && r.Status == "current").Select(r => r with
+                                              {
+                                                  Description = SecretGuard.Mask(r.Description)!, Name = SecretGuard.Mask(r.Name)!,
+                                              }).ToList();
+        var groups = RecordGroups(sourced).Select(g => (g.Title, Rows: g.Rows.OrderByDescending(r => r.Id).ToList())).ToList();
+        var ordered = groups.SelectMany(g => g.Rows.Select(r => (g.Title, Row: r))).ToList();
+        string GroupHead(string title, int count, bool continued) =>
+            continued ? $"{title} (continued):" : $"{title} ({count}, current, newest first):";
+        var counts = groups.ToDictionary(g => g.Title, g => g.Rows.Count);
+        var empty = groups.Where(g => g.Rows.Count == 0).Select(g => $"{g.Title.Split(' ')[0]}: none current.").ToList();
+        // the width ladder (as the board's COMPACT): the widest description that puts EVERY record on the wired pages; a
+        // record is never left off for a longer description of another. -1 = id and name only.
+        static string Entry(StartRecord r, int width) => width switch
+        {
+            int.MaxValue => $"- record #{r.Id} [{r.Kind}] {r.Name} - {r.Description} ({r.Where})",
+            > 0 => $"- record #{r.Id} [{r.Kind}] {r.Name} - {Clip(r.Description, width, "...")} ({r.Where})",
+            0 => $"- record #{r.Id} [{r.Kind}] {r.Name} ({r.Where})",
+            _ => $"- #{r.Id} {r.Name}",
+        };
+        if (budget is null)
+        {
+            var all = new List<string> { SideHead(side.Module, "RECORDS", side.ReadAt), RecordsWhere(side.Module, int.MaxValue) };
+            string? at = null;
+            foreach (var (title, r) in ordered)
+            {
+                if (title != at) { all.Add(GroupHead(title, counts[title], false)); at = title; }
+                all.Add(Entry(r, int.MaxValue));
+            }
+            all.AddRange(empty);
+            return SecretGuard.Mask(string.Join("\n", all))!;
+        }
+        // pack whole entries into pages of at most (budget - headRoom), the head line added on each
+        const int headRoom = 400;
+        var cap = budget.Value - headRoom;
+        (List<List<string>> Lines, List<int> Entries) Pack(int width)
+        {
+            var pageLines = new List<List<string>>();
+            var pageEntries = new List<int>();   // how many entries each page carries
+            List<string>? cur = null;
+            int curLen = 0, curCount = 0;
+            string? group = null;
+            void Add(string line) { cur!.Add(line); curLen += line.Length + 1; }
+            void NewPage(string? continuing)
+            {
+                if (cur is not null) { pageLines.Add(cur); pageEntries.Add(curCount); }
+                cur = new List<string>();
+                curLen = 0;
+                curCount = 0;
+                if (pageLines.Count == 0) Add(RecordsWhere(side.Module, width));
+                if (continuing is not null) Add(GroupHead(continuing, counts[continuing], true));
+            }
+            NewPage(null);
+            foreach (var (title, r) in ordered)
+            {
+                var raw = Entry(r, width);
+                var line = raw.Length <= cap - 200 ? raw : raw[..(cap - 260)].TrimEnd() + " ... [entry cut - kor memory --module]";
+                var head = title != group ? GroupHead(title, counts[title], false) : null;
+                var need = line.Length + 1 + (head is null ? 0 : head.Length + 1);
+                if (curCount > 0 && curLen + need > cap) NewPage(head is null ? title : null);
+                if (head is not null) { Add(head); group = title; }
+                Add(line);
+                curCount++;
+            }
+            foreach (var e in empty)
+            {
+                if (curLen + e.Length + 1 > cap) NewPage(null);
+                Add(e);
+            }
+            pageLines.Add(cur!);
+            pageEntries.Add(curCount);
+            return (pageLines, pageEntries);
+        }
+        var packed = Pack(int.MaxValue);
+        foreach (var width in new[] { 300, 200, 140, 90, 50, 0, -1 })
+        {
+            if (packed.Lines.Count <= pages) break;
+            packed = Pack(width);
+        }
+        var (pagesOf, entriesOf) = packed;
+        if (page > pagesOf.Count) return "";
+        var shown = Math.Min(pagesOf.Count, pages);
+        var lines = pagesOf[page - 1];
+        if (page == pages && pagesOf.Count > pages)
+        {
+            // even ids and names do not fit: the last wired page drops its last entries until the note fits, and says how
+            // many are left and how to read them
+            var before = entriesOf.Take(page - 1).Sum();
+            var kept = lines.ToList();
+            var keptEntries = entriesOf[page - 1];
+            string Note(int left) =>
+                $"... [{left} record(s) of {ordered.Count} are past page {pages} of the session start - not read here: " +
+                $"kor start --module \"{side.Module}\" --part records --text for all]";
+            while (kept.Count > 0 && kept.Sum(l => l.Length + 1) + Note(ordered.Count - before - keptEntries).Length > cap)
+            {
+                var last = kept[^1];
+                kept.RemoveAt(kept.Count - 1);
+                if (last.StartsWith("- ", StringComparison.Ordinal)) keptEntries--;
+            }
+            while (kept.Count > 1 && kept[^1].EndsWith("):", StringComparison.Ordinal)) kept.RemoveAt(kept.Count - 1);   // no group head left without its entries
+            lines = kept.Append(Note(ordered.Count - before - keptEntries)).ToList();
+        }
+        return SecretGuard.Mask(SideHead(side.Module, $"RECORDS, page {page} of {shown}", side.ReadAt) + "\n" + string.Join("\n", lines))!;
+    }
+
+    private static string RecordsWhere(string module, int width) =>
+        $"The module's current sourced records (brain.Memory), newest first in each kind. A record's body: kor memory --module \"{module}\"." +
+        (width == int.MaxValue ? "" : width > 0 ? $" Descriptions are cut to {width} chars here so that every record fits the session-start pages."
+            : width == 0 ? " Descriptions are left out here so that every record fits the session-start pages."
+            : " Only ids and names here, so that every record fits the session-start pages.");
+
+    private static List<(string Title, List<StartRecord> Rows)> RecordGroups(List<StartRecord> sourced)
+    {
+        var groups = PageOrder.Select(g => (g.Title, Rows: sourced.Where(r => r.Kind == g.Kind).ToList())).ToList();
+        groups.Add(("OTHER SOURCED RECORDS", sourced.Where(r => PageOrder.All(g => g.Kind != r.Kind)).ToList()));
+        return groups;
+    }
+
+    // the RECORDS pages' order (the lead, 3 Nov): decisions, lessons, findings, dead ends
+    private static readonly (string Kind, string Title)[] PageOrder =
+    {
+        ("decision", "DECISIONS"), ("lesson", "LESSONS"), ("finding", "FINDINGS"), ("dead-end", "DEAD ENDS (tried, failed - do not repeat)"),
+    };
 
     /// <summary>The first line of a side part (STATE NOW, LEGACY MEMORY pages): what it is and that it is part of the start.</summary>
     private static string SideHead(string module, string what, DateTimeOffset readAt) =>
