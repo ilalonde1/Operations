@@ -87,7 +87,13 @@ for name, event, base in CASES:
     fixture = run_guard(name, base, dict(os.environ))
     live_bad = run_guard(name, dict(base, hook_event_name=event), dict(os.environ, **BAD))
     live_raise = run_guard(name, dict(base, hook_event_name=event), dict(os.environ, PYTHONPATH=tmp))
-    check(f"{name}: refuses the fixture", fixture[1].strip() != "", repr(fixture))
+    try:
+        out = json.loads(fixture[1])
+        decision = (out.get("hookSpecificOutput") or {}).get("permissionDecision") or out.get("decision")
+    except ValueError:
+        decision = None
+    check(f"{name}: refuses the fixture (exit 0, a deny/block decision)",
+          fixture[0] == 0 and decision == ("deny" if event == "PreToolUse" else "block"), repr(fixture))
     check(f"{name}: bad DB -> same exit and stdout", live_bad == fixture, f"{live_bad!r} vs {fixture!r}")
     check(f"{name}: raising guard_log -> same exit and stdout", live_raise == fixture, f"{live_raise!r} vs {fixture!r}")
 

@@ -37,11 +37,12 @@ RULES = [
     #     archive file by file from KOR-1001 over the VPN, ~10 min, while the rule above caught only the PowerShell
     #     form with -Recurse BEFORE the path). The class: a command that enumerates a share's tree from this PC.
     #     A UNC path here = // or \\ at the START of a path (the command's start, or after whitespace, a quote, ( or =),
-    #     then a host name beginning with a letter, then / or \. So https://, C:\\x (doubled backslashes after a drive)
-    #     and integer division ` //2` are not UNC paths.
+    #     then a host name (beginning with a letter, or a dotted IP address), then / or \. So https://, C:\\x (doubled
+    #     backslashes after a drive) and integer division ` //2` are not UNC paths.
     #     CHECKS, each with a UNC path in the same pipeline segment: Get-ChildItem / gci / ls / dir with -r or -Recurse*
     #     in any position; dir /s; tree; robocopy /L with /S or /E (a listing); du; python / py in command position
-    #     whose text holds os.walk, rglob or recursive=True AND a UNC path on the same line, not across && or ||.
+    #     whose text that follows - across lines, so a heredoc body counts - holds os.walk, rglob or recursive=True AND
+    #     a UNC path, before any && or ||.
     #     ALLOWS: one folder's listing (no recurse flag), git ls-remote / push / fetch to an fs01 remote, Test-Path,
     #     a robocopy that copies (no /L), any walk of a local path - including one run ON the target via
     #     Invoke-CimMethod with the target's local path (E:\...).
@@ -57,10 +58,10 @@ RULES = [
                 r"|tree(?:\.com)?\b"
                 r"|robocopy(?:\.exe)?\b(?=[^|;\n]*\s/L\b)(?=[^|;\n]*\s/(?:S|E)\b)"
                 r"|du\b"
-                r")[^|;\n]*?(?:^|(?<=[\s'\"(=]))(?://|\\\\)[A-Za-z][\w.$-]*[/\\]"
+                r")[^|;\n]*?(?:^|(?<=[\s'\"(=]))(?://|\\\\)(?:[A-Za-z][\w.$-]*|\d+\.[\d.]+)[/\\]"
                 r"|(?:^|[;&|(\n]\s*)(?:\S*[/\\])?(?:python[\w.]*|py)\b"
-                r"(?=(?:(?!&&|\|\||\n).)*(?:os\.walk|rglob|recursive\s*=\s*True))"
-                r"(?=(?:(?!&&|\|\||\n).)*(?<=[\s'\"(=])(?://|\\\\)[A-Za-z][\w.$-]*[/\\])"),
+                r"(?=(?:(?!&&|\|\|)(?s:.))*?(?:os\.walk|rglob|recursive\s*=\s*True))"
+                r"(?=(?:(?!&&|\|\|)(?s:.))*?(?<=[\s'\"(=])(?://|\\\\)(?:[A-Za-z][\w.$-]*|\d+\.[\d.]+)[/\\])"),
      "A recursive walk of a network share from this PC (Mistake 120, 2 Nov: 50,352 files of the fs01 IT archive walked "
      "file by file over the VPN). Run it ON the target - Invoke-CimMethod -ComputerName <host> -ClassName "
      "Win32_Process -MethodName Create -Arguments @{CommandLine='<the walk, on its local path, writing one result "

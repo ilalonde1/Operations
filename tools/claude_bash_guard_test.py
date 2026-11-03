@@ -123,6 +123,10 @@ CASES = [
     ("python -c \"import os; print(sum(len(f) for _, _, f in os.walk('.')) //2)\"", "allow"),
     ("py -c \"import os; print(sum(len(f) for _, _, f in os.walk('//Kor-fs01/IT')))\"", "deny"),
     (r"Get-ChildItem -Path=\\Kor-fs01\IT -Recurse", "deny"),
+    # review row 62: what 1b must STILL catch after that narrowing - a walk in a heredoc body, an IP-addressed share
+    ("python - <<'EOF'\nimport os\nn = sum(len(f) for _, _, f in os.walk('//Kor-fs01/IT'))\nprint(n)\nEOF", "deny"),
+    (r"Get-ChildItem \\10.0.0.5\IT -Recurse", "deny"),
+    ("python -c \"import os; print(len(list(os.walk('//192.168.1.10/IT'))))\"", "deny"),
     # rule 9: the publish/deploy WRAPPER piped. Rule 8 matches a literal `dotnet` command and nothing
     # here runs the compiler directly, so on 2026-10-19 `publish.ps1 | Select-String` showed eight
     # green build lines, published nothing, and was reported as shipped. The share still held a build
