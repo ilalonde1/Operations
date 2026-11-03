@@ -16,14 +16,14 @@ public static class RepoLocator
     {
         if (string.IsNullOrWhiteSpace(repoLeaf) || repoLeaf.IndexOfAny(new[] { '/', '\\', ':' }) >= 0 || repoLeaf is "." or "..")
             return null;
-        var top = Git.TopLevel(fromDir ?? Environment.CurrentDirectory);
+        var top = Git.TopLevelFast(fromDir ?? Environment.CurrentDirectory);
         if (top is null) return null;
         if (string.Equals(Git.Leaf(top), repoLeaf, StringComparison.Ordinal)) return top;
         var parent = Path.GetDirectoryName(top.TrimEnd('/', '\\'));
         if (parent is null) return null;
         var candidate = Path.Combine(parent, repoLeaf);
         if (!Directory.Exists(candidate)) return null;
-        var candidateTop = Git.TopLevel(candidate);
+        var candidateTop = Git.TopLevelFast(candidate);
         return candidateTop is not null && string.Equals(Git.Leaf(candidateTop), repoLeaf, StringComparison.Ordinal)
             ? candidateTop
             : null;

@@ -15,7 +15,7 @@ namespace Kor.Operations.Framework.Cli;
 /// </summary>
 public static partial class Program
 {
-    public static readonly string[] RecordKinds = { "finding", "decision", "dead-end", "lesson" };
+    public static readonly string[] RecordKinds = { "finding", "decision", "dead-end", "lesson", "reference" };   // reference: K6 _five-questions (CK_Memory_Kind allows it since 162)
 
     // ---- K4: capture-start / capture-check ---------------------------------------------------------------------------
     private static int CaptureStart(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? db)
@@ -47,18 +47,18 @@ public static partial class Program
 
     // ---- K4: kor record / kor memory --------------------------------------------------------------------------------
     /// <summary>
-    /// kor record --module M --kind finding|decision|dead-end|lesson --name N --says D --source git:path[@rev] | run:&lt;event id&gt;
+    /// kor record --module M --kind finding|decision|dead-end|lesson|reference --name N --says D --source git:path[@rev] | run:&lt;event id&gt;
     /// | query:[brain:|board:]SELECT ... [--session S] [--body-file F] [--dir D]. The same live name is superseded. Writes a
     /// 'record' event (the K4 marker) in the same unit of work. Issues and resolutions are refused: they need a check.
     /// </summary>
     private static int Record(Options o, TextWriter output, BrainDb? db)
     {
         var lane = o.Get("--module") ?? throw new ArgumentException("record needs --module <lane>");
-        var kind = o.Get("--kind") ?? throw new ArgumentException("record needs --kind finding|decision|dead-end|lesson");
+        var kind = o.Get("--kind") ?? throw new ArgumentException("record needs --kind finding|decision|dead-end|lesson|reference");
         if (kind is "issue" or "resolution")
             throw new RecordRefusedException($"kind '{kind}' is not written by kor record: an issue is written by `kor issue` " +
                                              "(it needs its check: --check test|gate|query|source --check-ref ...), and closed only by evidence (`kor check`, `kor resolve`)");
-        if (!RecordKinds.Contains(kind)) throw new ArgumentException($"record kind '{kind}' is not finding|decision|dead-end|lesson");
+        if (!RecordKinds.Contains(kind)) throw new ArgumentException($"record kind '{kind}' is not finding|decision|dead-end|lesson|reference");
         var name = o.Get("--name") ?? throw new ArgumentException("record needs --name <slug>");
         var says = o.Get("--says") ?? throw new ArgumentException("record needs --says \"...\"");
         var body = o.Get("--body-file") is { } f ? File.ReadAllText(f) : says;

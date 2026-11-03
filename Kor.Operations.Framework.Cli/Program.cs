@@ -53,6 +53,7 @@ public static partial class Program
                 "issue" => Issue(o, output, db),
                 "check" => Check(o, output, hook, db),
                 "resolve" => Resolve(o, output, db),
+                "start" => StartVerb(o, stdin, output, hook, db, hookErrorLog),
                 _ => hook ? UnknownInHook(o, output) : Usage(error),
             };
         }
@@ -100,22 +101,27 @@ public static partial class Program
         {
             "--module", "--dir", "--result", "--last", "--kind", "--because", "--body-file", "--source-path", "--name",
             "--says", "--source", "--cap", "--session", "--description", "--check", "--check-ref", "--issue",
-            "--kinds", "--restates", "--timeout",
+            "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir",
         };
 
-        private static readonly string[] Flags = { "--full", "--file-changed", "--resolved", "--commit-hook" };
+        private static readonly string[] Flags = { "--full", "--file-changed", "--resolved", "--commit-hook", "--no-helpers", "--text" };
+
+        /// <summary>Every --owner given, in order (kor start --part board: one lead, several board names).</summary>
+        public List<string> Owners { get; init; } = new();
 
         public static Options Parse(string[] args)
         {
             var pos = new List<string>();
             var named = new Dictionary<string, string>();
+            var owners = new List<string>();
             for (var i = 0; i < args.Length; i++)
             {
+                if (args[i] == "--owner" && i + 1 < args.Length) { owners.Add(args[++i]); continue; }
                 if (Valued.Contains(args[i]) && i + 1 < args.Length) { named[args[i]] = args[++i]; continue; }
                 if (Flags.Contains(args[i])) { named[args[i]] = "1"; continue; }
                 pos.Add(args[i]);
             }
-            return new Options(pos, named);
+            return new Options(pos, named) { Owners = owners };
         }
 
         public string? Get(string name) => Named.TryGetValue(name, out var v) ? v : null;
@@ -455,12 +461,13 @@ public static partial class Program
         error.WriteLine("       kor events --module M [--last N] [--kind K] [--full]");
         error.WriteLine("       kor fresh --module M [--dir D] [--cap SECONDS (10)] [--hook] | kor fresh --file-changed [--hook]   (FileChanged JSON on stdin)");
         error.WriteLine("       kor recheck <id> confirm|supersede|withdraw --because \"...\" [--body-file F] [--says D] [--source-path P] [--dir D]");
-        error.WriteLine("       kor record --module M --kind finding|decision|dead-end|lesson --name N --says D --source git:path[@rev]|run:<event id>|query:SELECT... [--session S] [--body-file F] [--dir D]");
+        error.WriteLine("       kor record --module M --kind finding|decision|dead-end|lesson|reference --name N --says D --source git:path[@rev]|run:<event id>|query:SELECT... [--session S] [--body-file F] [--dir D]");
         error.WriteLine("       kor memory --module M [--last N]");
         error.WriteLine("       kor capture-start|capture-check [--module M] [--hook]   (SessionStart / Stop JSON on stdin)");
         error.WriteLine("       kor issue --module M --name N --description D --check test|gate|query|source --check-ref R [--source-path P] [--body-file F] [--restates ID]");
         error.WriteLine("       kor check --module M [--issue N] [--resolved] [--kinds test,gate,query] [--timeout S] | kor check --commit-hook [--dir D]");
         error.WriteLine("       kor resolve --issue N --because \"...\"   (a source-checked issue whose file changed)");
+        error.WriteLine("       kor start --module M [--owner O]... [--no-helpers] [--part record|board|all] [--hook | --text] [--dir D] [--session S] [--start-source S]   (SessionStart JSON on stdin with --hook)");
         return 2;
     }
 }

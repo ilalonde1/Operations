@@ -1,0 +1,938 @@
+{
+ "rows": [
+  {
+   "Id": 1000,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 0",
+   "DueLocal": "2026-11-04 09:00:00",
+   "BlockedOn": "Ian",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1001,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 1",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1002,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 2",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1003,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 3",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1004,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 4",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1005,
+   "Owner": null,
+   "State": null,
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 5",
+   "DueLocal": "2026-11-04 09:00:00",
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1006,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 6",
+   "DueLocal": null,
+   "BlockedOn": "Ian",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1007,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": null,
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1008,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 8",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1009,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 9",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1010,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 10",
+   "DueLocal": "2026-11-04 09:00:00",
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1011,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 11",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1012,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 12",
+   "DueLocal": null,
+   "BlockedOn": "Ian",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1013,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 13",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1014,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 14",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1015,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 15",
+   "DueLocal": "2026-11-04 09:00:00",
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1016,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 16",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1017,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 17",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1018,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 18",
+   "DueLocal": null,
+   "BlockedOn": "Ian",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1019,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 19",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1020,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 20",
+   "DueLocal": "2026-11-04 09:00:00",
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1021,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 21",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1022,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 22",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1023,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 23",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1024,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 24",
+   "DueLocal": null,
+   "BlockedOn": "Ian",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1025,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 25",
+   "DueLocal": "2026-11-04 09:00:00",
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1026,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 26",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1027,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 27",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1028,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 28",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1029,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 29",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1030,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 30",
+   "DueLocal": "2026-11-04 09:00:00",
+   "BlockedOn": "Ian",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1031,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 31",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1032,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 32",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1033,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 33",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1034,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 34",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1035,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 35",
+   "DueLocal": "2026-11-04 09:00:00",
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1036,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 36",
+   "DueLocal": null,
+   "BlockedOn": "Ian",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1037,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 37",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1038,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 38",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1039,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 39",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1040,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 40",
+   "DueLocal": "2026-11-04 09:00:00",
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1041,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 41",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1042,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 42",
+   "DueLocal": null,
+   "BlockedOn": "Ian",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1043,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 43",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1044,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 44",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1045,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 45",
+   "DueLocal": "2026-11-04 09:00:00",
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1046,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 46",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1047,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 47",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1048,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 48",
+   "DueLocal": null,
+   "BlockedOn": "Ian",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1049,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 49",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1050,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 50",
+   "DueLocal": "2026-11-04 09:00:00",
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1051,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 51",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1052,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 52",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1053,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 53",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1054,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 54",
+   "DueLocal": null,
+   "BlockedOn": "Ian",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1055,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 55",
+   "DueLocal": "2026-11-04 09:00:00",
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1056,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  ",
+   "DoneWhen": "done when 56",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1057,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 57",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  },
+  {
+   "Id": 1058,
+   "Owner": "Framework helper",
+   "State": "open",
+   "Flag": null,
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 58",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": "2 h"
+  },
+  {
+   "Id": 1059,
+   "Owner": null,
+   "State": "open",
+   "Flag": "OVERDUE",
+   "What": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail",
+   "DoneWhen": "done when 59",
+   "DueLocal": null,
+   "BlockedOn": "",
+   "Budget": null
+  }
+ ],
+ "owed": [
+  {
+   "Id": 1,
+   "What": "a\u001d b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c  b   c ",
+   "State": "open",
+   "HoursOpen": 25.0,
+   "Flag": null
+  },
+  {
+   "Id": 2,
+   "What": null,
+   "State": null,
+   "HoursOpen": 0.05,
+   "Flag": null
+  },
+  {
+   "Id": 3,
+   "What": "w",
+   "State": "open",
+   "HoursOpen": 1234567.0,
+   "Flag": null
+  },
+  {
+   "Id": 4,
+   "What": "w",
+   "State": "open",
+   "HoursOpen": null,
+   "Flag": null
+  },
+  {
+   "Id": 5,
+   "What": "w",
+   "State": "open",
+   "HoursOpen": 0.0001,
+   "Flag": null
+  },
+  {
+   "Id": 10,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 24.1,
+   "Flag": null
+  },
+  {
+   "Id": 11,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 25.1,
+   "Flag": null
+  },
+  {
+   "Id": 12,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 26.1,
+   "Flag": null
+  },
+  {
+   "Id": 13,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 27.1,
+   "Flag": null
+  },
+  {
+   "Id": 14,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 28.1,
+   "Flag": null
+  },
+  {
+   "Id": 15,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 29.1,
+   "Flag": null
+  },
+  {
+   "Id": 16,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 30.1,
+   "Flag": null
+  },
+  {
+   "Id": 17,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 31.1,
+   "Flag": null
+  },
+  {
+   "Id": 18,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 32.1,
+   "Flag": null
+  },
+  {
+   "Id": 19,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 33.1,
+   "Flag": null
+  },
+  {
+   "Id": 20,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 34.1,
+   "Flag": null
+  },
+  {
+   "Id": 21,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 35.1,
+   "Flag": null
+  },
+  {
+   "Id": 22,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 36.1,
+   "Flag": null
+  },
+  {
+   "Id": 23,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 37.1,
+   "Flag": null
+  },
+  {
+   "Id": 24,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 38.1,
+   "Flag": null
+  },
+  {
+   "Id": 25,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 39.1,
+   "Flag": null
+  },
+  {
+   "Id": 26,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 40.1,
+   "Flag": null
+  },
+  {
+   "Id": 27,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 41.1,
+   "Flag": null
+  },
+  {
+   "Id": 28,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 42.1,
+   "Flag": null
+  },
+  {
+   "Id": 29,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 43.1,
+   "Flag": null
+  },
+  {
+   "Id": 30,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 44.1,
+   "Flag": null
+  },
+  {
+   "Id": 31,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 45.1,
+   "Flag": null
+  },
+  {
+   "Id": 32,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 46.1,
+   "Flag": null
+  },
+  {
+   "Id": 33,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 47.1,
+   "Flag": null
+  },
+  {
+   "Id": 34,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 48.1,
+   "Flag": null
+  },
+  {
+   "Id": 35,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 49.1,
+   "Flag": null
+  },
+  {
+   "Id": 36,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 50.1,
+   "Flag": null
+  },
+  {
+   "Id": 37,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 51.1,
+   "Flag": null
+  },
+  {
+   "Id": 38,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 52.1,
+   "Flag": null
+  },
+  {
+   "Id": 39,
+   "What": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+   "State": "open",
+   "HoursOpen": 53.1,
+   "Flag": null
+  }
+ ],
+ "guards": [
+  {
+   "Guard": "claude_bash_guard",
+   "Refusals": 12,
+   "JudgedWrong": 3
+  },
+  {
+   "Guard": null,
+   "Refusals": null,
+   "JudgedWrong": 1
+  }
+ ],
+ "owners": [
+  "Framework",
+  "Framework helper"
+ ],
+ "python_full_command": "python -I \"C:\\VIsual Studio Projects\\Framework\\tools\\board_render.py\" --owner \"Framework\" --owner \"Framework helper\" --text",
+ "out": {
+  "text": "THE BOARD (source of truth) - KorStandards oversight.vw_Board, Owners 'Framework', 'Framework helper' (every one of them this lead's), read 2026-11-03 01:48\n60 open row(s). THE GOAL IS NONE (Ian, 2 Nov): this is YOUR board - add every new item as a row, cross a row off (done, with evidence) the moment it is finished, and change a row on the board, never only in chat. A new row needs What (goal), DoneWhen and Budget (time, runs, what it may read) - the board refuses one without a Budget (F2, 2 Nov).\nPer owner: 'Framework' 20; 'Framework helper' 20\n- row 1000 [open] (Owner: Framework) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 0\n    budget: 2 h\n    blocked on: Ian\n    due: 2026-11-04 09:00:00\n- row 1001 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 1\n- row 1002 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 2\n    budget: 2 h\n- row 1003 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 3\n- row 1004 [open] (Owner: Framework helper) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 4\n    budget: 2 h\n- row 1005 [None OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 5\n    due: 2026-11-04 09:00:00\n- row 1006 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 6\n    budget: 2 h\n    blocked on: Ian\n- row 1007 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: None\n- row 1008 [open OVERDUE] (Owner: ?) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 8\n    budget: 2 h\n- row 1009 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 9\n- row 1010 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 10\n    budget: 2 h\n    due: 2026-11-04 09:00:00\n- row 1011 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 11\n- row 1012 [open] (Owner: Framework) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 12\n    budget: 2 h\n    blocked on: Ian\n- row 1013 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 13\n- row 1014 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 14\n    budget: 2 h\n- row 1015 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 15\n    due: 2026-11-04 09:00:00\n- row 1016 [open] (Owner: Framework helper) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 16\n    budget: 2 h\n- row 1017 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 17\n- row 1018 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 18\n    budget: 2 h\n    blocked on: Ian\n- row 1019 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 19\n- row 1020 [open OVERDUE] (Owner: ?) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 20\n    budget: 2 h\n    due: 2026-11-04 09:00:00\n- row 1021 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 21\n- row 1022 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 22\n    budget: 2 h\n- row 1023 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 23\n- row 1024 [open] (Owner: Framework) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 24\n    budget: 2 h\n    blocked on: Ian\n- row 1025 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 25\n    due: 2026-11-04 09:00:00\n- row 1026 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 26\n    budget: 2 h\n- row 1027 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 27\n- row 1028 [open] (Owner: Framework helper) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 28\n    budget: 2 h\n- row 1029 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 29\n- row 1030 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 30\n    budget: 2 h\n    blocked on: Ian\n    due: 2026-11-04 09:00:00\n- row 1031 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 31\n- row 1032 [open OVERDUE] (Owner: ?) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 32\n    budget: 2 h\n- row 1033 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 33\n- row 1034 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 34\n    budget: 2 h\n- row 1035 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 35\n    due: 2026-11-04 09:00:00\n- row 1036 [open] (Owner: Framework) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 36\n    budget: 2 h\n    blocked on: Ian\n- row 1037 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 37\n- row 1038 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 38\n    budget: 2 h\n- row 1039 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 39\n- row 1040 [open] (Owner: Framework helper) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 40\n    budget: 2 h\n    due: 2026-11-04 09:00:00\n- row 1041 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 41\n- row 1042 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 42\n    budget: 2 h\n    blocked on: Ian\n- row 1043 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 43\n- row 1044 [open OVERDUE] (Owner: ?) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 44\n    budget: 2 h\n- row 1045 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 45\n    due: 2026-11-04 09:00:00\n- row 1046 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 46\n    budget: 2 h\n- row 1047 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 47\n- row 1048 [open] (Owner: Framework) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 48\n    budget: 2 h\n    blocked on: Ian\n- row 1049 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 49\n- row 1050 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 50\n    budget: 2 h\n    due: 2026-11-04 09:00:00\n- row 1051 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 51\n- row 1052 [open] (Owner: Framework helper) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 52\n    budget: 2 h\n- row 1053 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 53\n- row 1054 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 54\n    budget: 2 h\n    blocked on: Ian\n- row 1055 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 55\n    due: 2026-11-04 09:00:00\n- row 1056 [open OVERDUE] (Owner: ?) 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 56\n    budget: 2 h\n- row 1057 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 57\n- row 1058 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 58\n    budget: 2 h\n- row 1059 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 59\nIAN-CAUGHT MISTAKES OWED: 35 (oldest 1.23457e+06 hours) - each needs a mechanical mitigation (hook, check, guard) with MitigationRef set and State 'done' within 24 h; Framework owns making it happen.\n- mistake 1 [OVERDUE 25 h, open] a b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c\n- mistake 2 [0.05 h, None] \n- mistake 3 [OVERDUE 1.23457e+06 h, open] w\n- mistake 4 [0 h, open] w\n- mistake 5 [0.0001 h, open] w\n- mistake 10 [OVERDUE 24.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 11 [OVERDUE 25.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 12 [OVERDUE 26.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 13 [OVERDUE 27.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 14 [OVERDUE 28.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 15 [OVERDUE 29.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 16 [OVERDUE 30.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 17 [OVERDUE 31.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 18 [OVERDUE 32.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 19 [OVERDUE 33.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 20 [OVERDUE 34.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 21 [OVERDUE 35.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n... +18 more - SELECT Id, HoursOpen, What FROM oversight.vw_MistakeOwed (oq.py)\nGUARDS (7 days): claude_bash_guard 12/3, None None/1 (refusals/judged wrong; HOW-WE-BUILD 7: fix or trim a guard that costs more than it catches). python -I tools/guard_log.py week | recent | judge <id> right|wrong",
+  "hook": "THE BOARD (source of truth) - KorStandards oversight.vw_Board, Owners 'Framework', 'Framework helper' (every one of them this lead's), read 2026-11-03 01:48\n60 open row(s). THE GOAL IS NONE (Ian, 2 Nov): this is YOUR board - add every new item as a row, cross a row off (done, with evidence) the moment it is finished, and change a row on the board, never only in chat. A new row needs What (goal), DoneWhen and Budget (time, runs, what it may read) - the board refuses one without a Budget (F2, 2 Nov).\nPer owner: 'Framework' 20; 'Framework helper' 20\nCOMPACT (17168 chars would not fit the session-start limit): done-when, blocked-on and due are left out and titles cut to 40 chars. The full board: python -I \"C:\\VIsual Studio Projects\\Framework\\tools\\board_render.py\" --owner \"Framework\" --owner \"Framework helper\" --text\n- row 1000 [open] (Owner: Framework) 😀😀😀 word word word word word word word w...\n- row 1001 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1002 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1003 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1004 [open] (Owner: Framework helper) 😀😀😀 word word word word word word word w...\n- row 1005 [None OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1006 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1007 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1008 [open OVERDUE] (Owner: ?) 😀😀😀 word word word word word word word w...\n- row 1009 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1010 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1011 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1012 [open] (Owner: Framework) 😀😀😀 word word word word word word word w...\n- row 1013 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1014 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1015 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1016 [open] (Owner: Framework helper) 😀😀😀 word word word word word word word w...\n- row 1017 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1018 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1019 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1020 [open OVERDUE] (Owner: ?) 😀😀😀 word word word word word word word w...\n- row 1021 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1022 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1023 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1024 [open] (Owner: Framework) 😀😀😀 word word word word word word word w...\n- row 1025 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1026 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1027 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1028 [open] (Owner: Framework helper) 😀😀😀 word word word word word word word w...\n- row 1029 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1030 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1031 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1032 [open OVERDUE] (Owner: ?) 😀😀😀 word word word word word word word w...\n- row 1033 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1034 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1035 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1036 [open] (Owner: Framework) 😀😀😀 word word word word word word word w...\n- row 1037 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1038 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1039 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1040 [open] (Owner: Framework helper) 😀😀😀 word word word word word word word w...\n- row 1041 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1042 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1043 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1044 [open OVERDUE] (Owner: ?) 😀😀😀 word word word word word word word w...\n- row 1045 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1046 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1047 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1048 [open] (Owner: Framework) 😀😀😀 word word word word word word word w...\n- row 1049 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1050 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1051 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1052 [open] (Owner: Framework helper) 😀😀😀 word word word word word word word w...\n- row 1053 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1054 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1055 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1056 [open OVERDUE] (Owner: ?) 😀😀😀 word word word word word word word w...\n- row 1057 [open] (Owner: Framework) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1058 [open] (Owner: Framework helper) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\n- row 1059 [open OVERDUE] (Owner: ?) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\nIAN-CAUGHT MISTAKES OWED: 35 (oldest 1.23457e+06 hours) - each needs a mechanical mitigation (hook, check, guard) with MitigationRef set and State 'done' within 24 h; Framework owns making it happen.\n- mistake 1 [OVERDUE 25 h, open] a b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c\n- mistake 2 [0.05 h, None] \n- mistake 3 [OVERDUE 1.23457e+06 h, open] w\n- mistake 4 [0 h, open] w\n- mistake 5 [0.0001 h, open] w\n- mistake 10 [OVERDUE 24.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 11 [OVERDUE 25.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 12 [OVERDUE 26.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 13 [OVERDUE 27.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 14 [OVERDUE 28.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 15 [OVERDUE 29.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 16 [OVERDUE 30.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 17 [OVERDUE 31.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 18 [OVERDUE 32.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 19 [OVERDUE 33.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 20 [OVERDUE 34.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 21 [OVERDUE 35.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n... +18 more - SELECT Id, HoursOpen, What FROM oversight.vw_MistakeOwed (oq.py)\nGUARDS (7 days): claude_bash_guard 12/3, None None/1 (refusals/judged wrong; HOW-WE-BUILD 7: fix or trim a guard that costs more than it catches). python -I tools/guard_log.py week | recent | judge <id> right|wrong",
+  "tight": "THE BOARD (source of truth) - KorStandards oversight.vw_Board, Owners 'Framework', 'Framework helper' (every one of them this lead's), read 2026-11-03 01:48\n60 open row(s). THE GOAL IS NONE (Ian, 2 Nov): this is YOUR board - add every new item as a row, cross a row off (done, with evidence) the moment it is finished, and change a row on the board, never only in chat. A new row needs What (goal), DoneWhen and Budget (time, runs, what it may read) - the board refuses one without a Budget (F2, 2 Nov).\nPer owner: 'Framework' 20; 'Framework helper' 20\nCOMPACT (17168 chars would not fit the session-start limit): done-when, blocked-on and due are left out and titles cut to 0 chars. The full board: python -I \"C:\\VIsual Studio Projects\\Framework\\tools\\board_render.py\" --owner \"Framework\" --owner \"Framework helper\" --text\n- row 1000 [open] (Owner: Framework) ...\n- row 1001 [open] (Owner: Framework helper) ...\n- row 1002 [open OVERDUE] (Owner: ?) ...\n- row 1003 [open] (Owner: Framework) ...\n- row 1004 [open] (Owner: Framework helper) ...\n- row 1005 [None OVERDUE] (Owner: ?) ...\n- row 1006 [open] (Owner: Framework) ...\n- row 1007 [open] (Owner: Framework helper) ...\n- row 1008 [open OVERDUE] (Owner: ?) ...\n- row 1009 [open] (Owner: Framework) ...\n- row 1010 [open] (Owner: Framework helper) ...\n- row 1011 [open OVERDUE] (Owner: ?) ...\n- row 1012 [open] (Owner: Framework) ...\n- row 1013 [open] (Owner: Framework helper) ...\n- row 1014 [open OVERDUE] (Owner: ?) ...\n- row 1015 [open] (Owner: Framework) ...\n- row 1016 [open] (Owner: Framework helper) ...\n- row 1017 [open OVERDUE] (Owner: ?) ...\n- row 1018 [open] (Owner: Framework) ...\n- row 1019 [open] (Owner: Framework helper) ...\n- row 1020 [open OVERDUE] (Owner: ?) ...\n- row 1021 [open] (Owner: Framework) ...\n- row 1022 [open] (Owner: Framework helper) ...\n- row 1023 [open OVERDUE] (Owner: ?) ...\n- row 1024 [open] (Owner: Framework) ...\n- row 1025 [open] (Owner: Framework helper) ...\n- row 1026 [open OVERDUE] (Owner: ?) ...\n- row 1027 [open] (Owner: Framework) ...\n- row 1028 [open] (Owner: Framework helper) ...\n- row 1029 [open OVERDUE] (Owner: ?) ...\n- row 1030 [open] (Owner: Framework) ...\n- row 1031 [open] (Owner: Framework helper) ...\n- row 1032 [open OVERDUE] (Owner: ?) ...\n- row 1033 [open] (Owner: Framework) ...\n- row 1034 [open] (Owner: Framework helper) ...\n- row 1035 [open OVERDUE] (Owner: ?) ...\n- row 1036 [open] (Owner: Framework) ...\n- row 1037 [open] (Owner: Framework helper) ...\n- row 1038 [open OVERDUE] (Owner: ?) ...\n- row 1039 [open] (Owner: Framework) ...\n- row 1040 [open] (Owner: Framework helper) ...\n- row 1041 [open OVERDUE] (Owner: ?) ...\n- row 1042 [open] (Owner: Framework) ...\n- row 1043 [open] (Owner: Framework helper) ...\n- row 1044 [open OVERDUE] (Owner: ?) ...\n- row 1045 [open] (Owner: Framework) ...\n- row 1046 [open] (Owner: Framework helper) ...\n- row 1047 [open OVERDUE] (Owner: ?) ...\n- row 1048 [open] (Owner: Framework) ...\n- row 1049 [open] (Owner: Framework helper) ...\n- row 1050 [open OVERDUE] (Owner: ?) ...\n- row 1051 [open] (Owner: Framework) ...\n- row 1052 [open] (Owner: Framework helper) ...\n- row 1053 [open OVERDUE] (Owner: ?) ...\n- row 1054 [open] (Owner: Framework) ...\n- row 1055 [open] (Owner: Framework helper) ...\n- row 1056 [open OVERDUE] (Owner: ?) ...\n- row 1057 [open] (Owner: Framework) ...\n- row 1058 [open] (Owner: Framework helper) ...\n- row 1059 [open OVERDUE] (Owner: ?) ...\nIAN-CAUGHT MISTAKES OWED: 35 (oldest 1.23457e+06 hours) - each needs a mechanical mitigation (hook, check, guard) with MitigationRef set and State 'done' within 24 h; Framework owns making it happen.\n- mistake 1 [OVERDUE 25 h, open] a b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c b c\n- mistake 2 [0.05 h, None] \n- mistake 3 [OVERDUE 1.23457e+06 h, open] w\n- mistake 4 [0 h, open] w\n- mistake 5 [0.0001 h, open] w\n- mistake 10 [OVERDUE 24.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 11 [OVERDUE 25.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 12 [OVERDUE 26.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 13 [OVERDUE 27.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 14 [OVERDUE 28.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 15 [OVERDUE 29.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 16 [OVERDUE 30.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 17 [OVERDUE 31.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 18 [OVERDUE 32.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 19 [OVERDUE 33.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 20 [OVERDUE 34.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n- mistake 21 [OVERDUE 35.1 h, open] long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long...\n... +18 more - SELECT Id, HoursOpen, What FROM oversight.vw_MistakeOwed (oq.py)\nGUARDS (7 days): claude_bash_guard 12/3, None None/1 (refusals/judged wrong; HOW-WE-BUILD 7: fix or trim a guard that costs more than it catches). python -I tools/guard_log.py week | recent | judge <id> right|wrong",
+  "owed_unreadable": "!! IAN-CAUGHT MISTAKES OWED: UNREADABLE: login failed !! Read oversight.vw_MistakeOwed by hand (oq.py) - every Ian-caught mistake needs a mechanical mitigation within a day.",
+  "guards_unreadable": "!! GUARDS (7 days): UNREADABLE: login failed !! python -I tools/guard_log.py week",
+  "owed_empty": "IAN-CAUGHT MISTAKES OWED: 0 - every mistake Ian caught has a mitigation recorded done.",
+  "guards_empty": "None",
+  "single": "THE BOARD (source of truth) - KorStandards oversight.vw_Board, Owner 'Operations', read 2026-11-03 01:48\n3 open row(s). THE GOAL IS NONE (Ian, 2 Nov): this is YOUR board - add every new item as a row, cross a row off (done, with evidence) the moment it is finished, and change a row on the board, never only in chat. A new row needs What (goal), DoneWhen and Budget (time, runs, what it may read) - the board refuses one without a Budget (F2, 2 Nov).\n- row 1000 [open] 😀😀😀 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\u001c  \n    done when: done when 0\n    budget: 2 h\n    blocked on: Ian\n    due: 2026-11-04 09:00:00\n- row 1001 [open] xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 1\n- row 1002 [open OVERDUE] xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   tail\n    done when: done when 2\n    budget: 2 h"
+ }
+}

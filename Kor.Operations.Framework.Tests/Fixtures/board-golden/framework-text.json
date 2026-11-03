@@ -1,0 +1,85 @@
+{
+ "given_owners": [
+  "Framework"
+ ],
+ "owners": [
+  "Framework",
+  "Framework helper"
+ ],
+ "status": "live",
+ "rows": [
+  {
+   "Id": 1188,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "[KIDE K6] Known at start - kor start replaces board_render.py + kor_brain.py render",
+   "DoneWhen": "a cold no-tools session in each KOR module answers its five questions from the record alone; AND the resume shown is chosen by session (this session's own on compact/resume, else the newest from a session that did work) - a compaction by a session with no work does not change what a fresh start shows (found live 23:14, LaneState 74); AND FileChanged wired (kor fresh --file-changed --hook) with watchPaths from kor start (moved from K5)",
+   "DueLocal": null,
+   "BlockedOn": null,
+   "Budget": "3 h"
+  },
+  {
+   "Id": 1189,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "[KIDE K7] Enforced - a recorded issue/lesson with a check refuses the repeat",
+   "DoneWhen": "repeating a recorded mistake is refused by its check in a live session; then report READY FOR V5 to the Virtual Drafter",
+   "DueLocal": null,
+   "BlockedOn": null,
+   "Budget": "4 h"
+  },
+  {
+   "Id": 1193,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "A commit that does not build cannot be approved: the pre-push review builds every C# commit it reviews (dotnet build of the touched solution at that commit, in a temp worktree) and records changes with the compiler errors if it fails. From mistake 136 (Operations f321c37 committed unbuildable, tests ran on old binaries).",
+   "DoneWhen": "kor_review (or its kor port after K8) builds each reviewed C# commit; a deliberately unbuildable test commit gets verdict changes naming the error; mistake 136 State done with MitigationRef = that commit",
+   "DueLocal": null,
+   "BlockedOn": null,
+   "Budget": "2 h; after K7"
+  },
+  {
+   "Id": 1181,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "After ONE real job (Halifax v5) has run through the framework: keep and port to the app (.NET/C#) or DB ONLY the pieces that helped on it; DELETE the rest, do not port it (Ian 2 Nov: everything is built in app or db; Port WHAT? A bag of shit?). Candidates to keep: board + memory at session start, review before push, board-contradiction guard. Candidates to delete unless the job proves them: kor_task, stage_gate, scorecard, framework_selftest, guard_log.",
+   "DoneWhen": "Ian agrees the keep/delete list after Halifax v5; kept pieces live in the app or DB; deleted ones gone from every repo and hook",
+   "DueLocal": null,
+   "BlockedOn": null,
+   "Budget": "to be sized with Ian before starting; no work until he says go"
+  },
+  {
+   "Id": 1192,
+   "Owner": "Framework",
+   "State": "open",
+   "Flag": "",
+   "What": "Migration probes cannot doom their run: one shared proc (e.g. dbo.usp_ProbeRefusal @Sql, @AsUser) runs a probe in its own transaction, rolls back at once on XACT_STATE -1, returns error number/message/state - migrations call it instead of hand-writing TRY/CATCH + rollback. Rule 11: second instance of one class on 3 Nov (171 TEST run 2 and 3, 172 TEST run 1: error 3930, a step ran on a doomed transaction).",
+   "DoneWhen": "The proc is in KorStandards (a migration, OverLORD applies) with probes of its own; the next migration with probes uses it and its TEST run reports every refusal; a lint check that refuses a new migration hand-writing BEGIN CATCH around a probe without the proc",
+   "DueLocal": null,
+   "BlockedOn": null,
+   "Budget": "3 h; one migration; after K7"
+  }
+ ],
+ "owed": [],
+ "owed_status": "live",
+ "guards": [
+  {
+   "Guard": "look",
+   "Refusals": 154,
+   "JudgedWrong": 10
+  },
+  {
+   "Guard": "absence",
+   "Refusals": 209,
+   "JudgedWrong": 2
+  }
+ ],
+ "guards_status": "live",
+ "budget": null,
+ "python_full_command": "python -I \"C:\\VIsual Studio Projects\\Framework\\tools\\board_render.py\" --owner \"Framework\" --owner \"Framework helper\" --text",
+ "text": "THE BOARD (source of truth) - KorStandards oversight.vw_Board, Owners 'Framework', 'Framework helper' (every one of them this lead's), read 2026-11-03 01:47\n5 open row(s). THE GOAL IS NONE (Ian, 2 Nov): this is YOUR board - add every new item as a row, cross a row off (done, with evidence) the moment it is finished, and change a row on the board, never only in chat. A new row needs What (goal), DoneWhen and Budget (time, runs, what it may read) - the board refuses one without a Budget (F2, 2 Nov).\nPer owner: 'Framework' 5; 'Framework helper' 0\n- row 1188 [open] (Owner: Framework) [KIDE K6] Known at start - kor start replaces board_render.py + kor_brain.py render\n    done when: a cold no-tools session in each KOR module answers its five questions from the record alone; AND the resume shown is chosen by session (this session's own on compact/resume, else the newest from a session that did work) - a compaction by a session with no work does not change what a fresh start shows (found live 23:14, LaneState 74); AND FileChanged wired (kor fresh --file-changed --hook) with watchPaths from kor start (moved from K5)\n    budget: 3 h\n- row 1189 [open] (Owner: Framework) [KIDE K7] Enforced - a recorded issue/lesson with a check refuses the repeat\n    done when: repeating a recorded mistake is refused by its check in a live session; then report READY FOR V5 to the Virtual Drafter\n    budget: 4 h\n- row 1193 [open] (Owner: Framework) A commit that does not build cannot be approved: the pre-push review builds every C# commit it reviews (dotnet build of the touched solution at that commit, in a temp worktree) and records changes with the compiler errors if it fails. From mistake 136 (Operations f321c37 committed unbuildable, tests ran on old binaries).\n    done when: kor_review (or its kor port after K8) builds each reviewed C# commit; a deliberately unbuildable test commit gets verdict changes naming the error; mistake 136 State done with MitigationRef = that commit\n    budget: 2 h; after K7\n- row 1181 [open] (Owner: Framework) After ONE real job (Halifax v5) has run through the framework: keep and port to the app (.NET/C#) or DB ONLY the pieces that helped on it; DELETE the rest, do not port it (Ian 2 Nov: everything is built in app or db; Port WHAT? A bag of shit?). Candidates to keep: board + memory at session start, review before push, board-contradiction guard. Candidates to delete unless the job proves them: kor_task, stage_gate, scorecard, framework_selftest, guard_log.\n    done when: Ian agrees the keep/delete list after Halifax v5; kept pieces live in the app or DB; deleted ones gone from every repo and hook\n    budget: to be sized with Ian before starting; no work until he says go\n- row 1192 [open] (Owner: Framework) Migration probes cannot doom their run: one shared proc (e.g. dbo.usp_ProbeRefusal @Sql, @AsUser) runs a probe in its own transaction, rolls back at once on XACT_STATE -1, returns error number/message/state - migrations call it instead of hand-writing TRY/CATCH + rollback. Rule 11: second instance of one class on 3 Nov (171 TEST run 2 and 3, 172 TEST run 1: error 3930, a step ran on a doomed transaction).\n    done when: The proc is in KorStandards (a migration, OverLORD applies) with probes of its own; the next migration with probes uses it and its TEST run reports every refusal; a lint check that refuses a new migration hand-writing BEGIN CATCH around a probe without the proc\n    budget: 3 h; one migration; after K7\nIAN-CAUGHT MISTAKES OWED: 0 - every mistake Ian caught has a mitigation recorded done.\nGUARDS (7 days): look 154/10, absence 209/2 (refusals/judged wrong; HOW-WE-BUILD 7: fix or trim a guard that costs more than it catches). python -I tools/guard_log.py week | recent | judge <id> right|wrong"
+}

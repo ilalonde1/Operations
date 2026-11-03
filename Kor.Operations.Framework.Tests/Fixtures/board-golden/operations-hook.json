@@ -1,0 +1,18 @@
+{
+ "given_owners": [
+  "Operations"
+ ],
+ "owners": [
+  "Operations",
+  "Operations helper"
+ ],
+ "status": "live",
+ "rows": [],
+ "owed": [],
+ "owed_status": "live",
+ "guards": [],
+ "guards_status": "live",
+ "budget": 9900,
+ "python_full_command": "python -I \"C:\\VIsual Studio Projects\\Framework\\tools\\board_render.py\" --owner \"Operations\" --owner \"Operations helper\" --text",
+ "text": "THE BOARD (source of truth) - KorStandards oversight.vw_Board, Owners 'Operations', 'Operations helper' (every one of them this lead's), read 2026-11-03 01:47\n0 open row(s). THE GOAL IS NONE (Ian, 2 Nov): this is YOUR board - add every new item as a row, cross a row off (done, with evidence) the moment it is finished, and change a row on the board, never only in chat. A new row needs What (goal), DoneWhen and Budget (time, runs, what it may read) - the board refuses one without a Budget (F2, 2 Nov).\nPer owner: 'Operations' 0; 'Operations helper' 0"
+}

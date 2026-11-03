@@ -12,8 +12,10 @@ public sealed record Checked(int Id, string Lane, string Name, string Kind, stri
                              string? Blob, string? HeadBlob, Verdict Verdict, string Why);
 
 /// <param name="Partial">the time budget ran out: some rows are Unverifiable "cap hit" and were not written.</param>
+/// <param name="RepoDirs">each repo leaf -> the folder git was read in (K6: the watch list's absolute paths).</param>
 public sealed record FreshnessReport(IReadOnlyList<Checked> Rows, IReadOnlyDictionary<string, string?> RepoHeads, bool Written,
-                                     bool Partial = false, TimeSpan Elapsed = default)
+                                     bool Partial = false, TimeSpan Elapsed = default,
+                                     IReadOnlyDictionary<string, string>? RepoDirs = null)
 {
     public int Count(Verdict v) => Rows.Count(r => r.Verdict == v);
 }
@@ -96,6 +98,7 @@ public static class Freshness
         var rows = Load(db, where, a, b);
         var results = new List<Checked>();
         var heads = new Dictionary<string, string?>(StringComparer.Ordinal);
+        var dirs = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var group in rows.Where(r => r.SourceKind == "git").GroupBy(r => r.Repo ?? ""))
         {
             if (Over())
@@ -119,6 +122,7 @@ public static class Freshness
                 continue;
             }
             heads[group.Key] = Lower(tree.Commit);
+            dirs[group.Key] = dir;
             foreach (var r in group)
             {
                 var head = tree.Blobs.TryGetValue(r.Path!, out var hb) ? Lower(hb) : null;
@@ -143,7 +147,7 @@ public static class Freshness
         }
         results.Sort((x, y) => x.Id.CompareTo(y.Id));
         if (write) Write(db, results);
-        return new FreshnessReport(results, heads, write, partial, clock.Elapsed);
+        return new FreshnessReport(results, heads, write, partial, clock.Elapsed, dirs);
     }
 
     private static Checked Result(Row r, string? head, Verdict v, string why) =>
@@ -194,7 +198,7 @@ public static class Freshness
     /// </summary>
     public static HeadTree? GitHead(string repoDir, IReadOnlyCollection<string> paths)
     {
-        var head = Git.Run(repoDir, TimeSpan.FromSeconds(3), "rev-parse", "HEAD")?.Trim();
+        var head = Git.HeadFast(repoDir);   // from .git's files (K6 start budget); git itself on anything unusual
         if (head is null) return null;
         var blobs = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var chunk in paths.Chunk(100))

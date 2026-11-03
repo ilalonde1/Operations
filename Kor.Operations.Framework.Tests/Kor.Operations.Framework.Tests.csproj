@@ -16,6 +16,8 @@
   <ItemGroup>
     <!-- Real Claude Code hook input captured from a live session (2 Nov 2026): the PowerShell tool's shape, never guessed. -->
     <None Include="Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- K6: board_render.py's own reads and text, captured 3 Nov 2026 01:47 in one Python process (the golden). -->
+    <None Include="Fixtures\board-golden\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.Framework\Kor.Operations.Framework.csproj" />
