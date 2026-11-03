@@ -41,8 +41,61 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
     public const string IndexName = "_index";
     public const string OfficeLane = "Office";
 
-    /// <summary>The session-start hook's view: which session is starting, and how (startup|resume|clear|compact|fork).</summary>
-    public sealed record Start(string? SessionId, string? Source);
+    /// <summary>The session-start hook's view: which session is starting, and how (startup|resume|clear|compact|fork),
+    /// and its transcript (the hook input's transcript_path).</summary>
+    public sealed record Start(string? SessionId, string? Source, string? TranscriptPath = null);
+
+    /// <summary>A compaction summary as the session's own transcript holds it.</summary>
+    public sealed record TranscriptSummary(string Text, DateTimeOffset At, string Path);
+
+    /// <summary>
+    /// The NEWEST compaction summary in a Claude Code transcript (a JSONL line with "isCompactSummary": true, its
+    /// message.content a string or text blocks), or null. Found live 3 Nov 02:45 on Claude Code 2.1.317: the compacted
+    /// session's own SessionStart (source compact) runs BEFORE its PostCompact hook stores the summary as a LaneState
+    /// (record part done 09:44:59.58, capture-compact done 09:45:00.32), but the transcript already holds the summary
+    /// (written 09:44:58.35). The file is being written by Claude Code: it is opened for shared read.
+    /// </summary>
+    public static TranscriptSummary? NewestCompactSummary(string? transcriptPath)
+    {
+        if (string.IsNullOrWhiteSpace(transcriptPath) || !File.Exists(transcriptPath)) return null;
+        var candidates = new List<string>();
+        try
+        {
+            using var fs = new FileStream(transcriptPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var sr = new StreamReader(fs);
+            for (var line = sr.ReadLine(); line is not null; line = sr.ReadLine())
+                if (line.Contains("\"isCompactSummary\"", StringComparison.Ordinal)) candidates.Add(line);
+        }
+        catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
+        // newest first; a line that only MENTIONS the key in its text is not the flag and is skipped
+        for (var i = candidates.Count - 1; i >= 0; i--)
+            if (ParseCompactSummary(candidates[i], transcriptPath) is { } s) return s;
+        return null;
+    }
+
+    private static TranscriptSummary? ParseCompactSummary(string last, string transcriptPath)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(last);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("isCompactSummary", out var flag) || flag.ValueKind != System.Text.Json.JsonValueKind.True) return null;
+            if (!root.TryGetProperty("message", out var msg) || !msg.TryGetProperty("content", out var content)) return null;
+            var text = content.ValueKind == System.Text.Json.JsonValueKind.String ? content.GetString()
+                : content.ValueKind == System.Text.Json.JsonValueKind.Array
+                    ? string.Join("\n", content.EnumerateArray()
+                        .Where(b => b.ValueKind == System.Text.Json.JsonValueKind.Object && b.TryGetProperty("text", out var t) && t.ValueKind == System.Text.Json.JsonValueKind.String)
+                        .Select(b => b.GetProperty("text").GetString()))
+                    : null;
+            if (string.IsNullOrWhiteSpace(text)) return null;
+            var at = root.TryGetProperty("timestamp", out var ts) && ts.ValueKind == System.Text.Json.JsonValueKind.String
+                     && DateTimeOffset.TryParse(ts.GetString(), System.Globalization.CultureInfo.InvariantCulture,
+                                                System.Globalization.DateTimeStyles.AssumeUniversal, out var t0) ? t0 : File.GetLastWriteTimeUtc(transcriptPath);
+            return new TranscriptSummary(Capture.Redact.Text(text)!, at, transcriptPath);
+        }
+        catch (System.Text.Json.JsonException) { return null; }
+    }
 
     /// <summary>
     /// K6 - known at start. ONE korbrain_app unit of work (the caller's): the module's open query-kind issues are checked
@@ -79,8 +132,9 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
         r.NextResult();
         var end = ReadEvents(r).FirstOrDefault();
         StartTrace.Mark("batch read");
+        var transcript = start.Source == "compact" ? NewestCompactSummary(start.TranscriptPath) : null;
         return new ModuleState(module, DateTimeOffset.Now, fresh, records, open, office,
-                               ChooseResume(resumes, start), end, events, checkLines);
+                               ChooseResume(resumes, start, transcript), end, events, checkLines);
     }
 
     /// <summary>
@@ -88,14 +142,23 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
     /// -> the newest row written by THIS session (its compaction summary or a state it wrote). Otherwise (startup, clear,
     /// fork, or no row of its own) -> the newest row from a session that did work in this module. Rows newest first.
     /// </summary>
-    public static ResumeChoice ChooseResume(IReadOnlyList<ResumeRow> rows, Start start)
+    public static ResumeChoice ChooseResume(IReadOnlyList<ResumeRow> rows, Start start, TranscriptSummary? transcript = null)
     {
         var ordered = rows.GroupBy(x => x.Id).Select(g => g.First())
                           .OrderByDescending(x => x.WrittenAtUtc).ThenByDescending(x => x.Id).ToList();
         ResumeRow? chosen = null;
         string why;
         var own = start.SessionId is { Length: > 0 } me ? ordered.FirstOrDefault(x => x.Session == me) : null;
-        if (start.Source is "compact" or "resume" && own is not null)
+        // source compact: this session's NEWEST compaction summary is in its own transcript before PostCompact stores it
+        // (see NewestCompactSummary) - it is the resume unless a stored row of its own is at least as new. Id 0 = not stored.
+        if (start.Source == "compact" && transcript is not null && (own is null || own.WrittenAtUtc < transcript.At))
+        {
+            chosen = new ResumeRow(0, transcript.Text, "this session's compaction (read from its transcript)", transcript.At,
+                                   start.SessionId, IsCompaction: true, SessionDidWork: true);
+            why = "this session's own compaction summary (source compact), read from its transcript - its PostCompact hook " +
+                  "stores it as a LaneState just after this start";
+        }
+        else if (start.Source is "compact" or "resume" && own is not null)
         {
             chosen = own;
             why = $"this session's own ({(own.IsCompaction ? "its compaction summary" : "a state it wrote")}; source {start.Source})";

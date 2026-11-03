@@ -27,7 +27,7 @@ public static partial class Program
             throw new ArgumentException("--hook prints the SessionStart JSON and --text prints plain text: give one (review row 194)");
         if (hook && part == "all")
             throw new ArgumentException("--hook prints ONE part's SessionStart JSON: --part record or --part board (one hook entry each)");
-        string? session = o.Get("--session"), source = o.Get("--start-source");
+        string? session = o.Get("--session"), source = o.Get("--start-source"), transcript = null;
         var dir = o.Get("--dir");
         if (hook && stdin() is { } raw)
         {
@@ -36,6 +36,7 @@ public static partial class Program
                 var h = ClaudeCapture.Parse(raw);
                 session ??= h.SessionId;
                 source ??= h.Source;
+                transcript = h.TranscriptPath;
                 if (dir is null && h.Cwd is { } cwd && Directory.Exists(cwd)) dir = cwd;
             }
             catch (JsonException) { /* not the hook's JSON: start with no session (the startup rule) */ }
@@ -49,7 +50,7 @@ public static partial class Program
         IReadOnlyList<string>? watch = null;
         if (part is "record" or "all")
         {
-            var start = new ModuleState.Start(session, source);
+            var start = new ModuleState.Start(session, source, transcript);
             (string, IReadOnlyList<string>) Work(BrainDb d)
             {
                 var s = ModuleState.Load(d, module, start, dir, freshnessCap: TimeSpan.FromSeconds(5));

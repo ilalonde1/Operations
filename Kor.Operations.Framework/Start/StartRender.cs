@@ -132,7 +132,8 @@ public static class StartRender
         var lines = new List<string>();
         if (c.Chosen is { } r)
         {
-            lines.Add($"RESUME - LaneState #{r.Id}, written {Stamp(r.WrittenAtUtc)} by {r.WrittenBy}" +
+            lines.Add((r.Id == 0 ? $"RESUME - not yet a LaneState: {r.WrittenBy}, written {Stamp(r.WrittenAtUtc)}"
+                                 : $"RESUME - LaneState #{r.Id}, written {Stamp(r.WrittenAtUtc)} by {r.WrittenBy}") +
                       (r.Session is null ? "" : $" (session {r.Session})") + $"; chosen: {c.Why}:");
             // the first ResumeKeep characters are a floor: kept whole, the note goes AFTER them
             var block = r.ResumeBlock.Trim();

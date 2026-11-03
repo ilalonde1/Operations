@@ -256,6 +256,54 @@ public class StartTests
         Assert.Contains("wrote none", none.Why);
     }
 
+    /// <summary>A JSONL line with the keys and shape of a real Claude Code 2.1.317 compaction entry (transcript
+    /// aef01af3-..., line 62, 3 Nov 02:44): type user, isCompactSummary true, message.content a string.</summary>
+    private static string SummaryLine(string text, string at) => JsonSerializer.Serialize(new Dictionary<string, object>
+    {
+        ["parentUuid"] = "p", ["isSidechain"] = false, ["type"] = "user", ["isCompactSummary"] = true, ["isVisibleInTranscriptOnly"] = true,
+        ["message"] = new Dictionary<string, object> { ["role"] = "user", ["content"] = text }, ["timestamp"] = at, ["sessionId"] = "s",
+    });
+
+    [Fact]
+    public void TheNewestRealCompactSummaryIsReadFromTheTranscript()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"kor-k6-{Guid.NewGuid():N}.jsonl");
+        try
+        {
+            File.WriteAllLines(path, new[]
+            {
+                JsonSerializer.Serialize(new { type = "user", message = new { role = "user", content = "hello" } }),
+                SummaryLine("OLD SUMMARY", "2026-11-03T09:00:00.000Z"),
+                JsonSerializer.Serialize(new { type = "system", subtype = "compact_boundary" }),
+                SummaryLine("NEW SUMMARY", "2026-11-03T09:44:58.348Z"),
+                // a later line that only MENTIONS the key in its text is not a compaction entry
+                JsonSerializer.Serialize(new { type = "assistant", message = new { role = "assistant", content = "the \"isCompactSummary\" flag" } }),
+            });
+            var s = ModuleState.NewestCompactSummary(path)!;
+            Assert.Equal("NEW SUMMARY", s.Text);
+            Assert.Equal(DateTimeOffset.Parse("2026-11-03T09:44:58.348Z"), s.At);
+            Assert.Null(ModuleState.NewestCompactSummary(path + ".missing"));
+            Assert.Null(ModuleState.NewestCompactSummary(null));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void OnCompactTheSessionsOwnSummaryFromItsTranscriptIsTheResumeUntilItIsStored()
+    {
+        var rows = new[] { R(3, 1, "other", true, true), R(1, 9, null, false, false) };
+        var t = new ModuleState.TranscriptSummary("MY SUMMARY", DateTimeOffset.Now, "x.jsonl");
+        var c = ModuleState.ChooseResume(rows, new ModuleState.Start("me", "compact"), t);
+        Assert.Equal(0, c.Chosen!.Id);
+        Assert.Equal("MY SUMMARY", c.Chosen.ResumeBlock);
+        Assert.Contains("RESUME - not yet a LaneState", StartRender.Record(BigState(0, 0, 0, 10) with { Resume = c }, null));
+        // once stored (a row of this session at least as new), the stored row is the resume
+        var stored = rows.Append(R(4, 0, "me", true, false) with { WrittenAtUtc = t.At.AddSeconds(1) }).ToArray();
+        Assert.Equal(4, ModuleState.ChooseResume(stored, new ModuleState.Start("me", "compact"), t).Chosen!.Id);
+        // a startup never takes a transcript summary
+        Assert.Equal(3, ModuleState.ChooseResume(rows, new ModuleState.Start("me", "startup"), t).Chosen!.Id);
+    }
+
     // ---- unreadable / late -> the cache, loudly ---------------------------------------------------------------------
     [Fact]
     public void AnUnreadableDbGivesTheCachedRenderWithItsAgeLoudly()
