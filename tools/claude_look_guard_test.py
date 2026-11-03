@@ -108,8 +108,22 @@ LOOKED["a grep that mentions model-render"] = (
 MISSES["a real takeoff model-render run"] = (
     [B(r'"C:\VIsual Studio Projects\KOR.Drafter\work\_tools\takeoff\0f3e4ee4\takeoff.exe" model-render model.e2k model.png')],
     "Rendered - done.", "drawing")
+# --- ALLOWED: running the F8 board render is not a drawing run (Framework row 151, 2 Nov: six false refusals; the
+# drawing rule ended in render\.py with no word boundary until KorStandards 165)
+LOOKED["a board_render.py run is not a drawing"] = (
+    [B('python -I "C:/VIsual Studio Projects/Framework/tools/board_render.py" --owner Framework --text')],
+    "Board read - done.")
+# --- REFUSED: a real render.py run still counts after 165
+MISSES["a real render.py run"] = (
+    [B(r"python -I tools/render.py --job 31180")],
+    "Rendered - done.", "drawing")
 # --- ALLOWED: no completion claim at all
 NO_CLAIM = ([E(r"C:\x\tools\drafted_set.py")], "Working on the drawing changes next.")
+# --- ALLOWED: "done-when" / "done when" names a board column, it is not a claim (row 151, 2 Nov)
+NO_CLAIMS = {
+    "done-when": "Row 136's done-when asks for a red test; next I write it.",
+    "done when": "Its done when line names the finish; next I write the test.",
+}
 
 fails = 0
 for name, (calls, text, kind) in MISSES.items():
@@ -124,6 +138,10 @@ for name, (calls, text) in LOOKED.items():
 why = verdict(NO_CLAIM[1], NO_CLAIM[0], RULES)
 print(("PASS" if why is None else "FAIL") + "  allowed  no claim word")
 fails += why is not None
+for name, text in NO_CLAIMS.items():
+    why = verdict(text, NO_CLAIM[0], RULES)
+    print(("PASS" if why is None else "FAIL") + f"  allowed  '{name}' is not a claim")
+    fails += why is not None
 
 
 def transcript(calls, final_text):

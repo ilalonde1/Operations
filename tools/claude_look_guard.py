@@ -43,8 +43,10 @@ import sys
 import time
 
 # Repo rule 7: raw strings for every regex.
+# "done(?![\s-]+when)": "done-when" / "done when" names the board's finish-line column, not a claim (Framework row 151,
+# 2 Nov 2026 - refused correct replies that quoted a row's done-when).
 CLAIM = re.compile(
-    r"\b(?:done|fixed|built|rebuilt|published|deployed|applied|verified|landed|shipped|works|passes|passed"
+    r"\b(?:done(?![\s-]+when\b)|fixed|built|rebuilt|published|deployed|applied|verified|landed|shipped|works|passes|passed"
     r"|complete|completed|ready to (?:send|issue|go)|all good|confirmed working)\b", re.I)
 COMMIT_MSG = re.compile(r"""-m\s+(?:"(?:[^"\\]|\\.)*"|'[^']*'|@'.*?'@)""", re.S)
 CACHE_S = 600
