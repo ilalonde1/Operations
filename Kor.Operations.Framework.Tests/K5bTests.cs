@@ -311,9 +311,9 @@ public class K5bTests
         Assert.Equal((int?)issue.Id, RecordStore.Get(db, Id(cleanLine, @"REGRESSION #(\d+) open"))!.RegressionOf);
     }
 
-    // review row 181: when git cannot read the folder the run was in, the run is 'error' - never treated as a clean tree
+    // review rows 181, 186: when git cannot read the folder the run was in, nothing is recorded - never a clean tree
     [Fact]
-    public void LiveAFailWhereGitCannotReadIsAnErrorAndOpensNothing()
+    public void LiveAFailWhereGitCannotReadRecordsNothingAndOpensNothing()
     {
         using var db = BrainDb.OpenRolledBack();
         using var repo = TempRepo.Create();
@@ -323,7 +323,7 @@ public class K5bTests
         try
         {
             var line = Assert.Single(TestRunIssues.Map(db, test, "dotnet test", TestFailOut, notRepo, "k5b-test"));
-            Assert.Empty(BrainStore.ChecksOf(issue.Id, db).Where(e => e.Id > 0 && e.Outcome != "pass"));   // no event: git confirmed no commit to cite (row 184)
+            Assert.DoesNotContain(BrainStore.ChecksOf(issue.Id, db), e => e.Outcome != "pass");   // only the setup pass: git could not read the folder, so no commit was confirmed and nothing was recorded (rows 184, 186)
             Assert.Contains("not recorded (no commit to cite)", line);
             Assert.DoesNotContain("REGRESSION", line);
             Assert.Null(RecordStore.OpenIssueByName(db, Lane, $"fail-no-git (regression of #{issue.Id})"));
