@@ -134,7 +134,7 @@ public class StartSplitTests
     {
         var s = State(Handover(LongSection(5)), ManySourced(40)) ;
         var split = StartRender.Record(s, StartRender.HookBudget, split: true);
-        Assert.Contains("RECORDS (current): 8 decisions, 8 lessons, 8 findings, 8 dead, 8 other - on the session-start parts " +
+        Assert.Contains("RECORDS (current): 8 decisions, 8 lessons, 8 findings, 8 dead ends, 8 other - on the session-start parts " +
                         "'KNOWN AT START - RECORDS, page N of M' beside this one", split);
         Assert.DoesNotContain(EntryIds(split), id => id >= 200_000);
         Assert.Contains("the RECORDS (decisions, lessons, findings, dead ends)", StartRender.PartsLine("zz"));

@@ -173,7 +173,7 @@ public static class StartRender
     /// One line, so no compaction can separate it from the page.
     /// </summary>
     public const string NotReadLine =
-        "Everything a session started here knows at start is on this page and its KNOWN AT START parts (STATE NOW, MEMORY) and THE BOARD. " +
+        "Everything a session started here knows at start is on this page and its KNOWN AT START parts (STATE NOW, RECORDS, MEMORY) and THE BOARD. " +
         "Anything not on them was NOT read - answer 'not checked', never a value. " +
         "A command written as text runs nothing and returns nothing: never write a tool call or its result yourself - a result you did not " +
         "receive from a real tool call is invented.";
@@ -187,7 +187,7 @@ public static class StartRender
 
     /// <summary>The split record part's line in place of the records: their counts and the pages that carry them.</summary>
     private static string RecordsLine(string module, List<StartRecord> sourced) =>
-        "RECORDS (current): " + string.Join(", ", RecordGroups(sourced).Select(g => $"{g.Rows.Count} {g.Title.Split(' ')[0].ToLowerInvariant()}")) +
+        "RECORDS (current): " + string.Join(", ", RecordGroups(sourced).Select(g => $"{g.Rows.Count} {Label(g.Title)}")) +
         " - on the session-start parts 'KNOWN AT START - RECORDS, page N of M' beside this one, newest first; all: " +
         $"kor start --module \"{module}\" --part records --text";
 
@@ -215,7 +215,7 @@ public static class StartRender
         string GroupHead(string title, int count, bool continued) =>
             continued ? $"{title} (continued):" : $"{title} ({count}, current, newest first):";
         var counts = groups.ToDictionary(g => g.Title, g => g.Rows.Count);
-        var empty = groups.Where(g => g.Rows.Count == 0).Select(g => $"{g.Title.Split(' ')[0]}: none current.").ToList();
+        var empty = groups.Where(g => g.Rows.Count == 0).Select(g => $"{Label(g.Title).ToUpperInvariant()}: none current.").ToList();
         // the width ladder (as the board's COMPACT): the widest description that puts EVERY record on the wired pages; a
         // record is never left off for a longer description of another. -1 = id and name only.
         static string Entry(StartRecord r, int width) => width switch
@@ -311,10 +311,14 @@ public static class StartRender
     }
 
     private static string RecordsWhere(string module, int width) =>
-        $"The module's current sourced records (brain.Memory), newest first in each kind. A record's body: kor memory --module \"{module}\"." +
+        $"The module's current sourced records (brain.Memory), newest first in each kind. A record's body: kor memory --module \"{module}\". " +
+        "Listed by their stored status: this start's freshness check is on the record part, and a record its STALE section names is stale here too." +
         (width == int.MaxValue ? "" : width > 0 ? $" Descriptions are cut to {width} chars here so that every record fits the session-start pages."
             : width == 0 ? " Descriptions are left out here so that every record fits the session-start pages."
             : " Only ids and names here, so that every record fits the session-start pages.");
+
+    /// <summary>A group's name in a count: "decisions", "lessons", "findings", "dead ends", "other".</summary>
+    private static string Label(string title) => title.StartsWith("DEAD ENDS", StringComparison.Ordinal) ? "dead ends" : title.Split(' ')[0].ToLowerInvariant();
 
     private static List<(string Title, List<StartRecord> Rows)> RecordGroups(List<StartRecord> sourced)
     {
