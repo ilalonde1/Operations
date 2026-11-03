@@ -14,8 +14,9 @@ namespace Kor.Operations.Framework.Capture;
 /// FALSE POSITIVE - a separator inside a quote that also holds an escaped quote; FALSE NEGATIVE - an unbalanced quote
 /// outside any string (<c>don't</c> unquoted, an escaped \') hides every later command, and a "&lt;&lt;TAG" that is
 /// not a heredoc (<c>-m "use &lt;&lt;EOF"</c>, <c>$((1&lt;&lt;2))</c>) blanks every later line until one equals TAG.
-/// Migration and gate file names are read from the neutral copy; their patterns cannot hold a blanked character, so
-/// the effect can only be a missed match, never a changed name.
+/// Migration and gate file names are FOUND on the neutral copy but READ from the original, widened to the whole token
+/// (<see cref="NameAt"/>; a quoted name to its closing quote), so a '(' or ';' inside a quoted name neither cuts it
+/// short nor hands back its later half (review row 87).
 ///
 /// Outcome is read from the OUTPUT, never assumed: a fail marker beats a pass marker; with neither, a non-zero exit
 /// (PostToolUseFailure's "Exit code N") is 'fail', otherwise 'unknown'.
@@ -35,9 +36,10 @@ public static class ToolClassifier
 
     private static readonly Regex DotnetTest = new(Pos + PathPrefix + @"dotnet(?:\.exe)?[""']?\s+test\b(?<args>[^\n]*)", O);
     private static readonly Regex DotnetBuild = new(Pos + PathPrefix + @"dotnet(?:\.exe)?[""']?\s+build\b(?<args>[^\n]*)", O);
-    private static readonly Regex Sqlcmd = new(Pos + PathPrefix + @"sqlcmd(?:\.exe)?[""']?\s[^\n;|]*?-i\s+[""']?[^""'\n]*?[\\/]db[\\/](?<file>\d{3}_[^""'\s\\/]+\.sql)", O);
+    private static readonly Regex Sqlcmd = new(Pos + PathPrefix + @"sqlcmd(?:\.exe)?[""']?\s[^\n;|]*?-i\s+[""']?[^""'\n]*?[\\/]db[\\/](?<file>\d{3}_[^""'\\/\n]+?\.sql)", O);
     private static readonly Regex KorSql = new(@"(?:^|[;&|(\n]|-File)\s*" + PathPrefix + @"Invoke-KorSqlScript(?:\.ps1)?[""']?(?<rest>[^\n;|]*)", O);
-    private static readonly Regex SqlFile = new(@"(?<file>\d{3}_[^""'\s\\/]+\.sql)", O);
+    // Lazy and space-tolerant: a blanked character may sit inside the name; NameAt reads it whole and MigrationName decides.
+    private static readonly Regex SqlFile = new(@"(?<file>\d{3}_[^""'\\/\n]+?\.sql)", O);
     private static readonly Regex StageGate = new(Pos + PathPrefix + @"python[\w.]*[""']?(?:\s+-\w+)*\s+" + PathPrefix + @"stage_gate\.py[""']?\s+run\s+[""']?(?<file>[^""'\s;&|]+)", O);
 
     private static readonly Regex ExitCode = new(@"\AExit code (?<n>-?\d+)", O);
@@ -55,13 +57,42 @@ public static class ToolClassifier
             return Make("test", "dotnet test" + Args(m.Groups["args"], command), TestOutcome(output, exitCode), command, output, TestSummary);
         if ((m = DotnetBuild.Match(neutral)).Success)
             return Make("build", "dotnet build" + Args(m.Groups["args"], command), BuildOutcome(output, exitCode), command, output, BuildSummary);
-        if ((m = Sqlcmd.Match(neutral)).Success)
-            return Make("migration", m.Groups["file"].Value, MigrationOutcome(output, exitCode), command, output, MigrationSummary);
-        if ((m = KorSql.Match(neutral)).Success && SqlFile.Match(m.Groups["rest"].Value) is { Success: true } f)
-            return Make("migration", f.Groups["file"].Value, MigrationOutcome(output, exitCode), command, output, MigrationSummary);
-        if ((m = StageGate.Match(neutral)).Success)
-            return Make("gate", m.Groups["file"].Value, GateOutcome(output, exitCode), command, output, GateSummary);
+        string? name;
+        if ((m = Sqlcmd.Match(neutral)).Success && (name = NameAt(command, neutral, m.Groups["file"].Index, m.Groups["file"].Length, MigrationName)) is not null)
+            return Make("migration", name, MigrationOutcome(output, exitCode), command, output, MigrationSummary);
+        if ((m = KorSql.Match(neutral)).Success && SqlFile.Match(m.Groups["rest"].Value) is { Success: true } f
+            && (name = NameAt(command, neutral, m.Groups["rest"].Index + f.Index, f.Length, MigrationName)) is not null)
+            return Make("migration", name, MigrationOutcome(output, exitCode), command, output, MigrationSummary);
+        if ((m = StageGate.Match(neutral)).Success && (name = NameAt(command, neutral, m.Groups["file"].Index, m.Groups["file"].Length, null)) is not null)
+            return Make("gate", name, GateOutcome(output, exitCode), command, output, GateSummary);
         return null;
+    }
+
+    private static readonly Regex MigrationName = new(@"^\d{3}_[^""'\s\\/]+\.sql$", O);
+
+    /// <summary>
+    /// The whole file name the match sits in, read from the ORIGINAL text (review row 87: a blanked '(' or ';' inside a
+    /// quoted name must not cut it short or hand back its later half). The match span is widened left and right to the
+    /// token's ends: whitespace, a quote, or a path separator (left only) in the original, or a REAL shell separator
+    /// (one still present in the neutral copy). A widened name that no longer fits <paramref name="shape"/> is a miss.
+    /// </summary>
+    internal static string? NameAt(string original, string neutral, int index, int length, Regex? shape)
+    {
+        bool Real(int i) => neutral[i] is ';' or '&' or '|' && neutral[i] == original[i];
+        bool End(int i) => char.IsWhiteSpace(original[i]) || original[i] is '"' or '\'' || Real(i);
+        var start = index;
+        while (start > 0 && !End(start - 1) && original[start - 1] is not ('/' or '\\')) start--;
+        var end = index + length;
+        if (start > 0 && original[start - 1] is '"' or '\'')
+        {
+            // A quoted name runs to its closing quote (spaces included: "C:/VIsual Studio Projects/x/stage_gates.json").
+            var close = original.IndexOf(original[start - 1], start);
+            end = Math.Max(end, close < 0 ? original.Length : close);
+        }
+        else
+            while (end < original.Length && !End(end)) end++;
+        var name = original[start..end];
+        return shape is null || shape.IsMatch(name) ? name : null;
     }
 
     private static readonly Regex HeredocStart = new(@"(?<!<)<<(?!<)-?\s*[""']?(?<tag>\w+)[""']?", RegexOptions.CultureInvariant);

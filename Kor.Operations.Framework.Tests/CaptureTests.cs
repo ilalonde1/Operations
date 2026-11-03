@@ -173,6 +173,19 @@ public class CaptureTests
         Assert.Equal(c.Length, ToolClassifier.Neutralise(c).Length);
     }
 
+    [Theory]   // review row 87: a blanked character inside a quoted name must not change the name recorded
+    [InlineData("python -I tools/stage_gate.py run \"gate(1).json\"", "gate", "gate(1).json")]
+    [InlineData("python -I \"C:/VIsual Studio Projects/Framework/tools/stage_gate.py\" run \"C:/VIsual Studio Projects/Framework/stage_gates.json\"", "gate", "C:/VIsual Studio Projects/Framework/stage_gates.json")]
+    [InlineData("pwsh -File \"C:/x/Invoke-KorSqlScript.ps1\" -Path \"C:/x/db/130_a;131_b.sql\" -Database KorStandards", "migration", "130_a;131_b.sql")]
+    [InlineData("sqlcmd -S s -i \"C:/x/db/130_a(b).sql\"", "migration", "130_a(b).sql")]
+    [InlineData("python -I tools/stage_gate.py run p.json; echo done", "gate", "p.json")]
+    public void FileNamesAreReadWholeFromTheOriginal(string command, string kind, string expected)
+    {
+        var t = ToolClassifier.Classify(command, "");
+        Assert.Equal(kind, t!.Kind);
+        Assert.Equal(expected, t.Ref);
+    }
+
     [Fact]
     public void ANegativeExitFailsAMigrationWithNoMarker()
     {
