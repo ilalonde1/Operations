@@ -8,11 +8,14 @@ namespace Kor.Operations.Framework.Records;
 /// <list type="bullet">
 /// <item>A PASSING <c>dotnet test ... --filter FullyQualifiedName=&lt;fqn&gt;</c> that ran at least one test, in a clean
 /// tree, is a 'pass' check event of every open test-kind issue whose check names that fqn in that repo -> resolved.</item>
-/// <item>A FAILING run names its failed tests ("Failed &lt;fqn&gt; [..]"): each RESOLVED test-kind issue whose fqn is among
-/// them gets a 'fail' check event -> a linked regression.</item>
+/// <item>A FAILING run, in a clean tree, names its failed tests ("Failed &lt;fqn&gt; [..]"): each RESOLVED test-kind issue
+/// whose fqn is among them gets a 'fail' check event -> a linked regression.</item>
+/// <item>In a tree with uncommitted tracked changes either run is recorded as 'dirty' and changes nothing: the code that
+/// ran is not the commit the event would cite (OverLORD, 3 Nov - fail event #27272).</item>
 /// </list>
 /// Not covered: a pass of a wider filter (or none) never resolves - only the exact fqn filter is the issue's own check; a
-/// failing run whose output does not list the failed test by name (a crash, a build error) opens no regression.
+/// failing run whose output does not list the failed test by name (a crash, a build error) opens no regression; a pass or
+/// fail in a dirty tree opens and resolves nothing (it is recorded as dirty).
 /// </summary>
 public static class TestRunIssues
 {
