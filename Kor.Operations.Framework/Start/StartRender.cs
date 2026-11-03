@@ -37,10 +37,12 @@ public static class StartRender
     public static string Record(ModuleState s, int? budget) => Record(s, budget, split: false);
 
     /// <summary>
-    /// The record part. <paramref name="split"/> (the SessionStart hook, board row 1198): STATE NOW and LEGACY MEMORY are
-    /// NOT on it - each is its own hook entry with its own 9,900 (<see cref="State"/>, <see cref="Memory"/>; Claude Code caps
-    /// each hook's additionalContext separately) - and one line in their place names those parts. Without it, one page
-    /// with every section (--text, --part all).
+    /// The record part. <paramref name="split"/> (the SessionStart hook, board row 1198): STATE NOW, the RECORDS, OFFICE
+    /// LESSONS and LEGACY MEMORY are NOT on it - STATE NOW, the RECORDS pages and the MEMORY pages are each their own hook
+    /// entry with its own 9,900 (<see cref="State"/>, <see cref="RecordsPage"/>, <see cref="Memory"/>; Claude Code caps each
+    /// hook's additionalContext separately; the office lessons ride on the memory pages). In their place: one line naming
+    /// those parts (<see cref="PartsLine"/>) and one line with the records' counts per group (RecordsLine). Without it, one
+    /// page with every section (--text, --part all).
     /// </summary>
     public static string Record(ModuleState s, int? budget, bool split)
     {
@@ -271,11 +273,11 @@ public static class StartRender
                 Add(line);
                 curCount++;
             }
+            // a "none current." line never opens a page of its own (review row 340: one spilling onto an extra page could
+            // narrow every description down the ladder, or at the last rung say "0 record(s) ... past page 4"); when it does
+            // not fit it is dropped - the record part's RECORDS line already gives every group's count, a 0 included
             foreach (var e in empty)
-            {
-                if (curLen + e.Length + 1 > cap) NewPage(null);
-                Add(e);
-            }
+                if (curLen + e.Length + 1 <= cap) Add(e);
             pageLines.Add(cur!);
             pageEntries.Add(curCount);
             return (pageLines, pageEntries);

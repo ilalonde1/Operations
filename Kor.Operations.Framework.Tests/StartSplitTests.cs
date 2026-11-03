@@ -129,6 +129,32 @@ public class StartSplitTests
         Assert.Contains("Only ids and names here", pages[0]);
     }
 
+    /// <summary>
+    /// Review row 340: a group's "none current." line counted toward the page total, so it could spill onto a page of its
+    /// own - and past the wired pages that narrowed every description down the ladder, or at the last rung printed
+    /// "0 record(s) ... past page 4". Decisions only (the four other groups empty), every count from 1 to 400: no page is
+    /// "none current." lines alone, and no page says "0 record(s)".
+    /// </summary>
+    [Fact]
+    public void ANoneCurrentLineNeverOpensAPageOfItsOwn()
+    {
+        for (var n = 1; n <= 400; n++)
+        {
+            var side = Side(null, Enumerable.Range(0, n).Select(i => Sourced(300_000 + i, "decision", 280)).ToList());
+            foreach (var wired in new[] { 1, 2, 3, 4 })
+                for (var p = 1; p <= wired; p++)
+                {
+                    var page = StartRender.RecordsPage(side, p, wired, StartRender.HookBudget);
+                    Assert.DoesNotContain("] 0 record(s) of", page);
+                    Assert.DoesNotContain("... [0 record(s)", page);
+                    if (page.Length == 0 || p == 1) continue;
+                    var body = page.Split('\n').Skip(1).Where(l => l.Length > 0).ToList();
+                    Assert.False(body.Count > 0 && body.All(l => l.EndsWith(": none current.", StringComparison.Ordinal)),
+                                 $"n={n} wired={wired} page {p} holds only 'none current.' lines");
+                }
+        }
+    }
+
     [Fact]
     public void TheSplitRecordPartNamesTheRecordsPagesInsteadOfListingThem()
     {
