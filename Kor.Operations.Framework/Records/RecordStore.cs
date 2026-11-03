@@ -63,7 +63,7 @@ public static class RecordStore
         var rel = Relative(top, path);
         var lines = Git.Run(top, "rev-parse", "--verify", "--quiet", rev + "^{commit}")?.Trim();
         var commit = Lower(lines) ?? throw new RecordRefusedException($"'{rev}' is not a commit in {Git.Leaf(top)}");
-        var blob = Lower(Git.Run(top, "rev-parse", "--verify", "--quiet", $"{commit}:{rel}")?.Trim())
+        var blob = BlobAt(top, commit, rel)
                    ?? throw new RecordRefusedException($"{rel} is not tracked at {commit[..10]} in {Git.Leaf(top)} - commit it, then cite the commit");
         return new GitSource(Git.Leaf(top)!, top, commit, rel, blob);
     }
@@ -85,6 +85,17 @@ public static class RecordStore
         return p;
     }
 
+    /// <summary>
+    /// The lowercase blob of <c>rev:path</c>, or null when the path is not a FILE at that revision. <c>rev-parse
+    /// rev:path</c> alone also resolves a directory (a tree - review row 150), so the object's type is read too.
+    /// </summary>
+    public static string? BlobAt(string top, string rev, string relPath)
+    {
+        var sha = Lower(Git.Run(top, "rev-parse", "--verify", "--quiet", $"{rev}:{relPath}")?.Trim());
+        if (sha is null) return null;
+        return Git.Run(top, "cat-file", "-t", sha)?.Trim() == "blob" ? sha : null;
+    }
+
     /// <summary>Lowercased 40-hex, or null (git output is lowercased before any compare or write - review row 102).</summary>
     public static string? Lower(string? sha) => BrainStore.Sha(sha?.Trim().ToLowerInvariant());
 
@@ -98,7 +109,7 @@ public static class RecordStore
             throw new RecordRefusedException($"{g.RepoDir} is repo {Git.Leaf(top)}, not {g.Repo}");
         var commit = Lower(Git.Run(top, "rev-parse", "--verify", "--quiet", g.Commit + "^{commit}")?.Trim());
         if (commit != g.Commit) throw new RecordRefusedException($"{g.Commit} is not a commit in {g.Repo}");
-        var blob = Lower(Git.Run(top, "rev-parse", "--verify", "--quiet", $"{g.Commit}:{g.Path}")?.Trim());
+        var blob = BlobAt(top, g.Commit, g.Path);
         if (blob is null) throw new RecordRefusedException($"{g.Path} is not tracked at {g.Commit[..10]} in {g.Repo}");
         if (blob != g.Blob)
             throw new RecordRefusedException($"blob {g.Blob} is not git rev-parse {g.Commit[..10]}:{g.Path} ({blob}) in {g.Repo}");

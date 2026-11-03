@@ -287,6 +287,11 @@ public class FreshnessTests(Xunit.Abstractions.ITestOutputHelper log)
         Assert.Equal((Doc, OldCommit), Program.SplitGitSource($"{Doc}@{OldCommit}", tracked));
         Assert.Equal((Doc, "HEAD"), Program.SplitGitSource(Doc, tracked));
         Assert.Equal(("node_modules/@scope/x.js", "HEAD"), Program.SplitGitSource("node_modules/@scope/x.js", tracked));
+        // a DIRECTORY at a revision is not a source (review row 150: rev-parse rev:dir resolves a tree)
+        Assert.False(tracked("HEAD", "docs"));
+        Assert.Null(RecordStore.BlobAt(FrameworkDir(), "HEAD", "docs"));
+        Assert.Throws<RecordRefusedException>(() => RecordStore.AtHead(FrameworkDir(), "docs"));
+        Assert.Equal(Git.Run(FrameworkDir(), "rev-parse", $"HEAD:{Doc}")!.Trim(), RecordStore.BlobAt(FrameworkDir(), "HEAD", Doc));
     }
 
     // capture-git's 3 s cap (review row 140): the installed kor.exe passes no unit of work and waits at most the cap.
@@ -383,11 +388,11 @@ public class FreshnessTests(Xunit.Abstractions.ITestOutputHelper log)
     public void LiveACappedCheckWritesWhatItCheckedAndReportsTheRestUnchecked()
     {
         using var db = BrainDb.OpenRolledBack();
-        // Two repos, read in Id order: Framework first, then Operations. Each git read takes 300 ms; the budget is 100 ms.
+        // Two repos, read in Id order: Framework first, then Operations. Each git read takes 2.5 s; the budget is 2 s, which the DB read alone cannot use up (review row 150).
         var fw = Insert(db, "cap-framework", RecordStore.AtHead(FrameworkDir(), Doc));
         var ops = Insert(db, "cap-operations", RecordStore.AtHead(RepoDir(), "Kor.Operations.Framework/BrainDb.cs"));
-        Freshness.HeadReader slow = (dir, paths) => { Thread.Sleep(300); return Freshness.GitHead(dir, paths); };
-        var r = Freshness.CheckModule(db, Lane, RepoDir(), slow, TimeSpan.FromMilliseconds(100));
+        Freshness.HeadReader slow = (dir, paths) => { Thread.Sleep(2500); return Freshness.GitHead(dir, paths); };
+        var r = Freshness.CheckModule(db, Lane, RepoDir(), slow, TimeSpan.FromSeconds(2));
         Assert.True(r.Partial);
         Assert.Equal(Verdict.Current, Only(r, fw).Verdict);
         Assert.Equal(Verdict.Unverifiable, Only(r, ops).Verdict);
@@ -399,8 +404,10 @@ public class FreshnessTests(Xunit.Abstractions.ITestOutputHelper log)
         // and through the verb: --cap 0 checks nothing, still exits 0 with one PARTIAL verdict line
         var (code, lines, _) = RunFresh(db, "fresh", "--module", Lane, "--dir", RepoDir(), "--cap", "0", "--hook");
         Assert.Equal(0, code);
-        Assert.StartsWith($"kor fresh: PARTIAL - cap hit after ", lines[0]);
-        Assert.Contains("0 current, 0 stale, 2 unverifiable", lines[0]);
+        // the WHOLE line (review row 150): it must not claim there were no records
+        Assert.Matches($@"^kor fresh: PARTIAL - cap hit after \d+(\.\d)? s - {System.Text.RegularExpressions.Regex.Escape(Lane)}: " +
+                       @"0 current, 0 stale, 2 unverifiable - no repo was read before the cap$", Assert.Single(lines.Take(1)));
+        Assert.Equal(3, lines.Length);   // the verdict, then one line per unchecked record (no recheck line: not stale)
         Assert.Equal(10, Program.FreshCap.TotalSeconds);
     }
 

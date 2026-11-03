@@ -88,7 +88,7 @@ public static class Freshness
         reader ??= GitHead;
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var partial = false;
-        // The budget is checked before each repo's git read and before the file sources: past it, what is left is
+        // The clock starts before the DB read: the cap covers the whole check, as the hook timeout does. The budget is checked before each repo's git read and before the file sources: past it, what is left is
         // reported Unverifiable ("cap hit") and NOT written; what was already checked is written as usual.
         bool Over() => budget is { } cap && clock.Elapsed >= cap && (partial = true);
         string CapWhy() => $"cap hit after {clock.Elapsed.TotalSeconds:0.#} s - not checked";

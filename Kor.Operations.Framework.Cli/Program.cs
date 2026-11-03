@@ -213,7 +213,10 @@ public static class Program
     {
         var heads = string.Join(", ", r.RepoHeads.Select(h => $"{h.Key} {(h.Value is null ? "UNREADABLE" : h.Value[..7])}"));
         var counts = $"{r.Count(Verdict.Current)} current, {r.Count(Verdict.Stale)} stale, {r.Count(Verdict.Unverifiable)} unverifiable";
-        var at = heads.Length > 0 ? $" at HEAD {heads}" : " (no source-checked records)";
+        // review row 150: a capped run that read no repo must not claim there were no records
+        var at = heads.Length > 0 ? $" at HEAD {heads}"
+               : r.Partial ? " - no repo was read before the cap"
+               : r.Rows.Count > 0 ? "" : " (no source-checked records)";
         return r.Partial
             ? $"kor fresh: PARTIAL - cap hit after {r.Elapsed.TotalSeconds:0.#} s - {module}: {counts}{at}"
             : $"kor fresh: {module} - {counts}{at}";
@@ -242,7 +245,7 @@ public static class Program
     {
         var top = Git.TopLevel(dir);
         if (top is null) return false;
-        try { return Git.Run(top, "rev-parse", "--verify", "--quiet", $"{rev}:{RecordStore.Relative(top, path)}") is not null; }
+        try { return RecordStore.BlobAt(top, rev, RecordStore.Relative(top, path)) is not null; }
         catch (RecordRefusedException) { return false; }   // not a path inside the repo
     };
 
