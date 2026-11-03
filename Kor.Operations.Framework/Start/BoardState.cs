@@ -37,6 +37,33 @@ public sealed record BoardState(IReadOnlyList<string> Owners, IReadOnlyList<Boar
         this with { Rows = Rows.Where(r => Tagged(r.What, tag)).ToList(), Tag = tag, OpenBeforeTag = Rows.Count };
 
     /// <summary>
+    /// The lead, 3 Nov ("one product owner, tag-filtered board"): <c>kor start --part board --tag T</c> with NO --owner -
+    /// every OPEN row of ANY owner tagged T (<see cref="Tagged"/>), and nothing else: no owner list and no count of anyone's
+    /// other rows, so a session behind a confidentiality wall never reads another owner's name from the board part (Owners
+    /// is empty; <see cref="BoardRender.Rows"/> names no owner when it is). One read (vw_Board holds only the rows still to
+    /// do), ORDER BY What then Id; CHARINDEX narrows it in SQL, <see cref="Tagged"/> decides.
+    /// </summary>
+    public static BoardState LoadTagged(BrainDb db, string tag)
+    {
+        var rows = new List<BoardRow>();
+        using (var c = db.Command(
+                   "SELECT Id, Owner, State, Flag, What, DoneWhen, CONVERT(nvarchar(30), DueLocal, 120) AS DueLocal, BlockedOn, Budget " +
+                   "FROM oversight.vw_Board WHERE CHARINDEX(@t, What) > 0 ORDER BY What, Id", 120))
+        {
+            c.Parameters.Add("@t", SqlDbType.NVarChar, 200).Value = tag;
+            using var r = c.ExecuteReader();
+            while (r.Read())
+                rows.Add(new BoardRow(r.GetInt32(0), S(r, 1), S(r, 2), S(r, 3), S(r, 4), S(r, 5), S(r, 6), S(r, 7), S(r, 8)));
+        }
+        return TagOnly(rows, tag);
+    }
+
+    /// <summary>The tag-only board over these rows: the tagged ones kept, no owners, no count of the untagged.</summary>
+    public static BoardState TagOnly(IEnumerable<BoardRow> rows, string tag) =>
+        new BoardState(Array.Empty<string>(), rows.Where(r => Tagged(r.What, tag)).ToList(), false, Array.Empty<OwedRow>(), "live",
+                       Array.Empty<GuardRow>(), "live") { Tag = tag };
+
+    /// <summary>
     /// F6: each owner also brings its '&lt;owner&gt; helper' rows, added after the owners, once each; an owner already
     /// named '... helper' gets none. board_render.with_helpers.
     /// </summary>
@@ -140,9 +167,11 @@ public static class BoardRender
     public const string Where = "KorStandards oversight.vw_Board";
 
     public static string FullBoardCommand(string module, IReadOnlyList<string> givenOwners, bool noHelpers, string? tag = null) =>
-        $"C:/KOR-Operations/kor/kor.exe start --module \"{module}\" --part board " +
-        string.Join(" ", givenOwners.Select(o => $"--owner \"{o}\"")) + (noHelpers ? " --no-helpers" : "") +
-        (tag is null ? "" : $" --tag \"{tag}\"") + " --text";
+        givenOwners.Count == 0 && tag is not null
+            ? $"C:/KOR-Operations/kor/kor.exe start --module \"{module}\" --part board --tag \"{tag}\" --text"   // tag-only: no owner
+            : $"C:/KOR-Operations/kor/kor.exe start --module \"{module}\" --part board " +
+              string.Join(" ", givenOwners.Select(o => $"--owner \"{o}\"")) + (noHelpers ? " --no-helpers" : "") +
+              (tag is null ? "" : $" --tag \"{tag}\"") + " --text";
 
     /// <summary>The whole board part: the rows, then (Framework) the owed block and the guards line, which keep their room.</summary>
     public static string Render(BoardState s, DateTime now, int? budget, string fullBoardCommand)
@@ -168,12 +197,16 @@ public static class BoardRender
         }
         var stamp = now.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
         var multi = owners.Count > 1;
-        var headLine = multi
+        // tag-only (no owners): the head line names the tag and the count of tagged rows, and NOTHING about any owner
+        var headLine = owners.Count == 0 && tag is not null
+            ? $"THE BOARD (source of truth) - {Where}, the open rows tagged [{tag}] (What starting \"[was {tag}]\" or holding " +
+              $"\"[{tag}]\"): {rows.Count}, read {stamp}. A new row for this work carries [{tag}] in What."
+            : multi
             ? $"THE BOARD (source of truth) - {Where}, Owners " + string.Join(", ", owners.Select(o => $"'{o}'")) +
               $" (every one of them this lead's), read {stamp}"
             : $"THE BOARD (source of truth) - {Where}, Owner '{owners[0]}', read {stamp}";
         // --tag: said in the head line, with the owners' full count, so the filtered list is never read as the whole product
-        if (tag is not null)
+        if (tag is not null && owners.Count > 0)
             headLine += $" - FILTERED to the rows tagged [{tag}] (What starting \"[was {tag}]\" or holding \"[{tag}]\"): " +
                         $"{rows.Count} of the {openBeforeTag} open row(s) of " + (multi ? "these owners" : "this owner") +
                         "; the rest are the same product's, on the unfiltered board";

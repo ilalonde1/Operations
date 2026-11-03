@@ -124,16 +124,21 @@ public static partial class Program
         }
         if (part is "board" or "all")
         {
-            var owners = o.Owners.Count > 0 ? o.Owners : new List<string> { module };
             var noHelpers = o.Get("--no-helpers") is not null;
-            // --tag T: only the owners' rows tagged T (BoardState.Tagged), the header saying so with the full open count
+            // --tag T with --owner: only the owners' rows tagged T (BoardState.Tagged), the header saying so with the full open
+            // count. --tag T with NO --owner (the lead, 3 Nov: one product owner, tag-filtered board): every open row of ANY
+            // owner tagged T, and no owner named (BoardState.LoadTagged) - the confidentiality wall's board.
             var tag = o.Get("--tag") is { } t ? (string.IsNullOrWhiteSpace(t) ? throw new ArgumentException("--tag needs a name") : t) : null;
+            var tagOnly = tag is not null && o.Owners.Count == 0;
+            if (tagOnly && noHelpers) throw new ArgumentException("--no-helpers belongs with --owner: --tag alone reads every owner's tagged rows");
+            var owners = o.Owners.Count > 0 ? o.Owners : tagOnly ? new List<string>() : new List<string> { module };
             var command = BoardRender.FullBoardCommand(module, BoardState.Distinct(owners), noHelpers, tag);
             var r = StartPart.Run(() =>
                 {
                     // the board is only READ: SNAPSHOT (READ COMMITTED if refused), never committed
-                    var state = BrainDb.Read(KorStandardsConnection.Login.Board, b => BoardState.Load(b, owners, withHelpers: !noHelpers));
-                    if (tag is not null) state = state.FilterByTag(tag);
+                    var state = BrainDb.Read(KorStandardsConnection.Login.Board,
+                                             b => tagOnly ? BoardState.LoadTagged(b, tag!) : BoardState.Load(b, owners, withHelpers: !noHelpers));
+                    if (tag is not null && !tagOnly) state = state.FilterByTag(tag);
                     return (BoardRender.Render(state, DateTime.Now, budget, command), (IReadOnlyList<string>)Array.Empty<string>());
                 },
                 StartCache.PathFor(cacheDir, module, "board", hook), budget, deadline,

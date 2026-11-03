@@ -79,8 +79,9 @@ public static class EnrollCheck
         new Hook("SessionStart kor start --part record", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "record"),
         new Hook("SessionStart kor start --part state", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "state"),
         new Hook("SessionStart kor start --part memory", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "memory"),
-        new Hook("SessionStart kor start --part board --owner ...", "SessionStart", Array.Empty<string>(), "start",
-                 c => c.Opt("--part") == "board" && c.Opt("--owner") is not null),
+        // --tag T alone is a board too (3 Nov: one product owner, tag-filtered board - the front-door repo's start)
+        new Hook("SessionStart kor start --part board --owner ... (or --tag ...)", "SessionStart", Array.Empty<string>(), "start",
+                 c => c.Opt("--part") == "board" && (c.Opt("--owner") is not null || c.Opt("--tag") is not null)),
         new Hook("SessionStart kor capture-start", "SessionStart", Array.Empty<string>(), "capture-start", _ => true),
         new Hook("SessionStart kor enroll-check", "SessionStart", Array.Empty<string>(), "enroll-check", _ => true),
         new Hook("PostToolUse (Bash|PowerShell) kor capture-tool", "PostToolUse", Shell, "capture-tool", _ => true),

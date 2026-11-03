@@ -103,6 +103,28 @@ public class EnrollCheckTests
         Assert.Contains(EnrollCheck.SettingsFindings(s, This.Module), f => f.Contains("PostToolUse") && f.Contains("does not cover PowerShell"));
     }
 
+    // 3 Nov (one product owner, tag-filtered board): a board entry with --tag and no --owner is a board; one with neither is not
+    [Theory]
+    [InlineData(" --tag \"Revit Tools\"", false)]
+    [InlineData("", true)]
+    public void ABoardEntryNeedsAnOwnerOrATag(string replacement, bool fails)
+    {
+        var s = Mutate(r =>
+        {
+            foreach (var h in KorHooks(r, "SessionStart", "start"))
+            {
+                var c = h!["command"]!.GetValue<string>();
+                if (c.Contains("--part board"))
+                    h["command"] = System.Text.RegularExpressions.Regex.Replace(c, @" --owner (""[^""]*""|\S+)", "")
+                                       .Replace(" --no-helpers", "").Replace(" --hook", replacement + " --hook");
+            }
+        });
+        Assert.DoesNotContain("--owner", s);   // the mutation took: the board entry has no owner left
+        Assert.Equal(replacement.Length > 0, s.Contains("--tag"));
+        var findings = EnrollCheck.SettingsFindings(s, This.Module);
+        Assert.Equal(fails, findings.Any(f => f.Contains("--part board")));
+    }
+
     [Fact]
     public void ADroppedHookFlagFailsNamingIt()
     {

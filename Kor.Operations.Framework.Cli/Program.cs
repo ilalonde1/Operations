@@ -554,7 +554,7 @@ public static partial class Program
         error.WriteLine("       kor state --module M (--file F | --text T)   (a resume block -> brain.LaneState; a credential value is MASKED and said in one line)");
         error.WriteLine("       kor migration-lint <file.sql> | - --name NNN_x.sql [--cutoff N (177)]   (a migration above the cut-off: L1 a 'PROBES:' header line, L2 no hand-written probe handling without migration.usp_MigrationProbe; one line per finding, exit 1)");
         error.WriteLine("       kor enroll-check [--all] [--dir D] [--days N (7)] [--hook]   (every framework hook in .claude/settings.json and .git/hooks, and a session-start in brain.Event where sessions ran; one verdict line, exit 1 on a finding - 0 with --hook)");
-        error.WriteLine("       kor start --module M [--owner O]... [--no-helpers] [--part record|state|memory|board|all] [--tag T (board: only rows tagged [T] or [was T])] [--page N --pages M (memory)] [--hook | --text] [--dir D] [--session S] [--start-source S]   (SessionStart JSON on stdin with --hook)");
+        error.WriteLine("       kor start --module M [--owner O]... [--no-helpers] [--part record|state|memory|board|all] [--tag T (board: only rows tagged [T] or [was T]; with no --owner, any owner's, no owner named)] [--page N --pages M (memory)] [--hook | --text] [--dir D] [--session S] [--start-source S]   (SessionStart JSON on stdin with --hook)");
         return 2;
     }
 }
