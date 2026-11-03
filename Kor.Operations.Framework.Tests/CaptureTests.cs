@@ -194,30 +194,58 @@ public class CaptureTests
     }
 
     // ---- the folder a tool ran in (#74: an Operations build was cited against Framework's HEAD) -----------------------
-    private static string? DirFor(string command, string cwd)
+    private static ToolClassifier.CdResult CdFor(string command, string cwd)
     {
         var t = ToolClassifier.Classify(command, BuildPassOut);
         Assert.NotNull(t);
         return ToolClassifier.DirectoryBefore(command, t!.At, cwd);
     }
 
+    private static string? DirFor(string command, string cwd)
+    {
+        var r = CdFor(command, cwd);
+        Assert.True(r.Changed, $"no cd seen in: {command}");
+        return r.Dir;
+    }
+
     [Fact]
-    public void TheLastCdBeforeTheToolDecidesItsFolder()
+    public void TheCdsBeforeTheToolDecideItsFolder()
     {
         Assert.Equal(Path.GetFullPath("C:/VIsual Studio Projects/Operations"),
                      DirFor("cd \"/c/VIsual Studio Projects/Operations\" && dotnet build X.csproj", "C:/VIsual Studio Projects/Framework"));
         Assert.Equal(Path.GetFullPath("C:/a/Operations"), DirFor("cd ../Operations && dotnet test", "C:/a/Framework"));
         Assert.Equal(Path.GetFullPath("C:/y"), DirFor("Set-Location -Path 'C:/y'; dotnet test", "C:/a"));
         Assert.Equal(Path.GetFullPath("C:/second"), DirFor("cd C:/first && cd C:/second && dotnet build", "C:/a"));
+        Assert.Equal(Path.GetFullPath("C:/first/sub"), DirFor("cd C:/first && cd sub && dotnet build", "C:/a"));   // relative to the CURRENT folder
+    }
+
+    [Fact]
+    public void PopdRestoresTheFolderPushdLeft()
+    {
+        // review row 93: "pushd C:/x && make && popd && dotnet test" ran in the hook's cwd, not C:/x.
+        Assert.Equal(Path.GetFullPath("C:/a"), DirFor("pushd C:/x && make && popd && dotnet test", "C:/a"));
+        Assert.Equal(Path.GetFullPath("C:/x"), DirFor("pushd C:/x; pushd C:/y; Pop-Location; dotnet test", "C:/a"));
+        Assert.Equal(Path.GetFullPath("C:/x"), DirFor("Push-Location C:/x; dotnet test; Pop-Location", "C:/a"));
+    }
+
+    [Theory]   // review row 93: a target that is not a literal path is UNKNOWN - no repo/commit, never a guess
+    [InlineData("cd - && dotnet test")]
+    [InlineData("cd ~ && dotnet test")]
+    [InlineData("cd $DIR && dotnet test")]
+    [InlineData("cd %TEMP% && dotnet test")]
+    [InlineData("cd $DIR && cd sub && dotnet test")]
+    public void AnUnmodelledCdMakesTheFolderUnknown(string command)
+    {
+        Assert.Null(DirFor(command, "C:/a"));
     }
 
     [Theory]
     [InlineData("dotnet test")]                                   // no cd: the hook's cwd stands
     [InlineData("dotnet test && cd C:/after")]                    // a cd AFTER the tool does not count
     [InlineData("echo 'cd C:/quoted' && dotnet test")]            // a cd inside quotes is text
-    public void NoCdBeforeTheToolGivesNull(string command)
+    public void NoCdBeforeTheToolLeavesTheHookCwd(string command)
     {
-        Assert.Null(DirFor(command, "C:/a"));
+        Assert.False(CdFor(command, "C:/a").Changed);
     }
 
     [Fact]
@@ -226,16 +254,19 @@ public class CaptureTests
         var dir = RepoDir();
         var elsewhere = Path.Combine(Path.GetTempPath(), "kor-k3-cwd-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(elsewhere);
-        var json = JsonSerializer.Serialize(new
+        try
         {
-            session_id = "k3-cd-session", cwd = elsewhere, hook_event_name = "PostToolUse", tool_name = "Bash",
-            tool_input = new { command = $"cd \"{dir.Replace('\\', '/')}\" && dotnet build Kor.Operations.Framework" },
-            tool_response = new { stdout = BuildPassOut, stderr = "" },
-        });
-        var row = ReadBack(RunOk(new[] { "capture-tool", "--module", Module }, json), "build");
-        Assert.Equal(Git.Leaf(Git.TopLevel(dir)), row.Repo);
-        Assert.Equal(Git.Run(dir, "rev-parse", "HEAD")!.Trim(), row.Commit);
-        Directory.Delete(elsewhere);
+            var json = JsonSerializer.Serialize(new
+            {
+                session_id = "k3-cd-session", cwd = elsewhere, hook_event_name = "PostToolUse", tool_name = "Bash",
+                tool_input = new { command = $"cd \"{dir.Replace('\\', '/')}\" && dotnet build Kor.Operations.Framework" },
+                tool_response = new { stdout = BuildPassOut, stderr = "" },
+            });
+            var row = ReadBack(RunOk(new[] { "capture-tool", "--module", Module }, json), "build");
+            Assert.Equal(Git.Leaf(Git.TopLevel(dir)), row.Repo);
+            Assert.Equal(Git.Run(dir, "rev-parse", "HEAD")!.Trim(), row.Commit);
+        }
+        finally { Directory.Delete(elsewhere); }
     }
 
     [Fact]

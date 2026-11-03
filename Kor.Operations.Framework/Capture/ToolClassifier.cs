@@ -31,31 +31,57 @@ public static class ToolClassifier
     /// <param name="At">where in the command the tool was found (the directory it ran in is decided by any cd before it).</param>
     public sealed record ToolEvent(string Kind, string Ref, string Outcome, string Detail, int At = 0);
 
-    private static readonly Regex Cd = new(Pos + @"(?:cd|chdir|pushd|Set-Location|sl|Push-Location)\s+(?:-(?:Literal)?Path\s+)?(?<dir>""[^""\n]*""|'[^'\n]*'|[^\s;&|()]+)", O);
+    private static readonly Regex Cd = new(Pos + @"(?:(?<pop>popd|Pop-Location)\b|(?<verb>cd|chdir|pushd|Set-Location|sl|Push-Location)\s+(?:-(?:Literal)?Path\s+)?(?<dir>""[^""\n]*""|'[^'\n]*'|[^\s;&|()]+))", O);
+
+    /// <param name="Changed">a cd / pushd / popd came before the tool, so the hook's cwd does NOT say where it ran.</param>
+    /// <param name="Dir">where it ran, or null = UNKNOWN (an unmodelled target): the caller records no repo or commit.</param>
+    public sealed record CdResult(bool Changed, string? Dir);
 
     /// <summary>
-    /// The folder the tool at <paramref name="at"/> ran in: the LAST cd / pushd / Set-Location in command position before
-    /// it (found on the neutral copy, read from the original), resolved against the hook's cwd - the hook's cwd is the
-    /// folder BEFORE the command ran (#74 on 2 Nov: an Operations build was cited against Framework's HEAD). A Git Bash
-    /// path (/c/x) becomes C:/x. Null when there is no cd before the tool. Not modelled: cd inside a subshell that
-    /// ended before the tool ( (cd x; make) &amp;&amp; dotnet test ), cd -, cd ~, a variable ($DIR).
+    /// The folder the tool at <paramref name="at"/> ran in, replaying every cd-like command in command position before
+    /// it (found on the neutral copy, read from the original), starting from the hook's cwd - which is the folder BEFORE
+    /// the command ran (#74 on 2 Nov: an Operations build was cited against Framework's HEAD). cd / chdir / sl /
+    /// Set-Location replace the folder; pushd / Push-Location push the old one first; popd / Pop-Location restore it
+    /// (review row 93). A relative path resolves against the folder current at that point; a Git Bash path (/c/x)
+    /// becomes C:/x. A target that is not a literal path (cd -, cd ~, $VAR, %VAR%) makes the folder UNKNOWN until an
+    /// absolute cd or a popd: the event then carries no repo/commit rather than a guessed one. Still wrong, same class:
+    /// a cd inside a subshell that ended before the tool ( (cd x; make) &amp;&amp; dotnet test ) is replayed as if it
+    /// persisted.
     /// </summary>
-    public static string? DirectoryBefore(string command, int at, string? cwd)
+    public static CdResult DirectoryBefore(string command, int at, string? cwd)
     {
         var neutral = Neutralise(command);
-        Match? last = null;
-        for (var m = Cd.Match(neutral); m.Success && m.Index < at; m = m.NextMatch()) last = m;
-        if (last is null) return null;
-        var g = last.Groups["dir"];
-        var dir = command.Substring(g.Index, g.Length).Trim('"', '\'');
+        var current = cwd is null ? null : Full(cwd);
+        var stack = new Stack<string?>();
+        var changed = false;
+        for (var m = Cd.Match(neutral); m.Success && m.Index < at; m = m.NextMatch())
+        {
+            changed = true;
+            if (m.Groups["pop"].Success)
+            {
+                if (stack.Count > 0) current = stack.Pop();
+                continue;
+            }
+            var g = m.Groups["dir"];
+            var target = Resolve(command.Substring(g.Index, g.Length).Trim('"', '\''), current);
+            if (m.Groups["verb"].Value.ToLowerInvariant() is "pushd" or "push-location") stack.Push(current);
+            current = target;
+        }
+        return new CdResult(changed, current);
+    }
+
+    private static string? Resolve(string dir, string? current)
+    {
+        if (dir.Length == 0 || dir == "-" || dir.StartsWith('~') || dir.Contains('$') || dir.Contains('%')) return null;
         if (Regex.Match(dir, @"^/([a-zA-Z])(/.*)?$") is { Success: true } msys)
             dir = msys.Groups[1].Value.ToUpperInvariant() + ":" + (msys.Groups[2].Success ? msys.Groups[2].Value : "/");
-        try
-        {
-            return Path.IsPathRooted(dir) ? Path.GetFullPath(dir)
-                 : cwd is null ? null : Path.GetFullPath(Path.Combine(cwd, dir));
-        }
-        catch { return null; }
+        if (Path.IsPathRooted(dir)) return Full(dir);
+        return current is null ? null : Full(Path.Combine(current, dir));
+    }
+
+    private static string? Full(string path)
+    {
+        try { return Path.GetFullPath(path); } catch { return null; }
     }
 
     private const RegexOptions O = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;

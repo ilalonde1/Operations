@@ -67,7 +67,9 @@ public static class ClaudeCapture
         string? repo = null, commit = null;
         // The folder the tool RAN in: a cd before it in the command wins over the hook's cwd (the folder before the
         // command ran) - otherwise an Operations build is cited against Framework's HEAD (#74, 2 Nov).
-        var dir = h.Command is null ? h.Cwd : ToolClassifier.DirectoryBefore(h.Command, t.At, h.Cwd) ?? h.Cwd;
+        // Unknown (cd -, cd ~, $VAR ...) gives null: no repo/commit is recorded rather than a guessed one (review row 93).
+        var cd = ToolClassifier.DirectoryBefore(h.Command!, t.At, h.Cwd);
+        var dir = cd.Changed ? cd.Dir : h.Cwd;
         if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
         {
             // One git call: the repo the command ran in, and its HEAD - the source the result belongs to.
