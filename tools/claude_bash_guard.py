@@ -36,25 +36,31 @@ RULES = [
     # 1b. EVERY OTHER FORM OF THE SAME WALK (Mistake 120, 2 Nov: a Python os.walk counted 50,352 files of the fs01 IT
     #     archive file by file from KOR-1001 over the VPN, ~10 min, while the rule above caught only the PowerShell
     #     form with -Recurse BEFORE the path). The class: a command that enumerates a share's tree from this PC.
-    #     CHECKS, each with a UNC path (\\host or //host, not https://) in the same pipeline segment: Get-ChildItem /
-    #     gci / ls / dir with -r or -Recurse* in any position; dir /s; tree; robocopy /L with /S or /E (a listing);
-    #     du; python in command position whose text holds os.walk, rglob or recursive=True.
+    #     A UNC path here = // or \\ at the START of a path (the command's start, or after whitespace, a quote, ( or =),
+    #     then a host name beginning with a letter, then / or \. So https://, C:\\x (doubled backslashes after a drive)
+    #     and integer division ` //2` are not UNC paths.
+    #     CHECKS, each with a UNC path in the same pipeline segment: Get-ChildItem / gci / ls / dir with -r or -Recurse*
+    #     in any position; dir /s; tree; robocopy /L with /S or /E (a listing); du; python / py in command position
+    #     whose text holds os.walk, rglob or recursive=True AND a UNC path on the same line, not across && or ||.
     #     ALLOWS: one folder's listing (no recurse flag), git ls-remote / push / fetch to an fs01 remote, Test-Path,
     #     a robocopy that copies (no /L), any walk of a local path - including one run ON the target via
     #     Invoke-CimMethod with the target's local path (E:\...).
     #     DOES NOT CATCH: a walk inside a script FILE (`python walk.py //Kor-fs01/IT` - Mistake 120's own form if its
     #     walk was in a file; the share path is only an argument), a UNC held in a variable or a mapped drive letter
     #     (Z:\ is local-looking), a .NET Directory.EnumerateFiles in a PowerShell one-liner.
-    #     KNOWN FALSE REFUSAL: bash `ls -r //host/x` (-r = reverse order there, one folder) is read as a recurse.
+    #     KNOWN FALSE REFUSALS: bash `ls -r //host/x` (-r = reverse order there, one folder) is read as a recurse; a
+    #     python one-liner that walks a local path and merely names a share in the same segment (`os.walk('.')` and a
+    #     print of '//Kor-fs01/IT/') is refused; a python walk joined to a UNC listing by a single `;` or `|` is refused.
     (re.compile(r"(?i)(?:^|[;&|(\n{]\s*)(?:"
                 r"(?:Get-ChildItem|gci|ls|dir)\b(?=[^|;\n]*\s-r(?:ecurse\w*)?\b)"
                 r"|(?:cmd(?:\.exe)?\s+/c\s+)?dir\b(?=[^|;\n]*\s/s\b)"
                 r"|tree(?:\.com)?\b"
                 r"|robocopy(?:\.exe)?\b(?=[^|;\n]*\s/L\b)(?=[^|;\n]*\s/(?:S|E)\b)"
                 r"|du\b"
-                r")[^|;\n]*?(?:(?<![\w:/])//|\\\\)[A-Za-z0-9][\w.-]*"
-                r"|(?:^|[;&|(\n]\s*)(?:\S*[/\\])?python[\w.]*\b(?=(?s:.*)(?:os\.walk|rglob|recursive\s*=\s*True))"
-                r"(?=(?s:.*)(?:(?<![\w:/])//|\\\\)[A-Za-z0-9][\w.-]*)"),
+                r")[^|;\n]*?(?:^|(?<=[\s'\"(=]))(?://|\\\\)[A-Za-z][\w.$-]*[/\\]"
+                r"|(?:^|[;&|(\n]\s*)(?:\S*[/\\])?(?:python[\w.]*|py)\b"
+                r"(?=(?:(?!&&|\|\||\n).)*(?:os\.walk|rglob|recursive\s*=\s*True))"
+                r"(?=(?:(?!&&|\|\||\n).)*(?<=[\s'\"(=])(?://|\\\\)[A-Za-z][\w.$-]*[/\\])"),
      "A recursive walk of a network share from this PC (Mistake 120, 2 Nov: 50,352 files of the fs01 IT archive walked "
      "file by file over the VPN). Run it ON the target - Invoke-CimMethod -ComputerName <host> -ClassName "
      "Win32_Process -MethodName Create -Arguments @{CommandLine='<the walk, on its local path, writing one result "

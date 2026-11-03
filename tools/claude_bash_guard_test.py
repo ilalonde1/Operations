@@ -115,6 +115,14 @@ CASES = [
     ("python -c \"import os; print(os.listdir('//Kor-fs01/IT'))\"", "allow"),
     (r"Invoke-CimMethod -ComputerName Kor-fs01 -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine='powershell -c Get-ChildItem E:\IT -Recurse | Measure-Object > E:\IT\count.txt'}", "allow"),
     ("curl -s https://example.com/a | head", "allow"),
+    # review row 58: doubled backslashes after a drive are a LOCAL path; a python walk is judged on its own line and
+    # segment, not on a share named after && or ||; ` //2` is integer division; the Windows `py` launcher is python
+    (r'Get-ChildItem "C:\\x" -Recurse', "allow"),
+    (r"dir /s C:\\x", "allow"),
+    ("python -c \"import os; print(len(list(os.walk('.'))))\" && ls //Kor-fs01/IT", "allow"),
+    ("python -c \"import os; print(sum(len(f) for _, _, f in os.walk('.')) //2)\"", "allow"),
+    ("py -c \"import os; print(sum(len(f) for _, _, f in os.walk('//Kor-fs01/IT')))\"", "deny"),
+    (r"Get-ChildItem -Path=\\Kor-fs01\IT -Recurse", "deny"),
     # rule 9: the publish/deploy WRAPPER piped. Rule 8 matches a literal `dotnet` command and nothing
     # here runs the compiler directly, so on 2026-10-19 `publish.ps1 | Select-String` showed eight
     # green build lines, published nothing, and was reported as shipped. The share still held a build
