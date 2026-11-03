@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- kor.exe - the Knowledge IDE's one command (Framework docs/KNOWLEDGE-IDE-PLAN.md K2). Claude Code hooks call it, as
+       they call netops.exe; installed to C:\KOR-Operations\cli by tools/install-kor.ps1. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>kor</AssemblyName>
+    <RootNamespace>Kor.Operations.Framework.Cli</RootNamespace>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Kor.Operations.Framework.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kor.Operations.Framework\Kor.Operations.Framework.csproj" />
+  </ItemGroup>
+
+</Project>
