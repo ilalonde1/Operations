@@ -323,7 +323,8 @@ public class K5bTests
         try
         {
             var line = Assert.Single(TestRunIssues.Map(db, test, "dotnet test", TestFailOut, notRepo, "k5b-test"));
-            Assert.Equal("error", BrainStore.ChecksOf(issue.Id, db).First().Outcome);
+            Assert.Empty(BrainStore.ChecksOf(issue.Id, db).Where(e => e.Id > 0 && e.Outcome != "pass"));   // no event: git confirmed no commit to cite (row 184)
+            Assert.Contains("not recorded (no commit to cite)", line);
             Assert.DoesNotContain("REGRESSION", line);
             Assert.Null(RecordStore.OpenIssueByName(db, Lane, $"fail-no-git (regression of #{issue.Id})"));
         }
@@ -338,7 +339,8 @@ public class K5bTests
         var (issue, test) = InTempRepo(db, repo, "pass-clean-dirty", resolve: false, "pass");
         var command = $"dotnet test x --filter FullyQualifiedName={Fqn}";
         File.AppendAllText(Path.Combine(repo.Dir, "a.md"), "\nuncommitted fix");
-        Assert.Contains("dirty", Assert.Single(TestRunIssues.Map(db, test, command, TestPassOut, repo.Dir, "k5b-test")));
+        Assert.Single(TestRunIssues.Map(db, test, command, TestPassOut, repo.Dir, "k5b-test"));
+        Assert.Equal("dirty", BrainStore.ChecksOf(issue.Id, db).First().Outcome);   // the recorded outcome (row 183: the line names the issue)
         Assert.True(Open(db, issue.Id));
         Git.Run(repo.Dir, "checkout", "--", "a.md");
         Assert.Contains("RESOLVED", Assert.Single(TestRunIssues.Map(db, test, command, TestPassOut, repo.Dir, "k5b-test")));

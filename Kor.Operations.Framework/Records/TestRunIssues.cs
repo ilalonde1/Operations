@@ -12,6 +12,8 @@ namespace Kor.Operations.Framework.Records;
 /// whose fqn is among them gets a 'fail' check event -> a linked regression.</item>
 /// <item>In a tree with uncommitted tracked changes either run is recorded as 'dirty' and changes nothing: the code that
 /// ran is not the commit the event would cite (OverLORD, 3 Nov - fail event #27272).</item>
+/// <item>When git cannot read the folder the run was in, nothing is recorded ("not recorded (no commit to cite)"), as
+/// IssueCheck does: no commit is confirmed, so there is nothing to cite (review rows 181, 184).</item>
 /// </list>
 /// Not covered: a pass of a wider filter (or none) never resolves - only the exact fqn filter is the issue's own check; a
 /// failing run whose output does not list the failed test by name (a crash, a build error) opens no regression; a pass or
@@ -78,7 +80,7 @@ public static class TestRunIssues
     {
         var (head, dirty) = IssueCheck.HeadAndDirty(repoDir);
         if (head is null)
-            return new CheckResult("error", test.Repo, test.Commit, $"capture-tool: {command} - git could not read {repoDir}: not evidence", Total(output));
+            return new CheckResult("error", test.Repo, null, $"capture-tool: {command} - git could not read {repoDir}: not evidence", Total(output));
         return new CheckResult(dirty is null ? outcome : "dirty", test.Repo, head,
             $"capture-tool: {command}" + (dirty is null ? "" : $" - uncommitted changes, not evidence: {dirty}"), Total(output));
     }
