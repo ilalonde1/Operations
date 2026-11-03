@@ -290,6 +290,9 @@ six sessions days old, every message relayed through the lead, four full reruns,
   LocalDB is for design-time and tests only. A new store is a new database here, created by Ian as sa: never
   propose another engine without reading `SELECT name FROM sys.databases` first (2 Nov: SQLite, then LocalDB, were
   proposed for a board without looking; Ian: "You're not aware of our DB system???").
+- **Every new board row carries a Budget** (KorStandards 163, 2 Nov - Framework F2): `oversight.Commitment` refuses a
+  row added without one (CK_Commitment_Budget). Goal = What, finish line = DoneWhen, Budget = time, runs and what it
+  may read. Rows from before 163 keep NULL. Each lead's rows are shown at session start; work them to zero.
 - The full test suite takes about **7 minutes** because ~20 of its tests rebuild both reference
   buildings from real drawings. Do not start one and then keep editing.
 
