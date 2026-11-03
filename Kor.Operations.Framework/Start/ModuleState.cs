@@ -11,8 +11,22 @@ public sealed record StartRecord(int Id, string Lane, string Name, string Kind, 
                                  string? SourceKind, string? SourceRepo, string? SourceCommit, string? SourcePath, string? SourceRef,
                                  string? CheckKind, string? CheckRef, int? RegressionOf)
 {
-    /// <summary>Imported before 168 (no source): file memory moved into the DB. Rendered last, cut first.</summary>
-    public bool Legacy => SourceKind is null;
+    /// <summary>
+    /// A Claude Code memory file moved into the DB, known by WHAT IT CITES, never by a field beside it (3 Nov: the
+    /// rule was "SourceKind is null", so 121 Framework rows imported after 168 - written 'session' - were in no section):
+    /// SourceKind 'file' with SourceRef a .md directly in a <c>.claude\projects\&lt;project&gt;\memory</c> folder (what
+    /// kor_brain_import.py writes from 3 Nov, with the file's SHA-256 - K5 marks it stale when the file changes), or no
+    /// source at all (imported before 168). On the MEMORY part, never among the record part's sourced records.
+    /// Not covered: a 'session' row the importer wrote between 168 and the fix (re-import the lane - it supersedes them).
+    /// </summary>
+    public bool FromFileMemory => SourceKind is null || (SourceKind == "file" && IsMemoryFile(SourceRef));
+
+    /// <summary>A path to a .md directly in a <c>.claude\projects\&lt;project&gt;\memory</c> folder (either separator, any case).</summary>
+    public static bool IsMemoryFile(string? path) => path is not null && MemoryFile.IsMatch(path);
+
+    private static readonly System.Text.RegularExpressions.Regex MemoryFile = new(
+        @"[\\/]\.claude[\\/]projects[\\/][^\\/]+[\\/]memory[\\/][^\\/]+\.md$",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
     /// <summary>"Repo:path@commit7" for a git source, "kind: ref" otherwise.</summary>
     public string Where => SourceKind == "git"

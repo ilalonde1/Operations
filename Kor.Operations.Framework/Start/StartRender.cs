@@ -50,9 +50,9 @@ public static class StartRender
         var stale = s.Fresh.Rows.Where(r => r.Verdict == Verdict.Stale).ToList();
         var unverifiable = s.Fresh.Rows.Where(r => r.Verdict == Verdict.Unverifiable).ToList();
         var staleIds = stale.Select(r => r.Id).ToHashSet();
-        var sourced = s.Records.Where(r => !r.Legacy && r.Name != ModuleState.FiveQuestionsName && r.Kind != "resolution"
+        var sourced = s.Records.Where(r => !r.FromFileMemory && r.Name != ModuleState.FiveQuestionsName && r.Kind != "resolution"
                                             && r.Status == "current" && !staleIds.Contains(r.Id)).ToList();
-        var legacy = split ? new List<StartRecord>() : s.Records.Where(r => r.Legacy).ToList();
+        var legacy = split ? new List<StartRecord>() : s.Records.Where(r => r.FromFileMemory).ToList();
         var sections = new List<Section>
         {
             new("header", 0, _ => Header(s)),
@@ -219,7 +219,7 @@ public static class StartRender
         {
             Description = SecretGuard.Mask(r.Description)!, Body = SecretGuard.Mask(r.Body), Name = SecretGuard.Mask(r.Name)!,
         };
-        var legacy = side.Records.Where(r => r.Legacy).Select(M).ToList();
+        var legacy = side.Records.Where(r => r.FromFileMemory).Select(M).ToList();
         var office = side.Office.Select(M).ToList();
         var blocks = new List<string> { WriteLine(side.Module) };
         if (office.Count > 0) blocks.Add(Office(office, 0, capOverride: int.MaxValue));
@@ -439,13 +439,39 @@ public static class StartRender
         return text[..(cap - note.Length)].TrimEnd() + note;
     }
 
+    /// <summary>
+    /// The most chars of names the MEMORY part lists for imported rows its index does not name; past it, their count and
+    /// how to list them. Measured 3 Nov: Framework 46 such rows (1,869 chars of names), KOR.Drafter 95 (3,796),
+    /// Operations 494 (18,682 - its index names 74 of its 568 files, as Claude Code's own file memory loaded them).
+    /// </summary>
+    public const int UnindexedNamesMax = 4000;
+
+    /// <summary>The index links the memory as "<c>name.md</c>" (a markdown link target, or bare).</summary>
+    internal static bool NamedIn(string index, string name) =>
+        System.Text.RegularExpressions.Regex.IsMatch(index, @"(?<![\w.-])" + System.Text.RegularExpressions.Regex.Escape(name) + @"\.md(?!\w)",
+                                                     System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static string Names(string what, List<string> names, string module)
+    {
+        if (names.Count == 0) return "";
+        var all = string.Join(", ", names);
+        return all.Length <= UnindexedNamesMax
+            ? $"\n{what} ({names.Count}): {all}"
+            : $"\n{what}: {names.Count} rows ({all.Length.ToString("N0", CultureInfo.InvariantCulture)} chars of names) - " +
+              $"python -I \"C:/VIsual Studio Projects/Framework/tools/kor_brain.py\" list --lane \"{module}\"";
+    }
+
     private static string Legacy(string module, List<StartRecord> legacy, int? room)
     {
         var index = legacy.FirstOrDefault(r => r.Name == ModuleState.IndexName);
         var rows = legacy.Where(r => r.Name != ModuleState.IndexName).ToList();
-        var head = $"LEGACY MEMORY ({rows.Count} rows imported from the file memories: no source, so they never go stale - weigh them " +
-                   "below every sourced record above)" + (index is not null ? $"; the lane's curated index, record #{index.Id}:" : ":");
-        var full = index?.Body is { } b ? head + "\n" + b.Trim()
+        var stale = rows.Where(r => r.Status == "stale").Select(r => r.Name).ToList();
+        var head = $"LEGACY MEMORY ({rows.Count} rows imported from the file memories - weigh them below every sourced record above; " +
+                   "a row imported with its file's SHA-256 goes stale when the file changes, one imported before 168 has no source)" +
+                   Names("STALE - the memory file changed since it was imported (read the file, or re-import the lane)", stale, module) +
+                   (index is not null ? $"\nThe lane's curated index, record #{index.Id}:" : ":");
+        var full = index?.Body is { } b
+            ? head + "\n" + b.Trim() + Names("Imported, not named in the index", rows.Where(r => !NamedIn(b, r.Name)).Select(r => r.Name).ToList(), module)
             : string.Join("\n", new[] { head }.Concat(rows.Select(r => $"- record #{r.Id} [{r.Kind}] {r.Name} - {r.Description}")));
         if (room is null || full.Length <= room) return full;
         var note = $"\n... [legacy memory cut at the session-start limit - kor start --module \"{module}\" --text for all]";

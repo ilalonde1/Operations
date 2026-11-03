@@ -180,7 +180,7 @@ public class StartTests
         // nothing above it cut: legacy fills exactly the room left, with its note
         var small = s with
         {
-            Records = s.Records.Where(r => r.Legacy || r.Name == ModuleState.FiveQuestionsName).ToList(),
+            Records = s.Records.Where(r => r.FromFileMemory || r.Name == ModuleState.FiveQuestionsName).ToList(),
             Office = Array.Empty<StartRecord>(),
             Events = Array.Empty<StoredEvent>(),
         };

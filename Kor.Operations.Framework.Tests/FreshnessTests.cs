@@ -16,7 +16,7 @@ namespace Kor.Operations.Framework.Tests;
 /// unverifiable + unwritten), superseded never reopened, recheck confirm supersedes, insert refuses a wrong blob, git
 /// output lowercased before compare and write, FileChanged exits 0 on garbage and writes nothing, capture-git re-checks.
 /// Does NOT cover: the hook wiring (settings.json FileChanged/SessionStart - not wired until K6); a file-sourced record
-/// (no writer makes one yet). Same-class miss: a record citing a repo that sits anywhere but beside this checkout reads
+/// (FileMemoryLiveTests: an imported memory file that changes reads stale). Same-class miss: a record citing a repo that sits anywhere but beside this checkout reads
 /// unverifiable here though it may be current.
 /// </summary>
 [Collection(LiveDb.Name)]
