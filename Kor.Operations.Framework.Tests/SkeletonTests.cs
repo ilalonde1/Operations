@@ -12,7 +12,7 @@ public class SkeletonTests
     {
         var output = new StringWriter();
         Assert.Equal(0, Program.Run(new[] { "--version" }, output, new StringWriter()));
-        Assert.StartsWith("kor ", output.ToString());
+        Assert.StartsWith("kor-BROKEN-ON-PROOF-BRANCH ", output.ToString());   // K5b proof: deliberately broken, never merged
     }
 
     [Fact]
