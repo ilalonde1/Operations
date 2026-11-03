@@ -79,6 +79,9 @@ public static class Git
     /// <summary>
     /// HEAD's commit (lowercase 40-hex) read from the files git keeps it in - <c>.git/HEAD</c>, then the loose ref or
     /// <c>packed-refs</c> - without starting git. Anything else (a .git file, an unreadable or odd ref) asks git.
+    /// Order, as git resolves a ref: a detached HEAD is its sha; a LOOSE ref file wins over packed-refs, and when it exists
+    /// but does not hold a sha, git is asked (packed-refs is NOT consulted then); only a ref with no loose file is looked
+    /// up in packed-refs. Tested on a throwaway repo: loose, packed-only, detached, and a .git file (review row 194).
     /// </summary>
     public static string? HeadFast(string top)
     {

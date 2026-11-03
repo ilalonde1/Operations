@@ -286,6 +286,59 @@ public class StartTests
     }
 
     [Fact]
+    public void HeadFastAgreesWithGitOnALooseAPackedOnlyADetachedHeadAndAGitFile()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"kor-k6-git-{Guid.NewGuid():N}");
+        var repo = Path.Combine(root, "repo");
+        Directory.CreateDirectory(repo);
+        string G(string dir, params string[] a) => Git.Run(dir, TimeSpan.FromSeconds(20), a) ?? throw new InvalidOperationException($"git {string.Join(' ', a)} failed");
+        try
+        {
+            G(repo, "init", "-q", "-b", "main");
+            File.WriteAllText(Path.Combine(repo, "a.txt"), "one");
+            G(repo, "add", "a.txt");
+            G(repo, "-c", "user.name=k6", "-c", "user.email=k6@test", "commit", "-q", "-m", "one");
+            File.WriteAllText(Path.Combine(repo, "a.txt"), "two");
+            G(repo, "-c", "user.name=k6", "-c", "user.email=k6@test", "commit", "-q", "-am", "two");
+            string Real(string d) => G(d, "rev-parse", "HEAD").Trim();
+            var top = Git.TopLevelFast(repo)!;
+            Assert.Equal(Git.TopLevel(repo), top);
+            Assert.True(File.Exists(Path.Combine(repo, ".git", "refs", "heads", "main")));
+            Assert.Equal(Real(repo), Git.HeadFast(top));                                 // loose ref
+            G(repo, "pack-refs", "--all");
+            Assert.False(File.Exists(Path.Combine(repo, ".git", "refs", "heads", "main")));
+            Assert.Equal(Real(repo), Git.HeadFast(top));                                 // packed-only ref
+            G(repo, "checkout", "-q", "--detach", "HEAD~1");
+            Assert.Equal(Real(repo), Git.HeadFast(top));                                 // detached HEAD
+            var wt = Path.Combine(root, "wt");
+            G(repo, "worktree", "add", "-q", "--detach", wt, "main");
+            Assert.True(File.Exists(Path.Combine(wt, ".git")));                          // a .git FILE: git is asked
+            Assert.Equal(Git.TopLevel(wt), Git.TopLevelFast(Path.Combine(wt)));
+            Assert.Equal(Real(wt), Git.HeadFast(Git.TopLevelFast(wt)!));
+            Assert.NotEqual(Git.HeadFast(top), Git.HeadFast(Git.TopLevelFast(wt)!));
+        }
+        finally
+        {
+            try
+            {
+                foreach (var f in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
+                Directory.Delete(root, recursive: true);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    [Fact]
+    public void HookWithTextIsRefusedQuietlyAndExitsZero()
+    {
+        var output = new StringWriter();
+        Assert.Equal(0, Program.Run(new[] { "start", "--module", "zz", "--part", "record", "--hook", "--text" }, () => "{}", output,
+                                    new StringWriter(), Path.Combine(Path.GetTempPath(), $"kor-k6-{Guid.NewGuid():N}.log")));
+        Assert.Equal("", output.ToString());
+    }
+
+    [Fact]
     public void HookAllPartsIsRefusedQuietlyAndExitsZero()
     {
         var output = new StringWriter();

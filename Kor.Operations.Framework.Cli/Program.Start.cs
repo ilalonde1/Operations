@@ -23,6 +23,8 @@ public static partial class Program
         var module = o.Get("--module") ?? throw new ArgumentException("start needs --module <lane>");
         var part = o.Get("--part") ?? "all";
         if (part is not ("record" or "board" or "all")) throw new ArgumentException($"--part is record, board or all, not '{part}'");
+        if (hook && o.Get("--text") is not null)
+            throw new ArgumentException("--hook prints the SessionStart JSON and --text prints plain text: give one (review row 194)");
         if (hook && part == "all")
             throw new ArgumentException("--hook prints ONE part's SessionStart JSON: --part record or --part board (one hook entry each)");
         string? session = o.Get("--session"), source = o.Get("--start-source");
