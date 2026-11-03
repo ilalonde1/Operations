@@ -189,7 +189,8 @@ public static class StartRender
     /// <summary>
     /// The STATE NOW part (the SessionStart hook, board row 1198): the handover's STATE NOW section WHOLE when it fits
     /// <paramref name="budget"/>, else cut at a whole line with a note naming the rest (git show HEAD:path). Measured 3 Nov:
-    /// the longest of the 6 KOR modules' is KOR.Drafter's, 7,330 chars, which fits whole.
+    /// the longest of the 6 KOR modules' is KOR.Drafter's: a 7,330-char section (7,465 with the citation line above it, 7,616
+    /// as the whole part), which fits whole.
     /// </summary>
     public static string State(StartSide side, int? budget)
     {
@@ -236,7 +237,8 @@ public static class StartRender
         {
             var note = $"\n... [memory continues past page {pages} of the session start ({chunks.Count - pages} more page(s)) - " +
                        $"kor start --module \"{side.Module}\" --part memory --text for all]";
-            text = text[..Math.Max(0, Math.Min(text.Length, budget.Value - headRoom - note.Length))].TrimEnd() + note;
+            // cut at a whole line too (review row 247): the first chunk of this page that leaves room for the note
+            text = (Chunk(text, Math.Max(1, budget.Value - headRoom - note.Length)).FirstOrDefault() ?? "").TrimEnd() + note;
         }
         return SecretGuard.Mask(head + "\n" + text)!;
     }

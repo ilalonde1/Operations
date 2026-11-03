@@ -122,8 +122,6 @@ public static partial class Program
                       : $"read the lane's memory by hand: kor start --module \"{module}\" --part memory --text", () => DateTime.Now, Log);
             texts.Add(SecretGuard.Mask(r.Text)!);
         }
-        // a memory page past the lane's content has nothing to say: the hook prints nothing (Claude Code adds no context)
-        if (hook && texts[0].Length == 0) return 0;
         if (part is "board" or "all")
         {
             var owners = o.Owners.Count > 0 ? o.Owners : new List<string> { module };
@@ -139,6 +137,10 @@ public static partial class Program
                 "read the board by hand (Operations tools/SqlQuery/oq.py: oversight.vw_Board)", () => DateTime.Now, Log);
             texts.Add(SecretGuard.Mask(r.Text)!);   // mistake 138: a page from the cache, written before the guard, is masked too
         }
+        // a memory page past the lane's content has nothing to say: the hook prints nothing (Claude Code adds no context).
+        // After every part, so it reads the one part this hook ran (review row 247: placed before the board block it threw
+        // on --part board, whose failure a hook logs and exits 0 on - THE BOARD would have vanished from every start).
+        if (hook && part == "memory" && texts.Count == 1 && texts[0].Length == 0) return 0;
         if (hook)
         {
             var payload = new

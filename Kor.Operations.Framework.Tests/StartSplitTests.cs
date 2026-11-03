@@ -11,7 +11,7 @@ namespace Kor.Operations.Framework.Tests;
 /// Board row 1198 (3 Nov), PURE: the hook's start split into parts, each under Claude Code's per-hook 10,000-char cap
 /// (each hook's additionalContext is measured on its own - hooks docs, read 3 Nov). The record part leaves STATE NOW,
 /// OFFICE LESSONS and LEGACY MEMORY to parts of their own and names them; the STATE NOW part carries the section whole
-/// (KOR.Drafter's 7,330 chars, cut at 3,000 before); the MEMORY part's pages carry office + legacy, every line once, in
+/// (KOR.Drafter's section, 7,330 chars - 7,465 with its citation line - cut at 3,000 before); the MEMORY part's pages carry office + legacy, every line once, in
 /// order, split at whole lines; a page past the content is empty; content past the last wired page is cut with a note;
 /// a credential value in the legacy index is masked.
 /// Does NOT cover: the SQL read (StartSplitLiveTests); whether Claude Code orders the parts as wired (it need not - each
@@ -135,6 +135,8 @@ public class StartSplitTests
         Assert.True(last.Length <= StartRender.HookBudget, $"{last.Length}");
         Assert.StartsWith("KNOWN AT START - MEMORY, page 2 of 2", last);
         Assert.Matches(@"\.\.\. \[memory continues past page 2 of the session start \(\d+ more page\(s\)\) - kor start --module ""zz"" --part memory --text for all\]$", last);
+        var lines = last.Split('\n');
+        Assert.Matches(@"^- \[entry \d{4}\]\(feedback_entry_\d+\.md\) - m{120}$", lines[^2]);   // the cut is at a whole line (review row 247)
     }
 
     [Fact]
@@ -278,6 +280,19 @@ public class StartSplitLiveTests
         Assert.NotNull(section);
         Assert.DoesNotContain("[STATE NOW cut at", text);
         Assert.Contains(SecretGuard.Mask(section)!, text);
+    }
+
+    /// <summary>Review row 247: the board part through the CLI hook path (an empty-page check placed before the board
+    /// block threw on it, and a hook failure is silent). THE BOARD must arrive, within budget.</summary>
+    [Fact]
+    public void LiveTheBoardHookStillPrintsTheBoard()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        var r = Run(db, "--part", "board", "--owner", "Revit Tools");
+        Assert.Equal(0, r.Exit);
+        var text = Context(r.Out);
+        Assert.StartsWith("THE BOARD", text);
+        Assert.True(text.Length <= StartRender.HookBudget, $"{text.Length}");
     }
 
     [Theory]
