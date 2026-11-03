@@ -51,6 +51,16 @@
             "statusMessage": "Reading this lead's rows off the board (the source of truth; Knowledge IDE K6)"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe capture-start --hook",
+            "timeout": 15,
+            "statusMessage": "Recording this session's start in the module record (Knowledge IDE K4)"
+          }
+        ]
       }
     ],
     "FileChanged": [
@@ -254,6 +264,16 @@
             "statusMessage": "Checking the reply does not contradict the board (the source of truth)"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe capture-check --hook",
+            "timeout": 15,
+            "statusMessage": "Asking once per new commit what it taught (Knowledge IDE K4)"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -299,6 +319,50 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_grep_sample_guard.py\"",
             "timeout": 20,
             "statusMessage": "Marking a truncated search as a sample"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe capture-tool --hook",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe capture-tool --hook",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe capture-compact --hook",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe capture-end --hook",
+            "timeout": 10
           }
         ]
       }
