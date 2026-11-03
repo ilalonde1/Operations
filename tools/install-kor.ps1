@@ -2,7 +2,7 @@
 <#
 .SYNOPSIS
     Install the `kor` CLI (Kor.Operations.Framework.Cli - the Knowledge IDE's one command, Framework
-    docs/KNOWLEDGE-IDE-PLAN.md K2) to C:\KOR-Operations\cli, beside netops, so Claude Code hooks can call it. A copy of
+    docs/KNOWLEDGE-IDE-PLAN.md K2) to its own folder C:\KOR-Operations\kor, so Claude Code hooks can call it. A copy of
     tools/install-netops.ps1 with the names changed: publish to a stage, then swap file by file (a loaded file is renamed
     to <name>.old-<time>, never deleted), every file hash-verified. Framework-dependent; not single-file.
 #>

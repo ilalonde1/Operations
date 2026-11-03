@@ -22,10 +22,12 @@ public class SkeletonTests
     }
 
     [Fact]
-    public void HookModeNeverFails()
+    public void HookModeUnknownVerbExitsZero()
     {
-        // A hook must never fail the session: unknown verb and a verb that throws both exit 0 in --hook mode.
-        Assert.Equal(0, Program.Run(new[] { "no-such-verb", "--hook" }, new StringWriter(), new StringWriter()));
+        // A hook must never fail the session: an unknown verb in --hook mode exits 0 and prints nothing.
+        var output = new StringWriter();
+        Assert.Equal(0, Program.Run(new[] { "no-such-verb", "--hook" }, output, new StringWriter()));
+        Assert.Equal("", output.ToString());
     }
 
     [Fact]
@@ -40,14 +42,16 @@ public class SkeletonTests
     }
 
     [Fact]
-    public void ParseRefusesAMissingPart()
+    public void ParseRefusesAMissingPartWithoutEchoingThePassword()
     {
-        var e = Assert.Throws<InvalidOperationException>(() => KorStandardsConnection.Parse("Server=s;Database=d;User Id=u;"));
-        Assert.DoesNotContain("secret", e.Message);
+        // The input HAS a password but no server: the error must name what is missing, never repeat the password.
+        var e = Assert.Throws<InvalidOperationException>(() => KorStandardsConnection.Parse("Database=d;User Id=u;Password=secret-xyz-123;"));
+        Assert.DoesNotContain("secret-xyz-123", e.Message);
+        Assert.Contains("server", e.Message);
     }
 
     [Fact]
-    public void MissingVariableNamesTheVariableNotThePassword()
+    public void ReadVariableReturnsNullWhenSetNowhere()
     {
         Assert.Null(KorStandardsConnection.ReadVariable("KOR_NO_SUCH_VARIABLE_" + Guid.NewGuid().ToString("N")));
     }

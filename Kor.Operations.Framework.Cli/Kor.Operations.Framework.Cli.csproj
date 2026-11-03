@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!-- kor.exe - the Knowledge IDE's one command (Framework docs/KNOWLEDGE-IDE-PLAN.md K2). Claude Code hooks call it, as
-       they call netops.exe; installed to C:\KOR-Operations\cli by tools/install-kor.ps1. -->
+       they call netops.exe; installed to its own folder C:\KOR-Operations\kor by tools/install-kor.ps1. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
