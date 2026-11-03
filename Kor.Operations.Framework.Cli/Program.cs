@@ -25,7 +25,10 @@ public static class Program
         Run(args, () => null, output, error, Path.Combine(Path.GetTempPath(), "kor-test-hook-errors.log"));
 
     /// <param name="hookErrorLog">the file a hook-mode failure is appended to (tests pass their own, review row 85).</param>
-    internal static int Run(string[] args, Func<string?> stdin, TextWriter output, TextWriter error, string hookErrorLog)
+    /// <param name="db">the brain session every read and write goes through; null = each opens its own and commits (the
+    /// installed kor.exe). Tests pass <see cref="BrainSession.BeginRolledBack"/>, so nothing they write is kept.</param>
+    internal static int Run(string[] args, Func<string?> stdin, TextWriter output, TextWriter error, string hookErrorLog,
+                            BrainSession? db = null)
     {
         var hook = args.Contains("--hook");
         var o = Options.Parse(args.Where(a => a != "--hook").ToArray());
@@ -35,11 +38,11 @@ public static class Program
             {
                 "--version" or "version" => Version(output),
                 "ping" => PingVerb(output, hook),
-                "capture-git" => CaptureGit(o, stdin, output, hook),
-                "capture-tool" => CaptureTool(o, stdin, output, hook),
-                "capture-compact" => CaptureCompact(o, stdin, output, hook),
-                "capture-end" => CaptureEnd(o, stdin, output, hook),
-                "events" => Events(o, output),
+                "capture-git" => CaptureGit(o, stdin, output, hook, db),
+                "capture-tool" => CaptureTool(o, stdin, output, hook, db),
+                "capture-compact" => CaptureCompact(o, stdin, output, hook, db),
+                "capture-end" => CaptureEnd(o, stdin, output, hook, db),
+                "events" => Events(o, output, db),
                 _ => hook ? 0 : Usage(error),
             };
         }
@@ -73,19 +76,19 @@ public static class Program
     }
 
     // ---- capture verbs (K3) ---------------------------------------------------------------------------------------
-    private static int CaptureGit(Options o, Func<string?> stdin, TextWriter output, bool hook)
+    private static int CaptureGit(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainSession? db)
     {
         var hookName = o.Positional.ElementAtOrDefault(1) ?? throw new ArgumentException("capture-git needs the hook name");
         var hookArgs = o.Positional.Skip(2).ToList();
         var input = hookName == "pre-push" ? stdin() : null;
         var e = GitCapture.Build(hookName, hookArgs, o.Get("--dir") ?? Environment.CurrentDirectory, input,
                                  o.Int("--result"), o.Get("--module"));
-        var id = BrainStore.Insert(e);
+        var id = BrainStore.Insert(e, db);
         if (!hook) output.WriteLine($"recorded brain.Event {id}: {e.Module} {e.Kind} {e.Commit}");
         return 0;
     }
 
-    private static int CaptureTool(Options o, Func<string?> stdin, TextWriter output, bool hook)
+    private static int CaptureTool(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainSession? db)
     {
         var h = ClaudeCapture.Parse(stdin() ?? throw new ArgumentException("capture-tool reads the hook JSON on stdin"));
         var e = ClaudeCapture.Tool(h, o.Get("--module"));
@@ -94,33 +97,33 @@ public static class Program
             if (!hook) output.WriteLine("nothing to record");
             return 0;
         }
-        var id = BrainStore.Insert(e);
+        var id = BrainStore.Insert(e, db);
         if (!hook) output.WriteLine($"recorded brain.Event {id}: {e.Module} {e.Kind} {e.Outcome} {e.Ref}");
         return 0;
     }
 
-    private static int CaptureCompact(Options o, Func<string?> stdin, TextWriter output, bool hook)
+    private static int CaptureCompact(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainSession? db)
     {
         var h = ClaudeCapture.Parse(stdin() ?? throw new ArgumentException("capture-compact reads the hook JSON on stdin"));
-        var (lane, id) = ClaudeCapture.Compact(h, o.Get("--module"));
+        var (lane, id) = ClaudeCapture.Compact(h, o.Get("--module"), db);
         if (!hook) output.WriteLine($"recorded brain.Event {id}, brain.LaneState {lane?.ToString() ?? "none (empty summary)"}");
         return 0;
     }
 
-    private static int CaptureEnd(Options o, Func<string?> stdin, TextWriter output, bool hook)
+    private static int CaptureEnd(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainSession? db)
     {
         var h = ClaudeCapture.Parse(stdin() ?? throw new ArgumentException("capture-end reads the hook JSON on stdin"));
         var e = ClaudeCapture.End(h, o.Get("--module"));
-        var id = BrainStore.Insert(e);
+        var id = BrainStore.Insert(e, db);
         if (!hook) output.WriteLine($"recorded brain.Event {id}: {e.Module} {e.Kind}");
         return 0;
     }
 
     // ---- read-back (K6 groundwork) --------------------------------------------------------------------------------
-    private static int Events(Options o, TextWriter output)
+    private static int Events(Options o, TextWriter output, BrainSession? db)
     {
         var module = o.Get("--module") ?? throw new ArgumentException("events needs --module <name>");
-        var rows = BrainStore.Last(module, o.Int("--last") ?? 10, o.Get("--kind"));
+        var rows = BrainStore.Last(module, o.Int("--last") ?? 10, o.Get("--kind"), db);
         var full = o.Get("--full") is not null;
         output.WriteLine($"{rows.Count} event(s) for module {module}, newest first");
         foreach (var r in rows)

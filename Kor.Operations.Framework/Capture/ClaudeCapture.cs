@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Kor.Operations.Framework.Capture;
 
@@ -57,35 +58,48 @@ public static class ClaudeCapture
         return string.IsNullOrWhiteSpace(bridge) || bridge.Trim() == h.SessionId ? who : $"{who} (bridge {bridge.Trim()})";
     }
 
-    /// <summary>The event for a tool call, or null when the command is not one K3 records.</summary>
-    public static BrainEvent? Tool(HookInput h, string? moduleOverride)
+    /// <summary>
+    /// The event for a tool call, or null when the command is not one K3 records. It is cited to the path
+    /// <see cref="SourceResolver"/> PROVES the tool ran on (repo + HEAD of that path); MODULE = that repo (#125, 2 Nov: an
+    /// Operations build was filed under Framework), unless --module is given. When the source is UNKNOWN there is no
+    /// repo or commit, and the module falls back to the session's lane (CLAUDE_PROJECT_DIR / cwd) - the only module
+    /// known - with Detail saying so (source null, source_why, module_from).
+    /// </summary>
+    public static BrainEvent? Tool(HookInput h, string? moduleOverride, SourceResolver.Probe? probe = null)
     {
         var output = h.Error is null ? h.Output : string.IsNullOrEmpty(h.Output) ? h.Error : h.Output + "\n" + h.Error;
         var exit = h.Error is not null ? ToolClassifier.ExitCodeOf(h.Error) ?? 1 : (int?)null;   // a failure event is a failure
         var t = ToolClassifier.Classify(h.Command, output, exit);
         if (t is null) return null;
-        string? repo = null, commit = null;
-        // The folder the tool RAN in: a cd before it in the command wins over the hook's cwd (the folder before the
-        // command ran) - otherwise an Operations build is cited against Framework's HEAD (#74, 2 Nov).
-        // Unknown (cd -, cd ~, $VAR ...) gives null: no repo/commit is recorded rather than a guessed one (review row 93).
-        var cd = ToolClassifier.DirectoryBefore(h.Command!, t.At, h.Cwd);
-        var dir = cd.Changed ? cd.Dir : h.Cwd;
-        if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+        var shell = string.Equals(h.ToolName, "PowerShell", StringComparison.OrdinalIgnoreCase) ? "powershell" : "bash";
+        var source = SourceResolver.Resolve(h.Command!, shell, h.Cwd, t, probe ?? SourceResolver.Probe.Real);
+        string? repo = null, commit = null, why = source.Why;
+        if (source.Path is not null)
         {
-            // One git call: the repo the command ran in, and its HEAD - the source the result belongs to.
+            var dir = File.Exists(source.Path) ? Path.GetDirectoryName(source.Path)! : source.Path;
+            // One git call: the repo holding what the tool ran on, and its HEAD.
             var lines = Git.Run(dir, TimeSpan.FromSeconds(3), "rev-parse", "--show-toplevel", "HEAD")?.Split('\n');
             if (lines is { Length: >= 2 }) { repo = Git.Leaf(lines[0].Trim()); commit = lines[1].Trim(); }
+            else why += " - but it is not inside a git work tree";
         }
-        return new BrainEvent(ModuleOf(h, moduleOverride), t.Kind, repo, commit, t.Ref, t.Outcome, t.Detail, ActorOf(h));
+        var (module, from) = moduleOverride is not null ? (moduleOverride, "--module")
+                           : repo is not null ? (repo, "the repo it ran on")
+                           : (ModuleOf(h, null), "the session's lane (the source is unknown)");
+        var detail = JsonNode.Parse(t.Detail)!.AsObject();
+        detail["source"] = source.Path;
+        detail["source_why"] = why;
+        detail["module_from"] = from;
+        detail["shell"] = shell;
+        return new BrainEvent(module, t.Kind, repo, commit, t.Ref, t.Outcome, detail.ToJsonString(GitCapture.Json), ActorOf(h));
     }
 
     /// <summary>PostCompact: the summary becomes the module's resume record (brain.LaneState), plus a 'compact' event.</summary>
-    public static (int? LaneStateId, int EventId) Compact(HookInput h, string? moduleOverride)
+    public static (int? LaneStateId, int EventId) Compact(HookInput h, string? moduleOverride, BrainSession? db = null)
     {
         var module = ModuleOf(h, moduleOverride);
         int? laneId = null;
         if (!string.IsNullOrWhiteSpace(h.CompactSummary))
-            laneId = BrainStore.InsertLaneState(module, h.CompactSummary!, $"compaction {h.SessionId ?? "?"}");
+            laneId = BrainStore.InsertLaneState(module, h.CompactSummary!, $"compaction {h.SessionId ?? "?"}", db);
         var detail = JsonSerializer.Serialize(new
         {
             trigger = h.Trigger,
@@ -94,7 +108,7 @@ public static class ClaudeCapture
             session_id = h.SessionId,
         }, GitCapture.Json);
         var id = BrainStore.Insert(new BrainEvent(module, "compact", null, null, h.TranscriptPath,
-                                                  laneId is null ? "empty" : "stored", detail, ActorOf(h)));
+                                                  laneId is null ? "empty" : "stored", detail, ActorOf(h)), db);
         return (laneId, id);
     }
 

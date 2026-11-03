@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Kor.Operations.Framework.Capture;
 using Kor.Operations.Framework.Cli;
 using Xunit;
@@ -193,95 +194,199 @@ public class CaptureTests
         Assert.Equal(expected, t.Ref);
     }
 
-    // ---- the folder a tool ran in (#74: an Operations build was cited against Framework's HEAD) -----------------------
-    private static ToolClassifier.CdResult CdFor(string command, string cwd)
+
+    // ---- THE SOURCE RULE: a result is cited only to a PROVED path; anything not proved is UNKNOWN --------------------
+    // One table for the whole class (review rows 93-96 and #74/#125 were five-plus instances of it, one at a time).
+    // A fake file system, so every row is exact; cwd is C:/a unless the row says otherwise.
+    private static readonly string[] FakeDirs =
     {
-        var t = ToolClassifier.Classify(command, BuildPassOut);
-        Assert.NotNull(t);
-        return ToolClassifier.DirectoryBefore(command, t!.At, cwd);
+        "C:/a", "C:/a/sub", "C:/a/Framework", "C:/a/Operations", "C:/x", "C:/x/sub", "C:/y", "C:/first", "C:/first/sub",
+        "C:/second", "C:/Program Files (x86)/x", "D:/", "C:/VIsual Studio Projects/Operations", "C:/proj",
+    };
+    private static readonly string[] FakeFiles =
+        { "C:/x/App.csproj", "C:/y/B.csproj", "C:/x/db/169_A.sql", "C:/a/db/169_A.sql", "C:/a/p.json", "C:/x/p.json" };
+
+    private static SourceResolver.Probe Fake(string? cdPath = null)
+    {
+        var dirs = FakeDirs.Select(Path.GetFullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var files = FakeFiles.Select(Path.GetFullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return new SourceResolver.Probe(d => dirs.Contains(Path.GetFullPath(d)), f => files.Contains(Path.GetFullPath(f)),
+                                        d => Path.GetFullPath(d) == Path.GetFullPath("C:/proj"), cdPath);
     }
 
-    private static string? DirFor(string command, string cwd)
+    public static IEnumerable<object?[]> SourceTable() => new List<object?[]>
     {
-        var r = CdFor(command, cwd);
-        Assert.True(r.Changed, $"no cd seen in: {command}");
-        return r.Dir;
-    }
-
-    [Fact]
-    public void TheCdsBeforeTheToolDecideItsFolder()
-    {
-        Assert.Equal(Path.GetFullPath("C:/VIsual Studio Projects/Operations"),
-                     DirFor("cd \"/c/VIsual Studio Projects/Operations\" && dotnet build X.csproj", "C:/VIsual Studio Projects/Framework"));
-        Assert.Equal(Path.GetFullPath("C:/a/Operations"), DirFor("cd ../Operations && dotnet test", "C:/a/Framework"));
-        Assert.Equal(Path.GetFullPath("C:/y"), DirFor("Set-Location -Path 'C:/y'; dotnet test", "C:/a"));
-        Assert.Equal(Path.GetFullPath("C:/second"), DirFor("cd C:/first && cd C:/second && dotnet build", "C:/a"));
-        Assert.Equal(Path.GetFullPath("C:/first/sub"), DirFor("cd C:/first && cd sub && dotnet build", "C:/a"));   // relative to the CURRENT folder
-        // review row 94: flags are skipped, the folder after them is read; a ')' inside a quoted path stays in it.
-        Assert.Equal(Path.GetFullPath("C:/x"), DirFor("cd -P C:/x && dotnet test", "C:/a"));
-        Assert.Equal(Path.GetFullPath("C:/a/x"), DirFor("cd -L -- x && dotnet test", "C:/a"));
-        Assert.Equal(Path.GetFullPath("C:/Program Files (x86)/x"), DirFor("cd \"C:/Program Files (x86)/x\" && dotnet test", "C:/a"));
-        Assert.Equal(Path.GetFullPath("C:/x"), DirFor("cd C:/x 2>/dev/null && dotnet test", "C:/a"));
-        Assert.Equal(Path.GetFullPath("C:/x"), DirFor("(cd C:/x && dotnet test)", "C:/a"));
-        // Alone, /d is Git Bash's D:/ (cmd's "cd /d C:/x" is a two-argument cd: UNKNOWN, see below).
-        Assert.Equal(Path.GetFullPath("D:/"), DirFor("cd /d && dotnet test", "C:/a"));
-    }
-
-    [Fact]
-    public void PopdRestoresTheFolderPushdLeft()
-    {
-        // review row 93: "pushd C:/x && make && popd && dotnet test" ran in the hook's cwd, not C:/x.
-        Assert.Equal(Path.GetFullPath("C:/a"), DirFor("pushd C:/x && make && popd && dotnet test", "C:/a"));
-        Assert.Equal(Path.GetFullPath("C:/x"), DirFor("pushd C:/x; pushd C:/y; Pop-Location; dotnet test", "C:/a"));
-        Assert.Equal(Path.GetFullPath("C:/x"), DirFor("Push-Location C:/x; dotnet test; Pop-Location", "C:/a"));
-    }
-
-    [Theory]   // review row 93: a target that is not a literal path is UNKNOWN - no repo/commit, never a guess
-    [InlineData("cd - && dotnet test")]
-    [InlineData("cd ~ && dotnet test")]
-    [InlineData("cd $DIR && dotnet test")]
-    [InlineData("cd %TEMP% && dotnet test")]
-    [InlineData("cd $DIR && cd sub && dotnet test")]
-    [InlineData("cd && dotnet test")]                 // review row 94: a bare cd goes home
-    [InlineData("cd; dotnet test")]
-    [InlineData("pushd && dotnet test")]              // a bare pushd swaps the top two folders
-    [InlineData("cd -X C:/x && dotnet test")]         // an option not modelled
-    [InlineData("cd C:/Program\\ Files/x && dotnet test")]   // review row 95: an escaped space would give half a path
-    [InlineData("cd /d C:/x; dotnet test")]                  // review row 96: bash/PowerShell refuse a 2nd argument
-    [InlineData("cd C:/x C:/y && dotnet test")]
-    public void AnUnmodelledCdMakesTheFolderUnknown(string command)
-    {
-        Assert.Null(DirFor(command, "C:/a"));
-    }
+        // shell, command, CDPATH, expected proved path (null = UNKNOWN)
+        // -- proved: the folder
+        new object?[] { "bash", "dotnet test", null, "C:/a" },
+        new object?[] { "bash", "cd C:/x && dotnet test", null, "C:/x" },
+        new object?[] { "bash", "cd \"/c/VIsual Studio Projects/Operations\" && dotnet build", null, "C:/VIsual Studio Projects/Operations" },  // #74
+        new object?[] { "bash", "cd sub && dotnet test", null, "C:/a/sub" },
+        new object?[] { "bash", "cd C:/first && cd sub && dotnet build", null, "C:/first/sub" },      // relative to the CURRENT folder
+        new object?[] { "bash", "cd C:/first && cd C:/second && dotnet build", null, "C:/second" },
+        new object?[] { "powershell", "Set-Location -Path 'C:/y'; dotnet test", null, "C:/y" },
+        new object?[] { "bash", "cd -P C:/x && dotnet test", null, "C:/x" },                          // row 94: flags skipped
+        new object?[] { "bash", "cd -L -- sub && dotnet test", null, "C:/a/sub" },
+        new object?[] { "bash", "cd \"C:/Program Files (x86)/x\" && dotnet test", null, "C:/Program Files (x86)/x" },
+        new object?[] { "bash", "cd C:/x 2>/dev/null && dotnet test", null, "C:/x" },
+        new object?[] { "bash", "(cd C:/x && dotnet test)", null, "C:/x" },
+        new object?[] { "bash", "cd /d && dotnet test", null, "D:/" },                                 // Git Bash's D:/
+        new object?[] { "bash", "pushd C:/x && make && popd && dotnet test", null, "C:/a" },           // row 93
+        new object?[] { "bash", "pushd C:/x; pushd C:/y; popd; dotnet test", null, "C:/x" },
+        new object?[] { "powershell", "Push-Location C:/x; dotnet test; Pop-Location", null, "C:/x" },
+        new object?[] { "bash", "(cd C:/x; make) && dotnet test", null, "C:/a" },                      // a subshell ends
+        new object?[] { "bash", "x=$(cd C:/x && pwd); dotnet test", null, "C:/a" },
+        new object?[] { "powershell", "(Set-Location C:/x); dotnet test", null, "C:/x" },              // no subshell in PowerShell
+        new object?[] { "bash", "dotnet test && cd C:/x", null, "C:/a" },                              // after the tool: no effect
+        new object?[] { "bash", "echo 'cd C:/x' && dotnet test", null, "C:/a" },                       // text, not a command
+        new object?[] { "bash", "cd ./sub && dotnet test", "C:/elsewhere", "C:/a/sub" },              // ./ never uses CDPATH
+        // -- proved: what the tool ran on
+        new object?[] { "bash", "dotnet test C:/x/App.csproj", null, "C:/x/App.csproj" },
+        new object?[] { "bash", "cd C:/x && dotnet build App.csproj -c Release", null, "C:/x/App.csproj" },
+        new object?[] { "bash", "dotnet test C:/proj --filter \"A|B\"", null, "C:/proj" },
+        new object?[] { "bash", "cd ~ && dotnet test C:/x/App.csproj", null, "C:/x/App.csproj" },     // absolute: no folder needed
+        new object?[] { "bash", "sqlcmd -S s -i C:/x/db/169_A.sql", null, "C:/x/db/169_A.sql" },
+        new object?[] { "bash", "sqlcmd -S s -i db/169_A.sql", null, "C:/a/db/169_A.sql" },
+        new object?[] { "powershell", "& \"C:/t/Invoke-KorSqlScript.ps1\" -Path \"C:/x/db/169_A.sql\" -Database K", null, "C:/x/db/169_A.sql" },
+        new object?[] { "bash", "python -I tools/stage_gate.py run p.json", null, "C:/a/p.json" },
+        new object?[] { "bash", "cd C:/x && python -I tools/stage_gate.py run p.json", null, "C:/x/p.json" },
+        // -- UNKNOWN: a folder change that is not proved
+        // Each UNKNOWN row also names its REASON, so a row cannot pass for the wrong reason (a disabled || check was
+        // masked by the | check until the reason was asserted).
+        new object?[] { "bash", "cd - && dotnet test", null, null, "'-' is not a folder" },
+        new object?[] { "bash", "cd ~ && dotnet test", null, null, "is not a literal folder" },
+        new object?[] { "bash", "cd $DIR && dotnet test", null, null, "is not a literal folder" },
+        new object?[] { "powershell", "cd %TEMP%; dotnet test", null, null, "is not a literal folder" },
+        new object?[] { "bash", "cd $DIR && cd sub && dotnet test", null, null, "relative to an unknown folder" },
+        new object?[] { "bash", "cd && dotnet test", null, null, "no folder argument" },              // row 94: bare cd goes home
+        new object?[] { "bash", "cd; dotnet test", null, null, "no folder argument" },
+        new object?[] { "bash", "pushd && dotnet test", null, null, "no folder argument" },           // bare pushd swaps
+        new object?[] { "bash", "pushd +1 && dotnet test", null, null, "'+1' is not a folder" },
+        new object?[] { "bash", "cd -X C:/x && dotnet test", null, null, "'-X' is not a folder" },
+        new object?[] { "bash", "cd C:/Program\\ Files/x && dotnet test", null, null, "backslash-escaped space" },   // row 95
+        new object?[] { "bash", "cd /d C:/x; dotnet test", null, null, "a second argument" },         // row 96
+        new object?[] { "bash", "cd C:/x C:/y && dotnet test", null, null, "a second argument" },
+        new object?[] { "bash", "cd C:/nope; dotnet test", null, null, "the folder does not exist" }, // the cd failed
+        new object?[] { "bash", "cd C:/x || dotnet test", null, null, "joined by ||" },               // runs only if cd failed
+        new object?[] { "bash", "cd C:/x | dotnet test", null, null, "a pipeline stage" },
+        new object?[] { "bash", "cd C:/x & dotnet test", null, null, "runs in the background" },
+        new object?[] { "bash", "popd +1; dotnet test", null, null, "with arguments" },
+        new object?[] { "bash", "source env.sh && dotnet test", null, null, "'source' may change the folder" },
+        new object?[] { "powershell", ". ./profile.ps1; dotnet test", null, null, "'.' may change the folder" },
+        new object?[] { "bash", "eval cd C:/x; dotnet test", null, null, "'eval' may change the folder" },
+        new object?[] { "bash", "echo a) && dotnet test", null, null, "an unbalanced ')'" },
+        new object?[] { "bash", "cd sub && dotnet test", "C:/elsewhere", null, "CDPATH is set" },
+        // -- UNKNOWN: the structure is not proved
+        new object?[] { "bash", "echo \\\"x\\\" && dotnet test", null, null, "an escaped quote" },
+        new object?[] { "bash", "echo `pwd` && dotnet test", null, null, "a backtick" },
+        new object?[] { "bash", "dotnet test && echo 'x", null, null, "a quote that is never closed" },
+        new object?[] { "bash", "dotnet test; cat <<EOF", null, null, "a heredoc or here-string that is never closed" },
+        new object?[] { "bash", "echo $((1<<2)); dotnet test", null, null, "a heredoc or here-string that is never closed" },
+        new object?[] { "bash", "dotnet test; echo $'a'", null, null, "ANSI-C" },
+        // -- UNKNOWN: what the tool ran on is not proved
+        new object?[] { "bash", "dotnet test C:/x/App.csproj C:/y/B.csproj", null, null, "2 projects are named" },
+        new object?[] { "bash", "dotnet test $PROJ", null, null, "is not literal" },
+        new object?[] { "bash", "cd ~ && dotnet test App.csproj", null, null, "relative to an unknown folder" },
+        new object?[] { "bash", "sqlcmd -S s -i C:/x/db/170_B.sql", null, null, "does not exist where the command ran" },
+    };
 
     [Theory]
-    [InlineData("dotnet test")]                                   // no cd: the hook's cwd stands
-    [InlineData("dotnet test && cd C:/after")]                    // a cd AFTER the tool does not count
-    [InlineData("echo 'cd C:/quoted' && dotnet test")]            // a cd inside quotes is text
-    public void NoCdBeforeTheToolLeavesTheHookCwd(string command)
+    [MemberData(nameof(SourceTable))]
+    public void AResultIsCitedOnlyToAProvedPath(string shell, string command, string? cdPath, string? expected, string? why = null)
     {
-        Assert.False(CdFor(command, "C:/a").Changed);
+        var t = ToolClassifier.Classify(command, BuildPassOut);
+        Assert.True(t is not null, $"not classified: {command}");
+        var s = SourceResolver.Resolve(command, shell, "C:/a", t!, Fake(cdPath));
+        Assert.True(expected is null ? s.Path is null : s.Path is not null && Path.GetFullPath(expected) == s.Path,
+                    $"{command}\n  expected {expected ?? "UNKNOWN"}\n  got      {s.Path ?? "UNKNOWN"} ({s.Why})");
+        Assert.False(string.IsNullOrWhiteSpace(s.Why));
+        if (why is not null) Assert.True(s.Why.Contains(why), $"{command}\n  expected reason containing: {why}\n  got: {s.Why}");
+    }
+
+    // ---- PowerShell: the REAL hook input, captured from this session on 2 Nov (Fixtures/, never a guessed shape) -------
+    private static string Fixture(string name) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
+
+    [Fact]
+    public void TheRealPowerShellHookInputIsParsed()
+    {
+        var ok = ClaudeCapture.Parse(Fixture("powershell-posttooluse-real.json"));
+        Assert.Equal("PowerShell", ok.ToolName);
+        Assert.Equal("PostToolUse", ok.EventName);
+        Assert.Contains("k3 probe stdout line", ok.Command);
+        Assert.Contains("k3 probe stdout line", ok.Output);
+        Assert.Contains("after", ok.Output);
+        Assert.Null(ok.Error);
+        var bad = ClaudeCapture.Parse(Fixture("powershell-posttoolusefailure-real.json"));
+        Assert.Equal("PostToolUseFailure", bad.EventName);
+        Assert.StartsWith("Exit code 3", bad.Error);
+        Assert.Equal(3, ToolClassifier.ExitCodeOf(bad.Error!));
+    }
+
+    /// <summary>The real PowerShell input with only its command and output swapped for a build (the shape is untouched).</summary>
+    private static string RealPowerShell(string fixture, string command, string? stdout, string? error)
+    {
+        var node = JsonNode.Parse(Fixture(fixture))!.AsObject();
+        node["tool_input"]!["command"] = command;
+        if (stdout is not null) node["tool_response"]!["stdout"] = stdout;
+        if (error is not null) node["error"] = error;
+        return node.ToJsonString();
     }
 
     [Fact]
-    public void LiveCaptureToolCitesTheRepoTheCommandCdIntoNotTheHookCwd()
+    public void LiveAPowerShellBuildAndAFailedPowerShellTestAreCaptured()
     {
-        var dir = RepoDir();
+        using var db = BrainSession.BeginRolledBack();
+        var repo = RepoDir();
+        var build = RealPowerShell("powershell-posttooluse-real.json",
+            $"Set-Location '{repo.Replace('\\', '/')}'; dotnet build Kor.Operations.Framework", BuildPassOut.Replace("\n", "\r\n"), null);
+        var b = ReadBack(db, RunOk(db, new[] { "capture-tool" }, build), "Operations", "build");
+        Assert.Equal(("pass", "Operations"), (b.Outcome, b.Repo));
+        Assert.Contains("\"shell\":\"powershell\"", b.Detail);
+        var test = RealPowerShell("powershell-posttoolusefailure-real.json",
+            $"Set-Location '{repo.Replace('\\', '/')}'; dotnet test Kor.Operations.Framework.Tests", null, "Exit code 1\r\n" + TestFailOut);
+        var f = ReadBack(db, RunOk(db, new[] { "capture-tool" }, test), "Operations", "test");
+        Assert.Equal(("fail", "Operations"), (f.Outcome, f.Repo));
+    }
+
+    // ---- module attribution (#125): the module is the repo the tool ran on, unless --module is given -------------------
+    [Fact]
+    public void LiveTheModuleIsTheRepoTheCommandRanInNotTheSessionLane()
+    {
+        using var db = BrainSession.BeginRolledBack();
+        var repo = RepoDir();
         var elsewhere = Path.Combine(Path.GetTempPath(), "kor-k3-cwd-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(elsewhere);
         try
         {
             var json = JsonSerializer.Serialize(new
             {
-                session_id = "k3-cd-session", cwd = elsewhere, hook_event_name = "PostToolUse", tool_name = "Bash",
-                tool_input = new { command = $"cd \"{dir.Replace('\\', '/')}\" && dotnet build Kor.Operations.Framework" },
+                session_id = "k3-module-session", cwd = elsewhere, hook_event_name = "PostToolUse", tool_name = "Bash",
+                tool_input = new { command = $"cd \"{repo.Replace('\\', '/')}\" && dotnet build Kor.Operations.Framework" },
                 tool_response = new { stdout = BuildPassOut, stderr = "" },
             });
-            var row = ReadBack(RunOk(new[] { "capture-tool", "--module", Module }, json), "build");
-            Assert.Equal(Git.Leaf(Git.TopLevel(dir)), row.Repo);
-            Assert.Equal(Git.Run(dir, "rev-parse", "HEAD")!.Trim(), row.Commit);
+            var row = ReadBack(db, RunOk(db, new[] { "capture-tool" }, json), "Operations", "build");
+            Assert.Equal("Operations", row.Module);
+            Assert.Equal(Git.Run(repo, "rev-parse", "HEAD")!.Trim(), row.Commit);
+            Assert.Contains("\"module_from\":\"the repo it ran on\"", row.Detail);
+            Assert.Contains(Path.Combine(repo, "Kor.Operations.Framework").Replace("\\", "\\\\"), row.Detail);   // the project, proved
         }
         finally { Directory.Delete(elsewhere); }
+    }
+
+    [Fact]
+    public void LiveAnUnknownSourceRecordsNoRepoOrCommitAndSaysWhy()
+    {
+        using var db = BrainSession.BeginRolledBack();
+        var json = JsonSerializer.Serialize(new
+        {
+            session_id = "k3-unknown-session", cwd = RepoDir(), hook_event_name = "PostToolUse", tool_name = "Bash",
+            tool_input = new { command = "cd ~ && dotnet build" }, tool_response = new { stdout = BuildPassOut, stderr = "" },
+        });
+        var row = ReadBack(db, RunOk(db, new[] { "capture-tool", "--module", Module }, json), Module, "build");
+        Assert.Null(row.Repo);
+        Assert.Null(row.Commit);
+        Assert.Contains("\"source\":null", row.Detail);
+        Assert.Contains("is not a literal folder", row.Detail);
     }
 
     [Fact]
@@ -335,7 +440,7 @@ public class CaptureTests
         Assert.Null(BrainStore.Sha("abc"));
     }
 
-    // ---- hook mode never fails -------------------------------------------------------------------------------------
+    // ---- hook mode never fails, and a test never writes the REAL hook log ----------------------------------------------
     [Theory]
     [InlineData("capture-tool")]
     [InlineData("capture-compact")]
@@ -374,9 +479,20 @@ public class CaptureTests
         File.Delete(log);
     }
 
+    [Fact]
+    public void TheTestOverloadNeverWritesTheRealHookLog()
+    {
+        // The only path to the real log is Main. The test overload logs a hook failure to a temp file: prove it on a
+        // failing hook call, by the real log's length before and after (absent counts as -1).
+        static long Size() => File.Exists(Program.DefaultHookErrorLog) ? new FileInfo(Program.DefaultHookErrorLog).Length : -1;
+        var before = Size();
+        Assert.Equal(0, Program.Run(new[] { "capture-tool", "--hook" }, new StringWriter(), new StringWriter()));
+        Assert.Equal(before, Size());
+    }
+
     private static string TempLog() => Path.Combine(Path.GetTempPath(), $"kor-k3-test-{Guid.NewGuid():N}.log");
 
-    // ---- LIVE: each verb writes its row, read back as korbrain_app ---------------------------------------------------
+    // ---- LIVE: each verb writes its row in a ROLLED-BACK transaction on the live KorStandards, read back inside it ------
     private static string RepoDir()
     {
         var d = new DirectoryInfo(AppContext.BaseDirectory);
@@ -384,11 +500,11 @@ public class CaptureTests
         return d?.FullName ?? throw new InvalidOperationException("the test is not running inside the Operations checkout");
     }
 
-    private static int RunOk(string[] args, string? stdin = null)
+    private static int RunOk(BrainSession db, string[] args, string? stdin = null)
     {
         var output = new StringWriter();
         var error = new StringWriter();
-        var code = Program.Run(args, () => stdin, output, error, TempLog());
+        var code = Program.Run(args, () => stdin, output, error, TempLog(), db);
         Assert.True(code == 0, $"exit {code}: {error}");
         var text = output.ToString();
         var m = System.Text.RegularExpressions.Regex.Match(text, @"brain\.Event (\d+)");
@@ -396,20 +512,35 @@ public class CaptureTests
         return int.Parse(m.Groups[1].Value);
     }
 
-    private static StoredEvent ReadBack(int id, string kind)
+    private static StoredEvent ReadBack(BrainSession db, int id, string module, string kind)
     {
-        var row = BrainStore.Last(Module, 200, kind).SingleOrDefault(r => r.Id == id);
+        var row = BrainStore.Last(module, 200, kind, db).SingleOrDefault(r => r.Id == id);
         Assert.NotNull(row);
         return row!;
+    }
+
+    private static StoredEvent ReadBack(BrainSession db, int id, string kind) => ReadBack(db, id, Module, kind);
+
+    [Fact]
+    public void LiveARolledBackSessionLeavesNothing()
+    {
+        // The guarantee every live test rests on: a row written in BeginRolledBack is gone once it is disposed.
+        int id;
+        using (var db = BrainSession.BeginRolledBack())
+        {
+            id = BrainStore.Insert(new BrainEvent(Module, "build", null, null, "rollback probe", "pass", null, "k3-test"), db);
+            Assert.Contains(BrainStore.Last(Module, 50, "build", db), r => r.Id == id);
+        }
+        Assert.DoesNotContain(BrainStore.Last(Module, 50, "build"), r => r.Id == id);
     }
 
     [Fact]
     public void LiveCaptureGitPostCommitWritesTheHeadCommitWithBlobs()
     {
+        using var db = BrainSession.BeginRolledBack();
         var dir = RepoDir();
         var head = Git.Run(dir, "rev-parse", "HEAD")!.Trim();
-        var id = RunOk(new[] { "capture-git", "post-commit", "--dir", dir, "--module", Module });
-        var row = ReadBack(id, "commit");
+        var row = ReadBack(db, RunOk(db, new[] { "capture-git", "post-commit", "--dir", dir, "--module", Module }), "commit");
         Assert.Equal(head, row.Commit);
         Assert.Equal(Git.Leaf(Git.TopLevel(dir)), row.Repo);
         using var d = JsonDocument.Parse(row.Detail!);
@@ -425,11 +556,11 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureGitPrePushRecordsEachRefAndTheGuardResult()
     {
+        using var db = BrainSession.BeginRolledBack();
         var dir = RepoDir();
         var head = Git.Run(dir, "rev-parse", "HEAD")!.Trim();
         var stdin = $"refs/heads/develop {head} refs/heads/develop {new string('0', 40)}\n";
-        var id = RunOk(new[] { "capture-git", "pre-push", "origin", "https://github.com/kor/Operations.git", "--result", "1", "--dir", dir, "--module", Module }, stdin);
-        var row = ReadBack(id, "push");
+        var row = ReadBack(db, RunOk(db, new[] { "capture-git", "pre-push", "origin", "https://github.com/kor/Operations.git", "--result", "1", "--dir", dir, "--module", Module }, stdin), "push");
         Assert.Equal("refused", row.Outcome);
         Assert.Equal(head, row.Commit);
         Assert.Contains("origin Operations.git:", row.Ref);
@@ -439,18 +570,20 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureGitCheckoutAndMergeWriteTheirKinds()
     {
+        using var db = BrainSession.BeginRolledBack();
         var dir = RepoDir();
         var head = Git.Run(dir, "rev-parse", "HEAD")!.Trim();
-        var c = ReadBack(RunOk(new[] { "capture-git", "post-checkout", head, head, "1", "--dir", dir, "--module", Module }), "checkout");
+        var c = ReadBack(db, RunOk(db, new[] { "capture-git", "post-checkout", head, head, "1", "--dir", dir, "--module", Module }), "checkout");
         Assert.Equal(head, c.Commit);
         Assert.StartsWith("branch ", c.Ref);
-        var m = ReadBack(RunOk(new[] { "capture-git", "post-merge", "0", "--dir", dir, "--module", Module }), "merge");
+        var m = ReadBack(db, RunOk(db, new[] { "capture-git", "post-merge", "0", "--dir", dir, "--module", Module }), "merge");
         Assert.Equal(head, m.Commit);
     }
 
     [Fact]
     public void LiveCaptureToolRecordsAFailingTestFromPostToolUseFailure()
     {
+        using var db = BrainSession.BeginRolledBack();
         var dir = RepoDir();
         var json = JsonSerializer.Serialize(new
         {
@@ -463,7 +596,7 @@ public class CaptureTests
             error = "Exit code 1\n" + TestFailOut,
             is_interrupt = false,
         });
-        var row = ReadBack(RunOk(new[] { "capture-tool", "--module", Module }, json), "test");
+        var row = ReadBack(db, RunOk(db, new[] { "capture-tool", "--module", Module }, json), "test");
         Assert.Equal("fail", row.Outcome);
         Assert.Equal("dotnet test Kor.Operations.Framework.Tests", row.Ref);
         Assert.Equal(Git.Run(dir, "rev-parse", "HEAD")!.Trim(), row.Commit);
@@ -473,13 +606,14 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureToolRecordsAPassingBuildFromPostToolUse()
     {
+        using var db = BrainSession.BeginRolledBack();
         var json = JsonSerializer.Serialize(new
         {
             session_id = "k3-test-session", cwd = RepoDir(), hook_event_name = "PostToolUse", tool_name = "Bash",
             tool_input = new { command = "dotnet build Kor.Operations.Framework.Cli" },
             tool_response = new { stdout = BuildPassOut + "\nServer=x;Password=hunter2;", stderr = "", interrupted = false },
         });
-        var row = ReadBack(RunOk(new[] { "capture-tool", "--module", Module }, json), "build");
+        var row = ReadBack(db, RunOk(db, new[] { "capture-tool", "--module", Module }, json), "build");
         Assert.Equal("pass", row.Outcome);
         Assert.DoesNotContain("hunter2", row.Detail);
     }
@@ -487,32 +621,33 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureToolOnANonMatchingCommandWritesNoRow()
     {
+        using var db = BrainSession.BeginRolledBack();
         var json = JsonSerializer.Serialize(new
         {
             session_id = "k3-test-session", cwd = RepoDir(), hook_event_name = "PostToolUse", tool_name = "Bash",
             tool_input = new { command = "git status --short" }, tool_response = new { stdout = "", stderr = "" },
         });
         var output = new StringWriter();
-        Assert.Equal(0, Program.Run(new[] { "capture-tool", "--module", Module }, () => json, output, new StringWriter(), TempLog()));
+        Assert.Equal(0, Program.Run(new[] { "capture-tool", "--module", Module }, () => json, output, new StringWriter(), TempLog(), db));
         Assert.Equal("nothing to record", output.ToString().Trim());
-        // No row in the test module may carry this command (a count would not do: the module is shared by the class).
-        Assert.DoesNotContain(BrainStore.Last(Module, 1000), r => r.Detail?.Contains("git status --short") == true || r.Ref?.Contains("git status") == true);
+        Assert.Empty(BrainStore.Last(Module, 1000, null, db));   // this transaction wrote nothing under the module
     }
 
     [Fact]
     public void LiveCaptureCompactStoresTheSummaryAsTheLaneResume()
     {
+        using var db = BrainSession.BeginRolledBack();
         var summary = $"K3 test compaction summary {Guid.NewGuid():N}\nPassword=should-not-land\nwhere we stopped: K3 tests";
         var json = JsonSerializer.Serialize(new
         {
             session_id = "k3-compact-session", transcript_path = "C:/x/k3c.jsonl", cwd = RepoDir(),
             hook_event_name = "PostCompact", trigger = "manual", compact_summary = summary,
         });
-        var row = ReadBack(RunOk(new[] { "capture-compact", "--module", Module }, json), "compact");
+        var row = ReadBack(db, RunOk(db, new[] { "capture-compact", "--module", Module }, json), "compact");
         Assert.Equal("stored", row.Outcome);
         using var d = JsonDocument.Parse(row.Detail!);
         var laneId = d.RootElement.GetProperty("lane_state_id").GetInt32();
-        var lane = BrainStore.LaneStateById(laneId);
+        var lane = BrainStore.LaneStateById(laneId, db);
         Assert.NotNull(lane);
         Assert.Equal(Module, lane!.Lane);
         Assert.Equal("compaction k3-compact-session", lane.WrittenBy);
@@ -523,13 +658,14 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureEndRecordsTheTranscriptAndReason()
     {
+        using var db = BrainSession.BeginRolledBack();
         var json = JsonSerializer.Serialize(new
         {
             session_id = "k3-end-session", transcript_path = "C:/x/k3e.jsonl", cwd = RepoDir(),
             hook_event_name = "SessionEnd", reason = "prompt_input_exit",
         });
         var sw = Stopwatch.StartNew();
-        var row = ReadBack(RunOk(new[] { "capture-end", "--module", Module }, json), "session-end");
+        var row = ReadBack(db, RunOk(db, new[] { "capture-end", "--module", Module }, json), "session-end");
         Assert.Equal("C:/x/k3e.jsonl", row.Ref);
         Assert.Equal("prompt_input_exit", row.Outcome);
         Assert.True(sw.Elapsed < TimeSpan.FromSeconds(10), $"capture-end took {sw.Elapsed}");

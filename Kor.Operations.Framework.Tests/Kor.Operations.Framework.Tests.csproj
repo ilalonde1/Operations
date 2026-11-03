@@ -14,6 +14,10 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <!-- Real Claude Code hook input captured from a live session (2 Nov 2026): the PowerShell tool's shape, never guessed. -->
+    <None Include="Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.Framework\Kor.Operations.Framework.csproj" />
     <ProjectReference Include="..\Kor.Operations.Framework.Cli\Kor.Operations.Framework.Cli.csproj" />
   </ItemGroup>
