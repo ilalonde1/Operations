@@ -33,6 +33,7 @@ public class StartStateTests
         Assert.Equal("# STATE NOW - 2 Nov 23:49\nline a\n### a sub-part\nline b", HandoverState.StateNow(DrafterStyle));
         Assert.Equal("## STATE NOW x\nbody", HandoverState.StateNow("# H\r\n## STATE NOW x\r\nbody\r\n## next\r\n"));
         Assert.Null(HandoverState.StateNow("# H\n## Where things stand\nx\n## STATE at 20:45\ny"));
+        Assert.Equal("### STATE NOW\na", HandoverState.StateNow("## Part\n### STATE NOW\na\n### Other\nb"));   // a ### ends at the next ###
     }
 
     [Fact]

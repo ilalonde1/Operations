@@ -76,7 +76,7 @@ public sealed class BrainDb : IDisposable
     /// SQL 1222 (lock request time out - <c>SET LOCK_TIMEOUT</c>) or 1205: kor start's WRITE phase met another session's
     /// open transaction. The start shows its read and says nothing was recorded.
     /// </summary>
-    public static bool IsBlockedWrite(Exception e) => HasNumber(e, 1222) || HasNumber(e, 1205) || HasNumber(e, 3960);
+    public static bool IsBlockedWrite(Exception e) => HasNumber(e, 1222) || HasNumber(e, 1205);
 
     private static bool HasNumber(Exception e, int n) =>
         e is SqlException s && (s.Number == n || s.Errors.Cast<SqlError>().Any(x => x.Number == n));
