@@ -203,9 +203,12 @@ public static class SourceResolver
             return s with { Dir = null, Why = notProved, StackUnknown = s.StackUnknown || !m.Groups["verb"].Success || IsPush(name) };
         // ... and to what follows: only && ; newline ) or the end prove it held.
         var after = neutral[argsEnd..].TrimStart(' ', '\t');
-        if (after.StartsWith("||")) return s with { Dir = null, Why = $"'{name}' is joined by || (what follows runs only if it failed)" };
-        if (after.StartsWith('|')) return s with { Dir = null, Why = $"'{name}' is a pipeline stage" };
-        if (after.StartsWith('&') && !after.StartsWith("&&")) return s with { Dir = null, Why = $"'{name}' runs in the background" };
+        // Not proved to have held - and a pushd/popd joined this way may still have changed the stack (review row 105:
+        // "pushd C:/b || true" ran in this shell; PowerShell's "Push-Location C:/b | Out-Null" pushes): stack unknown.
+        var stackMaybe = s.StackUnknown || !m.Groups["verb"].Success || IsPush(name);
+        if (after.StartsWith("||")) return s with { Dir = null, Why = $"'{name}' is joined by || (what follows runs only if it failed)", StackUnknown = stackMaybe };
+        if (after.StartsWith('|')) return s with { Dir = null, Why = $"'{name}' is a pipeline stage", StackUnknown = stackMaybe };
+        if (after.StartsWith('&') && !after.StartsWith("&&")) return s with { Dir = null, Why = $"'{name}' runs in the background", StackUnknown = stackMaybe };
 
         var args = original.Substring(m.Groups["args"].Index, m.Groups["args"].Length);
         if (m.Groups["pop"].Success)

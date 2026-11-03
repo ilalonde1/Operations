@@ -296,6 +296,11 @@ public class CaptureTests
         // review row 100: the directory stack after a step that may have changed it
         new object?[] { "bash", "pushd C:/x; pushd C:/nope; popd; dotnet test", null, null, "may have changed the directory stack" },
         new object?[] { "bash", "pushd C:/x; source e.sh; popd; dotnet test", null, null, "may have changed the directory stack" },
+        // review row 105: a pushd/popd joined by || | or a lone & may still have changed the stack
+        new object?[] { "bash", "pushd C:/x; pushd C:/y || true; popd; dotnet test", null, null, "may have changed the directory stack" },
+        new object?[] { "bash", "pushd C:/x; pushd C:/y; popd || true; popd; dotnet test", null, null, "may have changed the directory stack" },
+        new object?[] { "powershell", "Push-Location C:/x; Push-Location C:/y | Out-Null; Pop-Location; dotnet test", null, null, "may have changed the directory stack" },
+        new object?[] { "bash", "pushd C:/x; pushd C:/y & sleep 1; popd; dotnet test", null, null, "may have changed the directory stack" },
         // -- UNKNOWN: the structure is not proved
         new object?[] { "bash", "echo \\\"x\\\" && dotnet test", null, null, "an escaped quote" },
         new object?[] { "bash", "echo `pwd` && dotnet test", null, null, "a backtick" },
