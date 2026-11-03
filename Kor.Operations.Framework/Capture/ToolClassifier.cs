@@ -48,7 +48,8 @@ public static class ToolClassifier
     /// (review row 93). The folder is the first argument after the known flags (<see cref="Target"/>). A relative path
     /// resolves against the folder current at that point; a Git Bash path (/c/x) becomes C:/x. These make the folder
     /// UNKNOWN until an absolute cd or a popd - the event then carries no repo/commit rather than a guessed one: a bare
-    /// cd or pushd (review row 94), cd -, an option not in the known list, ~, $VAR, %VAR%. Still wrong, same class:
+    /// cd or pushd (review row 94), cd -, an option not in the known list, ~, $VAR, %VAR%, a backslash-escaped space
+    /// (review row 95). cmd's "cd /d C:\x" reads C:\x; "/d" alone is Git Bash's D:/. Still wrong, same class:
     /// a cd inside a subshell that ended before the tool ( (cd x; make) &amp;&amp; dotnet test ) is replayed as if it
     /// persisted; a cd hidden behind a function or alias, or run by a script the command calls, is not seen.
     /// </summary>
@@ -81,10 +82,15 @@ public static class ToolClassifier
     /// </summary>
     internal static string? Target(string args)
     {
-        foreach (Match t in ArgToken.Matches(args))
+        // A backslash-escaped space (cd C:/Program\ Files/x) would split the folder in two: UNKNOWN, never half a path.
+        if (args.Contains("\\ ")) return null;
+        var tokens = ArgToken.Matches(args).Select(t => t.Value).ToList();
+        for (var i = 0; i < tokens.Count; i++)
         {
-            var v = t.Value;
+            var v = tokens[i];
             if (CdFlags.Contains(v.ToLowerInvariant())) continue;
+            // cmd's "cd /d C:\x" switches drive: "/d" followed by a folder is that flag (alone, it is Git Bash's D:/).
+            if (v.Equals("/d", StringComparison.OrdinalIgnoreCase) && i + 1 < tokens.Count) continue;
             if (v.StartsWith('-')) return null;               // "-" (previous folder) or an option not modelled
             return v.Trim('"', '\'');
         }
