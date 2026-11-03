@@ -1,5 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "autoMemoryEnabled": false,
   "env": {
     "CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION": "1000"
   },
@@ -12,6 +13,36 @@
             "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part record --hook",
             "timeout": 30,
             "statusMessage": "Reading what this module knows: five questions, resume, open issues, stale records, decisions (Knowledge IDE K6)"
+          },
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part state --hook",
+            "timeout": 30,
+            "statusMessage": "Reading the module's STATE NOW from its handover at HEAD (Knowledge IDE K6, board row 1198)"
+          },
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part memory --page 1 --pages 4 --hook",
+            "timeout": 30,
+            "statusMessage": "Reading this module's memory from the DB, page 1 (board rows 1198/1199)"
+          },
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part memory --page 2 --pages 4 --hook",
+            "timeout": 30,
+            "statusMessage": "Reading this module's memory from the DB, page 2 (board rows 1198/1199)"
+          },
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part memory --page 3 --pages 4 --hook",
+            "timeout": 30,
+            "statusMessage": "Reading this module's memory from the DB, page 3 (board rows 1198/1199)"
+          },
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part memory --page 4 --pages 4 --hook",
+            "timeout": 30,
+            "statusMessage": "Reading this module's memory from the DB, page 4 (board rows 1198/1199)"
           },
           {
             "type": "command",
