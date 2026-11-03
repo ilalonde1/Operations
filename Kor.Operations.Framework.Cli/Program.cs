@@ -36,8 +36,10 @@ public static partial class Program
     /// <param name="hookErrorLog">the file a hook-mode failure is appended to (tests pass their own, review row 85).</param>
     /// <param name="db">the brain session every read and write goes through; null = each opens its own and commits (the
     /// installed kor.exe). Tests pass <see cref="BrainDb.OpenRolledBack"/>, so nothing they write is kept.</param>
+    /// <param name="board">the Board login's unit of work for kor enforce's refusal row and kor checks' hits; null = each
+    /// opens its own (the installed kor.exe). Tests pass a rolled-back one.</param>
     internal static int Run(string[] args, Func<string?> stdin, TextWriter output, TextWriter error, string hookErrorLog,
-                            BrainDb? db = null)
+                            BrainDb? db = null, BrainDb? board = null)
     {
         var hook = args.Contains("--hook");
         var o = Options.Parse(args.Where(a => a != "--hook").ToArray());
@@ -62,6 +64,12 @@ public static partial class Program
                 "check" => Check(o, output, hook, db),
                 "resolve" => Resolve(o, output, db),
                 "start" => StartVerb(o, stdin, output, hook, db, hookErrorLog),
+                "enforce" => EnforceVerb(o, stdin, output, hook, db, board, hookErrorLog),
+                "check-add" => CheckAdd(o, output, db),
+                "check-retire" => CheckRetire(o, output, db),
+                "check-test" => CheckTest(o, output, db),
+                "checks" => Checks(o, output, db, board),
+                "secret-scan" => SecretScan(o, output, db),
                 _ => hook ? UnknownInHook(o, output) : Usage(error),
             };
         }
@@ -110,26 +118,42 @@ public static partial class Program
             "--module", "--dir", "--result", "--last", "--kind", "--because", "--body-file", "--source-path", "--name",
             "--says", "--source", "--cap", "--session", "--description", "--check", "--check-ref", "--issue",
             "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir",
+            "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd",
         };
 
-        private static readonly string[] Flags = { "--full", "--file-changed", "--resolved", "--commit-hook", "--no-helpers", "--text" };
+        /// <summary>Options given more than once, every value kept in order (check-add's examples).</summary>
+        private static readonly string[] Repeated = { "--refuse", "--allow" };
+
+        private static readonly string[] Flags = { "--explain", "--full", "--file-changed", "--resolved", "--commit-hook", "--no-helpers", "--text" };
 
         /// <summary>Every --owner given, in order (kor start --part board: one lead, several board names).</summary>
         public List<string> Owners { get; init; } = new();
+
+        /// <summary>Every value of a repeated option (--refuse, --allow), in order.</summary>
+        public Dictionary<string, List<string>> Many { get; init; } = new();
+
+        public List<string> All(string name) => Many.TryGetValue(name, out var v) ? v : new List<string>();
 
         public static Options Parse(string[] args)
         {
             var pos = new List<string>();
             var named = new Dictionary<string, string>();
             var owners = new List<string>();
+            var many = new Dictionary<string, List<string>>();
             for (var i = 0; i < args.Length; i++)
             {
                 if (args[i] == "--owner" && i + 1 < args.Length) { owners.Add(args[++i]); continue; }
+                if (Repeated.Contains(args[i]) && i + 1 < args.Length)
+                {
+                    if (!many.TryGetValue(args[i], out var list)) many[args[i]] = list = new List<string>();
+                    list.Add(args[++i]);
+                    continue;
+                }
                 if (Valued.Contains(args[i]) && i + 1 < args.Length) { named[args[i]] = args[++i]; continue; }
                 if (Flags.Contains(args[i])) { named[args[i]] = "1"; continue; }
                 pos.Add(args[i]);
             }
-            return new Options(pos, named) { Owners = owners };
+            return new Options(pos, named) { Owners = owners, Many = many };
         }
 
         public string? Get(string name) => Named.TryGetValue(name, out var v) ? v : null;
@@ -475,6 +499,10 @@ public static partial class Program
         error.WriteLine("       kor issue --module M --name N --description D --check test|gate|query|source --check-ref R [--source-path P] [--body-file F] [--restates ID]");
         error.WriteLine("       kor check --module M [--issue N] [--resolved] [--kinds test,gate,query] [--timeout S] | kor check --commit-hook [--dir D]");
         error.WriteLine("       kor resolve --issue N --because \"...\"   (a source-checked issue whose file changed)");
+        error.WriteLine("       kor enforce --module M --hook   (PreToolUse JSON on stdin; Bash|PowerShell|Write|Edit)");
+        error.WriteLine("       kor check-add --memory ID --module M|Office --tool Bash[,PowerShell] --pattern P --refuse E [--refuse E2]... --allow A [--allow A2]... --says S");
+        error.WriteLine("       kor check-retire <id> --because \"...\" | kor check-test [--module M] [--tool T --command C|--path P [--cwd D]] | kor checks [--module M] [--hits N]");
+        error.WriteLine("       kor secret-scan   (read-only: ids and counts of brain rows holding a credential value)");
         error.WriteLine("       kor start --module M [--owner O]... [--no-helpers] [--part record|board|all] [--hook | --text] [--dir D] [--session S] [--start-source S]   (SessionStart JSON on stdin with --hook)");
         return 2;
     }

@@ -93,7 +93,7 @@ public static partial class Program
                 },
                 StartCache.PathFor(cacheDir, module, "record", hook), budget, deadline,
                 $"read the record by hand: kor memory --module \"{module}\" and kor events --module \"{module}\"", () => DateTime.Now, Log);
-            texts.Add(r.Text);
+            texts.Add(SecretGuard.Mask(r.Text)!);   // mistake 138: a page from the cache, written before the guard, is masked too
             watch = r.WatchPaths;
         }
         if (part is "board" or "all")
@@ -109,7 +109,7 @@ public static partial class Program
                 },
                 StartCache.PathFor(cacheDir, module, "board", hook), budget, deadline,
                 "read the board by hand (Operations tools/SqlQuery/oq.py: oversight.vw_Board)", () => DateTime.Now, Log);
-            texts.Add(r.Text);
+            texts.Add(SecretGuard.Mask(r.Text)!);   // mistake 138: a page from the cache, written before the guard, is masked too
         }
         if (hook)
         {

@@ -58,10 +58,12 @@ public static class BrainStore
         Kind = e.Kind,
         Repo = Clip(e.Repo, 80),
         Commit = Sha(e.Commit),
-        Ref = Clip(Redact.Text(e.Ref), 400),
+        // mistake 138: an event is a hook's record of what happened - it is never refused (a lost event), its credential
+        // values are MASKED ([REDACTED len=N]) before the key-marker pass
+        Ref = Clip(Redact.Text(SecretGuard.Mask(e.Ref)), 400),
         Outcome = Clip(e.Outcome, 20),
-        Detail = Redact.Text(e.Detail),
-        Actor = Clip(Redact.Text(e.Actor), 100) ?? "unknown",
+        Detail = Redact.Text(SecretGuard.MaskJsonOrText(e.Detail)),   // a JSON Detail is masked value by value
+        Actor = Clip(Redact.Text(SecretGuard.Mask(e.Actor)), 100) ?? "unknown",
         Session = Clip(e.Session, 64),
     };
 
@@ -103,8 +105,17 @@ public static class BrainStore
             cmd => Convert.ToInt32(cmd.ExecuteScalar()));
     }
 
-    public static int InsertLaneState(string lane, string resumeBlock, string writtenBy, BrainDb? db = null, string? session = null) =>
-        Exec(db, "DECLARE @id TABLE (Id int); " +
+    /// <summary>A resume record (capture-compact's summary). Refused whole, nothing written, when it holds a credential
+    /// value (mistake 138; SecretGuard.Refuse) - checked before any connection is opened.</summary>
+    public static int InsertLaneState(string lane, string resumeBlock, string writtenBy, BrainDb? db = null, string? session = null)
+    {
+        SecretGuard.Refuse(resumeBlock, "resume summary");
+        SecretGuard.Refuse(writtenBy, "writer");
+        return InsertLaneStateChecked(lane, resumeBlock, writtenBy, db, session);
+    }
+
+    private static int InsertLaneStateChecked(string lane, string resumeBlock, string writtenBy, BrainDb? db, string? session) =>
+        Exec(db,"DECLARE @id TABLE (Id int); " +
                  "INSERT brain.LaneState (Lane, ResumeBlock, WrittenBy, Session) OUTPUT INSERTED.Id INTO @id VALUES (@l, @b, @w, @s); " +
                  "SELECT Id FROM @id;",
             cmd =>

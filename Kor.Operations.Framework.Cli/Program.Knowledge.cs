@@ -156,9 +156,9 @@ public static partial class Program
                 _ => $"source={r.SourceKind} {r.SourceRef}" + (r.SourceCommit is null ? "" : $" commit={r.SourceCommit}"),
             };
             var check = r.CheckKind is null ? "" : $" check={r.CheckKind}:{r.CheckRef}";
-            output.WriteLine($"#{r.Id} {r.Kind} {r.Name} [{r.Status}]{check}");
-            output.WriteLine($"   {src}");
-            output.WriteLine($"   {r.Description}");
+            output.WriteLine(SecretGuard.Mask($"#{r.Id} {r.Kind} {r.Name} [{r.Status}]{check}"));
+            output.WriteLine(SecretGuard.Mask($"   {src}"));
+            output.WriteLine(SecretGuard.Mask($"   {r.Description}"));   // mistake 138
         }
         return 0;
     }

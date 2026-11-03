@@ -144,6 +144,13 @@ public static class RecordStore
     /// <summary>The ONE insert of brain.Memory: a single row, its Id read through OUTPUT ... INTO.</summary>
     private static int InsertRow(BrainDb db, NewRecord r)
     {
+        // mistake 138: no credential VALUE in any text column, before anything is sent (every Memory insert passes here)
+        SecretGuard.Refuse(r.Name, "name");
+        SecretGuard.Refuse(r.Description, "description");
+        SecretGuard.Refuse(r.Body, "body");
+        SecretGuard.Refuse(r.Source, "source note");
+        SecretGuard.Refuse(r.SourceRef, "source ref");
+        SecretGuard.Refuse(r.CheckRef, "check ref");
         using var c = db.Command(
             // OUTPUT ... INTO a table variable: a plain OUTPUT is refused (error 334) on a table with an enabled trigger,
             // and migration 171 put triggers on brain.Memory (TR_Memory_Restate, TR_Memory_EvidenceAppendOnly).
@@ -270,6 +277,7 @@ public static class RecordStore
 
     private static void Retire(BrainDb db, int id, string by, string because, bool superseded)
     {
+        SecretGuard.Refuse(because, "reason (--because)");
         using var c = db.Command(
             "UPDATE brain.Memory SET RetiredAtUtc = SYSDATETIMEOFFSET(), RetiredBy = @by, RetiredBecause = @why, " +
             "UpdatedAtUtc = SYSDATETIMEOFFSET()" + (superseded ? ", Status = N'superseded'" : "") +

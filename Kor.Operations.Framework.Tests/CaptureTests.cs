@@ -665,7 +665,9 @@ public class CaptureTests
     public void LiveCaptureCompactStoresTheSummaryAsTheLaneResume()
     {
         using var db = BrainDb.OpenRolledBack();
-        var summary = $"K3 test compaction summary {Guid.NewGuid():N}\nPassword=should-not-land\nwhere we stopped: K3 tests";
+        // mistake 138 (3 Nov): a summary holding a credential VALUE is now refused whole (SecretGuardTests
+        // .LiveCaptureCompactRefusesASummaryHoldingAValue); a bare marker with no value is still only line-redacted here
+        var summary = $"K3 test compaction summary {Guid.NewGuid():N}\nPassword=\nwhere we stopped: K3 tests";
         var json = JsonSerializer.Serialize(new
         {
             session_id = "k3-compact-session", transcript_path = "C:/x/k3c.jsonl", cwd = RepoDir(),
@@ -680,7 +682,7 @@ public class CaptureTests
         Assert.Equal(Module, lane!.Lane);
         Assert.Equal("compaction k3-compact-session", lane.WrittenBy);
         Assert.Contains("where we stopped: K3 tests", lane.ResumeBlock);
-        Assert.DoesNotContain("should-not-land", lane.ResumeBlock);
+        Assert.DoesNotContain("Password=", lane.ResumeBlock);
     }
 
     [Fact]

@@ -37,9 +37,12 @@ public sealed class BrainDb : IDisposable
     /// open transaction (migration 174 allows it in KorStandards) - else READ COMMITTED, named explicitly so a pooled
     /// connection's earlier level is never inherited.
     /// </summary>
-    public static BrainDb OpenRead(KorStandardsConnection.Login login, bool snapshot)
+    public static BrainDb OpenRead(KorStandardsConnection.Login login, bool snapshot) => OpenRead(login, snapshot, 15);
+
+    /// <summary><see cref="OpenRead(KorStandardsConnection.Login, bool)"/> with its own connect timeout (kor enforce: 3 s).</summary>
+    public static BrainDb OpenRead(KorStandardsConnection.Login login, bool snapshot, int connectTimeoutSeconds)
     {
-        var cn = KorStandardsConnection.Open(login);
+        var cn = KorStandardsConnection.Open(login, connectTimeoutSeconds);
         try
         {
             return new BrainDb(cn, cn.BeginTransaction(snapshot ? System.Data.IsolationLevel.Snapshot : System.Data.IsolationLevel.ReadCommitted),
@@ -69,6 +72,24 @@ public sealed class BrainDb : IDisposable
             catch (Exception e) when (isSnapshotRefused(e)) { return attempt(false); }
         }, isDeadlock, sleep);
 
+    /// <summary>kor enforce's read of the live checks (a PreToolUse hook): as <see cref="Read{T}"/> as korbrain_app, with a 3 s
+    /// connect timeout instead of 15, so a server that is down costs a tool call 3 s once, then the cache's back-off.</summary>
+    public static T Read3s<T>(Func<BrainDb, T> work) =>
+        ReadWithFallback(snapshot =>
+        {
+            using var db = OpenRead(KorStandardsConnection.Login.Brain, snapshot, 3);
+            return work(db);
+        }, IsSnapshotRefused, IsDeadlock, Thread.Sleep);
+
+    /// <summary>One committed unit of work with a 3 s connect timeout (kor enforce's refusal row, as the Board login).</summary>
+    public static T Use3s<T>(KorStandardsConnection.Login login, Func<BrainDb, T> work)
+    {
+        using var own = Open(login, 3);
+        var result = work(own);
+        own.Commit();
+        return result;
+    }
+
     /// <summary>SQL error 3952: snapshot isolation is not allowed in this database.</summary>
     public static bool IsSnapshotRefused(Exception e) => HasNumber(e, 3952);
 
@@ -91,9 +112,12 @@ public sealed class BrainDb : IDisposable
     /// <summary>A unit of work the caller commits. READ COMMITTED, named explicitly (review row 212): a pooled connection that
     /// last ran a SNAPSHOT read (kor start's) never lends that level to a write - SqlClient's BeginTransaction() with no
     /// level sends none, and the transaction would run at whatever level the connection has.</summary>
-    public static BrainDb Open(KorStandardsConnection.Login login = KorStandardsConnection.Login.Brain)
+    public static BrainDb Open(KorStandardsConnection.Login login = KorStandardsConnection.Login.Brain) => Open(login, 15);
+
+    /// <summary><see cref="Open(KorStandardsConnection.Login)"/> with its own connect timeout (kor enforce's refusal log: 3 s).</summary>
+    public static BrainDb Open(KorStandardsConnection.Login login, int connectTimeoutSeconds)
     {
-        var cn = KorStandardsConnection.Open(login);
+        var cn = KorStandardsConnection.Open(login, connectTimeoutSeconds);
         try { return new BrainDb(cn, cn.BeginTransaction(System.Data.IsolationLevel.ReadCommitted), rolledBackOnly: false); }
         catch { cn.Dispose(); throw; }
     }

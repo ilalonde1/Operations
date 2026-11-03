@@ -175,6 +175,27 @@ public static class ToolClassifier
                          : null;
         var c = command.Replace('\r', ' ').ToCharArray();
         // 1. heredoc / here-string bodies, line by line.
+        if (!BlankHeredocs(c)) unproved ??= "a heredoc or here-string that is never closed";
+        // 2. separators inside quotes (a quote may span lines).
+        char quote = '\0';
+        for (var i = 0; i < c.Length; i++)
+        {
+            var ch = c[i];
+            if (quote == '\0') { if (ch is '"' or '\'') quote = ch; }
+            else if (ch == quote) quote = '\0';
+            else if (ch is ';' or '&' or '|' or '(' or ')' or '\n') c[i] = ' ';
+        }
+        if (quote != '\0') unproved ??= "a quote that is never closed";
+        return (new string(c), unproved);
+    }
+
+    /// <summary>
+    /// Blanks, in place, the body lines of every bash heredoc (&lt;&lt;TAG ... TAG) and PowerShell here-string (@' ... '@,
+    /// @" ... "@); the opening and closing lines stay. False when one is never closed (its body runs to the end).
+    /// Shared by <see cref="Scan"/> (K3) and <see cref="ShellText"/> (K7).
+    /// </summary>
+    internal static bool BlankHeredocs(char[] c)
+    {
         var lines = new string(c).Split('\n');
         var pos = 0;
         string? endTag = null;
@@ -190,19 +211,15 @@ public static class ToolClassifier
             else if (HereStringStart.Match(line) is { Success: true } s) endTag = s.Value.TrimEnd()[1] + "@";
             pos += line.Length + 1;
         }
-        if (endTag is not null) unproved ??= "a heredoc or here-string that is never closed";
-        // 2. separators inside quotes (a quote may span lines).
-        char quote = '\0';
-        for (var i = 0; i < c.Length; i++)
-        {
-            var ch = c[i];
-            if (quote == '\0') { if (ch is '"' or '\'') quote = ch; }
-            else if (ch == quote) quote = '\0';
-            else if (ch is ';' or '&' or '|' or '(' or ')' or '\n') c[i] = ' ';
-        }
-        if (quote != '\0') unproved ??= "a quote that is never closed";
-        return (new string(c), unproved);
+        return endTag is null;
     }
+
+    /// <summary>
+    /// K7: the shell-aware neutral copy (<see cref="ShellText.Neutralise"/>) - escapes modelled per shell (PowerShell's
+    /// backtick, bash's backslash, cmd's caret), comments blanked, and $( ) / backtick substitutions kept as structure.
+    /// <see cref="Neutralise(string)"/> above stays K3's, unchanged.
+    /// </summary>
+    internal static string Neutralise(string command, Shell shell) => ShellText.Neutralise(command, shell).Neutral;
 
     public static int? ExitCodeOf(string output)
     {

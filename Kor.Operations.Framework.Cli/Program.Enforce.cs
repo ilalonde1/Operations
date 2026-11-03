@@ -1,0 +1,236 @@
+using System.Text.Json;
+using Kor.Operations.Framework.Capture;
+using Kor.Operations.Framework.Enforce;
+using Kor.Operations.Framework.Records;
+
+namespace Kor.Operations.Framework.Cli;
+
+/// <summary>
+/// K7 - enforced (Framework docs/KNOWLEDGE-IDE-SPEC-K4-K7.md, P5): a recorded issue or lesson with a check refuses the
+/// repeat. Verbs: <c>kor enforce --hook</c> (PreToolUse, Bash|PowerShell|Write|Edit), <c>check-add</c>, <c>check-retire</c>,
+/// <c>check-test</c>, <c>checks</c>. And mistake 138's read-only <c>secret-scan</c> (ids and counts only).
+/// </summary>
+public static partial class Program
+{
+    // ---- kor enforce --hook -------------------------------------------------------------------------------------------
+    /// <summary>
+    /// PreToolUse. Reads the hook JSON (tool_name, tool_input.command | file_path, cwd, session_id). The first live check for
+    /// this module or Office whose known answers pass and whose pattern matches -> the deny JSON naming brain.Check #id and
+    /// brain.Memory #id, and ONE oversight.GuardRefusal row (Board login; Matched through SecretGuard). A check failing its
+    /// known answers is skipped and said in the hook error log. Bad input, another tool, no DB and no cache -> allow
+    /// (nothing printed). Exit 0 always in hook mode.
+    /// </summary>
+    private static int EnforceVerb(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? db, BrainDb? board, string hookErrorLog)
+    {
+        var module = o.Get("--module") ?? throw new ArgumentException("enforce needs --module <lane>");
+        var raw = stdin();
+        if (string.IsNullOrWhiteSpace(raw)) { if (!hook) output.WriteLine("allow: no hook input"); return 0; }
+        string? tool, input, cwd, session;
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) { if (!hook) output.WriteLine("allow: the input is not a JSON object"); return 0; }
+            tool = Str(root, "tool_name");
+            cwd = Str(root, "cwd");
+            session = Str(root, "session_id");
+            input = null;
+            if (tool is not null && root.TryGetProperty("tool_input", out var ti) && ti.ValueKind == JsonValueKind.Object)
+                input = Str(ti, Rules.FieldOf(tool));
+        }
+        catch (JsonException) { if (!hook) output.WriteLine("allow: the input is not JSON"); return 0; }
+        if (tool is null || !Rules.Tools.Contains(tool) || string.IsNullOrEmpty(input))
+        {
+            if (!hook) output.WriteLine($"allow: tool {tool ?? "-"} is not enforced or has no {(tool is null ? "input" : Rules.FieldOf(tool))}");
+            return 0;
+        }
+        void Log(Exception e) => LogHookError(hookErrorLog, o, e);
+        IReadOnlyList<LiveCheck>? checks;
+        string source;
+        if (db is not null) { checks = CheckStore.Live(db).Select(s => s.Check).ToList(); source = "db (caller's)"; }
+        else
+            checks = CheckCache.Get(o.Get("--cache-dir") ?? CheckCache.DefaultDir,
+                () => BrainDb.Read3s(d => CheckStore.Live(d).Select(s => s.Check).ToList()), DateTimeOffset.UtcNow, Log, out source);
+        if (checks is null)
+        {
+            Log(new InvalidOperationException("kor enforce: no database and no cache - nothing enforced (fails open)"));
+            if (!hook) output.WriteLine("allow: no database and no cache - nothing enforced (fails open)");
+            return 0;
+        }
+        var dir = cwd is not null && Directory.Exists(cwd) ? cwd : null;
+        foreach (var c in CheckStore.For(checks, module).Where(c => c.Tool == tool).OrderBy(c => c.Id))
+        {
+            var fails = Rules.KnownAnswerFailures(c);
+            if (fails.Count > 0)
+            {
+                Log(new InvalidOperationException($"brain.Check #{c.Id} skipped - it fails its known answers: {string.Join("; ", fails)}"));
+                continue;
+            }
+            var m = Rules.Matches(c, input, dir);
+            if (m is null) continue;
+            var shown = SecretGuard.Mask(m.Text)!;
+            var reason = $"kor enforce: brain.Check #{c.Id} ({c.Module}, enforcing {c.MemoryKind} brain.Memory #{c.MemoryId} {c.MemoryName}) refuses this: {c.Says} " +
+                         $"Matched{(m.Origin == "command" ? "" : $" in {m.Origin}")}: {Clip(shown, 300)}. " +
+                         $"A mention (in quotes, a commit message, a heredoc) is never matched. If the check is wrong: kor check-retire {c.Id} --because \"...\".";
+            int? logged = null;
+            try
+            {
+                var repo = dir is null ? null : Git.TopLevelFast(dir) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+                logged = board is not null
+                    ? CheckStore.LogRefusal(board, c.Id, session, repo, m.Text)
+                    : BrainDb.Use3s(KorStandardsConnection.Login.Board, b => CheckStore.LogRefusal(b, c.Id, session, repo, m.Text));
+            }
+            catch (Exception e) { Log(e); }   // the refusal stands whether or not it was logged
+            output.WriteLine(hook
+                ? JsonSerializer.Serialize(new
+                {
+                    hookSpecificOutput = new { hookEventName = "PreToolUse", permissionDecision = "deny", permissionDecisionReason = reason },
+                })
+                : $"deny{(logged is null ? " (not logged)" : $" (oversight.GuardRefusal #{logged})")}: {reason}");
+            return 0;
+        }
+        if (!hook) output.WriteLine($"allow: no live check for {module} or Office matches ({checks.Count} live, read from {source})");
+        return 0;
+    }
+
+    private static string? Str(JsonElement e, string name) =>
+        e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
+    private static string Clip(string s, int max) => s.Length <= max ? s : s[..(max - 3)] + "...";
+
+    // ---- check-add / check-retire / check-test / checks ----------------------------------------------------------------
+    /// <summary>
+    /// kor check-add --memory ID --module M|Office --tool Bash[,PowerShell] --pattern P --refuse E [--refuse E2 ...]
+    /// --allow A [--allow A2 ...] --says S. One row per tool. Refuses a target that is not a live issue or lesson, and a rule
+    /// that fails its known answers (each tool's), before anything is written.
+    /// </summary>
+    private static int CheckAdd(Options o, TextWriter output, BrainDb? db)
+    {
+        var memory = o.Int("--memory") ?? throw new ArgumentException("check-add needs --memory <brain.Memory id of the issue or lesson>");
+        var module = o.Get("--module") ?? throw new ArgumentException("check-add needs --module <lane> | Office");
+        var tools = (o.Get("--tool") ?? throw new ArgumentException("check-add needs --tool Bash|PowerShell|Write|Edit"))
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var pattern = o.Get("--pattern") ?? throw new ArgumentException("check-add needs --pattern <.NET regex>");
+        var says = o.Get("--says") ?? throw new ArgumentException("check-add needs --says \"what to do instead\"");
+        var refuse = o.All("--refuse");
+        var allow = o.All("--allow");
+        if (refuse.Count == 0 || allow.Count == 0) throw new ArgumentException("check-add needs at least one --refuse and one --allow example");
+        var by = Who(o.Get("--session") ?? BrainStore.CurrentSession());
+        var ids = BrainDb.Use(db, d => tools.Select(t => CheckStore.Add(d, memory, module, t, pattern, refuse, allow, says, by)).ToList());
+        foreach (var (id, t) in ids.Zip(tools))
+            output.WriteLine($"added brain.Check #{id}: {module} {t} enforcing brain.Memory #{memory} - {refuse.Count} refuse and {allow.Count} allow examples pass, and every mention of a refuse example is allowed");
+        return 0;
+    }
+
+    private static int CheckRetire(Options o, TextWriter output, BrainDb? db)
+    {
+        if (!int.TryParse(o.Positional.ElementAtOrDefault(1), out var id)) throw new ArgumentException("check-retire needs a brain.Check id");
+        var because = o.Get("--because") ?? throw new ArgumentException("check-retire needs --because \"...\"");
+        BrainDb.Use(db, d => { CheckStore.Retire(d, id, RecordStore.Actor(), because); return 0; });
+        output.WriteLine($"retired brain.Check #{id}: {because}");
+        return 0;
+    }
+
+    /// <summary>
+    /// kor check-test [--module M] - every live check's known answers (exit 1 if any fails). With --tool T and --command C
+    /// (or --path P) [--cwd D]: which check would refuse that call - nothing is logged.
+    /// </summary>
+    private static int CheckTest(Options o, TextWriter output, BrainDb? db)
+    {
+        var module = o.Get("--module");
+        var all = BrainDb.Use(db, d => CheckStore.Live(d)).Select(s => s.Check).ToList();
+        var checks = module is null ? all : CheckStore.For(all, module).ToList();
+        if (o.Get("--tool") is { } tool)
+        {
+            var input = o.Get("--command") ?? o.Get("--path") ?? throw new ArgumentException("check-test --tool needs --command C or --path P");
+            var hit = checks.Where(c => c.Tool == tool && Rules.KnownAnswerFailures(c).Count == 0)
+                            .Select(c => (c, m: Rules.Matches(c, input, o.Get("--cwd") ?? Environment.CurrentDirectory))).FirstOrDefault(x => x.m is not null);
+            output.WriteLine(hit.m is null ? $"allow: none of {checks.Count} live check(s) matches"
+                                           : $"deny: brain.Check #{hit.c.Id} matches {SecretGuard.Mask(hit.m.Text)} ({hit.m.Origin})");
+            return 0;
+        }
+        var failed = 0;
+        foreach (var c in checks)
+        {
+            var fails = Rules.KnownAnswerFailures(c);
+            if (fails.Count > 0) failed++;
+            output.WriteLine(fails.Count == 0 ? $"PASS brain.Check #{c.Id} {c.Module} {c.Tool} ({c.MustRefuse.Count} refuse, {c.MustAllow.Count} allow, mentions allowed)"
+                                              : $"FAIL brain.Check #{c.Id} {c.Module} {c.Tool}: {string.Join("; ", fails)}");
+        }
+        output.WriteLine($"{checks.Count - failed} of {checks.Count} live check(s) pass their known answers");
+        return failed == 0 ? 0 : 1;
+    }
+
+    /// <summary>kor checks [--module M] [--hits N] - the live checks reaching M (its own + Office), each with its refusal
+    /// count from oversight.GuardRefusal; --hits N lists only those refused at least N times.</summary>
+    private static int Checks(Options o, TextWriter output, BrainDb? db, BrainDb? board)
+    {
+        var module = o.Get("--module");
+        var min = o.Int("--hits") ?? 0;
+        var all = BrainDb.Use(db, d => CheckStore.Live(d));
+        var rows = module is null ? all : all.Where(s => CheckStore.For(new[] { s.Check }, module).Any()).ToList();
+        var hits = board is not null ? CheckStore.Hits(board) : BrainDb.Read(KorStandardsConnection.Login.Board, CheckStore.Hits);
+        var shown = rows.Where(s => hits.GetValueOrDefault(s.Check.Id) >= min).ToList();
+        output.WriteLine($"{shown.Count} of {rows.Count} live check(s){(module is null ? "" : $" reaching {module}")} with at least {min} hit(s)");
+        foreach (var s in shown)
+        {
+            var c = s.Check;
+            output.WriteLine($"brain.Check #{c.Id} {c.Module} {c.Tool} hits={hits.GetValueOrDefault(c.Id)} enforcing {c.MemoryKind} brain.Memory #{c.MemoryId} {c.MemoryName}");
+            output.WriteLine($"   pattern: {c.Pattern}");
+            output.WriteLine($"   says: {c.Says}");
+        }
+        return 0;
+    }
+
+    // ---- secret-scan (mistake 138) ---------------------------------------------------------------------------------------
+    /// <summary>
+    /// Read-only: SecretGuard as a classifier over every brain.Memory Body and Description, brain.LaneState ResumeBlock and
+    /// brain.Event Detail/Ref (SNAPSHOT, nothing written). Prints ONLY counts, ids, the field and the rule names - never text.
+    /// </summary>
+    private static int SecretScan(Options o, TextWriter output, BrainDb? db)
+    {
+        // read only: the caller's unit of work, or a SNAPSHOT read that is never committed
+        var explain = o.Get("--explain") is not null;
+        var lines = db is not null ? SecretScanLines(db, explain) : BrainDb.Read(KorStandardsConnection.Login.Brain, x => SecretScanLines(x, explain));
+        foreach (var l in lines) output.WriteLine(l);
+        return 0;
+    }
+
+    /// <param name="explain">per hit also: rule, credential word, separator, length, classes, entropy - never text.</param>
+    internal static IReadOnlyList<string> SecretScanLines(BrainDb d, bool explain = false)
+    {
+        var lines = new List<string>();
+        void Scan(string table, string sql, string[] fields)
+        {
+            using var c = d.Command(sql, 120);
+            using var r = c.ExecuteReader();
+            int rows = 0, flagged = 0, liveFlagged = 0;
+            var ids = new List<string>();
+            while (r.Read())
+            {
+                rows++;
+                var id = r.GetInt32(0);
+                var live = r.GetInt32(1) == 1;
+                var found = new List<string>();
+                for (var i = 0; i < fields.Length; i++)
+                {
+                    if (r.IsDBNull(2 + i)) continue;
+                    var hits = SecretGuard.Find(r.GetString(2 + i));
+                    if (hits.Count > 0) found.Add($"{fields[i]}:{string.Join("+", hits.Select(h => h.Rule).Distinct())}x{hits.Count}");
+                    if (hits.Count > 0 && explain) found.AddRange(SecretGuard.Explain(r.GetString(2 + i)).Select(x => "\n      " + x));
+                }
+                if (found.Count == 0) continue;
+                flagged++;
+                if (live) liveFlagged++;
+                ids.Add($"#{id}{(live ? "" : " (not live)")} {string.Join(" ", found)}");
+            }
+            lines.Add($"{table}: {rows} row(s) scanned, {flagged} flagged ({liveFlagged} live)");
+            lines.AddRange(ids.Select(x => "   " + x));
+        }
+        Scan("brain.Memory", "SELECT Id, CASE WHEN RetiredAtUtc IS NULL AND Status <> N'superseded' THEN 1 ELSE 0 END, Body, Description FROM brain.Memory ORDER BY Id",
+             new[] { "Body", "Description" });
+        Scan("brain.LaneState", "SELECT Id, 1, ResumeBlock FROM brain.LaneState ORDER BY Id", new[] { "ResumeBlock" });
+        Scan("brain.Event", "SELECT Id, 1, Detail, Ref FROM brain.Event ORDER BY Id", new[] { "Detail", "Ref" });
+        return lines;
+    }
+}

@@ -67,12 +67,16 @@ public static class KorStandardsConnection
     }
 
     /// <summary>An open connection for the login, or an exception that names the variable (never the password).</summary>
-    public static SqlConnection Open(Login login)
+    public static SqlConnection Open(Login login) => Open(login, 15);
+
+    /// <summary>As <see cref="Open(Login)"/>, with its own connect timeout (kor enforce, a PreToolUse hook: 3 s).</summary>
+    public static SqlConnection Open(Login login, int connectTimeoutSeconds)
     {
         var name = VariableFor(login);
         var raw = ReadVariable(name) ?? throw new InvalidOperationException($"{name} is not set");
         var builder = Parse(raw);
         builder.InitialCatalog = "KorStandards";
+        builder.ConnectTimeout = connectTimeoutSeconds;
         var connection = new SqlConnection(builder.ConnectionString);
         connection.Open();
         return connection;

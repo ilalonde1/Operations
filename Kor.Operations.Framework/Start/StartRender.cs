@@ -28,6 +28,9 @@ public static class StartRender
 
     public static string Record(ModuleState s, int? budget)
     {
+        // mistake 138: every credential value in what was read is masked BEFORE any section clips it (a clipped value
+        // could fall under the classifier's length rule), and each rendered section is masked again below
+        s = Masked(s);
         var m = s.Module;
         var five = s.Records.FirstOrDefault(r => r.Name == ModuleState.FiveQuestionsName);
         var stale = s.Fresh.Rows.Where(r => r.Verdict == Verdict.Stale).ToList();
@@ -54,14 +57,14 @@ public static class StartRender
         var cutOrder = Enumerable.Range(0, sections.Count).Reverse().OrderBy(i => sections[i].Name == "state" ? 1 : 0).ToList();
         string Compose()
         {
-            var parts = sections.Select((x, i) => x.Render(levels[i])).Where(t => t.Length > 0).ToList();
+            var parts = sections.Select((x, i) => SecretGuard.Mask(x.Render(levels[i]))!).Where(t => t.Length > 0).ToList();
             var head = string.Join("\n", parts);
             if (legacy.Count == 0) return head;
             // Legacy is cut FIRST: it fills the room left only while no section above it has been cut. Once one has, legacy
             // is its one line - it never refills the room a cut section gave up (seen live 3 Nov 02:24: Office cut to its
             // header while legacy rows still rendered below it).
             var room = budget is null ? (int?)null : levels.Any(l => l > 0) ? 0 : budget.Value - head.Length - 1;
-            return head + "\n" + Legacy(m, legacy, room);
+            return head + "\n" + SecretGuard.Mask(Legacy(m, legacy, room));
         }
         var text = Compose();
         while (budget is not null && text.Length > budget)
@@ -77,6 +80,34 @@ public static class StartRender
             text = text[..(budget.Value - cut.Length)] + cut;
         }
         return text;
+    }
+
+    /// <summary>The state with SecretGuard.Mask applied to every text read from the brain (records, issues, office,
+    /// resumes, events, the handover section). Ids, kinds and times are not text a value hides in.</summary>
+    internal static ModuleState Masked(ModuleState s)
+    {
+        static StartRecord R(StartRecord r) => r with
+        {
+            Description = SecretGuard.Mask(r.Description)!, Body = SecretGuard.Mask(r.Body), CheckRef = SecretGuard.Mask(r.CheckRef),
+            SourceRef = SecretGuard.Mask(r.SourceRef), Name = SecretGuard.Mask(r.Name)!,
+        };
+        static ResumeRow Q(ResumeRow r) => r with { ResumeBlock = SecretGuard.Mask(r.ResumeBlock)!, WrittenBy = SecretGuard.Mask(r.WrittenBy)! };
+        static StoredEvent E(StoredEvent e) => e with { Ref = SecretGuard.Mask(e.Ref), Detail = SecretGuard.Mask(e.Detail), Actor = SecretGuard.Mask(e.Actor)! };
+        return s with
+        {
+            Records = s.Records.Select(R).ToList(),
+            OpenIssues = s.OpenIssues.Select(R).ToList(),
+            Office = s.Office.Select(R).ToList(),
+            Resume = s.Resume with
+            {
+                Chosen = s.Resume.Chosen is null ? null : Q(s.Resume.Chosen), Others = s.Resume.Others.Select(Q).ToList(),
+                Why = SecretGuard.Mask(s.Resume.Why)!,
+            },
+            LastSessionEnd = s.LastSessionEnd is null ? null : E(s.LastSessionEnd),
+            Events = s.Events.Select(E).ToList(),
+            CheckLines = s.CheckLines.Select(l => SecretGuard.Mask(l)!).ToList(),
+            Handover = s.Handover is null ? null : s.Handover with { Section = SecretGuard.Mask(s.Handover.Section) },
+        };
     }
 
     /// <summary>Absolute paths of the files current git-sourced records cite (the FileChanged watch list), at most 200.</summary>
