@@ -158,14 +158,14 @@ MISSES["1203 (a): the write alone - its sys.columns read comes BEFORE the UPDATE
     [WRITE_NO_OUTPUT, O("mitigationref_chars\n200")], "Mistake 138 closed - done.", "db-write")
 MISSES["1203 (a): OUTPUT rows cut by tail -3 (call 1542; the 7292 refusal, still right)"] = (
     [WRITE_1542_TAIL3, O("Id|What\n--|----\n1187|[KIDE K5b] ...")], "Spec built.", "db-write")
-MISSES["1203 (a): a later read-back cut by a tail"] = (
+LOOKED["1203 stated miss: a later SELECT read-back cut by a tail still counts"] = (
     [B("python oq.py -q \"UPDATE KorStandards.oversight.Commitment SET State=N'done' WHERE Id=1\""),
      B("python oq.py -q \"SELECT Id, State FROM KorStandards.oversight.Commitment WHERE Id=1\" | tail -1")],
-    "Row updated - done.", "db-write")
-MISSES["1203 (a): Select-Object -First on the read-back"] = (
+    "Row updated - done.")
+LOOKED["1203 stated miss: Select-Object -First on a SELECT read-back still counts"] = (
     [P("python oq.py -q \"UPDATE KorStandards.oversight.Commitment SET State=N'done' WHERE Id=1\""),
      P("python oq.py -q \"SELECT Id, State FROM KorStandards.oversight.Commitment\" | Select-Object -First 5")],
-    "Row updated - done.", "db-write")
+    "Row updated - done.")
 # Stated misses in the guard's header, kept here so a change to them is seen: any look after the write satisfies it,
 # not only one naming the written table (requiring that took the 3 Nov dry run from 28 to 46 refusals, 18 of them
 # false); a look before the change in the same command is still not one
@@ -227,9 +227,9 @@ why = verdict("Ruling written - done.", [B("python oq.py -q \"UPDATE KorStandard
               RULES, SURFACES) or ""
 ok = f"analysis.ruling: oversight.Surface {ruling['Code']}" in why and ruling["Check"] in why
 print(("PASS" if ok else "FAIL") + f"  refusal names Surface {ruling['Code']} and its check"); fails += not ok
-why = verdict("Row updated - done.", MISSES["1203 (a): a later read-back cut by a tail"][0], RULES, SURFACES) or ""
-ok = "oversight.commitment: no oversight.Surface row names it, so its look is its rows read back" in why
-print(("PASS" if ok else "FAIL") + "  refusal says no Surface row names oversight.Commitment"); fails += not ok
+why = verdict("Row updated - done.", MISSES["1203 (a): the write alone - its sys.columns read comes BEFORE the UPDATE"][0], RULES, SURFACES) or ""
+ok = "oversight.mistake: no oversight.Surface row names it, so its look is its rows read back" in why
+print(("PASS" if ok else "FAIL") + "  refusal says no Surface row names oversight.Mistake"); fails += not ok
 
 
 def transcript(calls, final_text):

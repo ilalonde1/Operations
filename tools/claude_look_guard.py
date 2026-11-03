@@ -41,9 +41,12 @@ Framework row 1203 (3 Nov 2026; GuardRefusal 440, 441, 893, 898 judged wrong). T
   text only (a Windows path is full of \t and \n pairs), so a write spelled "\nUPDATE x SET" inside a printf is
   still not seen - as before this fix.
 - A db-write's look, as before, is any look (LookPattern) after its last write; now also OUTPUT inserted.*/deleted.*
-  in the write itself (every row it touched, as its own result - refusal 440's write), and NOT a look whose output
-  is cut by | head, | tail (`tail -n +N`, which drops a fixed head such as sqlcmd's "Changed database context" and
-  shows every line after it, is not a cut), Select-Object -First/-Last/-Skip or grep -m. The refusal names the
+  in the write itself (every row it touched, as its own result - refusal 440's write) when that command's output is
+  not cut by | head, | tail (`tail -n +N`, which drops a fixed head such as sqlcmd's "Changed database context" and
+  shows every line after it, is not a cut), Select-Object -First/-Last/-Skip or grep -m. A SELECT look whose output
+  is cut STILL counts, as before: refusing it was tried and, on a second real transcript (Operations f6ff24dd, 839
+  moments with a claim word), took refusals from 555 to 575 - 41 of the 98 moments that gained one behind greps of
+  migration files the ChangePattern misreads as writes ("grep ... 'INSERT INTO ...' | head"). The refusal names the
   TABLES the last write wrote (INSERT INTO / UPDATE..SET / DELETE FROM / MERGE INTO / ALTER TABLE <schema.table>,
   or the qualified name in a "KORSTANDARDS WRITE" line) and, for each one oversight.Surface names, that Surface's
   code and its consumers' check; with no Surface row, its rows read back ARE the whole look.
@@ -51,7 +54,8 @@ Framework row 1203 (3 Nov 2026; GuardRefusal 440, 441, 893, 898 judged wrong). T
   transcript (196 replies and sends with a claim word) took refusals from 28 to 46 that way, 17 of the 18 more from
   one `grep -E "...UPDATE brain.Memory SET RetiredAtUtc"` the ChangePattern misreads as a write, and 1 from an
   ALTER TABLE in a LocalDB rehearsal whose database was then dropped - a look that could never be done.
-  What it does NOT see: whether the look read the table that was WRITTEN (a SELECT of any table, or SELECT
+  What it does NOT see: a SELECT read-back cut by | head or | tail (the miss above, kept so a misread grep's own
+  SELECT goes on counting); whether the look read the table that was WRITTEN (a SELECT of any table, or SELECT
   @@ROWCOUNT, still satisfies - the miss above); whether it covered every row written (a SELECT of one Id satisfies
   a write of ten); whether a Surface's check RAN (Check is prose and CheckSql was NULL in 8 of 8 rows on 3 Nov - the
   refusal names the check, it cannot require it); a write whose own result was cut by a tail and then read back
@@ -255,12 +259,10 @@ def unlooked(calls, rules):
             if name in ltools:
                 # a look in the same command counts only when it comes after the change in the text
                 lm = look_in(lpat, text, read, cm.end() if cm else 0)
-                if db and cm and not lm:
+                if db and cm and not lm and not TRUNCATED.search(text):
                     # row 1203: OUTPUT inserted.* / deleted.* returns every row the write touched as the statement's
-                    # own result - the written rows read back
+                    # own result - the written rows read back, unless the output is cut (call 1542: | tail -3)
                     lm = OUTPUT_ROWS.search(text, cm.end())
-                if db and lm and TRUNCATED.search(text):
-                    lm = None   # row 1203: a read-back cut by tail/head is not every row read back
             if cm:
                 last_change, change_text = i, text
                 tables = sorted({k for k, _ in written_tables(text, cpat) if k != "*"}) if db else []
