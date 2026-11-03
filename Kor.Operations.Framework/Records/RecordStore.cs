@@ -391,8 +391,9 @@ public static class RecordStore
     public static int OpenRegression(BrainDb db, int resolvedIssueId, int failEventId, string by)
     {
         var old = Get(db, resolvedIssueId) ?? throw new RecordRefusedException($"no record #{resolvedIssueId}");
-        if (old.Kind != "issue" || old.Status != "superseded" || old.SupersededBy is null)
-            throw new RecordRefusedException($"#{resolvedIssueId} is not a resolved issue");
+        if (ResolutionOf(db, old) is null)
+            throw new RecordRefusedException($"#{resolvedIssueId} is not a resolved issue (superseded by a resolution)" +
+                                             (old.SupersededBy is { } next && old.Kind == "issue" ? $" - it was restated as #{next}" : ""));
         var name = BrainStore.Clip($"{old.Name} (regression of #{resolvedIssueId})", 120)!;
         LockIssue(db, old.Lane, name);
         if (OpenIssueByName(db, old.Lane, name) is { } open) return open.Id;
@@ -403,6 +404,14 @@ public static class RecordStore
             SourceKind: "run", SourceRef: $"brain.Event #{failEventId}", SourceCommit: ev.Commit,
             CheckKind: old.CheckKind, CheckRef: old.CheckRef, RegressionOf: resolvedIssueId, EvidenceEventId: failEventId));
     }
+
+    /// <summary>
+    /// The resolution that closed this issue, or null. RESOLVED = superseded by a row of Kind resolution; an issue
+    /// superseded by its restatement (another issue) is not resolved (review row 165).
+    /// </summary>
+    public static int? ResolutionOf(BrainDb db, StoredRecord issue) =>
+        issue.Kind == "issue" && issue.Status == "superseded" && issue.SupersededBy is { } by && Get(db, by)?.Kind == "resolution"
+            ? by : null;
 
     // ---- reads ------------------------------------------------------------------------------------------------------
     public static StoredRecord? Get(BrainDb db, int id)

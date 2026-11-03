@@ -355,6 +355,39 @@ public class K5bTests
         Assert.Contains("closed only by evidence", Run(db, null, "recheck", id.ToString(), "withdraw", "--because", "x").Err);
     }
 
+    // 18 (review row 165): a RESTATED issue is superseded by an issue, not a resolution - it is not resolved, its failing
+    // check opens no regression, and the check event is kept
+    [Fact]
+    public void LiveARestatedIssueIsNotResolvedAndItsFailOpensNoRegression()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        var old = Issue(db, "restated-fail", "query", FailSql);
+        var nu = RecordStore.RestateIssue(db, old, new NewRecord(Lane, "restated-fail", "issue", "k5b restated", "b", "k5b-test",
+            SourceKind: "session", SourceRef: "k5b test", CheckKind: "query", CheckRef: FailSql));
+        var restated = RecordStore.Get(db, old)!;
+        Assert.Equal(("superseded", (int?)nu), (restated.Status, restated.SupersededBy));
+        Assert.Null(RecordStore.ResolutionOf(db, restated));
+        var (code, o, e) = Run(db, null, "check", "--issue", old.ToString(), "--dir", RepoDir());
+        Assert.Equal(1, code);                                    // a fail - but no exception, no raw SQL error
+        Assert.Equal("", e);
+        Assert.Contains($"it was restated as #{nu}: check that one", o);
+        Assert.Equal("fail", Assert.Single(BrainStore.ChecksOf(old, db)).Outcome);   // the evidence is kept
+        Assert.Contains("restated as", Assert.Throws<RecordRefusedException>(() => RecordStore.OpenRegression(db, old, 1, "k5b")).Message);
+        var pass = IssueResolver.Apply(db, restated, BrainStore.ChecksOf(old, db)[0].Id, "pass", "k5b", "x");
+        Assert.DoesNotContain("already resolved", pass.Line);
+        Assert.Contains($"restated as #{nu}", pass.Line);
+    }
+
+    [Theory]
+    [InlineData("brain:WITH x AS (SELECT 1 AS a) UPDATE brain.Memory SET Body = Body WHERE 1 = 0")]
+    [InlineData("brain:SELECT CAST(1 AS bit) AS Pass INTO #t")]
+    [InlineData("brain:SELECT CAST(1 AS bit) AS Pass; EXEC sp_who")]
+    public void AQueryCheckThatWritesIsRefusedBeforeItRuns(string checkRef)
+    {
+        Assert.Null(IssueCheck.ParseQueryRef(checkRef).Sql);
+        Assert.NotNull(IssueCheck.ParseQueryRef(PassSql).Sql);
+    }
+
     // 16: an issue without its check, and a gate outside the allowlist
     [Fact]
     public void AnIssueNeedsItsCheckAndAGateIsAllowlisted()

@@ -261,7 +261,11 @@ public class K4Tests
         var r = RecordStore.Get(db, int.Parse(Regex.Match(o, @"brain\.Memory #(\d+)").Groups[1].Value))!;
         var expected = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("1\u001fb\u001f\u001e"))).ToLowerInvariant();
         Assert.Equal(("query", "SELECT 1 AS a, N'b' AS b", expected), (r.SourceKind, r.SourceRef, r.SourceHash));
-        foreach (var bad in new[] { "query:DELETE brain.Memory WHERE 1 = 0", "query:SELECT 1; DELETE brain.Memory WHERE 1 = 0", "query:UPDATE brain.Event SET Ref = Ref" })
+        foreach (var bad in new[] { "query:DELETE brain.Memory WHERE 1 = 0", "query:SELECT 1; DELETE brain.Memory WHERE 1 = 0", "query:UPDATE brain.Event SET Ref = Ref",
+                                    // review row 165: a CTE that ends in a write, and SELECT ... INTO, start with WITH / SELECT
+                                    "query:WITH x AS (SELECT Id FROM brain.Memory WHERE 1 = 0) UPDATE m SET Body = Body FROM brain.Memory m JOIN x ON x.Id = m.Id",
+                                    "query:SELECT Id INTO #k4copy FROM brain.Memory WHERE 1 = 0",
+                                    "query:WITH x AS (SELECT 1 AS a) INSERT brain.Event (Module) SELECT N'x' FROM x" })
         {
             var (c, _, err) = Run(db, null, "record", "--module", Module, "--kind", "finding", "--name", "k4-bad-query", "--says", "x", "--source", bad);
             Assert.Equal(1, c);

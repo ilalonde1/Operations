@@ -66,17 +66,18 @@ public static partial class Program
         var session = o.Get("--session") ?? BrainStore.CurrentSession();
         var by = Who(session);
         var where = o.Get("--dir") ?? Environment.CurrentDirectory;
-        return BrainDb.Use(db, d =>
+        var line = BrainDb.Use(db, d =>
         {
             var s = SourceOf(d, src, where);
             var rec = new NewRecord(lane, name, kind, says, body, by, s.Git, s.Kind, s.Ref, s.Hash, SourceCommit: s.Commit);
             var live = RecordStore.LiveByName(d, lane, name);
             var id = live is null ? RecordStore.Insert(d, rec) : RecordStore.Supersede(d, live.Id, rec, by, "restated by kor record");
             var ev = RecordEvent(d, lane, id, $"{kind} {name}", session, by);
-            output.WriteLine($"recorded brain.Memory #{id}: {lane} {kind} {name} - {Describe(rec)}" +
+            return ($"recorded brain.Memory #{id}: {lane} {kind} {name} - {Describe(rec)}" +
                              (live is null ? "" : $" (supersedes #{live.Id})") + $"; record event #{ev}");
-            return 0;
         });
+        output.WriteLine(line);   // after the commit (review row 165)
+        return 0;
     }
 
     private sealed record Src(GitSource? Git, string? Kind, string? Ref, string? Hash, string? Commit);
@@ -188,14 +189,15 @@ public static partial class Program
         var issue = new NewRecord(lane, name, "issue", description, body, by, git,
             git is null ? "session" : null, git is null ? BrainStore.Clip($"kor issue, {(session is null ? by : "session " + session)}", 400) : null,
             CheckKind: check, CheckRef: checkRef);
-        return BrainDb.Use(db, d =>
+        var line = BrainDb.Use(db, d =>
         {
             var id = o.Int("--restates") is { } old ? RecordStore.RestateIssue(d, old, issue) : RecordStore.InsertIssue(d, issue);
             var ev = RecordEvent(d, lane, id, $"issue {name}", session, by);
-            output.WriteLine($"recorded issue #{id}: {lane} {name} - check {check}: {checkRef}" +
+            return ($"recorded issue #{id}: {lane} {name} - check {check}: {checkRef}" +
                              (o.Int("--restates") is { } r ? $" (restates #{r})" : "") + $"; record event #{ev}");
-            return 0;
         });
+        output.WriteLine(line);   // after the commit (review row 165)
+        return 0;
     }
 
     /// <summary>
@@ -251,14 +253,15 @@ public static partial class Program
         var because = o.Get("--because") ?? throw new ArgumentException("resolve needs --because \"...\"");
         var session = o.Get("--session") ?? BrainStore.CurrentSession();
         var by = Who(session);
-        return BrainDb.Use(db, d =>
+        var line = BrainDb.Use(db, d =>
         {
             var issue = RecordStore.Get(d, id) ?? throw new RecordRefusedException($"no record #{id}");
             var res = RecordStore.ResolveBySource(d, id, by, because, o.Get("--dir"));
             var ev = RecordEvent(d, issue.Lane, res, $"resolution of #{id}", session, by);
-            output.WriteLine($"#{id} {issue.Name} RESOLVED by #{res} (its file changed); record event #{ev}");
-            return 0;
+            return ($"#{id} {issue.Name} RESOLVED by #{res} (its file changed); record event #{ev}");
         });
+        output.WriteLine(line);   // after the commit (review row 165): never a line for a write that did not land
+        return 0;
     }
 
     /// <summary>post-commit: the issues named "#issue N" in the commit are checked now (capped), never failing the commit.</summary>

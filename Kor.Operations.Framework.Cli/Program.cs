@@ -313,7 +313,7 @@ public static partial class Program
         var action = o.Positional.ElementAtOrDefault(2) ?? throw new ArgumentException("recheck needs confirm|supersede|withdraw");
         var because = o.Get("--because") ?? throw new ArgumentException("recheck needs --because \"...\"");
         var by = RecordStore.Actor();
-        return BrainDb.Use(db, d =>
+        var line = BrainDb.Use(db, d =>
         {
             var old = RecordStore.Get(d, id) ?? throw new RecordRefusedException($"no record #{id}");
             // up front, before any git read or write: an issue or resolution never goes through recheck
@@ -321,8 +321,7 @@ public static partial class Program
             if (action == "withdraw")
             {
                 RecordStore.Withdraw(d, id, by, because);
-                output.WriteLine($"#{id} withdrawn (retired, no replacement): {because}");
-                return 0;
+                return ($"#{id} withdrawn (retired, no replacement): {because}");
             }
             if (action is not ("confirm" or "supersede")) throw new ArgumentException($"unknown recheck action '{action}' (confirm|supersede|withdraw)");
             if (old.SourceKind != "git" || old.SourceRepo is null || old.SourcePath is null)
@@ -339,9 +338,10 @@ public static partial class Program
             var replacement = new NewRecord(old.Lane, old.Name, old.Kind, o.Get("--says") ?? old.Description, body, by, source,
                                             Source: $"recheck {action} of #{id}: {because}");
             var newId = RecordStore.Supersede(d, id, replacement, by, $"recheck {action}: {because}");
-            output.WriteLine($"#{id} superseded by #{newId} ({action}): {old.Kind} {old.Name} now cites {source.Repo}:{source.Path}@{source.Commit[..7]} blob {source.Blob[..7]}");
-            return 0;
+            return ($"#{id} superseded by #{newId} ({action}): {old.Kind} {old.Name} now cites {source.Repo}:{source.Path}@{source.Commit[..7]} blob {source.Blob[..7]}");
         });
+        output.WriteLine(line);   // after the commit (review row 165)
+        return 0;
     }
 
     private static int CaptureTool(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? db)

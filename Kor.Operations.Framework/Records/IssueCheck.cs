@@ -155,8 +155,18 @@ public static class IssueCheck
                           : (KorStandardsConnection.Login.Brain, (string?)null);
         if (rest is null) return (login, null);
         rest = rest.Trim();
-        return Regex.IsMatch(rest, @"^(SELECT|WITH)\b", RegexOptions.IgnoreCase) ? (login, rest) : (login, null);
+        return Regex.IsMatch(rest, @"^(SELECT|WITH)\b", RegexOptions.IgnoreCase) && !Writes.IsMatch(rest) && !rest.Contains(';')
+            ? (login, rest) : (login, null);
     }
+
+    /// <summary>
+    /// A query check or source READS. Refused up front: any write or DDL keyword as a whole word (a CTE can end in UPDATE,
+    /// SELECT ... INTO creates a table; review row 165) - even inside a string literal, which is the price of not parsing
+    /// T-SQL. The second line of defence is the transaction, which is always rolled back.
+    /// </summary>
+    private static readonly Regex Writes = new(
+        @"\b(INSERT|UPDATE|DELETE|MERGE|INTO|EXEC|EXECUTE|DROP|ALTER|CREATE|TRUNCATE|GRANT|DENY|REVOKE|BACKUP|RESTORE|DBCC|SHUTDOWN|KILL|OPENROWSET|OPENQUERY|OPENDATASOURCE|WAITFOR)\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     // ---- plumbing ---------------------------------------------------------------------------------------------------
     private static string? ModuleDir(StoredRecord issue, string? fromDir) =>
@@ -249,13 +259,19 @@ public static class IssueResolver
             var res = RecordStore.Resolve(db, issue.Id, ev, actor, $"its {issue.CheckKind} check passed ({what})");
             return new Outcome(ev, outcome, res, null, $"#{issue.Id} {issue.Name}: pass ({what}) -> RESOLVED by #{res}");
         }
-        if (outcome == "fail" && issue.Kind == "issue" && issue.Status == "superseded")
+        // Resolved = superseded BY A RESOLUTION. A restated issue is superseded by the NEW issue (TR_Memory_Restate): it is
+        // not resolved, a fail of it is no regression, and its truth lives in the restatement (review row 165).
+        var resolvedBy = RecordStore.ResolutionOf(db, issue);
+        if (outcome == "fail" && resolvedBy is not null)
         {
             var reg = RecordStore.OpenRegression(db, issue.Id, ev, actor);
             return new Outcome(ev, outcome, null, reg, $"#{issue.Id} {issue.Name}: FAIL after its resolution ({what}) -> REGRESSION #{reg} open");
         }
-        return new Outcome(ev, outcome, null, null, $"#{issue.Id} {issue.Name}: {outcome} ({what})" +
-            (outcome == "pass" ? " - already resolved" : issue.OpenIssue ? " - still open" : ""));
+        var state = issue.OpenIssue ? (outcome == "pass" ? "" : " - still open")
+                  : resolvedBy is not null ? $" - already resolved by #{resolvedBy}"
+                  : issue.SupersededBy is { } by ? $" - it was restated as #{by}: check that one"
+                  : "";
+        return new Outcome(ev, outcome, null, null, $"#{issue.Id} {issue.Name}: {outcome} ({what}){state}");
     }
 
     private static string FirstLine(string s) => s.Split('\n')[0];
