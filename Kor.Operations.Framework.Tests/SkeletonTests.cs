@@ -26,8 +26,10 @@ public class SkeletonTests
     {
         // A hook must never fail the session: an unknown verb in --hook mode exits 0 and prints nothing.
         var output = new StringWriter();
-        Assert.Equal(0, Program.Run(new[] { "no-such-verb", "--hook" }, output, new StringWriter()));
+        var error = new StringWriter();
+        Assert.Equal(0, Program.Run(new[] { "no-such-verb", "--hook" }, output, error));
         Assert.Equal("", output.ToString());
+        Assert.Equal("", error.ToString());   // review row 81: usage must not be printed in hook mode either
     }
 
     [Fact]
@@ -44,7 +46,8 @@ public class SkeletonTests
     [Fact]
     public void ParseRefusesAMissingPartWithoutEchoingThePassword()
     {
-        // The input HAS a password but no server: the error must name what is missing, never repeat the password.
+        // The input HAS a password but no server: it is refused, and the error (which lists the required parts) never
+        // repeats the password.
         var e = Assert.Throws<InvalidOperationException>(() => KorStandardsConnection.Parse("Database=d;User Id=u;Password=secret-xyz-123;"));
         Assert.DoesNotContain("secret-xyz-123", e.Message);
         Assert.Contains("server", e.Message);
