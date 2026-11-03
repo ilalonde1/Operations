@@ -140,13 +140,24 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
     }
 
     /// <summary>
-    /// WHICH RESUME (spec K6, found live 2 Nov 23:14): chosen by SESSION, never newest-in-lane. Source compact or resume
-    /// -> the newest row written by THIS session (its compaction summary or a state it wrote). Otherwise (startup, clear,
-    /// fork, or no row of its own) -> the newest row from a session that did work in this module. Rows newest first.
+    /// On a compact start, an own compaction row younger than this is THIS compaction's summary, already stored. Measured
+    /// against this PC's clock (DateTimeOffset.Now) while WrittenAtUtc is KOR-APP01's SYSDATETIMEOFFSET: a clock difference
+    /// between the two shifts the window by that much (review row 207).
     /// </summary>
-    /// <summary>On a compact start, an own compaction row younger than this is THIS compaction's summary, already stored.</summary>
     public static readonly TimeSpan JustCompacted = TimeSpan.FromMinutes(2);
 
+    /// <summary>
+    /// WHICH RESUME (spec K6, found live 2 Nov 23:14): chosen by SESSION, never newest-in-lane. Rows newest first.
+    /// <list type="bullet">
+    /// <item>source compact (SessionStart:compact runs BEFORE PostCompact stores the summary - live 3 Nov 03:02):
+    /// (1) the summary in this session's transcript, when it is there and newer than any stored own row; (2) else this
+    /// session's own compaction row if PostCompact already stored it (as new as the transcript's, or younger than
+    /// <see cref="JustCompacted"/>); (3) else NO row - the summary just made is already at the top of the session's
+    /// context. Never another session's row, never this session's own OLDER row.</item>
+    /// <item>source resume: the newest row written by THIS session (its compaction summary or a state it wrote), else as startup.</item>
+    /// <item>startup, clear, fork: the newest row from a session that did work in this module.</item>
+    /// </list>
+    /// </summary>
     public static ResumeChoice ChooseResume(IReadOnlyList<ResumeRow> rows, Start start, TranscriptSummary? transcript = null)
     {
         var ordered = rows.GroupBy(x => x.Id).Select(g => g.First())
@@ -181,15 +192,16 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
                   "(its PostCompact hook stores it as a LaneState just after this start). No other session's resume is yours; " +
                   "the lane's recent ones are listed below";
         }
-        else if (start.Source is "compact" or "resume" && own is not null)
+        else if (start.Source == "resume" && own is not null)
         {
             chosen = own;
             why = $"this session's own ({(own.IsCompaction ? "its compaction summary" : "a state it wrote")}; source {start.Source})";
         }
         else
         {
+            // every compact start was decided above: only resume, startup, clear and fork reach here
             chosen = ordered.FirstOrDefault(x => x.Eligible);
-            var because = start.Source is "compact" or "resume"
+            var because = start.Source == "resume"
                 ? $"source {start.Source}, but this session wrote none - so"
                 : $"source {start.Source ?? "not given"}:";
             why = chosen is null ? "none - no resume from a session that did work in this module"
