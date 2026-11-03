@@ -68,7 +68,8 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
         }
         catch (IOException) { return null; }
         catch (UnauthorizedAccessException) { return null; }
-        // newest first; a line that only MENTIONS the key in its text is not the flag and is skipped
+        // newest first; a candidate is skipped unless it is a top-level "isCompactSummary": true entry with non-blank text
+        // that parses (a false or nested flag, blank content, a torn line - review row 206)
         for (var i = candidates.Count - 1; i >= 0; i--)
             if (ParseCompactSummary(candidates[i], transcriptPath) is { } s) return s;
         return null;
@@ -143,6 +144,9 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
     /// -> the newest row written by THIS session (its compaction summary or a state it wrote). Otherwise (startup, clear,
     /// fork, or no row of its own) -> the newest row from a session that did work in this module. Rows newest first.
     /// </summary>
+    /// <summary>On a compact start, an own compaction row younger than this is THIS compaction's summary, already stored.</summary>
+    public static readonly TimeSpan JustCompacted = TimeSpan.FromMinutes(2);
+
     public static ResumeChoice ChooseResume(IReadOnlyList<ResumeRow> rows, Start start, TranscriptSummary? transcript = null)
     {
         var ordered = rows.GroupBy(x => x.Id).Select(g => g.First())
@@ -159,6 +163,24 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
             why = "this session's own compaction summary (source compact), read from its transcript - its PostCompact hook " +
                   "stores it as a LaneState just after this start";
         }
+        else if (start.Source == "compact" && own is { IsCompaction: true }
+                 && (transcript is not null ? own.WrittenAtUtc >= transcript.At : DateTimeOffset.Now - own.WrittenAtUtc < JustCompacted))
+        {
+            // PostCompact already stored THIS compaction's summary (as new as its transcript's, or written moments ago)
+            chosen = own;
+            why = "this session's own compaction summary, just stored (source compact)";
+        }
+        else if (start.Source == "compact")
+        {
+            // Live 3 Nov 03:02 (Claude Code 2.1.317, session 0d73f0e7): SessionStart:compact runs BEFORE PostCompact stores
+            // the summary, and the transcript did not yet hold it when this hook read it. The summary just made IS in this
+            // session's context (Claude Code puts it there), so THE resume is that one: never another session's row, and
+            // never this session's own OLDER row (written before this compaction). The lane's rows are listed below.
+            chosen = null;
+            why = "this session was just compacted - its own resume is the compaction summary already at the top of your context " +
+                  "(its PostCompact hook stores it as a LaneState just after this start). No other session's resume is yours; " +
+                  "the lane's recent ones are listed below";
+        }
         else if (start.Source is "compact" or "resume" && own is not null)
         {
             chosen = own;
@@ -170,7 +192,7 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
             var because = start.Source is "compact" or "resume"
                 ? $"source {start.Source}, but this session wrote none - so"
                 : $"source {start.Source ?? "not given"}:";
-            why = chosen is null ? "no resume from a session that did work in this module"
+            why = chosen is null ? "none - no resume from a session that did work in this module"
                 : $"{because} the newest from a session that did work in this module ({(chosen.IsCompaction ? "a compaction of a session with commit/record/push events here" : "a state write")})";
         }
         var others = ordered.Where(x => chosen is null || x.Id != chosen.Id).Take(5).ToList();

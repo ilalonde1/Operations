@@ -248,12 +248,26 @@ public class StartTests
     public void ACompactedSessionGetsItsOwnSummaryBack()
     {
         var rows = new[] { R(3, 1, "other", true, true), R(2, 5, "me", true, false) };
-        Assert.Equal(2, ModuleState.ChooseResume(rows, new ModuleState.Start("me", "compact")).Chosen!.Id);
+        // resume: this session's own stored row
         Assert.Equal(2, ModuleState.ChooseResume(rows, new ModuleState.Start("me", "resume")).Chosen!.Id);
         Assert.Equal(3, ModuleState.ChooseResume(rows, new ModuleState.Start("me", "startup")).Chosen!.Id);
-        var none = ModuleState.ChooseResume(rows, new ModuleState.Start("never-wrote", "compact"));
-        Assert.Equal(3, none.Chosen!.Id);
-        Assert.Contains("wrote none", none.Why);
+        var resumedNone = ModuleState.ChooseResume(rows, new ModuleState.Start("never-wrote", "resume"));
+        Assert.Equal(3, resumedNone.Chosen!.Id);
+        Assert.Contains("wrote none", resumedNone.Why);
+        // compact (live 3 Nov 03:02: SessionStart:compact runs before PostCompact stores the summary): with no summary in
+        // its transcript yet, THE resume is the summary already in its context - never another session's row, never its
+        // own OLDER row - and the lane's rows are still listed
+        foreach (var who in new[] { "me", "never-wrote" })
+        {
+            var c = ModuleState.ChooseResume(rows, new ModuleState.Start(who, "compact"));
+            Assert.Null(c.Chosen);
+            Assert.Contains("already at the top of your context", c.Why);
+            Assert.Contains(c.Others, o => o.Id == 3);
+            Assert.Contains("RESUME: this session was just compacted", StartRender.Record(BigState(0, 0, 0, 10) with { Resume = c }, null));
+        }
+        // PostCompact already stored THIS compaction (an own compaction row written moments ago): that row
+        var justStored = rows.Append(R(5, 0, "me", true, false)).ToArray();
+        Assert.Equal(5, ModuleState.ChooseResume(justStored, new ModuleState.Start("me", "compact")).Chosen!.Id);
     }
 
     /// <summary>A JSONL line with the keys and shape of a real Claude Code 2.1.317 compaction entry (transcript
@@ -545,9 +559,18 @@ public class StartLiveTests(Xunit.Abstractions.ITestOutputHelper log)
         var after = ModuleState.Load(db, Lane, new ModuleState.Start("someone-else", "startup"), RepoDir());
         Assert.Equal(before, after.Resume.Chosen!.Id);                                            // unchanged
         Assert.Contains(after.Resume.Others, o => o.ResumeBlock == "THROWAWAY SUMMARY" && !o.Eligible);   // listed, not THE resume
-        var own = ModuleState.Load(db, Lane, new ModuleState.Start(throwaway, "compact"), RepoDir());
-        Assert.Equal("THROWAWAY SUMMARY", own.Resume.Chosen!.ResumeBlock);                        // its own summary back
+        // that session resumed later: its own stored summary back
+        var own = ModuleState.Load(db, Lane, new ModuleState.Start(throwaway, "resume"), RepoDir());
+        Assert.Equal("THROWAWAY SUMMARY", own.Resume.Chosen!.ResumeBlock);
         Assert.NotEqual(lead, own.Resume.Chosen.Id);
+        // a compact start that finds THIS compaction already stored (moments ago): that row, never the lead's
+        var atCompact = ModuleState.Load(db, Lane, new ModuleState.Start(throwaway, "compact"), RepoDir());
+        Assert.Equal("THROWAWAY SUMMARY", atCompact.Resume.Chosen!.ResumeBlock);
+        Assert.Contains("just stored", atCompact.Resume.Why);
+        // a compact start of a session with nothing stored: no other session's resume is shown as its own
+        var unstored = ModuleState.Load(db, Lane, new ModuleState.Start("k6-not-stored-" + Guid.NewGuid().ToString("N")[..6], "compact"), RepoDir());
+        Assert.Null(unstored.Resume.Chosen);
+        Assert.Contains("already at the top of your context", unstored.Resume.Why);
     }
 
     [Fact]

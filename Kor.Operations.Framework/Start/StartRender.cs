@@ -141,7 +141,7 @@ public static class StartRender
             lines.Add(block.Length <= keep ? block
                 : block[..keep] + $" ... [resume cut at {keep} of {block.Length} chars - kor start --module \"{s.Module}\" --text]");
         }
-        else lines.Add($"RESUME: none - {c.Why}.");
+        else lines.Add($"RESUME: {c.Why}.");
         if (s.LastSessionEnd is { } e)
             lines.Add($"LAST SESSION END: event #{e.Id} {Stamp(e.AtUtc)} ({e.Outcome ?? "no reason"})" + (e.Session is null ? "" : $" session {e.Session}"));
         if (level < 2 && c.Others.Count > 0)
