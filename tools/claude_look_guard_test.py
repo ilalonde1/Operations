@@ -117,6 +117,12 @@ LOOKED["a board_render.py run is not a drawing"] = (
 MISSES["a real render.py run"] = (
     [B(r"python -I tools/render.py --job 31180")],
     "Rendered - done.", "drawing")
+# --- REFUSED: only the exact "done-when" / "done when" forms are exempt; a real "done" followed by " - when" or a line
+# break is still a claim (review row 24, 2 Nov: the first exemption [\s-]+ let "All done - when you're ready" through)
+MISSES["'done - when' is still a claim"] = (
+    [B(r"python -I tools/render.py --job 31180")], "All done - when you're ready, merge.", "drawing")
+MISSES["'done' then a line break is still a claim"] = (
+    [B(r"python -I tools/render.py --job 31180")], "All done\nWhen you're ready, merge.", "drawing")
 # --- ALLOWED: no completion claim at all
 NO_CLAIM = ([E(r"C:\x\tools\drafted_set.py")], "Working on the drawing changes next.")
 # --- ALLOWED: "done-when" / "done when" names a board column, it is not a claim (row 151, 2 Nov)
@@ -173,6 +179,7 @@ out = run_hook({"transcript_path": t, "tool_name": "SendMessage", "tool_input": 
 print(("PASS" if out == "" else "FAIL") + "  SendMessage door allows a message with no claim"); fails += out != ""
 os.unlink(t)
 
-total = len(MISSES) + len(LOOKED) + 1 + 4
+# Every check counted: the NO_CLAIMS cases were left out (review row 24, 2 Nov: "31 checks run but the summary says 29").
+total = len(MISSES) + len(LOOKED) + 1 + len(NO_CLAIMS) + 4
 print(f"{total - fails} of {total} passed")
 sys.exit(1 if fails else 0)
