@@ -217,6 +217,12 @@ public class CaptureTests
         Assert.Equal(Path.GetFullPath("C:/y"), DirFor("Set-Location -Path 'C:/y'; dotnet test", "C:/a"));
         Assert.Equal(Path.GetFullPath("C:/second"), DirFor("cd C:/first && cd C:/second && dotnet build", "C:/a"));
         Assert.Equal(Path.GetFullPath("C:/first/sub"), DirFor("cd C:/first && cd sub && dotnet build", "C:/a"));   // relative to the CURRENT folder
+        // review row 94: flags are skipped, the folder after them is read; a ')' inside a quoted path stays in it.
+        Assert.Equal(Path.GetFullPath("C:/x"), DirFor("cd -P C:/x && dotnet test", "C:/a"));
+        Assert.Equal(Path.GetFullPath("C:/a/x"), DirFor("cd -L -- x && dotnet test", "C:/a"));
+        Assert.Equal(Path.GetFullPath("C:/Program Files (x86)/x"), DirFor("cd \"C:/Program Files (x86)/x\" && dotnet test", "C:/a"));
+        Assert.Equal(Path.GetFullPath("C:/x"), DirFor("cd C:/x 2>/dev/null && dotnet test", "C:/a"));
+        Assert.Equal(Path.GetFullPath("C:/x"), DirFor("(cd C:/x && dotnet test)", "C:/a"));
     }
 
     [Fact]
@@ -234,6 +240,10 @@ public class CaptureTests
     [InlineData("cd $DIR && dotnet test")]
     [InlineData("cd %TEMP% && dotnet test")]
     [InlineData("cd $DIR && cd sub && dotnet test")]
+    [InlineData("cd && dotnet test")]                 // review row 94: a bare cd goes home
+    [InlineData("cd; dotnet test")]
+    [InlineData("pushd && dotnet test")]              // a bare pushd swaps the top two folders
+    [InlineData("cd -X C:/x && dotnet test")]         // an option not modelled
     public void AnUnmodelledCdMakesTheFolderUnknown(string command)
     {
         Assert.Null(DirFor(command, "C:/a"));

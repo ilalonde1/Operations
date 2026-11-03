@@ -31,7 +31,10 @@ public static class ToolClassifier
     /// <param name="At">where in the command the tool was found (the directory it ran in is decided by any cd before it).</param>
     public sealed record ToolEvent(string Kind, string Ref, string Outcome, string Detail, int At = 0);
 
-    private static readonly Regex Cd = new(Pos + @"(?:(?<pop>popd|Pop-Location)\b|(?<verb>cd|chdir|pushd|Set-Location|sl|Push-Location)\s+(?:-(?:Literal)?Path\s+)?(?<dir>""[^""\n]*""|'[^'\n]*'|[^\s;&|()]+))", O);
+    // The verb alone (a bare "cd" counts - review row 94); its arguments run to the next real separator or ')'.
+    private static readonly Regex Cd = new(Pos + @"(?:(?<pop>popd|Pop-Location)|(?<verb>cd|chdir|pushd|Set-Location|sl|Push-Location))(?=$|[\s;&|)])(?<args>[^;&|\n)]*)", O);
+    private static readonly Regex ArgToken = new(@"""[^""]*""|'[^']*'|\S+", RegexOptions.CultureInvariant);
+    private static readonly string[] CdFlags = { "-p", "-l", "-e", "-@", "--", "-path", "-literalpath" };
 
     /// <param name="Changed">a cd / pushd / popd came before the tool, so the hook's cwd does NOT say where it ran.</param>
     /// <param name="Dir">where it ran, or null = UNKNOWN (an unmodelled target): the caller records no repo or commit.</param>
@@ -42,11 +45,12 @@ public static class ToolClassifier
     /// it (found on the neutral copy, read from the original), starting from the hook's cwd - which is the folder BEFORE
     /// the command ran (#74 on 2 Nov: an Operations build was cited against Framework's HEAD). cd / chdir / sl /
     /// Set-Location replace the folder; pushd / Push-Location push the old one first; popd / Pop-Location restore it
-    /// (review row 93). A relative path resolves against the folder current at that point; a Git Bash path (/c/x)
-    /// becomes C:/x. A target that is not a literal path (cd -, cd ~, $VAR, %VAR%) makes the folder UNKNOWN until an
-    /// absolute cd or a popd: the event then carries no repo/commit rather than a guessed one. Still wrong, same class:
+    /// (review row 93). The folder is the first argument after the known flags (<see cref="Target"/>). A relative path
+    /// resolves against the folder current at that point; a Git Bash path (/c/x) becomes C:/x. These make the folder
+    /// UNKNOWN until an absolute cd or a popd - the event then carries no repo/commit rather than a guessed one: a bare
+    /// cd or pushd (review row 94), cd -, an option not in the known list, ~, $VAR, %VAR%. Still wrong, same class:
     /// a cd inside a subshell that ended before the tool ( (cd x; make) &amp;&amp; dotnet test ) is replayed as if it
-    /// persisted.
+    /// persisted; a cd hidden behind a function or alias, or run by a script the command calls, is not seen.
     /// </summary>
     public static CdResult DirectoryBefore(string command, int at, string? cwd)
     {
@@ -62,17 +66,34 @@ public static class ToolClassifier
                 if (stack.Count > 0) current = stack.Pop();
                 continue;
             }
-            var g = m.Groups["dir"];
-            var target = Resolve(command.Substring(g.Index, g.Length).Trim('"', '\''), current);
+            var g = m.Groups["args"];
+            var target = Resolve(Target(command.Substring(g.Index, g.Length)), current);
             if (m.Groups["verb"].Value.ToLowerInvariant() is "pushd" or "push-location") stack.Push(current);
             current = target;
         }
         return new CdResult(changed, current);
     }
 
-    private static string? Resolve(string dir, string? current)
+    /// <summary>
+    /// The folder argument of a cd-like command (the original text of its arguments): the first token after the known
+    /// flags (-P -L -e -@ -- -Path -LiteralPath), quotes removed. Null - UNKNOWN - when there is none (a bare cd goes
+    /// home, a bare pushd swaps the top two folders) or the next token is another option.
+    /// </summary>
+    internal static string? Target(string args)
     {
-        if (dir.Length == 0 || dir == "-" || dir.StartsWith('~') || dir.Contains('$') || dir.Contains('%')) return null;
+        foreach (Match t in ArgToken.Matches(args))
+        {
+            var v = t.Value;
+            if (CdFlags.Contains(v.ToLowerInvariant())) continue;
+            if (v.StartsWith('-')) return null;               // "-" (previous folder) or an option not modelled
+            return v.Trim('"', '\'');
+        }
+        return null;
+    }
+
+    private static string? Resolve(string? dir, string? current)
+    {
+        if (string.IsNullOrEmpty(dir) || dir.StartsWith('~') || dir.Contains('$') || dir.Contains('%')) return null;
         if (Regex.Match(dir, @"^/([a-zA-Z])(/.*)?$") is { Success: true } msys)
             dir = msys.Groups[1].Value.ToUpperInvariant() + ":" + (msys.Groups[2].Success ? msys.Groups[2].Value : "/");
         if (Path.IsPathRooted(dir)) return Full(dir);
@@ -152,7 +173,7 @@ public static class ToolClassifier
 
     /// <summary>
     /// The command with every character that is DATA rather than shell structure replaced by a space, length kept:
-    /// separators (; &amp; | ( newline) inside '...' or "..." quotes, and the body lines of a bash heredoc (&lt;&lt;TAG ...
+    /// separators (; &amp; | ( ) newline) inside '...' or "..." quotes, and the body lines of a bash heredoc (&lt;&lt;TAG ...
     /// TAG) or a PowerShell here-string (@' ... '@, @" ... "@). Quote characters themselves stay, so a quoted tool path
     /// still matches. Not handled: backslash-escaped quotes inside a quote, $'...' strings, nested command substitution.
     /// </summary>
@@ -182,7 +203,7 @@ public static class ToolClassifier
             var ch = c[i];
             if (quote == '\0') { if (ch is '"' or '\'') quote = ch; }
             else if (ch == quote) quote = '\0';
-            else if (ch is ';' or '&' or '|' or '(' or '\n') c[i] = ' ';
+            else if (ch is ';' or '&' or '|' or '(' or ')' or '\n') c[i] = ' ';
         }
         return new string(c);
     }
