@@ -260,8 +260,12 @@ public class EnrollCheckTests
             Assert.Single(lines);
             Assert.StartsWith("kor enroll-check: FAIL - NetworkOps: no .claude/settings.json", lines[0]);
             Assert.Contains("no .git/hooks/post-commit", lines[0]);
+            // plain mode: exit 1 FROM A FINDING - Program.Run also returns 1 on a caught exception, so the verdict line is
+            // read and the error writer must stay empty (review row 288)
             output = new StringWriter();
             Assert.Equal(1, Program.Run(new[] { "enroll-check", "--dir", dir }, () => null, output, error, log));
+            Assert.StartsWith("kor enroll-check: FAIL - NetworkOps: no .claude/settings.json", output.ToString());
+            Assert.Equal("", error.ToString());
         }
         finally { try { Directory.Delete(parent, true); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
     }
