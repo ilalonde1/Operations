@@ -39,6 +39,12 @@ public class SecretGuardTests
         { "aws AKIAZ7TESTKEY0EXAMPL", "AKIAZ7TESTKEY0EXAMPL" },
         { "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9fakeFAKE", "eyJhbGciOiJIUzI1NiJ9fakeFAKE" },
         { "sqlcmd -S srv -U u -P Wq8eRt5y -Q \"SELECT 1\"", "Wq8eRt5y" },
+        // review row 228: human camelCase passwords after key=, and any quoted literal, are values
+        { "Password=iLoveYou", "iLoveYou" },
+        { "password=\"letMeIn\"", "letMeIn" },
+        { "token='summerTime'", "summerTime" },
+        { "pwd=\"cancellationToken\"", "cancellationToken" },
+        { "password=hunter", "hunter" },
     };
 
     public static TheoryData<string> Good => new()

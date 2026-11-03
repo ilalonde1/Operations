@@ -20,10 +20,15 @@ namespace Kor.Operations.Framework.Capture;
 /// NOT a value (never refused): a rule ABOUT a credential ("never print the sa password"), an env var NAME
 /// (KOR_DB_PASSWORD), a placeholder (&lt;pw&gt;, {pw}, $PW, %PW%, $env:PW, ****, xxxx, ..., [REDACTED...], ChangeMe and other
 /// placeholder words without a digit), a GUID, hex (a sha), a path or URL, a file name, a dotted identifier or a call
-/// (<c>args.Password</c>, <c>GetPassword()</c>).
+/// (<c>args.Password</c>, <c>GetPassword()</c>); after key= and UNQUOTED only, a camelCase code name ending in a code
+/// suffix (cancellationToken, pwdBox, apiKey - Token Box Secret Password Pwd Key Value Text Input Field Param String Var
+/// Name) or a code word (default true false string input args param secure prompt); words joined by - _ ' : (per-user,
+/// Section:Key) and quantities (25_000t) in prose; DOMAIN\user, SERVER\INSTANCE, user@host, host:port in prose.
 /// Same-class values it does NOT catch: a password of under 6 characters or of fewer than 3 classes written in prose
-/// ("the password is summer2026"); a value after a word it does not know ("the passcode is ..."); a value in a dotted or
-/// file-name shape ("Summer.Time"); a value split over two lines; a credential with no word near it at all.
+/// ("the password is summer2026", "the password is iLoveYou"); an unquoted key= value that is one of the code shapes above
+/// (password=secureKey, password=default); a value after a word it does not know ("the passcode is ..."); a value in a
+/// dotted, file-name, word-chain or account shape ("Summer.Time", "Blue-Sky"); a value that is not the FIRST word after
+/// the separator (except after a lone '/'); a value split over two lines; a credential with no word near it at all.
 /// </summary>
 public static class SecretGuard
 {
@@ -70,7 +75,8 @@ public static class SecretGuard
         {
             var (i, l) = Unquote(m.Groups["v"]);
             var v = text.Substring(i, l);
-            if (l >= 4 && !IsPlaceholder(v) && !IsEnvName(v) && !IsCode(v) && !IsPlainIdentifier(v)) hits.Add(new Hit(i, l, "kv"));
+            var quoted = l != m.Groups["v"].Length;
+            if (l >= 4 && !IsPlaceholder(v) && !IsEnvName(v) && !IsCode(v) && (quoted || !IsPlainIdentifier(v))) hits.Add(new Hit(i, l, "kv"));
         }
         foreach (Match m in ProseWord.Matches(text)) Prose(text, m.Index + m.Length, hits);
         foreach (Match m in Prefix.Matches(text))
@@ -328,11 +334,12 @@ public static class SecretGuard
         Regex.IsMatch(v, @"\A[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+\z")   // args.Password, os.environ
         || Regex.IsMatch(v, @"\A[A-Za-z_][\w.]*\(") || v.Contains("[\"") || v.Contains("['");
 
-    /// <summary>A code name, not a value (review row 227): a camelCase identifier (cancellationToken, pwdBox) or a code
-    /// word (default, true, false, string, input, args). A lowercase word that is none of these (hunter), a capitalised
-    /// word (Summer), or anything with a digit or symbol is still a value.</summary>
+    /// <summary>A code name, not a value (review rows 227, 228): a camelCase identifier ending in a code suffix
+    /// (cancellationToken, pwdBox, apiKey) or a code word (default, true, false, string, input, args ...). The caller asks
+    /// only for an UNQUOTED key= value (a quoted value is a literal). password=iLoveYou, password=hunter, a capitalised word
+    /// (Summer), or anything with a digit or symbol is still a value.</summary>
     private static bool IsPlainIdentifier(string v) =>
-        Regex.IsMatch(v, @"\A[a-z]+(?:[A-Z][a-z]+)+\z")
+        Regex.IsMatch(v, @"\A[a-z]+(?:[A-Z][a-z]+)*(?:Token|Box|Secret|Password|Pwd|Key|Value|Text|Input|Field|Param|String|Var|Name)\z")
         || v is "default" or "true" or "false" or "string" or "input" or "args" or "param" or "secure" or "prompt";
 
     private static bool IsGuid(string v) => Guid.TryParse(v, out _);
