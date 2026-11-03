@@ -71,6 +71,18 @@ public class FileMemoryTests
     }
 
     [Fact]
+    public void WithoutAnIndexAStaleRowIsMarkedOnItsOwnLineAndNamedOnce()
+    {
+        // review row 268: the STALE list came before the ':' and the row list named the stale one a second time
+        var side = Side(Row(2, "feedback_one", "file", Dir + "feedback_one.md", status: "stale"),
+                        Row(3, "project_two", "file", Dir + "project_two.md"));
+        var page = StartRender.Memory(side, 1, 4, StartRender.HookBudget);
+        Assert.Contains("one imported before 168 has no source):\n- record #2 [feedback] feedback_one - desc of 2 [STALE - the memory file changed since it was imported]\n" +
+                        "- record #3 [feedback] project_two - desc of 3", page);
+        Assert.Equal(1, Count(page, "feedback_one"));
+    }
+
+    [Fact]
     public void UnindexedNamesPastTheCapAreCountedNotListed()
     {
         var rows = new List<StartRecord> { Row(1, ModuleState.IndexName, "file", Dir + "MEMORY.md", body: "# Memory Index") };
@@ -93,13 +105,16 @@ public class FileMemoryTests
 /// <summary>
 /// LIVE (rolled back): a synthetic memory folder (a <c>.claude\projects\&lt;p&gt;\memory</c> under %TEMP%) is written into a
 /// zz-test lane the way kor_brain_import.py writes it - SourceKind 'file', SourceRef the file's absolute path,
-/// SourceHash its SHA-256 - and the CLI's MEMORY part (the hook's pages 1-4) names every imported row exactly once; the
-/// record part lists none of them as a sourced record. Then one file changes: K5 freshness reads it stale (SHA-256), and
-/// the MEMORY part names it stale. The lane's brain.Memory and brain.Event counts, read on their own connection, are equal
+/// SourceHash its SHA-256 - and the CLI's MEMORY part (the hook's pages 1-4) names every imported row exactly once; while
+/// all are current the record part names none of them (a STALE one is named in its stale section, by design). Then one
+/// file changes: K5 freshness reads it stale (SHA-256) and WRITES it, and the MEMORY part then names it stale. The lane's brain.Memory and brain.Event counts, read on their own connection, are equal
 /// before and after (0 and 0: the run is rolled back).
 /// Does NOT cover: the Python writer itself (Framework kor_brain_import_test.py runs it and reads these pages through kor.exe).
-/// Same-class miss: a lane whose rows were written 'session' by the importer between 168 and this fix reads as sourced
-/// records until the lane is re-imported.
+/// Same-class misses: a lane whose rows were written 'session' by the importer between 168 and this fix reads as sourced
+/// records until the lane is re-imported; the MEMORY part runs no freshness check (it reads the Status the record part
+/// last WROTE), so if Claude Code runs the start hooks concurrently, the first start after a file changes can show the
+/// row unmarked on the MEMORY part while the record part's stale section names it (review row 268; the test writes the
+/// verdict first and cannot see that lag).
 /// </summary>
 [Collection(LiveDb.Name)]
 public class FileMemoryLiveTests

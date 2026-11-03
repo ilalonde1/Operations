@@ -465,14 +465,17 @@ public static class StartRender
     {
         var index = legacy.FirstOrDefault(r => r.Name == ModuleState.IndexName);
         var rows = legacy.Where(r => r.Name != ModuleState.IndexName).ToList();
-        var stale = rows.Where(r => r.Status == "stale").Select(r => r.Name).ToList();
         var head = $"LEGACY MEMORY ({rows.Count} rows imported from the file memories - weigh them below every sourced record above; " +
-                   "a row imported with its file's SHA-256 goes stale when the file changes, one imported before 168 has no source)" +
-                   Names("STALE - the memory file changed since it was imported (read the file, or re-import the lane)", stale, module) +
-                   (index is not null ? $"\nThe lane's curated index, record #{index.Id}:" : ":");
+                   "a row imported with its file's SHA-256 goes stale when the file changes, one imported before 168 has no source)";
+        // with an index: the STALE names on a line of their own, the index whole, then the rows it does not name. Without
+        // one: every row on its own line, a stale one marked there (review row 268: never a name twice, never "...: a, b:")
         var full = index?.Body is { } b
-            ? head + "\n" + b.Trim() + Names("Imported, not named in the index", rows.Where(r => !NamedIn(b, r.Name)).Select(r => r.Name).ToList(), module)
-            : string.Join("\n", new[] { head }.Concat(rows.Select(r => $"- record #{r.Id} [{r.Kind}] {r.Name} - {r.Description}")));
+            ? head + Names("STALE - the memory file changed since it was imported (read the file, or re-import the lane)",
+                           rows.Where(r => r.Status == "stale").Select(r => r.Name).ToList(), module) +
+              $"\nThe lane's curated index, record #{index.Id}:\n" + b.Trim() +
+              Names("Imported, not named in the index", rows.Where(r => !NamedIn(b, r.Name)).Select(r => r.Name).ToList(), module)
+            : string.Join("\n", new[] { head + ":" }.Concat(rows.Select(r => $"- record #{r.Id} [{r.Kind}] {r.Name} - {r.Description}" +
+                (r.Status == "stale" ? " [STALE - the memory file changed since it was imported]" : ""))));
         if (room is null || full.Length <= room) return full;
         var note = $"\n... [legacy memory cut at the session-start limit - kor start --module \"{module}\" --text for all]";
         var minimal = $"LEGACY MEMORY: {rows.Count} imported rows cut at the session-start limit - kor start --module \"{module}\" --text";
