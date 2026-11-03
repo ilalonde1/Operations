@@ -193,6 +193,51 @@ public class CaptureTests
         Assert.Equal(expected, t.Ref);
     }
 
+    // ---- the folder a tool ran in (#74: an Operations build was cited against Framework's HEAD) -----------------------
+    private static string? DirFor(string command, string cwd)
+    {
+        var t = ToolClassifier.Classify(command, BuildPassOut);
+        Assert.NotNull(t);
+        return ToolClassifier.DirectoryBefore(command, t!.At, cwd);
+    }
+
+    [Fact]
+    public void TheLastCdBeforeTheToolDecidesItsFolder()
+    {
+        Assert.Equal(Path.GetFullPath("C:/VIsual Studio Projects/Operations"),
+                     DirFor("cd \"/c/VIsual Studio Projects/Operations\" && dotnet build X.csproj", "C:/VIsual Studio Projects/Framework"));
+        Assert.Equal(Path.GetFullPath("C:/a/Operations"), DirFor("cd ../Operations && dotnet test", "C:/a/Framework"));
+        Assert.Equal(Path.GetFullPath("C:/y"), DirFor("Set-Location -Path 'C:/y'; dotnet test", "C:/a"));
+        Assert.Equal(Path.GetFullPath("C:/second"), DirFor("cd C:/first && cd C:/second && dotnet build", "C:/a"));
+    }
+
+    [Theory]
+    [InlineData("dotnet test")]                                   // no cd: the hook's cwd stands
+    [InlineData("dotnet test && cd C:/after")]                    // a cd AFTER the tool does not count
+    [InlineData("echo 'cd C:/quoted' && dotnet test")]            // a cd inside quotes is text
+    public void NoCdBeforeTheToolGivesNull(string command)
+    {
+        Assert.Null(DirFor(command, "C:/a"));
+    }
+
+    [Fact]
+    public void LiveCaptureToolCitesTheRepoTheCommandCdIntoNotTheHookCwd()
+    {
+        var dir = RepoDir();
+        var elsewhere = Path.Combine(Path.GetTempPath(), "kor-k3-cwd-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(elsewhere);
+        var json = JsonSerializer.Serialize(new
+        {
+            session_id = "k3-cd-session", cwd = elsewhere, hook_event_name = "PostToolUse", tool_name = "Bash",
+            tool_input = new { command = $"cd \"{dir.Replace('\\', '/')}\" && dotnet build Kor.Operations.Framework" },
+            tool_response = new { stdout = BuildPassOut, stderr = "" },
+        });
+        var row = ReadBack(RunOk(new[] { "capture-tool", "--module", Module }, json), "build");
+        Assert.Equal(Git.Leaf(Git.TopLevel(dir)), row.Repo);
+        Assert.Equal(Git.Run(dir, "rev-parse", "HEAD")!.Trim(), row.Commit);
+        Directory.Delete(elsewhere);
+    }
+
     [Fact]
     public void ANegativeExitFailsAMigrationWithNoMarker()
     {

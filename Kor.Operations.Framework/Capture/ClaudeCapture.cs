@@ -65,10 +65,13 @@ public static class ClaudeCapture
         var t = ToolClassifier.Classify(h.Command, output, exit);
         if (t is null) return null;
         string? repo = null, commit = null;
-        if (!string.IsNullOrEmpty(h.Cwd) && Directory.Exists(h.Cwd))
+        // The folder the tool RAN in: a cd before it in the command wins over the hook's cwd (the folder before the
+        // command ran) - otherwise an Operations build is cited against Framework's HEAD (#74, 2 Nov).
+        var dir = h.Command is null ? h.Cwd : ToolClassifier.DirectoryBefore(h.Command, t.At, h.Cwd) ?? h.Cwd;
+        if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
         {
             // One git call: the repo the command ran in, and its HEAD - the source the result belongs to.
-            var lines = Git.Run(h.Cwd, TimeSpan.FromSeconds(3), "rev-parse", "--show-toplevel", "HEAD")?.Split('\n');
+            var lines = Git.Run(dir, TimeSpan.FromSeconds(3), "rev-parse", "--show-toplevel", "HEAD")?.Split('\n');
             if (lines is { Length: >= 2 }) { repo = Git.Leaf(lines[0].Trim()); commit = lines[1].Trim(); }
         }
         return new BrainEvent(ModuleOf(h, moduleOverride), t.Kind, repo, commit, t.Ref, t.Outcome, t.Detail, ActorOf(h));

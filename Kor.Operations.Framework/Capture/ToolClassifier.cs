@@ -28,7 +28,35 @@ namespace Kor.Operations.Framework.Capture;
 /// </summary>
 public static class ToolClassifier
 {
-    public sealed record ToolEvent(string Kind, string Ref, string Outcome, string Detail);
+    /// <param name="At">where in the command the tool was found (the directory it ran in is decided by any cd before it).</param>
+    public sealed record ToolEvent(string Kind, string Ref, string Outcome, string Detail, int At = 0);
+
+    private static readonly Regex Cd = new(Pos + @"(?:cd|chdir|pushd|Set-Location|sl|Push-Location)\s+(?:-(?:Literal)?Path\s+)?(?<dir>""[^""\n]*""|'[^'\n]*'|[^\s;&|()]+)", O);
+
+    /// <summary>
+    /// The folder the tool at <paramref name="at"/> ran in: the LAST cd / pushd / Set-Location in command position before
+    /// it (found on the neutral copy, read from the original), resolved against the hook's cwd - the hook's cwd is the
+    /// folder BEFORE the command ran (#74 on 2 Nov: an Operations build was cited against Framework's HEAD). A Git Bash
+    /// path (/c/x) becomes C:/x. Null when there is no cd before the tool. Not modelled: cd inside a subshell that
+    /// ended before the tool ( (cd x; make) &amp;&amp; dotnet test ), cd -, cd ~, a variable ($DIR).
+    /// </summary>
+    public static string? DirectoryBefore(string command, int at, string? cwd)
+    {
+        var neutral = Neutralise(command);
+        Match? last = null;
+        for (var m = Cd.Match(neutral); m.Success && m.Index < at; m = m.NextMatch()) last = m;
+        if (last is null) return null;
+        var g = last.Groups["dir"];
+        var dir = command.Substring(g.Index, g.Length).Trim('"', '\'');
+        if (Regex.Match(dir, @"^/([a-zA-Z])(/.*)?$") is { Success: true } msys)
+            dir = msys.Groups[1].Value.ToUpperInvariant() + ":" + (msys.Groups[2].Success ? msys.Groups[2].Value : "/");
+        try
+        {
+            return Path.IsPathRooted(dir) ? Path.GetFullPath(dir)
+                 : cwd is null ? null : Path.GetFullPath(Path.Combine(cwd, dir));
+        }
+        catch { return null; }
+    }
 
     private const RegexOptions O = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
     // Command position: start of text/line, or after ; & | ( - "&&" and "||" end in & and |, pwsh's "&" call operator too.
@@ -60,20 +88,20 @@ public static class ToolClassifier
         var neutral = Neutralise(command);
         Match m;
         if ((m = DotnetTest.Match(neutral)).Success)
-            return Make("test", "dotnet test" + Args(m.Groups["args"], command), TestOutcome(output, exitCode), command, output, TestSummary);
+            return Make("test", "dotnet test" + Args(m.Groups["args"], command), TestOutcome(output, exitCode), command, output, TestSummary, m.Index);
         if ((m = DotnetBuild.Match(neutral)).Success)
-            return Make("build", "dotnet build" + Args(m.Groups["args"], command), BuildOutcome(output, exitCode), command, output, BuildSummary);
+            return Make("build", "dotnet build" + Args(m.Groups["args"], command), BuildOutcome(output, exitCode), command, output, BuildSummary, m.Index);
         // Migrations and gates (review rows 87, 88 - the rule, stated once): the NEUTRAL copy decides structure only - is
         // the tool in command position, and where its command segment ends (a real ; | or newline). The NAME is matched
         // on the ORIGINAL text of that segment, so a '(' or ';' inside a quoted name is part of it, and a name ends where
         // its pattern ends (a migration: the first ".sql"; a gate: its closing quote, or for a bare name the first
         // whitespace, quote, ; & | ( ) < or > - a ',' stays in a bare gate name: "run p.json,x" gives "p.json,x").
         if ((m = Sqlcmd.Match(neutral)).Success && SqlcmdFile.Match(Segment(command, m.Groups["rest"])) is { Success: true } s)
-            return Make("migration", s.Groups["file"].Value, MigrationOutcome(output, exitCode), command, output, MigrationSummary);
+            return Make("migration", s.Groups["file"].Value, MigrationOutcome(output, exitCode), command, output, MigrationSummary, m.Index);
         if ((m = KorSql.Match(neutral)).Success && SqlFile.Match(Segment(command, m.Groups["rest"])) is { Success: true } k)
-            return Make("migration", k.Groups["file"].Value, MigrationOutcome(output, exitCode), command, output, MigrationSummary);
+            return Make("migration", k.Groups["file"].Value, MigrationOutcome(output, exitCode), command, output, MigrationSummary, m.Index);
         if ((m = StageGate.Match(neutral)).Success)
-            return Make("gate", GateName(command, m.Groups["file"]), GateOutcome(output, exitCode), command, output, GateSummary);
+            return Make("gate", GateName(command, m.Groups["file"]), GateOutcome(output, exitCode), command, output, GateSummary, m.Index);
         return null;
     }
 
@@ -172,7 +200,7 @@ public static class ToolClassifier
     private static readonly Regex MigrationSummary = new(@"\bDONE\b|\bTESTED\b|Msg \d+|Exception|applied \d+ batch|POST-CHECK|SCRIPT LEFT|Rolled back", O);
     private static readonly Regex GateSummary = new(@"stage_gate:|\[\d+/\d+\]", O);
 
-    private static ToolEvent Make(string kind, string reference, string outcome, string command, string output, Regex summary)
+    private static ToolEvent Make(string kind, string reference, string outcome, string command, string output, Regex summary, int at)
     {
         var lines = (Redact.Text(output) ?? "").Replace("\r", "").Split('\n').Select(l => l.TrimEnd()).Where(l => l.Length > 0).ToList();
         var detail = new
@@ -182,7 +210,7 @@ public static class ToolClassifier
             tail = lines.Skip(Math.Max(0, lines.Count - 5)).Select(l => Clip(l, 300)),
             lines = lines.Count,
         };
-        return new ToolEvent(kind, Clip(Redact.Text(reference)!.Trim(), 400), outcome, JsonSerializer.Serialize(detail, GitCapture.Json));
+        return new ToolEvent(kind, Clip(Redact.Text(reference)!.Trim(), 400), outcome, JsonSerializer.Serialize(detail, GitCapture.Json), at);
     }
 
     /// <summary>The arguments after the verb, up to the next command or redirection.</summary>
