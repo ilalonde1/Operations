@@ -118,7 +118,7 @@ public static partial class Program
         {
             "--module", "--dir", "--result", "--last", "--kind", "--because", "--body-file", "--source-path", "--name",
             "--says", "--source", "--cap", "--session", "--description", "--check", "--check-ref", "--issue",
-            "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir",
+            "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir", "--page", "--pages",
             "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what",
         };
 
@@ -548,7 +548,7 @@ public static partial class Program
         error.WriteLine("       kor secret-scan [--explain] [--offsets]   (read-only: ids and counts of brain rows holding a credential value; --offsets adds offset, length and the 40 characters BEFORE each value)");
         error.WriteLine("       kor secret-scan --text - [--what W]   (the text on stdin: 'clean' exit 0, or one refusal line exit 1 - never the value)");
         error.WriteLine("       kor state --module M (--file F | --text T)   (a resume block -> brain.LaneState; a credential value is MASKED and said in one line)");
-        error.WriteLine("       kor start --module M [--owner O]... [--no-helpers] [--part record|board|all] [--hook | --text] [--dir D] [--session S] [--start-source S]   (SessionStart JSON on stdin with --hook)");
+        error.WriteLine("       kor start --module M [--owner O]... [--no-helpers] [--part record|state|memory|board|all] [--page N --pages M (memory)] [--hook | --text] [--dir D] [--session S] [--start-source S]   (SessionStart JSON on stdin with --hook)");
         return 2;
     }
 }

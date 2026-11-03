@@ -32,6 +32,12 @@ public sealed record ResumeRow(int Id, string ResumeBlock, string WrittenBy, Dat
 /// <summary>THE resume and why, plus the other recent ones (listed one line each, never shown as the resume).</summary>
 public sealed record ResumeChoice(ResumeRow? Chosen, string Why, IReadOnlyList<ResumeRow> Others);
 
+/// <summary>What a side part (STATE NOW, MEMORY) renders: the lane's live non-issue records, the Office lane's, and the handover.</summary>
+public sealed record StartSide(string Module, DateTimeOffset ReadAt, IReadOnlyList<StartRecord> Records, HandoverState? Handover)
+{
+    public IReadOnlyList<StartRecord> Office { get; init; } = Array.Empty<StartRecord>();
+}
+
 /// <summary>Everything the record part renders, read in one korbrain_app unit of work.</summary>
 public sealed record ModuleState(string Module, DateTimeOffset ReadAt, FreshnessReport Fresh, IReadOnlyList<StartRecord> Records,
                                  IReadOnlyList<StartRecord> OpenIssues, IReadOnlyList<StartRecord> Office, ResumeChoice Resume,
@@ -289,6 +295,29 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
         "SourceKind, SourceRepo, SourceCommit, SourcePath, SourceRef, CheckKind, CheckRef, RegressionOf";
 
     private const string EventColumns = "Id, AtUtc, Module, Kind, Repo, [Commit], Ref, Outcome, Detail, Actor, Session, IssueId";
+
+    /// <summary>
+    /// The READ of a side part (STATE NOW, LEGACY MEMORY - board row 1198): the lane's live non-issue records (bodies of
+    /// <c>_five-questions</c> and <c>_index</c>) and, when <paramref name="handover"/>, the handover's STATE NOW at HEAD
+    /// (git). It writes nothing and runs no check: freshness and query checks are the record part's.
+    /// </summary>
+    public static StartSide ReadSide(BrainDb db, string module, string? fromDir, bool handover)
+    {
+        using var c = db.Command(
+            $"SELECT {RecordColumns} FROM brain.vw_ModuleState WHERE Module = @m AND Kind <> N'issue' ORDER BY Kind, Name; " +
+            $"SELECT {RecordColumns} FROM brain.vw_ModuleState WHERE Module = @office AND @m <> @office AND Kind <> N'issue' ORDER BY Kind, Name;", 30);
+        c.Parameters.Add("@m", SqlDbType.NVarChar, 60).Value = module;
+        c.Parameters.Add("@office", SqlDbType.NVarChar, 60).Value = OfficeLane;
+        List<StartRecord> records, office;
+        using (var r = c.ExecuteReader())
+        {
+            records = ReadRecords(r, issues: false);
+            r.NextResult();
+            office = ReadRecords(r, issues: false);
+        }
+        var h = handover ? HandoverState.Read(records.FirstOrDefault(x => x.Name == FiveQuestionsName), module, fromDir) : null;
+        return new StartSide(module, DateTimeOffset.Now, records, h) { Office = office };
+    }
 
     /// <summary>One round trip, six result sets (see <see cref="Load"/>).</summary>
     internal const string Batch =

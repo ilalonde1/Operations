@@ -6,7 +6,9 @@ namespace Kor.Operations.Framework.Start;
 
 /// <summary>
 /// K6 - the module's CURRENT STATE at start: the STATE NOW section of its handover, read from HEAD through git (never
-/// the working tree), cited as repo:path@commit7 blob7, capped at <see cref="Cap"/> characters (whole lines). Found 3 Nov
+/// the working tree), cited as repo:path@commit7 blob7, read whole: the one-page record caps it at <see cref="Cap"/>
+/// characters (whole lines), the hook's own STATE NOW part carries it whole up to the hook budget (board row 1198:
+/// KOR.Drafter's was cut at 3,000 of 7,330 and its cold session answered half its questions "not checked"). Found 3 Nov
 /// (done-when 1, first run): every cold session answered "not checked" wherever a question needed the handover's STATE
 /// NOW, because the start view carried the five questions but not the module's current state.
 /// The handover is the file the module's <c>_five-questions</c> record cites (KOR.Drafter: docs/LEAD-HANDOVER-2026-11-02.md),
@@ -45,7 +47,9 @@ public sealed record HandoverState(string Repo, string Path, string? Commit, str
         var full = System.IO.Path.Combine(dir, path);
         var work = File.Exists(full) ? Git.Run(dir, t, "hash-object", "--", path)?.Trim().ToLowerInvariant() : null;
         var section = StateNow(text);
-        return new(repo, path, commit, blob, section is null ? null : CapLines(section, Cap, path), work != blob,
+        // the WHOLE section (board row 1198): the record page caps it at Cap; the hook's own STATE NOW part carries it
+        // whole up to the hook budget (StartRender.State)
+        return new(repo, path, commit, blob, section, work != blob,
                    section is null ? $"{path} at HEAD has no heading starting \"STATE NOW\"" : null);
     }
 

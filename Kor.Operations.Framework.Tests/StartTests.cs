@@ -453,9 +453,9 @@ public class StartTests
 
     [Theory]
     // stdout: an unknown verb in hook mode prints one line naming it. stderr: a bad --part is refused before any database
-    // is opened ("kor: --part is record, board or all, not '...'", exit 1). Neither touches the database.
+    // is opened ("kor: --part is record, state, memory, board or all, not '...'", exit 1). Neither touches the database.
     [InlineData(false, "café-ó-→", "--hook", "unknown verb 'café-ó-→'")]
-    [InlineData(true, "start", "--module zz --part café-ó-→", "--part is record, board or all, not 'café-ó-→'")]
+    [InlineData(true, "start", "--module zz --part café-ó-→", "--part is record, state, memory, board or all, not 'café-ó-→'")]
     public async Task ARedirectedStdoutAndStderrAreUtf8(bool stderr, string verb, string args, string expected)
     {
         // The real assembly in its own process, both streams redirected as a hook or a pipe sees them. Needs `dotnet` on

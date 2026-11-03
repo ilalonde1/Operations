@@ -12,6 +12,10 @@ namespace Kor.Operations.Framework.Cli;
 /// [--session S] [--start-source startup|resume|clear|compact|fork] [--cache-dir D]</c>.
 /// <c>--hook</c> reads the SessionStart JSON on stdin (session_id, source; garbage is ignored) and prints ONE part's
 /// SessionStart JSON (additionalContext at most 9,900 chars; the record part adds watchPaths). Without it, plain text, uncut.
+/// Board row 1198 (3 Nov): Claude Code caps EACH hook's additionalContext at 10,000 chars, separately, so the hook's
+/// record part leaves STATE NOW and LEGACY MEMORY to parts of their own: <c>--part state</c> (the handover's STATE NOW
+/// whole) and <c>--part memory --page N --pages M</c> (the lane's imported memory index, split at whole lines; a page past
+/// the content prints nothing). <c>--text</c> and <c>--part all</c> stay one page with every section.
 /// </summary>
 public static partial class Program
 {
@@ -25,11 +29,19 @@ public static partial class Program
         StartTrace.Mark("begin");
         var module = o.Get("--module") ?? throw new ArgumentException("start needs --module <lane>");
         var part = o.Get("--part") ?? "all";
-        if (part is not ("record" or "board" or "all")) throw new ArgumentException($"--part is record, board or all, not '{part}'");
+        if (part is not ("record" or "state" or "memory" or "board" or "all"))
+            throw new ArgumentException($"--part is record, state, memory, board or all, not '{part}'");
         if (hook && o.Get("--text") is not null)
             throw new ArgumentException("--hook prints the SessionStart JSON and --text prints plain text: give one (review row 194)");
         if (hook && part == "all")
-            throw new ArgumentException("--hook prints ONE part's SessionStart JSON: --part record or --part board (one hook entry each)");
+            throw new ArgumentException("--hook prints ONE part's SessionStart JSON: --part record, state, memory or board (one hook entry each)");
+        int Count(string name) => o.Get(name) is null ? 1
+            : o.Int(name) ?? throw new ArgumentException($"{name} takes a whole number, not '{o.Get(name)}'");
+        var pages = Count("--pages");
+        var page = Count("--page");
+        if (part != "memory" && (o.Get("--page") is not null || o.Get("--pages") is not null))
+            throw new ArgumentException("--page and --pages belong to --part memory");
+        if (pages < 1 || page < 1 || page > pages) throw new ArgumentException($"--page {page} --pages {pages}: need 1 <= page <= pages");
         string? session = o.Get("--session"), source = o.Get("--start-source"), transcript = null;
         var dir = o.Get("--dir");
         if (hook && stdin() is { } raw)
@@ -56,7 +68,8 @@ public static partial class Program
             var start = new ModuleState.Start(session, source, transcript);
             (string, IReadOnlyList<string>) Show(ModuleState s)
             {
-                var rendered = (StartRender.Record(s, budget), StartRender.WatchPaths(s.Fresh));
+                // the hook's record part is split (board row 1198): STATE NOW and LEGACY MEMORY are their own parts
+                var rendered = (StartRender.Record(s, budget, split: hook), StartRender.WatchPaths(s.Fresh));
                 StartTrace.Mark("rendered");
                 return rendered;
             }
@@ -96,6 +109,21 @@ public static partial class Program
             texts.Add(SecretGuard.Mask(r.Text)!);   // mistake 138: a page from the cache, written before the guard, is masked too
             watch = r.WatchPaths;
         }
+        if (part is "state" or "memory")
+        {
+            // board row 1198: a side part - its own hook entry, its own 9,900 - only READS (SNAPSHOT, never committed)
+            var state = part == "state";
+            string Render(StartSide side) => state ? StartRender.State(side, budget) : StartRender.Memory(side, page, pages, budget);
+            var r = StartPart.Run(() => (db is not null ? Render(ModuleState.ReadSide(db, module, dir, state))
+                                         : Render(BrainDb.Read(KorStandardsConnection.Login.Brain, d => ModuleState.ReadSide(d, module, dir, state))),
+                                         (IReadOnlyList<string>)Array.Empty<string>()),
+                StartCache.PathFor(cacheDir, module, state ? "state" : $"memory{page}of{pages}", hook), budget, deadline,
+                state ? $"read the handover's STATE NOW by hand (kor start --module \"{module}\" --part state --text)"
+                      : $"read the lane's memory by hand: kor start --module \"{module}\" --part memory --text", () => DateTime.Now, Log);
+            texts.Add(SecretGuard.Mask(r.Text)!);
+        }
+        // a memory page past the lane's content has nothing to say: the hook prints nothing (Claude Code adds no context)
+        if (hook && texts[0].Length == 0) return 0;
         if (part is "board" or "all")
         {
             var owners = o.Owners.Count > 0 ? o.Owners : new List<string> { module };

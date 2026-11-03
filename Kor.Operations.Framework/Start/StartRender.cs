@@ -15,7 +15,13 @@ namespace Kor.Operations.Framework.Start;
 /// bottom up steps down its own ladder (shorter, then ids only). The floors are fixed: every open-issue id, every stale id
 /// and the resume's first 1,500 characters always survive. Superseded and resolved records never render (the views
 /// exclude superseded rows; a resolution is history and is only counted).
-/// Not covered: whether a record is TRUE; a section's floor overflowing the budget on its own (over ~1,000 open issues).
+/// THE HOOK SPLITS IT (board row 1198, 3 Nov): Claude Code caps each hook's additionalContext at 10,000 chars on its own,
+/// and one 9,900 page cut KOR.Drafter's STATE NOW at 3,000 of 7,330 and four modules' legacy index to a fraction. So
+/// the hook's record part (<see cref="Record(ModuleState, int?, bool)"/> split) carries everything but STATE NOW, OFFICE
+/// LESSONS and LEGACY MEMORY, and names them in one line; <see cref="State"/> carries STATE NOW whole (to 9,900) and
+/// <see cref="Memory"/> carries office + legacy whole across pages of 9,900. --text and --part all stay one page.
+/// Not covered: whether a record is TRUE; a section's floor overflowing the budget on its own (over ~1,000 open issues);
+/// memory past the pages wired in settings.json (cut on the last with a note); a part whose hook entry is not wired.
 /// </summary>
 public static class StartRender
 {
@@ -26,7 +32,15 @@ public static class StartRender
 
     private sealed record Section(string Name, int MaxLevel, Func<int, string> Render);
 
-    public static string Record(ModuleState s, int? budget)
+    public static string Record(ModuleState s, int? budget) => Record(s, budget, split: false);
+
+    /// <summary>
+    /// The record part. <paramref name="split"/> (the SessionStart hook, board row 1198): STATE NOW and LEGACY MEMORY are
+    /// NOT on it - each is its own hook entry with its own 9,900 (<see cref="State"/>, <see cref="Memory"/>; Claude Code caps
+    /// each hook's additionalContext separately) - and one line in their place names those parts. Without it, one page
+    /// with every section (--text, --part all).
+    /// </summary>
+    public static string Record(ModuleState s, int? budget, bool split)
     {
         // mistake 138: every credential value in what was read is masked BEFORE any section clips it (a clipped value
         // could fall under the classifier's length rule), and each rendered section is masked again below
@@ -38,19 +52,20 @@ public static class StartRender
         var staleIds = stale.Select(r => r.Id).ToHashSet();
         var sourced = s.Records.Where(r => !r.Legacy && r.Name != ModuleState.FiveQuestionsName && r.Kind != "resolution"
                                             && r.Status == "current" && !staleIds.Contains(r.Id)).ToList();
-        var legacy = s.Records.Where(r => r.Legacy).ToList();
+        var legacy = split ? new List<StartRecord>() : s.Records.Where(r => r.Legacy).ToList();
         var sections = new List<Section>
         {
             new("header", 0, _ => Header(s)),
             new("five", 2, l => FiveQuestions(five, staleIds, l)),
-            new("state", 2, l => StateNow(s.Handover, m, l)),
+            split ? new("state", 0, _ => PartsLine(m))
+                  : new("state", 2, l => StateNow(s.Handover, m, l, whole: budget is null)),
             new("resume", 2, l => Resume(s, l)),
             new("issues", 3, l => Issues(s.OpenIssues, l)),
             new("stale", 3, l => Stale(stale, unverifiable, l)),
             new("records", 4, l => Records(m, sourced, l)),
             new("events", 3, l => Events(m, s.Events, l)),
-            new("office", 2, l => Office(s.Office, l)),
         };
+        if (!split) sections.Add(new("office", 2, l => Office(s.Office, l)));
         var levels = new int[sections.Count];
         // cut from the bottom up, except STATE NOW: it is cut last, after every other section is at its floor (only the
         // issue and stale ids and the resume's first 1,500 chars outlive it)
@@ -155,11 +170,101 @@ public static class StartRender
     /// One line, so no compaction can separate it from the page.
     /// </summary>
     public const string NotReadLine =
-        "Everything a session started here knows at start is on this page. Anything not on it was NOT read - answer 'not checked', never a value. " +
+        "Everything a session started here knows at start is on this page and its KNOWN AT START parts (STATE NOW, MEMORY) and THE BOARD. " +
+        "Anything not on them was NOT read - answer 'not checked', never a value. " +
         "A command written as text runs nothing and returns nothing: never write a tool call or its result yourself - a result you did not " +
         "receive from a real tool call is invented.";
 
-    private static string StateNow(HandoverState? h, string module, int level)
+    /// <summary>The record part's line, in the split hook, naming the start parts beside it (board row 1198).</summary>
+    public static string PartsLine(string module) =>
+        "STATE NOW, OFFICE LESSONS and LEGACY MEMORY are not on this part: each is a session-start part of its own beside it " +
+        "(blocks headed 'KNOWN AT START - STATE NOW' and 'KNOWN AT START - MEMORY, page N of M'). A part not in your context was " +
+        $"not read - answer what it would hold 'not checked'; all of it: kor start --module \"{module}\" --text.";
+
+    /// <summary>The first line of a side part (STATE NOW, LEGACY MEMORY pages): what it is and that it is part of the start.</summary>
+    private static string SideHead(string module, string what, DateTimeOffset readAt) =>
+        $"KNOWN AT START - {what} - module '{module}' (a session-start part beside the record part 'KNOWN AT START' and THE BOARD; " +
+        $"read {Stamp(readAt)}).";
+
+    /// <summary>
+    /// The STATE NOW part (the SessionStart hook, board row 1198): the handover's STATE NOW section WHOLE when it fits
+    /// <paramref name="budget"/>, else cut at a whole line with a note naming the rest (git show HEAD:path). Measured 3 Nov:
+    /// the longest of the 6 KOR modules' is KOR.Drafter's, 7,330 chars, which fits whole.
+    /// </summary>
+    public static string State(StartSide side, int? budget)
+    {
+        var h = side.Handover is { } x ? x with { Section = SecretGuard.Mask(x.Section) } : null;
+        var head = SideHead(side.Module, "STATE NOW", side.ReadAt);
+        var body = StateNow(h, side.Module, 0, whole: true);
+        if (body.Length == 0) body = "STATE NOW: not read - no handover state was read. Answer anything that needs the module's current state 'not checked'.";
+        var text = head + "\n" + body;
+        if (budget is null || text.Length <= budget || h?.Section is null) return SecretGuard.Mask(text)!;
+        var room = budget.Value - (text.Length - h.Section.Length);
+        return SecretGuard.Mask(head + "\n" + StateNow(h with { Section = HandoverState.CapLines(h.Section, room, h.Path) }, side.Module, 0, whole: true))!;
+    }
+
+    /// <summary>
+    /// One page of the MEMORY part (the SessionStart hook, board row 1198): OFFICE LESSONS whole, then the lane's imported
+    /// file memory (LEGACY MEMORY - its curated index whole, the MEMORY.md it was imported from, else its rows), then the
+    /// line saying where new memories go - split at whole lines into pages of at most <paramref name="budget"/> each.
+    /// Page <paramref name="page"/> of the <paramref name="pages"/> wired; a page past the content is empty (nothing to
+    /// print); content past the last wired page is cut there with a note. Measured 3 Nov: the longest is NetworkOps',
+    /// 1,866 office + 21,617 legacy chars - 3 pages of the 4 wired.
+    /// </summary>
+    public static string Memory(StartSide side, int page, int pages, int? budget)
+    {
+        if (page < 1 || pages < page) throw new ArgumentException($"--page {page} is not within 1..{pages}");
+        static StartRecord M(StartRecord r) => r with
+        {
+            Description = SecretGuard.Mask(r.Description)!, Body = SecretGuard.Mask(r.Body), Name = SecretGuard.Mask(r.Name)!,
+        };
+        var legacy = side.Records.Where(r => r.Legacy).Select(M).ToList();
+        var office = side.Office.Select(M).ToList();
+        var blocks = new List<string> { WriteLine(side.Module) };
+        if (office.Count > 0) blocks.Add(Office(office, 0, capOverride: int.MaxValue));
+        blocks.Add(legacy.Count > 0 ? Legacy(side.Module, legacy, null) : "LEGACY MEMORY: none - this lane has no imported file memory.");
+        var body = string.Join("\n", blocks);
+        if (budget is null) return SecretGuard.Mask(SideHead(side.Module, "MEMORY", side.ReadAt) + "\n" + body)!;
+        // the head names "page N of M"; M is the count of pages the content needs, at most the wired ones
+        const int headRoom = 400;
+        var chunks = Chunk(body, budget.Value - headRoom);
+        if (page > chunks.Count) return "";
+        var shown = Math.Min(chunks.Count, pages);
+        var head = SideHead(side.Module, $"MEMORY, page {page} of {shown}", side.ReadAt);
+        var text = chunks[page - 1];
+        if (page == pages && chunks.Count > pages)
+        {
+            var note = $"\n... [memory continues past page {pages} of the session start ({chunks.Count - pages} more page(s)) - " +
+                       $"kor start --module \"{side.Module}\" --part memory --text for all]";
+            text = text[..Math.Max(0, Math.Min(text.Length, budget.Value - headRoom - note.Length))].TrimEnd() + note;
+        }
+        return SecretGuard.Mask(head + "\n" + text)!;
+    }
+
+    private static string WriteLine(string module) =>
+        "This is the module's memory, from the DB. A '[title](file.md)' line below names the record whose name is that file's stem: " +
+        $"python -I \"C:/VIsual Studio Projects/Framework/tools/kor_brain.py\" show --lane \"{module}\" --name <stem> (Office lines: --lane Office). " +
+        $"New memories go into the DB (kor record --module \"{module}\" ..., or as this repo's CLAUDE.md says), never into a memory file.";
+
+    /// <summary>Whole lines into chunks of at most <paramref name="max"/> chars (a single longer line is split hard).</summary>
+    internal static List<string> Chunk(string text, int max)
+    {
+        var chunks = new List<string>();
+        var cur = new System.Text.StringBuilder();
+        foreach (var raw in text.Split('\n'))
+        {
+            var line = raw;
+            while (line.Length > max) { Flush(); chunks.Add(line[..max]); line = line[max..]; }
+            if (cur.Length > 0 && cur.Length + 1 + line.Length > max) Flush();
+            if (cur.Length > 0) cur.Append('\n');
+            cur.Append(line);
+        }
+        Flush();
+        return chunks;
+        void Flush() { if (cur.Length > 0) { chunks.Add(cur.ToString()); cur.Clear(); } }
+    }
+
+    private static string StateNow(HandoverState? h, string module, int level, bool whole)
     {
         if (h is null) return "";
         if (h.Section is null)
@@ -169,7 +274,7 @@ public static class StartRender
         if (h.Dirty) lines.Add("the handover has uncommitted changes - commit them to show them here");
         lines.Add(level switch
         {
-            0 => h.Section,
+            0 => whole ? h.Section : HandoverState.CapLines(h.Section, HandoverState.Cap, h.Path),
             1 => HandoverState.CapLines(h.Section, 1500, h.Path),
             _ => $"[STATE NOW cut at the session-start limit - kor start --module \"{module}\" --text, or git show HEAD:{h.Path}]",
         });
@@ -316,10 +421,10 @@ public static class StartRender
         return string.Join("\n", lines);
     }
 
-    private static string Office(IReadOnlyList<StartRecord> office, int level)
+    private static string Office(IReadOnlyList<StartRecord> office, int level, int? capOverride = null)
     {
         if (office.Count == 0) return "";
-        var cap = level == 0 ? OfficeMax : 1200;
+        var cap = capOverride ?? (level == 0 ? OfficeMax : 1200);
         var head = $"OFFICE LESSONS (lane '{ModuleState.OfficeLane}') - every KOR lead gets these, the same day they are learned. They bind here too. " +
                    $"Body: kor memory --module {ModuleState.OfficeLane}.";
         if (level >= 2) return head + " [cut at the session-start limit - kor start --text]";
