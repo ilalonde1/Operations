@@ -147,6 +147,9 @@ public class FreshnessTests
         var report = Freshness.CheckModule(db, Lane, RepoDir());
         Assert.DoesNotContain(report.Rows, r => r.Id == superseded || r.Id == retired);
         Freshness.CheckRepo(db, head.Repo, RepoDir());
+        // The write itself, handed these rows directly (review row 139: the read filter alone must not be what holds it).
+        Freshness.Write(db, new[] { superseded, retired }.Select(id => new Checked(id, Lane, "x", "finding", "git", head.Repo,
+            head.Path, head.Blob, head.Blob, Verdict.Current, "test")).ToList());
         Assert.Equal(("superseded", (DateTimeOffset?)null), (Row(db, superseded).Status, Row(db, superseded).CheckedAtUtc));
         Assert.Equal(("stale", (DateTimeOffset?)null), (Row(db, retired).Status, Row(db, retired).CheckedAtUtc));
     }
@@ -252,6 +255,16 @@ public class FreshnessTests
         Assert.True(code == 0, error.ToString());
         Assert.Contains("freshness of repo Framework:", output.ToString());
         Assert.Equal("stale", Row(db, id).Status);
+    }
+
+    [Theory]
+    [InlineData("docs/a.md", "docs/a.md", "HEAD")]
+    [InlineData("docs/a.md@3b2ce76c", "docs/a.md", "3b2ce76c")]
+    [InlineData("docs/a.md@HEAD@{1}", "docs/a.md", "HEAD@{1}")]
+    [InlineData("docs/a.md@main@{yesterday}", "docs/a.md", "main@{yesterday}")]
+    public void AGitSourceSplitsAtTheRevNotInsideAReflogSelector(string spec, string path, string rev)
+    {
+        Assert.Equal((path, rev), Program.SplitGitSource(spec));
     }
 
     // 13: the guarantee every live test rests on

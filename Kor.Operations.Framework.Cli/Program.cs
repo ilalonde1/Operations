@@ -104,7 +104,8 @@ public static class Program
             var line = "";
             try
             {
-                if (run.Wait(FreshnessCap))
+                // A caller's unit of work (a test) is never left in use by an abandoned task: wait it out (review row 139).
+                if (db is not null ? run.Wait(Timeout.Infinite) : run.Wait(FreshnessCap))
                 {
                     var r = run.Result;
                     line = $"freshness of repo {e.Repo}: {r.Rows.Count} checked, {r.Count(Verdict.Current)} current, " +
@@ -142,7 +143,19 @@ public static class Program
         return 0;
     }
 
-    /// <summary>FileChanged hook: a terminal message when an edited file is the source of a live record. Writes nothing.</summary>
+    /// <summary>
+    /// "path[@rev]" -> (path, rev). The rev starts at the last '@' that does not open a reflog selector, so
+    /// "docs/a.md@HEAD@{1}" is (docs/a.md, HEAD@{1}) (review row 139); no rev = HEAD.
+    /// </summary>
+    internal static (string Path, string Rev) SplitGitSource(string spec)
+    {
+        if (string.IsNullOrWhiteSpace(spec)) throw new ArgumentException("--source git: needs a path");
+        for (var at = spec.LastIndexOf('@'); at > 0; at = spec.LastIndexOf('@', at - 1))
+            if (at + 1 < spec.Length && spec[at + 1] != '{') return (spec[..at], spec[(at + 1)..]);
+        return (spec, "HEAD");
+    }
+
+    /// <summary>FileChanged hook:a terminal message when an edited file is the source of a live record. Writes nothing.</summary>
     private static int FileChanged(Func<string?> stdin, TextWriter output, bool hook, BrainDb? db)
     {
         using var doc = System.Text.Json.JsonDocument.Parse(stdin() ?? throw new ArgumentException("fresh --file-changed reads the hook JSON on stdin"));
@@ -218,9 +231,7 @@ public static class Program
         var src = o.Get("--source") ?? throw new ArgumentException("record needs --source git:path[@rev]");
         if (!src.StartsWith("git:", StringComparison.Ordinal))
             throw new RecordRefusedException("only git:path[@rev] sources are written before K4 (run:/query: need migration 171)");
-        var spec = src[4..];
-        var at = spec.LastIndexOf('@');
-        var (path, rev) = at > 0 ? (spec[..at], spec[(at + 1)..]) : (spec, "HEAD");
+        var (path, rev) = SplitGitSource(src[4..]);
         var source = RecordStore.At(o.Get("--dir") ?? Environment.CurrentDirectory, path, rev);
         var by = RecordStore.Actor();
         var rec = new NewRecord(lane, name, kind, says, body, by, source);

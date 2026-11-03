@@ -138,14 +138,16 @@ public static class Freshness
     /// (binary collation); Unverifiable rows are not sent. Only rows still live and current|stale are touched, so it can
     /// never write 'superseded' nor revive a superseded or retired record. A missing path is sent as '' (never equal).
     /// </summary>
-    private static void Write(BrainDb db, IReadOnlyList<Checked> results)
+    internal static void Write(BrainDb db, IReadOnlyList<Checked> results)
     {
         var send = results.Where(r => r.Verdict != Verdict.Unverifiable)
                           .Select(r => new { r.Id, Head = r.HeadBlob ?? "" }).ToList();
         if (send.Count == 0) return;
         using var c = db.Command(
             "UPDATE m SET Status = CASE WHEN j.Head COLLATE Latin1_General_BIN = " +
-            "    (CASE m.SourceKind WHEN N'git' THEN CAST(m.SourceBlob AS nvarchar(64)) ELSE m.SourceHash END) COLLATE Latin1_General_BIN " +
+            // the file hash compared as C# compares it: trimmed and lowercased (review row 139); a git blob is already
+            // lowercase-only (CK_Memory_SourceBlob)
+            "    (CASE m.SourceKind WHEN N'git' THEN CAST(m.SourceBlob AS nvarchar(64)) ELSE LOWER(LTRIM(RTRIM(m.SourceHash))) END) COLLATE Latin1_General_BIN " +
             "  THEN N'current' ELSE N'stale' END, CheckedAtUtc = SYSDATETIMEOFFSET() " +
             "FROM brain.Memory m JOIN OPENJSON(@j) WITH (Id int, Head nvarchar(64)) j ON j.Id = m.Id " +
             "WHERE m.Status IN (N'current', N'stale') AND m.RetiredAtUtc IS NULL AND m.SourceKind IN (N'git', N'file')");
