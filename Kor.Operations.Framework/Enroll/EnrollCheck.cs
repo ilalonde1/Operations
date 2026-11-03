@@ -16,7 +16,7 @@ public sealed record KorRepo(string Folder, string[] PrePushGuards)
 /// claimed). Three checks per repo, each naming what is missing:
 /// <list type="number">
 /// <item>.claude/settings.json holds every framework hook (<see cref="Required"/>): the kor start parts record, state,
-/// memory (pages 1..M, every one) and board; capture-start; capture-tool on PostToolUse AND PostToolUseFailure covering
+/// memory (pages 1..M, every one), records (pages 1..4, every one - 3 Nov) and board (--owner or --tag); capture-start; capture-tool on PostToolUse AND PostToolUseFailure covering
 /// Bash and PowerShell; capture-check; capture-compact; capture-end; kor enforce; kor fresh --file-changed; and this
 /// check itself on SessionStart. Each with --hook; a --module, where given, is the repo's module.</item>
 /// <item>The git hooks (git's own hooks path, so core.hooksPath is honoured): post-commit, post-merge and post-checkout

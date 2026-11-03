@@ -8,14 +8,16 @@ namespace Kor.Operations.Framework.Cli;
 /// <summary>
 /// K6 - known at start (Framework docs/KNOWLEDGE-IDE-SPEC-K5-K6.md). It replaces board_render.py and kor_brain.py render
 /// in every KOR repo's SessionStart:
-/// <c>kor start --module M [--owner O]... [--no-helpers] [--part record|board|all] [--hook | --text] [--dir D]
+/// <c>kor start --module M [--owner O]... [--no-helpers] [--tag T] [--part record|state|memory|records|board|all] [--page N --pages M] [--hook | --text] [--dir D]
 /// [--session S] [--start-source startup|resume|clear|compact|fork] [--cache-dir D]</c>.
 /// <c>--hook</c> reads the SessionStart JSON on stdin (session_id, source; garbage is ignored) and prints ONE part's
 /// SessionStart JSON (additionalContext at most 9,900 chars; the record part adds watchPaths). Without it, plain text, uncut.
 /// Board row 1198 (3 Nov): Claude Code caps EACH hook's additionalContext at 10,000 chars, separately, so the hook's
 /// record part leaves STATE NOW and LEGACY MEMORY to parts of their own: <c>--part state</c> (the handover's STATE NOW
 /// whole) and <c>--part memory --page N --pages M</c> (the lane's imported memory index, split at whole lines; a page past
-/// the content prints nothing). <c>--text</c> and <c>--part all</c> stay one page with every section.
+/// the content prints nothing). 3 Nov: <c>--part records --page N --pages M</c> carries the module's records the same way
+/// (the record part names them with their counts); with <c>--text</c> and a --page it prints that one page, without one
+/// every record. <c>--text</c> and <c>--part all</c> stay one page with every section.
 /// </summary>
 public static partial class Program
 {

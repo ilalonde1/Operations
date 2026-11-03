@@ -17,11 +17,13 @@ namespace Kor.Operations.Framework.Start;
 /// exclude superseded rows; a resolution is history and is only counted).
 /// THE HOOK SPLITS IT (board row 1198, 3 Nov): Claude Code caps each hook's additionalContext at 10,000 chars on its own,
 /// and one 9,900 page cut KOR.Drafter's STATE NOW at 3,000 of 7,330 and four modules' legacy index to a fraction. So
-/// the hook's record part (<see cref="Record(ModuleState, int?, bool)"/> split) carries everything but STATE NOW, OFFICE
-/// LESSONS and LEGACY MEMORY, and names them in one line; <see cref="State"/> carries STATE NOW whole (to 9,900) and
-/// <see cref="Memory"/> carries office + legacy whole across pages of 9,900. --text and --part all stay one page.
+/// the hook's record part (<see cref="Record(ModuleState, int?, bool)"/> split) carries everything but STATE NOW, the
+/// RECORDS, OFFICE LESSONS and LEGACY MEMORY, and names them (the records with their counts); <see cref="State"/> carries
+/// STATE NOW whole (to 9,900), <see cref="RecordsPage"/> the records across pages of 9,900 (3 Nov: KOR.Drafter's 153 were
+/// one count line) and <see cref="Memory"/> office + legacy whole across pages of 9,900. --text and --part all stay one page.
 /// Not covered: whether a record is TRUE; a section's floor overflowing the budget on its own (over ~1,000 open issues);
-/// memory past the pages wired in settings.json (cut on the last with a note); a part whose hook entry is not wired.
+/// memory past the pages wired in settings.json (cut on the last with a note); records past the wired pages even as ids
+/// and names (the last page says how many, and how to read them); a part whose hook entry is not wired.
 /// </summary>
 public static class StartRender
 {

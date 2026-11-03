@@ -10,7 +10,8 @@ namespace Kor.Operations.Framework.Tests;
 /// Board row 1209 (mistake 139), kor enroll-check, on COPIES of the real files: this repo's .claude/settings.json and its
 /// .git/hooks shims (read as git resolves the hooks path). Covers: the real copies pass; removing ANY ONE kor hook entry
 /// of the real settings - each of them, enumerated from the file, not a list written here - fails, and the finding names
-/// that hook (event, verb, and the start part or memory page); a narrowed matcher, a dropped --hook and a wrong --module
+/// that hook (event, verb, and the start part or its memory or records page); a board entry with --tag in place of
+/// --owner passes and one with neither fails; a narrowed matcher, a dropped --hook and a wrong --module
 /// each fail naming it; a git hook file deleted, its capture-git line removed or commented out, a pre-push guard line
 /// removed, or pre-push no longer exiting with its guards' result each fail naming it; the session rule (ran, none
 /// started) fails and the other three cases pass; the live session counts read brain.Event; the verb's hook mode prints
@@ -58,10 +59,10 @@ public class EnrollCheckTests
     [Fact]
     public void EveryKorHookIsEnumerated()
     {
-        // the real file holds 4 memory pages, record, state, board, capture-start, enroll-check, capture-tool x2 or x3,
-        // capture-check, capture-compact, capture-end, enforce, fresh: at least 16 - an enumeration that found few would
+        // the real file holds 4 memory pages, 4 records pages, record, state, board, capture-start, enroll-check, capture-tool
+        // x2 or x3, capture-check, capture-compact, capture-end, enforce, fresh: at least 20 - an enumeration that found few would
         // make the theory below pass by testing nothing
-        Assert.True(EachKorHookRemoved().Count() >= 16, $"only {EachKorHookRemoved().Count()} kor hooks found");
+        Assert.True(EachKorHookRemoved().Count() >= 20, $"only {EachKorHookRemoved().Count()} kor hooks found");
     }
 
     [Theory]
