@@ -64,7 +64,7 @@ public static class BrainStore
         var f = Fit(e);
         return Exec(db,
             // OUTPUT ... INTO: a plain OUTPUT is refused (error 334) once the table has a trigger - the same shape on
-            // every brain table, so none breaks when a migration adds one (FreshnessTests.EveryBrainOutputClauseUsesInto).
+            // every brain table, so none breaks when a migration adds one (FreshnessTests.NoPlainOutputColumnListInTheKorSources).
             "DECLARE @id TABLE (Id int); " +
             "INSERT brain.Event (Module, Kind, Repo, [Commit], Ref, Outcome, Detail, Actor) OUTPUT INSERTED.Id INTO @id " +
             "VALUES (@m, @k, @r, @c, @ref, @o, @d, @a); SELECT Id FROM @id;",

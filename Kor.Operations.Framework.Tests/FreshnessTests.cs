@@ -414,6 +414,26 @@ public class FreshnessTests(Xunit.Abstractions.ITestOutputHelper log)
     }
 
     [Fact]
+    public void SecondsArePrintedWithADotOnACommaDecimalMachine()
+    {
+        // review rows 154, 157: a de-DE / fr-FR culture must not turn "10.5" into "10,5" (CurrentCulture is per thread).
+        var before = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            foreach (var name in new[] { "de-DE", "fr-FR" })
+            {
+                System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo(name);
+                Assert.Equal("10,5", (10.5).ToString("0.#"));   // the culture really is comma-decimal here
+                Assert.Equal("10.5", Freshness.Secs(TimeSpan.FromSeconds(10.5)));
+                Assert.Equal("10.5", Program.Secs(TimeSpan.FromSeconds(10.5)));
+                Assert.Equal("freshness of repo R: over 0.2 s - not waited for",
+                             Program.RecheckWithin("R", () => { Thread.Sleep(2000); return Empty; }, TimeSpan.FromMilliseconds(200), _ => { }));
+            }
+        }
+        finally { System.Globalization.CultureInfo.CurrentCulture = before; }
+    }
+
+    [Fact]
     public void ACappedCheckThatHangsIsNotWaitedForAndAFailureIsItself()
     {
         var release = new ManualResetEventSlim();
@@ -429,22 +449,24 @@ public class FreshnessTests(Xunit.Abstractions.ITestOutputHelper log)
     // The pattern is built so this file's own text never matches it; it is proved on a known-bad and a known-good sample.
     // THE PROOF USED for 171 readiness is this source-shape test: korbrain_app may not create a trigger (SQL 2104, the
     // probe below), so no live trigger test is possible as that login.
-    // Covers: a plain OUTPUT of INSERTED./DELETED. columns (bracketed or not, one or a list) in any .cs file of
+    // Covers: a plain OUTPUT of INSERTED./DELETED. columns or * (bracketed or not, one or a list) in any .cs file of
     // Kor.Operations.Framework, .Cli and .Tests (obj/bin excluded).
     // Does NOT cover (review row 152): an OUTPUT of an EXPRESSION (CAST(INSERTED.Id AS ...), $action); OUTPUT text split
     // across two C# string literals; SQL outside these three projects (db/*.sql, Python tools, other apps writing
     // brain.Memory); a MERGE without OUTPUT that 171's triggers would still fire on (that is fine - only OUTPUT breaks).
     // Same-class miss: a writer in another repo (Framework tools/kor_brain.py) with a plain OUTPUT on brain.Memory.
     private static readonly System.Text.RegularExpressions.Regex PlainOutput = new(
-        @"OUTPUT\s+(?>(?:INSERTED|DELETED)\.\[?\w+\]?(?:\s*,\s*(?:INSERTED|DELETED)\.\[?\w+\]?)*)(?!\s+INTO\b)",
+        @"OUTPUT\s+(?>(?:INSERTED|DELETED)\.(?:\[?\w+\]?|\*)(?:\s*,\s*(?:INSERTED|DELETED)\.(?:\[?\w+\]?|\*))*)(?!\s+INTO\b)",
         System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     [Fact]
-    public void EveryBrainOutputClauseUsesInto()
+    public void NoPlainOutputColumnListInTheKorSources()
     {
         const string o = "OUT" + "PUT";
         Assert.Matches(PlainOutput, $"INSERT brain.Memory (a) {o} INSERTED.Id VALUES (1)");
         Assert.Matches(PlainOutput, $"UPDATE brain.Memory SET a = 1 {o} DELETED.Id, INSERTED.Id WHERE Id = 1");
+        Assert.Matches(PlainOutput, $"INSERT brain.Memory (a) {o} INSERTED.* VALUES (1)");   // review row 152
+        Assert.DoesNotMatch(PlainOutput, $"INSERT brain.Memory (a) {o} INSERTED.* INTO @t VALUES (1)");
         Assert.DoesNotMatch(PlainOutput, $"INSERT brain.Memory (a) {o} INSERTED.Id INTO @id VALUES (1)");
         Assert.DoesNotMatch(PlainOutput, $"UPDATE x SET a = 1 {o} DELETED.Id, INSERTED.Id INTO @t WHERE Id = 1");
         var root = RepoDir();
@@ -464,7 +486,7 @@ public class FreshnessTests(Xunit.Abstractions.ITestOutputHelper log)
     /// <summary>
     /// The direct proof, if korbrain_app may create a trigger: a trigger on brain.Memory inside this rolled-back
     /// transaction, then RecordStore.Insert. If the login may not (brain_rw has SELECT/INSERT/UPDATE only - 162), the
-    /// refusal is asserted to be a PERMISSION refusal, and <see cref="EveryBrainOutputClauseUsesInto"/> is the proof.
+    /// refusal is asserted to be a PERMISSION refusal, and <see cref="NoPlainOutputColumnListInTheKorSources"/> is the proof.
     /// </summary>
     [Fact]
     public void LiveRecordStoreInsertSurvivesATriggerOrTheLoginMayNotCreateOne()

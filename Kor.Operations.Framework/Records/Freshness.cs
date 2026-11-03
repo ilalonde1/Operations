@@ -91,7 +91,7 @@ public static class Freshness
         // The clock starts before the DB read: the cap covers the whole check, as the hook timeout does. The budget is checked before each repo's git read and before the file sources: past it, what is left is
         // reported Unverifiable ("cap hit") and NOT written; what was already checked is written as usual.
         bool Over() => budget is { } cap && clock.Elapsed >= cap && (partial = true);
-        string CapWhy() => $"cap hit after {clock.Elapsed.TotalSeconds:0.#} s - not checked";
+        string CapWhy() => $"cap hit after {Secs(clock.Elapsed)} s - not checked";
         var rows = Load(db, where, a, b);
         var results = new List<Checked>();
         var heads = new Dictionary<string, string?>(StringComparer.Ordinal);
@@ -221,6 +221,9 @@ public static class Freshness
     }
 
     private static string? Lower(string? s) => s?.Trim().ToLowerInvariant();
+
+    /// <summary>Seconds with at most one decimal, always with a '.' (review rows 154, 157: never the machine's culture).</summary>
+    public static string Secs(TimeSpan t) => t.TotalSeconds.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
 
     private static string Short(string? sha) => sha is null ? "-" : sha.Length > 7 ? sha[..7] : sha;
 }

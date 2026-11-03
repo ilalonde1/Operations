@@ -210,7 +210,7 @@ public static class Program
     }
 
     /// <summary>Seconds with at most one decimal, always with a '.' (review row 154: never the machine's culture).</summary>
-    internal static string Secs(TimeSpan t) => t.TotalSeconds.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+    internal static string Secs(TimeSpan t) => Freshness.Secs(t);
 
     internal static string VerdictLine(string module, FreshnessReport r)
     {
