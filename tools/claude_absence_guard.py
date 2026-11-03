@@ -68,10 +68,17 @@ def main():
     if not path:
         return
     try:
-        phrase = verdict(last_assistant_text(path))
+        text = last_assistant_text(path)
+        phrase = verdict(text)
     except OSError:
         return
     if phrase:
+        try:   # F11 (Framework row 1159): every refusal is a row; logging can never change what this guard does
+            sys.path.append("C:/VIsual Studio Projects/Framework/tools"); import guard_log  # noqa: E702
+            m = ABSENCE.search(text)
+            guard_log.record("absence", phrase, text[max(0, m.start() - 150):m.end() + 150], None, payload=payload)
+        except Exception:
+            pass
         print(json.dumps({"decision": "block", "reason":
             f"The reply claims an absence (\"{phrase}\") without its proof. Rule 3b: never conclude absence from a "
             "search whose scope you chose. Either run the check that proves it and add a line 'Checked: <the command "

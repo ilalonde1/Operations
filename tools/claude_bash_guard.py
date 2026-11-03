@@ -33,6 +33,34 @@ RULES = [
      "Get-ChildItem -Recurse over a UNC path. CLAUDE.md rule 1: unusably slow. "
      "Target one directory, or filter at the filesystem."),
 
+    # 1b. EVERY OTHER FORM OF THE SAME WALK (Mistake 120, 2 Nov: a Python os.walk counted 50,352 files of the fs01 IT
+    #     archive file by file from KOR-1001 over the VPN, ~10 min, while the rule above caught only the PowerShell
+    #     form with -Recurse BEFORE the path). The class: a command that enumerates a share's tree from this PC.
+    #     CHECKS, each with a UNC path (\\host or //host, not https://) in the same pipeline segment: Get-ChildItem /
+    #     gci / ls / dir with -r or -Recurse* in any position; dir /s; tree; robocopy /L with /S or /E (a listing);
+    #     du; python in command position whose text holds os.walk, rglob or recursive=True.
+    #     ALLOWS: one folder's listing (no recurse flag), git ls-remote / push / fetch to an fs01 remote, Test-Path,
+    #     a robocopy that copies (no /L), any walk of a local path - including one run ON the target via
+    #     Invoke-CimMethod with the target's local path (E:\...).
+    #     DOES NOT CATCH: a walk inside a script FILE (`python walk.py //Kor-fs01/IT` - Mistake 120's own form if its
+    #     walk was in a file; the share path is only an argument), a UNC held in a variable or a mapped drive letter
+    #     (Z:\ is local-looking), a .NET Directory.EnumerateFiles in a PowerShell one-liner.
+    #     KNOWN FALSE REFUSAL: bash `ls -r //host/x` (-r = reverse order there, one folder) is read as a recurse.
+    (re.compile(r"(?i)(?:^|[;&|(\n{]\s*)(?:"
+                r"(?:Get-ChildItem|gci|ls|dir)\b(?=[^|;\n]*\s-r(?:ecurse\w*)?\b)"
+                r"|(?:cmd(?:\.exe)?\s+/c\s+)?dir\b(?=[^|;\n]*\s/s\b)"
+                r"|tree(?:\.com)?\b"
+                r"|robocopy(?:\.exe)?\b(?=[^|;\n]*\s/L\b)(?=[^|;\n]*\s/(?:S|E)\b)"
+                r"|du\b"
+                r")[^|;\n]*?(?:(?<![\w:/])//|\\\\)[A-Za-z0-9][\w.-]*"
+                r"|(?:^|[;&|(\n]\s*)(?:\S*[/\\])?python[\w.]*\b(?=(?s:.*)(?:os\.walk|rglob|recursive\s*=\s*True))"
+                r"(?=(?s:.*)(?:(?<![\w:/])//|\\\\)[A-Za-z0-9][\w.-]*)"),
+     "A recursive walk of a network share from this PC (Mistake 120, 2 Nov: 50,352 files of the fs01 IT archive walked "
+     "file by file over the VPN). Run it ON the target - Invoke-CimMethod -ComputerName <host> -ClassName "
+     "Win32_Process -MethodName Create -Arguments @{CommandLine='<the walk, on its local path, writing one result "
+     "file>'} - and read that one result back (memory feedback_run_on_the_target_never_chatty_over_vpn). One folder's "
+     "listing without a recurse flag is allowed."),
+
     # 2. DESTROYING UNCOMMITTED WORK. On 2026-08-25 a `git checkout --` wiped a parallel
     #    session's uncommitted module. There is no undo; it survived only because a
     #    transcript still held the edit. `git stash push` keeps it.
@@ -210,7 +238,15 @@ def testhost_running():
     return "kor.operations" in out.lower()
 
 
+PAYLOAD = {}
+
+
 def deny(reason):
+    try:   # F11 (Framework row 1159): every refusal is a row; logging can never change what this guard does
+        sys.path.append("C:/VIsual Studio Projects/Framework/tools"); import guard_log  # noqa: E702
+        guard_log.record("bash", reason.split(". ")[0][:200], (PAYLOAD.get("tool_input") or {}).get("command"), None, payload=PAYLOAD)
+    except Exception:
+        pass
     json.dump({"hookSpecificOutput": {
         "hookEventName": "PreToolUse",
         "permissionDecision": "deny",
@@ -224,6 +260,7 @@ def main():
         payload = json.load(sys.stdin)
     except Exception:
         return
+    PAYLOAD.update(payload if isinstance(payload, dict) else {})
     tool_input = payload.get("tool_input") or {}
     cmd = tool_input.get("command") or ""
     if not cmd:

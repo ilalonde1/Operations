@@ -86,6 +86,35 @@ CASES = [
     # rule 1: a recursive walk over SMB
     ("find //Kor-fs01/Projects -name '*.e2k'", "deny"),
     ("ls //Kor-fs01/Projects/Projects", "allow"),
+    # rule 1 widened 2026-11-02 (Mistake 120: 50,352 files of the fs01 IT archive walked file by file over the VPN
+    # with a Python os.walk). Every recursive-walk form on a UNC path, in either slash style, is denied...
+    (r"Get-ChildItem \\Kor-fs01\E$\IT\Archive -Recurse -File | Measure-Object", "deny"),
+    (r"Get-ChildItem -LiteralPath '\\Kor-fs01\E$\IT' -Recurse -Filter *.pdf", "deny"),
+    (r"gci -r //Kor-fs01/IT", "deny"),
+    (r"ls -Recurse \\Kor-fs01\IT", "deny"),
+    (r"dir /s \\Kor-fs01\IT", "deny"),
+    (r"cmd /c dir /s /b \\Kor-fs01\IT", "deny"),
+    (r"tree \\Kor-fs01\IT /f", "deny"),
+    (r"robocopy \\Kor-fs01\E$\IT C:\x /L /S /NJH", "deny"),
+    (r'find "\\Kor-fs01\IT" -type f', "deny"),
+    (r"ls -lR //Kor-fs01/IT", "deny"),
+    (r"du -sh //Kor-fs01/IT", "deny"),
+    ("python -c \"import os; print(sum(len(f) for _, _, f in os.walk('//Kor-fs01/IT')))\"", "deny"),
+    ("python -I -c \"from pathlib import Path; print(sum(1 for _ in Path('//Kor-fs01/IT').rglob('*')))\"", "deny"),
+    # ...while one folder's listing, git to an fs01 remote, Test-Path, a local walk and a walk run ON the target pass
+    (r"Get-ChildItem \\Kor-fs01\E$\IT", "allow"),
+    (r"ls //Kor-fs01/IT/Archive", "allow"),
+    (r"git ls-remote //KOR-FS01/E$/IT/git/KOR.Drafter.git", "allow"),
+    (r"git push fs01 main && git ls-remote fs01 main", "allow"),
+    (r"git fetch //KOR-FS01/E$/IT/git/Framework.git main", "allow"),
+    (r"Test-Path \\Kor-fs01\E$\IT\robocopy.log", "allow"),
+    (r"Get-ChildItem C:\x -Recurse -File", "allow"),
+    (r"gci -r C:/x", "allow"),
+    (r"find . -name '*.py'", "allow"),
+    (r"robocopy \\Kor-fs01\E$\IT C:\x robocopy.log", "allow"),
+    ("python -c \"import os; print(os.listdir('//Kor-fs01/IT'))\"", "allow"),
+    (r"Invoke-CimMethod -ComputerName Kor-fs01 -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine='powershell -c Get-ChildItem E:\IT -Recurse | Measure-Object > E:\IT\count.txt'}", "allow"),
+    ("curl -s https://example.com/a | head", "allow"),
     # rule 9: the publish/deploy WRAPPER piped. Rule 8 matches a literal `dotnet` command and nothing
     # here runs the compiler directly, so on 2026-10-19 `publish.ps1 | Select-String` showed eight
     # green build lines, published nothing, and was reported as shipped. The share still held a build

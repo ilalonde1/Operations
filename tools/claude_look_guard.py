@@ -182,6 +182,18 @@ def verdict(text, calls, rules):
     return reason_for(missing, m.group(0)) if missing else None
 
 
+def log_refusal(text, why, payload):
+    """F11 (Framework row 1159): every refusal is a row - Rule = the unlooked kinds, Matched = the claim in its sentence.
+    Logging can never change what this guard does."""
+    try:
+        sys.path.append("C:/VIsual Studio Projects/Framework/tools"); import guard_log  # noqa: E702
+        m = CLAIM.search(text or "")
+        kinds = ",".join(ln[2:].split(":")[0] for ln in why.splitlines() if ln.startswith("- "))
+        guard_log.record("look", kinds, text[max(0, m.start() - 150):m.end() + 150] if m else why, None, payload=payload)
+    except Exception:
+        pass
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -201,16 +213,19 @@ def main():
         msg = (payload.get("tool_input") or {}).get("message") or ""
         why = verdict(msg if isinstance(msg, str) else json.dumps(msg), calls, rules)
         if why:
+            log_refusal(msg if isinstance(msg, str) else json.dumps(msg), why, payload)
             json.dump({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
                                               "permissionDecisionReason": why}}, sys.stdout)
         return
     if payload.get("stop_hook_active"):
         return
     try:
-        why = verdict(last_assistant_text(path), calls, rules)
+        text = last_assistant_text(path)
+        why = verdict(text, calls, rules)
     except OSError:
         return
     if why:
+        log_refusal(text, why, payload)
         json.dump({"decision": "block", "reason": why}, sys.stdout)
 
 

@@ -72,7 +72,15 @@ def remember(session, tables):
             f.write(t + "\n")
 
 
+PAYLOAD = {}
+
+
 def deny(reason):
+    try:   # F11 (Framework row 1159): every refusal is a row; logging can never change what this guard does
+        sys.path.append("C:/VIsual Studio Projects/Framework/tools"); import guard_log  # noqa: E702
+        guard_log.record("sql_schema", reason.split("\n")[0][:200], (PAYLOAD.get("tool_input") or {}).get("command"), None, payload=PAYLOAD)
+    except Exception:
+        pass
     print(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -88,6 +96,7 @@ def main():
         payload = json.load(sys.stdin)
     except Exception:
         sys.exit(0)
+    PAYLOAD.update(payload if isinstance(payload, dict) else {})
 
     command = (payload.get("tool_input") or {}).get("command") or ""
     if not command:

@@ -103,7 +103,15 @@ def approved(session):
     return any(APPROVAL in p for p in recent_prompts(session))
 
 
+PAYLOAD = {}
+
+
 def deny(what):
+    try:   # F11 (Framework row 1159): every refusal is a row; logging can never change what this guard does
+        sys.path.append("C:/VIsual Studio Projects/Framework/tools"); import guard_log  # noqa: E702
+        guard_log.record("api", what[:200], (PAYLOAD.get("tool_input") or {}).get("command") or what, None, payload=PAYLOAD)
+    except Exception:
+        pass
     reason = ("NO API. Ian, 9d: \"Why would we EVER use the API for this?\"; 10-15: \"WHY THE FUCK ARE "
               "YOU USING THE API? WE TALKED ABOUT THIS.\" This %s. The method is export, write it in "
               "this session, import. Only a user message containing %s lifts this." % (what, APPROVAL))
@@ -129,6 +137,7 @@ def main():
         payload = json.load(sys.stdin)
     except Exception:
         return
+    PAYLOAD.update(payload if isinstance(payload, dict) else {})
     tool = payload.get("tool_name") or ""
     inp = payload.get("tool_input") or {}
     session = payload.get("session_id")

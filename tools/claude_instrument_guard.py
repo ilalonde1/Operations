@@ -271,6 +271,15 @@ def verdict(recs, claim_text):
     )
 
 
+def log_refusal(why, payload):
+    """F11 (Framework row 1159): every refusal is a row; logging can never change what this guard does."""
+    try:
+        sys.path.append("C:/VIsual Studio Projects/Framework/tools"); import guard_log  # noqa: E702
+        guard_log.record("instrument", why.split("\n")[0][:200], why, None, payload=payload)
+    except Exception:
+        pass
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -288,6 +297,7 @@ def main():
         claim = ((payload.get("tool_input") or {}).get("message")) or ""
         why = verdict(recs, claim)
         if why:
+            log_refusal(why, payload)
             json.dump({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
                                               "permissionDecisionReason": why}}, sys.stdout)
         return
@@ -302,6 +312,7 @@ def main():
                 break
     why = verdict(recs, last)
     if why:
+        log_refusal(why, payload)
         json.dump({"decision": "block", "reason": why}, sys.stdout)
 
 
