@@ -133,6 +133,7 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
         var end = ReadEvents(r).FirstOrDefault();
         StartTrace.Mark("batch read");
         var transcript = start.Source == "compact" ? NewestCompactSummary(start.TranscriptPath) : null;
+        if (start.Source == "compact") StartTrace.Mark("transcript read");
         return new ModuleState(module, DateTimeOffset.Now, fresh, records, open, office,
                                ChooseResume(resumes, start, transcript), end, events, checkLines);
     }

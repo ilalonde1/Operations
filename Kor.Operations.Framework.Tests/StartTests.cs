@@ -276,9 +276,14 @@ public class StartTests
                 SummaryLine("OLD SUMMARY", "2026-11-03T09:00:00.000Z"),
                 JsonSerializer.Serialize(new { type = "system", subtype = "compact_boundary" }),
                 SummaryLine("NEW SUMMARY", "2026-11-03T09:44:58.348Z"),
-                // a later line that only MENTIONS the key in its text is not a compaction entry
-                JsonSerializer.Serialize(new { type = "assistant", message = new { role = "assistant", content = "the \"isCompactSummary\" flag" } }),
+                // later lines carrying the BARE key that are not a compaction entry: hand-written, so the key reaches the
+                // file unescaped and passes the Contains filter (review row 205: a serialized mention never did)
+                "{\"type\":\"user\",\"isCompactSummary\":false,\"message\":{\"role\":\"user\",\"content\":\"NOT A SUMMARY (false)\"},\"timestamp\":\"2026-11-03T10:00:00.000Z\"}",
+                "{\"type\":\"user\",\"meta\":{\"isCompactSummary\":true},\"message\":{\"role\":\"user\",\"content\":\"NOT A SUMMARY (nested)\"},\"timestamp\":\"2026-11-03T10:01:00.000Z\"}",
+                "{\"type\":\"user\",\"isCompactSummary\":true,\"message\":{\"role\":\"user\",\"content\":\"   \"},\"timestamp\":\"2026-11-03T10:02:00.000Z\"}",
+                "{\"type\":\"user\",\"isCompactSummary\":tru",   // a torn last line (the file is being written)
             });
+            Assert.Equal(6, File.ReadLines(path).Count(l => l.Contains("\"isCompactSummary\"")));   // every candidate reaches the parser
             var s = ModuleState.NewestCompactSummary(path)!;
             Assert.Equal("NEW SUMMARY", s.Text);
             Assert.Equal(DateTimeOffset.Parse("2026-11-03T09:44:58.348Z"), s.At);
