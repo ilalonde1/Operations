@@ -360,7 +360,7 @@ public class CaptureTests
     [Fact]
     public void LiveAPowerShellBuildAndAFailedPowerShellTestAreCaptured()
     {
-        using var db = BrainSession.BeginRolledBack();
+        using var db = BrainDb.OpenRolledBack();
         var repo = RepoDir();
         var leaf = Git.Leaf(Git.TopLevel(repo))!;          // the checkout's own name (review row 100), never a literal
         var build = RealPowerShell("powershell-posttooluse-real.json",
@@ -378,7 +378,7 @@ public class CaptureTests
     [Fact]
     public void LiveTheModuleIsTheRepoTheCommandRanInNotTheSessionLane()
     {
-        using var db = BrainSession.BeginRolledBack();
+        using var db = BrainDb.OpenRolledBack();
         var repo = RepoDir();
         var elsewhere = Path.Combine(Path.GetTempPath(), "kor-k3-cwd-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(elsewhere);
@@ -403,7 +403,7 @@ public class CaptureTests
     [Fact]
     public void LiveAnUnknownSourceRecordsNoRepoOrCommitAndSaysWhy()
     {
-        using var db = BrainSession.BeginRolledBack();
+        using var db = BrainDb.OpenRolledBack();
         var json = JsonSerializer.Serialize(new
         {
             session_id = "k3-unknown-session", cwd = RepoDir(), hook_event_name = "PostToolUse", tool_name = "Bash",
@@ -527,7 +527,7 @@ public class CaptureTests
         return d?.FullName ?? throw new InvalidOperationException("the test is not running inside the Operations checkout");
     }
 
-    private static int RunOk(BrainSession db, string[] args, string? stdin = null)
+    private static int RunOk(BrainDb db, string[] args, string? stdin = null)
     {
         var output = new StringWriter();
         var error = new StringWriter();
@@ -539,21 +539,21 @@ public class CaptureTests
         return int.Parse(m.Groups[1].Value);
     }
 
-    private static StoredEvent ReadBack(BrainSession db, int id, string module, string kind)
+    private static StoredEvent ReadBack(BrainDb db, int id, string module, string kind)
     {
         var row = BrainStore.Last(module, 200, kind, db).SingleOrDefault(r => r.Id == id);
         Assert.NotNull(row);
         return row!;
     }
 
-    private static StoredEvent ReadBack(BrainSession db, int id, string kind) => ReadBack(db, id, Module, kind);
+    private static StoredEvent ReadBack(BrainDb db, int id, string kind) => ReadBack(db, id, Module, kind);
 
     [Fact]
     public void LiveARolledBackSessionLeavesNothing()
     {
         // The guarantee every live test rests on: a row written in BeginRolledBack is gone once it is disposed.
         int id;
-        using (var db = BrainSession.BeginRolledBack())
+        using (var db = BrainDb.OpenRolledBack())
         {
             id = BrainStore.Insert(new BrainEvent(Module, "build", null, null, "rollback probe", "pass", null, "k3-test"), db);
             Assert.Contains(BrainStore.Last(Module, 50, "build", db), r => r.Id == id);
@@ -564,7 +564,7 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureGitPostCommitWritesTheHeadCommitWithBlobs()
     {
-        using var db = BrainSession.BeginRolledBack();
+        using var db = BrainDb.OpenRolledBack();
         var dir = RepoDir();
         var head = Git.Run(dir, "rev-parse", "HEAD")!.Trim();
         var row = ReadBack(db, RunOk(db, new[] { "capture-git", "post-commit", "--dir", dir, "--module", Module }), "commit");
@@ -583,7 +583,7 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureGitPrePushRecordsEachRefAndTheGuardResult()
     {
-        using var db = BrainSession.BeginRolledBack();
+        using var db = BrainDb.OpenRolledBack();
         var dir = RepoDir();
         var head = Git.Run(dir, "rev-parse", "HEAD")!.Trim();
         var stdin = $"refs/heads/develop {head} refs/heads/develop {new string('0', 40)}\n";
@@ -597,7 +597,7 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureGitCheckoutAndMergeWriteTheirKinds()
     {
-        using var db = BrainSession.BeginRolledBack();
+        using var db = BrainDb.OpenRolledBack();
         var dir = RepoDir();
         var head = Git.Run(dir, "rev-parse", "HEAD")!.Trim();
         var c = ReadBack(db, RunOk(db, new[] { "capture-git", "post-checkout", head, head, "1", "--dir", dir, "--module", Module }), "checkout");
@@ -610,7 +610,7 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureToolRecordsAFailingTestFromPostToolUseFailure()
     {
-        using var db = BrainSession.BeginRolledBack();
+        using var db = BrainDb.OpenRolledBack();
         var dir = RepoDir();
         var json = JsonSerializer.Serialize(new
         {
@@ -633,7 +633,7 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureToolRecordsAPassingBuildFromPostToolUse()
     {
-        using var db = BrainSession.BeginRolledBack();
+        using var db = BrainDb.OpenRolledBack();
         var json = JsonSerializer.Serialize(new
         {
             session_id = "k3-test-session", cwd = RepoDir(), hook_event_name = "PostToolUse", tool_name = "Bash",
@@ -648,7 +648,7 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureToolOnANonMatchingCommandWritesNoRow()
     {
-        using var db = BrainSession.BeginRolledBack();
+        using var db = BrainDb.OpenRolledBack();
         var json = JsonSerializer.Serialize(new
         {
             session_id = "k3-test-session", cwd = RepoDir(), hook_event_name = "PostToolUse", tool_name = "Bash",
@@ -663,7 +663,7 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureCompactStoresTheSummaryAsTheLaneResume()
     {
-        using var db = BrainSession.BeginRolledBack();
+        using var db = BrainDb.OpenRolledBack();
         var summary = $"K3 test compaction summary {Guid.NewGuid():N}\nPassword=should-not-land\nwhere we stopped: K3 tests";
         var json = JsonSerializer.Serialize(new
         {
@@ -685,7 +685,7 @@ public class CaptureTests
     [Fact]
     public void LiveCaptureEndRecordsTheTranscriptAndReason()
     {
-        using var db = BrainSession.BeginRolledBack();
+        using var db = BrainDb.OpenRolledBack();
         var json = JsonSerializer.Serialize(new
         {
             session_id = "k3-end-session", transcript_path = "C:/x/k3e.jsonl", cwd = RepoDir(),

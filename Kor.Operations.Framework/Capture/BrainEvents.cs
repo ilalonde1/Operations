@@ -15,40 +15,6 @@ public sealed record StoredEvent(int Id, DateTimeOffset AtUtc, string Module, st
 public sealed record StoredLaneState(int Id, string Lane, string ResumeBlock, string WrittenBy, DateTimeOffset WrittenAtUtc);
 
 /// <summary>
-/// One korbrain_app connection, optionally inside a transaction. Every <see cref="BrainStore"/> call takes one; with
-/// none it opens its own and commits (the hooks). A test opens <see cref="BeginRolledBack"/>: it writes to the LIVE
-/// KorStandards, reads its rows back inside the same transaction, and Dispose ROLLS BACK - nothing is left behind.
-/// </summary>
-public sealed class BrainSession : IDisposable
-{
-    public SqlConnection Connection { get; }
-    public SqlTransaction? Transaction { get; }
-
-    private BrainSession(SqlConnection connection, SqlTransaction? transaction)
-    {
-        Connection = connection;
-        Transaction = transaction;
-    }
-
-    /// <summary>A transaction that is ALWAYS rolled back on Dispose (it has no Commit).</summary>
-    public static BrainSession BeginRolledBack()
-    {
-        var cn = KorStandardsConnection.Open(KorStandardsConnection.Login.Brain);
-        return new BrainSession(cn, cn.BeginTransaction());
-    }
-
-    internal SqlCommand Command(string sql) =>
-        new(sql, Connection, Transaction) { CommandTimeout = 30 };
-
-    public void Dispose()
-    {
-        try { Transaction?.Rollback(); } catch { /* the connection may already be gone; nothing was committed */ }
-        Transaction?.Dispose();
-        Connection.Dispose();
-    }
-}
-
-/// <summary>
 /// Writes and reads the K3 records as korbrain_app (brain_rw: SELECT/INSERT/UPDATE, DELETE denied - 162). Every text
 /// value is fitted to its column and stripped of secret-shaped lines BEFORE it is sent: the table refuses
 /// Password= / Pwd= / sk-ant- / AccountKey= (CK_Event_NoSecret, CK_LaneState_NoSecret), and a refused row in hook mode
@@ -80,22 +46,19 @@ public static class BrainStore
         Actor = Clip(Redact.Text(e.Actor), 100) ?? "unknown",
     };
 
-    /// <summary>Runs one command on the caller's session (and its transaction), or on a connection of its own.</summary>
-    private static T Exec<T>(BrainSession? db, string sql, Action<SqlCommand> bind, Func<SqlCommand, T> run)
-    {
-        if (db is not null)
+    /// <summary>
+    /// Runs one command on the caller's unit of work (<see cref="BrainDb"/>), or on one of its own that it commits (the
+    /// hooks: the old signatures wrap Open + Commit).
+    /// </summary>
+    private static T Exec<T>(BrainDb? db, string sql, Action<SqlCommand> bind, Func<SqlCommand, T> run) =>
+        BrainDb.Use(db, d =>
         {
-            using var c = db.Command(sql);
+            using var c = d.Command(sql);
             bind(c);
             return run(c);
-        }
-        using var cn = KorStandardsConnection.Open(KorStandardsConnection.Login.Brain);
-        using var cmd = new SqlCommand(sql, cn) { CommandTimeout = 30 };
-        bind(cmd);
-        return run(cmd);
-    }
+        });
 
-    public static int Insert(BrainEvent e, BrainSession? db = null)
+    public static int Insert(BrainEvent e, BrainDb? db = null)
     {
         if (!Kinds.Contains(e.Kind)) throw new ArgumentException($"kind '{e.Kind}' is not one brain.Event accepts");
         var f = Fit(e);
@@ -116,7 +79,7 @@ public static class BrainStore
             cmd => Convert.ToInt32(cmd.ExecuteScalar()));
     }
 
-    public static int InsertLaneState(string lane, string resumeBlock, string writtenBy, BrainSession? db = null) =>
+    public static int InsertLaneState(string lane, string resumeBlock, string writtenBy, BrainDb? db = null) =>
         Exec(db, "INSERT brain.LaneState (Lane, ResumeBlock, WrittenBy) OUTPUT INSERTED.Id VALUES (@l, @b, @w)",
             cmd =>
             {
@@ -126,7 +89,7 @@ public static class BrainStore
             },
             cmd => Convert.ToInt32(cmd.ExecuteScalar()));
 
-    public static IReadOnlyList<StoredEvent> Last(string module, int count, string? kind = null, BrainSession? db = null) =>
+    public static IReadOnlyList<StoredEvent> Last(string module, int count, string? kind = null, BrainDb? db = null) =>
         Exec(db,
             "SELECT TOP (@n) Id, AtUtc, Module, Kind, Repo, [Commit], Ref, Outcome, Detail, Actor FROM brain.Event " +
             "WHERE Module = @m AND (@k IS NULL OR Kind = @k) ORDER BY Id DESC",
@@ -146,7 +109,7 @@ public static class BrainStore
                 return (IReadOnlyList<StoredEvent>)rows;
             });
 
-    public static StoredLaneState? LaneStateById(int id, BrainSession? db = null) =>
+    public static StoredLaneState? LaneStateById(int id, BrainDb? db = null) =>
         Exec(db, "SELECT Id, Lane, ResumeBlock, WrittenBy, WrittenAtUtc FROM brain.LaneState WHERE Id = @id",
             cmd => cmd.Parameters.Add("@id", System.Data.SqlDbType.Int).Value = id,
             cmd =>

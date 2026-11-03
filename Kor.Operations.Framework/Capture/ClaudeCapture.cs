@@ -94,7 +94,7 @@ public static class ClaudeCapture
     }
 
     /// <summary>PostCompact: the summary becomes the module's resume record (brain.LaneState), plus a 'compact' event.</summary>
-    public static (int? LaneStateId, int EventId) Compact(HookInput h, string? moduleOverride, BrainSession? db = null)
+    public static (int? LaneStateId, int EventId) Compact(HookInput h, string? moduleOverride, BrainDb? db = null)
     {
         var module = ModuleOf(h, moduleOverride);
         int? laneId = null;
