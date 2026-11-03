@@ -72,6 +72,7 @@ public static partial class Program
                 "secret-scan" => SecretScan(o, stdin, output, db),
                 "state" => State(o, output, db),
                 "migration-lint" => MigrationLintVerb(o, stdin, output),
+                "enroll-check" => EnrollCheckVerb(o, output, hook, db),
                 _ => hook ? UnknownInHook(o, output) : Usage(error),
             };
         }
@@ -88,6 +89,8 @@ public static partial class Program
     {
         LogHookError(hookErrorLog, o, e);
         if (IsFreshModule(o)) output.WriteLine($"kor fresh: COULD NOT CHECK - {OneLine(e.Message)} (logged)");
+        // row 1209: the enrolment check says it could not check, never nothing (a silent hook reads as a pass)
+        if (o.Positional.FirstOrDefault() == "enroll-check") output.WriteLine($"kor enroll-check: COULD NOT CHECK - {OneLine(e.Message)} (logged)");
         return 0;
     }
 
@@ -120,13 +123,13 @@ public static partial class Program
             "--module", "--dir", "--result", "--last", "--kind", "--because", "--body-file", "--source-path", "--name",
             "--says", "--source", "--cap", "--session", "--description", "--check", "--check-ref", "--issue",
             "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir", "--page", "--pages", "--cutoff",
-            "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what",
+            "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what", "--days",
         };
 
         /// <summary>Options given more than once, every value kept in order (check-add's examples).</summary>
         private static readonly string[] Repeated = { "--refuse", "--allow" };
 
-        private static readonly string[] Flags = { "--explain", "--full", "--file-changed", "--resolved", "--commit-hook", "--no-helpers", "--text", "--offsets" };
+        private static readonly string[] Flags = { "--explain", "--full", "--file-changed", "--resolved", "--commit-hook", "--no-helpers", "--text", "--offsets", "--all" };
 
         /// <summary>Every --owner given, in order (kor start --part board: one lead, several board names).</summary>
         public List<string> Owners { get; init; } = new();
@@ -550,6 +553,7 @@ public static partial class Program
         error.WriteLine("       kor secret-scan --text - [--what W]   (the text on stdin: 'clean' exit 0, or one refusal line exit 1 - never the value)");
         error.WriteLine("       kor state --module M (--file F | --text T)   (a resume block -> brain.LaneState; a credential value is MASKED and said in one line)");
         error.WriteLine("       kor migration-lint <file.sql> | - --name NNN_x.sql [--cutoff N (177)]   (a migration above the cut-off: L1 a 'PROBES:' header line, L2 no hand-written probe handling without migration.usp_MigrationProbe; one line per finding, exit 1)");
+        error.WriteLine("       kor enroll-check [--all] [--dir D] [--days N (7)] [--hook]   (every framework hook in .claude/settings.json and .git/hooks, and a session-start in brain.Event where sessions ran; one verdict line, exit 1 on a finding - 0 with --hook)");
         error.WriteLine("       kor start --module M [--owner O]... [--no-helpers] [--part record|state|memory|board|all] [--page N --pages M (memory)] [--hook | --text] [--dir D] [--session S] [--start-source S]   (SessionStart JSON on stdin with --hook)");
         return 2;
     }

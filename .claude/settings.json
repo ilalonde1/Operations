@@ -59,6 +59,12 @@
             "command": "C:/KOR-Operations/kor/kor.exe capture-start --hook",
             "timeout": 15,
             "statusMessage": "Recording this session's start in the module record (Knowledge IDE K4)"
+          },
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe enroll-check --hook",
+            "timeout": 30,
+            "statusMessage": "Is every framework hook still wired here, and is session capture reaching the DB? (kor enroll-check, board row 1209)"
           }
         ]
       }
