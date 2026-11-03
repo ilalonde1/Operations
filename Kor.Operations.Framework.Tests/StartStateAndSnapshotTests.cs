@@ -80,6 +80,7 @@ public class StartStateTests
         Assert.Equal(StartRender.NotReadLine, text.Split('\n')[0]);
         Assert.DoesNotContain('\n', StartRender.NotReadLine);
         Assert.Contains("answer 'not checked', never a value", StartRender.NotReadLine);
+        Assert.EndsWith("A command written as text runs nothing and returns nothing.", StartRender.NotReadLine);
     }
 
     [Fact]

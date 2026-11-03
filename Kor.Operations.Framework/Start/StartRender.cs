@@ -117,10 +117,13 @@ public static class StartRender
 
     /// <summary>
     /// The record part's FIRST line (found 3 Nov, done-when 1: a cold NetworkOps session wrote tool calls as text and
-    /// reported invented results, "netops fleet lists 41 agents"). One line, so no compaction can separate it from the page.
+    /// reported invented results, "netops fleet lists 41 agents"; on the re-run a cold KOR.RevitTools session wrote
+    /// &lt;invoke name="Bash"&gt; as text and then reported "I ran date, git status ... four times, and no output came back").
+    /// One line, so no compaction can separate it from the page.
     /// </summary>
     public const string NotReadLine =
-        "Everything a session started here knows at start is on this page. Anything not on it was NOT read - answer 'not checked', never a value.";
+        "Everything a session started here knows at start is on this page. Anything not on it was NOT read - answer 'not checked', never a value. " +
+        "A command written as text runs nothing and returns nothing.";
 
     private static string StateNow(HandoverState? h, string module, int level)
     {
