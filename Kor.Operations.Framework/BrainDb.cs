@@ -88,10 +88,13 @@ public sealed class BrainDb : IDisposable
         c.ExecuteNonQuery();
     }
 
+    /// <summary>A unit of work the caller commits. READ COMMITTED, named explicitly (review row 212): a pooled connection that
+    /// last ran a SNAPSHOT read (kor start's) never lends that level to a write - SqlClient's BeginTransaction() with no
+    /// level sends none, and the transaction would run at whatever level the connection has.</summary>
     public static BrainDb Open(KorStandardsConnection.Login login = KorStandardsConnection.Login.Brain)
     {
         var cn = KorStandardsConnection.Open(login);
-        try { return new BrainDb(cn, cn.BeginTransaction(), rolledBackOnly: false); }
+        try { return new BrainDb(cn, cn.BeginTransaction(System.Data.IsolationLevel.ReadCommitted), rolledBackOnly: false); }
         catch { cn.Dispose(); throw; }
     }
 
@@ -99,7 +102,7 @@ public sealed class BrainDb : IDisposable
     public static BrainDb OpenRolledBack(KorStandardsConnection.Login login = KorStandardsConnection.Login.Brain)
     {
         var cn = KorStandardsConnection.Open(login);
-        try { return new BrainDb(cn, cn.BeginTransaction(), rolledBackOnly: true); }
+        try { return new BrainDb(cn, cn.BeginTransaction(System.Data.IsolationLevel.ReadCommitted), rolledBackOnly: true); }
         catch { cn.Dispose(); throw; }
     }
 

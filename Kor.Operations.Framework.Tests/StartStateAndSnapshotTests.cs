@@ -203,7 +203,9 @@ public class StartSnapshotLiveTests(Xunit.Abstractions.ITestOutputHelper log)
         using (var rc = BrainDb.OpenRead(KorStandardsConnection.Login.Brain, snapshot: false))
             Assert.Equal(2, IsolationLevel(rc));                                      // 2 = READ COMMITTED
         using (var snap = BrainDb.OpenRead(KorStandardsConnection.Login.Brain, snapshot: true)) Assert.Equal(5, IsolationLevel(snap));
-        using (var next = BrainDb.OpenRolledBack()) Assert.Equal(2, IsolationLevel(next));   // the pooled connection was reset
+        using (var next = BrainDb.OpenRolledBack()) Assert.Equal(2, IsolationLevel(next));   // named: never the pool's last level
+        using (var snap = BrainDb.OpenRead(KorStandardsConnection.Login.Brain, snapshot: true)) Assert.Equal(5, IsolationLevel(snap));
+        using (var write = BrainDb.Open()) Assert.Equal(2, IsolationLevel(write));           // kor start's write unit of work (never committed here)
         Assert.Equal("SNAPSHOT", BrainDb.Read(KorStandardsConnection.Login.Board, b => IsolationLevel(b) == 5 ? b.Isolation : "not 5"));
     }
 
