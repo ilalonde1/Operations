@@ -19,6 +19,7 @@ namespace Kor.Operations.Framework.Tests;
 /// (no writer makes one yet). Same-class miss: a record citing a repo that sits anywhere but beside this checkout reads
 /// unverifiable here though it may be current.
 /// </summary>
+[Collection(LiveDb.Name)]
 public class FreshnessTests(Xunit.Abstractions.ITestOutputHelper log)
 {
     private readonly Xunit.Abstractions.ITestOutputHelper _log = log;
@@ -525,14 +526,14 @@ public class FreshnessTests(Xunit.Abstractions.ITestOutputHelper log)
         Assert.Null(RecordStore.Get(fresh, id));
     }
 
-    // 14: issues wait for migration 171, and recheck never withdraws or supersedes something that is not live
+    // 14: an issue never goes through the plain Insert (it needs its check - the issue path), and withdraw retires
     [Fact]
-    public void LiveIssuesAreRefusedUntil171AndWithdrawRetires()
+    public void LiveAnIssueNeverGoesThroughThePlainInsertAndWithdrawRetires()
     {
         using var db = BrainDb.OpenRolledBack();
         var head = RecordStore.AtHead(FrameworkDir(), Doc);
         var e = Assert.Throws<RecordRefusedException>(() => RecordStore.Insert(db, Finding("issue", head) with { Kind = "issue" }));
-        Assert.Contains("171", e.Message);
+        Assert.Contains("written only through the issue path", e.Message);
         var id = Insert(db, "withdraw-me", head);
         RecordStore.Withdraw(db, id, "k5-test", "k5 test: wrong");
         Assert.NotNull(Row(db, id).RetiredAtUtc);

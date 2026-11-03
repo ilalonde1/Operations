@@ -3,27 +3,37 @@ using Microsoft.Data.SqlClient;
 
 namespace Kor.Operations.Framework.Capture;
 
-/// <summary>One row of brain.Event (KorStandards migration 168). Column limits are the table's.</summary>
+/// <summary>
+/// One row of brain.Event (KorStandards 168 + 171). Column limits are the table's. <see cref="Session"/> is the Claude Code
+/// session that did it (171, K4); <see cref="IssueId"/> ties a 'check' event to its issue (171, K5b). brain.Event is
+/// append-only from kor: it is never UPDATEd (migration 173 refuses any UPDATE of it by brain_rw).
+/// </summary>
 public sealed record BrainEvent(string Module, string Kind, string? Repo, string? Commit, string? Ref, string? Outcome,
-                                string? Detail, string Actor);
+                                string? Detail, string Actor, string? Session = null, int? IssueId = null);
 
 /// <summary>A row read back from brain.Event.</summary>
 public sealed record StoredEvent(int Id, DateTimeOffset AtUtc, string Module, string Kind, string? Repo, string? Commit,
-                                 string? Ref, string? Outcome, string? Detail, string Actor);
+                                 string? Ref, string? Outcome, string? Detail, string Actor, string? Session = null,
+                                 int? IssueId = null);
 
 /// <summary>A row read back from brain.LaneState (162).</summary>
-public sealed record StoredLaneState(int Id, string Lane, string ResumeBlock, string WrittenBy, DateTimeOffset WrittenAtUtc);
+public sealed record StoredLaneState(int Id, string Lane, string ResumeBlock, string WrittenBy, DateTimeOffset WrittenAtUtc,
+                                     string? Session = null);
 
 /// <summary>
-/// Writes and reads the K3 records as korbrain_app (brain_rw: SELECT/INSERT/UPDATE, DELETE denied - 162). Every text
-/// value is fitted to its column and stripped of secret-shaped lines BEFORE it is sent: the table refuses
-/// Password= / Pwd= / sk-ant- / AccountKey= (CK_Event_NoSecret, CK_LaneState_NoSecret), and a refused row in hook mode
-/// would be a silently lost event.
+/// Writes and reads the brain.Event / brain.LaneState records as korbrain_app (brain_rw: SELECT/INSERT/UPDATE, DELETE
+/// denied - 162). Every text value is fitted to its column and stripped of secret-shaped lines BEFORE it is sent: the table
+/// refuses Password= / Pwd= / sk-ant- / AccountKey= (CK_Event_NoSecret, CK_LaneState_NoSecret), and a refused row in hook
+/// mode would be a silently lost event.
 /// </summary>
 public static class BrainStore
 {
+    /// <summary>THE 16 kinds of 171's CK_Event_Kind (168's 12 + K4's 3 + K5b's check).</summary>
     public static readonly string[] Kinds =
-        { "commit", "merge", "checkout", "push", "test", "build", "migration", "review", "board", "gate", "compact", "session-end" };
+    {
+        "commit", "merge", "checkout", "push", "test", "build", "migration", "review", "board", "gate", "compact", "session-end",
+        "session-start", "capture-ask", "record", "check",
+    };
 
     private static readonly Regex Hex40 = new("^[0-9a-f]{40}$", RegexOptions.CultureInvariant);
 
@@ -33,6 +43,14 @@ public static class BrainStore
         var v = value?.Trim();
         return v is not null && Hex40.IsMatch(v) ? v : null;
     }
+
+    /// <summary>
+    /// The Claude Code session running this process, from CLAUDE_CODE_SESSION_ID - the same id the hooks receive as
+    /// session_id (checked 3 Nov: both d0313f99-...). A git hook run from a session's shell inherits it, so a commit is
+    /// tied to the session that made it in ANY repo (closes K4's same-class miss). Null outside a session (a human).
+    /// </summary>
+    public static string? CurrentSession() =>
+        Clip(Environment.GetEnvironmentVariable("CLAUDE_CODE_SESSION_ID"), 64);
 
     public static BrainEvent Fit(BrainEvent e) => e with
     {
@@ -44,6 +62,7 @@ public static class BrainStore
         Outcome = Clip(e.Outcome, 20),
         Detail = Redact.Text(e.Detail),
         Actor = Clip(Redact.Text(e.Actor), 100) ?? "unknown",
+        Session = Clip(e.Session, 64),
     };
 
     /// <summary>
@@ -66,8 +85,8 @@ public static class BrainStore
             // OUTPUT ... INTO: a plain OUTPUT is refused (error 334) once the table has a trigger - the same shape on
             // every brain table, so none breaks when a migration adds one (FreshnessTests.NoPlainOutputColumnListInTheKorSources).
             "DECLARE @id TABLE (Id int); " +
-            "INSERT brain.Event (Module, Kind, Repo, [Commit], Ref, Outcome, Detail, Actor) OUTPUT INSERTED.Id INTO @id " +
-            "VALUES (@m, @k, @r, @c, @ref, @o, @d, @a); SELECT Id FROM @id;",
+            "INSERT brain.Event (Module, Kind, Repo, [Commit], Ref, Outcome, Detail, Actor, Session, IssueId) OUTPUT INSERTED.Id INTO @id " +
+            "VALUES (@m, @k, @r, @c, @ref, @o, @d, @a, @s, @i); SELECT Id FROM @id;",
             cmd =>
             {
                 cmd.Parameters.Add("@m", System.Data.SqlDbType.NVarChar, 60).Value = f.Module;
@@ -78,54 +97,100 @@ public static class BrainStore
                 cmd.Parameters.Add("@o", System.Data.SqlDbType.NVarChar, 20).Value = (object?)f.Outcome ?? DBNull.Value;
                 cmd.Parameters.Add("@d", System.Data.SqlDbType.NVarChar, -1).Value = (object?)f.Detail ?? DBNull.Value;
                 cmd.Parameters.Add("@a", System.Data.SqlDbType.NVarChar, 100).Value = f.Actor;
+                cmd.Parameters.Add("@s", System.Data.SqlDbType.NVarChar, 64).Value = (object?)f.Session ?? DBNull.Value;
+                cmd.Parameters.Add("@i", System.Data.SqlDbType.Int).Value = (object?)f.IssueId ?? DBNull.Value;
             },
             cmd => Convert.ToInt32(cmd.ExecuteScalar()));
     }
 
-    public static int InsertLaneState(string lane, string resumeBlock, string writtenBy, BrainDb? db = null) =>
+    public static int InsertLaneState(string lane, string resumeBlock, string writtenBy, BrainDb? db = null, string? session = null) =>
         Exec(db, "DECLARE @id TABLE (Id int); " +
-                 "INSERT brain.LaneState (Lane, ResumeBlock, WrittenBy) OUTPUT INSERTED.Id INTO @id VALUES (@l, @b, @w); " +
+                 "INSERT brain.LaneState (Lane, ResumeBlock, WrittenBy, Session) OUTPUT INSERTED.Id INTO @id VALUES (@l, @b, @w, @s); " +
                  "SELECT Id FROM @id;",
             cmd =>
             {
                 cmd.Parameters.Add("@l", System.Data.SqlDbType.NVarChar, 60).Value = Clip(lane, 60) ?? "unknown";
                 cmd.Parameters.Add("@b", System.Data.SqlDbType.NVarChar, -1).Value = Redact.Text(resumeBlock) ?? "";
                 cmd.Parameters.Add("@w", System.Data.SqlDbType.NVarChar, 100).Value = Clip(Redact.Text(writtenBy), 100) ?? "unknown";
+                cmd.Parameters.Add("@s", System.Data.SqlDbType.NVarChar, 64).Value = (object?)Clip(session, 64) ?? DBNull.Value;
             },
             cmd => Convert.ToInt32(cmd.ExecuteScalar()));
 
+    private const string EventColumns = "Id, AtUtc, Module, Kind, Repo, [Commit], Ref, Outcome, Detail, Actor, Session, IssueId";
+
     public static IReadOnlyList<StoredEvent> Last(string module, int count, string? kind = null, BrainDb? db = null) =>
         Exec(db,
-            "SELECT TOP (@n) Id, AtUtc, Module, Kind, Repo, [Commit], Ref, Outcome, Detail, Actor FROM brain.Event " +
-            "WHERE Module = @m AND (@k IS NULL OR Kind = @k) ORDER BY Id DESC",
+            $"SELECT TOP (@n) {EventColumns} FROM brain.Event WHERE Module = @m AND (@k IS NULL OR Kind = @k) ORDER BY Id DESC",
             cmd =>
             {
                 cmd.Parameters.Add("@n", System.Data.SqlDbType.Int).Value = Math.Clamp(count, 1, 1000);
                 cmd.Parameters.Add("@m", System.Data.SqlDbType.NVarChar, 60).Value = module;
                 cmd.Parameters.Add("@k", System.Data.SqlDbType.NVarChar, 16).Value = (object?)kind ?? DBNull.Value;
             },
+            ReadEvents);
+
+    public static StoredEvent? EventById(int id, BrainDb? db = null) =>
+        Exec(db, $"SELECT {EventColumns} FROM brain.Event WHERE Id = @id",
+            cmd => cmd.Parameters.Add("@id", System.Data.SqlDbType.Int).Value = id,
+            ReadEvents).SingleOrDefault();
+
+    /// <summary>The newest event of this session with one of the kinds (any module), or null.</summary>
+    public static StoredEvent? NewestOfSession(string session, string[] kinds, BrainDb? db = null) =>
+        Exec(db,
+            $"SELECT TOP (1) {EventColumns} FROM brain.Event WHERE Session = @s AND Kind IN (SELECT value FROM OPENJSON(@k)) ORDER BY Id DESC",
             cmd =>
             {
-                var rows = new List<StoredEvent>();
-                using var r = cmd.ExecuteReader();
-                while (r.Read())
-                    rows.Add(new StoredEvent(r.GetInt32(0), r.GetDateTimeOffset(1), r.GetString(2), r.GetString(3), Str(r, 4),
-                                             Str(r, 5), Str(r, 6), Str(r, 7), Str(r, 8), r.GetString(9)));
-                return (IReadOnlyList<StoredEvent>)rows;
-            });
+                cmd.Parameters.Add("@s", System.Data.SqlDbType.NVarChar, 64).Value = session;
+                cmd.Parameters.Add("@k", System.Data.SqlDbType.NVarChar, -1).Value = System.Text.Json.JsonSerializer.Serialize(kinds);
+            },
+            ReadEvents).SingleOrDefault();
+
+    /// <summary>
+    /// K4: the commit events after <paramref name="afterId"/> that this session must be asked about - made by this
+    /// session in ANY module (Session = it), or made in its module with no session at all (a human at a terminal). A
+    /// commit by ANOTHER Claude session is that session's to record.
+    /// </summary>
+    public static IReadOnlyList<StoredEvent> CommitsToAsk(string session, string module, int afterId, BrainDb? db = null) =>
+        Exec(db,
+            $"SELECT TOP (50) {EventColumns} FROM brain.Event WHERE Kind = N'commit' AND Id > @after " +
+            "AND (Session = @s OR (Module = @m AND Session IS NULL)) ORDER BY Id",
+            cmd =>
+            {
+                cmd.Parameters.Add("@s", System.Data.SqlDbType.NVarChar, 64).Value = session;
+                cmd.Parameters.Add("@m", System.Data.SqlDbType.NVarChar, 60).Value = module;
+                cmd.Parameters.Add("@after", System.Data.SqlDbType.Int).Value = afterId;
+            },
+            ReadEvents);
+
+    /// <summary>Check events of an issue, newest first.</summary>
+    public static IReadOnlyList<StoredEvent> ChecksOf(int issueId, BrainDb? db = null) =>
+        Exec(db, $"SELECT TOP (100) {EventColumns} FROM brain.Event WHERE Kind = N'check' AND IssueId = @i ORDER BY Id DESC",
+            cmd => cmd.Parameters.Add("@i", System.Data.SqlDbType.Int).Value = issueId,
+            ReadEvents);
+
+    private static IReadOnlyList<StoredEvent> ReadEvents(SqlCommand cmd)
+    {
+        var rows = new List<StoredEvent>();
+        using var r = cmd.ExecuteReader();
+        while (r.Read())
+            rows.Add(new StoredEvent(r.GetInt32(0), r.GetDateTimeOffset(1), r.GetString(2), r.GetString(3), Str(r, 4),
+                                     Str(r, 5), Str(r, 6), Str(r, 7), Str(r, 8), r.GetString(9), Str(r, 10),
+                                     r.IsDBNull(11) ? null : r.GetInt32(11)));
+        return rows;
+    }
 
     public static StoredLaneState? LaneStateById(int id, BrainDb? db = null) =>
-        Exec(db, "SELECT Id, Lane, ResumeBlock, WrittenBy, WrittenAtUtc FROM brain.LaneState WHERE Id = @id",
+        Exec(db, "SELECT Id, Lane, ResumeBlock, WrittenBy, WrittenAtUtc, Session FROM brain.LaneState WHERE Id = @id",
             cmd => cmd.Parameters.Add("@id", System.Data.SqlDbType.Int).Value = id,
             cmd =>
             {
                 using var r = cmd.ExecuteReader();
-                return r.Read() ? new StoredLaneState(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetDateTimeOffset(4)) : null;
+                return r.Read() ? new StoredLaneState(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetDateTimeOffset(4), Str(r, 5)) : null;
             });
 
     private static string? Str(SqlDataReader r, int i) => r.IsDBNull(i) ? null : r.GetString(i);
 
-    internal static string? Clip(string? s, int max)
+    public static string? Clip(string? s, int max)
     {
         if (s is null) return null;
         s = s.Trim();

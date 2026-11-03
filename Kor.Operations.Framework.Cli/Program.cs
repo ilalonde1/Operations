@@ -13,7 +13,7 @@ namespace Kor.Operations.Framework.Cli;
 /// %LOCALAPPDATA%\KOR\kor-hook-errors.log so a lost capture is findable. Without <c>--hook</c>: 0 = ok, 1 = a check
 /// failed, 2 = usage.
 /// </summary>
-public static class Program
+public static partial class Program
 {
     /// <summary>Where a hook-mode failure is logged by the installed kor.exe.</summary>
     public static readonly string DefaultHookErrorLog =
@@ -47,21 +47,29 @@ public static class Program
                 "fresh" => Fresh(o, stdin, output, hook, db),
                 "recheck" => Recheck(o, output, db),
                 "record" => Record(o, output, db),
+                "memory" => Memory(o, output, db),
+                "capture-start" => CaptureStart(o, stdin, output, hook, db),
+                "capture-check" => CaptureCheck(o, stdin, output, hook, db),
+                "issue" => Issue(o, output, db),
+                "check" => Check(o, output, hook, db),
+                "resolve" => Resolve(o, output, db),
                 _ => hook ? UnknownInHook(o, output) : Usage(error),
             };
         }
         catch (Exception e)
         {
-            if (hook)
-            {
-                LogHookError(hookErrorLog, o, e);
-                // review row 146: a silent fresh hook cannot be told from a broken one - it always says it could not check
-                if (IsFreshModule(o)) output.WriteLine($"kor fresh: COULD NOT CHECK - {OneLine(e.Message)} (logged)");
-                return 0;
-            }
+            if (hook) return HookFailure(o, e, output, hookErrorLog);
             error.WriteLine($"kor: {e.Message}");
             return 1;
         }
+    }
+
+    /// <summary>A hook-mode failure: logged, exit 0; the fresh hook also says so in one line (review row 146).</summary>
+    private static int HookFailure(Options o, Exception e, TextWriter output, string hookErrorLog)
+    {
+        LogHookError(hookErrorLog, o, e);
+        if (IsFreshModule(o)) output.WriteLine($"kor fresh: COULD NOT CHECK - {OneLine(e.Message)} (logged)");
+        return 0;
     }
 
     private static bool IsFreshModule(Options o) => o.Positional.FirstOrDefault() == "fresh" && o.Get("--file-changed") is null;
@@ -91,10 +99,11 @@ public static class Program
         private static readonly string[] Valued =
         {
             "--module", "--dir", "--result", "--last", "--kind", "--because", "--body-file", "--source-path", "--name",
-            "--says", "--source", "--cap",
+            "--says", "--source", "--cap", "--session", "--description", "--check", "--check-ref", "--issue",
+            "--kinds", "--restates", "--timeout",
         };
 
-        private static readonly string[] Flags = { "--full", "--file-changed" };
+        private static readonly string[] Flags = { "--full", "--file-changed", "--resolved", "--commit-hook" };
 
         public static Options Parse(string[] args)
         {
@@ -120,7 +129,7 @@ public static class Program
         var hookArgs = o.Positional.Skip(2).ToList();
         var input = hookName == "pre-push" ? stdin() : null;
         var e = GitCapture.Build(hookName, hookArgs, o.Get("--dir") ?? Environment.CurrentDirectory, input,
-                                 o.Int("--result"), o.Get("--module"));
+                                 o.Int("--result"), o.Get("--module"), o.Get("--session"));
         var id = BrainStore.Insert(e, db);
         if (!hook) output.WriteLine($"recorded brain.Event {id}: {e.Module} {e.Kind} {e.Commit}");
         // K5: HEAD may have moved - re-check every record citing this repo, AFTER the event is safely written, in the same
@@ -134,8 +143,20 @@ public static class Program
                                      x => LogHookError(hookErrorLog, o, x));
             if (!hook) output.WriteLine(line);
         }
+        // K5b: a commit that names "#issue N" runs those issues' checks now (spec: post-commit, 120 s cap). Never fails git.
+        if (hookName == "post-commit")
+        {
+            try
+            {
+                var lines = CommitHookCheck(o.Get("--dir") ?? Environment.CurrentDirectory, db, CommitCheckCap);
+                if (lines is not null && !hook) output.WriteLine(lines);
+            }
+            catch (Exception x) { LogHookError(hookErrorLog, o, x); if (!hook) output.WriteLine($"kor check --commit-hook failed: {x.Message}"); }
+        }
         return 0;
     }
+
+    internal static readonly TimeSpan CommitCheckCap = TimeSpan.FromSeconds(120);
 
     internal static readonly TimeSpan FreshnessCap = TimeSpan.FromSeconds(3);
 
@@ -171,8 +192,21 @@ public static class Program
                   && s >= 0 ? TimeSpan.FromSeconds(s) : FreshCap;
         // The cap is honoured inside the check (it stops before the next repo and reports the rest unchecked); the hard
         // wait (cap + grace) covers a hang inside one call. A caller's unit of work (a test) is always waited out.
-        var report = CappedCheck(() => BrainDb.Use(db, d => Freshness.CheckModule(d, module, o.Get("--dir"), budget: cap)),
-                                 db is not null ? Timeout.InfiniteTimeSpan : cap + FreshGrace);
+        return FreshReport(module, () => BrainDb.Use(db, d => Freshness.CheckModule(d, module, o.Get("--dir"), budget: cap)),
+                           db is not null ? Timeout.InfiniteTimeSpan : cap + FreshGrace, cap, output, hook);
+    }
+
+    /// <summary>Tests: the fresh hook with an injected check, through the same report and the same hook-failure line.</summary>
+    internal static int RunFreshHookForTests(Func<FreshnessReport> check, string module, TextWriter output, string hookErrorLog)
+    {
+        var o = Options.Parse(new[] { "fresh", "--module", module });
+        try { return FreshReport(module, check, Timeout.InfiniteTimeSpan, FreshCap, output, hook: true); }
+        catch (Exception e) { return HookFailure(o, e, output, hookErrorLog); }
+    }
+
+    private static int FreshReport(string module, Func<FreshnessReport> check, TimeSpan hardWait, TimeSpan cap, TextWriter output, bool hook)
+    {
+        var report = CappedCheck(check, hardWait);
         if (report is null)
         {
             output.WriteLine($"kor fresh: PARTIAL - cap hit after {Secs(cap + FreshGrace)} s - {module}: nothing came back in time (not waited for)");
@@ -282,6 +316,8 @@ public static class Program
         return BrainDb.Use(db, d =>
         {
             var old = RecordStore.Get(d, id) ?? throw new RecordRefusedException($"no record #{id}");
+            // up front, before any git read or write: an issue or resolution never goes through recheck
+            RecordStore.RefuseIssueKinds(old, action == "withdraw" ? "withdrawn" : "superseded");
             if (action == "withdraw")
             {
                 RecordStore.Withdraw(d, id, by, because);
@@ -308,41 +344,6 @@ public static class Program
         });
     }
 
-    /// <summary>
-    /// kor record --module M --kind finding|decision|dead-end|lesson --name N --says D [--body-file F] --source git:path[@rev] [--dir D].
-    /// The K5 subset of K4's verb: git sources only, through RecordStore (verified against git); the same live name is
-    /// superseded. TODO(K4 / migration 171): --session, run:/query: sources and the 'record' event that moves K4's marker
-    /// (CK_Event_Kind has no 'record' before 171).
-    /// </summary>
-    private static int Record(Options o, TextWriter output, BrainDb? db)
-    {
-        var lane = o.Get("--module") ?? throw new ArgumentException("record needs --module <lane>");
-        var kind = o.Get("--kind") ?? throw new ArgumentException("record needs --kind finding|decision|dead-end|lesson");
-        if (kind is "issue" or "resolution")
-            throw new RecordRefusedException($"kind '{kind}' is written by `kor issue` (needs migration 171), never by kor record");
-        if (kind is not ("finding" or "decision" or "dead-end" or "lesson"))
-            throw new ArgumentException($"record kind '{kind}' is not finding|decision|dead-end|lesson");
-        var name = o.Get("--name") ?? throw new ArgumentException("record needs --name <slug>");
-        var says = o.Get("--says") ?? throw new ArgumentException("record needs --says \"...\"");
-        var body = o.Get("--body-file") is { } f ? File.ReadAllText(f) : says;
-        var src = o.Get("--source") ?? throw new ArgumentException("record needs --source git:path[@rev]");
-        if (!src.StartsWith("git:", StringComparison.Ordinal))
-            throw new RecordRefusedException("only git:path[@rev] sources are written before K4 (run:/query: need migration 171)");
-        var where = o.Get("--dir") ?? Environment.CurrentDirectory;
-        var (path, rev) = SplitGitSource(src[4..], TrackedIn(where));
-        var source = RecordStore.At(where, path, rev);
-        var by = RecordStore.Actor();
-        var rec = new NewRecord(lane, name, kind, says, body, by, source);
-        return BrainDb.Use(db, d =>
-        {
-            var live = RecordStore.LiveByName(d, lane, name);
-            var id = live is null ? RecordStore.Insert(d, rec) : RecordStore.Supersede(d, live.Id, rec, by, "restated by kor record");
-            output.WriteLine($"recorded brain.Memory #{id}: {lane} {kind} {name} - {source.Repo}:{source.Path}@{source.Commit[..7]} blob {source.Blob[..7]}" +
-                             (live is null ? "" : $" (supersedes #{live.Id})"));
-            return 0;
-        });
-    }
-
     private static int CaptureTool(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? db)
     {
         var h = ClaudeCapture.Parse(stdin() ?? throw new ArgumentException("capture-tool reads the hook JSON on stdin"));
@@ -354,6 +355,15 @@ public static class Program
         }
         var id = BrainStore.Insert(e, db);
         if (!hook) output.WriteLine($"recorded brain.Event {id}: {e.Module} {e.Kind} {e.Outcome} {e.Ref}");
+        // K5b: a test run is evidence for the issues it names (a pass of the exact filter resolves; a named failure of a
+        // resolved issue opens its regression) - after the event is safely written, in a unit of work of its own.
+        if (e.Kind == "test" && e.Repo is not null)
+        {
+            var repoDir = RepoLocator.Find(e.Repo, h.Cwd is { } cwd && Directory.Exists(cwd) ? cwd : null);
+            var output2 = h.Error is null ? h.Output : (h.Output ?? "") + "\n" + h.Error;
+            var lines = BrainDb.Use(db, d => TestRunIssues.Map(d, e, h.Command, output2, repoDir, ClaudeCapture.ActorOf(h)));
+            if (!hook) foreach (var l in lines) output.WriteLine(l);
+        }
         return 0;
     }
 
@@ -445,7 +455,12 @@ public static class Program
         error.WriteLine("       kor events --module M [--last N] [--kind K] [--full]");
         error.WriteLine("       kor fresh --module M [--dir D] [--cap SECONDS (10)] [--hook] | kor fresh --file-changed [--hook]   (FileChanged JSON on stdin)");
         error.WriteLine("       kor recheck <id> confirm|supersede|withdraw --because \"...\" [--body-file F] [--says D] [--source-path P] [--dir D]");
-        error.WriteLine("       kor record --module M --kind finding|decision|dead-end|lesson --name N --says D --source git:path[@rev] [--body-file F] [--dir D]");
+        error.WriteLine("       kor record --module M --kind finding|decision|dead-end|lesson --name N --says D --source git:path[@rev]|run:<event id>|query:SELECT... [--session S] [--body-file F] [--dir D]");
+        error.WriteLine("       kor memory --module M [--last N]");
+        error.WriteLine("       kor capture-start|capture-check [--module M] [--hook]   (SessionStart / Stop JSON on stdin)");
+        error.WriteLine("       kor issue --module M --name N --description D --check test|gate|query|source --check-ref R [--source-path P] [--body-file F] [--restates ID]");
+        error.WriteLine("       kor check --module M [--issue N] [--resolved] [--kinds test,gate,query] [--timeout S] | kor check --commit-hook [--dir D]");
+        error.WriteLine("       kor resolve --issue N --because \"...\"   (a source-checked issue whose file changed)");
         return 2;
     }
 }

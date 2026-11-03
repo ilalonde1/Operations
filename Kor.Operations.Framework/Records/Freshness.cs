@@ -30,8 +30,8 @@ public sealed record HeadTree(string Commit, IReadOnlyDictionary<string, string>
 /// (review row 102: CK_Memory_SourceBlob refuses uppercase, Latin1_General_BIN is case-sensitive).
 /// Not covered: session/query/run-sourced records never go stale; a record that depends on another file than the one it
 /// cites; contradiction by meaning. Same-class miss: a decision learned from Foo.cs and invalidated by Bar.cs stays current.
-/// TODO(171): skip issues whose CheckKind is test/gate/query (their truth is their check, K5b) - the column does not
-/// exist before 171, and on 168 every issue is a plain source-cited record.
+/// Issues whose CheckKind is test, gate or query are SKIPPED: their truth is their check (K5b, `kor check`), not their
+/// source. A source-checked issue is compared like any record (and is RESOLVED, not rechecked, when its file changes).
 /// </summary>
 public static class Freshness
 {
@@ -39,7 +39,8 @@ public static class Freshness
     public delegate HeadTree? HeadReader(string repoDir, IReadOnlyCollection<string> paths);
 
     private const string Live =
-        "m.RetiredAtUtc IS NULL AND m.Status IN (N'current', N'stale') AND m.SourceKind IN (N'git', N'file')";
+        "m.RetiredAtUtc IS NULL AND m.Status IN (N'current', N'stale') AND m.SourceKind IN (N'git', N'file') " +
+        "AND NOT (m.Kind = N'issue' AND ISNULL(m.CheckKind, N'') IN (N'test', N'gate', N'query'))";   // ISNULL: a pre-171 issue stays checked
 
     /// <param name="budget">time cap (the SessionStart hook); null = none. See <see cref="FreshnessReport.Partial"/>.</param>
     public static FreshnessReport CheckModule(BrainDb db, string module, string? fromDir = null, HeadReader? reader = null,

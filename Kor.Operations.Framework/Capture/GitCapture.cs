@@ -30,13 +30,21 @@ public static class GitCapture
     /// <param name="stdin">pre-push only: the ref lines git writes to the hook's stdin.</param>
     /// <param name="guardExit">pre-push only: the review guard's exit code, when the shim ran it first.</param>
     /// <param name="module">override (tests); otherwise the top-level folder name.</param>
+    /// <param name="session">override (tests); otherwise CLAUDE_CODE_SESSION_ID, which a git hook run from a Claude
+    /// session's shell inherits (<see cref="BrainStore.CurrentSession"/>) - null for a human's commit.</param>
     public static BrainEvent Build(string hook, IReadOnlyList<string> hookArgs, string dir, string? stdin, int? guardExit,
-                                   string? module)
+                                   string? module, string? session = null)
     {
         var top = Git.TopLevel(dir) ?? throw new InvalidOperationException($"{dir} is not inside a git work tree");
         var repo = Git.Leaf(top)!;
         var actor = Actor(top);
         module ??= repo;
+        return Event(hook, hookArgs, stdin, guardExit, top, repo, module, actor) with { Session = session ?? BrainStore.CurrentSession() };
+    }
+
+    private static BrainEvent Event(string hook, IReadOnlyList<string> hookArgs, string? stdin, int? guardExit, string top,
+                                    string repo, string module, string actor)
+    {
         return hook switch
         {
             "post-commit" => Commit(top, repo, module, actor),

@@ -15,7 +15,7 @@ public static class ClaudeCapture
 {
     public sealed record HookInput(string? SessionId, string? TranscriptPath, string? Cwd, string? EventName, string? ToolName,
                                    string? Command, string? Output, string? Error, string? CompactSummary, string? Trigger,
-                                   string? Reason);
+                                   string? Reason, string? Source = null, bool StopHookActive = false);
 
     /// <summary>Parses the hook's stdin. Throws on anything that is not a JSON object (hook mode swallows it).</summary>
     public static HookInput Parse(string stdin)
@@ -39,7 +39,8 @@ public static class ClaudeCapture
         var error = Str(root, "error");
         return new HookInput(Str(root, "session_id"), Str(root, "transcript_path"), Str(root, "cwd"), Str(root, "hook_event_name"),
                              Str(root, "tool_name"), command, output, error, Str(root, "compact_summary"), Str(root, "trigger"),
-                             Str(root, "reason"));
+                             Str(root, "reason"), Str(root, "source"),
+                             root.TryGetProperty("stop_hook_active", out var sa) && sa.ValueKind == JsonValueKind.True);
     }
 
     private static string? Str(JsonElement e, string name) =>
@@ -90,7 +91,7 @@ public static class ClaudeCapture
         detail["source_why"] = why;
         detail["module_from"] = from;
         detail["shell"] = shell;
-        return new BrainEvent(module, t.Kind, repo, commit, t.Ref, t.Outcome, detail.ToJsonString(GitCapture.Json), ActorOf(h));
+        return new BrainEvent(module, t.Kind, repo, commit, t.Ref, t.Outcome, detail.ToJsonString(GitCapture.Json), ActorOf(h), h.SessionId);
     }
 
     /// <summary>PostCompact: the summary becomes the module's resume record (brain.LaneState), plus a 'compact' event.</summary>
@@ -99,7 +100,7 @@ public static class ClaudeCapture
         var module = ModuleOf(h, moduleOverride);
         int? laneId = null;
         if (!string.IsNullOrWhiteSpace(h.CompactSummary))
-            laneId = BrainStore.InsertLaneState(module, h.CompactSummary!, $"compaction {h.SessionId ?? "?"}", db);
+            laneId = BrainStore.InsertLaneState(module, h.CompactSummary!, $"compaction {h.SessionId ?? "?"}", db, h.SessionId);
         var detail = JsonSerializer.Serialize(new
         {
             trigger = h.Trigger,
@@ -108,11 +109,11 @@ public static class ClaudeCapture
             session_id = h.SessionId,
         }, GitCapture.Json);
         var id = BrainStore.Insert(new BrainEvent(module, "compact", null, null, h.TranscriptPath,
-                                                  laneId is null ? "empty" : "stored", detail, ActorOf(h)), db);
+                                                  laneId is null ? "empty" : "stored", detail, ActorOf(h), h.SessionId), db);
         return (laneId, id);
     }
 
     /// <summary>SessionEnd: the end and where the transcript is. No git, one insert - it must finish inside the budget.</summary>
     public static BrainEvent End(HookInput h, string? moduleOverride) =>
-        new(ModuleOf(h, moduleOverride), "session-end", null, null, h.TranscriptPath, h.Reason, h.Reason, ActorOf(h));
+        new(ModuleOf(h, moduleOverride), "session-end", null, null, h.TranscriptPath, h.Reason, h.Reason, ActorOf(h), h.SessionId);
 }

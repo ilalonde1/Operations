@@ -68,10 +68,32 @@ public sealed class BrainDb : IDisposable
     /// </summary>
     public static T Use<T>(BrainDb? db, Func<BrainDb, T> work)
     {
-        if (db is not null) return work(db);
-        using var own = Open();
-        var result = work(own);
-        own.Commit();
-        return result;
+        if (db is not null) return work(db);   // the caller's transaction: a deadlock dooms it, the caller decides
+        return RetryOnceOnDeadlock(() =>
+        {
+            using var own = Open();
+            var result = work(own);
+            own.Commit();
+            return result;
+        }, IsDeadlock, Thread.Sleep);
     }
+
+    /// <summary>
+    /// A kor hook write that is chosen as a deadlock victim (SQL 1205 - 3 Nov: migration 173's first APPLY deadlocked
+    /// against a live hook writing brain.Event) is run ONCE more, whole, in a new unit of work, after a random 200-600 ms.
+    /// A second failure is thrown: hook mode logs it and exits 0 (fresh prints its COULD NOT CHECK line).
+    /// </summary>
+    public static T RetryOnceOnDeadlock<T>(Func<T> attempt, Func<Exception, bool> isDeadlock, Action<TimeSpan> sleep)
+    {
+        try { return attempt(); }
+        catch (Exception e) when (isDeadlock(e))
+        {
+            sleep(TimeSpan.FromMilliseconds(Random.Shared.Next(200, 601)));
+            return attempt();
+        }
+    }
+
+    /// <summary>SQL error 1205 (this transaction was the deadlock victim), anywhere in the exception's errors.</summary>
+    public static bool IsDeadlock(Exception e) =>
+        e is SqlException s && (s.Number == 1205 || s.Errors.Cast<SqlError>().Any(x => x.Number == 1205));
 }

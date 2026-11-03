@@ -16,6 +16,7 @@ namespace Kor.Operations.Framework.Tests;
 /// Does NOT cover: the hook wiring itself (settings.json, .git/hooks shims) - proved by the real commit in Framework;
 /// a session that is killed before its hook runs.
 /// </summary>
+[Collection(LiveDb.Name)]
 public class CaptureTests
 {
     private static readonly string Module = $"zz-test-k3-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N")[..4]}";
