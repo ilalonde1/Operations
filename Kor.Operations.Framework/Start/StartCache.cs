@@ -15,7 +15,7 @@ public static class StartCache
 
     /// <summary>A hook render (cut to the budget) and a --text render are kept apart: one is never served for the other.</summary>
     public static string PathFor(string dir, string module, string part, bool hook) =>
-        Path.Combine(dir, $"start_{Safe(module)}_{part}{(hook ? "" : "_text")}.txt");
+        Path.Combine(dir, $"start_{Safe(module)}_{Safe(part)}{(hook ? "" : "_text")}.txt");
 
     private static string Safe(string s) => new(s.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.' ? c : '_').ToArray());
 

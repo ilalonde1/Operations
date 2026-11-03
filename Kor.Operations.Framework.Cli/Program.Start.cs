@@ -141,8 +141,9 @@ public static partial class Program
                     if (tag is not null && !tagOnly) state = state.FilterByTag(tag);
                     return (BoardRender.Render(state, DateTime.Now, budget, command), (IReadOnlyList<string>)Array.Empty<string>());
                 },
-                StartCache.PathFor(cacheDir, module, "board", hook), budget, deadline,
-                "read the board by hand (Operations tools/SqlQuery/oq.py: oversight.vw_Board)", () => DateTime.Now, Log);
+                // review row 311: a tag-only board has its own cache and its own by-hand line (never the whole vw_Board)
+                StartCache.PathFor(cacheDir, module, BoardRender.CachePart(tag, tagOnly), hook), budget, deadline,
+                BoardRender.ByHand(tag, tagOnly, command), () => DateTime.Now, Log);
             texts.Add(SecretGuard.Mask(r.Text)!);   // mistake 138: a page from the cache, written before the guard, is masked too
         }
         // a memory page past the lane's content has nothing to say: the hook prints nothing (Claude Code adds no context).

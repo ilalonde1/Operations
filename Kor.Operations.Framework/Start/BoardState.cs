@@ -173,6 +173,24 @@ public static class BoardRender
               string.Join(" ", givenOwners.Select(o => $"--owner \"{o}\"")) + (noHelpers ? " --no-helpers" : "") +
               (tag is null ? "" : $" --tag \"{tag}\"") + " --text";
 
+    /// <summary>
+    /// The board part's cache name (StartCache.PathFor's part). Review row 311: the cache is what a late or unreadable board
+    /// shows, so a tag-only board keeps a cache of its own - one keyed on "board" alone would serve the last owner-filtered
+    /// render, owner names and all, through the confidentiality wall. The untagged board keeps "board" (unchanged).
+    /// </summary>
+    public static string CachePart(string? tag, bool tagOnly) =>
+        tag is null ? "board" : tagOnly ? $"board-tagonly-{tag}" : $"board-owners-tag-{tag}";
+
+    /// <summary>
+    /// What a late or unreadable board tells the session to do by hand. Tag-only (review row 311): the TAGGED rows only -
+    /// never "read vw_Board", which is every owner's rows.
+    /// </summary>
+    public static string ByHand(string? tag, bool tagOnly, string fullBoardCommand) =>
+        tagOnly && tag is not null
+            ? $"read the rows tagged [{tag}] by hand: {fullBoardCommand}, or (oq.py) SELECT Id, State, What, DoneWhen, Budget " +
+              $"FROM oversight.vw_Board WHERE What LIKE N'[[]was {tag.Replace("'", "''")}]%' OR CHARINDEX(N'[{tag.Replace("'", "''")}]', What) > 0"
+            : "read the board by hand (Operations tools/SqlQuery/oq.py: oversight.vw_Board)";
+
     /// <summary>The whole board part: the rows, then (Framework) the owed block and the guards line, which keep their room.</summary>
     public static string Render(BoardState s, DateTime now, int? budget, string fullBoardCommand)
     {

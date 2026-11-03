@@ -145,6 +145,47 @@ public class BoardTagTests
     }
 
     [Fact]
+    public void ALateOrUnreadableTagOnlyBoardNeverServesAnOwnerBoardsCache()
+    {
+        // review row 311: the owner-filtered board (tagged or not) saved its render; the tag-only board then fails to read
+        var dir = Path.Combine(Path.GetTempPath(), "kor-boardtag-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var now = new DateTime(2026, 11, 3, 12, 0, 0);
+            var ownerText = BoardRender.Render(State().FilterByTag("Revit Tools"), now, null, "cmd");
+            Assert.Contains("Virtual Drafter", ownerText);
+            foreach (var hook in new[] { true, false })
+            {
+                StartCache.Save(StartCache.PathFor(dir, "KOR.RevitTools", BoardRender.CachePart("Revit Tools", tagOnly: false), hook), ownerText);
+                StartCache.Save(StartCache.PathFor(dir, "KOR.RevitTools", BoardRender.CachePart(null, tagOnly: false), hook), ownerText);
+            }
+            var cmd = BoardRender.FullBoardCommand("KOR.RevitTools", Array.Empty<string>(), false, "Revit Tools");
+            foreach (var hook in new[] { true, false })
+            {
+                var path = StartCache.PathFor(dir, "KOR.RevitTools", BoardRender.CachePart("Revit Tools", tagOnly: true), hook);
+                var r = StartPart.Run(() => throw new TimeoutException("db down"), path, 9900, TimeSpan.FromSeconds(5),
+                                      BoardRender.ByHand("Revit Tools", tagOnly: true, cmd), () => now);
+                Assert.False(r.Live);
+                Assert.Contains("No cached render on this machine", r.Text);
+                foreach (var owner in OwnerNames) Assert.DoesNotContain(owner, r.Text);
+                Assert.DoesNotContain("Owner", r.Text);
+                Assert.Contains("CHARINDEX(N'[Revit Tools]', What)", r.Text);   // the by-hand read is the TAGGED rows only
+                Assert.DoesNotContain("oq.py: oversight.vw_Board)", r.Text);
+                // a good tag-only render is cached under its own name and served on the next failure
+                var good = BoardRender.Render(BoardState.TagOnly(AcrossOwners, "Revit Tools"), now, null, cmd);
+                StartCache.Save(path, good);
+                var again = StartPart.Run(() => throw new TimeoutException("db down"), path, null, TimeSpan.FromSeconds(5),
+                                          BoardRender.ByHand("Revit Tools", tagOnly: true, cmd), () => now);
+                Assert.EndsWith(good, again.Text);
+                foreach (var owner in OwnerNames) Assert.DoesNotContain(owner, again.Text);
+            }
+            // the untagged board's cache name is what it was before --tag
+            Assert.Equal(Path.Combine(dir, "start_KOR.RevitTools_board.txt"), StartCache.PathFor(dir, "KOR.RevitTools", BoardRender.CachePart(null, false), true));
+        }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void TheTagOnlyFullBoardCommandNamesNoOwner()
     {
         Assert.Equal("C:/KOR-Operations/kor/kor.exe start --module \"KOR.RevitTools\" --part board --tag \"Revit Tools\" --text",
