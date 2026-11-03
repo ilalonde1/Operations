@@ -66,7 +66,8 @@ public static class ToolClassifier
         // Migrations and gates (review rows 87, 88 - the rule, stated once): the NEUTRAL copy decides structure only - is
         // the tool in command position, and where its command segment ends (a real ; | or newline). The NAME is matched
         // on the ORIGINAL text of that segment, so a '(' or ';' inside a quoted name is part of it, and a name ends where
-        // its pattern ends (the first ".sql"; a gate's closing quote) - never widened past ')' '>' or ','.
+        // its pattern ends (a migration: the first ".sql"; a gate: its closing quote, or for a bare name the first
+        // whitespace, quote, ; & | ( ) < or > - a ',' stays in a bare gate name: "run p.json,x" gives "p.json,x").
         if ((m = Sqlcmd.Match(neutral)).Success && SqlcmdFile.Match(Segment(command, m.Groups["rest"])) is { Success: true } s)
             return Make("migration", s.Groups["file"].Value, MigrationOutcome(output, exitCode), command, output, MigrationSummary);
         if ((m = KorSql.Match(neutral)).Success && SqlFile.Match(Segment(command, m.Groups["rest"])) is { Success: true } k)
