@@ -1,9 +1,23 @@
 # Operations - HANDOVER
 
-## STATE NOW - 2 Nov 2026 16:01 BCDT (`date`), written by the framework lead at enrollment. Read first.
+## STATE NOW - 2 Nov 2026 20:55 BCDT (`date`), written by the Framework lead. Read first.
 
 **The Operations lead has not run a session under this handover yet.** At its first close it replaces this block
-with its own state: the work in hand, decisions, traps found. Until then, these are the verified facts:
+with its own state. Until then, these are the verified facts (20:55):
+- **Git:** `develop` = `origin/develop` = f716a752, 0 ahead, working tree clean. Everything is pushed.
+- **Board:** Owner `Operations` has 0 open rows. When Ian asks for a change or an addition, FIRST add it as a row
+  (What = the goal, DoneWhen = the finish line, Budget = time / runs / what it may read - the board refuses a row
+  without a Budget), then work it, then close it with its evidence. Your rows show at every session start.
+- **Memory:** in the database, lane "Operations" (562 notes; the BD section is the memory `index-bd` -
+  `python -I "C:\VIsual Studio Projects\Framework\tools\kor_brain.py" show --lane Operations --name index-bd`).
+  Write new memory with kor_brain (`.claude/CLAUDE.md` says how); the file memory folder is a frozen fallback.
+- **Before any push:** every commit needs a fresh-session review -
+  `python -I "C:\VIsual Studio Projects\Framework\tools\kor_review.py" review` (about $0.3-0.6 each); fix what it
+  finds. The pre-push hook refuses an unreviewed commit. Pushing to GitHub: Ian has told the Framework lead to do it.
+- **BD:** never the Anthropic API (a guard refuses it in the Director / Knowledge / CLI code and in Codex briefs).
+  Deploying the BD app to APP01 is Ian's call.
+
+Facts from enrollment, 16:01 (history):
 
 - **Scope:** BD (BD Director, opportunities, research, dossiers), Finance (financials engine, Deltek data), the
   Operations app core (FileSync, email filing, transmittals, WPF), the MCP server (`Kor.Operations.Mcp`), contracts.
