@@ -48,13 +48,22 @@ public static partial class Program
         if (part is "record" or "all")
         {
             var start = new ModuleState.Start(session, source);
-            var r = StartPart.Run(() => BrainDb.Use(db, d =>
+            (string, IReadOnlyList<string>) Work(BrainDb d)
+            {
+                var s = ModuleState.Load(d, module, start, dir, freshnessCap: TimeSpan.FromSeconds(5));
+                var rendered = (StartRender.Record(s, budget), StartRender.WatchPaths(s.Fresh));
+                StartTrace.Mark("rendered");
+                return rendered;
+            }
+            // The installed kor commits its freshness writes and query-check results ONLY through the gate: a part the
+            // deadline already called late rolls back (review row 193). A caller's unit of work (a test) is never committed.
+            var r = StartPart.Run(gate => db is not null ? Work(db) : BrainDb.RetryOnceOnDeadlock(() =>
                 {
-                    var s = ModuleState.Load(d, module, start, dir, freshnessCap: TimeSpan.FromSeconds(5));
-                    var rendered = (StartRender.Record(s, budget), StartRender.WatchPaths(s.Fresh));
-                    StartTrace.Mark("rendered");
-                    return rendered;
-                }),
+                    using var own = BrainDb.Open();
+                    var result = Work(own);
+                    if (!gate.TryCommit(own.Commit)) throw new OperationCanceledException("kor start: the record part was late - rolled back");
+                    return result;
+                }, BrainDb.IsDeadlock, Thread.Sleep),
                 StartCache.PathFor(cacheDir, module, "record", hook), budget, deadline,
                 $"read the record by hand: kor memory --module \"{module}\" and kor events --module \"{module}\"", () => DateTime.Now, Log);
             texts.Add(r.Text);

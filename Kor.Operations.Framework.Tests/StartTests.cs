@@ -255,6 +255,37 @@ public class StartTests
     }
 
     [Fact]
+    public void ALatePartCanNeverCommitAfterTheSessionWasToldItIsLate()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"kor-k6-{Guid.NewGuid():N}.txt");
+        var committed = 0;
+        bool? granted = null;
+        var finished = new ManualResetEventSlim();
+        var late = StartPart.Run(gate =>
+        {
+            Thread.Sleep(600);
+            granted = gate.TryCommit(() => Interlocked.Increment(ref committed));
+            finished.Set();
+            return ("late render", Array.Empty<string>());
+        }, path, 9900, TimeSpan.FromMilliseconds(100), "by hand", () => DateTime.Now);
+        Assert.StartsWith("!! PART LATE", late.Text);
+        Assert.True(finished.Wait(TimeSpan.FromSeconds(10)));
+        Assert.False(granted);
+        Assert.Equal(0, committed);                       // refused: its unit of work rolls back
+        Assert.False(File.Exists(path));                  // and nothing late is cached as live
+
+        // committed at the deadline: waited for and shown live, never hidden behind a LATE banner
+        var gateSeen = new StartPart.Gate();
+        Assert.True(gateSeen.TryCommit(() => { }));
+        Assert.False(gateSeen.MarkLate());
+        var onTime = StartPart.Run(gate => (gate.TryCommit(() => committed++) ? "LIVE" : "?", Array.Empty<string>()), path, 9900,
+                                   TimeSpan.FromSeconds(30), "by hand", () => DateTime.Now);
+        Assert.Equal("LIVE", onTime.Text);
+        Assert.Equal(1, committed);
+        File.Delete(path);
+    }
+
+    [Fact]
     public void HookAllPartsIsRefusedQuietlyAndExitsZero()
     {
         var output = new StringWriter();
@@ -404,10 +435,12 @@ public class StartLiveTests(Xunit.Abstractions.ITestOutputHelper log)
     }
 
     [Fact]
-    public void LiveFrameworksStartIsWithinItsStepZeroBudget()
+    public void LiveFrameworksStartIsWithinTwiceItsStepZeroBudget()
     {
-        // step 0 (3 Nov, median of 5): Framework board_render 1.41 s, kor_brain render 1.21 s -> 1.41 s. This measures the
-        // record part's work in-process (load + render on a rolled-back unit of work, connection included), median of 5.
+        // step 0 (3 Nov, median of 5): Framework board_render 1.41 s, kor_brain render 1.21 s -> 1.41 s. The budget itself
+        // is proved by timing the INSTALLED kor.exe 5 times (row 1188); this in-process median of 5 (load + render on a
+        // rolled-back unit of work, connection included) is a regression guard with a 2x margin, so a loaded machine or a
+        // slow VPN does not turn the suite red without a code change (review row 193), while a 2x slowdown still does.
         var times = new List<double>();
         for (var i = 0; i < 5; i++)
         {
@@ -421,7 +454,7 @@ public class StartLiveTests(Xunit.Abstractions.ITestOutputHelper log)
         }
         times.Sort();
         log.WriteLine(string.Join(", ", times.Select(t => t.ToString("0.00"))));
-        Assert.True(times[2] < 1.41, $"median {times[2]:0.00} s");
+        Assert.True(times[2] < 2 * 1.41, $"median {times[2]:0.00} s");
     }
 
     [Fact]

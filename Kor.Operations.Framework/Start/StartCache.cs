@@ -87,15 +87,58 @@ public static class StartPart
 
     public sealed record Result(string Text, bool Live, IReadOnlyList<string> WatchPaths);
 
+    /// <summary>
+    /// Decides, once, between "the part committed" and "the part is late" (review row 193: a late part's task kept running
+    /// and could commit freshness writes and query-check resolutions after the session was told PART LATE). The part
+    /// commits only through <see cref="TryCommit"/>; once the deadline has called it late, the commit is refused and the
+    /// unit of work rolls back. A part that committed just before the deadline is waited for and shown live.
+    /// </summary>
+    public sealed class Gate
+    {
+        private readonly object _lock = new();
+        private bool _late, _committed;
+
+        public bool TryCommit(Action commit)
+        {
+            lock (_lock)
+            {
+                if (_late) return false;
+                commit();
+                _committed = true;
+                return true;
+            }
+        }
+
+        /// <summary>True when the part is now late (it can no longer commit); false when it already committed.</summary>
+        public bool MarkLate()
+        {
+            lock (_lock)
+            {
+                if (_committed) return false;
+                _late = true;
+                return true;
+            }
+        }
+    }
+
     public static Result Run(Func<(string Text, IReadOnlyList<string> Watch)> live, string cachePath, int? budget, TimeSpan deadline,
+                             string byHand, Func<DateTime> now, Action<Exception>? log = null) =>
+        Run(_ => live(), cachePath, budget, deadline, byHand, now, log);
+
+    public static Result Run(Func<Gate, (string Text, IReadOnlyList<string> Watch)> live, string cachePath, int? budget, TimeSpan deadline,
                              string byHand, Func<DateTime> now, Action<Exception>? log = null)
     {
-        var task = Task.Run(live);
+        var gate = new Gate();
+        var task = Task.Run(() => live(gate));
         try
         {
             if (!task.Wait(deadline))
-                return new Result(StartCache.Fallback($"!! PART LATE: not back in {Records.Freshness.Secs(deadline)} s !!", cachePath, now(), budget, byHand),
-                                  false, Array.Empty<string>());
+            {
+                if (gate.MarkLate())
+                    return new Result(StartCache.Fallback($"!! PART LATE: not back in {Records.Freshness.Secs(deadline)} s !!", cachePath, now(), budget, byHand),
+                                      false, Array.Empty<string>());
+                task.Wait();   // it committed at the deadline: what it wrote is shown, never hidden behind a LATE banner
+            }
             var (text, watch) = task.Result;
             StartCache.Save(cachePath, text);
             return new Result(text, true, watch);
