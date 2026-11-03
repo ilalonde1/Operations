@@ -323,7 +323,7 @@ public class K5bTests
         try
         {
             var line = Assert.Single(TestRunIssues.Map(db, test, "dotnet test", TestFailOut, notRepo, "k5b-test"));
-            Assert.DoesNotContain(BrainStore.ChecksOf(issue.Id, db), e => e.Outcome != "pass");   // only the setup pass: git could not read the folder, so no commit was confirmed and nothing was recorded (rows 184, 186)
+            Assert.Equal("pass", Assert.Single(BrainStore.ChecksOf(issue.Id, db)).Outcome);   // exactly the setup pass: git could not read the folder, so no commit was confirmed and nothing was recorded (rows 184, 186, 188)
             Assert.Contains("not recorded (no commit to cite)", line);
             Assert.DoesNotContain("REGRESSION", line);
             Assert.Null(RecordStore.OpenIssueByName(db, Lane, $"fail-no-git (regression of #{issue.Id})"));
