@@ -184,7 +184,7 @@ public static class CheckCache
         catch (Exception e)
         {
             log(e);
-            if (cached is null)
+            if (cached is null || cached.ReadAtUtc == DateTimeOffset.MinValue)   // no cache, or only the outage marker (review row 227)
             {
                 // remember the outage (no checks known): the next calls in the minute do not wait on the server again
                 Save(dir, new Snapshot(DateTimeOffset.MinValue, new List<LiveCheck>(), now + DownBackoff));

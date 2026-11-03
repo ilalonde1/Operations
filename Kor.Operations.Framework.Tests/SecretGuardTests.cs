@@ -66,6 +66,7 @@ public class SecretGuardTests
         "Password=ChangeMe; Pwd=password; token=none",
         "Bearer x and Bearer <token>",
         "sk-ant- keys are refused; AKIA alone is a prefix",
+        "Run(token=cancellationToken, secret=default)",   // review row 227: code names are not values
     };
 
     [Theory]
@@ -121,6 +122,14 @@ public class SecretGuardTests
             Assert.DoesNotContain("zx9vq2mt", s);
         }
         Assert.Equal(400, SecretGuard.ForGuardLog(new string('a', 900)).Length);
+        // review row 227: a marker cut at the limit never makes the text longer than 400
+        for (var n = 380; n <= 400; n++)
+        {
+            var s = SecretGuard.ForGuardLog(new string('a', n) + " password=Zx9vQ2mTq and more text after it");
+            Assert.True(s.Length <= 400, $"{n}: {s.Length}");
+            Assert.DoesNotMatch("(?i)password=[^\\[]", s);
+            Assert.DoesNotContain("Zx9vQ2mTq", s);
+        }
     }
 
     // ---- live, rolled back -------------------------------------------------------------------------------------------

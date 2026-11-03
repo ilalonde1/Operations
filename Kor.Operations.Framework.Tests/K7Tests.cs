@@ -238,7 +238,7 @@ public class K7Tests
         Assert.DoesNotContain("Zx9vQ2mT", rd.GetString(0));
         Assert.StartsWith("zzk7tool --danger", rd.GetString(0));
         Assert.Equal("zz-k7-session", rd.GetString(1));
-        Assert.Equal("Operations", rd.GetString(2));
+        Assert.Equal(Git.Leaf(Git.TopLevel(RepoDir())), rd.GetString(2));   // the checkout's own folder name (review row 227)
         rd.Close();
         // kor checks --hits reads it
         var (code, o, e) = Run(db, board, null, "checks", "--module", Module, "--hits", "1");
@@ -267,6 +267,11 @@ public class K7Tests
         Assert.Equal("stale cache (db unreadable)", s3);
         Assert.Single(CheckCache.Get(dir, () => throw new Exception("not called"), now.AddMinutes(10.5), logged.Add, out var s4)!);
         Assert.Equal("cache", s4);   // held down for 60 s
+        // review row 227: still down after the back-off with only the outage marker -> still "none", never an empty "stale cache"
+        var dir2 = Path.Combine(Path.GetTempPath(), $"kor-k7-cache-{Guid.NewGuid():N}");
+        Assert.Null(CheckCache.Get(dir2, Down, now, logged.Add, out _));
+        Assert.Null(CheckCache.Get(dir2, Down, now.AddMinutes(2), logged.Add, out var s5));
+        Assert.Equal("none", s5);
     }
 
     // 13

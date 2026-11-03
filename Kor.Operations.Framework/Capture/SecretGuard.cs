@@ -70,7 +70,7 @@ public static class SecretGuard
         {
             var (i, l) = Unquote(m.Groups["v"]);
             var v = text.Substring(i, l);
-            if (l >= 4 && !IsPlaceholder(v) && !IsEnvName(v) && !IsCode(v)) hits.Add(new Hit(i, l, "kv"));
+            if (l >= 4 && !IsPlaceholder(v) && !IsEnvName(v) && !IsCode(v) && !IsPlainIdentifier(v)) hits.Add(new Hit(i, l, "kv"));
         }
         foreach (Match m in ProseWord.Matches(text)) Prose(text, m.Index + m.Length, hits);
         foreach (Match m in Prefix.Matches(text))
@@ -226,10 +226,17 @@ public static class SecretGuard
         s = Regex.Replace(s, @"(password|pwd|accountkey)\s*=\s*('[^']*'|""[^""]*""|[^;\s]*)", "$1=[redacted]", I);
         s = Regex.Replace(s, @"sk-ant-\S*", "sk-ant-[redacted]", I);
         s = Regex.Replace(s, @"bearer[ \t]+\S*", "Bearer [redacted]", I);
+        // cut with room for the marker pass, which can lengthen a marker cut in two ("password=" + "[redacted]"), then
+        // cut again at a marker-safe point (review row 227: the result is never longer than max)
         s = s.Length <= max ? s : s[..(max - 3)] + "...";
-        // a cut can leave a marker at the very end followed by nothing - the constraint needs a following non-'[' char,
-        // so that is safe; a cut that splits "[redacted]" after a marker is not: re-run the marker pass on the cut text
-        return Regex.Replace(s, @"(password|pwd|accountkey)=(?!\[)", "$1=[redacted]", I);
+        s = Regex.Replace(s, @"(password|pwd|accountkey)=(?!\[)", "$1=[redacted]", I);
+        while (s.Length > max)
+        {
+            s = s[..(max - 3)] + "...";
+            // a marker now at the cut, e.g. "...password=..." : drop the dangling marker text instead of re-growing
+            s = Regex.Replace(s, @"(password|pwd|accountkey)=(?!\[)", "", I);
+        }
+        return s;
     }
 
     // ---- prose ---------------------------------------------------------------------------------------------------------
@@ -320,6 +327,13 @@ public static class SecretGuard
     private static bool IsCode(string v) =>
         Regex.IsMatch(v, @"\A[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+\z")   // args.Password, os.environ
         || Regex.IsMatch(v, @"\A[A-Za-z_][\w.]*\(") || v.Contains("[\"") || v.Contains("['");
+
+    /// <summary>A code name, not a value (review row 227): a camelCase identifier (cancellationToken, pwdBox) or a code
+    /// word (default, true, false, string, input, args). A lowercase word that is none of these (hunter), a capitalised
+    /// word (Summer), or anything with a digit or symbol is still a value.</summary>
+    private static bool IsPlainIdentifier(string v) =>
+        Regex.IsMatch(v, @"\A[a-z]+(?:[A-Z][a-z]+)+\z")
+        || v is "default" or "true" or "false" or "string" or "input" or "args" or "param" or "secure" or "prompt";
 
     private static bool IsGuid(string v) => Guid.TryParse(v, out _);
 
