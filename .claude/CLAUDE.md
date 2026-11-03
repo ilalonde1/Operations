@@ -25,3 +25,11 @@ Update the STATE NOW block of `docs/HANDOVER.md`, every time read off `date`.
 
 ## The office rules
 `CLAUDE.md` in this folder (rules 1-15) loads with this file.
+
+## Memory lives in the DB (Framework F7, 2 Nov 2026)
+Your memory is KorStandards `brain`, lane "Operations", loaded into every session at start (the "YOUR MEMORY" block).
+Write a memory: `python -I "C:\VIsual Studio Projects\Framework\tools\kor_brain.py" note --lane "Operations" --name <slug>
+--kind <user|feedback|project|reference> --description "<one line>" --body-file <file>`. Retire one: `... retire
+--lane "Operations" --name <slug> --because "<why>"`. Keep your resume block: `... state --lane "Operations" --file <file>`.
+Search: `... search <term> --lane "Operations"`. The file memory folder is a READ-ONLY fallback, frozen at the import on
+2 Nov 2026: do not write new memory files.
