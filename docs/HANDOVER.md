@@ -11,14 +11,22 @@ say Banff Centre (#1142) closes Thu 5 Nov. APC's public feed says it was amended
 `https://purchasing.alberta.ca/api/opportunity/public/2026/6968` and `/6999`. Cause of the hour's date: not traced.
 
 **Where BD stands (live reads):**
-- Board: 0 open rows for Operations. None of the items below is on it.
+- Board: since 10:41 the open items below, plus every open line of project_bd_director_todo and
+  project_bd_module_deferred_work (both read in full), are rows from 1570 (read `oversight.vw_Board`, Owner Operations). The
+  board is the list now; this block does not repeat it.
+- 4 Nov 11:30: Conor's brief on Bridgestar, Team, Ironclad is built (docs and Desktop\BD, not yet sent to him). Migration 382
+  banked its people and facts. Follow-ups are rows 1630-1639. Bar from Ian: every brief ships McKinsey level, record 124915.
 - Git: nothing unpushed at 09:43. Newest commits on BD code on any branch: f08f764e V30, 22 Oct. Later: contracts
   (f4feedfa, 939209dc, 33f5cbad, 28 Oct).
 - Worker: version 1.0.9790.1290 = built 21 Oct 21:30. V30's email-format fix (22 Oct) has never been deployed. Result: 11
   BDALERTS-* junk rows since 22 Oct, 10 undismissed. Deploying is Ian's word.
-- APC sign-in DEAD since 21 Oct 23:13 (`PortalSession.LastError` invalid_grant). ApcDocumentJob reports Success=1 on
-  every run with "APC sign-in needed" in Summary, 1,002 runs in 7 days, so it reads green. Last APC fetch 21 Oct 14:48. A
-  person must sign in: My Pursuits, More, Sign in to APC. Grabbed APC tenders get no documents or addenda until then.
+- APC sign-in DEAD: last good renewal 21 Oct 23:13, first refused 23:23 (`PortalSession.LastError` invalid_grant). Corrected
+  10:37 4 Nov: renewals gave 30 minutes each up to a hard stop at 23:22:32, 10 hours after the 13:22:35 sign-in (one session
+  observed), so "sign in once" cannot hold; a sign-in buys about 10 hours. ApcDocumentJob: Success=1 on all 1,962 runs since,
+  with "APC sign-in needed" in Summary. Missing: Banff Addendum 1 (26 Oct), Peace River Addendum 1 and drawings (4 Nov 16:33
+  UTC). Sign in: My Pursuits, More, Sign in to APC, as bdalerts@. Rows 1571, 1572, 1579. APP01's APCUSERNAME (contact@, per
+  the 20-21 Oct notes; not re-read, guard needs Ian's "run it") is read by no code found: the name appears in no .cs, .json,
+  .ps1 or .config, nor their git history.
 - Morning hour: written every weekday, ids 11-18 for 26 Oct to 4 Nov. Emailed 06:05 to 30 Oct, 07:05 on 2, 3, 4 Nov, so the
   email has run an hour late since the zone change. Cause not checked. `DirectorHourMove` has 0 rows: no move ever recorded.
 - Pipeline: 161 live, 0 without owner, 151 with no next action date, 5 tenders. `CrmActivities` since 22 Oct: 0.

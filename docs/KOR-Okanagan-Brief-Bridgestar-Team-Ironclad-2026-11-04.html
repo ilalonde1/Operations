@@ -1,0 +1,209 @@
+<title>Okanagan Targets Brief</title>
+<style>
+  :root {
+    --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+    --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+    --accent:#FF5B35; --accent-ink:#C6360F;
+    --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --crit:#C0392B;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono:"Cascadia Code", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+      --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87;
+      --line:#29323B; --line-strong:#38434E; --slate:#7E97AC; --slate-deep:#C4D3DF;
+      --accent:#FF7150; --accent-ink:#FF9276; }
+  }
+  :root[data-theme="light"] { --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2; --line:#E5E4E1; --line-strong:#D3D2CE;
+    --slate:#3F5364; --slate-deep:#2C3A47; --accent:#FF5B35; --accent-ink:#C6360F; }
+  :root[data-theme="dark"] { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+    --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B; --line-strong:#38434E;
+    --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:11pt; line-height:1.4; -webkit-font-smoothing:antialiased; }
+  .page { max-width: 8.1in; margin: 0 auto; padding: 0 0 .3in; }
+
+  .top { background: linear-gradient(180deg,var(--slate-deep),var(--slate));
+    color:#EAF0F5; border-bottom:2.5px solid var(--accent);
+    padding: 15px 22px; display:flex; align-items:baseline; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+  .top h1 { margin:0; font-size:19pt; font-weight:700; letter-spacing:-.01em; color:#fff; }
+  .top .ey { font-family:var(--mono); font-size:7.5pt; letter-spacing:.2em; text-transform:uppercase; color:#FFB59F; }
+  .top p { margin:.15rem 0 0; font-size:10pt; color:#CBD8E2; max-width:32rem; }
+
+  .body { padding: 16px 22px 0; }
+  h2 { font-family:var(--mono); font-size:8pt; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); margin: 0 0 .5rem; font-weight:700; }
+
+  /* lifecycle */
+  .flow { display:grid; grid-template-columns:repeat(3,1fr); gap:.55rem; margin:0 0 16px; }
+  .step { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.6rem .7rem;
+    border-left:3px solid var(--accent); }
+  .step .n { font-family:var(--mono); font-weight:700; color:var(--accent-ink); font-size:8.5pt; }
+  .step h3 { margin:.1rem 0 .2rem; font-size:11pt; }
+  .step p { margin:0; font-size:9pt; color:var(--ink-soft); line-height:1.35; }
+
+  /* cheat table */
+  table { border-collapse:collapse; width:100%; font-size:10pt; margin-bottom:16px; }
+  td { padding:.34rem .5rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr td:first-child { font-weight:650; white-space:nowrap; width:11.2rem; color:var(--ink); }
+  tr:nth-child(even) { background:var(--surface-2); }
+
+  .btn { font-family:var(--mono); font-size:8.6pt; background:var(--slate); color:#fff;
+    border-radius:5px; padding:.05em .4em; white-space:nowrap; }
+  :root[data-theme="dark"] .btn { color:#0f141a; }
+  :root[data-theme="light"] .btn { color:#fff; }
+  kbd { font-family:var(--mono); font-size:8.6pt; background:var(--surface); border:1px solid var(--line-strong);
+    border-bottom-width:2px; border-radius:5px; padding:.02em .38em; color:var(--ink); }
+  .path b { color:var(--accent-ink); font-family:var(--mono); font-size:9pt; }
+
+  /* bottom strip */
+  .strip { display:grid; grid-template-columns: 1.15fr 1fr 1.15fr; gap:.7rem; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.7rem .8rem; }
+  .card.accent { border-left:3px solid var(--good); background: color-mix(in srgb, var(--good) 8%, var(--surface)); }
+  .card p { margin:.25rem 0 0; font-size:9pt; color:var(--ink-soft); line-height:1.4; }
+  .card .lead { color:var(--ink); font-weight:600; font-size:9.5pt; }
+  .live { display:flex; flex-direction:column; gap:.28rem; margin-top:.3rem; }
+  .live div { font-size:9pt; }
+  .live b { font-family:var(--mono); font-size:8.6pt; color:var(--accent-ink); }
+
+  .pills { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.35rem; }
+  .pill { display:inline-flex; font-family:var(--mono); font-size:7.6pt; font-weight:600;
+    padding:.14em .5em; border-radius:999px; color:#fff; }
+  .pill--won{background:#228B22} .pill--sub{background:#E5A800} .pill--draft{background:#609BD1}
+  .pill--lost{background:#808080} .pill--fresh{background:#228B22} .pill--watch{background:#E5A800} .pill--cold{background:#C11E1E}
+  .keyrow { display:flex; align-items:center; gap:.4rem; font-size:8.6pt; color:var(--ink-soft); margin-top:.3rem; }
+
+  .foot { padding: 12px 22px 0; font-size:8pt; color:var(--ink-faint); font-family:var(--mono); }
+
+  @page { size: Letter; margin: 12mm 13mm; }
+  @media print {
+    :root { --ground:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F3F1;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2; --line:#E5E4E1; --line-strong:#D3D2CE;
+      --slate:#3F5364; --slate-deep:#2C3A47; --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A; }
+    body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; color-scheme:light; }
+    .page { max-width:none; }
+    .btn { color:#fff !important; }
+    .flow, .step, table, tr, .strip, .card { break-inside:avoid; }
+  }
+</style>
+<style>
+  .body p { margin:.35rem 0; font-size:10pt; line-height:1.42; }
+  .body .lede { font-size:10.5pt; }
+  .body .note { background:var(--surface-2); padding:.45rem .6rem; border-radius:6px; font-size:9.5pt; }
+  .body .contact { font-family:var(--mono); font-size:8pt; color:var(--ink-soft); }
+  section { margin-top:15px; }
+  section h2 { font-size:9.5pt; border-bottom:1.5px solid var(--accent); padding-bottom:.2rem; break-after:avoid; }
+  table { margin:.4rem 0 .5rem; font-size:9.5pt; }
+  table.grid tr.head td { font-family:var(--mono); font-size:7.6pt; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); font-weight:700; }
+  table.grid tr td:first-child { width:auto; }
+  table.rank tr td:first-child { width:10.5rem; }
+  .foot { line-height:1.5; }
+  .answer { border-left:4px solid var(--accent); padding:.1rem 0 .1rem .8rem; margin-bottom:10px; }
+  .body .big { font-size:14pt; font-weight:700; line-height:1.25; margin:.2rem 0 .35rem; color:var(--slate-deep); }
+  table.people td, table.plan td { font-size:9pt; }
+  table.grid tr td:first-child { white-space:normal; }
+  table.plan tr td:first-child { white-space:nowrap; font-weight:650; }
+  table.plan tr td:nth-child(3) { width:27%; }
+  table.score .pill { white-space:nowrap; font-size:7.4pt; }
+  .draft { background:var(--surface-2); border-left:3px solid var(--slate); padding:.5rem .7rem; font-size:9.5pt; line-height:1.42; margin-top:.4rem; }
+  ul.trust { margin:.3rem 0; padding-left:1.1rem; font-size:9.5pt; line-height:1.42; }
+  ul.trust li { margin-bottom:.2rem; }
+  tr, .draft, .answer { break-inside:avoid; }
+</style>
+<div class="page">
+  <div class="top">
+    <div>
+      <div class="ey">KOR Structural · Business Development · Okanagan</div>
+      <h1>Bridgestar, Team, Ironclad: where to spend the time</h1>
+      <p>Prepared for Conor Murtagh, 4 November 2026</p>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="answer">
+      <h2>The answer</h2>
+      <p class="big">Put the effort into Bridgestar, and start with Graham Chatwin this month.</p>
+      <p>Bridgestar hired its senior team in the last eight months, and its Director of Construction, who started in October, spent nine years at Mission Group, where you ran KOR's 955 Timmins job. Its next building, 64 homes in Penticton, is still in planning. The catch is Stretch Construction, the contractor on its last two buildings, which may bring its own engineer. Keep Team warm with one coffee. Treat Ironclad as a closed door until proven otherwise: it lists its own Lead Structural Engineer.</p>
+    </div>
+
+    <table class="grid score">
+      <tr class="head"><td>Firm</td><td>Next seat</td><td>KOR's way in</td><td>Main obstacle</td><td>Call</td></tr>
+      <tr><td>Bridgestar</td><td>64 homes, Penticton, planning</td><td>Strong: Mission link to Graham</td><td>Stretch's existing team</td><td><span class="pill pill--fresh">Pursue now</span></td></tr>
+      <tr><td>Team</td><td>None visible</td><td>None yet: no history</td><td>Owners usually pick the engineer</td><td><span class="pill pill--watch">One coffee</span></td></tr>
+      <tr><td>Ironclad</td><td>Unknown</td><td>None: no history</td><td>In-house structural engineer</td><td><span class="pill pill--lost">One question</span></td></tr>
+    </table>
+    <p class="note"><b>KOR history:</b> none of the three, nor Stretch or Sherri Turpin, has a client record in Deltek under these names, and none has a CRM pursuit. <b>Not checked:</b> filed email, so you may know more than this shows.</p>
+
+    <section>
+    <h2>1 · Bridgestar: why now</h2>
+    <p><b>A small owner has just built a professional bench.</b> Founded in 2020 and led by President Gurupdesh Dhaliwal, it now has about 6 staff (Apollo estimate). Four of its five senior people below arrived in 2026, so consultant choices are likely being looked at fresh. That last part is my read, not a fact.</p>
+    <table class="grid people">
+      <tr class="head"><td>Person</td><td>Role, since</td><td>Came from</td><td>Email</td></tr>
+      <tr><td>Graham Chatwin</td><td>Director of Construction, Oct 2026</td><td>Sureway; Mission Group 2016-25</td><td>gchatwin@bridgestar.ca</td></tr>
+      <tr><td>Melissa Bell</td><td>Director of Operations, Jun 2026</td><td>Stober Group 2022-26</td><td>mbell@bridgestar.ca</td></tr>
+      <tr><td>Scott Wandler</td><td>CFO, Mar 2026</td><td>MBA CPA; Stober Group 2013-24</td><td>swandler@bridgestar.ca</td></tr>
+      <tr><td>Rashmeen Malhotra</td><td>Technical PM, Mar 2026</td><td>Hewlett Packard Enterprise</td><td>rmalhotra@bridgestar.ca</td></tr>
+      <tr><td>Gurupdesh Dhaliwal</td><td>President, 2020</td><td>Maverin; Suncor project controls</td><td>gdhaliwal@bridgestar.ca</td></tr>
+    </table>
+    <p><b>The way in is your own job.</b> Deltek shows you as project manager and principal on 955 Timmins St for Mission, with 426.5 hours from June 2024. Graham was at Mission until July 2025, most recently in preconstruction and construction operations. Whether you actually dealt with him, you will know and the records don't: he isn't in our Deltek contacts. KOR has also invoiced Mission about $205K across two jobs, including Ella in Kelowna (2017-19), which Rory managed in part while Graham was a Mission project manager. Melissa is worth meeting, but consultant choices more likely sit with Graham and the President (my read).</p>
+
+    <table class="grid">
+      <tr class="head"><td>Project</td><td>Size</td><td>Status</td><td>Team on public record</td></tr>
+      <tr><td>Backstreet, 32 Backstreet Blvd, Penticton</td><td>64 homes proposed</td><td>Planned; no permit file found</td><td>None found</td></tr>
+      <tr><td>Nova on the Park, 681 Wardlaw Ave, Kelowna</td><td>45 rentals, 5 storeys</td><td>Building; due winter 2026-27</td><td>Stretch (GC), Maise (interiors)</td></tr>
+      <tr><td>Astra, 123 Front St, Penticton</td><td>48 homes + retail, 5 storeys</td><td>Bridgestar lists as existing</td><td>Stretch, Sherri Turpin Architect, WSP (landscape)</td></tr>
+      <tr><td>Sutherland, 598 Sutherland Ave, Kelowna</td><td>16 units</td><td>Not stated</td><td>None found</td></tr>
+      <tr><td>Chelmsford Plaza, Chelmsford, ON</td><td>Retail plaza</td><td>Not stated</td><td>None found</td></tr>
+    </table>
+    <p><b>The real competition is the existing team.</b> The Front St permit drawings, dated April 2024, name Stretch Construction as client and copyright holder, and Sherri Turpin (Penticton) as architect. Stretch sells "design to delivery". So the question that decides this pursuit is who engineered Front St and Wardlaw, and whether they come with Stretch. No public document I could read names them; Kelowna's permit files block automated reads. Nothing yet ties Stretch to Backstreet, either.</p>
+    <p><b>Size of the prize.</b> A guide only: KOR has invoiced $64K to $90K on each of Nancee Way, Sadler Road and 955 Timmins. Scope and building size differ, and I have not compared them. The larger prize is repeat work from a growing owner, though nothing beyond Backstreet is public.</p>
+    <p><b>Credentials to lead with:</b> 955 Timmins and Sokana in Penticton; Sadler Road, Nancee Way and Saucier Avenue multi-family; Dilworth Centre, where you have 783 hours. Check the building types before citing them as like-for-like; Deltek doesn't record them.</p>
+    <p class="contact">Bridgestar: 520-1628 Dickson Ave, Kelowna · 778-760-8686 · bridgestar.ca<br>Stretch: Geoff Stretch, President, geoff@stretchconstruction.ca · Justin Perrin, Senior PM, justin.perrin@stretchconstruction.ca · 250-980-2405<br>Sherri Turpin Architect: turpinarchitect@outlook.com · 587-876-7616</p>
+    </section>
+
+    <section>
+    <h2>Next 30 days</h2>
+    <table class="grid plan">
+      <tr class="head"><td>By</td><td>Action</td><td>Done when</td></tr>
+      <tr><td>Fri 6 Nov</td><td>Recall any dealings with Graham on Timmins. Ask your Mission contacts and Rory. Ask John about 32-56 Backstreet: he logged 1 hour there for Wardman Group in 2017, on a $200 invoice. Nothing links Wardman to Bridgestar.</td><td>You know how warm the call is</td></tr>
+      <tr><td>Fri 13 Nov</td><td>Call Graham. Three questions: where Backstreet stands; who is engineering it; how Bridgestar will pick consultants from here.</td><td>Conversation held, engineer named or seat confirmed open</td></tr>
+      <tr><td>Fri 20 Nov</td><td>See Geoff Stretch and Sherri Turpin. Ask who they use for structural and what is next. Meet Melissa if the door is open.</td><td>Stretch's engineer is known</td></tr>
+      <tr><td>Fri 27 Nov</td><td><b>Decide.</b> Seat open: put in a fee proposal and log the pursuit. Seat taken: offer to be the alternative on the next one, and check back quarterly.</td><td>Decision logged in the CRM</td></tr>
+      <tr><td>Mid-Dec</td><td>Coffee with Chad Gould (Team). One email to Janet Sokolowski (Ironclad) on who seals BC structural.</td><td>Both answered; stop if the answer is no</td></tr>
+    </table>
+    <div class="draft"><b>Opening note, if you need one:</b> "Graham, congratulations on the move to Bridgestar. I led KOR's structural work on Mission's 955 Timmins job in Penticton, and I see Bridgestar has 64 homes planned on Backstreet. Could I buy you a coffee and hear where that stands and how you're approaching consultants?"</div>
+    </section>
+
+    <section>
+    <h2>2 · Team Construction: useful, but a channel</h2>
+    <p><b>What it is.</b> Kelowna construction manager, founded 1981, about 16 staff (Apollo). Offers design-build, construction management, GMP and stipulated sum across multi-family, commercial, institutional and wineries. Apollo reports it has its own framing and concrete crews.</p>
+    <p><b>Why it ranks second.</b> It doesn't own the buildings, so on most jobs the owner chooses the engineer. Design-build and development management are the exceptions, where Team could bring its consultants (my read). Its "latest venture" is a six-storey building near Kelowna General Hospital: 40 rentals and about 6,500 sq ft of medical office, status and team unstated.</p>
+    <p class="contact">Chad Gould, President since 2018, at Team since 2011: cgould@teamconstruction.ca · Gord Wilson, Founder · Logan Simpson, Project Manager · 200-860 McCurdy Rd, Kelowna · 250-868-8326</p>
+    </section>
+
+    <section>
+    <h2>3 · Ironclad: assume the seat is closed</h2>
+    <p><b>Why.</b> It runs land, design, engineering, construction and rentals itself, and says its buildings are designed by its "technicians and engineers". Apollo lists Andrew Meads as Lead Structural Engineer since 2022 in Winnipeg, about 6 people in engineering, and about 130 staff. Founder Ryan Van Damme and VP Steve Van Mil both came from Seymour Pacific.</p>
+    <p><b>What could change that.</b> Apollo also lists Meads as current at DGH Engineering, and I could not confirm who seals BC buildings. If it is an outside BC engineer, there may be an opening. That is the one question worth asking, and Janet Sokolowski, COO and a P.Eng, formerly its VP of Pre-Construction and Design, is the person to ask.</p>
+    <p><b>Scale and local work.</b> About 5,000 units across five provinces (press, October 2025). Okanagan projects on its site: 2241 Springfield Rd (401 units, six storeys) and The Aurora in Kelowna; Lakeview Pointe in West Kelowna; Rockwood Landing and The Highland in Vernon. Sources conflict on status, so confirm before citing.</p>
+    <p><b>Be aware.</b> A worker died at 2241 Springfield Rd on 14 June 2024. RCMP and WorkSafeBC investigated; I found no published outcome.</p>
+    <p class="contact">Janet Sokolowski, COO: jgauthier@icdev.ca · Michal Kubasiewicz, VP Land and Development: mkubasiewicz@icdev.ca · Andrew Meads: ameads@icdev.ca · Ryan Van Damme: rvandamme@icdev.ca · 204-777-1972</p>
+    </section>
+
+    <section>
+    <h2>How far to trust this</h2>
+    <ul class="trust">
+      <li><b>Confirmed from the source:</b> KOR's Deltek figures; the Front St permit drawings; Bridgestar, Stretch, Team and Ironclad's own sites; Castanet and Global News reports.</li>
+      <li><b>Reported by Apollo, refreshed mostly October 2026:</b> people, titles, start dates, staff counts, emails. Confirm on first contact. Melissa's title matches what you heard.</li>
+      <li><b>My read:</b> anything marked so, including who picks consultants and why the timing helps.</li>
+      <li><b>Still unknown:</b> who engineered Front St and Wardlaw; who owns the Backstreet process; who seals Ironclad's BC work; whether KOR has past email with any of these people.</li>
+    </ul>
+    </section>
+  </div>
+
+  <div class="foot">Sources, read 4 Nov 2026: City of Penticton notice, 123 Front St, DP PL2023-9703 (9 May 2024) · Castanet 22 May, 5 Aug and 12 Aug 2024 · KelownaNow · bridgestar.ca · stretchconstruction.ca · maisedesign.ca · teamconstruction.ca · ironcladdevelopments.ca · developkelowna.ca · Clark's Crossing Gazette 22 Oct 2025 · Global News 18 Jun 2024 · Apollo · KOR Deltek and CRM</div>
+</div>
