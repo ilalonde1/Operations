@@ -1,6 +1,6 @@
 # Operations - HANDOVER
 
-## STATE NOW - 4 Nov 2026 12:3x BCDT, block first written 09:43 (`date`), Operations lead, BD. Read first.
+## STATE NOW - 4 Nov 2026 12:15 BCDT, block first written 09:43 (`date`), Operations lead, BD. Read first.
 
 Evidence was read between 09:24 and 09:43 on 4 Nov, read-only. Nothing was built or deployed.
 
@@ -58,7 +58,7 @@ say Banff Centre (#1142) closes Thu 5 Nov. APC's public feed says it was amended
 FrameWork Design lead, session d0313f99. 12 of 12 changed files match its patch list (scratchpad g5\ops-g5-code.patch, 21:52
 on 3 Nov) and Framework docs/HANDOVER.md item 2 claims it. Settings hooks are in stash@{0}. Leave all of it.
 
-**Closed by Ian 4 Nov ~12:30, resume MONDAY 9 Nov. Read before saying anything:**
+**Closed by Ian 4 Nov 12:15, resume MONDAY 9 Nov. Read before saying anything:**
 - Ian's verdict: "We build things and then I come back and you tell me most of them aren't turned on or they're broken."
   Done means its user sees it working on the real screen (record 124933). Do not pitch a build; he has not said go on any.
 - Research must decompose, dedupe and update records every time; Ian: "fundamental". The pipeline ALREADY EXISTS and was
