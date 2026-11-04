@@ -15,7 +15,8 @@ public static class ClaudeCapture
 {
     public sealed record HookInput(string? SessionId, string? TranscriptPath, string? Cwd, string? EventName, string? ToolName,
                                    string? Command, string? Output, string? Error, string? CompactSummary, string? Trigger,
-                                   string? Reason, string? Source = null, bool StopHookActive = false);
+                                   string? Reason, string? Source = null, bool StopHookActive = false,
+                                   string? BackgroundTaskId = null, string? LastAssistantMessage = null, string? Prompt = null);
 
     /// <summary>Parses the hook's stdin. Throws on anything that is not a JSON object (hook mode swallows it).</summary>
     public static HookInput Parse(string stdin)
@@ -23,9 +24,13 @@ public static class ClaudeCapture
         using var doc = JsonDocument.Parse(stdin);
         var root = doc.RootElement;
         if (root.ValueKind != JsonValueKind.Object) throw new JsonException("hook input is not a JSON object");
-        string? command = null, output = null;
+        string? command = null, output = null, background = null;
         if (root.TryGetProperty("tool_input", out var ti) && ti.ValueKind == JsonValueKind.Object)
+        {
             command = Str(ti, "command");
+            // row 1393: a launch with run_in_background - its result arrives later as a task-notification
+            if (ti.TryGetProperty("run_in_background", out var bg) && bg.ValueKind == JsonValueKind.True) background = "run_in_background";
+        }
         if (root.TryGetProperty("tool_response", out var tr))
         {
             if (tr.ValueKind == JsonValueKind.String) output = tr.GetString();
@@ -34,13 +39,16 @@ public static class ClaudeCapture
                 // Bash: stdout + stderr. Other shells' shapes are not documented: take whichever text fields exist.
                 var parts = new[] { Str(tr, "stdout"), Str(tr, "stderr"), Str(tr, "output") }.Where(p => !string.IsNullOrEmpty(p));
                 output = string.Join("\n", parts);
+                // a command moved to the background (run_in_background, or after running past its wait) names its task
+                background = Str(tr, "backgroundTaskId") ?? background;
             }
         }
         var error = Str(root, "error");
         return new HookInput(Str(root, "session_id"), Str(root, "transcript_path"), Str(root, "cwd"), Str(root, "hook_event_name"),
                              Str(root, "tool_name"), command, output, error, Str(root, "compact_summary"), Str(root, "trigger"),
                              Str(root, "reason"), Str(root, "source"),
-                             root.TryGetProperty("stop_hook_active", out var sa) && sa.ValueKind == JsonValueKind.True);
+                             root.TryGetProperty("stop_hook_active", out var sa) && sa.ValueKind == JsonValueKind.True,
+                             background, Str(root, "last_assistant_message"), Str(root, "prompt"));
     }
 
     private static string? Str(JsonElement e, string name) =>
@@ -69,6 +77,11 @@ public static class ClaudeCapture
     public static BrainEvent? Tool(HookInput h, string? moduleOverride, SourceResolver.Probe? probe = null)
     {
         var output = h.Error is null ? h.Output : string.IsNullOrEmpty(h.Output) ? h.Error : h.Output + "\n" + h.Error;
+        // row 1393: a background launch's response is "Command running in background" - nothing has run yet. Its result is
+        // recorded at Stop from the turn's task-notification (TurnCapture), never here as 'unknown'.
+        if (h.BackgroundTaskId is not null && h.Error is null) return null;
+        // a command a hook refused never ran: no event (row 1393 - it was recorded as a failed build or test)
+        if (ToolClassifier.IsHookRefusal(h.Error) || ToolClassifier.IsHookRefusal(h.Output)) return null;
         var exit = h.Error is not null ? ToolClassifier.ExitCodeOf(h.Error) ?? 1 : (int?)null;   // a failure event is a failure
         var t = ToolClassifier.Classify(h.Command, output, exit);
         if (t is null) return null;

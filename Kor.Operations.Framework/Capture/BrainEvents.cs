@@ -188,6 +188,33 @@ public static class BrainStore
             },
             ReadEvents);
 
+    /// <summary>Row 1393: this session's events of these kinds written at or after <paramref name="sinceUtc"/> (the turn's
+    /// start, read off the transcript), oldest first, at most 50.</summary>
+    public static IReadOnlyList<StoredEvent> SessionEventsSince(string session, string[] kinds, DateTimeOffset sinceUtc, BrainDb? db = null) =>
+        Exec(db,
+            $"SELECT TOP (50) {EventColumns} FROM brain.Event WHERE Session = @s AND Kind IN (SELECT value FROM OPENJSON(@k)) " +
+            "AND AtUtc >= @since ORDER BY Id",
+            cmd =>
+            {
+                cmd.Parameters.Add("@s", System.Data.SqlDbType.NVarChar, 64).Value = session;
+                cmd.Parameters.Add("@k", System.Data.SqlDbType.NVarChar, -1).Value = System.Text.Json.JsonSerializer.Serialize(kinds);
+                cmd.Parameters.Add("@since", System.Data.SqlDbType.DateTimeOffset).Value = sinceUtc;
+            },
+            ReadEvents);
+
+    /// <summary>Row 1393: has this session already recorded the background task <paramref name="taskId"/>'s run (its
+    /// Detail carries "task":"&lt;id&gt;")?</summary>
+    public static bool BackgroundRunRecorded(string session, string taskId, BrainDb? db = null) =>
+        Exec(db,
+            "SELECT COUNT(*) FROM brain.Event WHERE Session = @s AND Kind IN (N'test', N'build', N'migration', N'gate') AND Detail LIKE @t",
+            cmd =>
+            {
+                cmd.Parameters.Add("@s", System.Data.SqlDbType.NVarChar, 64).Value = session;
+                // the id is [A-Za-z0-9]: no LIKE wildcard can come from it (checked by the caller)
+                cmd.Parameters.Add("@t", System.Data.SqlDbType.NVarChar, 200).Value = "%\"task\":\"" + taskId + "\"%";
+            },
+            cmd => Convert.ToInt32(cmd.ExecuteScalar()) > 0);
+
     /// <summary>Check events of an issue, newest first.</summary>
     public static IReadOnlyList<StoredEvent> ChecksOf(int issueId, BrainDb? db = null) =>
         Exec(db, $"SELECT TOP (100) {EventColumns} FROM brain.Event WHERE Kind = N'check' AND IssueId = @i ORDER BY Id DESC",

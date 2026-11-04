@@ -300,8 +300,8 @@
           {
             "type": "command",
             "command": "C:/KOR-Operations/kor/kor.exe capture-check --hook",
-            "timeout": 15,
-            "statusMessage": "Asking once per new commit what it taught (Knowledge IDE K4)"
+            "timeout": 30,
+            "statusMessage": "Asking once per turn what it found - a failed run, a pipeline outcome, Ian's decision, a diagnosis - and once per new commit what it taught (row 1393, Knowledge IDE K4)"
           }
         ]
       }

@@ -124,6 +124,7 @@ public static partial class Program
             "--says", "--source", "--cap", "--session", "--description", "--check", "--check-ref", "--issue",
             "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir", "--page", "--pages", "--cutoff",
             "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what", "--days", "--tag",
+            "--replay", "--since",
         };
 
         /// <summary>Options given more than once, every value kept in order (check-add's examples).</summary>
@@ -543,6 +544,7 @@ public static partial class Program
         error.WriteLine("       kor record --module M --kind finding|decision|dead-end|lesson|reference --name N --says D --source git:path[@rev]|run:<event id>|query:SELECT... [--session S] [--body-file F] [--dir D]");
         error.WriteLine("       kor memory --module M [--last N]");
         error.WriteLine("       kor capture-start|capture-check [--module M] [--hook]   (SessionStart / Stop JSON on stdin)");
+        error.WriteLine("       kor capture-check --replay <transcript.jsonl|list.txt> [--since ISO-UTC]   (row 1393 dry run: every turn through the Stop rules; reads only)");
         error.WriteLine("       kor issue --module M --name N --description D --check test|gate|query|source --check-ref R [--source-path P] [--body-file F] [--restates ID]");
         error.WriteLine("       kor check --module M [--issue N] [--resolved] [--kinds test,gate,query] [--timeout S] | kor check --commit-hook [--dir D]");
         error.WriteLine("       kor resolve --issue N --because \"...\"   (a source-checked issue whose file changed)");

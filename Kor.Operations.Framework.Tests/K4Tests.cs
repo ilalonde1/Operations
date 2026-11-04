@@ -128,7 +128,8 @@ public class K4Tests
         Assert.Contains("\"decision\":\"block\"", Check(db, s));   // a NEW commit asks again
     }
 
-    // 4
+    // 4 - since row 1393 a continuation Stop IS judged when its turn can be read (TurnAskLiveTests); with no turn to read
+    // (this transcript does not exist) it is still allowed without one database call
     [Fact]
     public void StopHookActiveTouchesNoDatabase()
     {
@@ -136,7 +137,7 @@ public class K4Tests
         dead.Dispose();   // any database call on it throws - and without --hook a throw is exit 1
         var (code, o, e) = Run(dead, StopJson(NewSession(), active: true), "capture-check", "--module", Module);
         Assert.Equal((0, ""), (code, e));
-        Assert.Equal("allow: stop_hook_active - no database call", o.Trim());
+        Assert.Equal("allow: stop_hook_active and no turn read - allowed", o.Trim());
     }
 
     // 5

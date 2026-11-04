@@ -17,7 +17,8 @@ public sealed record KorRepo(string Folder, string[] PrePushGuards)
 /// <list type="number">
 /// <item>.claude/settings.json holds every framework hook (<see cref="Required"/>): the kor start parts record, state,
 /// memory (pages 1..M, every one), records (pages 1..4, every one - 3 Nov) and board (--owner or --tag); capture-start; capture-tool on PostToolUse AND PostToolUseFailure covering
-/// Bash and PowerShell; capture-check; capture-compact; capture-end; kor enforce; kor fresh --file-changed; and this
+/// Bash and PowerShell; capture-check on Stop with a timeout of at least 30 s (row 1393: it reads the ending turn off the
+/// transcript - an entry left at the old 15 s fails, naming the timeout); capture-compact; capture-end; kor enforce; kor fresh --file-changed; and this
 /// check itself on SessionStart. Each with --hook; a --module, where given, is the repo's module.</item>
 /// <item>The git hooks (git's own hooks path, so core.hooksPath is honoured): post-commit, post-merge and post-checkout
 /// each call <c>kor capture-git &lt;that hook&gt;</c>; pre-push calls <c>capture-git pre-push</c>, still runs each of the
@@ -57,10 +58,11 @@ public static class EnrollCheck
 
     /// <summary>One framework hook: the settings event, the tools its matcher must cover (none = no matcher needed), the
     /// kor verb and what its arguments must say.</summary>
-    public sealed record Hook(string Name, string Event, string[] Tools, string Verb, Func<KorCall, bool> Fits);
+    public sealed record Hook(string Name, string Event, string[] Tools, string Verb, Func<KorCall, bool> Fits, int? MinTimeout = null);
 
     /// <summary>A kor call found in a settings hook: the event, its matcher, the verb and the parsed options.</summary>
-    public sealed record KorCall(string Event, string? Matcher, string Verb, IReadOnlyList<string> Args)
+    /// <param name="Timeout">the entry's "timeout" in seconds; null = not set (Claude Code's default, 60 s).</param>
+    public sealed record KorCall(string Event, string? Matcher, string Verb, IReadOnlyList<string> Args, int? Timeout = null)
     {
         public string? Opt(string name)
         {
@@ -75,6 +77,12 @@ public static class EnrollCheck
     private static readonly string[] EnforceTools = { "Bash", "PowerShell", "Write", "Edit", "MultiEdit", "NotebookEdit" };
 
     public const int RecordsPages = 4;
+
+    /// <summary>Row 1393: the Stop capture-check's least timeout, in seconds.</summary>
+    public const int StopCheckMinTimeout = 30;
+
+    /// <summary>Claude Code's timeout for a command hook that sets none, in seconds.</summary>
+    public const int DefaultHookTimeout = 60;
 
     private static Hook RecordsPage(int n) =>
         new($"SessionStart kor start --part records --page {n} --pages {RecordsPages}", "SessionStart", Array.Empty<string>(), "start",
@@ -95,7 +103,10 @@ public static class EnrollCheck
         new Hook("SessionStart kor enroll-check", "SessionStart", Array.Empty<string>(), "enroll-check", _ => true),
         new Hook("PostToolUse (Bash|PowerShell) kor capture-tool", "PostToolUse", Shell, "capture-tool", _ => true),
         new Hook("PostToolUseFailure (Bash|PowerShell) kor capture-tool", "PostToolUseFailure", Shell, "capture-tool", _ => true),
-        new Hook("Stop kor capture-check", "Stop", Array.Empty<string>(), "capture-check", _ => true),
+        // row 1393: the Stop check reads the ending turn off the transcript (a 4 MB tail; a background run's launch is found
+        // by one pass over the file - 1.15 s warm on the 789 MB OverLORD transcript, 3 Nov) before its DB calls: at least
+        // 30 s, so a cold read is never cut off (a hook cut off by its timeout is an ask silently lost)
+        new Hook("Stop kor capture-check", "Stop", Array.Empty<string>(), "capture-check", _ => true, MinTimeout: StopCheckMinTimeout),
         new Hook("PostCompact kor capture-compact", "PostCompact", Array.Empty<string>(), "capture-compact", _ => true),
         new Hook("SessionEnd kor capture-end", "SessionEnd", Array.Empty<string>(), "capture-end", _ => true),
         new Hook("PreToolUse (Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit) kor enforce", "PreToolUse", EnforceTools, "enforce", _ => true),
@@ -150,7 +161,8 @@ public static class EnrollCheck
                         if (!km.Success) continue;
                         var args = SplitArgs(km.Groups[1].Value);
                         if (args.Count == 0) continue;
-                        calls.Add(new KorCall(ev.Name, matcher, args[0], args.Skip(1).ToList()));
+                        int? timeout = h.TryGetProperty("timeout", out var to) && to.ValueKind == JsonValueKind.Number && to.TryGetInt32(out var n) ? n : null;
+                        calls.Add(new KorCall(ev.Name, matcher, args[0], args.Skip(1).ToList(), timeout));
                     }
                 }
             }
@@ -182,6 +194,9 @@ public static class EnrollCheck
             if (hooked.Count == 0) { findings.Add($"{need.Name} has no --hook (a failure would fail the session)"); continue; }
             var wrong = hooked.Where(c => c.Opt("--module") is { } m && m != module).Select(c => c.Opt("--module")).Distinct().ToList();
             if (wrong.Count > 0) findings.Add($"{need.Name} names --module {string.Join(", ", wrong)}, not {module}");
+            if (need.MinTimeout is { } min && hooked.All(c => (c.Timeout ?? DefaultHookTimeout) < min))
+                findings.Add($"{need.Name} has a timeout of {hooked.Max(c => c.Timeout ?? DefaultHookTimeout)} s, under {min} s - it reads the " +
+                             "turn from the transcript and asks for the turn's findings (row 1393); a hook cut off by its timeout asks nothing");
             var uncovered = need.Tools.Where(t => !hooked.Any(c => Covers(c.Matcher, t))).ToList();
             if (uncovered.Count > 0) findings.Add($"{need.Name} does not cover {string.Join(", ", uncovered)}");
         }

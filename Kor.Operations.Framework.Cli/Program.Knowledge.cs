@@ -33,8 +33,11 @@ public static partial class Program
     /// </summary>
     private static int CaptureCheck(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? db)
     {
+        if (o.Get("--replay") is { } replay) return CaptureCheckReplay(replay, o.Get("--since"), output);
         var h = ClaudeCapture.Parse(stdin() ?? throw new ArgumentException("capture-check reads the Stop JSON on stdin"));
-        if (h.StopHookActive)
+        // row 1393: a continuation Stop is judged too (SessionCapture.Check) - only with no transcript to read is it allowed
+        // here without a database call
+        if (h.StopHookActive && string.IsNullOrWhiteSpace(h.TranscriptPath))
         {
             if (!hook) output.WriteLine("allow: stop_hook_active - no database call");
             return 0;
@@ -43,6 +46,77 @@ public static partial class Program
         if (d.Block) output.WriteLine(hook ? SessionCapture.BlockJson(d.Reason!) : $"block (capture-ask brain.Event {d.AskEventId}): {d.Reason}");
         else if (!hook) output.WriteLine($"allow: {d.Why}");
         return 0;
+    }
+
+    /// <summary>
+    /// Row 1393's dry run: <c>kor capture-check --replay &lt;transcript.jsonl | list.txt&gt; [--since 2026-10-04T07:00Z]</c>.
+    /// Every turn of each transcript (a .txt names one transcript per line) through the SAME rules the Stop hook uses
+    /// (<see cref="TurnCapture.Evaluate"/>); "recorded" is read off the turn's own commands (a kor record / kor issue /
+    /// kor_brain.py note that did not fail), because the DB rows of an old turn are not tied to it by time here. One JSON
+    /// line per turn at or after --since, then one summary line. Reads only; writes nothing anywhere. The commit ask is not
+    /// replayed (it is unchanged, and keyed on DB events).
+    /// </summary>
+    private static int CaptureCheckReplay(string what, string? sinceText, TextWriter output)
+    {
+        var files = what.EndsWith(".txt", StringComparison.OrdinalIgnoreCase)
+            ? File.ReadAllLines(what).Select(l => l.Trim()).Where(l => l.Length > 0).ToList()
+            : new List<string> { what };
+        DateTimeOffset? since = sinceText is null ? null : DateTimeOffset.Parse(sinceText, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
+        int turns = 0, asked = 0, recorded = 0, unreadable = 0;
+        var byKind = new Dictionary<string, int>();
+        foreach (var f in files)
+        {
+            List<TurnCapture.Turn> all;
+            try { all = TurnCapture.Turns(f); }
+            catch (Exception e) { unreadable++; output.WriteLine(JsonSerializer.Serialize(new { transcript = f, error = e.Message })); continue; }
+            var launches = all.SelectMany(t => t.Tools).GroupBy(t => t.Id).ToDictionary(g => g.Key, g => g.First());
+            foreach (var whole in all)
+            {
+                if (since is { } s && (whole.Start.At is null || whole.Start.At < s)) continue;
+                // as the live hook sees it: first at the turn's FIRST Stop (what was done and said up to the first Stop-hook
+                // feedback); if nothing is asked there and another hook blocked, again at the continuation's Stop, over the
+                // whole turn (its replies at both Stops). Asked at most once either way.
+                var t = whole.AtFirstStop();
+                turns++;
+                var runs = TurnCapture.ForegroundRuns(t).Concat(TurnCapture.BackgroundRuns(t, launches)).ToList();
+                var reasons = TurnCapture.Evaluate(t, runs);
+                var rec = TurnCapture.RecordedInTranscript(t);
+                if (reasons.Count == 0 && whole.FirstStopLine is not null)
+                {
+                    t = whole with { FinalReply = (whole.FirstStopReply ?? "") + "\n" + whole.FinalReply };
+                    runs = TurnCapture.ForegroundRuns(t).Concat(TurnCapture.BackgroundRuns(t, launches)).ToList();
+                    reasons = TurnCapture.Evaluate(t, runs);
+                    rec = TurnCapture.RecordedInTranscript(t);
+                }
+                if (rec) recorded++;
+                var asks = reasons.Count > 0 && !rec;
+                if (asks)
+                {
+                    asked++;
+                    foreach (var k in reasons.Select(r => r.Kind).Distinct()) byKind[k] = byKind.GetValueOrDefault(k) + 1;
+                }
+                output.WriteLine(JsonSerializer.Serialize(new
+                {
+                    transcript = f, line = t.Start.Line, end = t.EndLine, at = t.Start.At, origin = t.Start.Origin, peer = t.Start.PeerName, entry = t.Start.Entrypoint,
+                    asks, recorded = rec,
+                    // masked like the prompt and reply heads: a replay prints transcript text, never a credential value
+                    reasons = reasons.Select(r => new { kind = r.Kind, line = r.Line, text = SecretGuard.Mask(r.Text) }),
+                    prompt = Head(t.Start.Text, 300), reply = Head(t.FinalReply, 300), runs = runs.Count,
+                }, ReplayJson));
+            }
+        }
+        output.WriteLine($"replay: {files.Count} transcript(s), {unreadable} unreadable; {turns} turn(s){(since is null ? "" : $" since {since:O}")}; " +
+                         $"asked {asked} of {turns}; {recorded} recorded something themselves; by reason (a turn can have several): " +
+                         string.Join(", ", byKind.OrderBy(k => k.Key).Select(k => $"{k.Key} {k.Value}")));
+        return 0;
+    }
+
+    private static readonly JsonSerializerOptions ReplayJson = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    private static string Head(string s, int n)
+    {
+        var t = s.ReplaceLineEndings(" ").Trim();
+        return SecretGuard.Mask(t.Length <= n ? t : t[..(n - 3)] + "...")!;
     }
 
     // ---- K4: kor record / kor memory --------------------------------------------------------------------------------

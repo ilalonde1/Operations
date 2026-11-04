@@ -49,6 +49,12 @@ public static class ToolClassifier
     private static readonly Regex Sqlcmd = new(Pos + PathPrefix + @"sqlcmd(?:\.exe)?[""']?(?<rest>\s[^\n;|]*)", O);
     private static readonly Regex KorSql = new(@"(?:^|[;&|(\n]|-File)\s*" + PathPrefix + @"Invoke-KorSqlScript(?:\.ps1)?[""']?(?<rest>[^\n;|]*)", O);
     private static readonly Regex StageGate = new(Pos + PathPrefix + @"python[\w.]*[""']?(?:\s+-\w+)*\s+" + PathPrefix + @"stage_gate\.py[""']?\s+run\s+[""']?(?<file>[^""'\s;&|()<>]+)", O);
+    // Row 1393 part 1, the pipeline runs (kind 'gate' - CK_Event_Kind's 16 kinds hold no 'run', and a pipeline run IS a
+    // gate run: it passes or fails named gates): virtual_drafter run|check|check-plot|promote, and any *_check.py script.
+    // "script" is the script's path token (SourceResolver proves the repo from it).
+    private const string Python = @"(?:py|python[\w.]*)[""']?(?:\s+-\w+)*\s+";
+    private static readonly Regex VirtualDrafter = new(Pos + PathPrefix + Python + @"(?<script>" + PathPrefix + @"virtual_drafter\.py)[""']?\s+(?<verb>run|check-plot|check|promote)(?![\w-])(?<args>[^\n]*)", O);
+    private static readonly Regex CheckScript = new(Pos + PathPrefix + Python + @"(?<script>" + PathPrefix + @"(?<name>\w+_check)\.py)[""']?(?<args>[^\n]*)", O);
     // Names, on the ORIGINAL segment: NNN_ + no whitespace, quote or slash, ending at the FIRST ".sql" (lazy), so
     // "130_a.sql)" / "130_a.sql>log" / "130_a.sql,db/131_b.sql" give 130_a.sql and "130_a;131_b.sql" stays whole.
     private const string MigrationName = @"(?<file>\d{3}_[^""'\s\\/]+?\.sql)";
@@ -93,10 +99,38 @@ public static class ToolClassifier
         {
             var name = GateName(command, m.Groups["file"]);
             return Make("gate", name, GateOutcome(output, exitCode), command, output, GateSummary,
-                        ToolStart(neutral, m.Index), m.Groups["file"].Index, name.Length);
+                        ToolStart(neutral, m.Index), m.Groups["file"].Index, name.Length, pipeline: "stage_gate run");
+        }
+        if ((m = VirtualDrafter.Match(neutral)).Success)
+        {
+            var verb = m.Groups["verb"].Value.ToLowerInvariant();
+            return Make("gate", "virtual_drafter " + verb + Args(m.Groups["args"], command), PipelineOutcome(output, exitCode), command, output,
+                        PipelineSummary, ToolStart(neutral, m.Index), m.Groups["script"].Index, m.Groups["script"].Length,
+                        pipeline: "virtual_drafter " + verb);
+        }
+        if ((m = CheckScript.Match(neutral)).Success)
+        {
+            var name = m.Groups["name"].Value + ".py";
+            return Make("gate", name + Args(m.Groups["args"], command), PipelineOutcome(output, exitCode), command, output, PipelineSummary,
+                        ToolStart(neutral, m.Index), m.Groups["script"].Index, m.Groups["script"].Length, pipeline: name);
         }
         return null;
     }
+
+    /// <summary>
+    /// Row 1393: is this command a pipeline run whose RESULT arrives later (run_in_background)? Same recognition as
+    /// <see cref="Classify"/>, outcome not read. Used to skip the PostToolUse of a background launch ("Command running in
+    /// background") - the run is recorded when its task-notification arrives (<see cref="TurnCapture"/>).
+    /// </summary>
+    public static bool IsRecognised(string? command) => Classify(command, "", 0) is not null;
+
+    private static readonly Regex HookRefusal = new(@"\A\s*(?:Exit code \d+\s*)?(?:PreToolUse|PermissionRequest):\w+ hook (?:error|blocking error)", RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Row 1393: the tool result is a hook's REFUSAL ("PreToolUse:Bash hook error: ..."): the command never ran, so it is no
+    /// run, failed or otherwise (dry run 3 Nov: 25 of 153 false asks were refused builds and tests counted as failures).
+    /// </summary>
+    public static bool IsHookRefusal(string? output) => output is not null && HookRefusal.IsMatch(output);
 
     /// <summary>The tool's first character: the match starts at the separator before it (Pos).</summary>
     private static int ToolStart(string neutral, int matchIndex)
@@ -231,7 +265,9 @@ public static class ToolClassifier
     private static readonly Regex TestFail = new(@"^\s*Failed!\s|^\s*Test Run Failed\b|Test summary: total: \d+, failed: [1-9]|^\s*Build FAILED\b|\bbuild failed\b|\berror [A-Z]{2,}\d{3,}\b", O | RegexOptions.Multiline);
     private static readonly Regex TestPass = new(@"^\s*Passed!\s|^\s*Test Run Successful\b|Test summary: total: \d+, failed: 0\b", O | RegexOptions.Multiline);
     private static readonly Regex BuildFail = new(@"^\s*Build FAILED\b|\bbuild failed\b|\berror [A-Z]{2,}\d{3,}\b|\s[1-9]\d* Error\(s\)", O | RegexOptions.Multiline);
-    private static readonly Regex BuildPass = new(@"\bBuild succeeded\b", O);
+    // " 0 Error(s)": a quiet build's own verdict - its exit code may be a LATER step's (row 1393 dry run: "build fail" on a
+    // command whose dotnet build said 0 Error(s) and whose grep exited 1)
+    private static readonly Regex BuildPass = new(@"\bBuild succeeded\b|^\s*0 Error\(s\)", O | RegexOptions.Multiline);
     private static readonly Regex MigFail = new(@"\bMsg \d+, Level \d+|Exception\b|SCRIPT LEFT \d+ TRANSACTION|POST-CHECK FAILED|POST-CHECK NOT RUN|\bSqlcmd: Error\b", O);
     private static readonly Regex MigDone = new(@"\bDONE\b", RegexOptions.CultureInvariant);      // the result cell, upper case
     private static readonly Regex MigTested = new(@"\bTESTED\b", RegexOptions.CultureInvariant);
@@ -254,24 +290,48 @@ public static class ToolClassifier
 
     private static string Fallback(int? exit) => exit is > 0 or < 0 ? "fail" : "unknown";
 
+    // Pipeline outcomes (row 1393), CASE-SENSITIVE: virtual_drafter prints "  PASS name: ..." / "  FAIL name: ...",
+    // "GATE FAILED: name", "STEP FAILED: name (exit N)", "preflight failed", "<verb> refused before writing anything";
+    // a *_check.py prints its own "NAME FAIL: ..." / "PASS". "0 FAIL" (a count of none) is not a failure.
+    private static readonly Regex PipeRefused = new(@"refused before writing anything|stage_gate: REFUSED|\bREFUSED\b", RegexOptions.CultureInvariant);
+    private static readonly Regex PipeFail = new(@"GATE FAILED|STEP FAILED|preflight failed|PIPELINE INVALID|stage_gate: STOPPED|Traceback \(most recent call last\)|(?<!\b0 )\bFAIL(?:ED|S)?\b", RegexOptions.CultureInvariant);
+    private static readonly Regex PipePass = new(@"\bPASS(?:ED)?\b|^done: |\bOK\b", RegexOptions.CultureInvariant | RegexOptions.Multiline);
+
+    internal static string PipelineOutcome(string o, int? exit) =>
+        PipeRefused.IsMatch(o) ? "refused" : PipeFail.IsMatch(o) ? "fail" : exit is > 0 or < 0 ? "fail" : PipePass.IsMatch(o) ? "pass" : "unknown";
+
+    /// <summary>A gate line: the PASS/FAIL/STOPPED names a pipeline prints (row 1393: "its gate lines").</summary>
+    private static readonly Regex GateLine = new(@"\b(?:PASS(?:ED)?|FAIL(?:ED|S)?|STOPPED|REFUSED|PENDING_V3|INVALID)\b|stage_gate:|^== \w", RegexOptions.CultureInvariant | RegexOptions.Multiline);
+
     // ---- detail: the command, the lines that say what happened, the last lines ---------------------------------------
     private static readonly Regex TestSummary = new(@"Passed!|Failed!|Test Run|Test summary|Total tests|^\s*Failed\s+\S|error [A-Z]{2,}\d{3,}|Build FAILED|build failed", O | RegexOptions.Multiline);
     private static readonly Regex BuildSummary = new(@"Build succeeded|Build FAILED|build failed|error [A-Z]{2,}\d{3,}|Warning\(s\)|Error\(s\)", O);
     private static readonly Regex MigrationSummary = new(@"\bDONE\b|\bTESTED\b|Msg \d+|Exception|applied \d+ batch|POST-CHECK|SCRIPT LEFT|Rolled back", O);
     private static readonly Regex GateSummary = new(@"stage_gate:|\[\d+/\d+\]", O);
+    private static readonly Regex PipelineSummary = new(@"GATE FAILED|STEP FAILED|preflight failed|refused before writing|^done: |Traceback", RegexOptions.CultureInvariant | RegexOptions.Multiline);
 
+    /// <summary>At most this many gate lines are kept on a pipeline event (first ones and every FAIL line first).</summary>
+    public const int MaxGateLines = 60;
+
+    /// <param name="pipeline">row 1393: a pipeline run - its Detail adds "pipeline" (which one) and "gates" (its PASS/FAIL lines:
+    /// every FAIL-like line first, then the rest in order, at most <see cref="MaxGateLines"/>).</param>
     private static ToolEvent Make(string kind, string reference, string outcome, string command, string output, Regex summary, int at,
-                                  int targetIndex, int targetLength)
+                                  int targetIndex, int targetLength, string? pipeline = null)
     {
         var lines = (Redact.Text(output) ?? "").Replace("\r", "").Split('\n').Select(l => l.TrimEnd()).Where(l => l.Length > 0).ToList();
-        var detail = new
+        var cmd = Clip(Redact.Text(command)!, 400);
+        var sum = lines.Where(l => summary.IsMatch(l)).Take(20).Select(l => Clip(l, 300)).ToList();
+        var tail = lines.Skip(Math.Max(0, lines.Count - 5)).Select(l => Clip(l, 300)).ToList();
+        object detail;
+        if (pipeline is null) detail = new { command = cmd, summary = sum, tail, lines = lines.Count };
+        else
         {
-            command = Clip(Redact.Text(command)!, 400),
-            summary = lines.Where(l => summary.IsMatch(l)).Take(20).Select(l => Clip(l, 300)),
-            tail = lines.Skip(Math.Max(0, lines.Count - 5)).Select(l => Clip(l, 300)),
-            lines = lines.Count,
-        };
-        return new ToolEvent(kind, Clip(Redact.Text(reference)!.Trim(), 400), outcome, JsonSerializer.Serialize(detail, GitCapture.Json), at,
+            var gate = lines.Where(l => GateLine.IsMatch(l)).ToList();
+            var bad = gate.Where(l => PipeFail.IsMatch(l) || PipeRefused.IsMatch(l)).ToList();
+            var gates = bad.Concat(gate.Except(bad)).Take(MaxGateLines).Select(l => Clip(l.Trim(), 300)).ToList();
+            detail = new { command = cmd, summary = sum, tail, lines = lines.Count, pipeline, gates, gate_lines = gate.Count };
+        }
+        return new ToolEvent(kind, Clip(Redact.Text(reference)!.Trim(), 400), outcome, JsonSerializer.Serialize(detail, detail.GetType(), GitCapture.Json), at,
                              targetIndex, targetLength);
     }
 
