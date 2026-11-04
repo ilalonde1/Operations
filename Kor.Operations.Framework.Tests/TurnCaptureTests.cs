@@ -141,6 +141,13 @@ public class TurnCaptureTests
         var launches = turns.SelectMany(x => x.Tools).ToDictionary(x => x.Id, x => x);
         Assert.Empty(TurnCapture.BackgroundRuns(turns[^1], launches, _ => "GATE FAILED: x"));
         Assert.Null(Assert.Single(turns[^1].Notifications).ExitCode);
+        // a notification that says FAILED, with no code, is a failure even when its output reads PASS (review row 370)
+        var failed = killed.Replace("<status>killed</status>", "<status>failed</status>").Replace("was stopped", "failed");
+        var t2 = TurnCapture.Turns(Write(
+            User("Run it."), Tool("t1", "python tools/virtual_drafter.py run jobs/x/job.json", background: true), Result("t1", "started", backgroundTask: "bk1"),
+            Say("Started."), User(failed, origin: "task-notification"), Say("It failed.")));
+        var l2 = t2.SelectMany(x => x.Tools).ToDictionary(x => x.Id, x => x);
+        Assert.Equal("fail", Assert.Single(TurnCapture.BackgroundRuns(t2[^1], l2, _ => "  PASS read: ok")).Event.Outcome);
     }
 
     [Fact]
@@ -347,16 +354,17 @@ public class TurnAskLiveTests
     {
         using var db = BrainDb.OpenRolledBack();
         var s = NewSession();
+        // the notification STARTS the turn; the repeated id and a missing id are tool calls IN it (review row 370: placed
+        // before it, they were the previous turn's and the test could not fail). A swallowed exception in hook mode would
+        // print nothing, so the test asserts the ASK: only a check that ran to the end can name the failed run.
         var t = TurnCaptureTests.Write(
-            TurnCaptureTests.User("Run the check.", minutesAgo: 2),
+            TurnCaptureTests.User(TurnCaptureTests.NoteBlock("bz9", "elsewhere", 0), origin: "task-notification", minutesAgo: 1),
             TurnCaptureTests.Tool("dup", "python -I tools/plot_dim_text_check.py a.pdf"),
             TurnCaptureTests.Result("dup", "DIMTEXT FAIL: 1 finding(s) over 702 dimension values", error: true),
             TurnCaptureTests.Tool("dup", "git status"), TurnCaptureTests.Result("dup", "clean"),
-            TurnCaptureTests.User(TurnCaptureTests.NoteBlock("bz9", "elsewhere", 0), origin: "task-notification", minutesAgo: 1),
+            TurnCaptureTests.Tool("", "git log -1"),
             TurnCaptureTests.Say("done"));
-        var (o, e) = Stop(db, s, t);
-        Assert.Equal("", e);
-        Assert.Equal("", o);   // the notification's turn: nothing to ask, and no exception swallowed into silence
+        Assert.Contains("- a failed run: gate fail: plot_dim_text_check.py a.pdf", Block(Stop(db, s, t).Out)!);
     }
 
     [Fact]
