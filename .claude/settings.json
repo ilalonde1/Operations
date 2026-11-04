@@ -118,6 +118,17 @@
         ]
       },
       {
+        "matcher": "Bash|PowerShell|WebFetch|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe stall --module \"Operations\" --hook",
+            "timeout": 15,
+            "statusMessage": "Has this target failed twice in a row? (G1 stall guard, board row 1308)"
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {

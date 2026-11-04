@@ -18,7 +18,8 @@ public sealed record KorRepo(string Folder, string[] PrePushGuards)
 /// <item>.claude/settings.json holds every framework hook (<see cref="Required"/>): the kor start parts record, state,
 /// memory (pages 1..M, every one), records (pages 1..4, every one - 3 Nov) and board (--owner or --tag); capture-start; capture-tool on PostToolUse AND PostToolUseFailure covering
 /// Bash and PowerShell; capture-check on Stop with a timeout of at least 30 s (row 1393: it reads the ending turn off the
-/// transcript - an entry left at the old 15 s fails, naming the timeout); capture-compact; capture-end; kor enforce; kor fresh --file-changed; and this
+/// transcript - an entry left at the old 15 s fails, naming the timeout); capture-compact; capture-end; kor enforce; kor stall on PreToolUse
+/// covering Bash, PowerShell, WebFetch and MCP tools (G1, board row 1308); kor fresh --file-changed; and this
 /// check itself on SessionStart. Each with --hook; a --module, where given, is the repo's module.</item>
 /// <item>The git hooks (git's own hooks path, so core.hooksPath is honoured): post-commit, post-merge and post-checkout
 /// each call <c>kor capture-git &lt;that hook&gt;</c>; pre-push calls <c>capture-git pre-push</c>, still runs each of the
@@ -76,6 +77,9 @@ public static class EnrollCheck
     private static readonly string[] Shell = { "Bash", "PowerShell" };
     private static readonly string[] EnforceTools = { "Bash", "PowerShell", "Write", "Edit", "MultiEdit", "NotebookEdit" };
 
+    // declared before Required: static fields initialise in text order (Required reads this)
+    private static readonly string[] StallTools = { "Bash", "PowerShell", "WebFetch", "mcp__networkops__networkops_run" };
+
     public const int RecordsPages = 4;
 
     /// <summary>Row 1393: the Stop capture-check's least timeout, in seconds.</summary>
@@ -111,6 +115,9 @@ public static class EnrollCheck
         new Hook("SessionEnd kor capture-end", "SessionEnd", Array.Empty<string>(), "capture-end", _ => true),
         new Hook("PreToolUse (Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit) kor enforce", "PreToolUse", EnforceTools, "enforce", _ => true),
         new Hook("FileChanged kor fresh --file-changed", "FileChanged", Array.Empty<string>(), "fresh", c => c.Has("--file-changed")),
+        // G1, the stall guard (board row 1308): a target that failed twice in a row is refused at the third attempt. Its
+        // matcher must reach the shells, WebFetch and the MCP tools (an MCP tool's name stands for them all here)
+        new Hook("PreToolUse (Bash|PowerShell|WebFetch|mcp__.*) kor stall (G1 stall guard, row 1308)", "PreToolUse", StallTools, "stall", _ => true),
     };
 
     // kor.exe (or a bare kor) as the program, then its arguments
