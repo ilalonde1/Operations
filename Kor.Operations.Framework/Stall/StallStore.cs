@@ -22,9 +22,12 @@ public static class StallStore
     {
         using var c = db.Command(
             "SELECT TOP (50) Id, Kind, Name, Description, Body FROM brain.Memory WHERE CreatedAtUtc > @after " +
-            "AND Kind IN (N'finding', N'dead-end', N'lesson', N'feedback') " +
+            // the kinds come from StallGuard.DiagnosisKinds, one parameter each (review row 412: not a second copy)
+            $"AND Kind IN ({string.Join(", ", StallGuard.DiagnosisKinds.Select((_, i) => $"@k{i}"))}) " +
             "AND (Name LIKE @p ESCAPE N'\\' OR Description LIKE @p ESCAPE N'\\' OR Body LIKE @p ESCAPE N'\\') ORDER BY Id DESC", 5);
         c.Parameters.Add("@after", SqlDbType.DateTimeOffset).Value = after;
+        for (var i = 0; i < StallGuard.DiagnosisKinds.Length; i++)
+            c.Parameters.Add($"@k{i}", SqlDbType.NVarChar, 10).Value = StallGuard.DiagnosisKinds[i];
         c.Parameters.Add("@p", SqlDbType.NVarChar, 400).Value = "%" + Like(name) + "%";
         using var r = c.ExecuteReader();
         var key = name.ToLowerInvariant();

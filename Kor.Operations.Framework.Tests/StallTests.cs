@@ -133,6 +133,10 @@ public class StallTests
         };
         var again = Call("Bash", "netops run --script a.ps1", null, 3);
         Assert.True(StallGuard.Decide(again, fam, (t, a) => StallGuard.DiagnosedInTranscript(fam, t, a), again.At!.Value).Refuse);
+        // a kor record is not an EDIT either: it does not re-open the family by being made (review row 414)
+        var viaKor = fam.Append(Call("Bash", "kor record --module Operations --kind finding --name y --says \"netops running still\" --source query:SELECT 1", "recorded #9", 3)).ToList();
+        var again2 = Call("Bash", "netops run --script a.ps1", null, 3);
+        Assert.True(StallGuard.Decide(again2, viaKor, (t, a) => StallGuard.DiagnosedInTranscript(viaKor, t, a), again2.At!.Value).Refuse);
         fam.Add(Call("Bash", "python -I kor_brain.py note --kind finding --description \"netops run needs Ian's sign-in (exit 4)\"", "('3', 'NULL')", 3));
         var after = Call("Bash", "netops run --script a.ps1", null, 4);
         Assert.False(StallGuard.Decide(after, fam, (t, a) => StallGuard.DiagnosedInTranscript(fam, t, a), after.At!.Value).Refuse);
@@ -162,6 +166,9 @@ public class StallTests
         var d = StallGuard.Decide(Call("PowerShell", "kor record --module NetworkOps --kind finding --name x --says \"y\" --source query:SELECT 1; " + Outlook, null, 10),
                                   h, NoDiagnosis, T0.AddMinutes(10));
         Assert.True(d.Refuse);
+        // a record chained with a step that does not touch the mailbox is not a retry (review row 414)
+        Assert.False(StallGuard.Decide(Call("Bash", "python -I kor_brain.py note --kind finding --description \"jmarkulin refused\" && python -I kor_brain.py show --name x", null, 10),
+                                       h, NoDiagnosis, T0.AddMinutes(10)).Refuse);
         // a record piped into a filter is still only a record (seed :446)
         Assert.False(StallGuard.Decide(Call("PowerShell", "python -I \"C:/f/kor_brain.py\" note --kind feedback --description \"jmarkulin\" 2>&1 | Select-Object -Last 5", null, 10),
                                        h, NoDiagnosis, T0.AddMinutes(10)).Refuse);
@@ -218,6 +225,9 @@ public class StallTests
     [InlineData("curl -s https://x.example.com/api", "HTTP/1.1 401 Unauthorized", "refused")]
     [InlineData("Test-Path '\\\\192.168.1.18\\C$'", "System error 5 has occurred.\nAccess is denied.", "refused")]
     [InlineData("ssh KOR-FS01 hostname", "ssh: connect to host KOR-FS01 port 22: Connection timed out", "timeout")]
+    // a time or date leading a status line is not a grep line number (review row 412)
+    [InlineData("python -I g.py jmarkulin", "12:34:56 jmarkulin ERROR Response status code does not indicate success: Forbidden (Forbidden).", "refused")]
+    [InlineData("python -I g.py jmarkulin", "2026-11-03 12:34:56,001 ERROR Access is denied: \\\\KOR-FS01\\E$", "refused")]
     public void RefusalsAndTimeoutsAreReadFromTheOutput(string command, string output, string cls) =>
         Assert.Equal(cls, StallGuard.Classify(Call("Bash", command, output, 0))!.Class);
 

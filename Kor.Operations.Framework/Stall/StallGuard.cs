@@ -150,7 +150,9 @@ public static class StallGuard
     private static readonly Regex ExitCode = new(@"\AExit code (?<n>-?\d+)", I);
 
     // a line of data a reader printed: grep -n "file:12:" / "12-" / cat -n "   12\t"
-    private static readonly Regex DataLine = new(@"\A(?:[^\s:]+:\d+[:-]|\s*\d+[:\t-])", RegexOptions.CultureInvariant);
+    // ... but a TIME or DATE leading a status line is not ("12:34:56 ... Forbidden", "2026-11-03 ... Access is denied",
+    // Python logging's default - review row 412): the number must not run on into another number
+    private static readonly Regex DataLine = new(@"\A(?:[^\s:]+:\d+[:-](?!\d)|\s*\d+(?:\t|[:-](?!\d)))", RegexOptions.CultureInvariant);
 
     private static readonly HashSet<string> Readers = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -661,7 +663,8 @@ public static class StallGuard
         // a shell call is ON a resource when a step that is not only ABOUT it names it: a commit message, an echo, a
         // search of files or a record naming KOR-302N does not contact KOR-302N (pass 4: a git commit in c6cb3844:18983
         // was a "repeat" attempt on the host) - and a `kor record` naming the target is its diagnosis, never refused
-        return f.Segments.Any(s => Contains(s.Text, t.Key) && !About.Contains(s.Program));
+        // ... and a record step is never an attempt: it is the diagnosis (review row 414)
+        return f.Segments.Any(s => Contains(s.Text, t.Key) && !About.Contains(s.Program) && !RecordCmd.IsMatch(s.Text));
     }
 
     /// <summary>Programs whose naming of a resource is not an attempt on it: they write or search text about it.</summary>
@@ -680,7 +683,7 @@ public static class StallGuard
     private static readonly Regex WritesShell = new(
         @"\bsed\s+(?:-\w*\s+)*-i|\bSet-Content\b|\bAdd-Content\b|\bOut-File\b|\btee\b|\bCopy-Item\b|\bMove-Item\b|\bRemove-Item\b|\bNew-Item\b" +
         @"|(?:^|[;&|(\s])(?:cp|mv|rm|mkdir|touch|patch)\s|\bgit\s+(?:checkout|restore|apply|stash|reset|pull|merge|rebase|cherry-pick|switch)\b" +
-        @"|\bdotnet\s+(?:build|publish|restore)\b|\b(?:npm|pip)\s+install\b|install-kor|\bkor(?:\.exe)?[""']?\s+(?:record|state)\b" +
+        @"|\bdotnet\s+(?:build|publish|restore)\b|\b(?:npm|pip)\s+install\b|install-kor" +
         @"|(?<![\d&>-])>{1,2}\s*(?!&|/dev/null|\$null|nul\b)[^\s|;&>]", I);
 
     /// <summary>Did the session change something it runs (a file edit, or a command that writes)?</summary>
