@@ -113,6 +113,61 @@ public class StallTests
     }
 
     [Fact]
+    public void ARecordBeforeTheFailuresOrNamingAnotherWordDoesNotClear()
+    {
+        // a feedback note naming jmarkulin made BEFORE the first failure (review row 407: the 'after' was never exercised)
+        var h = new List<StallCall>
+        {
+            Call("Write", "C:/t/old.md", "File created", -10) with { Content = "jmarkulin's mailbox needs a FullAccess grant." },
+            Call("Bash", "python -I kor_brain.py note --kind feedback --body-file \"C:/t/old.md\"", "('1', 'NULL')", -9),
+        };
+        h.AddRange(Seed());
+        var next = Call("PowerShell", Outlook, null, 12);
+        Assert.True(StallGuard.Decide(next, h, (t, a) => StallGuard.DiagnosedInTranscript(h, t, a), next.At!.Value).Refuse);
+        // a whole word: "running" is no diagnosis of the family "netops run"
+        var fam = new List<StallCall>
+        {
+            Call("Bash", "netops run --script a.ps1", "Exit code 4\nSIGN-IN NEEDED", 0, true),
+            Call("Bash", "netops run --script a.ps1", "Exit code 4\nSIGN-IN NEEDED", 1, true),
+            Call("Bash", "python -I kor_brain.py note --kind finding --description \"netops running still\"", "('2', 'NULL')", 2),
+        };
+        var again = Call("Bash", "netops run --script a.ps1", null, 3);
+        Assert.True(StallGuard.Decide(again, fam, (t, a) => StallGuard.DiagnosedInTranscript(fam, t, a), again.At!.Value).Refuse);
+        fam.Add(Call("Bash", "python -I kor_brain.py note --kind finding --description \"netops run needs Ian's sign-in (exit 4)\"", "('3', 'NULL')", 3));
+        var after = Call("Bash", "netops run --script a.ps1", null, 4);
+        Assert.False(StallGuard.Decide(after, fam, (t, a) => StallGuard.DiagnosedInTranscript(fam, t, a), after.At!.Value).Refuse);
+    }
+
+    [Fact]
+    public void ARecordBetweenTheTwoFailuresResetsTheCount()
+    {
+        // failure, a finding naming jmarkulin, failure: only one failure since the record - the next attempt is allowed
+        var s = Seed();
+        var h = new List<StallCall>
+        {
+            s[0], s[1],
+            // the names are in the body file, so the record itself is no attempt on the mailboxes (a success would also re-open)
+            Call("Write", "C:/t/why.md", "File created", 4) with { Content = "jmarkulin and jdesroches: the grant is 1 minute old." },
+            Call("Bash", "python -I kor_brain.py note --kind finding --body-file \"C:/t/why.md\"", "('4', 'NULL')", 5),
+        };
+        h.Add(s[2] with { Line = ++_line });
+        var next = Call("PowerShell", Outlook, null, 12);
+        Assert.False(StallGuard.Decide(next, h, (t, a) => StallGuard.DiagnosedInTranscript(h, t, a), next.At!.Value).Refuse);
+    }
+
+    [Fact]
+    public void ARecordChainedToARetryIsStillARetry()
+    {
+        var h = Seed();
+        var d = StallGuard.Decide(Call("PowerShell", "kor record --module NetworkOps --kind finding --name x --says \"y\" --source query:SELECT 1; " + Outlook, null, 10),
+                                  h, NoDiagnosis, T0.AddMinutes(10));
+        Assert.True(d.Refuse);
+        // a record piped into a filter is still only a record (seed :446)
+        Assert.False(StallGuard.Decide(Call("PowerShell", "python -I \"C:/f/kor_brain.py\" note --kind feedback --description \"jmarkulin\" 2>&1 | Select-Object -Last 5", null, 10),
+                                       h, NoDiagnosis, T0.AddMinutes(10)).Refuse);
+    }
+
+    [Fact]
     public void ASuccessInBetweenReopensAndOldFailuresExpire()
     {
         var h = Seed();

@@ -25,7 +25,7 @@ public sealed record StallDecision(bool Refuse, string Reason, StallTarget? Targ
 /// <summary>
 /// G1, the stall guard (board row 1308; Ian said YES 3 Nov via the OverLORD, from the NetworkOps session's proposal):
 /// when the same TARGET has failed twice in a row in a session, the next attempt on it is REFUSED at PreToolUse, naming
-/// both failures, until a diagnosis is recorded after the second failure that names the target.
+/// both failures, until a diagnosis naming the target is recorded (after the first of the two: a record resets the count).
 ///
 /// WHOSE FAILURE IT IS decides the target (the 3 Nov judges, pass 5): a PERMISSION refusal belongs to the resource, by
 /// any route (below); an MCP tool's opaque error, or a timeout of an MCP/WebFetch call, belongs to that ROUTE on that
@@ -106,7 +106,7 @@ public sealed record StallDecision(bool Refuse, string Reason, StallTarget? Targ
 /// failures older than the live tail (<see cref="StallTranscript.TailBytes"/>). The transcript is written asynchronously
 /// (Claude Code's docs: it "may lag"): a result not yet on disk is no failure, so missing state only ever ALLOWS - G1
 /// never refuses on a result it has not read. No database: the diagnosis cannot be read, so the call is ALLOWED (fails
-/// open, said in the hook error log). A diagnosis is matched by WORD, not meaning: a record that names the target and
+/// open, said in the hook error log). A diagnosis is matched by WHOLE WORD, in any lane, not by meaning: a record that names the target and
 /// says nothing about the failure clears it. A new turn from Ian or a peer re-opens a target whatever it says (one that
 /// is about something else re-opens it too), and a mid-turn message never does, even "it's fixed, retry". A shell command that hangs or fails twice and is retried with any change
 /// (a flag, a script) is not refused - only a permission refusal follows the resource across commands. A stall inside a
@@ -231,7 +231,7 @@ public static class StallGuard
         }
 
         var refused = Hits(Refusal);
-        if (refused.Count > 0) return Make(c, "refused", refused, null, network: false);
+        if (refused.Count > 0) return Make(c, "refused", refused, null);
         var timedOut = Hits(Timeout);
         if (timedOut.Count > 0)
         {
@@ -294,11 +294,11 @@ public static class StallGuard
         return null;
     }
 
-    private static StallFailure Make(StallCall c, string cls, List<string> hits, string? sig, bool network)
+    private static StallFailure Make(StallCall c, string cls, List<string> hits, string? sig)
     {
         var text = c.Text ?? "";
         var lowHits = Norm(string.Join("\n", hits));
-        var cmdRes = IsShell(c.Tool) ? Resources(text, paths: !network) : InputResources(c);
+        var cmdRes = IsShell(c.Tool) ? Resources(text, paths: true) : InputResources(c);
         // the most specific thing refused: a PATH the failing lines name (a script's own target - "Access to the path
         // 'E:\Archives' is denied" on KOR-FS01 is E:\Archives, not the whole host: pass 6, 2b3d2fa7:514/537)
         var linePaths = Resources(string.Join("\n", hits), paths: true).Where(r => r.Key.Length > 3 && r.Key[1] == ':').ToList();
@@ -577,7 +577,9 @@ public static class StallGuard
     private static StallTarget FamilyTarget(string family)
     {
         var parts = family.Split(' ');
-        var name = parts[^1].StartsWith("-c#", StringComparison.Ordinal) ? parts[0] : parts[^1];
+        // the whole family is the name a record must hold ("netops run", not "run" - a finding saying "running" is no
+        // diagnosis of it: review row 407); an inline script's is its interpreter
+        var name = parts[^1].StartsWith("-c#", StringComparison.Ordinal) ? parts[0] : family;
         return new(family.ToLowerInvariant(), "family", name);
     }
 
@@ -695,7 +697,11 @@ public static class StallGuard
     {
         if (!Judged(next.Tool) || string.IsNullOrEmpty(next.Text)) return new StallDecision(false, "not a judged tool");
         // the diagnosis itself (kor record, kor_brain.py note) is never refused, whatever it names
-        if (IsShell(next.Tool) && RecordCmd.IsMatch(next.Text)) return new StallDecision(false, "a record (the way out) is never refused");
+        // - only when the call does nothing else: "kor record ...; <retry>" is a retry (review row 407)
+        // (a filter it pipes into - "| Select-Object -Last 5", seed :446 - is not something else)
+        if (IsShell(next.Tool) && Segments(next).Where(s => FamilyOfSegment(s) is { } f && !Readers.Contains(f.Split(' ')[0])).ToList() is { Count: > 0 } work
+            && work.All(s => RecordCmd.IsMatch(s)))
+            return new StallDecision(false, "a record (the way out) is never refused");
         var since = now - (window ?? Window);
         var recent = history.Where(h => h.Answered && (h.ResultAt ?? h.At) is { } t && t >= since).ToList();
         if (recent.Count == 0) return new StallDecision(false, "no call in the window");
@@ -763,7 +769,7 @@ public static class StallGuard
             _ => $"'{t.Name}'",
         };
         return $"kor stall (G1 stall guard, board row 1308): {how} failed twice in a row in this session - {What(a)}; then {What(b)}. " +
-               $"A third attempt on it is refused until a diagnosis naming '{t.Name}' is recorded after the second failure: " +
+               $"A third attempt on it is refused until a diagnosis naming '{t.Name}' is recorded (a record made since the first of these failures counts): " +
                $"kor record --module <lane> --kind finding (or dead-end) --name <name> --says \"what the two failures mean for {t.Name} ...\" --source ... " +
                "(a lesson, or a kor_brain.py note of kind feedback, naming it counts too; a decision does not). " +
                (t.Kind is "family" or "query" ? "An edit to what it runs re-opens it. " : "Another route to the same resource is the same target. ") +
@@ -792,7 +798,7 @@ public static class StallGuard
             var bodies = history.Where(w => w.Tool == "Write" && w.Content is not null && w.Line < c.Line
                                             && text.Contains(Base(w.Text), StringComparison.Ordinal))
                                 .Select(w => w.Content!.ToLowerInvariant());
-            if (text.Contains(name, StringComparison.Ordinal) || bodies.Any(b => b.Contains(name, StringComparison.Ordinal)))
+            if (Contains(text, name) || bodies.Any(b => Contains(b, name)))   // a whole word (review row 407)
                 return $"transcript line {c.Line} (kor record/note --kind {kind})";
         }
         return null;
