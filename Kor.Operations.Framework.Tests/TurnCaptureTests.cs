@@ -148,6 +148,13 @@ public class TurnCaptureTests
             Say("Started."), User(failed, origin: "task-notification"), Say("It failed.")));
         var l2 = t2.SelectMany(x => x.Tools).ToDictionary(x => x.Id, x => x);
         Assert.Equal("fail", Assert.Single(TurnCapture.BackgroundRuns(t2[^1], l2, _ => "  PASS read: ok")).Event.Outcome);
+        // WITH a code, the output's own verdict stands, as for a foreground run: the code may be a later step's (review row
+        // 375) - a background `dotnet test ...; grep x` that printed "Passed!" and exited 1 is a passing test run
+        var t3 = TurnCapture.Turns(Write(
+            User("Test it."), Tool("t1", "dotnet test x.csproj; grep -c foo bar.txt", background: true), Result("t1", "started", backgroundTask: "bk1"),
+            Say("Started."), User(NoteBlock("bk1", "t1", 1), origin: "task-notification"), Say("Done.")));
+        var l3 = t3.SelectMany(x => x.Tools).ToDictionary(x => x.Id, x => x);
+        Assert.Equal("pass", Assert.Single(TurnCapture.BackgroundRuns(t3[^1], l3, _ => "Passed!  - Failed: 0, Passed: 3")).Event.Outcome);
     }
 
     [Fact]

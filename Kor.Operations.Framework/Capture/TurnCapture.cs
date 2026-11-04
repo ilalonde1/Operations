@@ -396,7 +396,9 @@ public static class TurnCapture
             // on its own (killed, stopped - not completed nor failed) is no run outcome
             if (n.ExitCode is null && n.Status is not ("completed" or "failed")) continue;
             var e = ToolClassifier.Classify(call.Command, output, n.ExitCode);
-            // a notification that SAYS failed is a failure, code or not (review row 370) - the status, not an invented code
+            // a notification that SAYS failed and gives NO exit code is a failure (review row 370) - the status, not an invented
+            // code. With a code, the classifier's rule stands as for a foreground run: the output's own verdict first, because
+            // the code may be a LATER step's (`dotnet test ...; grep x` exits 1 after "Passed!") - review row 375 asked which
             if (e is not null && n.ExitCode is null && n.Status == "failed" && !Bad.Contains(e.Outcome)) e = e with { Outcome = "fail" };
             if (e is not null) runs.Add(new Run(n.Line, e, true, call, n));
         }
