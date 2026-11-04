@@ -92,9 +92,9 @@ public static class TurnCapture
         public string? FirstStopReply { get; init; }
 
         /// <summary>
-        /// The turn as its FIRST Stop saw it. Live, capture-check judges the turn at its first Stop; a later Stop in the same
-        /// turn carries stop_hook_active and is allowed without reading anything - so a replay must judge this, not the
-        /// whole turn, or it would count asks the live hook can never make (and miss the reply the first Stop read).
+        /// The turn as its FIRST Stop saw it (the tools and reply before the first Stop-hook feedback). Live, capture-check
+        /// judges the turn at its first Stop and, if it did not ask there, again at a continuation Stop over the whole turn;
+        /// the replay does the same - this first, then the whole turn with both replies (CaptureCheckReplay).
         /// </summary>
         public Turn AtFirstStop() => FirstStopLine is not { } at ? this : this with
         {
@@ -392,8 +392,10 @@ public static class TurnCapture
             if (ToolClassifier.Classify(call.Command, "", 0) is null) continue;   // not a recognised run: nothing read
             var output = n.OutputFile is { } f ? read(f) ?? "" : "";
             if (output.Trim().Length == 0 && RedirectTarget(call.Command, call.Cwd) is { } target) output = read(target) ?? "";
-            var exit = n.ExitCode ?? (n.Status == "completed" ? 0 : 1);
-            var e = ToolClassifier.Classify(call.Command, output, exit);
+            // the exit code is only what the summary SAYS (review row 364: none was invented); a run that did not finish
+            // on its own (killed, stopped - not completed nor failed) is no run outcome
+            if (n.ExitCode is null && n.Status is not ("completed" or "failed")) continue;
+            var e = ToolClassifier.Classify(call.Command, output, n.ExitCode);
             if (e is not null) runs.Add(new Run(n.Line, e, true, call, n));
         }
         return runs;

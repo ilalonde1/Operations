@@ -11,9 +11,11 @@ namespace Kor.Operations.Framework.Capture;
 /// below is unchanged and merged into the same single ask. (Until row 1393 neither verb read prose - the old Stop guards
 /// had misfired on English; the turn rules were measured instead: a 30-day dry run with every ask judged by name,
 /// `kor capture-check --replay`.)
-/// ONCE PER TURN, never a loop: stop_hook_active allows with no DB call; and a capture-ask of this session written at or
-/// after the turn's prompt (minus <see cref="ClockSlack"/>) allows whatever else holds - Stop-hook feedback is not a new
-/// turn. A marker that cannot be written allows. A transcript that cannot be read leaves only the commit ask.
+/// ONCE PER TURN, never a loop: a capture-ask of this session written at or after the turn's prompt (minus
+/// <see cref="ClockSlack"/>) allows whatever else holds - Stop-hook feedback is not a new turn. A continuation Stop
+/// (stop_hook_active: some Stop hook blocked this turn already) IS judged, and is also allowed by any capture-ask of this
+/// session in the last <see cref="ContinuationWindow"/>; only with no turn to read is it allowed with no DB call. A marker
+/// that cannot be written allows. A transcript that cannot be read leaves only the commit ask.
 /// Background runs (row 1393 part 1) whose task-notification starts the ending turn are recorded here as events, once per
 /// task (their Detail carries "task"), before anything is decided.
 /// <list type="bullet">
@@ -60,7 +62,9 @@ public static class SessionCapture
     /// <summary>Row 1393: on a continuation Stop, a capture-ask of this session this recent allows, whatever turn was read.</summary>
     public static readonly TimeSpan ContinuationWindow = TimeSpan.FromMinutes(10);
 
-    private static readonly Regex TaskId = new("^[A-Za-z0-9_-]{1,64}$", RegexOptions.CultureInvariant);
+    // letters and digits only: the id goes into a LIKE pattern (BrainStore.BackgroundRunRecorded), where '_' and '%' are
+    // wildcards (review row 364); Claude Code's task ids seen on 3 Nov (bejfd9sc5, a423a5a8af8efba64) are all of this form
+    private static readonly Regex TaskId = new("^[A-Za-z0-9]{1,64}$", RegexOptions.CultureInvariant);
 
     /// <param name="insertMarker">writes the capture-ask event (tests inject a failing one).</param>
     /// <param name="readTurn">reads the turn that is ending from transcript_path (tests inject one); null = the transcript.</param>
@@ -93,7 +97,8 @@ public static class SessionCapture
         var bgEvents = new List<int>();
         if (turn is { Notifications.Count: > 0 })
         {
-            var known = turn.Tools.ToDictionary(t => t.Id, t => t);
+            // a missing or repeated tool_use id must not throw (review row 364: it would lose the whole Stop check)
+            var known = turn.Tools.Where(t => t.Id.Length > 0).GroupBy(t => t.Id).ToDictionary(g => g.Key, g => g.First());
             var missing = turn.Notifications.Select(n => n.ToolUseId).OfType<string>().Where(id => !known.ContainsKey(id)).ToList();
             if (missing.Count > 0)
                 foreach (var (id, call) in (findLaunches ?? (ids => TurnCapture.FindLaunches(h.TranscriptPath!, ids)))(missing)) known[id] = call;
@@ -153,13 +158,13 @@ public static class SessionCapture
     /// <summary>A background run's event: the K3 event for its command and output, plus the task it came from.</summary>
     private static BrainEvent? BackgroundEvent(ClaudeCapture.HookInput h, TurnCapture.Run r, string? moduleOverride)
     {
-        var exit = r.Note!.ExitCode ?? (r.Note.Status == "completed" ? 0 : 1);
+        var exit = r.Note!.ExitCode;   // only what the notification's summary said (review row 364)
         var synthetic = h with
         {
             ToolName = r.Call.Name, Command = r.Call.Command, Cwd = r.Call.Cwd ?? h.Cwd,
             // Tool() is used for WHERE the run is cited (source, repo, commit, module) - kind comes from the command alone;
             // the outcome and the output's lines are the classifier's reading of the full output (r.Event), copied below
-            Output = "", Error = exit != 0 ? $"Exit code {exit}" : null, BackgroundTaskId = null,
+            Output = "", Error = exit is { } x && x != 0 ? $"Exit code {x}" : null, BackgroundTaskId = null,
         };
         var e = ClaudeCapture.Tool(synthetic, moduleOverride);
         if (e is null) return null;
@@ -195,6 +200,7 @@ public static class SessionCapture
                 {
                     "failed-run" => $"- a failed run: {r.Text}",
                     "run-outcome" => $"- a pipeline outcome: {r.Text}",
+                    "failed-gate-seen" => $"- a pipeline failure read in this turn: {r.Text}",
                     "ian-decision" => $"- Ian decided: \"{r.Text}\"",
                     "diagnosis" => $"- your reply diagnoses: \"{r.Text}\"",
                     _ => $"- {r.Kind}: {r.Text}",

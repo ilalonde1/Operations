@@ -129,6 +129,20 @@ public class TurnCaptureTests
         Assert.Empty(TurnCapture.ForegroundRuns(turns[0]));   // the launch turn ran nothing yet
     }
 
+    // review row 364: no exit code is invented - a run stopped from outside (no code in its summary) is no outcome
+    [Fact]
+    public void ABackgroundRunStoppedWithNoExitCodeIsNoOutcome()
+    {
+        var killed = "<task-notification>\n<task-id>bk1</task-id>\n<tool-use-id>t1</tool-use-id>\n<output-file>C:\\o\\bk1.output</output-file>\n" +
+                     "<status>killed</status>\n<summary>Background command \"run\" was stopped</summary>\n</task-notification>";
+        var turns = TurnCapture.Turns(Write(
+            User("Run it."), Tool("t1", "python tools/virtual_drafter.py run jobs/x/job.json", background: true), Result("t1", "started", backgroundTask: "bk1"),
+            Say("Started."), User(killed, origin: "task-notification"), Say("Stopped.")));
+        var launches = turns.SelectMany(x => x.Tools).ToDictionary(x => x.Id, x => x);
+        Assert.Empty(TurnCapture.BackgroundRuns(turns[^1], launches, _ => "GATE FAILED: x"));
+        Assert.Null(Assert.Single(turns[^1].Notifications).ExitCode);
+    }
+
     [Fact]
     public void ARunWritingToAFileIsReadFromThatFile()
     {
@@ -295,7 +309,7 @@ public class TurnAskLiveTests
         var ask = Assert.Single(BrainStore.SessionEventsSince(s, new[] { "capture-ask" }, DateTimeOffset.UtcNow.AddMinutes(-5), db));
         Assert.Contains("\"failed-run\"", ask.Detail);
         Assert.Equal("", Stop(db, s, t).Out);                 // asked already in this turn: allowed, whatever else holds
-        Assert.Equal("", Stop(db, s, t, active: true).Out);   // and stop_hook_active allows with no DB call at all
+        Assert.Equal("", Stop(db, s, t, active: true).Out);   // and a continuation Stop is allowed by the same marker
         Assert.Single(BrainStore.SessionEventsSince(s, new[] { "capture-ask" }, DateTimeOffset.UtcNow.AddMinutes(-5), db));
     }
 
@@ -325,6 +339,24 @@ public class TurnAskLiveTests
             TurnCaptureTests.Say("One dimension touches linework."));
         Assert.Equal("", Stop(db, s, newer, active: true).Out);
         Assert.Contains("- a failed run:", Block(Stop(db, s, newer, active: false).Out)!);   // not a continuation: a new turn is asked
+    }
+
+    // review row 364: a repeated tool_use id in a turn with a notification must not throw (it would lose the whole Stop check)
+    [Fact]
+    public void LiveARepeatedToolIdDoesNotLoseTheCheck()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        var s = NewSession();
+        var t = TurnCaptureTests.Write(
+            TurnCaptureTests.User("Run the check.", minutesAgo: 2),
+            TurnCaptureTests.Tool("dup", "python -I tools/plot_dim_text_check.py a.pdf"),
+            TurnCaptureTests.Result("dup", "DIMTEXT FAIL: 1 finding(s) over 702 dimension values", error: true),
+            TurnCaptureTests.Tool("dup", "git status"), TurnCaptureTests.Result("dup", "clean"),
+            TurnCaptureTests.User(TurnCaptureTests.NoteBlock("bz9", "elsewhere", 0), origin: "task-notification", minutesAgo: 1),
+            TurnCaptureTests.Say("done"));
+        var (o, e) = Stop(db, s, t);
+        Assert.Equal("", e);
+        Assert.Equal("", o);   // the notification's turn: nothing to ask, and no exception swallowed into silence
     }
 
     [Fact]

@@ -28,7 +28,8 @@ public static partial class Program
     }
 
     /// <summary>
-    /// Stop hook. stop_hook_active -> allow before ANY database call. Otherwise one unit of work: read the marker and the
+    /// Stop hook. stop_hook_active with no transcript to read -> allow before ANY database call (a continuation whose turn
+    /// can be read is judged - SessionCapture.Check). Otherwise one unit of work: read the marker and the
     /// commits, write the capture-ask, commit; only then print the block. Any failure allows (hook mode exits 0 silent).
     /// </summary>
     private static int CaptureCheck(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? db)
@@ -67,6 +68,8 @@ public static partial class Program
         foreach (var f in files)
         {
             List<TurnCapture.Turn> all;
+            // a transcript that is not there is unreadable, not "no turns" (review row 364)
+            if (!File.Exists(f)) { unreadable++; output.WriteLine(JsonSerializer.Serialize(new { transcript = f, error = "not found" })); continue; }
             try { all = TurnCapture.Turns(f); }
             catch (Exception e) { unreadable++; output.WriteLine(JsonSerializer.Serialize(new { transcript = f, error = e.Message })); continue; }
             var launches = all.SelectMany(t => t.Tools).GroupBy(t => t.Id).ToDictionary(g => g.Key, g => g.First());

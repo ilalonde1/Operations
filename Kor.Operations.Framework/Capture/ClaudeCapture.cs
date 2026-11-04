@@ -16,7 +16,7 @@ public static class ClaudeCapture
     public sealed record HookInput(string? SessionId, string? TranscriptPath, string? Cwd, string? EventName, string? ToolName,
                                    string? Command, string? Output, string? Error, string? CompactSummary, string? Trigger,
                                    string? Reason, string? Source = null, bool StopHookActive = false,
-                                   string? BackgroundTaskId = null, string? LastAssistantMessage = null, string? Prompt = null);
+                                   string? BackgroundTaskId = null, string? LastAssistantMessage = null);
 
     /// <summary>Parses the hook's stdin. Throws on anything that is not a JSON object (hook mode swallows it).</summary>
     public static HookInput Parse(string stdin)
@@ -48,7 +48,7 @@ public static class ClaudeCapture
                              Str(root, "tool_name"), command, output, error, Str(root, "compact_summary"), Str(root, "trigger"),
                              Str(root, "reason"), Str(root, "source"),
                              root.TryGetProperty("stop_hook_active", out var sa) && sa.ValueKind == JsonValueKind.True,
-                             background, Str(root, "last_assistant_message"), Str(root, "prompt"));
+                             background, Str(root, "last_assistant_message"));
     }
 
     private static string? Str(JsonElement e, string name) =>

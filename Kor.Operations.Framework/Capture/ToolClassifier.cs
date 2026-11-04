@@ -117,12 +117,6 @@ public static class ToolClassifier
         return null;
     }
 
-    /// <summary>
-    /// Row 1393: is this command a pipeline run whose RESULT arrives later (run_in_background)? Same recognition as
-    /// <see cref="Classify"/>, outcome not read. Used to skip the PostToolUse of a background launch ("Command running in
-    /// background") - the run is recorded when its task-notification arrives (<see cref="TurnCapture"/>).
-    /// </summary>
-    public static bool IsRecognised(string? command) => Classify(command, "", 0) is not null;
 
     private static readonly Regex HookRefusal = new(@"\A\s*(?:Exit code \d+\s*)?(?:PreToolUse|PermissionRequest):\w+ hook (?:error|blocking error)", RegexOptions.CultureInvariant);
 
