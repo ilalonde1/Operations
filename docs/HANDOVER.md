@@ -1,6 +1,6 @@
 # Operations - HANDOVER
 
-## STATE NOW - 4 Nov 2026 09:43 BCDT (`date`), Operations lead, BD. Read first.
+## STATE NOW - 4 Nov 2026 12:3x BCDT, block first written 09:43 (`date`), Operations lead, BD. Read first.
 
 Evidence was read between 09:24 and 09:43 on 4 Nov, read-only. Nothing was built or deployed.
 
@@ -58,9 +58,25 @@ say Banff Centre (#1142) closes Thu 5 Nov. APC's public feed says it was amended
 FrameWork Design lead, session d0313f99. 12 of 12 changed files match its patch list (scratchpad g5\ops-g5-code.patch, 21:52
 on 3 Nov) and Framework docs/HANDOVER.md item 2 claims it. Settings hooks are in stash@{0}. Leave all of it.
 
-**Next, in order:** (1) Tell Ian the Banff date. (2) Peace River go/no-go, questions by 6 Nov. (3) APC sign-in. (4) Ian's
-word on a Worker deploy. (5) Put the open items on the board. (6) Trace the hour's Banff date, the 07:05 email and the
-green-but-dead APC job, one check each.
+**Closed by Ian 4 Nov ~12:30, resume MONDAY 9 Nov. Read before saying anything:**
+- Ian's verdict: "We build things and then I come back and you tell me most of them aren't turned on or they're broken."
+  Done means its user sees it working on the real screen (record 124933). Do not pitch a build; he has not said go on any.
+- Research must decompose, dedupe and update records every time; Ian: "fundamental". The pipeline ALREADY EXISTS and was
+  read 4 Nov: IntelPersistenceService.PersistAsync, entered by `BdQueueDrainIngest --kind orgs --dir <folder>` with
+  refresh-org-<id>.json. Not yet run this way. Not read: CanonicalSchemaExtractor's file format, BdResearchImport.
+- Proposed Monday order, waiting for Ian's go: (1) Bridgestar through the pipeline, retire 384's hand rows, look at the org
+  screen, then Stretch, Turpin, Ironclad, Team (row 1644). (2) Retired-row bug, needs his deploy word (1645). (3) Facts and
+  relationships into the pipeline and the screen, needs an app release (1641). (4) The check that a brief cannot finish
+  without this (1641). Until (1) is done, do not run research on those 5 orgs: migration 384's keys would duplicate.
+- Conor's brief: `Desktop\BD\KOR-Okanagan-Brief-Bridgestar-Team-Ironclad-2026-11-04-web.pdf`, NOT sent as far as this session
+  knows. Its first plan dates are 6 and 13 Nov, so check and move them if it went late.
+- Filed email reads with KOR_FILESYNC_KORTRANSMITTALSDB. Commits fb8a76fd, 53e53c2e, fbfff2f8 and this one are local, unpushed.
+
+**Dates that will not wait for Monday, each Ian's or a person's:** Peace River questions close Fri 6 Nov 17:00 (row 1570); APC
+sign-in to fetch its addendum and drawings (1571). On Monday first check both, and whether the Banff draft to Islam went.
+
+**Then, in order:** Worker deploy word (1573); trace the hour's Banff date, the 07:05 email (1580, 1581); class check on jobs that
+report success doing nothing (1579). The full list is the board, Owner Operations.
 
 **Dates ahead:** 13 Nov Peace River; 17 Nov first brief scoring; 19 Nov Banff; 21 Nov E&O and GL policies expire (COI read 14 Oct).
 
