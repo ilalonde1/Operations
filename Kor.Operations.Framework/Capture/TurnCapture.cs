@@ -397,8 +397,10 @@ public static class TurnCapture
             if (n.ExitCode is null && n.Status is not ("completed" or "failed")) continue;
             var e = ToolClassifier.Classify(call.Command, output, n.ExitCode);
             // a notification that SAYS failed and gives NO exit code is a failure (review row 370) - the status, not an invented
-            // code. With a code, the classifier's rule stands as for a foreground run: the output's own verdict first, because
-            // the code may be a LATER step's (`dotnet test ...; grep x` exits 1 after "Passed!") - review row 375 asked which
+            // code. With a code, the classifier decides exactly as for a foreground run (ToolClassifier's outcome rules): a
+            // test, build or stage_gate run reads the output's own verdict first, because the code may be a LATER step's
+            // (`dotnet test ...; grep x` exits 1 after "Passed!"); a virtual_drafter run, a *_check.py and a migration let a
+            // non-zero code beat their pass marker (review rows 375, 376)
             if (e is not null && n.ExitCode is null && n.Status == "failed" && !Bad.Contains(e.Outcome)) e = e with { Outcome = "fail" };
             if (e is not null) runs.Add(new Run(n.Line, e, true, call, n));
         }

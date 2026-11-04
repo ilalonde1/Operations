@@ -148,13 +148,21 @@ public class TurnCaptureTests
             Say("Started."), User(failed, origin: "task-notification"), Say("It failed.")));
         var l2 = t2.SelectMany(x => x.Tools).ToDictionary(x => x.Id, x => x);
         Assert.Equal("fail", Assert.Single(TurnCapture.BackgroundRuns(t2[^1], l2, _ => "  PASS read: ok")).Event.Outcome);
-        // WITH a code, the output's own verdict stands, as for a foreground run: the code may be a later step's (review row
-        // 375) - a background `dotnet test ...; grep x` that printed "Passed!" and exited 1 is a passing test run
-        var t3 = TurnCapture.Turns(Write(
-            User("Test it."), Tool("t1", "dotnet test x.csproj; grep -c foo bar.txt", background: true), Result("t1", "started", backgroundTask: "bk1"),
+    }
+
+    /// <summary>Review rows 375/376: WITH an exit code a background run is classified exactly as a foreground one - a test
+    /// reads its output's verdict first (the code may be a later step's), a pipeline lets a non-zero code beat PASS.</summary>
+    [Theory]
+    [InlineData("dotnet test x.csproj; grep -c foo bar.txt", "Passed!  - Failed: 0, Passed: 3", "pass")]
+    [InlineData("python tools/virtual_drafter.py run jobs/x/job.json", "  PASS read: ok", "fail")]
+    public void ABackgroundRunWithAnExitCodeIsClassifiedAsAForegroundOne(string command, string output, string outcome)
+    {
+        var turns = TurnCapture.Turns(Write(
+            User("Run it."), Tool("t1", command, background: true), Result("t1", "started", backgroundTask: "bk1"),
             Say("Started."), User(NoteBlock("bk1", "t1", 1), origin: "task-notification"), Say("Done.")));
-        var l3 = t3.SelectMany(x => x.Tools).ToDictionary(x => x.Id, x => x);
-        Assert.Equal("pass", Assert.Single(TurnCapture.BackgroundRuns(t3[^1], l3, _ => "Passed!  - Failed: 0, Passed: 3")).Event.Outcome);
+        var launches = turns.SelectMany(x => x.Tools).ToDictionary(x => x.Id, x => x);
+        Assert.Equal(outcome, Assert.Single(TurnCapture.BackgroundRuns(turns[^1], launches, _ => output)).Event.Outcome);
+        Assert.Equal(outcome, ToolClassifier.Classify(command, output, 1)!.Outcome);   // the same as in the foreground
     }
 
     [Fact]
