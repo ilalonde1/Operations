@@ -110,7 +110,11 @@ public sealed record StallDecision(bool Refuse, string Reason, StallTarget? Targ
 /// says nothing about the failure clears it. A new turn from Ian or a peer re-opens a target whatever it says (one that
 /// is about something else re-opens it too), and a mid-turn message never does, even "it's fixed, retry". A shell command that hangs or fails twice and is retried with any change
 /// (a flag, a script) is not refused - only a permission refusal follows the resource across commands. A stall inside a
-/// helper is judged on the helper's own transcript only when the hook input carries agent_id.
+/// helper is judged on the helper's own transcript only when the hook input carries agent_id. A cause given only in
+/// chat is not covered - G1 cannot read it, and asks for the record (decided 3 Nov, Framework docs/G1-STALL-REFUSALS.md:
+/// 3 of the final 10 dry-run refusals, the seed's :333 among them, were judged wrong for exactly this). A grep line
+/// whose matched content starts with a digit ("app.log:12:2026-11-03 ... Access is denied") inside a pipeline that is
+/// not reader-only is read as a status line (review row 421: the price of reading timestamp-led status lines).
 /// Same-class fault it would miss: the seed's own shape through a second name - Graph refused on
 /// "jmarkulin@korstructural.com", and the next try opens the mailbox by display name ("John Markulin") through Outlook:
 /// no token is shared, so the third attempt runs.
