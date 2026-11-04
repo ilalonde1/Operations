@@ -15,7 +15,9 @@ say Banff Centre (#1142) closes Thu 5 Nov. APC's public feed says it was amended
   project_bd_module_deferred_work (both read in full), are rows from 1570 (read `oversight.vw_Board`, Owner Operations). The
   board is the list now; this block does not repeat it.
 - 4 Nov 11:30: Conor's brief on Bridgestar, Team, Ironclad is built (docs and Desktop\BD, not yet sent to him). Migration 382
-  banked its people and facts. Follow-ups are rows 1630-1639. Bar from Ian: every brief ships McKinsey level, record 124915.
+  banked its people and facts, 383 corrected the Graham Chatwin link from filed email, 384 finished the pass. Follow-ups are
+  rows 1630-1643. Filed email reads with KOR_FILESYNC_KORTRANSMITTALSDB. Bar from Ian: every brief ships McKinsey level, record
+  124915. Decompose-to-brain is not sound: most of what it writes has no reader and nothing enforces it (row 1641).
 - Git: nothing unpushed at 09:43. Newest commits on BD code on any branch: f08f764e V30, 22 Oct. Later: contracts
   (f4feedfa, 939209dc, 33f5cbad, 28 Oct).
 - Worker: version 1.0.9790.1290 = built 21 Oct 21:30. V30's email-format fix (22 Oct) has never been deployed. Result: 11
