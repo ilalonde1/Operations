@@ -54,7 +54,14 @@ public class EnrollCheckTests
     }
 
     [Fact]
-    public void TheRealSettingsPass() => Assert.Empty(EnrollCheck.SettingsFindings(RealSettings(), This.Module));
+    public void TheRealSettingsPass()
+    {
+        var settings = RealSettings();
+        var findings = EnrollCheck.SettingsFindings(settings, This.Module);
+        // G5's hooks reach this repo at install, after kor (Framework docs/G5-CONTEXT-STOPS.md): none yet is allowed, some is not
+        if (!settings.Contains("kor.exe context", StringComparison.Ordinal)) findings.RemoveAll(f => f.Contains("row 1474", StringComparison.Ordinal));
+        Assert.Empty(findings);
+    }
 
     [Fact]
     public void EveryKorHookIsEnumerated()

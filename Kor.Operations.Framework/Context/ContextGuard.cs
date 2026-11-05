@@ -72,10 +72,10 @@ public sealed record ContextDecision(ContextLevel Level, bool Deny, string? Say,
 /// session at STOP tries to end its turn before the handover is written. "Written" means a successful kor state AND a
 /// successful Edit/Write of a *HANDOVER*.md, both after the reading crossed STOP.
 ///
-/// ALLOWED AT STOP (<see cref="HandoverAllows"/>): Read/Edit/Write/MultiEdit of a *HANDOVER*.md or *RESUME*.md; Write/Edit of a
+/// ALLOWED AT STOP (<see cref="HandoverAllows"/>): Read/Edit/Write/MultiEdit of a *HANDOVER*.md or *RESUME*.md; Read/Write/Edit of a
 /// scratchpad file named for the state (*STATE*, *HANDOVER*: the file kor state --file reads); Bash/PowerShell when EVERY
-/// segment is kor state, kor record, git status/diff/log/show/rev-parse, ls, git add of *HANDOVER*.md paths only, git commit
-/// without -a/--all/--amend, date, Get-Date, cd, pwd, echo, a literal assignment, or a heredoc cat (a commit message),
+/// segment is kor state, kor record, git status/diff/log/show/rev-parse (no --output), ls, git add of *HANDOVER*.md paths only, git commit
+/// with only a message and *HANDOVER*.md paths, date, Get-Date, cd, pwd, echo, a literal assignment, or a heredoc cat (a commit message),
 /// with no redirect to a file; TaskStop/KillShell (stop background work); SendMessage for a SUBAGENT only (its report to
 /// its lead - a main session tells Ian in plain text); ToolSearch only to load those. Everything else is denied, git push
 /// included (the fresh session reviews and pushes). The first dry run allowed any scratchpad file and any SendMessage, and
@@ -185,7 +185,7 @@ public static class ContextGuard
         var m = string.IsNullOrWhiteSpace(module) ? "<module>" : module;
         if (handoverWritten)
             return head + "The handover is written (kor state and the HANDOVER.md edit are on record). Commit it if not yet committed " +
-                   "(git add docs/HANDOVER.md && git commit; no push), then tell Ian in one plain line that this session has stopped for a fresh " +
+                   "(git add docs/HANDOVER.md && git commit docs/HANDOVER.md -m ...; no push), then tell Ian in one plain line that this session has stopped for a fresh " +
                    "start, with its handover written. Ian or the lead starts the fresh session.";
         return head + "Write the handover now, and nothing else: " +
                "1. Read docs/HANDOVER.md (or the repo's *HANDOVER*.md) and Edit its STATE NOW block, with times from `date`: FIRST anything LIVE " +
@@ -193,11 +193,11 @@ public static class ContextGuard
                "what is half-done and exactly where, the next step, the open board rows. " +
                $"2. Write the same block to STATE-NOW.md in your scratchpad and run `kor state --module {m} --file <that file>`. " +
                "3. `kor record` any finding not yet recorded. " +
-               "4. `git add docs/HANDOVER.md && git commit -m \"handover: ...\"` (no push: the fresh session reviews and pushes). " +
+               "4. `git add docs/HANDOVER.md && git commit docs/HANDOVER.md -m \"handover: ...\"` (no push: the fresh session reviews and pushes). " +
                "5. Tell Ian in one plain line that this session has stopped for a fresh start, with its handover written, naming anything LIVE. Ian or the lead " +
                "starts the fresh session. " +
-               "Allowed now: Read/Edit/Write of a *HANDOVER*.md; Write of STATE-NOW.md in the scratchpad; kor state; kor record; date; " +
-               "git status/diff/log/show; ls; git add of the handover; git commit (not -a, not --amend); TaskStop. A chain with any other step in it is " +
+               "Allowed now: Read/Edit/Write of a *HANDOVER*.md; Read/Write of STATE-NOW.md in the scratchpad; kor state; kor record; date; " +
+               "git status/diff/log/show; ls; git add of the handover; git commit of the handover by its path; TaskStop. A chain with any other step in it is " +
                "refused whole: if a command is refused, run the allowed steps on their own and finish all 5. Nothing else runs until a fresh session.";
     }
 
@@ -255,7 +255,7 @@ public static class ContextGuard
         if (FileTools.Contains(tool))
         {
             if (IsHandoverFile(text)) return $"{tool} of the handover {Path.GetFileName(text)}";
-            if (tool is "Write" or "Edit" && UnderScratchpad(text, scratchpad) && IsStateFile(text)) return $"{tool} of the state file {Path.GetFileName(text)}";
+            if (UnderScratchpad(text, scratchpad) && IsStateFile(text)) return $"{tool} of the state file {Path.GetFileName(text)}";
             return null;
         }
         if (tool is "Bash" or "PowerShell")
@@ -311,7 +311,7 @@ public static class ContextGuard
     }
 
     // a redirect into a file (> f, >> f, Out-File, Set-Content, tee) is a write; 2>&1, >/dev/null and >$null are not
-    private static readonly Regex HarmlessRedirect = new(@"\d?>&\d|\d?>\s*(?:/dev/null|\$null|NUL\b)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex HarmlessRedirect = new(@"\d?>&\d|\d?>\s*(?:/dev/null|\$null|NUL)(?=\s|$|[;&|)])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static readonly Regex WriteCmdlet = new(@"\b(?:Out-File|Set-Content|Add-Content|tee|Tee-Object)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     // a quoted string is data: "...<noreply@anthropic.com>" in a commit message is no redirect (the live run, 3 Nov 21:50:
@@ -334,6 +334,22 @@ public static class ContextGuard
     private static readonly Regex QuotedTail = new(@"=\s*(?:""[^""$`]*""|'[^']*')\s*$", RegexOptions.CultureInvariant);
     private static readonly string[] GitReads = { "status", "diff", "log", "show", "rev-parse" };
     private static readonly string[] Harmless = { "date", "get-date", "cd", "set-location", "pwd", "ls", "echo", "write-output", "write-host", "true", ":" };
+
+    /// <summary>A commit at STOP: only a message (-m, -F, --message, --file, with -q) and handover paths. An allow-list, because
+    /// git takes abbreviations (--amen, --al) and -i, and a path other than the handover would commit work (review row 491).</summary>
+    private static bool CommitIsHandoverOnly(IReadOnlyList<string> args)
+    {
+        for (var i = 0; i < args.Count; i++)
+        {
+            var a = args[i];
+            if (a is "-m" or "-F" or "--message" or "--file") { i++; continue; }
+            if (a is "-q" or "--quiet" or "--") continue;
+            if (a.StartsWith("--message=", StringComparison.Ordinal) || a.StartsWith("--file=", StringComparison.Ordinal)) continue;
+            if (a.StartsWith("-m", StringComparison.Ordinal) && !a.StartsWith("--", StringComparison.Ordinal)) continue;   // -m"text"
+            if (a.StartsWith('-') || !IsHandoverFile(a)) return false;
+        }
+        return true;
+    }
 
     private static bool SegmentAllowed(string seg)
     {
@@ -359,14 +375,14 @@ public static class ContextGuard
             if (i >= words.Count) return false;
             var verb = words[i];
             var args = words.Skip(i + 1).ToList();
-            if (GitReads.Contains(verb)) return true;
+            // --output writes a file, and git takes any abbreviation of it (--oneline is --on, so --ou cannot be it)
+            if (GitReads.Contains(verb)) return !args.Any(a => a.StartsWith("--ou", StringComparison.OrdinalIgnoreCase));
             if (verb == "add")
             {
                 var paths = args.Where(a => !a.StartsWith('-')).ToList();
                 return paths.Count > 0 && paths.All(IsHandoverFile) && !args.Any(a => a is "-A" or "--all" or "-u" or "--update" or ".");
             }
-            if (verb == "commit")
-                return !args.Any(a => a is "-a" or "--all" or "--amend" || (a.StartsWith('-') && !a.StartsWith("--") && a.Length > 2 && a.Contains('a') && !a.StartsWith("-m")));
+            if (verb == "commit") return CommitIsHandoverOnly(args);
             return false;
         }
         return false;

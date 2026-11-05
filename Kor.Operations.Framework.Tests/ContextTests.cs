@@ -179,6 +179,16 @@ public class ContextTests
     [InlineData("Bash", "cat <<'EOF' > src/x.cs\nclass X {}\nEOF")]                                  // nor what sits on its opener's line (review row 489)
     [InlineData("Bash", "cat <<'EOF' | bash\ndotnet build\nEOF")]
     [InlineData("Bash", "git commit -F - <<'EOF' && git push\nhandover\nEOF")]
+    [InlineData("Bash", "git commit . -m wip")]                                                       // a commit is the handover or nothing (review row 491)
+    [InlineData("Bash", "git commit src/x.cs -m wip")]
+    [InlineData("Bash", "git commit -i src/x.cs -m wip")]
+    [InlineData("Bash", "git commit --al -m wip")]
+    [InlineData("Bash", "git commit --amen --no-edit")]
+    [InlineData("Bash", "git diff --output=src/x.cs")]
+    [InlineData("Bash", "git log --outp=f")]
+    [InlineData("Bash", "date > nul.txt")]
+    [InlineData("Bash", "date > /dev/nullx")]
+    [InlineData("PowerShell", "echo x > $nullfile")]
     [InlineData("Bash", "cat docs/PLAN.md")]
     [InlineData("Bash", "git commit -m \"$(date > stamp.txt)\"")]                                    // a redirect inside $( ) is still a write
     [InlineData("Bash", "echo \"a>b\" > notes.txt")]
@@ -209,6 +219,10 @@ public class ContextTests
     [InlineData("Write", "C:/Users/x/AppData/Local/Temp/claude/s/scratchpad/STATE-NOW.md")]
     [InlineData("Bash", "date \"+%Y-%m-%d %H:%M %Z\"")]
     [InlineData("Bash", "git commit -F - <<'EOF'\nhandover: done\nEOF")]
+    [InlineData("Bash", "git add docs/HANDOVER.md && git commit docs/HANDOVER.md -m \"handover: done\"")]   // the STOP text's own step
+    [InlineData("Bash", "git log --oneline -3")]
+    [InlineData("Bash", "date > /dev/null")]
+    [InlineData("Read", "C:/Users/x/AppData/Local/Temp/claude/s/scratchpad/STATE-NOW.md")]
     [InlineData("Bash", "date && git -C \"C:/r\" status --short && git log --oneline -3 && ls \"C:/r/docs\"")]   // the live probe's chain, 4 Nov: refused whole for its ls, and the session gave up on the commit
     [InlineData("Bash", "C:/KOR-Operations/kor/kor.exe state --module Operations --file \"C:/Users/x/AppData/Local/Temp/claude/s/scratchpad/STATE-NOW.md\"")]
     [InlineData("Bash", "kor record --module Operations --kind finding --name x --says y --source query:SELECT 1")]
