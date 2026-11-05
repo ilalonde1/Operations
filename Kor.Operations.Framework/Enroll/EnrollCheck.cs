@@ -19,7 +19,8 @@ public sealed record KorRepo(string Folder, string[] PrePushGuards)
 /// memory (pages 1..M, every one), records (pages 1..4, every one - 3 Nov) and board (--owner or --tag); capture-start; capture-tool on PostToolUse AND PostToolUseFailure covering
 /// Bash and PowerShell; capture-check on Stop with a timeout of at least 30 s (row 1393: it reads the ending turn off the
 /// transcript - an entry left at the old 15 s fails, naming the timeout); capture-compact; capture-end; kor enforce; kor stall on PreToolUse
-/// covering Bash, PowerShell, WebFetch and MCP tools (G1, board row 1308); kor fresh --file-changed; and this
+/// covering Bash, PowerShell, WebFetch and MCP tools (G1, board row 1308); kor context on PreToolUse covering every tool,
+/// on UserPromptSubmit and on Stop (G5, board row 1474); kor fresh --file-changed; and this
 /// check itself on SessionStart. Each with --hook; a --module, where given, is the repo's module.</item>
 /// <item>The git hooks (git's own hooks path, so core.hooksPath is honoured): post-commit, post-merge and post-checkout
 /// each call <c>kor capture-git &lt;that hook&gt;</c>; pre-push calls <c>capture-git pre-push</c>, still runs each of the
@@ -80,6 +81,10 @@ public static class EnrollCheck
     // declared before Required: static fields initialise in text order (Required reads this)
     private static readonly string[] StallTools = { "Bash", "PowerShell", "WebFetch", "mcp__networkops__networkops_run" };
 
+    // G5 (row 1474): every work tool, so its matcher must reach them all ("*" or none does); an MCP tool's name stands for them
+    private static readonly string[] ContextTools = { "Bash", "PowerShell", "Read", "Write", "Edit", "MultiEdit", "Grep", "Glob", "Agent",
+                                                     "WebFetch", "WebSearch", "SendMessage", "NotebookEdit", "mcp__networkops__networkops_run" };
+
     public const int RecordsPages = 4;
 
     /// <summary>Row 1393: the Stop capture-check's least timeout, in seconds.</summary>
@@ -118,6 +123,11 @@ public static class EnrollCheck
         // G1, the stall guard (board row 1308): a target that failed twice in a row is refused at the third attempt. Its
         // matcher must reach the shells, WebFetch and the MCP tools (an MCP tool's name stands for them all here)
         new Hook("PreToolUse (Bash|PowerShell|WebFetch|mcp__.*) kor stall (G1 stall guard, row 1308)", "PreToolUse", StallTools, "stall", _ => true),
+        // G5, the context cliff (board row 1474): WARN and STOP on every tool, the same on each prompt, and the Stop block
+        // that asks for the handover - all three, or a session can reach the cliff with no warning
+        new Hook("PreToolUse (*) kor context (G5 context cliff, row 1474)", "PreToolUse", ContextTools, "context", _ => true),
+        new Hook("UserPromptSubmit kor context (G5 context cliff, row 1474)", "UserPromptSubmit", Array.Empty<string>(), "context", _ => true),
+        new Hook("Stop kor context (G5 context cliff, row 1474)", "Stop", Array.Empty<string>(), "context", _ => true),
     };
 
     // kor.exe (or a bare kor) as the program, then its arguments

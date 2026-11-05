@@ -42,13 +42,17 @@ public static class StallStore
     /// <summary>A LIKE pattern's text with its wildcards escaped (\ is the escape).</summary>
     public static string Like(string s) => s.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_").Replace("[", "\\[");
 
-    public static int LogRefusal(BrainDb board, StallDecision d, string? session, string? repo, string matched)
+    public static int LogRefusal(BrainDb board, StallDecision d, string? session, string? repo, string matched) =>
+        LogGuardRefusal(board, Guard, BrainStore.Clip($"G1 {d.Second?.Class} {d.Target?.Name}", 200) ?? "G1", session, repo, matched);
+
+    /// <summary>One oversight.GuardRefusal row for any kor guard (G1 here, G5 kor-context): Matched through SecretGuard.</summary>
+    public static int LogGuardRefusal(BrainDb board, string guard, string rule, string? session, string? repo, string matched)
     {
         using var c = board.Command(
             "DECLARE @id TABLE (Id int); INSERT oversight.GuardRefusal (Guard, [Rule], [Session], Repo, Matched) OUTPUT INSERTED.Id INTO @id " +
             "VALUES (@g, @r, @s, @repo, @m); SELECT Id FROM @id;", 3);
-        c.Parameters.Add("@g", SqlDbType.NVarChar, 60).Value = Guard;
-        c.Parameters.Add("@r", SqlDbType.NVarChar, 200).Value = BrainStore.Clip($"G1 {d.Second?.Class} {d.Target?.Name}", 200) ?? "G1";
+        c.Parameters.Add("@g", SqlDbType.NVarChar, 60).Value = guard;
+        c.Parameters.Add("@r", SqlDbType.NVarChar, 200).Value = BrainStore.Clip(rule, 200) ?? guard;
         c.Parameters.Add("@s", SqlDbType.NVarChar, 80).Value = (object?)BrainStore.Clip(session, 80) ?? DBNull.Value;
         c.Parameters.Add("@repo", SqlDbType.NVarChar, 80).Value = (object?)BrainStore.Clip(repo, 80) ?? DBNull.Value;
         c.Parameters.Add("@m", SqlDbType.NVarChar, 400).Value = SecretGuard.ForGuardLog(matched);

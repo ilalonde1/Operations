@@ -74,6 +74,7 @@ public static partial class Program
                 "migration-lint" => MigrationLintVerb(o, stdin, output),
                 "enroll-check" => EnrollCheckVerb(o, output, hook, db),
                 "stall" => StallVerb(o, stdin, output, hook, db, board, hookErrorLog),
+                "context" => ContextVerb(o, stdin, output, hook, board, hookErrorLog),
                 _ => hook ? UnknownInHook(o, output) : Usage(error),
             };
         }
@@ -125,7 +126,7 @@ public static partial class Program
             "--says", "--source", "--cap", "--session", "--description", "--check", "--check-ref", "--issue",
             "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir", "--page", "--pages", "--cutoff",
             "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what", "--days", "--tag",
-            "--replay", "--since", "--window-hours",
+            "--replay", "--since", "--window-hours", "--auto-compact-window", "--auto-compact-model", "--ceiling",
         };
 
         /// <summary>Options given more than once, every value kept in order (check-add's examples).</summary>
@@ -558,6 +559,8 @@ public static partial class Program
         error.WriteLine("       kor migration-lint <file.sql> | - --name NNN_x.sql [--cutoff N (177)]   (a migration above the cut-off: L1 a 'PROBES:' header line, L2 no hand-written probe handling without migration.usp_MigrationProbe; one line per finding, exit 1)");
         error.WriteLine("       kor stall --hook   (PreToolUse JSON on stdin; Bash|PowerShell|WebFetch|mcp__.*: G1 stall guard, board row 1308)");
         error.WriteLine("       kor stall --replay <transcript.jsonl|list.txt> [--since ISO-UTC] [--window-hours H] [--never-records]   (row 1308 dry run: every judged call through G1; reads only)");
+        error.WriteLine("       kor context --module M --hook   (PreToolUse every tool, UserPromptSubmit, Stop: G5 context line, board row 1474 - WARN 250k, STOP 300k)");
+        error.WriteLine("       kor context --replay <transcript.jsonl|list.txt> [--since ISO-UTC] [--auto-compact-window N [--auto-compact-model M]]   (row 1474 dry run; reads only)");
         error.WriteLine("       kor enroll-check [--all] [--dir D] [--days N (7)] [--hook]   (every framework hook in .claude/settings.json and .git/hooks, and a session-start in brain.Event where sessions ran; one verdict line, exit 1 on a finding - 0 with --hook)");
         error.WriteLine("       kor start --module M [--owner O]... [--no-helpers] [--part record|state|memory|records|board|all] [--tag T (board: only rows tagged [T] or [was T]; with no --owner, any owner's, no owner named)] [--page N --pages M (memory, records)] [--hook | --text] [--dir D] [--session S] [--start-source S]   (SessionStart JSON on stdin with --hook)");
         return 2;
