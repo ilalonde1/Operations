@@ -188,6 +188,17 @@ public class ContextTests
     [InlineData("Bash", "git commit \\:\\!docs/HANDOVER.md -m wip")]                                   // magic, escaped or expanded (review row 495)
     [InlineData("Bash", "X=:; git commit \"$X!docs/HANDOVER.md\" -m wip")]
     [InlineData("PowerShell", "git commit `:!docs/HANDOVER.md -m wip")]
+    [InlineData("Bash", "git commit \\:\\^docs/HANDOVER.md -m wip")]                                   // none of these carries a '!' (review row 496)
+    [InlineData("Bash", "X=:; git commit \"$X^docs/HANDOVER.md\" -m wip")]
+    [InlineData("PowerShell", "git commit `:^docs/HANDOVER.md -m wip")]
+    [InlineData("Bash", "git commit docs/HANDOVE*.md -m wip")]
+    [InlineData("Bash", "git commit docs/HANDOVE?.md -m wip")]
+    [InlineData("Bash", "git commit d[o]cs/HANDOVER.md -m wip")]
+    [InlineData("Bash", "git commit {:^,:^}docs/HANDOVER.md -m wip")]
+    [InlineData("Bash", "git commit {src/PLAN,docs/HANDOVER}.md -m wip")]
+    [InlineData("Bash", "git add \\:\\^docs/HANDOVER.md")]
+    [InlineData("Bash", "git add docs/HANDOVE*.md")]
+    [InlineData("Bash", "git add {:^,:^}docs/HANDOVER.md")]
     [InlineData("Bash", "echo x >&2x")]
     [InlineData("Bash", "date >&1.cs")]
     [InlineData("Bash", "git commit . -m wip")]                                                       // a commit is the handover or nothing (review row 491)
@@ -231,6 +242,7 @@ public class ContextTests
     [InlineData("Bash", "date \"+%Y-%m-%d %H:%M %Z\"")]
     [InlineData("Bash", "git commit docs/HANDOVER.md -F - <<'EOF'\nhandover: done\nEOF")]
     [InlineData("Bash", "git add docs/HANDOVER.md && git commit docs/HANDOVER.md -m \"handover: done\"")]   // the STOP text's own step
+    [InlineData("Bash", "git add \"C:\\VIsual Studio Projects\\Framework\\docs\\HANDOVER.md\" && git commit \"C:/VIsual Studio Projects/Framework/docs/HANDOVER.md\" -m done")]   // plain paths, drive and spaces
     [InlineData("Bash", "git log --oneline -3")]
     [InlineData("Bash", "date > /dev/null")]
     [InlineData("Read", "C:/Users/x/AppData/Local/Temp/claude/s/scratchpad/STATE-NOW.md")]

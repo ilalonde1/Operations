@@ -337,11 +337,12 @@ public static class ContextGuard
     private static readonly string[] GitReads = { "status", "diff", "log", "show", "rev-parse" };
     private static readonly string[] Harmless = { "date", "get-date", "cd", "set-location", "pwd", "ls", "echo", "write-output", "write-host", "true", ":" };
 
-    // what a shell or git can turn into something else after this text is judged: an escaped or expanded pathspec, a glob
-    private static readonly Regex PathMagic = new(@"^\\|[$`!*?]", RegexOptions.CultureInvariant);
+    // an allow-list of plain path characters, a drive prefix the one colon: a shell or git can turn anything else into
+    // something other than this text after it is judged (escapes, $, backtick, braces, globs, pathspec magic; review rows 495, 496)
+    private static readonly Regex PlainPath = new(@"^(?:[A-Za-z]:[\\/]|[A-Za-z0-9_./ -])[A-Za-z0-9_./\\ -]*$", RegexOptions.CultureInvariant);
 
     /// <summary>A handover file named as git will read it: no pathspec magic, however it is spelled (review row 495).</summary>
-    private static bool IsPlainHandoverPath(string path) => IsHandoverFile(path) && !PathMagic.IsMatch(path.Trim().Trim('"', '\''));
+    private static bool IsPlainHandoverPath(string path) => IsHandoverFile(path) && PlainPath.IsMatch(path.Trim().Trim('"', '\''));
 
     /// <summary>A commit at STOP: only a message (-m, -F, --message, --file, with -q) and handover paths. An allow-list, because
     /// git takes abbreviations (--amen, --al) and -i, and a path other than the handover would commit work (review row 491).</summary>
