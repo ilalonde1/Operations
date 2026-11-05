@@ -59,14 +59,12 @@ public static partial class Program
         if (root == "off") return null;
         try
         {
-            // a prompt always says it and restarts the session's ten minutes, so the tool call after it does not repeat it
+            // The ten minutes count ATTEMPTS, whether or not the line lands: so a slow line or a failing disk costs a tool call at
+            // most once per ten minutes (review row 505). A prompt always tries, and restarts them.
             if (prompt) { try { SpendMeter.Stamp(CacheDirFor(root), session, DateTime.UtcNow); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } }
-            else if (!SpendMeter.Due(CacheDirFor(root), session, DateTime.UtcNow)) return null;
+            else if (!SpendMeter.ShouldTry(CacheDirFor(root), session, DateTime.UtcNow)) return null;
             var line = Task.Run(() => SpendLine(root, HookReadingWait, HookScanBudget));
-            if (!line.Wait(HookLineBudget)) return null;
-            // a tool call's ten minutes start only when a line was really said
-            if (!prompt) { try { SpendMeter.Stamp(CacheDirFor(root), session, DateTime.UtcNow); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } }
-            return line.Result;
+            return line.Wait(HookLineBudget) ? line.Result : null;
         }
         catch (Exception e) { LogHookError(hookErrorLog, o, e); return null; }
     }

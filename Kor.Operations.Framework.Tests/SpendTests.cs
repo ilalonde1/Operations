@@ -137,21 +137,19 @@ public class SpendTests : IDisposable
     public void ARecordWithNoReadingGivesNone(string? says) => Assert.Null(SpendMeter.ParseReading(says));
 
     [Fact]
-    public void AToolCallSaysItOncePerTenMinutesPerSession()
+    public void AToolCallTriesOncePerTenMinutesPerSession()
     {
         var t = DateTime.UtcNow;
-        Assert.True(SpendMeter.Due(CacheDir, "s1", t));
-        Assert.True(SpendMeter.Due(CacheDir, "s1", t));                         // not said yet: a line dropped at the cap stays due
-        SpendMeter.Stamp(CacheDir, "s1", t);
-        Assert.False(SpendMeter.Due(CacheDir, "s1", t.AddMinutes(9)));
-        Assert.True(SpendMeter.Due(CacheDir, "s2", t.AddMinutes(9)));
-        Assert.True(SpendMeter.Due(CacheDir, "s1", t.AddMinutes(11)));
+        Assert.True(SpendMeter.ShouldTry(CacheDir, "s1", t));
+        Assert.False(SpendMeter.ShouldTry(CacheDir, "s1", t.AddMinutes(9)));
+        Assert.True(SpendMeter.ShouldTry(CacheDir, "s2", t.AddMinutes(9)));
+        Assert.True(SpendMeter.ShouldTry(CacheDir, "s1", t.AddMinutes(11)));
         SpendMeter.Stamp(CacheDir, "s1", t.AddMinutes(20));                    // a prompt restarts the ten minutes
-        Assert.False(SpendMeter.Due(CacheDir, "s1", t.AddMinutes(29)));
+        Assert.False(SpendMeter.ShouldTry(CacheDir, "s1", t.AddMinutes(29)));
     }
 
     [Fact]
-    public void AMarkerThatCannotBeWrittenDoesNotSilenceAPromptAndNeverSaysOnEveryCall()
+    public void AMarkerThatCannotBeWrittenStillLetsAPromptSpeakAndNeverCostsEveryToolCall()
     {
         File.WriteAllText(CacheDir, "a file where the cache folder goes");
         string Hook(string ev)
@@ -162,7 +160,11 @@ public class SpendTests : IDisposable
             return output.ToString();
         }
         Assert.Contains(SpendMeter.Marker, Hook("UserPromptSubmit"));
-        Assert.False(SpendMeter.Due(CacheDir, "zz-g6-disk", DateTime.UtcNow));
+        Assert.Equal("", Hook("PreToolUse").Trim());
+        // the folder is there and the marker is not writable: a folder stands where the marker goes
+        File.Delete(CacheDir);
+        Directory.CreateDirectory(Path.Combine(CacheDir, "said-zz-g6-disk2"));
+        Assert.False(SpendMeter.ShouldTry(CacheDir, "zz-g6-disk2", DateTime.UtcNow.AddDays(1)));
     }
 
     [Fact]
