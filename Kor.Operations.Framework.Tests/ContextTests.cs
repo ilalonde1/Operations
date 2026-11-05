@@ -200,6 +200,11 @@ public class ContextTests
     [InlineData("Bash", "git add docs/HANDOVER*.md")]
     [InlineData("Bash", "git commit docs/HANDOVER.md -m a\\\" src/x.cs -m \\\"")]                    // a backslash before a quote: words git gets are not the words judged (review row 497)
     [InlineData("Bash", "git commit x\\\" src/x.cs \\\"docs/HANDOVER.md")]
+    [InlineData("Bash", "git commit x\\' src/x.cs \\'docs/HANDOVER.md")]
+    [InlineData("Bash", "git add docs/HANDOVER.md x\\\" src/x.cs \\\"y")]
+    [InlineData("PowerShell", "git commit docs/HANDOVER.md -m a`' src/x.cs -m `'")]                       // PowerShell's escape is the backtick (review row 498)
+    [InlineData("PowerShell", "git commit docs/HANDOVER.md -m a`\" src/x.cs -m `\"")]
+    [InlineData("PowerShell", "git add docs/HANDOVER.md x`' src/x.cs `'y")]
     [InlineData("Bash", "git add {:^,:^}docs/HANDOVER.md")]
     [InlineData("Bash", "echo x >&2x")]
     [InlineData("Bash", "date >&1.cs")]

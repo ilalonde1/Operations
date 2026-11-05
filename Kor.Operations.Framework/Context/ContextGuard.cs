@@ -341,7 +341,8 @@ public static class ContextGuard
 
     // an allow-list of plain path characters, a drive prefix the one colon: a shell or git can turn anything else into
     // something other than this text after it is judged ($, backtick, braces, globs, pathspec magic; review rows 495, 496).
-    // A backslash stays, for Windows paths; a backslash before a quote is refused for the whole git step (review row 497)
+    // A backslash stays, for Windows paths; an escaped quote is refused for the whole git step (EscapedQuote)
+    private static readonly Regex EscapedQuote = new(@"[\\`][""']", RegexOptions.CultureInvariant);
     private static readonly Regex PlainPath = new(@"^(?:[A-Za-z]:[\\/]|[A-Za-z0-9_./ -])[A-Za-z0-9_./\\ -]*$", RegexOptions.CultureInvariant);
 
     /// <summary>A handover file named as git will read it: no pathspec magic, however it is spelled (review row 495).</summary>
@@ -389,8 +390,9 @@ public static class ContextGuard
             if (i >= words.Count) return false;
             var verb = words[i];
             var args = words.Skip(i + 1).ToList();
-            // SplitArgs reads \" as opening a quote and Bash does not, so the words judged here would not be the words git gets
-            if (verb is "add" or "commit" && (seg.Contains("\\\"", StringComparison.Ordinal) || seg.Contains("\\'", StringComparison.Ordinal))) return false;
+            // SplitArgs reads an escaped quote as opening a quote and the shell does not, so the words judged here would not be
+            // the words git gets: Bash escapes with a backslash, PowerShell with a backtick (review rows 497, 498)
+            if (verb is "add" or "commit" && EscapedQuote.IsMatch(seg)) return false;
             // --output writes a file, and git takes any abbreviation of it (--oneline is --on, so --ou cannot be it)
             if (GitReads.Contains(verb)) return !args.Any(a => a.StartsWith("--ou", StringComparison.OrdinalIgnoreCase));
             if (verb == "add")
