@@ -24,8 +24,8 @@ public sealed record ContextDecision(ContextLevel Level, bool Deny, string? Say,
 /// isApiErrorMessage true, error "invalid_request", text "Prompt is too long". Once it fires, every later prompt fails the
 /// same way until someone runs /compact. At 21:26 on 3 Nov Ian turned auto-compact ON, with
 /// modelSettings.claude-opus-5-5.autoCompactWindow 900000. The settings are his; G5 reads them and never writes them.
-/// Even with auto-compact on, Ian wants never to reach compaction, so G5 forces the handover before it. The ceiling is
-/// therefore whichever comes first: the model's window, or the auto-compact window the session's settings give that model
+/// Even with auto-compact on, Ian wants never to reach compaction, so G5 calls the handover before it (on a 900k window
+/// without much room: see THE THRESHOLDS). The ceiling is therefore whichever comes first: the model's window, or the auto-compact window the session's settings give that model
 /// (<see cref="CompactSettings"/>: env, then project local, project and user files, in Claude Code's documented order).
 /// With the 1M window, the 149 auto-compactions fired at 966.7k-976k, about 33k under the window (the docs say "about
 /// 967K"). A 900k window would by the same margin fire near 867k. That is an ESTIMATE until the first 900k-window
@@ -64,7 +64,9 @@ public sealed record ContextDecision(ContextLevel Level, bool Deny, string? Say,
 /// The line is 125k under the cliff and, on the 900k window, about 17k under the estimated compaction. Main-session
 /// request-to-request growth in the 3 Nov corpus, n 64,545, p50 1,240, p99 12,227, p99.9 25,032, max 91,214; a handover costs
 /// about 3k-40k. So one call's result plus the handover normally fits under the cliff, and the largest of each together
-/// (about 131k) would not; and a request past p99 can reach the estimated compaction before the handover is written.
+/// (about 131k) would not. The room under compaction on the 900k window is tighter, and this states it plainly: a handover
+/// that costs over about 17k reaches the estimated compaction with no outlier request at all, so at this line, on this
+/// window, a session can compact before its handover is written. The state saved at the warnings is what stands then.
 /// What the earlier 300k line did to the 30-day corpus, by name, is Framework docs/G5-CONTEXT-STOPS.md (not re-run at 850k).
 ///
 /// THE SAVE AT A WARNING IS AN INSTRUCTION: the warning tells the session to run kor state and carry on; the hook itself saves

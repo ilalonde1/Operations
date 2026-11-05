@@ -20,7 +20,7 @@ namespace Kor.Operations.Framework.Context;
 /// </list>
 /// Not read: managed settings, a --settings or --autocompact flag at launch, and a /cd that moved the session away from the
 /// hook's cwd. Same-class miss: a session started with --settings '{"autoCompactWindow":250000}' compacts at about 217k
-/// while G5 still judges it on the files' 900k (WARN 250k), so it compacts before G5 says anything.
+/// while G5 still judges it on the files' 900k (WARN 300k), so it compacts before G5 says anything.
 /// </summary>
 /// <param name="Cap">a ceiling given on the hook's command line (--ceiling N): it can only LOWER the ceiling, never raise
 /// it (the live demonstration runs a small session against a small ceiling).</param>
