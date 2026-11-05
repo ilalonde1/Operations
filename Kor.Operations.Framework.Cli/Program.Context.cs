@@ -19,8 +19,10 @@ public static partial class Program
     /// auto-compact settings the session sees (from its cwd), and decides by hook_event_name:
     /// PreToolUse - deny at STOP unless the call is a handover step (one oversight.GuardRefusal row, Guard kor-context),
     /// additionalContext once per step in WARN; UserPromptSubmit - additionalContext in WARN (once per step) and at STOP
-    /// (always); Stop - block once at STOP until the handover is written (main sessions only). No transcript, bad input or
-    /// another event: nothing printed. Exit 0 always in hook mode; the DB is touched only to log a refusal.
+    /// (always); Stop - block once at STOP until the handover is written (main sessions only). Bad input or another event:
+    /// nothing printed; no transcript: nothing either, except the spend line on a first prompt. A prompt and, at most once per
+    /// ten minutes, a tool call also carry the spend line (G6, row 1559), read with the newest reading from the DB. Exit 0 always
+    /// in hook mode; the DB is otherwise touched only to log a refusal.
     /// </summary>
     private static int ContextVerb(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? board, string hookErrorLog)
     {

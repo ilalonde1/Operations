@@ -1,4 +1,3 @@
-using Kor.Operations.Framework.Records;
 using Kor.Operations.Framework.Spend;
 
 namespace Kor.Operations.Framework.Cli;
@@ -16,12 +15,18 @@ public static partial class Program
         return 0;
     }
 
-    /// <summary>The newest recorded screen reading (a DB read of at most 3 s; none or a failure: no reading, and the line says so).</summary>
+    /// <summary>The newest recorded screen reading: connect 3 s and query 3 s at most, because a hook's output waits on it, G5's
+    /// WARN and STOP included (review row 501). None, a slow DB or a failure: no reading, and the line says so.</summary>
     private static ScreenReading? NewestReading()
     {
         try
         {
-            return BrainDb.Use3s(KorStandardsConnection.Login.Brain, d => SpendMeter.ParseReading(RecordStore.LiveByName(d, "Framework", SpendMeter.ReadingRecord)?.Description));
+            return BrainDb.Use3s(KorStandardsConnection.Login.Brain, d =>
+            {
+                using var c = d.Command("SELECT TOP 1 Description FROM brain.Memory WHERE Lane = N'Framework' AND Name = @n AND RetiredAtUtc IS NULL AND Kind <> N'issue'", 3);
+                c.Parameters.Add("@n", System.Data.SqlDbType.NVarChar, 120).Value = SpendMeter.ReadingRecord;
+                return SpendMeter.ParseReading(c.ExecuteScalar() as string);
+            });
         }
         catch (Exception e) when (e is Microsoft.Data.SqlClient.SqlException or InvalidOperationException or ArgumentException) { return null; }
     }
@@ -43,8 +48,9 @@ public static partial class Program
         if (root == "off") return null;
         try
         {
-            // a prompt always says it, and starts the session's ten minutes, so the tool call after it does not repeat it
-            if (!SpendMeter.ShouldSay(CacheDirFor(root), session, DateTime.UtcNow) && !prompt) return null;
+            // a prompt always says it and restarts the session's ten minutes, so the tool call after it does not repeat it
+            if (prompt) SpendMeter.Stamp(CacheDirFor(root), session, DateTime.UtcNow);
+            else if (!SpendMeter.ShouldSay(CacheDirFor(root), session, DateTime.UtcNow)) return null;
             return SpendLine(root, HookScanBudget);
         }
         catch (Exception e) { LogHookError(hookErrorLog, o, e); return null; }

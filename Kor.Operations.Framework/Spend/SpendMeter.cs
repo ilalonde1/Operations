@@ -201,8 +201,8 @@ public static class SpendMeter
     }
 
     /// <summary>The count now: the cache as it stands, brought up to date when it is older than <see cref="ScanEvery"/>
-    /// (or still partial), reading for at most <paramref name="budget"/>. Newest files last, so a cold start's line is
-    /// partial, never silently low.</summary>
+    /// (or still partial), reading for at most <paramref name="budget"/>. A file not read to its end counts in FilesLeft, so
+    /// a cold start's line says it is partial.</summary>
     public static SpendCount Count(string projectsRoot, string cacheDir, DateTimeOffset now, DateTimeOffset? readingAt, TimeSpan budget)
     {
         var weekStart = WeekStart(now);
@@ -217,7 +217,7 @@ public static class SpendMeter
                     if (f.LastWriteTimeUtc < weekStart.UtcDateTime) continue;
                     if (DateTime.UtcNow > deadline) { if (c.Offsets.GetValueOrDefault(f.FullName) != f.Length) left++; continue; }
                     try { if (!ReadNew(f.FullName, f.Length, c, weekStart, deadline)) left++; }
-                    catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }   // a file gone or held: next time
+                    catch (Exception e) when (e is IOException or UnauthorizedAccessException) { if (File.Exists(f.FullName)) left++; }   // held: not whole, read next time; gone: nothing to count
                 }
             c.FilesLeft = left;
             c.ScannedUtc = now.UtcDateTime;
@@ -234,18 +234,27 @@ public static class SpendMeter
     /// file's time; on a marker that cannot be written, false, so a failing disk never makes it say on every call).</summary>
     public static bool ShouldSay(string cacheDir, string? session, DateTime nowUtc)
     {
-        var safe = Regex.Replace(session ?? "none", "[^A-Za-z0-9-]", "_");
-        var marker = Path.Combine(cacheDir, "said-" + safe);
         try
         {
+            var marker = Marker_(cacheDir, session);
             if (File.Exists(marker) && nowUtc - File.GetLastWriteTimeUtc(marker) < SayEvery) return false;
-            Directory.CreateDirectory(cacheDir);
-            File.WriteAllBytes(marker, Array.Empty<byte>());
-            File.SetLastWriteTimeUtc(marker, nowUtc);
+            Stamp(cacheDir, session, nowUtc);
             return true;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return false; }
     }
+
+    /// <summary>The session's line was said now: the next tool call waits <see cref="SayEvery"/> from here.</summary>
+    public static void Stamp(string cacheDir, string? session, DateTime nowUtc)
+    {
+        Directory.CreateDirectory(cacheDir);
+        var marker = Marker_(cacheDir, session);
+        File.WriteAllBytes(marker, Array.Empty<byte>());
+        File.SetLastWriteTimeUtc(marker, nowUtc);
+    }
+
+    private static string Marker_(string cacheDir, string? session) =>
+        Path.Combine(cacheDir, "said-" + Regex.Replace(session ?? "none", "[^A-Za-z0-9-]", "_"));
 
     public static string DefaultProjectsRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "projects");
     public static string DefaultCacheDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KOR", "spend");
