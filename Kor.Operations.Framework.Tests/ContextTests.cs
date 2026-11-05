@@ -12,13 +12,14 @@ namespace Kor.Operations.Framework.Tests;
 /// unknown id).</item>
 /// <item>The auto-compact ceiling from settings in Claude Code's documented order: env, then project local, project and
 /// user; within a file a model's entry beats the top level; "auto" and "off" give the model's window. A 900k ceiling
-/// keeps WARN 250k and STOP 300k; a 200k one gets 140k and 170k.</item>
+/// keeps WARN 300k and STOP 850k; a ceiling too small to hold the STOP line takes 85% of itself (a 200k one 140k and 170k).</item>
 /// <item>The reading: the four usage fields summed; a compaction resets it to postTokens; "Prompt is too long" puts it
 /// past the cliff; a main transcript's sidechain is skipped; the hook's own WARN is read back from an attachment and not
 /// from a tool result.</item>
-/// <item>WARN said once per step. Every work tool refused at STOP. Every handover step allowed, each lookalike that does
+/// <item>WARN said once per line (300k, then every 100k), telling the session to save its state with kor state and carry
+/// on; no tool refused below STOP. Every work tool refused at STOP. Every handover step allowed, each lookalike that does
 /// work refused.</item>
-/// <item>The Stop block: once, only until the handover is written.</item>
+/// <item>The Stop block: once, only until the handover is written, and each block logs one oversight.GuardRefusal row.</item>
 /// <item>The three real cliffs (usage-only extracts in Fixtures/g5-seed-*) WARNED and STOPPED before the cliff, with
 /// their handover edits allowed.</item>
 /// <item>The hook verb's JSON for PreToolUse (deny and additionalContext), UserPromptSubmit and Stop. The refusal logs one
@@ -84,10 +85,10 @@ public class ContextTests
             Assert.Equal(900_000, cs.WindowFor("claude-opus-5-5[1m]"));     // matched as Claude Code does
             Assert.Null(cs.WindowFor("claude-fable-5-1"));                  // no entry: the model's own window
             Assert.Equal(900_000, ContextGuard.CeilingOf("claude-opus-5-5", cs));
-            Assert.Equal(250_000, ContextGuard.WarnAt(ContextGuard.CeilingOf("claude-opus-5-5", cs)));   // Ian's lines hold on a 900k ceiling
-            Assert.Equal(300_000, ContextGuard.StopAt(ContextGuard.CeilingOf("claude-opus-5-5", cs)));
-            Assert.Equal(140_000, ContextGuard.WarnAt(200_000));                                          // a ceiling too small for them: 70% and 85%
-            Assert.Equal(170_000, ContextGuard.StopAt(200_000));
+            Assert.Equal(300_000, ContextGuard.WarnAt(ContextGuard.CeilingOf("claude-opus-5-5", cs)));   // Ian's lines hold on this PC's 900k ceiling
+            Assert.Equal(850_000, ContextGuard.StopAt(ContextGuard.CeilingOf("claude-opus-5-5", cs)));   // 850k, not 85% of 900k = 765k
+            Assert.Equal(ContextLevel.Warn, ContextGuard.LevelOf(new ContextReading(849_999, "claude-opus-5-5", T0, 1), cs));
+            Assert.Equal(ContextLevel.Stop, ContextGuard.LevelOf(new ContextReading(850_000, "claude-opus-5-5", T0, 1), cs));
             Assert.Equal(1_000_000, ContextGuard.CeilingOf("claude-fable-5-1", cs));
 
             // the shared project file's top-level window beats the user file's model entry (a higher file decides)
@@ -108,6 +109,64 @@ public class ContextTests
             Assert.Equal(1_000_000, ContextGuard.CeilingOf("claude-opus-5-5", CompactSettings.Read(cwd, user, "")));
         }
         finally { Directory.Delete(dir, true); }
+    }
+
+    [Theory]
+    [InlineData(1_000_000, 300_000, 850_000)]
+    [InlineData(900_000, 300_000, 850_000)]     // this PC: auto-compact at 900k
+    [InlineData(883_247, 300_000, 850_000)]     // the smallest ceiling whose compaction, by the measured margin, fires at or above the line
+    [InlineData(883_246, 300_000, 750_759)]     // compaction would fire under 850k: 85% of the ceiling
+    [InlineData(500_000, 300_000, 425_000)]     // the warn line still fits under the fraction
+    [InlineData(400_000, 280_000, 340_000)]
+    [InlineData(200_000, 140_000, 170_000)]     // a 200k model
+    [InlineData(100_000, 70_000, 85_000)]
+    public void TheLinesComeFromTheCeiling(long ceiling, long warn, long stop)
+    {
+        Assert.Equal(warn, ContextGuard.WarnAt(ceiling));
+        Assert.Equal(stop, ContextGuard.StopAt(ceiling));
+    }
+
+    [Theory]
+    // the big ceiling: 300k, then each 100k
+    [InlineData(300_500, 900_000, null, true)]
+    [InlineData(399_999, 900_000, 300_500L, false)]
+    [InlineData(400_000, 900_000, 300_500L, true)]
+    [InlineData(420_000, 900_000, 405_000L, false)]   // the reading jumped past 400k: 500k is the next line, not 505k
+    [InlineData(500_000, 900_000, 405_000L, true)]
+    [InlineData(805_000, 900_000, 450_000L, true)]    // several lines crossed at once: one warning
+    [InlineData(849_999, 900_000, 800_000L, false)]   // no line between 800k and the STOP at 850k
+    [InlineData(300_000, 900_000, 260_000L, true)]    // a warning from the old 250k line, read back off a live transcript
+    [InlineData(310_000, 900_000, 700_000L, true)]    // the reading fell (a compaction)
+    [InlineData(400_000, 1_000_000, 300_000L, true)]  // the same lines on the model's 1M window
+    // a ceiling too small for them: 2.5% of it from the fraction
+    [InlineData(144_999, 200_000, 140_000L, false)]
+    [InlineData(145_000, 200_000, 140_000L, true)]
+    [InlineData(1, 1, 0L, true)]                      // the smallest --ceiling divides by nothing
+    public void TheWarningIsSaidOncePerLine(long tokens, long ceiling, long? last, bool warn) =>
+        Assert.Equal(warn, ContextGuard.ShouldWarn(tokens, ceiling, last));
+
+    [Fact]
+    public void AWarningTellsTheSessionToSaveItsStateAndCarryOn()
+    {
+        var text = ContextGuard.WarnText(new ContextReading(400_123, "claude-opus-5-5", T0, 1), Off, "Operations");
+        Assert.StartsWith(ContextGuard.WarnMarker + "400,123 tokens", text);
+        Assert.Contains("Save your state now", text);
+        Assert.Contains("`kor state --module Operations --file <file>`", text);
+        Assert.Contains("carry on working", text);
+        Assert.Contains("Nothing is refused", text);
+        Assert.Contains("850,000", text);
+        Assert.Contains("--module <module> --file", ContextGuard.WarnText(new ContextReading(400_123, "claude-opus-5-5", T0, 1), Off, null));
+    }
+
+    [Theory]
+    [InlineData("Bash", "git push origin main")]
+    [InlineData("Write", "C:/r/src/x.cs")]
+    [InlineData("Agent", "{\"prompt\":\"read everything\"}")]
+    public void NoWorkToolIsRefusedBelowTheStopLine(string tool, string text)
+    {
+        foreach (var tokens in new long[] { 299_999, 300_000, 500_000, 765_000, 849_999 })
+            Assert.False(ContextGuard.Decide(new ContextReading(tokens, "claude-opus-5-5", T0, 1), tool, text, null, false, "M", Off).Deny, $"{tool} at {tokens}");
+        Assert.True(ContextGuard.Decide(new ContextReading(850_000, "claude-opus-5-5", T0, 1), tool, text, null, false, "M", Off).Deny);
     }
 
     [Fact]
@@ -139,29 +198,25 @@ public class ContextTests
     }
 
     [Fact]
-    public void TheWarningIsSaidOncePerStepAndReadBackOnlyFromItsOwnAttachment()
+    public void TheWarningIsReadBackOnlyFromItsOwnAttachment()
     {
-        var w = 1_000_000L;
-        Assert.True(ContextGuard.ShouldWarn(250_500, w, null));
-        Assert.False(ContextGuard.ShouldWarn(270_000, w, 250_500));
-        Assert.True(ContextGuard.ShouldWarn(275_500, w, 250_500));
-        var warn = ContextGuard.WarnText(new ContextReading(262_345, "claude-opus-5-5", T0, 1), Off);
-        Assert.StartsWith(ContextGuard.WarnMarker + "262,345 tokens", warn);
+        var warn = ContextGuard.WarnText(new ContextReading(312_345, "claude-opus-5-5", T0, 1), Off, "M");
+        Assert.StartsWith(ContextGuard.WarnMarker + "312,345 tokens", warn);
 
         var lines = new List<string>
         {
-            Assistant(T0, "claude-opus-5-5", 1, 261_000, 1_000),
+            Assistant(T0, "claude-opus-5-5", 1, 311_000, 1_000),
             JsonSerializer.Serialize(new { type = "attachment", attachment = new { type = "hook_additional_context", content = new[] { warn } } }),
-            Assistant(T0.AddMinutes(1), "claude-opus-5-5", 1, 265_000, 500),
+            Assistant(T0.AddMinutes(1), "claude-opus-5-5", 1, 315_000, 500),
         };
-        Assert.Equal(262_345, ContextTranscript.Read(lines, lines.Count, false, null, Off).LastWarned);
+        Assert.Equal(312_345, ContextTranscript.Read(lines, lines.Count, false, null, Off).LastWarned);
         // a tool result quoting the marker (a grep of this very file) is not the hook's warning
         lines[1] = Result("x", warn);
         Assert.Null(ContextTranscript.Read(lines, lines.Count, false, null, Off).LastWarned);
     }
 
     private static ContextDecision AtStop(string tool, string text, bool sub = false) =>
-        ContextGuard.Decide(new ContextReading(301_321, "claude-opus-5-5", T0, 1), tool, text, "C:/Users/x/AppData/Local/Temp/claude/s/scratchpad", sub, "Operations", Off);
+        ContextGuard.Decide(new ContextReading(851_321, "claude-opus-5-5", T0, 1), tool, text, "C:/Users/x/AppData/Local/Temp/claude/s/scratchpad", sub, "Operations", Off);
 
     [Theory]
     [InlineData("Bash", "dotnet test Kor.Operations.Framework.Tests")]
@@ -292,16 +347,16 @@ public class ContextTests
     [Fact]
     public void BelowWarnNothingIsSaidAndInWarnEveryToolStillRuns()
     {
-        var ok = ContextGuard.Decide(new ContextReading(249_999, "claude-opus-5-5", T0, 1), "Bash", "dotnet build", null, false, "M", Off);
+        var ok = ContextGuard.Decide(new ContextReading(299_999, "claude-opus-5-5", T0, 1), "Bash", "dotnet build", null, false, "M", Off);
         Assert.Equal(ContextLevel.Ok, ok.Level);
         Assert.Null(ok.Say);
-        var warn = ContextGuard.Decide(new ContextReading(250_000, "claude-opus-5-5", T0, 1), "Bash", "dotnet build", null, false, "M", Off);
+        var warn = ContextGuard.Decide(new ContextReading(300_000, "claude-opus-5-5", T0, 1), "Bash", "dotnet build", null, false, "M", Off);
         Assert.Equal(ContextLevel.Warn, warn.Level);
         Assert.False(warn.Deny);
-        Assert.Contains("300,000", warn.Say);
-        var last = ContextGuard.Decide(new ContextReading(299_999, "claude-opus-5-5", T0, 1), "Bash", "dotnet build", null, false, "M", Off);
+        Assert.Contains("kor state --module M", warn.Say);
+        var last = ContextGuard.Decide(new ContextReading(849_999, "claude-opus-5-5", T0, 1), "Bash", "dotnet build", null, false, "M", Off);
         Assert.False(last.Deny);
-        var stop = ContextGuard.Decide(new ContextReading(300_000, "claude-opus-5-5", T0, 1), "Bash", "dotnet build", null, false, "M", Off);
+        var stop = ContextGuard.Decide(new ContextReading(850_000, "claude-opus-5-5", T0, 1), "Bash", "dotnet build", null, false, "M", Off);
         Assert.True(stop.Deny);
         Assert.Contains("LIVE", stop.Say);   // what a stopped session leaves running is named first: the decision on the 2 HARM cases
         // a 200k model: WARN 140k, STOP 170k
@@ -313,8 +368,8 @@ public class ContextTests
     {
         var lines = new List<string>
         {
-            Assistant(T0, "claude-opus-5-5", 1, 290_000, 1_000),                                                       // under STOP
-            Assistant(T0.AddMinutes(1), "claude-opus-5-5", 1, 301_000, 500, ("e1", "Edit", new { file_path = "C:/r/docs/HANDOVER.md" })),
+            Assistant(T0, "claude-opus-5-5", 1, 840_000, 1_000),                                                       // under STOP
+            Assistant(T0.AddMinutes(1), "claude-opus-5-5", 1, 851_000, 500, ("e1", "Edit", new { file_path = "C:/r/docs/HANDOVER.md" })),
             Result("e1", "The file C:/r/docs/HANDOVER.md has been updated successfully."),
         };
         var r = ContextTranscript.Read(lines, lines.Count, false, null, Off);
@@ -325,7 +380,7 @@ public class ContextTests
         Assert.False(ContextGuard.DecideStop(r, false, stopHookActive: true, "Operations", Off).Deny);   // once, never a loop
         Assert.False(ContextGuard.DecideStop(r, true, false, "Operations", Off).Deny);                   // a subagent's report is its handover
 
-        lines.Add(Assistant(T0.AddMinutes(2), "claude-opus-5-5", 1, 303_000, 300, ("k1", "Bash", new { command = "C:/KOR-Operations/kor/kor.exe state --module Operations --file s.md" })));
+        lines.Add(Assistant(T0.AddMinutes(2), "claude-opus-5-5", 1, 853_000, 300, ("k1", "Bash", new { command = "C:/KOR-Operations/kor/kor.exe state --module Operations --file s.md" })));
         lines.Add(Result("k1", "brain.LaneState 412: Operations, 1820 characters, session x"));
         r = ContextTranscript.Read(lines, lines.Count, false, null, Off);
         Assert.True(r.HandoverWritten);
@@ -335,6 +390,21 @@ public class ContextTests
         // a failed kor state is no handover
         lines[^1] = Result("k1", "kor: state needs --module", error: true);
         Assert.False(ContextTranscript.Read(lines, lines.Count, false, null, Off).HandoverWritten);
+    }
+
+    [Fact]
+    public void AStateSavedAtAWarningIsNotTheHandover()
+    {
+        var lines = new List<string>
+        {
+            Assistant(T0, "claude-opus-5-5", 1, 400_000, 300, ("k0", "Bash", new { command = "kor state --module Operations --file s.md" })),
+            Result("k0", "brain.LaneState 411: Operations, 900 characters, session x"),
+            Assistant(T0.AddMinutes(1), "claude-opus-5-5", 1, 851_000, 500, ("e1", "Edit", new { file_path = "C:/r/docs/HANDOVER.md" })),
+            Result("e1", "The file C:/r/docs/HANDOVER.md has been updated successfully."),
+        };
+        var r = ContextTranscript.Read(lines, lines.Count, false, null, Off);
+        Assert.False(r.HandoverWritten);
+        Assert.True(ContextGuard.DecideStop(r, false, false, "Operations", Off).Deny);
     }
 
     /// <summary>The replay's line for the segment that ends at the cliff, from a seed fixture.</summary>
@@ -353,7 +423,7 @@ public class ContextTests
     [Theory]
     // fixture, the last good request's time (the cliff follows it), the hours of warning at least, the minutes of STOP at least
     [InlineData("g5-seed-006abbce.jsonl", "2026-11-04T01:56:46Z", 2.0, 25.0)]   // KOR.Drafter, 3 Nov 18:56:46 local (THE seed)
-    [InlineData("g5-seed-d0313f99.jsonl", "2026-11-03T20:50:02Z", 3.0, 75.0)]   // Framework lead, 3 Nov 13:50
+    [InlineData("g5-seed-d0313f99.jsonl", "2026-11-03T20:50:02Z", 3.0, 70.0)]   // Framework lead, 3 Nov 13:50 (measured at the 850k line: 70.1 min)
     [InlineData("g5-seed-eb9075b2.jsonl", "2026-11-01T20:37:36Z", 1.0, 25.0)]   // Operations, 1 Nov 13:37
     public void EachRealCliffIsWarnedWellBeforeAndStoppedBeforeItWithItsHandoverAllowed(string fixture, string cliff, double warnHours, double stopMinutes)
     {
@@ -363,7 +433,7 @@ public class ContextTests
         var stopAt = seg.GetProperty("stop").GetProperty("at").GetDateTimeOffset();
         Assert.True((at - warnAt).TotalHours >= warnHours, $"WARN at {warnAt:O}, cliff {at:O}");
         Assert.True((at - stopAt).TotalMinutes >= stopMinutes, $"STOP at {stopAt:O}, cliff {at:O}");
-        Assert.InRange(seg.GetProperty("stop").GetProperty("tokens").GetInt64(), 300_000, 340_000);
+        Assert.InRange(seg.GetProperty("stop").GetProperty("tokens").GetInt64(), 850_000, 890_000);
         Assert.True(seg.GetProperty("refused").GetInt32() > 0);
         // Ian's line does not move with the auto-compact window: on 900k STOP is at the same call
         var s900 = SeedSegment(fixture, "900000").GetProperty("stop");
@@ -387,9 +457,9 @@ public class ContextTests
         var file = Path.Combine(Path.GetTempPath(), $"g5-{Guid.NewGuid():N}.jsonl");
         try
         {
-            File.WriteAllText(file, Assistant(T0, "claude-opus-5-5", 320_000, 0, 100) + "\n" + Result("big", new string('a', 3 << 20)) + "\n");
+            File.WriteAllText(file, Assistant(T0, "claude-opus-5-5", 860_000, 0, 100) + "\n" + Result("big", new string('a', 3 << 20)) + "\n");
             var r = ContextTranscript.ReadFile(file, Off);
-            Assert.Equal(320_100, r.Tokens);
+            Assert.Equal(860_100, r.Tokens);
             Assert.Equal(ContextLevel.Stop, ContextGuard.LevelOf(r, Off));
         }
         finally { File.Delete(file); }
@@ -472,9 +542,16 @@ public class ContextTests
             Program.Run(args, () => HookInput(file, "Stop"), output, new StringWriter(), log, db, board);
             using (var j = JsonDocument.Parse(output.ToString()))
                 Assert.Equal("block", j.RootElement.GetProperty("decision").GetString());
+            int StopRows()   // a Stop block logs a row of its own (board row 1786), beside the refused tool's one
+            {
+                using var c = board.Command("SELECT COUNT(*) FROM oversight.GuardRefusal WHERE Guard = N'kor-context' AND [Session] = N'zz-test-context' AND [Rule] = N'G5 STOP 86,001/100,000 Stop block' AND [Matched] LIKE N'Stop:%'");
+                return Convert.ToInt32(c.ExecuteScalar());
+            }
+            Assert.Equal(1, StopRows());
             output = new StringWriter();
             Program.Run(args, () => HookInput(file, "Stop", stopActive: true), output, new StringWriter(), log, db, board);
             Assert.Equal("", output.ToString());
+            Assert.Equal(1, StopRows());   // the second attempt is let through and logs nothing
         }
         finally { File.Delete(file); if (File.Exists(log)) File.Delete(log); }
     }

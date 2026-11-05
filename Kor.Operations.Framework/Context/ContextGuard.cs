@@ -55,22 +55,31 @@ public sealed record ContextDecision(ContextLevel Level, bool Deny, string? Say,
 /// code.claude.com model-config) and for any id carrying "[1m]". Every other id, an unknown one included, takes 200,000:
 /// a wrong guess warns early, never late. All 7 model ids in the corpus are 1M ids.
 ///
-/// THE THRESHOLDS: WARN <see cref="WarnTokens"/> and STOP <see cref="StopTokens"/> on every ceiling large enough to hold
-/// them; on a smaller one (a 200k model, --ceiling) <see cref="WarnFraction"/> and <see cref="StopFraction"/> of it, so no
-/// ceiling is reached unwarned. The first version stopped at 85% of the ceiling, set from the cliff alone; Ian's line
-/// replaced it (OverLORD's brief, 4 Nov). The cliff is why a session must stop at all, the bill is why at 300k. From 300k
-/// the cliff is 675k away, so one call's result plus the handover cannot reach it: main-session request-to-request growth
-/// in the 3 Nov corpus, n 64,545, p50 1,240, p99 12,227, p99.9 25,032, max 91,214; a handover costs about 3k-40k. What
-/// these thresholds do to the 30-day corpus, by name, is Framework docs/G5-CONTEXT-STOPS.md.
+/// THE THRESHOLDS (Ian, 5 Nov, on the 300k stop, "way too restrictive", then "Yeah to 850"; board row 1797): WARN
+/// <see cref="WarnTokens"/> and every <see cref="WarnStepTokens"/> after it, refusing nothing; STOP <see cref="StopTokens"/>.
+/// STOP needs a ceiling whose compaction, by <see cref="TriggerMargin"/>, fires at or above it: that holds on the 900k
+/// auto-compact window (record #124802) and on a 1M window. Any smaller ceiling (a 200k model, --ceiling) stops at
+/// <see cref="StopFraction"/> of itself, warns at the lesser of 300k and <see cref="WarnFraction"/> of itself, and repeats at
+/// <see cref="WarnStepFraction"/> of itself when the warning came from the fraction, so no ceiling is reached unwarned.
+/// The line is 125k under the cliff and, on the 900k window, about 17k under the estimated compaction. Main-session
+/// request-to-request growth in the 3 Nov corpus, n 64,545, p50 1,240, p99 12,227, p99.9 25,032, max 91,214; a handover costs
+/// about 3k-40k. So one call's result plus the handover normally fits under the cliff, and the largest of each together
+/// (about 131k) would not; and a request past p99 can reach the estimated compaction before the handover is written.
+/// What the earlier 300k line did to the 30-day corpus, by name, is Framework docs/G5-CONTEXT-STOPS.md (not re-run at 850k).
 ///
-/// The warning is repeated once per <see cref="WarnStepFraction"/> of the ceiling (25k on 1M) of growth. Live, the hook reads its
-/// own last warning (<see cref="WarnMarker"/>) back off the transcript tail; the replay keeps it in memory.
+/// THE SAVE AT A WARNING IS AN INSTRUCTION: the warning tells the session to run kor state and carry on; the hook itself saves
+/// nothing, because the writers of brain.LaneState a search of the kor CLI found take text it does not have (kor state: a block
+/// the session writes; capture-compact: the compactor's summary).
+///
+/// The warning is said once per line crossed. Live, the hook reads its own last warning (<see cref="WarnMarker"/>) back off the
+/// transcript tail; the replay keeps it in memory.
 ///
 /// WHERE IT IS SAID: PreToolUse hookSpecificOutput.additionalContext (WARN) and permissionDecision deny with its reason
 /// (STOP), both of which the model reads; UserPromptSubmit additionalContext (WARN and STOP, so a prompt to a stopped
 /// session is answered with the handover); and a Stop block, once (only when stop_hook_active is false), when a main
-/// session at STOP tries to end its turn before the handover is written. "Written" means a successful kor state AND a
-/// successful Edit/Write of a *HANDOVER*.md, both after the reading crossed STOP.
+/// session at STOP tries to end its turn before the handover is written. A refused tool and a Stop block each log one
+/// oversight.GuardRefusal row. "Written" means a successful kor state AND a successful Edit/Write of a *HANDOVER*.md, both
+/// after the reading crossed STOP (a kor state saved at a warning does not count).
 ///
 /// ALLOWED AT STOP (<see cref="HandoverAllows"/>): Read/Edit/Write/MultiEdit of a *HANDOVER*.md or *RESUME*.md; Read/Write/Edit of a
 /// scratchpad file named for the state (*STATE*, *HANDOVER*: the file kor state --file reads); Bash/PowerShell when EVERY
@@ -86,7 +95,8 @@ public sealed record ContextDecision(ContextLevel Level, bool Deny, string? Say,
 /// a sandbox, and a shell has more spellings than this reads (the plain cases, each refused and tested, are in ContextTests).
 /// A session that grows without calling a tool (a long text answer: no PreToolUse fires; the next
 /// prompt's UserPromptSubmit still says STOP); one call whose result jumps past the line (a subagent once grew 191,340 in
-/// one request: a call allowed at 299k lands near 490k before refusals start, far from the cliff but over the line); a
+/// one request: a call allowed at 849k would land near 1,040k, past the cliff, with no handover); whether a session
+/// obeys a warning (G5 does not check that its state was saved); a
 /// model the docs do not list, judged on 200k (warned at 140k, stopped at 170k even if its window is 1M); a transcript that
 /// lags behind the session (the reading is the last line ON DISK: a result not yet written is not counted); history
 /// beyond the tail read (<see cref="ContextTranscript.MaxScan"/>), so a STOP crossing older than that counts the whole
@@ -95,17 +105,20 @@ public sealed record ContextDecision(ContextLevel Level, bool Deny, string? Say,
 /// does it, the decision in docs/G5-CONTEXT-STOPS.md); a handover that is written but says nothing useful (G5 checks that it was written, not what it says); an auto-compact
 /// window set by managed settings or by a --settings/--autocompact flag at launch (not read: see
 /// <see cref="CompactSettings"/>).
-/// Same-class fault it would miss: a session at 240k that answers one prompt with one large Read and then a text-only reply:
+/// Same-class fault it would miss: a session at 290k that answers one prompt with one large Read and then a text-only reply:
 /// nothing warned before the Read, a text reply fires no PreToolUse, so only its next prompt hears of it.
 /// </summary>
 public static class ContextGuard
 {
     public const long OneMillion = 1_000_000;
     public const long TwoHundredK = 200_000;
-    /// <summary>Ian's lines (4 Nov, OverLORD's brief): warned at 250k of context, at 300k the handover and the end.</summary>
-    public const long WarnTokens = 250_000;
-    public const long StopTokens = 300_000;
-    /// <summary>On a ceiling too small to hold those lines (a 200k model, --ceiling): warn and stop at these fractions of it.</summary>
+    /// <summary>Ian's lines (5 Nov, "Yeah to 850", board row 1797): warned at 300k of context and every 100k after, at 850k the
+    /// handover and the end.</summary>
+    public const long WarnTokens = 300_000;
+    public const long WarnStepTokens = 100_000;
+    public const long StopTokens = 850_000;
+    /// <summary>On a ceiling too small to hold a line (a 200k model, --ceiling): warn and stop at these fractions of it, the
+    /// warning repeated every <see cref="WarnStepFraction"/> of it.</summary>
     public const double WarnFraction = 0.70;
     public const double StopFraction = 0.85;
     public const double WarnStepFraction = 0.025;
@@ -142,7 +155,10 @@ public static class ContextGuard
     }
 
     public static long WarnAt(long ceiling) => Math.Min(WarnTokens, (long)(ceiling * WarnFraction));
-    public static long StopAt(long ceiling) => Math.Min(StopTokens, (long)(ceiling * StopFraction));
+
+    /// <summary>850k when compaction, by <see cref="TriggerMargin"/>, would fire at or above it (a 900k window, a 1M window); else
+    /// the fraction: a 900k window must not stop at 85% of itself, 765k, and an 870k one must not compact before its stop.</summary>
+    public static long StopAt(long ceiling) => ceiling - TriggerMargin >= StopTokens ? StopTokens : Math.Min(StopTokens, (long)(ceiling * StopFraction));
 
     /// <summary>The ceiling the thresholds must stay under: the model's window, or the auto-compact window when that is
     /// smaller and auto-compact is on (Ian, 3 Nov 21:26: Opus 5.5 at 900k).</summary>
@@ -155,9 +171,15 @@ public static class ContextGuard
         return r.Tokens >= StopAt(w) ? ContextLevel.Stop : r.Tokens >= WarnAt(w) ? ContextLevel.Warn : ContextLevel.Ok;
     }
 
-    /// <summary>Warn again only after a step of growth since the last warning (or when there was none, or the reading fell).</summary>
-    public static bool ShouldWarn(long tokens, long window, long? lastWarned) =>
-        lastWarned is not { } last || tokens < last || tokens - last >= (long)(window * WarnStepFraction);
+    /// <summary>How far apart the warning lines are: 100k from the 300k line, else a fraction of the small ceiling.</summary>
+    public static long WarnStep(long ceiling) => WarnAt(ceiling) == WarnTokens ? WarnStepTokens : Math.Max(1, (long)(ceiling * WarnStepFraction));
+
+    private static long WarnLineOf(long tokens, long ceiling) =>
+        tokens < WarnAt(ceiling) ? -1 : (tokens - WarnAt(ceiling)) / WarnStep(ceiling);
+
+    /// <summary>Warn again only on crossing a new line since the last warning (or when there was none, or the reading fell).</summary>
+    public static bool ShouldWarn(long tokens, long ceiling, long? lastWarned) =>
+        lastWarned is not { } last || tokens < last || WarnLineOf(tokens, ceiling) > WarnLineOf(last, ceiling);
 
     public static string N(long n) => n.ToString("N0", CultureInfo.InvariantCulture);
 
@@ -165,13 +187,14 @@ public static class ContextGuard
         cs.Cap == w ? $"{model ?? "an unknown model"}'s ceiling {N(w)} (set by --ceiling)"
         : w < WindowOf(model) ? $"{model ?? "an unknown model"}'s auto-compact window {N(w)}" : $"{model ?? "an unknown model"}'s {N(w)}";
 
-    public static string WarnText(ContextReading r, CompactSettings cs)
+    public static string WarnText(ContextReading r, CompactSettings cs, string? module)
     {
         var w = CeilingOf(r.Model, cs);
+        var m = string.IsNullOrWhiteSpace(module) ? "<module>" : module;
         return $"{WarnMarker}{N(r.Tokens)} tokens of context ({Of(r.Model, w, cs)}). " +
-               $"At {N(StopAt(w))} every work tool is refused and only the handover can be written, so a fresh session continues " +
-               "(G5, board row 1474; every request re-sends this context, so each turn now costs that much). " +
-               "Finish the piece in hand, hand big reads to helpers, and plan the handover now.";
+               "Save your state now: write what is done, what is half-done and the next step to a file, " +
+               $"run `kor state --module {m} --file <file>`, then carry on working. Nothing is refused at this line. " +
+               $"At {N(StopAt(w))} every work tool is refused and only the handover can be written, so a fresh session continues (G5, board row 1474).";
     }
 
     /// <summary>The STOP text: what to write, in order, and who restarts the session.</summary>
@@ -215,7 +238,7 @@ public static class ContextGuard
             case ContextLevel.Warn:
                 var w = CeilingOf(r.Model, cs);
                 return ShouldWarn(r.Tokens, w, r.LastWarned)
-                    ? new ContextDecision(level, false, WarnText(r, cs), "WARN")
+                    ? new ContextDecision(level, false, WarnText(r, cs, module), "WARN")
                     : new ContextDecision(level, false, null, $"WARN already said at {N(r.LastWarned ?? 0)}");
         }
         var why = HandoverAllows(tool, text, scratchpad, subagent);

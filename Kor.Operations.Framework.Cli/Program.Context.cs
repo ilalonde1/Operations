@@ -18,11 +18,11 @@ public static partial class Program
     /// Reads the hook JSON, then the session's own transcript tail (the subagent's file when agent_id is given) and the
     /// auto-compact settings the session sees (from its cwd), and decides by hook_event_name:
     /// PreToolUse - deny at STOP unless the call is a handover step (one oversight.GuardRefusal row, Guard kor-context),
-    /// additionalContext once per step in WARN; UserPromptSubmit - additionalContext in WARN (once per step) and at STOP
-    /// (always); Stop - block once at STOP until the handover is written (main sessions only). Bad input or another event:
-    /// nothing printed; no transcript: nothing either, except the spend line on a first prompt. A prompt and, at most once per
-    /// ten minutes, a tool call also carry the spend line (G6, row 1559), read with the newest reading from the DB. Exit 0 always
-    /// in hook mode; the DB is otherwise touched only to log a refusal.
+    /// additionalContext once per warning line in WARN; UserPromptSubmit - additionalContext in WARN (once per line) and at STOP
+    /// (always); Stop - block once at STOP until the handover is written (main sessions only; one GuardRefusal row per block).
+    /// Bad input or another event: nothing printed; no transcript: nothing either, except the spend line on a first prompt. A
+    /// prompt and, at most once per ten minutes, a tool call also carry the spend line (G6, row 1559), read with the newest reading
+    /// from the DB. Exit 0 always in hook mode; the DB is otherwise touched only to log a refusal or a block.
     /// </summary>
     private static int ContextVerb(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? board, string hookErrorLog)
     {
@@ -67,6 +67,20 @@ public static partial class Program
         var ceiling = ContextGuard.CeilingOf(r.Model, cs);
         var head = $"kor context: {ContextGuard.N(r.Tokens)} of {ContextGuard.N(ceiling)} ({r.Model ?? "no model"}; {cs.Describe(r.Model)}; read {r.Basis}{(r.OverCliff ? ", PAST THE CLIFF" : "")})";
 
+        // one oversight.GuardRefusal row, for a refused tool and for a Stop block; the decision stands whether or not it was logged
+        int? LogRefusal(string ruleSuffix, string matched)
+        {
+            try
+            {
+                var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+                var rule = $"G5 STOP {ContextGuard.N(r.Tokens)}/{ContextGuard.N(ceiling)}{ruleSuffix}";
+                return board is not null
+                    ? StallStore.LogGuardRefusal(board, ContextGuardName, rule, session, repo, matched)
+                    : BrainDb.Use3s(KorStandardsConnection.Login.Board, b => StallStore.LogGuardRefusal(b, ContextGuardName, rule, session, repo, matched));
+            }
+            catch (Exception e) { LogHookError(hookErrorLog, o, e); return null; }
+        }
+
         switch (ev)
         {
             case "PreToolUse" when tool is not null:
@@ -74,17 +88,7 @@ public static partial class Program
                 var d = ContextGuard.Decide(r, tool, text, scratch, sub, module, cs);
                 if (d.Deny)
                 {
-                    int? logged = null;
-                    try
-                    {
-                        var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
-                        var rule = $"G5 STOP {ContextGuard.N(r.Tokens)}/{ContextGuard.N(ceiling)}{(sub ? " subagent" : "")}";
-                        var matched = $"{tool}: {text}";
-                        logged = board is not null
-                            ? StallStore.LogGuardRefusal(board, ContextGuardName, rule, session, repo, matched)
-                            : BrainDb.Use3s(KorStandardsConnection.Login.Board, b => StallStore.LogGuardRefusal(b, ContextGuardName, rule, session, repo, matched));
-                    }
-                    catch (Exception e) { LogHookError(hookErrorLog, o, e); }   // the refusal stands whether or not it was logged
+                    var logged = LogRefusal(sub ? " subagent" : "", $"{tool}: {text}");
                     output.WriteLine(hook
                         ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", permissionDecision = "deny", permissionDecisionReason = d.Say } })
                         : $"{head}\ndeny{(logged is null ? " (not logged)" : $" (oversight.GuardRefusal #{logged})")}: {d.Say}");
@@ -104,7 +108,7 @@ public static partial class Program
                 string? say = level switch
                 {
                     ContextLevel.Stop => ContextGuard.StopText(r, sub, module, r.HandoverWritten, cs),
-                    ContextLevel.Warn when ContextGuard.ShouldWarn(r.Tokens, ceiling, r.LastWarned) => ContextGuard.WarnText(r, cs),
+                    ContextLevel.Warn when ContextGuard.ShouldWarn(r.Tokens, ceiling, r.LastWarned) => ContextGuard.WarnText(r, cs, module),
                     _ => null,
                 };
                 say = JoinSay(say, hook ? SpendLineForHook(o, session, prompt: true, hookErrorLog) : null);
@@ -116,7 +120,11 @@ public static partial class Program
             case "Stop":
             {
                 var d = ContextGuard.DecideStop(r, sub, stopActive, module, cs);
-                if (d.Deny) output.WriteLine(hook ? JsonSerializer.Serialize(new { decision = "block", reason = d.Say }) : $"{head}\nblock: {d.Say}");
+                if (d.Deny)
+                {
+                    var logged = LogRefusal(" Stop block", "Stop: the turn ended at STOP before the handover was written");
+                    output.WriteLine(hook ? JsonSerializer.Serialize(new { decision = "block", reason = d.Say }) : $"{head}\nblock{(logged is null ? " (not logged)" : $" (oversight.GuardRefusal #{logged})")}: {d.Say}");
+                }
                 else if (!hook) output.WriteLine($"{head}\nlet it stop: {d.Why}");
                 return 0;
             }
