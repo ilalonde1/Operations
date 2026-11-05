@@ -75,6 +75,7 @@ public static partial class Program
                 "enroll-check" => EnrollCheckVerb(o, output, hook, db),
                 "stall" => StallVerb(o, stdin, output, hook, db, board, hookErrorLog),
                 "context" => ContextVerb(o, stdin, output, hook, board, hookErrorLog),
+                "spend" => SpendVerb(o, output),
                 _ => hook ? UnknownInHook(o, output) : Usage(error),
             };
         }
@@ -126,7 +127,7 @@ public static partial class Program
             "--says", "--source", "--cap", "--session", "--description", "--check", "--check-ref", "--issue",
             "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir", "--page", "--pages", "--cutoff",
             "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what", "--days", "--tag",
-            "--replay", "--since", "--window-hours", "--auto-compact-window", "--auto-compact-model", "--ceiling",
+            "--replay", "--since", "--window-hours", "--auto-compact-window", "--auto-compact-model", "--ceiling", "--spend-root",
         };
 
         /// <summary>Options given more than once, every value kept in order (check-add's examples).</summary>
@@ -561,6 +562,7 @@ public static partial class Program
         error.WriteLine("       kor stall --replay <transcript.jsonl|list.txt> [--since ISO-UTC] [--window-hours H] [--never-records]   (row 1308 dry run: every judged call through G1; reads only)");
         error.WriteLine("       kor context --module M --hook   (PreToolUse every tool, UserPromptSubmit, Stop: G5 context line, board row 1474 - WARN 250k, STOP 300k)");
         error.WriteLine("       kor context --replay <transcript.jsonl|list.txt> [--since ISO-UTC] [--auto-compact-window N [--auto-compact-model M]]   (row 1474 dry run; reads only)");
+        error.WriteLine("       kor spend   (G6, board row 1559: the one spend line, an estimate; kor context's hooks carry it; warns only)");
         error.WriteLine("       kor enroll-check [--all] [--dir D] [--days N (7)] [--hook]   (every framework hook in .claude/settings.json and .git/hooks, and a session-start in brain.Event where sessions ran; one verdict line, exit 1 on a finding - 0 with --hook)");
         error.WriteLine("       kor start --module M [--owner O]... [--no-helpers] [--part record|state|memory|records|board|all] [--tag T (board: only rows tagged [T] or [was T]; with no --owner, any owner's, no owner named)] [--page N --pages M (memory, records)] [--hook | --text] [--dir D] [--session S] [--start-source S]   (SessionStart JSON on stdin with --hook)");
         return 2;

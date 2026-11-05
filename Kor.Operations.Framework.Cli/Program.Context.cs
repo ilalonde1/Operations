@@ -48,7 +48,14 @@ public static partial class Program
         }
         catch (JsonException) { if (!hook) output.WriteLine("allow: the input is not JSON"); return 0; }
         var path = StallTranscript.PathFor(transcript, session, agent);
-        if (path is null || !File.Exists(path)) { if (!hook) output.WriteLine("allow: no transcript to read"); return 0; }
+        if (path is null || !File.Exists(path))
+        {
+            // a session's first prompt comes before its transcript: no context to read yet, but the spend line is still owed
+            if (!hook) output.WriteLine("allow: no transcript to read");
+            else if (ev == "UserPromptSubmit" && SpendLineForHook(o, session, prompt: true, hookErrorLog) is { } first)
+                output.WriteLine(JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "UserPromptSubmit", additionalContext = first } }));
+            return 0;
+        }
         var sub = !string.IsNullOrWhiteSpace(agent);
         var cs = CompactSettings.Read(cwd is not null && Directory.Exists(cwd) ? cwd : null);
         if (o.Get("--ceiling") is { } capText)
@@ -81,10 +88,11 @@ public static partial class Program
                         : $"{head}\ndeny{(logged is null ? " (not logged)" : $" (oversight.GuardRefusal #{logged})")}: {d.Say}");
                     return 0;
                 }
-                if (d.Say is not null)
+                var callSay = JoinSay(d.Say, hook ? SpendLineForHook(o, session, prompt: false, hookErrorLog) : null);
+                if (callSay is not null)
                     output.WriteLine(hook
-                        ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", additionalContext = d.Say } })
-                        : $"{head}\nallow + warn: {d.Say}");
+                        ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", additionalContext = callSay } })
+                        : $"{head}\nallow + warn: {callSay}");
                 else if (!hook) output.WriteLine($"{head}\nallow: {d.Why}");
                 return 0;
             }
@@ -97,6 +105,7 @@ public static partial class Program
                     ContextLevel.Warn when ContextGuard.ShouldWarn(r.Tokens, ceiling, r.LastWarned) => ContextGuard.WarnText(r, cs),
                     _ => null,
                 };
+                say = JoinSay(say, hook ? SpendLineForHook(o, session, prompt: true, hookErrorLog) : null);
                 if (say is not null)
                     output.WriteLine(hook ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "UserPromptSubmit", additionalContext = say } }) : $"{head}\nsay: {say}");
                 else if (!hook) output.WriteLine($"{head}\nsilent ({level})");

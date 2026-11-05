@@ -396,7 +396,7 @@ public class ContextTests
         var log = file + ".log";
         // --ceiling 100000 is the smallest window the docs allow (autoCompactWindow 100000-1000000): no settings file can lower
         // it further, so the test does not depend on the machine's settings
-        var args = new[] { "context", "--module", "Operations", "--ceiling", "100000", "--hook" };
+        var args = new[] { "context", "--module", "Operations", "--ceiling", "100000", "--spend-root", "off", "--hook" };
         try
         {
             using var db = BrainDb.OpenRolledBack();
