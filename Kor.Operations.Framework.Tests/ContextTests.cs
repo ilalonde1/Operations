@@ -201,10 +201,14 @@ public class ContextTests
     [InlineData("Bash", "git commit docs/HANDOVER.md -m a\\\" src/x.cs -m \\\"")]                    // a backslash before a quote: words git gets are not the words judged (review row 497)
     [InlineData("Bash", "git commit x\\\" src/x.cs \\\"docs/HANDOVER.md")]
     [InlineData("Bash", "git commit x\\' src/x.cs \\'docs/HANDOVER.md")]
-    [InlineData("Bash", "git add docs/HANDOVER.md x\\\" src/x.cs \\\"y")]
+    [InlineData("Bash", "git add x\\\" src/x.cs \\\"/HANDOVER.md")]
+    [InlineData("Bash", "git -c a.b=\\\" commit src/x.cs -m \\\" -m status")]                          // a verb hidden behind an escape (review row 499)
+    [InlineData("Bash", "git -c a.b=\\\" push origin main -o \\\" -o status")]
+    [InlineData("Bash", "git commit -m a\\ docs/HANDOVER.md")]                                          // an escaped space: git gets no path
+    [InlineData("PowerShell", "git commit -m a` docs/HANDOVER.md")]
     [InlineData("PowerShell", "git commit docs/HANDOVER.md -m a`' src/x.cs -m `'")]                       // PowerShell's escape is the backtick (review row 498)
     [InlineData("PowerShell", "git commit docs/HANDOVER.md -m a`\" src/x.cs -m `\"")]
-    [InlineData("PowerShell", "git add docs/HANDOVER.md x`' src/x.cs `'y")]
+    [InlineData("PowerShell", "git add x`' src/x.cs `'/HANDOVER.md")]
     [InlineData("Bash", "git add {:^,:^}docs/HANDOVER.md")]
     [InlineData("Bash", "echo x >&2x")]
     [InlineData("Bash", "date >&1.cs")]
