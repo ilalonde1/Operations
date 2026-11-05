@@ -226,11 +226,8 @@ public sealed class BcRegistryProvider : IEnrichmentProvider
         }
     }
 
-    /// <summary>
-    /// Coarse name-match guard. Normalize both names and strip common corporate
-    /// suffixes so OrgBook's fuzzy search does not attach a loose hit.
-    /// </summary>
-    /// <summary>Is this registry hit the business asked about? Equal once normalized, or one name's whole words inside the other's.
+    /// <summary>Is this registry hit the business asked about, so OrgBook's fuzzy search does not attach a loose hit? Equal once
+    /// normalized (corporate suffixes stripped), or one name's whole words inside the other's.
     /// Whole words, because letters inside a word are another business: "Team Construction" is not "A-TEAM CONSTRUCTION", which
     /// was written onto org 68987 (migration 382). A hyphen joins its word.</summary>
     public static bool IsLikelyMatch(string query, string hit)

@@ -26,7 +26,7 @@ public sealed record ContextReading(long Tokens, string? Model, DateTimeOffset? 
 public static class ContextTranscript
 {
     /// <summary>The live read starts with the last 2 MB and widens to <see cref="MaxScan"/> only when the level needs older
-    /// lines (the STOP crossing, or the last warning).</summary>
+    /// lines (the STOP crossing, or the last warning) or when the tail held no usage at all.</summary>
     public const long FirstScan = 2L << 20;
     public const long MaxScan = 16L << 20;
 

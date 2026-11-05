@@ -2,7 +2,7 @@
 
 ## STATE NOW - 5 Nov 2026 13:22 BCDT (`date`), review findings table added by a helper of framework-7e; the BD block below is from 4 Nov 12:15, Operations lead. Read first.
 
-**Review findings before the G5/G6 push, each checked 5 Nov by reading HEAD ("this commit" = the commit adding this table; its sha is in `git log -1 -- docs/HANDOVER.md`).**
+**Review findings before the G5/G6 push, each checked 5 Nov by reading HEAD ("this commit" = c986c4ac, Framework's fixes 55b8399 and eec2b3a; c986c4ac's non-blocking notes, row 532, are fixed by the commit after it).**
 
 | Row | Commit reviewed | Outcome |
 |---|---|---|
