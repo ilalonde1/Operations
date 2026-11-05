@@ -275,6 +275,17 @@
             "statusMessage": "Checking the command does not spend the Anthropic API"
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe context --module \"Operations\" --hook",
+            "timeout": 10,
+            "statusMessage": "How full is this session's context? WARN at 250k, STOP at 300k: only the handover then (G5, board row 1474)"
+          }
+        ]
       }
     ],
     "Stop": [
@@ -315,6 +326,16 @@
             "statusMessage": "Asking once per turn what it found - a failed run, a pipeline outcome, Ian's decision, a diagnosis - and once per new commit what it taught (row 1393, Knowledge IDE K4)"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe context --module \"Operations\" --hook",
+            "timeout": 10,
+            "statusMessage": "At STOP, is the handover written? (G5, board row 1474)"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -336,6 +357,16 @@
             "command": "C:/KOR-Operations/cli/netops.exe signin-status --hook",
             "timeout": 10,
             "statusMessage": "Is the NetworkOps sign-in about to lapse?"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe context --module \"Operations\" --hook",
+            "timeout": 10,
+            "statusMessage": "Is this session at its context line? (G5, board row 1474)"
           }
         ]
       }
