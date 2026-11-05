@@ -75,7 +75,7 @@ public sealed record ContextDecision(ContextLevel Level, bool Deny, string? Say,
 /// ALLOWED AT STOP (<see cref="HandoverAllows"/>): Read/Edit/Write/MultiEdit of a *HANDOVER*.md or *RESUME*.md; Read/Write/Edit of a
 /// scratchpad file named for the state (*STATE*, *HANDOVER*: the file kor state --file reads); Bash/PowerShell when EVERY
 /// segment is kor state, kor record, git status/diff/log/show/rev-parse (no --output), ls, git add of *HANDOVER*.md paths only, git commit
-/// with only a message and *HANDOVER*.md paths, date, Get-Date, cd, pwd, echo, a literal assignment, or a heredoc cat (a commit message),
+/// of *HANDOVER*.md paths named, with only a message, date, Get-Date, cd, pwd, echo, a literal assignment, or a heredoc cat (a commit message),
 /// with no redirect to a file; TaskStop/KillShell (stop background work); SendMessage for a SUBAGENT only (its report to
 /// its lead - a main session tells Ian in plain text); ToolSearch only to load those. Everything else is denied, git push
 /// included (the fresh session reviews and pushes). The first dry run allowed any scratchpad file and any SendMessage, and
@@ -283,7 +283,9 @@ public static class ContextGuard
     public static bool IsHandoverFile(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return false;
-        var name = Path.GetFileName(path.Trim().Trim('"', '\'').Replace('\\', '/'));
+        var bare = path.Trim().Trim('"', '\'');
+        if (bare.StartsWith(':')) return false;   // git pathspec magic: ":!docs/HANDOVER.md" is everything BUT the handover
+        var name = Path.GetFileName(bare.Replace('\\', '/'));
         // a RESUME note is a handover too (HOW-WE-BUILD: "wisdom lives outside sessions ... RESUME notes"; judge C, STOP 71:
         // a stand-down note to RESUME.md was refused in the first pass)
         return name.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
@@ -311,7 +313,7 @@ public static class ContextGuard
     }
 
     // a redirect into a file (> f, >> f, Out-File, Set-Content, tee) is a write; 2>&1, >/dev/null and >$null are not
-    private static readonly Regex HarmlessRedirect = new(@"\d?>&\d|\d?>\s*(?:/dev/null|\$null|NUL)(?=\s|$|[;&|)])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex HarmlessRedirect = new(@"(?:\d?>&\d|\d?>\s*(?:/dev/null|\$null|NUL))(?=\s|$|[;&|)])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static readonly Regex WriteCmdlet = new(@"\b(?:Out-File|Set-Content|Add-Content|tee|Tee-Object)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     // a quoted string is data: "...<noreply@anthropic.com>" in a commit message is no redirect (the live run, 3 Nov 21:50:
@@ -339,6 +341,7 @@ public static class ContextGuard
     /// git takes abbreviations (--amen, --al) and -i, and a path other than the handover would commit work (review row 491).</summary>
     private static bool CommitIsHandoverOnly(IReadOnlyList<string> args)
     {
+        var paths = 0;   // a commit with no path takes the whole index: work staged before STOP, or another lead's
         for (var i = 0; i < args.Count; i++)
         {
             var a = args[i];
@@ -347,8 +350,9 @@ public static class ContextGuard
             if (a.StartsWith("--message=", StringComparison.Ordinal) || a.StartsWith("--file=", StringComparison.Ordinal)) continue;
             if (a.StartsWith("-m", StringComparison.Ordinal) && !a.StartsWith("--", StringComparison.Ordinal)) continue;   // -m"text"
             if (a.StartsWith('-') || !IsHandoverFile(a)) return false;
+            paths++;
         }
-        return true;
+        return paths > 0;
     }
 
     private static bool SegmentAllowed(string seg)

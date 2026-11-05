@@ -179,6 +179,14 @@ public class ContextTests
     [InlineData("Bash", "cat <<'EOF' > src/x.cs\nclass X {}\nEOF")]                                  // nor what sits on its opener's line (review row 489)
     [InlineData("Bash", "cat <<'EOF' | bash\ndotnet build\nEOF")]
     [InlineData("Bash", "git commit -F - <<'EOF' && git push\nhandover\nEOF")]
+    [InlineData("Bash", "git commit -m wip")]                                                         // no path: the whole index (review row 493)
+    [InlineData("Bash", "git commit -F -")]
+    [InlineData("Bash", "git commit")]
+    [InlineData("Bash", "git commit \":(exclude)docs/HANDOVER.md\" -m wip")]
+    [InlineData("Bash", "git commit \":!docs/HANDOVER.md\" -m wip")]
+    [InlineData("Bash", "git add \":!docs/HANDOVER.md\"")]
+    [InlineData("Bash", "echo x >&2x")]
+    [InlineData("Bash", "date >&1.cs")]
     [InlineData("Bash", "git commit . -m wip")]                                                       // a commit is the handover or nothing (review row 491)
     [InlineData("Bash", "git commit src/x.cs -m wip")]
     [InlineData("Bash", "git commit -i src/x.cs -m wip")]
@@ -218,7 +226,7 @@ public class ContextTests
     [InlineData("Edit", "C:\\VIsual Studio Projects\\KOR.Drafter\\docs\\LEAD-HANDOVER-2026-11-02.md")]
     [InlineData("Write", "C:/Users/x/AppData/Local/Temp/claude/s/scratchpad/STATE-NOW.md")]
     [InlineData("Bash", "date \"+%Y-%m-%d %H:%M %Z\"")]
-    [InlineData("Bash", "git commit -F - <<'EOF'\nhandover: done\nEOF")]
+    [InlineData("Bash", "git commit docs/HANDOVER.md -F - <<'EOF'\nhandover: done\nEOF")]
     [InlineData("Bash", "git add docs/HANDOVER.md && git commit docs/HANDOVER.md -m \"handover: done\"")]   // the STOP text's own step
     [InlineData("Bash", "git log --oneline -3")]
     [InlineData("Bash", "date > /dev/null")]
@@ -227,12 +235,12 @@ public class ContextTests
     [InlineData("Bash", "C:/KOR-Operations/kor/kor.exe state --module Operations --file \"C:/Users/x/AppData/Local/Temp/claude/s/scratchpad/STATE-NOW.md\"")]
     [InlineData("Bash", "kor record --module Operations --kind finding --name x --says y --source query:SELECT 1")]
     [InlineData("Bash", "cd \"/c/VIsual Studio Projects/Operations\" && git status --short && git diff --stat")]
-    [InlineData("Bash", "S=\"C:/x/scratchpad\"; git add docs/HANDOVER.md && git commit -m \"handover: STATE NOW 21:40\"")]
-    [InlineData("Bash", "git commit -m \"$(cat <<'EOF'\nhandover: STATE NOW\nEOF\n)\"")]
+    [InlineData("Bash", "S=\"C:/x/scratchpad\"; git add docs/HANDOVER.md && git commit docs/HANDOVER.md -m \"handover: STATE NOW 21:40\"")]
+    [InlineData("Bash", "git commit docs/HANDOVER.md -m \"$(cat <<'EOF'\nhandover: STATE NOW\nEOF\n)\"")]
     [InlineData("Bash", "git -C \"C:/VIsual Studio Projects/Framework\" log --oneline -3 2>&1")]
     // the live run's refused commits (3 Nov 21:50, probe 2ae2e5fc lines 52, 66, 71): a '>' inside a quoted message is no redirect
-    [InlineData("Bash", "git add docs/HANDOVER.md && git commit -m \"handover: part1 read\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\" && git log --oneline -2 && git status --short")]
-    [InlineData("Bash", "git commit -m \"handover: part1 read\" -m \"Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\"")]
+    [InlineData("Bash", "git add docs/HANDOVER.md && git commit docs/HANDOVER.md -m \"handover: part1 read\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\" && git log --oneline -2 && git status --short")]
+    [InlineData("Bash", "git commit docs/HANDOVER.md -m \"handover: part1 read\" -m \"Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\"")]
     [InlineData("PowerShell", "& \"C:/KOR-Operations/kor/kor.exe\" state --module Operations --file s.md; Get-Date")]
     [InlineData("TaskStop", "{\"task_id\":\"b4onajjem\"}")]
     [InlineData("ToolSearch", "{\"query\":\"select:TaskStop\",\"max_results\":1}")]
