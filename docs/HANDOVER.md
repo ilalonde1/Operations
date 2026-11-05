@@ -1,6 +1,6 @@
 # Operations - HANDOVER
 
-## STATE NOW - 5 Nov 2026 13:22 BCDT (`date`), review findings table added by a helper of framework-7e; the BD block below is from 4 Nov 12:15, Operations lead. Read first.
+## STATE NOW - the BD block below is from 4 Nov 12:15, Operations lead; the review findings of 5 Nov 13:22 are in their own section below this one. Read first.
 
 **The BD block, 4 Nov:** Evidence was read between 09:24 and 09:43 on 4 Nov, read-only. Nothing was built or deployed.
 
