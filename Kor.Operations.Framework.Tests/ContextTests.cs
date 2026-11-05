@@ -191,13 +191,15 @@ public class ContextTests
     [InlineData("Bash", "git commit \\:\\^docs/HANDOVER.md -m wip")]                                   // none of these carries a '!' (review row 496)
     [InlineData("Bash", "X=:; git commit \"$X^docs/HANDOVER.md\" -m wip")]
     [InlineData("PowerShell", "git commit `:^docs/HANDOVER.md -m wip")]
-    [InlineData("Bash", "git commit docs/HANDOVE*.md -m wip")]
-    [InlineData("Bash", "git commit docs/HANDOVE?.md -m wip")]
+    [InlineData("Bash", "git commit docs/HANDOVER*.md -m wip")]
+    [InlineData("Bash", "git commit docs/HANDOVER?.md -m wip")]
     [InlineData("Bash", "git commit d[o]cs/HANDOVER.md -m wip")]
     [InlineData("Bash", "git commit {:^,:^}docs/HANDOVER.md -m wip")]
     [InlineData("Bash", "git commit {src/PLAN,docs/HANDOVER}.md -m wip")]
     [InlineData("Bash", "git add \\:\\^docs/HANDOVER.md")]
-    [InlineData("Bash", "git add docs/HANDOVE*.md")]
+    [InlineData("Bash", "git add docs/HANDOVER*.md")]
+    [InlineData("Bash", "git commit docs/HANDOVER.md -m a\\\" src/x.cs -m \\\"")]                    // a backslash before a quote: words git gets are not the words judged (review row 497)
+    [InlineData("Bash", "git commit x\\\" src/x.cs \\\"docs/HANDOVER.md")]
     [InlineData("Bash", "git add {:^,:^}docs/HANDOVER.md")]
     [InlineData("Bash", "echo x >&2x")]
     [InlineData("Bash", "date >&1.cs")]

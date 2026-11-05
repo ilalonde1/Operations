@@ -82,7 +82,9 @@ public sealed record ContextDecision(ContextLevel Level, bool Deny, string? Say,
 /// 408 SendMessage calls (leads dispatching work), 225 scratchpad Writes, 145 scratchpad Reads and 53 scratchpad Edits
 /// of the 870 allowed were work, not handover: hence these limits.
 ///
-/// DOES NOT COVER: a session that grows without calling a tool (a long text answer: no PreToolUse fires; the next
+/// DOES NOT COVER: a session set on getting round it. This holds an honest session to its handover against momentum; it is not
+/// a sandbox, and a shell has more spellings than this reads (the plain cases, each refused and tested, are in ContextTests).
+/// A session that grows without calling a tool (a long text answer: no PreToolUse fires; the next
 /// prompt's UserPromptSubmit still says STOP); one call whose result jumps past the line (a subagent once grew 191,340 in
 /// one request: a call allowed at 299k lands near 490k before refusals start, far from the cliff but over the line); a
 /// model the docs do not list, judged on 200k (warned at 140k, stopped at 170k even if its window is 1M); a transcript that
@@ -338,7 +340,8 @@ public static class ContextGuard
     private static readonly string[] Harmless = { "date", "get-date", "cd", "set-location", "pwd", "ls", "echo", "write-output", "write-host", "true", ":" };
 
     // an allow-list of plain path characters, a drive prefix the one colon: a shell or git can turn anything else into
-    // something other than this text after it is judged (escapes, $, backtick, braces, globs, pathspec magic; review rows 495, 496)
+    // something other than this text after it is judged ($, backtick, braces, globs, pathspec magic; review rows 495, 496).
+    // A backslash stays, for Windows paths; a backslash before a quote is refused for the whole git step (review row 497)
     private static readonly Regex PlainPath = new(@"^(?:[A-Za-z]:[\\/]|[A-Za-z0-9_./ -])[A-Za-z0-9_./\\ -]*$", RegexOptions.CultureInvariant);
 
     /// <summary>A handover file named as git will read it: no pathspec magic, however it is spelled (review row 495).</summary>
@@ -386,6 +389,8 @@ public static class ContextGuard
             if (i >= words.Count) return false;
             var verb = words[i];
             var args = words.Skip(i + 1).ToList();
+            // SplitArgs reads \" as opening a quote and Bash does not, so the words judged here would not be the words git gets
+            if (verb is "add" or "commit" && (seg.Contains("\\\"", StringComparison.Ordinal) || seg.Contains("\\'", StringComparison.Ordinal))) return false;
             // --output writes a file, and git takes any abbreviation of it (--oneline is --on, so --ou cannot be it)
             if (GitReads.Contains(verb)) return !args.Any(a => a.StartsWith("--ou", StringComparison.OrdinalIgnoreCase));
             if (verb == "add")
