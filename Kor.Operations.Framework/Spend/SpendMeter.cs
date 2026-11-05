@@ -35,7 +35,7 @@ public sealed record SpendCount(DateTimeOffset WeekStart, long Raw, long RawSinc
 /// DOES NOT COVER: other machines and claude.ai, which spend the same allowance; the provider's weighting (raw counts a cache
 /// read like an output token, which the provider does not); usage in a transcript deleted before it was read; a screen reading
 /// nobody recorded (the line then gives raw tokens and says so; a DB that cannot answer is said as that, not as none recorded).
-/// In a hook the whole line gets 3 s; past that it is left out for that call, and G5's text still goes.
+/// In a hook the DB gets 1 s and the scan 1.5 s, and the whole line 3 s; past that it is left out for that call, and G5's text still goes.
 /// Same-class fault it would miss: the provider changes how it counts cache reads mid-week. The raw count goes on looking
 /// right, and only the two slopes, measured on 4 Nov, go wrong. Only a new reading of Ian's screen shows it.
 /// </summary>
@@ -232,15 +232,15 @@ public static class SpendMeter
         return new SpendCount(weekStart, raw, since, c.Seen.Count, c.FilesLeft);
     }
 
-    /// <summary>Should a session's tool call say the line now? True at most once per <see cref="SayEvery"/> per session (a marker
-    /// file's time; on a marker that cannot be written, false, so a failing disk never makes it say on every call).</summary>
-    public static bool ShouldSay(string cacheDir, string? session, DateTime nowUtc)
+    /// <summary>Is a session's tool call due to say the line? Once per <see cref="SayEvery"/> per session, from its marker file's
+    /// time, which <see cref="Stamp"/> sets when a line was really said.</summary>
+    public static bool Due(string cacheDir, string? session, DateTime nowUtc)
     {
         try
         {
             var marker = Marker_(cacheDir, session);
             if (File.Exists(marker) && nowUtc - File.GetLastWriteTimeUtc(marker) < SayEvery) return false;
-            Stamp(cacheDir, session, nowUtc);
+            Directory.CreateDirectory(cacheDir);   // a dir that cannot be made: false, so a failing disk never says on every call
             return true;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return false; }

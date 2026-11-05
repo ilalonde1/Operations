@@ -10,11 +10,13 @@ public static partial class Program
     // The whole line gets HookLineBudget in a hook, because the hook's output waits on it, G5's WARN and STOP included, and the
     // hook's timeout is 10 s (review rows 501, 503). Past it the line is left out this time; G5's text still goes.
     private static readonly TimeSpan HookLineBudget = TimeSpan.FromSeconds(3);
+    // Inside it: the DB gets 1 s and the scan 1.5 s, so a slow DB costs only the reading: the local count still goes (review row 504)
+    private static readonly TimeSpan HookReadingWait = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan HookScanBudget = TimeSpan.FromSeconds(1.5);
 
     private static int SpendVerb(Options o, TextWriter output)
     {
-        output.WriteLine(SpendLine(o.Get("--spend-root"), TimeSpan.FromMinutes(10)));
+        output.WriteLine(SpendLine(o.Get("--spend-root"), TimeSpan.FromSeconds(10), TimeSpan.FromMinutes(10)));
         return 0;
     }
 
@@ -33,9 +35,16 @@ public static partial class Program
         catch (Exception e) when (e is Microsoft.Data.SqlClient.SqlException or InvalidOperationException or ArgumentException) { return (null, true); }
     }
 
-    private static string SpendLine(string? root, TimeSpan budget)
+    private static string SpendLine(string? root, TimeSpan readingWait, TimeSpan budget)
     {
-        var (reading, failed) = root is null ? NewestReading() : (null, false);   // a test's root has no record behind it
+        ScreenReading? reading = null;
+        var failed = false;
+        if (root is null)   // a test's root has no record behind it
+        {
+            var read = Task.Run(NewestReading);
+            if (read.Wait(readingWait)) (reading, failed) = read.Result;
+            else failed = true;
+        }
         var count = SpendMeter.Count(root ?? SpendMeter.DefaultProjectsRoot, CacheDirFor(root), DateTimeOffset.Now, reading?.At, budget);
         return SpendMeter.Line(count, reading, failed);
     }
@@ -52,9 +61,12 @@ public static partial class Program
         {
             // a prompt always says it and restarts the session's ten minutes, so the tool call after it does not repeat it
             if (prompt) { try { SpendMeter.Stamp(CacheDirFor(root), session, DateTime.UtcNow); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } }
-            else if (!SpendMeter.ShouldSay(CacheDirFor(root), session, DateTime.UtcNow)) return null;
-            var line = Task.Run(() => SpendLine(root, HookScanBudget));
-            return line.Wait(HookLineBudget) ? line.Result : null;
+            else if (!SpendMeter.Due(CacheDirFor(root), session, DateTime.UtcNow)) return null;
+            var line = Task.Run(() => SpendLine(root, HookReadingWait, HookScanBudget));
+            if (!line.Wait(HookLineBudget)) return null;
+            // a tool call's ten minutes start only when a line was really said
+            if (!prompt) { try { SpendMeter.Stamp(CacheDirFor(root), session, DateTime.UtcNow); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } }
+            return line.Result;
         }
         catch (Exception e) { LogHookError(hookErrorLog, o, e); return null; }
     }

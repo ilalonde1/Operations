@@ -10,7 +10,8 @@ namespace Kor.Operations.Framework.Tests;
 /// read; a line not yet ended left unread; a new week from nothing; the deadline leaving a partial count that says so; the
 /// range from a reading; the throttle; the line carried by kor context and never a refusal.
 /// DOES NOT COVER: that the raw count tracks Ian's screen (no test can: only his screen shows it); the read of the reading from
-/// brain.Memory (a test's root skips it; the live probe shows it, docs/G6-SPEND-LINE.md); the real ~/.claude tree
+/// brain.Memory (a test's root skips it; the live probe shows it, docs/G6-SPEND-LINE.md); the 1 s and 3 s waits in the hook
+/// (private, read by review, no slow DB to drive them); the real ~/.claude tree
 /// (compared once with spend_meter.py, docs/G6-SPEND-LINE.md).
 /// Same-class fault it would miss: a transcript format change that moves message.usage: the count would fall silently.
 /// </summary>
@@ -139,12 +140,29 @@ public class SpendTests : IDisposable
     public void AToolCallSaysItOncePerTenMinutesPerSession()
     {
         var t = DateTime.UtcNow;
-        Assert.True(SpendMeter.ShouldSay(CacheDir, "s1", t));
-        Assert.False(SpendMeter.ShouldSay(CacheDir, "s1", t.AddMinutes(9)));
-        Assert.True(SpendMeter.ShouldSay(CacheDir, "s2", t.AddMinutes(9)));
-        Assert.True(SpendMeter.ShouldSay(CacheDir, "s1", t.AddMinutes(11)));
+        Assert.True(SpendMeter.Due(CacheDir, "s1", t));
+        Assert.True(SpendMeter.Due(CacheDir, "s1", t));                         // not said yet: a line dropped at the cap stays due
+        SpendMeter.Stamp(CacheDir, "s1", t);
+        Assert.False(SpendMeter.Due(CacheDir, "s1", t.AddMinutes(9)));
+        Assert.True(SpendMeter.Due(CacheDir, "s2", t.AddMinutes(9)));
+        Assert.True(SpendMeter.Due(CacheDir, "s1", t.AddMinutes(11)));
         SpendMeter.Stamp(CacheDir, "s1", t.AddMinutes(20));                    // a prompt restarts the ten minutes
-        Assert.False(SpendMeter.ShouldSay(CacheDir, "s1", t.AddMinutes(29)));
+        Assert.False(SpendMeter.Due(CacheDir, "s1", t.AddMinutes(29)));
+    }
+
+    [Fact]
+    public void AMarkerThatCannotBeWrittenDoesNotSilenceAPromptAndNeverSaysOnEveryCall()
+    {
+        File.WriteAllText(CacheDir, "a file where the cache folder goes");
+        string Hook(string ev)
+        {
+            var output = new StringWriter();
+            var input = JsonSerializer.Serialize(new { session_id = "zz-g6-disk", transcript_path = Path.Combine(_root, "not-yet.jsonl"), cwd = Path.GetTempPath(), hook_event_name = ev });
+            Assert.Equal(0, Program.Run(new[] { "context", "--spend-root", _root, "--hook" }, () => input, output, new StringWriter(), Path.Combine(_root, "log")));
+            return output.ToString();
+        }
+        Assert.Contains(SpendMeter.Marker, Hook("UserPromptSubmit"));
+        Assert.False(SpendMeter.Due(CacheDir, "zz-g6-disk", DateTime.UtcNow));
     }
 
     [Fact]
