@@ -185,6 +185,9 @@ public class ContextTests
     [InlineData("Bash", "git commit \":(exclude)docs/HANDOVER.md\" -m wip")]
     [InlineData("Bash", "git commit \":!docs/HANDOVER.md\" -m wip")]
     [InlineData("Bash", "git add \":!docs/HANDOVER.md\"")]
+    [InlineData("Bash", "git commit \\:\\!docs/HANDOVER.md -m wip")]                                   // magic, escaped or expanded (review row 495)
+    [InlineData("Bash", "X=:; git commit \"$X!docs/HANDOVER.md\" -m wip")]
+    [InlineData("PowerShell", "git commit `:!docs/HANDOVER.md -m wip")]
     [InlineData("Bash", "echo x >&2x")]
     [InlineData("Bash", "date >&1.cs")]
     [InlineData("Bash", "git commit . -m wip")]                                                       // a commit is the handover or nothing (review row 491)

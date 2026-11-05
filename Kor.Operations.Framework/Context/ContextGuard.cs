@@ -337,6 +337,12 @@ public static class ContextGuard
     private static readonly string[] GitReads = { "status", "diff", "log", "show", "rev-parse" };
     private static readonly string[] Harmless = { "date", "get-date", "cd", "set-location", "pwd", "ls", "echo", "write-output", "write-host", "true", ":" };
 
+    // what a shell or git can turn into something else after this text is judged: an escaped or expanded pathspec, a glob
+    private static readonly Regex PathMagic = new(@"^\\|[$`!*?]", RegexOptions.CultureInvariant);
+
+    /// <summary>A handover file named as git will read it: no pathspec magic, however it is spelled (review row 495).</summary>
+    private static bool IsPlainHandoverPath(string path) => IsHandoverFile(path) && !PathMagic.IsMatch(path.Trim().Trim('"', '\''));
+
     /// <summary>A commit at STOP: only a message (-m, -F, --message, --file, with -q) and handover paths. An allow-list, because
     /// git takes abbreviations (--amen, --al) and -i, and a path other than the handover would commit work (review row 491).</summary>
     private static bool CommitIsHandoverOnly(IReadOnlyList<string> args)
@@ -349,7 +355,7 @@ public static class ContextGuard
             if (a is "-q" or "--quiet" or "--") continue;
             if (a.StartsWith("--message=", StringComparison.Ordinal) || a.StartsWith("--file=", StringComparison.Ordinal)) continue;
             if (a.StartsWith("-m", StringComparison.Ordinal) && !a.StartsWith("--", StringComparison.Ordinal)) continue;   // -m"text"
-            if (a.StartsWith('-') || !IsHandoverFile(a)) return false;
+            if (a.StartsWith('-') || !IsPlainHandoverPath(a)) return false;
             paths++;
         }
         return paths > 0;
@@ -384,7 +390,7 @@ public static class ContextGuard
             if (verb == "add")
             {
                 var paths = args.Where(a => !a.StartsWith('-')).ToList();
-                return paths.Count > 0 && paths.All(IsHandoverFile) && !args.Any(a => a is "-A" or "--all" or "-u" or "--update" or ".");
+                return paths.Count > 0 && paths.All(IsPlainHandoverPath) && !args.Any(a => a is "-A" or "--all" or "-u" or "--update" or ".");
             }
             if (verb == "commit") return CommitIsHandoverOnly(args);
             return false;

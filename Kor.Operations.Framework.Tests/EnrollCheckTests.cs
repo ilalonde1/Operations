@@ -58,7 +58,7 @@ public class EnrollCheckTests
     {
         var findings = EnrollCheck.SettingsFindings(RealSettings(), This.Module);
         // G5's hooks reach this repo at install, after kor (Framework docs/G5-CONTEXT-STOPS.md): none yet is allowed, some is not
-        if (findings.Count(f => f.Contains("row 1474", StringComparison.Ordinal)) == 3) findings.RemoveAll(f => f.Contains("row 1474", StringComparison.Ordinal));
+        if (!System.Text.RegularExpressions.Regex.IsMatch(RealSettings(), @"kor(?:\.exe)?[\\""']*\s+context\b")) findings.RemoveAll(f => f.Contains("row 1474", StringComparison.Ordinal));
         Assert.Empty(findings);
     }
 
