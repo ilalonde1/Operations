@@ -380,6 +380,41 @@ public class ContextTests
         Assert.Contains(allowed, l => l.Contains("LEAD-HANDOVER-2026-11-02.md"));
     }
 
+    [Fact]
+    public void ATailWithNoUsageWidensAndDoesNotReadAsAFreshSession()
+    {
+        // one result bigger than the first 2 MB read: its partial first line is dropped, so that tail holds no usage (review row 514)
+        var file = Path.Combine(Path.GetTempPath(), $"g5-{Guid.NewGuid():N}.jsonl");
+        try
+        {
+            File.WriteAllText(file, Assistant(T0, "claude-opus-5-5", 320_000, 0, 100) + "\n" + Result("big", new string('a', 3 << 20)) + "\n");
+            var r = ContextTranscript.ReadFile(file, Off);
+            Assert.Equal(320_100, r.Tokens);
+            Assert.Equal(ContextLevel.Stop, ContextGuard.LevelOf(r, Off));
+        }
+        finally { File.Delete(file); }
+    }
+
+    [Fact]
+    public void ACliffBelowTheTriggerCountsAsReachingTheCliff()
+    {
+        // the summary's "STOP came first in X of Y": a cliff at a peak under the trigger is one of the Y (review row 514)
+        var file = Path.Combine(Path.GetTempPath(), $"g5-{Guid.NewGuid():N}.jsonl");
+        try
+        {
+            var tooLong = JsonSerializer.Serialize(new
+            {
+                type = "assistant", isSidechain = false, timestamp = T0.AddMinutes(1).ToString("O"),
+                message = new { model = "<synthetic>", content = new object[] { new { type = "text", text = "Prompt is too long" } } },
+            });
+            File.WriteAllText(file, Assistant(T0, "claude-opus-5-5", 50_000, 0, 100) + "\n" + tooLong + "\n");
+            var output = new StringWriter();
+            Assert.Equal(0, Program.Run(new[] { "context", "--replay", file }, output, new StringWriter()));
+            Assert.Contains("STOP came first in 0 of 1", output.ToString());
+        }
+        finally { File.Delete(file); }
+    }
+
     // ---- the hook verb, end to end ---------------------------------------------------------------------------------
 
     private static string HookInput(string file, string ev, string? tool = null, object? input = null, bool stopActive = false) =>

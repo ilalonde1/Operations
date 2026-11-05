@@ -5,7 +5,11 @@
     emailed Conor Murtagh directly on 14, 16 and 21 January 2025, and Conor emailed him on 15, 16 and 21 January 2025. On 21 January
     2025 Graham wrote "The structure looks very good from the construction perspective." Jeremy Atkinson dealt with him from
     October 2023. A filed search of 378,146 rows found no email with bridgestar.ca, teamconstruction.ca, icdev.ca,
-    ironcladdevelopments.ca or stretchconstruction.ca, and no body naming these firms.
+    ironcladdevelopments.ca or stretchconstruction.ca, and no body naming these firms. That search recorded no check for Sherri Turpin.
+    Searched again 5 Nov (review row 510), read-only, 378,230 to 378,324 rows, case-insensitive across From, To, Cc, Bcc, Subject and
+    BodyText: Bridgestar, Stretch Construction, stretchconstruction, Team Construction, teamconstruction, Ironclad, icdev.ca: 0 rows each.
+    Turpin (which also covers turpinarchitect@outlook.com): 1 row, Carolyn Turpin of the City of Coquitlam on project 30770-01, not
+    Sherri Turpin. Mail never filed is not covered.
 
     The old fact is retired with a reason, not edited, so the record of what was believed stays. Idempotent.
 */

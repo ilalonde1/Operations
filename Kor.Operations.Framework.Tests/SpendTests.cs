@@ -8,11 +8,13 @@ namespace Kor.Operations.Framework.Tests;
 /// <summary>
 /// G6 (board row 1559), the spend line. COVERS: the week's start; one count per message id, its largest total; only new bytes
 /// read; a line not yet ended left unread; a new week from nothing; the deadline leaving a partial count that says so; the
-/// range from a reading; the throttle; the line carried by kor context and never a refusal.
+/// range from a reading; the throttle; the line carried by kor context with no permissionDecision; a slow or throwing reading
+/// failing to "could not be read"; a slow or throwing line left out and logged; an old temp file cleared.
 /// DOES NOT COVER: that the raw count tracks Ian's screen (no test can: only his screen shows it); the read of the reading from
-/// brain.Memory (a test's root skips it; the live probe shows it, docs/G6-SPEND-LINE.md); the 1 s and 3 s waits in the hook
-/// (private, read by review, no slow DB to drive them); the real ~/.claude tree
-/// (compared once with spend_meter.py, docs/G6-SPEND-LINE.md).
+/// brain.Memory (a test's root skips it; the live probe shows it, docs/G6-SPEND-LINE.md); a percentage reaching the hook (a test's
+/// root gives no reading, so "never refused on a percentage" rests on SpendLineForHook returning only text); that the hook passes
+/// its real 1 s and 3 s to ReadingWithin and LineWithin (the helpers are driven here with short waits; the values are read by
+/// review); the real ~/.claude tree (compared once with spend_meter.py, docs/G6-SPEND-LINE.md).
 /// Same-class fault it would miss: a transcript format change that moves message.usage: the count would fall silently.
 /// </summary>
 public class SpendTests : IDisposable
@@ -171,10 +173,58 @@ public class SpendTests : IDisposable
     }
 
     [Fact]
+    public void ASlowOrThrowingReadingIsSaidAsNotRead()
+    {
+        using var gate = new ManualResetEventSlim();
+        try
+        {
+            var slow = SpendMeter.ReadingWithin(() => { gate.Wait(); return (new ScreenReading(1, Now), false); }, TimeSpan.FromMilliseconds(50));
+            Assert.True(slow.Failed);
+            Assert.Null(slow.Reading);
+        }
+        finally { gate.Set(); }
+        Assert.True(SpendMeter.ReadingWithin(() => throw new TimeoutException("the DB"), TimeSpan.FromSeconds(30)).Failed);
+        var read = new ScreenReading(77, Now);
+        Assert.Equal((read, false), SpendMeter.ReadingWithin(() => (read, false), TimeSpan.FromSeconds(30)));
+    }
+
+    [Fact]
+    public void ASlowOrThrowingLineIsLeftOutAndLogged()
+    {
+        var logged = new List<Exception>();
+        using var gate = new ManualResetEventSlim();
+        try { Assert.Null(SpendMeter.LineWithin(() => { gate.Wait(); return "late"; }, TimeSpan.FromMilliseconds(50), logged.Add)); }
+        finally { gate.Set(); }
+        Assert.IsType<TimeoutException>(Assert.Single(logged));
+        logged.Clear();
+        Assert.Null(SpendMeter.LineWithin(() => throw new IOException("the disk"), TimeSpan.FromSeconds(30), logged.Add));
+        Assert.IsType<IOException>(Assert.Single(logged));
+        logged.Clear();
+        Assert.Equal("said", SpendMeter.LineWithin(() => "said", TimeSpan.FromSeconds(30), logged.Add));
+        Assert.Empty(logged);
+    }
+
+    [Fact]
+    public void AnOldTempFileFromACutOffHookIsClearedAndALiveOneIsNot()
+    {
+        File1(Line("m1", Now.AddHours(-1), 100));
+        Directory.CreateDirectory(CacheDir);
+        var old = Path.Combine(CacheDir, "spend-cache.bin.111.tmp");
+        var live = Path.Combine(CacheDir, "spend-cache.bin.222.tmp");
+        File.WriteAllText(old, "x");
+        File.WriteAllText(live, "x");
+        File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddHours(-1));
+        Assert.Equal(101, Count(Now).Raw);
+        Assert.False(File.Exists(old));
+        Assert.True(File.Exists(live));
+    }
+
+    [Fact]
     public void KorContextCarriesTheLineAndNeverRefusesForIt()
     {
         var transcript = Path.Combine(_root, "session.jsonl");
-        // a session under WARN, and a week far past any percentage: nothing here can be refused
+        // a session under WARN and a week of 900,000M raw. A test's root gives no reading, so no percentage is computed here: this
+        // shows the line goes with no permissionDecision whatever the raw count, not what a real percentage would do
         File.WriteAllText(transcript, Line("big", DateTimeOffset.Now.AddMinutes(-1), 5_000) + "\n");
         File.AppendAllText(Path.Combine(_root, "other.jsonl"), Line("week", DateTimeOffset.Now.AddMinutes(-1), 900_000_000_000) + "\n");
         string Hook(string ev, string? tool, string session = "zz-g6", string? path = null)

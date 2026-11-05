@@ -1,8 +1,31 @@
 # Operations - HANDOVER
 
-## STATE NOW - 4 Nov 2026 12:15 BCDT, block first written 09:43 (`date`), Operations lead, BD. Read first.
+## STATE NOW - 5 Nov 2026 13:22 BCDT (`date`), review findings table added by a helper of framework-7e; the BD block below is from 4 Nov 12:15, Operations lead. Read first.
 
-Evidence was read between 09:24 and 09:43 on 4 Nov, read-only. Nothing was built or deployed.
+**Review findings before the G5/G6 push, each checked 5 Nov by reading HEAD ("this commit" = the commit adding this table; its sha is in `git log -1 -- docs/HANDOVER.md`).**
+
+| Row | Commit reviewed | Outcome |
+|---|---|---|
+| 509 | fb8a76fd | Brief wording and "Strong" answered by 53e53c2e. Idempotent claim, key contract, duplicate check, stray comment and matcher fixed in this commit. **Stands:** 68987 registry risk until a Worker with the new matcher deploys; no before report to diff |
+| 510 | 53e53c2e | Fixed in this commit: Turpin searched, brief, PDF and 383's header say what was searched |
+| 511 | fbfff2f8 | Stated in 384's header in this commit. **Stands live:** keys, work names, signal type, email source, 3 narrative sentences: all need a data change, for row 1644 |
+| 512 | 466ad294 | Answered by 77ae5a0a |
+| 514 | 40b8a27a | Allow-list, pathspec, redirect, --output answered by 6fee89a9 to 06641e6d; enroll tolerance by 2bc56dec. Tail widening, cliff count, wiring tests, RESUME docs fixed in this commit |
+| 515-520 | 6fee89a9, 10f1e02d, 49cde197, 2bc56dec, 4f888e1c, 57bdce1d | Answered by 06641e6d (HasShellEscape, PlainPath, parsed-verb test, refused cases) |
+| 521 | b1c63044 | Answered by 8468a7de to 67c527f0; the no-refusal claim narrowed in this commit and Framework 55b8399 |
+| 522 | f5142002 | Answered by 67c527f0 |
+| 523 | 8468a7de | DB wait answered by 91401c71. Timeout log, old temp files, comment, slow-reading tests fixed in this commit |
+| 524 | 91401c71 | Answered by 67c527f0 and 791a5036 |
+| 525 | 67c527f0 | Answered by 791a5036 |
+| 526 (Framework) | 4d83c8a0 | Answered by b42ea63 |
+| 529 (Framework) | ed742792 | Whitespace answered by 5b415cd; kor-missing crash and stash names fixed in 55b8399 |
+| 530 (Framework) | 3a8db8ec | Fixed in 55b8399 |
+
+The migrations 382-384 are live and were not re-run; only their headers and one comment changed. BcRegistryProvider's matcher takes effect only at a Worker deploy, which is Ian's word.
+BdIntegrityCheck after the fact, 5 Nov 13:19: Errors 1 (dismissed_opportunity_has_engagement, Leduc 39322, the residue on row 1584), Warnings 39. The orgs these migrations touched appear once, as the known 68987/70567 pair. No before report exists, so this is not a diff.
+Conor's brief: the HTML, the docs PDF and the Desktop\BD PDF were rebuilt 5 Nov 13:20 with the narrowed history sentence; the three copies agree and it was not sent.
+
+**The BD block, 4 Nov:** Evidence was read between 09:24 and 09:43 on 4 Nov, read-only. Nothing was built or deployed.
 
 **Read before acting today: the morning hour is wrong on Banff.** Today's hour (DirectorHour 18) and its draft to Islam
 say Banff Centre (#1142) closes Thu 5 Nov. APC's public feed says it was amended 26 Oct 21:24 UTC and closes

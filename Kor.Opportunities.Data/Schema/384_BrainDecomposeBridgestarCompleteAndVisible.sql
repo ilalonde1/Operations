@@ -10,7 +10,26 @@
     - Org 68987's Action paragraph said "No KOR BD priority" and is replaced.
 
     No CRM pursuit is opened: that follows when Conor takes this on (board row 1634). Touchpoints sit on Mission Group, where the
-    contact happened, so Bridgestar's warmth is not overstated. Idempotent by NaturalKey.
+    contact happened, so Bridgestar's warmth is not overstated.
+
+    APPLIED 4 Nov 2026 (its rows read back live on 5 Nov, provider Conor-Okanagan-Brief-2026-11-04). The statements below are what ran, so
+    they are left as they ran; this header was corrected on 5 Nov after review row 511. The live rows still carry the first six faults,
+    because correcting them needs a data change. Board row 1644 retires these hand rows through the pipeline:
+
+    - NOT IDEMPOTENT. Do not re-run. The enrichment MERGE is ON 1 = 0, and UX_CanonicalOrgEnrichment_OrgProvider (unique, live on 5 Nov)
+      throws on a second run, which rolls the whole migration back. Only the people, edge, touchpoint, narrative, work and signal writes are keyed.
+    - Narrative, work and signal keys are private strings, and works hash NVARCHAR, so they do not match IntelPersistenceService. Until row
+      1644 runs, a pipeline run on these orgs writes second rows beside them. Do not run research on these orgs first.
+    - Work names strip 5 characters where IntelNaturalKey.Normalize strips 10, so the Springfield Rd row keeps '(', '/' and ')'.
+    - All 3 signals are typed Other. Graham Chatwin's and the senior-team signal are leadership changes, so RecentLeadershipChanges
+      (IntelReadService, SignalType = LeadershipChange) does not show them.
+    - Conor's and Jeremy's emails carry no EmailSource or EmailConfidence (read 5 Nov: NULL on 1085 and 1088).
+    - Three narrative sentences state a search's miss as a fact. "not on public record" (1838121, 1838122) means not found on any readable
+      public record (382), and row 1632 says Kelowna's records refuse automated reads. "KOR has no history with this firm" (68987) means no
+      Deltek client under the name (382) and no filed email (383's 5 Nov search); mail never filed is not covered.
+
+    Checked and found sound on 5 Nov: the retire of 68987's old Action paragraph has no row-count check, but it landed (narrative 6791
+    retired, 18586 live). Org 54726 had no earlier narrative: its 2 are both from here.
 */
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;

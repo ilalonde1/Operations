@@ -5,7 +5,24 @@
     Orgs 1838121 Bridgestar Group, 1838122 Stretch Construction Ltd. and 1838123 Sherri Turpin Architect were created through
     tools/BdCanonicalDedup --create on 4 Nov 2026 so the resolver owns the fuzzy key.
 
-    People follow the identity contract: NaturalKey = SHA1(lower(trim(email))); with no email, SHA1(normalized name|org:id).
+    APPLIED 4 Nov 2026 (its rows read back live on 5 Nov, provider Apollo-Verified-2026-11-04). The statements below are what ran, so
+    they are left as they ran; this header was corrected on 5 Nov after review row 509. Corrections, none of which ran:
+
+    - NOT IDEMPOTENT. Do not re-run. The enrichment MERGE is ON 1 = 0, so it always inserts, and UX_CanonicalOrgEnrichment_OrgProvider
+      (unique on org and provider, live on 5 Nov) throws on a second run, which rolls the whole migration back.
+    - The real person key is email, then LinkedIn, then name|org (IntelNaturalKey.ComputePerson). This file skips LinkedIn, so Henrik
+      Drago got a name|org key; migration 384 corrected his live row.
+    - People are matched on NaturalKey only, not through usp_ResolveOrCreateIntelPerson. Read 5 Nov: of the 20 person rows carrying this
+      or 384's provider, none shares an email or a LinkedIn URL with another person row, and none shares a normalized name with another
+      person holding a live affiliation on the same org.
+    - 68987's BcRegistry enrichment row (61564) is unchanged and still ok, and BcRegistryLastCheckedAtUtc was left as it was, so a later
+      refresh could write A-TEAM CONSTRUCTION back. BcRegistryProvider.IsLikelyMatch now needs whole words (5 Nov), which holds once a
+      Worker carrying it is deployed; until then the risk stands. Board row 1636 has the class.
+    - The 1838121 WarmChannel fact's Confidence High did not match its body's "unconfirmed". Migration 383 retired that fact.
+    - tools/BdIntegrityCheck was not recorded before or after this data change, so the two reports its module rule asks for cannot be
+      diffed. The run after it, on 5 Nov, is named in docs/HANDOVER.md.
+
+    People were keyed: NaturalKey = SHA1(lower(trim(email))); with no email, SHA1(normalized name|org:id).
     Chad Gould already exists as IntelPerson 643 under a name key, so his row gets the email by COALESCE and a new affiliation
     rather than a second person. An existing email is never overwritten.
 
@@ -13,7 +30,7 @@
     Org 70567 holds the real registry record. The wrong fields are cleared and the pair is recorded as DuplicateOf; the merge
     itself is left to BdCanonicalDedup because a merge deletes the loser row.
 
-    Idempotent: MERGE on NaturalKey; facts by NOT EXISTS.
+    People and affiliations MERGE on NaturalKey and facts go in by NOT EXISTS, but the file as a whole cannot run twice (above).
 */
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
@@ -107,7 +124,7 @@ UPDATE opportunities.CanonicalOrg
        BcRegistryIncorporationDate = NULL, BcRegistryJurisdiction = NULL, BcRegistryBusinessNumber = NULL, BcRegistryRegisteredOffice = NULL, UpdatedAtUtc = @now
  WHERE Id = 68987 AND BcRegistryLegalName = N'A-TEAM CONSTRUCTION';
 
-/* Website belongs on the org the registry says is real; the fuzzy-key and domain writes stay with the resolver */
+/* Facts. No website is written: it stays on 68987, as the DuplicateOf fact says, and the fuzzy-key and domain writes stay with the resolver */
 INSERT INTO opportunities.OrgFact
     (NaturalKey, CanonicalOrgId, FactType, Body, SourceUrl, SourceRef, ObservedAtUtc, Confidence, CreatedAtUtc, CreatedBy)
 SELECT CONVERT(varchar(40), HASHBYTES('SHA1', v.k), 2), v.org, v.ft, v.body, v.url,

@@ -12,7 +12,7 @@ namespace Kor.Operations.Framework.Context;
 /// <param name="Line">its line: 1-based when the whole file was read, else counted back from the end (-1 = last).</param>
 /// <param name="OverCliff">a "Prompt is too long" came after it.</param>
 /// <param name="LastWarned">the tokens G5's last WARN named, read back off the transcript (null = none since the last compaction).</param>
-/// <param name="HandoverWritten">a successful kor state AND a successful Edit/Write of a *HANDOVER*.md, both after the
+/// <param name="HandoverWritten">a successful kor state AND a successful Edit/Write of a *HANDOVER*.md or *RESUME*.md, both after the
 /// reading crossed STOP (main sessions); a successful SendMessage after it (subagents).</param>
 public sealed record ContextReading(long Tokens, string? Model, DateTimeOffset? At, int Line, bool OverCliff = false,
                                     long? LastWarned = null, bool HandoverWritten = false, string Basis = "usage");
@@ -173,7 +173,9 @@ public static class ContextTranscript
                 if (level == ContextLevel.Stop && crossed) { complete = true; break; }
             }
         }
-        if (tokens is null) { complete = true; return new ContextReading(0, null, null, 0, over, Basis: "none"); }
+        // no usage in what was read: not complete, so ReadFile widens a tail that is not the whole file. A partial tail with no
+        // usage (one huge tool result) must not read as a fresh session (review row 514)
+        if (tokens is null) return new ContextReading(0, null, null, 0, over, Basis: "none");
         return new ContextReading(tokens.Value, model, at, line, over, warned, subagent ? reported : edited && recorded, basis);
     }
 

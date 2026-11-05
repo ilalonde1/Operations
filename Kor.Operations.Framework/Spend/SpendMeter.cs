@@ -47,6 +47,7 @@ public static class SpendMeter
     public const long FlatRawPerPoint = 68_000_000;
     public static readonly TimeSpan SayEvery = TimeSpan.FromMinutes(10);
     public static readonly TimeSpan ScanEvery = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan StaleTemp = TimeSpan.FromMinutes(10);
     public const string Marker = "[kor spend] ";
 
     private static readonly Regex ReadingText = new(@"^\s*(?<p>\d+(?:\.\d+)?)%\s+at\s+(?<t>\S+)", RegexOptions.CultureInvariant);
@@ -88,6 +89,29 @@ public static class SpendMeter
         var at = reading.At.LocalDateTime.ToString("d MMM HH:mm", CultureInfo.InvariantCulture);
         return $"{head}; Ian's screen read {F(reading.Percent)}% at {at}, {M(c.RawSinceReading)} since, so about {F(low)}-{F(high)}% " +
                $"(no one slope held: {M(FlatRawPerPoint)} to {M(SteepRawPerPoint)} a point). {Rules}";
+    }
+
+    /// <summary>The reading within <paramref name="wait"/>. A read that is slow or throws is Failed: the DB could not say, which
+    /// is not the same as none recorded. The abandoned read's later fault is observed here, never thrown.</summary>
+    public static (ScreenReading? Reading, bool Failed) ReadingWithin(Func<(ScreenReading? Reading, bool Failed)> read, TimeSpan wait)
+    {
+        var task = Task.Run(read);
+        try { if (task.Wait(wait)) return task.Result; }
+        catch (AggregateException) { return (null, true); }
+        task.ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted);
+        return (null, true);
+    }
+
+    /// <summary>The line within <paramref name="budget"/>, or null with the cause given to <paramref name="log"/>: a hook's output
+    /// waits on this, so a slow or failing line never holds it or fails it.</summary>
+    public static string? LineWithin(Func<string> line, TimeSpan budget, Action<Exception> log)
+    {
+        var task = Task.Run(line);
+        try { if (task.Wait(budget)) return task.Result; }
+        catch (AggregateException e) { log(e.InnerException ?? e); return null; }
+        task.ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted);
+        log(new TimeoutException($"the spend line took over {budget.TotalSeconds:0.#} s and was left out"));
+        return null;
     }
 
     /// <summary>The total of one usage object, or 0.</summary>
@@ -139,6 +163,10 @@ public static class SpendMeter
     private static void Save(string dir, Cache c)
     {
         Directory.CreateDirectory(dir);
+        // a hook cut off at its budget can exit mid-write and leave its temp file: a later write clears any old enough not to be live (review row 523)
+        foreach (var old in Directory.EnumerateFiles(dir, Path.GetFileName(CachePath(dir)) + ".*.tmp"))
+            if (DateTime.UtcNow - File.GetLastWriteTimeUtc(old) > StaleTemp)
+                try { File.Delete(old); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         var tmp = CachePath(dir) + "." + Environment.ProcessId + ".tmp";
         using (var w = new BinaryWriter(File.Create(tmp)))
         {

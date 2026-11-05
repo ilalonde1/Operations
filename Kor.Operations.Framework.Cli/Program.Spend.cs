@@ -8,7 +8,9 @@ namespace Kor.Operations.Framework.Cli;
 public static partial class Program
 {
     // The whole line gets HookLineBudget in a hook, because the hook's output waits on it, G5's WARN and STOP included, and the
-    // hook's timeout is 10 s (review rows 501, 503). Past it the line is left out this time; G5's text still goes.
+    // hook's timeout is 10 s (review rows 501, 503). Past it the line is left out and the timeout logged; G5's text still goes. A tool
+    // call does not try again until ten minutes on, a prompt always does (review row 523). The cut-off scan's progress is lost when
+    // the process exits and the next try reads it again; the cache file stays whole, because only a finished write replaces it.
     private static readonly TimeSpan HookLineBudget = TimeSpan.FromSeconds(3);
     // Inside it: the DB gets 1 s and the scan 1.5 s, so a slow DB costs only the reading: the local count still goes (review row 504)
     private static readonly TimeSpan HookReadingWait = TimeSpan.FromSeconds(1);
@@ -41,9 +43,7 @@ public static partial class Program
         var failed = false;
         if (root is null)   // a test's root has no record behind it
         {
-            var read = Task.Run(NewestReading);
-            if (read.Wait(readingWait)) (reading, failed) = read.Result;
-            else failed = true;
+            (reading, failed) = SpendMeter.ReadingWithin(NewestReading, readingWait);
         }
         var count = SpendMeter.Count(root ?? SpendMeter.DefaultProjectsRoot, CacheDirFor(root), DateTimeOffset.Now, reading?.At, budget);
         return SpendMeter.Line(count, reading, failed);
@@ -63,8 +63,7 @@ public static partial class Program
             // most once per ten minutes (review row 505). A prompt always tries, and restarts them.
             if (prompt) { try { SpendMeter.Stamp(CacheDirFor(root), session, DateTime.UtcNow); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } }
             else if (!SpendMeter.ShouldTry(CacheDirFor(root), session, DateTime.UtcNow)) return null;
-            var line = Task.Run(() => SpendLine(root, HookReadingWait, HookScanBudget));
-            return line.Wait(HookLineBudget) ? line.Result : null;
+            return SpendMeter.LineWithin(() => SpendLine(root, HookReadingWait, HookScanBudget), HookLineBudget, e => LogHookError(hookErrorLog, o, e));
         }
         catch (Exception e) { LogHookError(hookErrorLog, o, e); return null; }
     }

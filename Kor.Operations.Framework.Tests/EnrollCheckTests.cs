@@ -62,6 +62,42 @@ public class EnrollCheckTests
         Assert.Empty(findings);
     }
 
+    /// <summary>The real settings carry no kor context hook until install, so the removal theory below never reaches G5's three
+    /// requirements (review row 514). These do, on a file that holds only them: other requirements' findings are not looked at.</summary>
+    private static string ContextSettings(string preMatcher = "*", string module = "M", string pre = "--hook", string prompt = "--hook", bool stop = true)
+    {
+        string Group(string? matcher, string flag) => "{" + (matcher is null ? "" : $"\"matcher\":\"{matcher}\",") +
+            $"\"hooks\":[{{\"type\":\"command\",\"command\":\"kor.exe context --module {module} {flag}\"}}]}}";
+        var stopHook = stop ? "," + "\"Stop\":[" + Group(null, "--hook") + "]" : "";
+        return "{\"hooks\":{\"PreToolUse\":[" + Group(preMatcher, pre) + "],\"UserPromptSubmit\":[" + Group(null, prompt) + "]" + stopHook + "}}";
+    }
+
+    private static List<string> ContextFindings(string settings) =>
+        EnrollCheck.SettingsFindings(settings, "M").Where(f => f.Contains("row 1474", StringComparison.Ordinal)).ToList();
+
+    [Fact]
+    public void G5sThreeHooksPassWhenAllAreWired() => Assert.Empty(ContextFindings(ContextSettings()));
+
+    [Fact]
+    public void AMissingG5HookIsAFinding()
+    {
+        Assert.Contains(ContextFindings(ContextSettings(stop: false)), f => f.StartsWith("missing Stop", StringComparison.Ordinal));
+        var noPrompt = ContextSettings().Replace("kor.exe context --module M --hook\"}]}],\"Stop", "kor.exe state --module M --hook\"}]}],\"Stop");
+        Assert.Contains(ContextFindings(noPrompt), f => f.StartsWith("missing UserPromptSubmit", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ANarrowedG5MatcherIsAFinding() =>
+        Assert.Contains(ContextFindings(ContextSettings(preMatcher: "Bash")), f => f.Contains("does not cover", StringComparison.Ordinal));
+
+    [Fact]
+    public void AWrongModuleOnG5sHooksIsAFinding() =>
+        Assert.Equal(3, ContextFindings(ContextSettings(module: "Other")).Count(f => f.Contains("names --module Other", StringComparison.Ordinal)));
+
+    [Fact]
+    public void AG5HookWithoutHookFlagIsAFinding() =>
+        Assert.Contains(ContextFindings(ContextSettings(pre: "")), f => f.Contains("has no --hook", StringComparison.Ordinal));
+
     [Fact]
     public void EveryKorHookIsEnumerated()
     {

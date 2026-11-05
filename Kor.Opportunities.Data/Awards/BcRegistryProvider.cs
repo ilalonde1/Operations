@@ -230,8 +230,17 @@ public sealed class BcRegistryProvider : IEnrichmentProvider
     /// Coarse name-match guard. Normalize both names and strip common corporate
     /// suffixes so OrgBook's fuzzy search does not attach a loose hit.
     /// </summary>
-    private static bool IsLikelyMatch(string query, string hit)
+    /// <summary>Is this registry hit the business asked about? Equal once normalized, or one name's whole words inside the other's.
+    /// Whole words, because letters inside a word are another business: "Team Construction" is not "A-TEAM CONSTRUCTION", which
+    /// was written onto org 68987 (migration 382). A hyphen joins its word.</summary>
+    public static bool IsLikelyMatch(string query, string hit)
     {
+        // " word word ": a containment test on this text can only match whole words
+        static string Words(string s) => " " + string.Join(' ', s.ToLowerInvariant().Replace("&", " and ")
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+            .Select(w => new string(w.Where(char.IsLetterOrDigit).ToArray()))
+            .Where(w => w.Length > 0 && w is not ("ltd" or "inc" or "corp" or "corporation" or "limited" or "company" or "group" or "llp"))) + " ";
+
         static string Norm(string s) => new string(s.ToLowerInvariant()
             .Replace(" ltd", "")
             .Replace(" inc", "")
@@ -252,8 +261,10 @@ public sealed class BcRegistryProvider : IEnrichmentProvider
         var normalizedHit = Norm(hit);
         if (normalizedQuery.Length == 0 || normalizedHit.Length == 0) return false;
         if (normalizedQuery == normalizedHit) return true;
-        if (normalizedQuery.Length >= 4 && normalizedHit.Contains(normalizedQuery, StringComparison.Ordinal)) return true;
-        if (normalizedHit.Length >= 4 && normalizedQuery.Contains(normalizedHit, StringComparison.Ordinal)) return true;
+        var queryWords = Words(query);
+        var hitWords = Words(hit);
+        if (normalizedQuery.Length >= 4 && hitWords.Contains(queryWords, StringComparison.Ordinal)) return true;
+        if (normalizedHit.Length >= 4 && queryWords.Contains(hitWords, StringComparison.Ordinal)) return true;
         return false;
     }
 }

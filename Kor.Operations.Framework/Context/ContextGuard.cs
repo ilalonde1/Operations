@@ -74,8 +74,8 @@ public sealed record ContextDecision(ContextLevel Level, bool Deny, string? Say,
 ///
 /// ALLOWED AT STOP (<see cref="HandoverAllows"/>): Read/Edit/Write/MultiEdit of a *HANDOVER*.md or *RESUME*.md; Read/Write/Edit of a
 /// scratchpad file named for the state (*STATE*, *HANDOVER*: the file kor state --file reads); Bash/PowerShell when EVERY
-/// segment is kor state, kor record, git status/diff/log/show/rev-parse (no --output), ls, git add of *HANDOVER*.md paths only, git commit
-/// of *HANDOVER*.md paths named, with only a message, date, Get-Date, cd, pwd, echo, a literal assignment, or a heredoc cat (a commit message),
+/// segment is kor state, kor record, git status/diff/log/show/rev-parse (no --output), ls, git add of *HANDOVER*.md or *RESUME*.md paths only, git commit
+/// of those paths named, with only a message, date, Get-Date, cd, pwd, echo, a literal assignment, or a heredoc cat (a commit message),
 /// with no redirect to a file; TaskStop/KillShell (stop background work); SendMessage for a SUBAGENT only (its report to
 /// its lead - a main session tells Ian in plain text); ToolSearch only to load those. Everything else is denied, git push
 /// included (the fresh session reviews and pushes). The first dry run allowed any scratchpad file and any SendMessage, and
@@ -90,7 +90,7 @@ public sealed record ContextDecision(ContextLevel Level, bool Deny, string? Say,
 /// model the docs do not list, judged on 200k (warned at 140k, stopped at 170k even if its window is 1M); a transcript that
 /// lags behind the session (the reading is the last line ON DISK: a result not yet written is not counted); history
 /// beyond the tail read (<see cref="ContextTranscript.MaxScan"/>), so a STOP crossing older than that counts the whole
-/// tail as after it; the week's spend (G5 reads one session's context; the week is G6, board row 1559); a live run or a
+/// tail as after it, and a last 16 MB holding no assistant usage at all reads as 0 tokens; the week's spend (G5 reads one session's context; the week is G6, board row 1559); a live run or a
 /// cleanup the stopped session cannot finish (refused like any work: its handover names it first and the fresh session
 /// does it, the decision in docs/G5-CONTEXT-STOPS.md); a handover that is written but says nothing useful (G5 checks that it was written, not what it says); an auto-compact
 /// window set by managed settings or by a --settings/--autocompact flag at launch (not read: see
@@ -198,7 +198,7 @@ public static class ContextGuard
                "4. `git add docs/HANDOVER.md && git commit docs/HANDOVER.md -m \"handover: ...\"` (no push: the fresh session reviews and pushes). " +
                "5. Tell Ian in one plain line that this session has stopped for a fresh start, with its handover written, naming anything LIVE. Ian or the lead " +
                "starts the fresh session. " +
-               "Allowed now: Read/Edit/Write of a *HANDOVER*.md; Read/Write of STATE-NOW.md in the scratchpad; kor state; kor record; date; " +
+               "Allowed now: Read/Edit/Write of a *HANDOVER*.md or *RESUME*.md (either counts as the handover); Read/Write of STATE-NOW.md in the scratchpad; kor state; kor record; date; " +
                "git status/diff/log/show; ls; git add of the handover; git commit of the handover by its path; TaskStop. A chain with any other step in it is " +
                "refused whole: if a command is refused, run the allowed steps on their own and finish all 5. Nothing else runs until a fresh session.";
     }

@@ -171,7 +171,8 @@ public static partial class Program
                 if (since is not null && at is { } endAt && endAt < since) { seg = new Seg(); return; }
                 segments++;
                 var trigger = ContextGuard.CeilingOf(seg.Model, cs) - ContextGuard.TriggerMargin;
-                var reached = seg.Peak >= trigger || kind is "cliff" || kind.StartsWith("compact-", StringComparison.Ordinal) && (pre ?? 0) >= trigger;
+                // the cliff kinds are "cliff, then compact-x" and "cliff (no compaction after)": a cliff below the trigger still reached the cliff (review row 514)
+                var reached = seg.Peak >= trigger || kind.StartsWith("cliff", StringComparison.Ordinal) || kind.StartsWith("compact-", StringComparison.Ordinal) && (pre ?? 0) >= trigger;
                 if (reached) { segTrigger++; if (seg.StopLine is not null) segTriggerStopFirst++; }
                 endKinds[kind + (seg.StopLine is not null ? " (stopped)" : seg.WarnLine is not null ? " (warned)" : "")] =
                     endKinds.GetValueOrDefault(kind + (seg.StopLine is not null ? " (stopped)" : seg.WarnLine is not null ? " (warned)" : "")) + 1;
