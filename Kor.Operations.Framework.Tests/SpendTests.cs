@@ -152,15 +152,18 @@ public class SpendTests : IDisposable
     public void AMarkerThatCannotBeWrittenStillLetsAPromptSpeakAndNeverCostsEveryToolCall()
     {
         File.WriteAllText(CacheDir, "a file where the cache folder goes");
-        string Hook(string ev)
+        var transcript = Path.Combine(_root, "session.jsonl");
+        File.WriteAllText(transcript, Line("m", DateTimeOffset.Now.AddMinutes(-1), 5_000) + "\n");
+        string Hook(string ev, string? tool = null)
         {
             var output = new StringWriter();
-            var input = JsonSerializer.Serialize(new { session_id = "zz-g6-disk", transcript_path = Path.Combine(_root, "not-yet.jsonl"), cwd = Path.GetTempPath(), hook_event_name = ev });
+            var input = JsonSerializer.Serialize(new { session_id = "zz-g6-disk", transcript_path = transcript, cwd = Path.GetTempPath(), hook_event_name = ev, tool_name = tool, tool_input = new { command = "dotnet build" } });
             Assert.Equal(0, Program.Run(new[] { "context", "--spend-root", _root, "--hook" }, () => input, output, new StringWriter(), Path.Combine(_root, "log")));
             return output.ToString();
         }
         Assert.Contains(SpendMeter.Marker, Hook("UserPromptSubmit"));
-        Assert.Equal("", Hook("PreToolUse").Trim());
+        Assert.Equal("", Hook("PreToolUse", "Bash").Trim());                    // a real tool call past the transcript check: no marker, no try
+        Assert.False(SpendMeter.ShouldTry(CacheDir, "zz-g6-disk", DateTime.UtcNow));   // a file where the cache folder goes
         // the folder is there and the marker is not writable: a folder stands where the marker goes
         File.Delete(CacheDir);
         Directory.CreateDirectory(Path.Combine(CacheDir, "said-zz-g6-disk2"));
