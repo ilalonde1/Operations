@@ -117,6 +117,10 @@ public class SpendTests : IDisposable
         var c = new SpendCount(SpendMeter.WeekStart(Now), 5_000_000, 0, 1, 0);
         Assert.Contains("no reading of Ian's screen", SpendMeter.Line(c, null));
         Assert.Contains("no reading of Ian's screen", SpendMeter.Line(c, new ScreenReading(90, Now.AddDays(-5))));
+        // a DB that could not answer is not a claim that none was recorded (review row 503)
+        var failed = SpendMeter.Line(c, null, readingFailed: true);
+        Assert.Contains("could not be read just now", failed);
+        Assert.DoesNotContain("no reading", failed);
     }
 
     [Theory]

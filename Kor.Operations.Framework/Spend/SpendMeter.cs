@@ -34,7 +34,8 @@ public sealed record SpendCount(DateTimeOffset WeekStart, long Raw, long RawSinc
 ///
 /// DOES NOT COVER: other machines and claude.ai, which spend the same allowance; the provider's weighting (raw counts a cache
 /// read like an output token, which the provider does not); usage in a transcript deleted before it was read; a screen reading
-/// nobody recorded (the line then gives raw tokens and says so).
+/// nobody recorded (the line then gives raw tokens and says so; a DB that cannot answer is said as that, not as none recorded).
+/// In a hook the whole line gets 3 s; past that it is left out for that call, and G5's text still goes.
 /// Same-class fault it would miss: the provider changes how it counts cache reads mid-week. The raw count goes on looking
 /// right, and only the two slopes, measured on 4 Nov, go wrong. Only a new reading of Ian's screen shows it.
 /// </summary>
@@ -73,11 +74,12 @@ public static class SpendMeter
     private static string M(long raw) => (raw / 1_000_000).ToString("N0", CultureInfo.InvariantCulture) + "M";
 
     /// <summary>The one line. A reading from before this week's start is not used.</summary>
-    public static string Line(SpendCount c, ScreenReading? reading)
+    public static string Line(SpendCount c, ScreenReading? reading, bool readingFailed = false)
     {
         var head = $"{Marker}this PC since {c.WeekStart.LocalDateTime.ToString("ddd d MMM HH:mm", CultureInfo.InvariantCulture)}: {M(c.Raw)} raw tokens";
         if (c.FilesLeft > 0) head += $" so far ({c.FilesLeft} transcript(s) still to count)";
         const string Rules = "An ESTIMATE from this PC's transcripts, not the provider's meter: Ian's Usage screen rules.";
+        if (readingFailed) return $"{head}; Ian's screen reading could not be read just now. {Rules}";
         if (reading is null || reading.At < c.WeekStart) return $"{head}; no reading of Ian's screen recorded this week. {Rules}";
         var low = reading.Percent + (double)c.RawSinceReading / FlatRawPerPoint;
         var high = reading.Percent + (double)c.RawSinceReading / SteepRawPerPoint;

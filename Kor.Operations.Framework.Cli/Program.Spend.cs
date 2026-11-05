@@ -7,7 +7,10 @@ namespace Kor.Operations.Framework.Cli;
 /// are <see cref="SpendMeter"/>'s header.</summary>
 public static partial class Program
 {
-    private static readonly TimeSpan HookScanBudget = TimeSpan.FromSeconds(2.5);
+    // The whole line gets HookLineBudget in a hook, because the hook's output waits on it, G5's WARN and STOP included, and the
+    // hook's timeout is 10 s (review rows 501, 503). Past it the line is left out this time; G5's text still goes.
+    private static readonly TimeSpan HookLineBudget = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan HookScanBudget = TimeSpan.FromSeconds(1.5);
 
     private static int SpendVerb(Options o, TextWriter output)
     {
@@ -15,27 +18,26 @@ public static partial class Program
         return 0;
     }
 
-    /// <summary>The newest recorded screen reading: connect 3 s and query 3 s at most, because a hook's output waits on it, G5's
-    /// WARN and STOP included (review row 501). None, a slow DB or a failure: no reading, and the line says so.</summary>
-    private static ScreenReading? NewestReading()
+    /// <summary>The newest recorded screen reading. Failed true: the DB could not say, which is not the same as none recorded.</summary>
+    private static (ScreenReading? Reading, bool Failed) NewestReading()
     {
         try
         {
-            return BrainDb.Use3s(KorStandardsConnection.Login.Brain, d =>
+            return (BrainDb.Use3s(KorStandardsConnection.Login.Brain, d =>
             {
                 using var c = d.Command("SELECT TOP 1 Description FROM brain.Memory WHERE Lane = N'Framework' AND Name = @n AND RetiredAtUtc IS NULL AND Kind <> N'issue'", 3);
                 c.Parameters.Add("@n", System.Data.SqlDbType.NVarChar, 120).Value = SpendMeter.ReadingRecord;
                 return SpendMeter.ParseReading(c.ExecuteScalar() as string);
-            });
+            }), false);
         }
-        catch (Exception e) when (e is Microsoft.Data.SqlClient.SqlException or InvalidOperationException or ArgumentException) { return null; }
+        catch (Exception e) when (e is Microsoft.Data.SqlClient.SqlException or InvalidOperationException or ArgumentException) { return (null, true); }
     }
 
     private static string SpendLine(string? root, TimeSpan budget)
     {
-        var reading = root is null ? NewestReading() : null;   // a test's root has no record behind it
+        var (reading, failed) = root is null ? NewestReading() : (null, false);   // a test's root has no record behind it
         var count = SpendMeter.Count(root ?? SpendMeter.DefaultProjectsRoot, CacheDirFor(root), DateTimeOffset.Now, reading?.At, budget);
-        return SpendMeter.Line(count, reading);
+        return SpendMeter.Line(count, reading, failed);
     }
 
     private static string CacheDirFor(string? root) => root is null ? SpendMeter.DefaultCacheDir : Path.Combine(root, ".spend");
@@ -49,9 +51,10 @@ public static partial class Program
         try
         {
             // a prompt always says it and restarts the session's ten minutes, so the tool call after it does not repeat it
-            if (prompt) SpendMeter.Stamp(CacheDirFor(root), session, DateTime.UtcNow);
+            if (prompt) { try { SpendMeter.Stamp(CacheDirFor(root), session, DateTime.UtcNow); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } }
             else if (!SpendMeter.ShouldSay(CacheDirFor(root), session, DateTime.UtcNow)) return null;
-            return SpendLine(root, HookScanBudget);
+            var line = Task.Run(() => SpendLine(root, HookScanBudget));
+            return line.Wait(HookLineBudget) ? line.Result : null;
         }
         catch (Exception e) { LogHookError(hookErrorLog, o, e); return null; }
     }
