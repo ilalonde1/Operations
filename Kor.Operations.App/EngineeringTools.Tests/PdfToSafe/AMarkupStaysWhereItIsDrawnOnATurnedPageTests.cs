@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
+using Kor.Operations.EngineeringTools.Dxf;
 using Kor.Operations.EngineeringTools.Intake;
 using Kor.Operations.EngineeringTools.PdfToSafe;
 using Kor.Operations.EngineeringTools.QuantityTakeoff;
@@ -17,7 +19,8 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe;
 /// (2026-11-06, the OAP arch package pp 28-29: columns thrown up to 150 ft, 45 degree columns upright, circles square).
 /// </summary>
 /// <remarks>
-/// Compares: a polygon's box against PdfPig's own parsed /Rect at /Rotate 0, 90, 180 and 270; a /Rotation sketch's
+/// Compares: a polygon's box against PdfPig's own parsed /Rect at /Rotate 0, 90, 180 and 270, with the box on the page,
+/// inherited from /Pages, and with a CropBox inside the MediaBox; a /Rotation sketch's
 /// centre and bearing at 45 degrees; an ellipse sketch's roundness, cold and through the page cache; a turned markup
 /// column's sides and turn. Synthetic pages, built here. Does not compare the real package (checked by rendering it over
 /// the sheet), /Line or /InkList on a turned page, page CONTENT columns (step 181 stays parked), nor the app's window.
@@ -47,6 +50,32 @@ public sealed class AMarkupStaysWhereItIsDrawnOnATurnedPageTests
             Assert.Equal(Math.Min(rect.BottomLeft.Y, rect.TopRight.Y), shape.MinY, 3);
             Assert.Equal(Math.Max(rect.BottomLeft.Y, rect.TopRight.Y), shape.MaxY, 3);
         });
+    }
+
+    // Review of 97d07212: the box may be inherited from /Pages, or a CropBox may sit inside the MediaBox. Oracle as above: PdfPig's own Rect.
+    [Theory]
+    [InlineData(0, "", "/MediaBox [0 0 792 1224]")]
+    [InlineData(90, "", "/MediaBox [0 0 792 1224]")]
+    [InlineData(180, "", "/MediaBox [0 0 792 1224]")]
+    [InlineData(270, "", "/MediaBox [0 0 792 1224]")]
+    [InlineData(0, "/MediaBox [0 0 792 1224] /CropBox [50 60 700 1100]", "")]
+    [InlineData(90, "/MediaBox [0 0 792 1224] /CropBox [50 60 700 1100]", "")]
+    [InlineData(180, "/MediaBox [0 0 792 1224] /CropBox [50 60 700 1100]", "")]
+    [InlineData(270, "/MediaBox [0 0 792 1224] /CropBox [50 60 700 1100]", "")]
+    public void AMarkupIsInsideItsOwnRectWhenTheBoxIsInheritedOrCropped(int rotate, string pageBoxes, string parentBoxes)
+    {
+        WithPdf(rotate, Rectangle, path =>
+        {
+            using var doc = UglyToad.PdfPig.PdfDocument.Open(path);
+            var page = doc.GetPage(1);
+            var rect = page.ExperimentalAccess.GetAnnotations().Single().Rectangle;
+            var shape = VectorPageReader.ReadPage(page, includeAnnotations: true).Paths.Single(p => p.IsAnnotation);
+
+            Assert.Equal(Math.Min(rect.BottomLeft.X, rect.TopRight.X), shape.MinX, 3);
+            Assert.Equal(Math.Max(rect.BottomLeft.X, rect.TopRight.X), shape.MaxX, 3);
+            Assert.Equal(Math.Min(rect.BottomLeft.Y, rect.TopRight.Y), shape.MinY, 3);
+            Assert.Equal(Math.Max(rect.BottomLeft.Y, rect.TopRight.Y), shape.MaxY, 3);
+        }, pageBoxes: pageBoxes, parentBoxes: parentBoxes);
     }
 
     // /Rotation 45 is 45 degrees clockwise; /Rotate 90 is a further 90 clockwise as the page is read.
@@ -117,32 +146,37 @@ public sealed class AMarkupStaysWhereItIsDrawnOnATurnedPageTests
         });
     }
 
-    private static void WithPdf(int rotate, string annotation, Action<string> test)
+    private static void WithPdf(int rotate, string annotation, Action<string> test, string pageBoxes = "/MediaBox [0 0 792 1224]", string parentBoxes = "")
     {
         string root = Path.Combine(Path.GetTempPath(), $"kor-turned-markup-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
+        // The bytes differ every run, so the page cache (keyed by content) has never seen this PDF: the first write in
+        // a test really walks it, and the record it leaves is removed with it.
+        byte[] bytes = Pdf(rotate, annotation, pageBoxes, parentBoxes);
+        string cached = Path.Combine(DrawingMirror.Root, "pages", Convert.ToHexString(SHA256.HashData(bytes)));
         try
         {
             string path = Path.Combine(root, "markup.pdf");
-            File.WriteAllBytes(path, Pdf(rotate, annotation));
+            File.WriteAllBytes(path, bytes);
             test(path);
         }
         finally
         {
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+            if (Directory.Exists(cached)) Directory.Delete(cached, recursive: true);
         }
     }
 
-    private static byte[] Pdf(int rotate, string annotation)
+    private static byte[] Pdf(int rotate, string annotation, string pageBoxes, string parentBoxes)
     {
         string[] objects =
         [
             "<< /Type /Catalog /Pages 2 0 R >>",
-            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-            $"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 1224] /Rotate {rotate} /Resources << >> /Annots [4 0 R] >>",
+            $"<< /Type /Pages /Kids [3 0 R] /Count 1 {parentBoxes} >>",
+            $"<< /Type /Page /Parent 2 0 R {pageBoxes} /Rotate {rotate} /Resources << >> /Annots [4 0 R] >>",
             $"<< /Type /Annot {annotation} >>",
         ];
-        var pdf = new StringBuilder("%PDF-1.4\n");
+        var pdf = new StringBuilder($"%PDF-1.4\n%{Guid.NewGuid():N}\n");
         var offsets = new List<int>();
         for (int i = 0; i < objects.Length; i++)
         {

@@ -496,29 +496,36 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         private static RawPageOrigin ReadRawPageOrigin(Page page)
         {
             int rotate = ((page.Rotation.Value % 360) + 360) % 360;
-            if (TryRawBoxOrigin(page.Dictionary, "MediaBox", rotate, out var origin) ||
-                TryRawBoxOrigin(page.Dictionary, "CropBox", rotate, out origin))
-            {
-                return origin;
-            }
+            var media = RawBox(page.Dictionary, "MediaBox");
+            var crop = RawBox(page.Dictionary, "CropBox");
 
-            return new RawPageOrigin(0, 0);
+            // PdfPig's frame is the crop box inside the media box (measured on /Rotate 0, 90, 180, 270, review of 97d07212).
+            if (media is { } m && crop is { } c)
+            {
+                double x0 = Math.Max(m.X0, c.X0), y0 = Math.Max(m.Y0, c.Y0), x1 = Math.Min(m.X1, c.X1), y1 = Math.Min(m.Y1, c.Y1);
+                if (x1 > x0 && y1 > y0) return new RawPageOrigin(x0, y0, rotate, x1 - x0, y1 - y0);
+            }
+            if ((media ?? crop) is { } b)
+                return new RawPageOrigin(b.X0, b.Y0, rotate, b.X1 - b.X0, b.Y1 - b.Y0);
+
+            // No box on the page itself (inherited from /Pages, or indirect). PdfPig still resolved its size and still turned
+            // Rect, so the turn stays. PdfPig reports the size as read, so a page on its side swaps it back. The origin cannot be
+            // read from here: 0,0, as this has always assumed. A same-class fault this leaves: an inherited box not at 0,0.
+            var read = page.CropBox.Bounds;
+            bool onItsSide = rotate is 90 or 270;
+            return new RawPageOrigin(0, 0, rotate, onItsSide ? read.Height : read.Width, onItsSide ? read.Width : read.Height);
         }
 
-        private static bool TryRawBoxOrigin(DictionaryToken dict, string key, int rotate, out RawPageOrigin origin)
+        private static (double X0, double Y0, double X1, double Y1)? RawBox(DictionaryToken dict, string key)
         {
-            origin = default;
             if (!dict.Data.TryGetValue(key, out var token) || token is not ArrayToken arr)
-                return false;
+                return null;
 
             var ns = arr.Data.OfType<NumericToken>().Select(n => (double)n.Data).ToList();
-            if (ns.Count < 2)
-                return false;
+            if (ns.Count < 4)
+                return null;
 
-            origin = ns.Count >= 4
-                ? new RawPageOrigin(ns[0], ns[1], rotate, ns[2] - ns[0], ns[3] - ns[1])
-                : new RawPageOrigin(ns[0], ns[1]);
-            return true;
+            return (Math.Min(ns[0], ns[2]), Math.Min(ns[1], ns[3]), Math.Max(ns[0], ns[2]), Math.Max(ns[1], ns[3]));
         }
 
         /// <summary>
