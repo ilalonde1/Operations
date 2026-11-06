@@ -26,7 +26,7 @@ public static partial class Program
         var module = o.Get("--module") ?? throw new ArgumentException("enforce needs --module <lane>");
         var raw = stdin();
         if (string.IsNullOrWhiteSpace(raw)) { if (!hook) output.WriteLine("allow: no hook input"); return 0; }
-        string? tool, input, cwd, session;
+        string? tool, input, cwd, session, scratch;
         try
         {
             using var doc = JsonDocument.Parse(raw);
@@ -35,6 +35,7 @@ public static partial class Program
             tool = Str(root, "tool_name");
             cwd = Str(root, "cwd");
             session = Str(root, "session_id");
+            scratch = Str(root, "scratchpad_dir");
             input = null;
             if (tool is not null && root.TryGetProperty("tool_input", out var ti) && ti.ValueKind == JsonValueKind.Object)
                 input = Str(ti, Rules.InputFieldOf(tool));
@@ -46,6 +47,7 @@ public static partial class Program
             return 0;
         }
         void Log(Exception e) => LogHookError(hookErrorLog, o, e);
+        if (DrafterPythonRefusal(o, tool, input, cwd, session, scratch, output, hook, board, Log)) return 0;
         IReadOnlyList<LiveCheck>? checks;
         string source;
         if (db is not null) { checks = CheckStore.Live(db).Select(s => s.Check).ToList(); source = "db (caller's)"; }
@@ -92,6 +94,34 @@ public static partial class Program
         }
         if (!hook) output.WriteLine($"allow: no live check for {module} or Office matches ({checks.Count} live, read from {source})");
         return 0;
+    }
+
+    /// <summary>Board row 1935, <see cref="DrafterPythonGuard"/>: true when it answered (deny, and one GuardRefusal row). It reads
+    /// no database to decide; any fault in it is logged and allows.</summary>
+    private static bool DrafterPythonRefusal(Options o, string tool, string input, string? cwd, string? session, string? scratch, TextWriter output, bool hook, BrainDb? board, Action<Exception> log)
+    {
+        DrafterPythonGuard.Refusal? r;
+        try
+        {
+            r = DrafterPythonGuard.Decide(tool, input, cwd, scratch);
+            if (r is null || DrafterPythonGuard.Approved(session, o.Get("--prompts-dir"))) return false;
+        }
+        catch (Exception e) { log(e); return false; }
+        var reason = DrafterPythonGuard.Says(r);
+        int? logged = null;
+        try
+        {
+            var dir = cwd is not null && Directory.Exists(cwd) ? cwd : null;
+            var repo = dir is null ? null : Git.TopLevelFast(dir) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+            logged = board is not null
+                ? Stall.StallStore.LogGuardRefusal(board, DrafterPythonGuard.GuardName, DrafterPythonGuard.RuleName, session, repo, $"{tool}: {r.How}: {r.Path}")
+                : BrainDb.Use3s(KorStandardsConnection.Login.Board, b => Stall.StallStore.LogGuardRefusal(b, DrafterPythonGuard.GuardName, DrafterPythonGuard.RuleName, session, repo, $"{tool}: {r.How}: {r.Path}"));
+        }
+        catch (Exception e) { log(e); }   // the refusal stands whether or not it was logged
+        output.WriteLine(hook
+            ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", permissionDecision = "deny", permissionDecisionReason = reason } })
+            : $"deny{(logged is null ? " (not logged)" : $" (oversight.GuardRefusal #{logged})")}: {reason}");
+        return true;
     }
 
     private static string? Str(JsonElement e, string name) =>
