@@ -24,10 +24,11 @@ public static class StartGate
         new(Regex.Escape(StartRender.PagesHead) + @"(\d+) of (\d+) - module '" + Regex.Escape(module) + "'", RegexOptions.CultureInvariant);
 
     /// <summary>A kor read or a kor start --part pages, alone: the command word is kor (a path to it, quoted or not, and nothing
-    /// before it but PowerShell's call operator), and nothing behind it chains, redirects, substitutes or starts a new line.</summary>
+    /// before it but PowerShell's call operator), and nothing behind it chains, redirects, substitutes (Bash's $() and backticks,
+    /// PowerShell's parentheses) or starts a new line. Parentheses go inside quotes too: a subject needs none.</summary>
     private static readonly Regex ReadCommand = new(
-        @"^\s*(?:&\s*)?(?:""[^""\r\n;&|<>$`]*\bkor(?:\.exe)?""|'[^'\r\n;&|<>$`]*\bkor(?:\.exe)?'|[^\s""';&|<>$`]*\bkor(?:\.exe)?)" +
-        @"\s+(?:read\b|start\b[^;&|<>$`\r\n]*--part\s+pages\b)[^;&|<>$`\r\n]*\s*\z",
+        @"^\s*(?:&\s*)?(?:""[^""\r\n;&|<>$`()]*\bkor(?:\.exe)?""|'[^'\r\n;&|<>$`()]*\bkor(?:\.exe)?'|[^\s""';&|<>$`()]*\bkor(?:\.exe)?)" +
+        @"\s+(?:read\b|start\b[^;&|<>$`()\r\n]*--part\s+pages\b)[^;&|<>$`()\r\n]*\s*\z",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
     /// <summary>Parallel calls of one turn are refused together and count once: a refusal inside this window of the last is the same refusal.</summary>

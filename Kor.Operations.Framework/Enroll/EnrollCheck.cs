@@ -212,6 +212,11 @@ public static class EnrollCheck
         var onPages = pagesCalls.Count > 0;
         if (onPages)
         {
+            // a page head names its module and the gate counts only its own, so a wrong --module on either leaves every page unseen
+            var gateCalls = calls.Where(c => c.Event == "PreToolUse" && c.Verb == "start-gate").ToList();
+            var wrongLanes = pagesCalls.Concat(gateCalls).Select(c => c.Opt("--module")).Where(m => m != module).Distinct().ToList();
+            if (wrongLanes.Count > 0)
+                findings.Add($"kor start --part pages or start-gate names --module {string.Join(", ", wrongLanes.Select(m => m ?? "nothing"))}, not {module}");
             var wired = pagesCalls.Select(c => int.TryParse(c.Opt("--pages"), out var n) ? n : 1).Max();
             var have = pagesCalls.Select(c => int.TryParse(c.Opt("--page"), out var p) ? p : 1).ToHashSet();
             var gaps = Enumerable.Range(1, wired).Where(p => !have.Contains(p)).ToList();

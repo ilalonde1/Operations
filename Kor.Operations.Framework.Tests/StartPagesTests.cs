@@ -236,6 +236,11 @@ public class StartPagesTests
     [InlineData("Bash", "kor read --subject `git push`", false)]
     [InlineData("Bash", "kor read --subject a > out.txt", false)]
     [InlineData("Bash", "notkor read --subject a", false)]
+    [InlineData("PowerShell", "kor read --subject (git push)", false)]
+    [InlineData("PowerShell", "kor read --subject (Remove-Item x)", false)]
+    [InlineData("PowerShell", "(git push)kor read --subject a", false)]
+    [InlineData("PowerShell", "& \"C:/KOR-Operations/kor/kor.exe\" read --module X --subject \"(git push)\"", false)]
+    [InlineData("PowerShell", "& \"C:/KOR-Operations/kor/kor.exe\" read --module X --subject \"peace river\"", true)]
     [InlineData("Bash", "C:/KOR-Operations/kor/kor.exe read --module X --subject a\n", true)]
     [InlineData("Bash", "kor read --module X --subject \"peace river\"", true)]
     [InlineData("Bash", "\"C:/KOR-Operations/kor/kor.exe\" read --module \"X\" --subject a --page 2", true)]
@@ -371,6 +376,12 @@ public class StartPagesTests
         Assert.Contains(Findings(WiredSettings(EnrollCheck.PagesWired - 1, gate: true)), f => f.Contains("under the", StringComparison.Ordinal));
         Assert.Contains(Findings(WiredSettings(EnrollCheck.PagesWired, gate: true, skip: 7)), f => f.Contains("--page 7 of", StringComparison.Ordinal));
         Assert.Contains(Findings(WiredSettings(EnrollCheck.PagesWired, gate: true, recordSays: 4)), f => f.Contains("--pages-wired 4", StringComparison.Ordinal));
+        // a wrong lane on either new entry leaves every page unseen by the gate
+        Assert.Contains(EnrollCheck.SettingsFindings(WiredSettings(EnrollCheck.PagesWired, gate: true).Replace("start-gate --module M", "start-gate --module Other", StringComparison.Ordinal), "M"),
+                        f => f.Contains("names --module Other, not M", StringComparison.Ordinal));
+        Assert.Contains(EnrollCheck.SettingsFindings(WiredSettings(EnrollCheck.PagesWired, gate: true).Replace("--module M --part pages --page 3 ", "--module Other --part pages --page 3 ", StringComparison.Ordinal), "M"),
+                        f => f.Contains("names --module Other, not M", StringComparison.Ordinal));
+        Assert.DoesNotContain(EnrollCheck.SettingsFindings(WiredSettings(EnrollCheck.PagesWired, gate: true), "M"), f => f.Contains("names --module", StringComparison.Ordinal));
         // half-migrated: the old 4 + 4 pages beside the new ones
         var both = WiredSettings(EnrollCheck.PagesWired, gate: true).Replace("\"SessionStart\":[{\"hooks\":[", "\"SessionStart\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"C:/KOR-Operations/kor/kor.exe start --module M --part memory --page 1 --pages 4 --hook\"},", StringComparison.Ordinal);
         Assert.Contains(Findings(both), f => f.Contains("left beside THE PAGES: --part memory", StringComparison.Ordinal));

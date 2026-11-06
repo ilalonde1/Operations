@@ -50,7 +50,7 @@ public static partial class Program
         var exe = (Environment.ProcessPath ?? throw new InvalidOperationException("no process path")).Replace('\\', '/');
         var args = new List<string> { "-p", "--output-format", "json", "--permission-mode", "dontAsk", "--strict-mcp-config", "--effort", "low", "--max-turns", "1" };
         if (o.Get("--model") is { } model) args.AddRange(new[] { "--model", model });
-        string? temp = null;
+        string? temp = null, tempText = null;
         var baseline = o.Get("--baseline") is not null;
         if (!control)
         {
@@ -62,7 +62,7 @@ public static partial class Program
             temp = Path.Combine(Path.GetTempPath(), $"kor-start-proof-{Guid.NewGuid():N}.json");
             var commands = baseline ? ColdProof.CurrentSessionStart(settings) : ColdProof.Wiring(settings, module, exe, wire);
             var hooks = commands.Select(c => new { type = "command", command = c, timeout = 30 }).ToList();
-            File.WriteAllText(temp, JsonSerializer.Serialize(new { hooks = new { SessionStart = new[] { new { hooks } } } }), new UTF8Encoding(false));
+            tempText = JsonSerializer.Serialize(new { hooks = new { SessionStart = new[] { new { hooks } } } });
             args.AddRange(new[] { "--setting-sources", "user,local", "--settings", temp });
         }
         args.Add("--disallowedTools");
@@ -79,6 +79,7 @@ public static partial class Program
         double? cost = null;
         try
         {
+            if (temp is not null) File.WriteAllText(temp, tempText!, new UTF8Encoding(false));
             using var p = Process.Start(psi) ?? throw new InvalidOperationException("claude did not start");
             var stderr = p.StandardError.ReadToEndAsync();
             var stdout = p.StandardOutput.ReadToEndAsync();
