@@ -23,13 +23,19 @@ public static class StartGate
     private static Regex PageHeadOf(string module) =>
         new(Regex.Escape(StartRender.PagesHead) + @"(\d+) of (\d+) - module '" + Regex.Escape(module) + "'", RegexOptions.CultureInvariant);
 
-    /// <summary>A kor read or a kor start --part pages, alone: the command word is kor (a path to it, quoted or not, and nothing
-    /// before it but PowerShell's call operator), and nothing behind it chains, redirects, substitutes (Bash's $() and backticks,
-    /// PowerShell's parentheses) or starts a new line. Parentheses go inside quotes too: a subject needs none.</summary>
+    /// <summary>
+    /// A kor read or a kor start --part pages, alone. An ALLOW-LIST (reviews 571, 575 and 577 each found a new way past a list of what to refuse: a chain,
+    /// parentheses, a newline after kor): the whole command is the call operator at most, a path ending in kor or kor.exe, the verb, and
+    /// arguments of word characters and . : / \ - = only, a quoted one also holding spaces; blanks are spaces and tabs; one line end at most.
+    /// So a subject is plain words. Same-class miss: none known in Bash or PowerShell for these characters; a shell that runs a bare path argument would pass.
+    /// </summary>
     private static readonly Regex ReadCommand = new(
-        @"^\s*(?:&\s*)?(?:""[^""\r\n;&|<>$`()]*\bkor(?:\.exe)?""|'[^'\r\n;&|<>$`()]*\bkor(?:\.exe)?'|[^\s""';&|<>$`()]*\bkor(?:\.exe)?)" +
-        @"\s+(?:read\b|start\b[^;&|<>$`()\r\n]*--part\s+pages\b)[^;&|<>$`()\r\n]*\s*\z",
+        @"\A[ \t]*(?:&[ \t]+)?" +
+        @"(?:""(?:[\w.:/\\ -]*[/\\])?kor(?:\.exe)?""|'(?:[\w.:/\\ -]*[/\\])?kor(?:\.exe)?'|(?:[\w.:/\\-]*[/\\])?kor(?:\.exe)?)" +
+        @"[ \t]+(?:read|start(?:" + Arg + @")*[ \t]+--part[ \t]+pages)(?:" + Arg + @")*[ \t]*(?:\r?\n)?\z",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+    private const string Arg = @"[ \t]+(?:""[\w.:/\\ -]*""|'[\w.:/\\ -]*'|[\w.:/\\=-]+)";
 
     /// <summary>Parallel calls of one turn are refused together and count once: a refusal inside this window of the last is the same refusal.</summary>
     public static readonly TimeSpan SameRefusal = TimeSpan.FromSeconds(20);
@@ -98,7 +104,7 @@ public static class StartGate
             return new Decision(false, $"MEMORY LEFT OUT: you hold pages {seen.Pages.Count} of {seen.Total}; missing {string.Join(", ", missing)}. Read each, one command at a time: " +
                                        StartRender.ReadPageCommand(module, exe, session, missing[0], seen.Total));
         if (!seen.BodiesDone)
-            return new Decision(false, $"You hold {seen.Total} of {seen.Total} memory pages. The bodies are not read yet: run \"{exe}\" read --module \"{module}\" --subject \"<words for your task>\" " +
+            return new Decision(false, $"You hold {seen.Total} of {seen.Total} memory pages. The bodies are not read yet: run \"{exe}\" read --module \"{module}\" --subject \"<plain words for your task>\" " +
                                        "alone, every page it names, then say 'pages X of Y held, bodies A of B read for subject S' and go on (row 1569).");
         return new Decision(true, $"pages {seen.Total} of {seen.Total} held; bodies read");
     }
