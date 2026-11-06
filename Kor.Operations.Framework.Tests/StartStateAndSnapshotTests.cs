@@ -76,7 +76,7 @@ public class StartStateTests
     [Fact]
     public void TheFirstLineSaysWhatIsNotOnThePageWasNotRead()
     {
-        var text = StartRender.Record(State(0, 0, null), StartRender.HookBudget);
+        var text = StartRender.Record(State(0, 0, null), StartRender.HookBudget, "kor");
         Assert.Equal(StartRender.NotReadLine, text.Split('\n')[0]);
         Assert.DoesNotContain('\n', StartRender.NotReadLine);
         Assert.Contains("answer 'not checked', never a value", StartRender.NotReadLine);
@@ -87,13 +87,13 @@ public class StartStateTests
     [Fact]
     public void StateNowFollowsTheFiveQuestionsWithItsCitationAndTheUncommittedLine()
     {
-        var text = StartRender.Record(State(0, 0, Handover("## STATE NOW - x\n- the state", dirty: true)), null);
+        var text = StartRender.Record(State(0, 0, Handover("## STATE NOW - x\n- the state", dirty: true)), null, "kor");
         var five = text.IndexOf("FIVE QUESTIONS (record #1", StringComparison.Ordinal);
         var state = text.IndexOf("STATE NOW - the module's current state, from its handover at HEAD (Framework:docs/HANDOVER.md@ccccccc blob 6a28024):", StringComparison.Ordinal);
         var resume = text.IndexOf("RESUME - LaneState #9", StringComparison.Ordinal);
         Assert.True(five >= 0 && five < state && state < resume, $"five {five}, state {state}, resume {resume}");
         Assert.Contains("blob 6a28024):\nthe handover has uncommitted changes - commit them to show them here\n## STATE NOW - x\n- the state", text);
-        Assert.DoesNotContain("uncommitted changes", StartRender.Record(State(0, 0, Handover("## STATE NOW - x")), null));
+        Assert.DoesNotContain("uncommitted changes", StartRender.Record(State(0, 0, Handover("## STATE NOW - x")), null, "kor"));
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class StartStateTests
     {
         var h = new HandoverState("zz", "docs/HANDOVER.md", null, null, null, false, "repo zz is not on this machine beside this folder");
         Assert.Contains("STATE NOW: not read - repo zz is not on this machine beside this folder. Answer anything that needs the module's current state 'not checked'.",
-                        StartRender.Record(State(0, 0, h), null));
+                        StartRender.Record(State(0, 0, h), null, "kor"));
     }
 
     [Theory]
@@ -112,7 +112,7 @@ public class StartStateTests
         var section = "## STATE NOW - x\n" + string.Join("\n", Enumerable.Range(0, 40).Select(i => $"- state line {i:D2} " + new string('s', 50)));
         Assert.True(section.Length <= HandoverState.Cap);
         var s = State(issues, stale, Handover(section));
-        var text = StartRender.Record(s, StartRender.HookBudget);
+        var text = StartRender.Record(s, StartRender.HookBudget, "kor");
         Assert.True(text.Length <= StartRender.HookBudget, $"{text.Length}");
         Assert.Contains(section, text);                                               // whole
         Assert.DoesNotContain(new string('q', 4000), text);                           // while the five questions' body was cut
@@ -279,7 +279,7 @@ public class StartSnapshotLiveTests(Xunit.Abstractions.ITestOutputHelper log)
         var e = Assert.ThrowsAny<Exception>(() => ModuleState.Record(w, read, null));
         Assert.True(BrainDb.IsBlockedWrite(e), e.ToString());
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5), $"{clock.Elapsed.TotalSeconds:0.00} s");
-        var shown = StartRender.Record(ModuleState.NotRecorded(read, "SQL 1222"), null);
+        var shown = StartRender.Record(ModuleState.NotRecorded(read, "SQL 1222"), null, "kor");
         Assert.Contains("freshness verdicts NOT recorded (SQL 1222) - kor fresh --module \"Framework\" records them", shown);
     }
 }

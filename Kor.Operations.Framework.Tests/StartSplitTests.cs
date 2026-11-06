@@ -58,7 +58,7 @@ public class StartSplitTests
     {
         var section = LongSection(100);
         var s = State(Handover(section), new[] { Legacy(7, ModuleState.IndexName, Index(150)) });
-        var split = StartRender.Record(s, StartRender.HookBudget, split: true);
+        var split = StartRender.Record(s, StartRender.HookBudget, split: true, null, "kor");
         Assert.Equal(StartRender.NotReadLine, split.Split('\n')[0]);
         Assert.Contains(StartRender.PartsLine("zz"), split);
         Assert.DoesNotContain("state line 000", split);
@@ -67,12 +67,12 @@ public class StartSplitTests
         Assert.Contains("RESUME-START the resume", split);
         Assert.True(split.Length <= StartRender.HookBudget, $"{split.Length}");
         // the one page (--text) still carries every section, STATE NOW whole
-        var page = StartRender.Record(s, null);
+        var page = StartRender.Record(s, null, "kor");
         Assert.Contains(section, page);
         Assert.Contains("OFFICE LESSONS (", page);
         Assert.Contains("LEGACY MEMORY (", page);
         // the one page under a budget still caps STATE NOW at Cap (3,000)
-        Assert.Contains($"... [STATE NOW cut at {HandoverState.Cap} of {section.Length} chars", StartRender.Record(s, StartRender.HookBudget));
+        Assert.Contains($"... [STATE NOW cut at {HandoverState.Cap} of {section.Length} chars", StartRender.Record(s, StartRender.HookBudget, "kor"));
     }
 
     // ---- the RECORDS pages (the lead, 3 Nov: KOR.Drafter's 107 harvested records were one count line) ----
@@ -163,12 +163,12 @@ public class StartSplitTests
     public void TheSplitRecordPartNamesTheRecordsPagesInsteadOfListingThem()
     {
         var s = State(Handover(LongSection(5)), ManySourced(40)) ;
-        var split = StartRender.Record(s, StartRender.HookBudget, split: true);
+        var split = StartRender.Record(s, StartRender.HookBudget, split: true, null, "kor");
         Assert.Contains("RECORDS (current): 8 decisions, 8 lessons, 8 findings, 8 dead ends, 8 other - on the session-start parts " +
                         "'KNOWN AT START - RECORDS, page N of M' beside this one", split);
         Assert.DoesNotContain(EntryIds(split), id => id >= 200_000);
         Assert.Contains("the RECORDS (decisions, lessons, findings, dead ends)", StartRender.PartsLine("zz"));
-        Assert.Equal(40, EntryIds(StartRender.Record(s, null)).Count(id => id >= 200_000));                   // --text: all on the one page
+        Assert.Equal(40, EntryIds(StartRender.Record(s, null, "kor")).Count(id => id >= 200_000));                   // --text: all on the one page
     }
 
     [Fact]

@@ -157,13 +157,13 @@ public class StartTests
     public void TheRecordPartFitsAndKeepsEveryIssueStaleIdAndTheResumeHead(int issues, int stale, int legacy, int resumeChars)
     {
         var s = BigState(issues, stale, legacy, resumeChars);
-        var text = StartRender.Record(s, StartRender.HookBudget);
+        var text = StartRender.Record(s, StartRender.HookBudget, "kor");
         Assert.True(text.Length <= StartRender.HookBudget, $"{text.Length} chars");
         foreach (var i in s.OpenIssues) Assert.Matches($@"#{i.Id}\b", text);
         foreach (var r in s.Fresh.Rows.Where(r => r.Verdict == Verdict.Stale)) Assert.Matches($@"#{r.Id}\b", text);
         Assert.Contains(s.Resume.Chosen!.ResumeBlock[..StartRender.ResumeKeep], text);
         // uncut, --text keeps everything
-        var full = StartRender.Record(s, null);
+        var full = StartRender.Record(s, null, "kor");
         Assert.Contains("legacy-1149", full);
         Assert.True(full.Length > StartRender.HookBudget);
     }
@@ -172,7 +172,7 @@ public class StartTests
     public void LegacyIsCutFirstAndTheFiveQuestionsArriveWhole()
     {
         var s = BigState(3, 2, 1150, 2000);
-        var text = StartRender.Record(s, StartRender.HookBudget);
+        var text = StartRender.Record(s, StartRender.HookBudget, "kor");
         Assert.Contains(s.Records[0].Body!, text);                 // five questions whole
         Assert.Contains("rec-39", text);                           // the sourced records still listed
         Assert.Contains("LEGACY MEMORY: 1150 imported rows cut at the session-start limit", text);   // a section was cut: one line
@@ -184,7 +184,7 @@ public class StartTests
             Office = Array.Empty<StartRecord>(),
             Events = Array.Empty<StoredEvent>(),
         };
-        var fill = StartRender.Record(small, StartRender.HookBudget);
+        var fill = StartRender.Record(small, StartRender.HookBudget, "kor");
         Assert.Contains("legacy memory cut at the session-start limit", fill);
         Assert.Contains("legacy-0 ", fill);
         Assert.True(fill.Length <= StartRender.HookBudget && fill.Length > StartRender.HookBudget - 300, $"{fill.Length}");
@@ -196,11 +196,11 @@ public class StartTests
     public void OnceAnySectionIsCutLegacyIsOneLineAndNeverRefillsTheRoom(int issues, int stale)
     {
         // seen live 3 Nov 02:24 on Framework: Office cut to its header while legacy rows still rendered below it
-        var text = StartRender.Record(BigState(issues, stale, 1150, 12000), StartRender.HookBudget);
+        var text = StartRender.Record(BigState(issues, stale, 1150, 12000), StartRender.HookBudget, "kor");
         // a section above legacy was cut: no record's full 300-char description renders, so the records section is below
         // its level 0 (40 records of ~330 chars are more than the budget). Not "[resume cut at 3000", which is the resume's
         // fixed cap and shows even when nothing was compacted (review row 202).
-        Assert.Contains(new string('d', 300), StartRender.Record(BigState(issues, stale, 1150, 12000), null));   // uncut: they render
+        Assert.Contains(new string('d', 300), StartRender.Record(BigState(issues, stale, 1150, 12000), null, "kor"));   // uncut: they render
         Assert.DoesNotContain(new string('d', 300), text);
         Assert.DoesNotContain("legacy-0 ", text);                             // ... so no legacy row renders
         Assert.Contains("LEGACY MEMORY: 1150 imported rows cut at the session-start limit", text);
@@ -211,14 +211,14 @@ public class StartTests
     {
         var s = BigState(0, 0, 0, 10);
         var odd = s with { Fresh = s.Fresh with { RepoHeads = new Dictionary<string, string?> { ["X"] = "abc", ["Y"] = null } } };
-        Assert.Contains("HEAD: X abc, Y UNREADABLE", StartRender.Record(odd, null));
+        Assert.Contains("HEAD: X abc, Y UNREADABLE", StartRender.Record(odd, null, "kor"));
     }
 
     [Fact]
     public void ResolutionsAndLegacyRowsAreNotListedAsRecords()
     {
         var s = BigState(0, 0, 0, 100) with { Records = new List<StartRecord> { Rec(5, "resolution", "resolution of #4", "closed") } };
-        var text = StartRender.Record(s, null);
+        var text = StartRender.Record(s, null, "kor");
         Assert.DoesNotContain("resolution of #4", text);
         Assert.Contains("resolutions in history: 1", text);
     }
@@ -267,7 +267,7 @@ public class StartTests
             Assert.Null(c.Chosen);
             Assert.Contains("already at the top of your context", c.Why);
             Assert.Contains(c.Others, o => o.Id == 3);
-            Assert.Contains("RESUME: this session was just compacted", StartRender.Record(BigState(0, 0, 0, 10) with { Resume = c }, null));
+            Assert.Contains("RESUME: this session was just compacted", StartRender.Record(BigState(0, 0, 0, 10) with { Resume = c }, null, "kor"));
         }
         // PostCompact already stored THIS compaction (an own compaction row written moments ago): that row
         var justStored = rows.Append(R(5, 0, "me", true, false)).ToArray();
@@ -319,7 +319,7 @@ public class StartTests
         var c = ModuleState.ChooseResume(rows, new ModuleState.Start("me", "compact"), t);
         Assert.Equal(0, c.Chosen!.Id);
         Assert.Equal("MY SUMMARY", c.Chosen.ResumeBlock);
-        Assert.Contains("RESUME - not yet a LaneState", StartRender.Record(BigState(0, 0, 0, 10) with { Resume = c }, null));
+        Assert.Contains("RESUME - not yet a LaneState", StartRender.Record(BigState(0, 0, 0, 10) with { Resume = c }, null, "kor"));
         // once stored (a row of this session at least as new), the stored row is the resume
         var stored = rows.Append(R(4, 0, "me", true, false) with { WrittenAtUtc = t.At.AddSeconds(1) }).ToArray();
         Assert.Equal(4, ModuleState.ChooseResume(stored, new ModuleState.Start("me", "compact"), t).Chosen!.Id);
@@ -562,7 +562,7 @@ public class StartLiveTests(Xunit.Abstractions.ITestOutputHelper log)
             "k6-test", RecordStore.AtHead(FrameworkDir(), Doc)));
         var state = BrainStore.InsertLaneState(Lane, "K6 RESUME BODY", "lead kor-brain", db, "k6-session-lead");
         var s = ModuleState.Load(db, Lane, new ModuleState.Start(null, "startup"), RepoDir());
-        var text = StartRender.Record(s, StartRender.HookBudget);
+        var text = StartRender.Record(s, StartRender.HookBudget, "kor");
         log.WriteLine(text);
         Assert.Contains($"record #{issue} k6-open", text);
         Assert.Matches($@"record #{stale} \[finding\] k6-stale", text);
@@ -659,7 +659,7 @@ public class StartLiveTests(Xunit.Abstractions.ITestOutputHelper log)
             using (var db = BrainDb.OpenRolledBack())
             {
                 var s = ModuleState.Load(db, "Framework", new ModuleState.Start(null, "startup"), FrameworkDir(), TimeSpan.FromSeconds(5));
-                StartRender.Record(s, StartRender.HookBudget);
+                StartRender.Record(s, StartRender.HookBudget, "kor");
             }
             times.Add(clock.Elapsed.TotalSeconds);
         }

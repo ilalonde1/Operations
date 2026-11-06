@@ -34,7 +34,7 @@ public static partial class StartRender
 
     private sealed record Section(string Name, int MaxLevel, Func<int, string> Render);
 
-    public static string Record(ModuleState s, int? budget) => Record(s, budget, split: false);
+    public static string Record(ModuleState s, int? budget, string exe) => Record(s, budget, split: false, null, exe);
 
     /// <summary>
     /// The record part. <paramref name="split"/> (the SessionStart hook, board row 1198): STATE NOW, the RECORDS, OFFICE
@@ -44,7 +44,7 @@ public static partial class StartRender
     /// those parts (<see cref="PartsLine"/>) and one line with the records' counts per group (RecordsLine). Without it, one
     /// page with every section (--text, --part all).
     /// </summary>
-    public static string Record(ModuleState s, int? budget, bool split, PagesWiring? pages = null, string? exe = null, string? session = null)
+    public static string Record(ModuleState s, int? budget, bool split, PagesWiring? pages, string exe, string? session = null)
     {
         // mistake 138: every credential value in what was read is masked BEFORE any section clips it (a clipped value
         // could fall under the classifier's length rule), and each rendered section is masked again below
@@ -59,9 +59,9 @@ public static partial class StartRender
         var legacy = split ? new List<StartRecord>() : s.Records.Where(r => r.FromFileMemory).ToList();
         var sections = new List<Section>
         {
-            new("header", 0, _ => Header(s, exe ?? "kor")),
-            new("five", 2, l => FiveQuestions(five, staleIds, l, exe ?? "kor")),
-            pages is not null ? new("state", 0, _ => PagesLine(m, pages, exe ?? "kor", session))
+            new("header", 0, _ => Header(s, exe)),
+            new("five", 2, l => FiveQuestions(five, staleIds, l, exe)),
+            pages is not null ? new("state", 0, _ => PagesLine(m, pages, exe, session))
             : split ? new("state", 0, _ => PartsLine(m))
                   : new("state", 2, l => StateNow(s.Handover, m, l, whole: budget is null)),
             new("resume", 2, l => ResumeText(s.Resume, s.LastSessionEnd, m, l, whole: false, onPages: pages is not null)),
@@ -74,7 +74,7 @@ public static partial class StartRender
                   : new("records", 4, l => Records(m, sourced, l)),
             new("events", 3, l => Events(m, s.Events, l)),
         };
-        if (!split) sections.Add(new("office", 2, l => Office(s.Office, l, exe ?? "kor")));
+        if (!split) sections.Add(new("office", 2, l => Office(s.Office, l, exe)));
         var levels = new int[sections.Count];
         // cut from the bottom up, except STATE NOW: it is cut last, after every other section is at its floor (only the
         // issue and stale ids and the resume's first 1,500 chars outlive it)
