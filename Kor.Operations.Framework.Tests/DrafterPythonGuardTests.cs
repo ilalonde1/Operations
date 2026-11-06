@@ -98,6 +98,13 @@ public sealed class DrafterPythonGuardTests : IDisposable
     [InlineData("PowerShell", "New-Item -Name new_tool.py -ItemType File -Path {T}")]
     [InlineData("Bash", "cp /tmp/a.py \"{T}/new_tool.py\" # copy it")]
     [InlineData("Bash", "git -C \"{R}\" mv tools/existing.py tools/renamed.py")]
+    // review row 617: a named path after the text; a flag with a value; New-Item's positional path
+    [InlineData("PowerShell", "Set-Content 'x' -Path {T}/new_tool.py")]
+    [InlineData("PowerShell", "Add-Content 'x' -LiteralPath {T}/new_tool.py")]
+    [InlineData("PowerShell", "'x' | Out-File -Width 300 -FilePath {T}/new_tool.py")]
+    [InlineData("PowerShell", "'x' | Out-File -Width 300 {T}/new_tool.py")]
+    [InlineData("PowerShell", "New-Item {T} -Name new_tool.py -ItemType File")]
+    [InlineData("PowerShell", "New-Item -Name new_tool.py {T} -ItemType File")]
     public void AShellCommandCreatingANewPyIsRefused(string tool, string command) =>
         Assert.NotNull(D(tool, command.Replace("{T}", Tools).Replace("{R}", _repo.Replace('\\', '/'))));
 
@@ -143,11 +150,18 @@ public sealed class DrafterPythonGuardTests : IDisposable
     [InlineData("PowerShell", "Set-Content C:/x/notes.txt '{T}/new_tool.py'")]
     [InlineData("PowerShell", "Add-Content C:/x/notes.txt '{T}/new_tool.py'")]
     [InlineData("PowerShell", "'x' | Out-File C:/x/notes.txt -Append")]
-    [InlineData("PowerShell", "New-Item -Path C:/x -Name new_tool.py -ItemType File")]
     [InlineData("PowerShell", "cmd /c \"copy C:\\x\\a.py C:\\y\\b.py /Y\"")]
-    [InlineData("Bash", "git -C /c/elsewhere mv tools/existing.py tools/renamed.py")]
     public void ACommandThatCreatesNoNewToolPasses(string tool, string command) =>
         Assert.Null(D(tool, command.Replace("{T}", Tools)));
+
+    [Fact]
+    public void AFolderNamedInTheCommandBeatsTheCwd()
+    {
+        // each would be a new tool if the folder it names were ignored and the cwd used (review row 617)
+        Assert.Null(D("PowerShell", "New-Item -Path C:/x -Name new_tool.py -ItemType File", Tools));
+        Assert.Null(D("PowerShell", "New-Item C:/x -Name new_tool.py -ItemType File", Tools));
+        Assert.Null(D("Bash", "git -C /c/elsewhere mv tools/existing.py tools/renamed.py", _repo));
+    }
 
     [Fact]
     public void TheLiftIsIansLatestMessageOnly()

@@ -21,7 +21,7 @@ namespace Kor.Operations.Framework.Enforce;
 /// COVERS: Write, Edit (an empty old_string creates a file) and MultiEdit on a path that does not exist yet, relative paths from
 /// the hook's cwd, Git Bash's /c/ form, '..' resolved. Bash and PowerShell, on the same segments kor enforce reads (so also inside
 /// bash -c, pwsh -Command, cmd /c and a .sh/.ps1/.cmd the command runs): a redirect outside quotes; tee, Tee-Object, touch,
-/// New-Item (with -Path and -Name too), the first word of Set-Content, Add-Content and Out-File, install, ln; the destination of cp,
+/// New-Item (with -Name too), the -Path, -LiteralPath, -FilePath or else first word of Set-Content, Add-Content and Out-File, install, ln; the destination of cp,
 /// mv, git mv (from git -C's folder), copy, move, xcopy, robocopy (past their /Y switches), Copy-Item, Move-Item, ren, Rename-Item,
 /// including a .py or *.py copied into a folder under tools/; a relative path after a cd.
 ///
@@ -31,7 +31,8 @@ namespace Kor.Operations.Framework.Enforce;
 /// DOES NOT COVER (the same-class fault it misses first): A PYTHON FILE WRITTEN BY A PROGRAM THE SESSION RUNS. python gen.py that
 /// opens tools/x.py, python -c or python - with an open() in its text, a generator, git checkout/restore/apply/stash pop, tar,
 /// unzip. The hook sees the command line, and the file is named only inside the program. Also: a path held in a variable
-/// ($f, built at run time, as <see cref="CommandSegments"/> says); a whole folder copied into tools/ (cp -r, robocopy /E);
+/// ($f, built at run time, as <see cref="CommandSegments"/> says); a whole folder copied into tools/ (cp -r, robocopy /E); a
+/// cmdlet flag it does not know that takes a value, read as the first word (Out-File -NoClobber is a switch, -Width is listed);
 /// cp -t; curl -o and wget -O; a .pyw or .pyi; a checkout not named KOR.Drafter (the office has one, decision "nothing built on
 /// the side"); a session outside the 6 enrolled repos, which runs no kor enforce; a kor older than this build. The lift reads
 /// claude_prompt_recorder.py's record, as claude_api_guard.py does, so: words past that record's 4000-character clip are not seen;
@@ -56,7 +57,7 @@ public static class DrafterPythonGuard
     private static readonly string[] CopiesToALastWord = { "cp", "copy", "copy-item", "cpi", "mv", "move", "move-item", "mi", "xcopy" };
     private static readonly string[] Renames = { "ren", "rename", "rename-item", "rni" };
     private static readonly string[] ChangesDir = { "cd", "chdir", "pushd", "set-location", "sl" };
-    private static readonly string[] ValueFlags = { "-value", "-inputobject", "-itemtype", "-type", "-encoding", "-filter", "-m" };
+    private static readonly string[] ValueFlags = { "-value", "-inputobject", "-itemtype", "-type", "-encoding", "-filter", "-m", "-width" };
 
     private static readonly Regex InCheckoutTools = new(@"\A(?<repo>.*/KOR\.Drafter)/tools/.+\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
@@ -155,9 +156,17 @@ public static class DrafterPythonGuard
         }
         var args = Args(rest.Prepend("").ToList(), CmdVerbs.Contains(prog));
         if (prog is "new-item" or "ni" && FlagValue(rest, "-name") is { } itemName)
-            return NewTool((FlagValue(rest, "-path") ?? "") is { Length: > 0 } parentPath ? parentPath + "/" + itemName : itemName, dir, scratchpad);
-        // the first word names the file; a second is the text it writes
-        if (WritesToItsFirstWord.Contains(prog)) return args.Count > 0 ? NewTool(args[0], dir, scratchpad) : null;
+        {
+            // the parent is -Path, or the word that is not the name (PowerShell's positional Path)
+            var parentPath = FlagValue(rest, "-path") ?? args.FirstOrDefault(a => a != itemName);
+            return NewTool(parentPath is null ? itemName : parentPath + "/" + itemName, dir, scratchpad);
+        }
+        // a named path wins; else the first word names the file and a second is the text it writes
+        if (WritesToItsFirstWord.Contains(prog))
+        {
+            var named = FlagValue(rest, "-path") ?? FlagValue(rest, "-literalpath") ?? FlagValue(rest, "-filepath");
+            return named is not null ? NewTool(named, dir, scratchpad) : args.Count > 0 ? NewTool(args[0], dir, scratchpad) : null;
+        }
         if (NamesItsTarget.Contains(prog)) return args.Select(a => NewTool(a, dir, scratchpad)).FirstOrDefault(n => n is not null);
         string? dest;
         IEnumerable<string> sources;
