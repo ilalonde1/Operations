@@ -102,8 +102,8 @@ public static class SpendMeter
         var minutes = Math.Max(0, (long)old.TotalMinutes);
         var age = minutes < 60 ? $"{minutes} min" : minutes < 2880 ? $"{minutes / 60} h {minutes % 60} min" : $"{minutes / 1440} days";
         var resets = real.ResetsAt is { } r ? $", resets {r.LocalDateTime.ToString("ddd d MMM HH:mm", CultureInfo.InvariantCulture)}" : "";
-        return $"REAL: {real.Percent.ToString("0.#", CultureInfo.InvariantCulture)}% of the weekly limit, {age} old, from Claude Code's status line " +
-               $"(read {real.At.LocalDateTime.ToString("d MMM HH:mm", CultureInfo.InvariantCulture)}{resets}).";
+        return $"REAL: {real.Percent.ToString("0.#", CultureInfo.InvariantCulture)}% of the weekly limit, {age} old as stored, from Claude Code's status line; an idle session's can be older " +
+               $"(stored {real.At.LocalDateTime.ToString("d MMM HH:mm", CultureInfo.InvariantCulture)}{resets}).";
     }
 
     /// <summary>The reading within <paramref name="wait"/>. A read that is slow or throws is Failed: the DB could not say, which
