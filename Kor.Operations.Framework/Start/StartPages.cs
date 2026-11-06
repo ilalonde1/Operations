@@ -172,8 +172,11 @@ public static class StartPages
 /// <summary>
 /// <c>kor read</c> (row 1569): the bodies for the session's subject, whole. A row is the subject's when every word of the subject is
 /// in its name or description, else (none so) in its body. Pages fit a tool result; each names how many it has read of how many.
-/// Over <see cref="MaxChars"/> it asks for a narrower subject or --all first: the cost is shown, nothing is cut. Does not judge
-/// whether the subject is the session's real one: "zzz" reads 0 of 0 and opens the gate.
+/// Over <see cref="MaxChars"/> it asks for a narrower subject or --all first: the cost is shown, nothing is cut.
+/// A subject matching no body is never a page (row 1861). Some word of it is in a body: NOT READ, word by word, try fewer words. No word
+/// of it is in any body: <see cref="NothingHead"/>, the one case the gate lets a session go on from by saying so. Compares words from a
+/// word's start only. Does NOT judge whether the subject is the session's real one: "zzz" is truly in no body. Same-class miss: a subject
+/// of one common word reads bodies that have nothing to do with the task, and passes as read.
 /// </summary>
 public static class BodyRead
 {
@@ -181,6 +184,7 @@ public static class BodyRead
     public const int PageChars = 25_000;
     public const int MaxChars = 400_000;
     public const string Head = "KOR BODIES - subject '";
+    public const string NothingHead = "KOR BODIES NONE - subject '";
 
     public sealed record Row(int Id, string Lane, string Name, string Kind, string Description, string? Body);
 
@@ -194,18 +198,40 @@ public static class BodyRead
         var terms = Terms(subject);
         if (terms.Count == 0) return new List<Row>();
         var all = rows.ToList();
-        // each word from a word's start ("river" is not "driver"; "pursuit" is "pursuits")
-        var starts = terms.Select(t => new System.Text.RegularExpressions.Regex(@"(?<![\p{L}\p{N}])" + System.Text.RegularExpressions.Regex.Escape(t),
-            System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.IgnoreCase)).ToList();
+        var starts = terms.Select(WordStart).ToList();
         bool Every(string text) => starts.All(s => s.IsMatch(text));
         var named = all.Where(r => Every(r.Name + " " + r.Description)).ToList();
         return (named.Count > 0 ? named : all.Where(r => Every(r.Body ?? "")).ToList()).OrderByDescending(r => r.Id).ToList();
+    }
+
+    // each word from a word's start ("river" is not "driver"; "pursuit" is "pursuits")
+    private static System.Text.RegularExpressions.Regex WordStart(string term) =>
+        new(@"(?<![\p{L}\p{N}])" + System.Text.RegularExpressions.Regex.Escape(term),
+            System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    /// <summary>What <c>kor read</c> prints: the subject's page, or, when no body has every word, what it found word by word.</summary>
+    public static string Read(IEnumerable<Row> rows, string subject, string module, string exe, int page, bool all)
+    {
+        var every = rows.ToList();
+        var matched = Match(every, subject);
+        if (matched.Count > 0) return Pages(matched, subject, module, exe, page, all, out _);
+        var terms = Terms(subject);
+        var counts = terms.Select(t => { var s = WordStart(t); return (Term: t, Count: every.Count(r => s.IsMatch(r.Name + " " + r.Description + " " + r.Body))); }).ToList();
+        var clean = string.Join(" ", terms);
+        if (counts.All(c => c.Count == 0))
+            return $"{NothingHead}{clean}' - 0 of 0 bodies, no word of it is in any of {every.Count.ToString("N0", CultureInfo.InvariantCulture)} bodies (lanes {module} and {ModuleState.OfficeLane}). " +
+                   "NOTHING WAS READ. If other words describe your task, read with those. If this truly is your subject, say so in your reply: " +
+                   $"'pages X of Y held, bodies 0 of 0 for subject {clean}: it truly matches nothing'.";
+        var fewest = counts.Where(c => c.Count > 0).OrderBy(c => c.Count).First();
+        return $"NOT READ: subject '{clean}' matches 0 of {every.Count.ToString("N0", CultureInfo.InvariantCulture)} bodies: none has every word. Word by word: " +
+               string.Join(", ", counts.Select(c => $"{c.Term} {c.Count}")) + $". Read with fewer words, for example: \"{exe}\" read --module \"{module}\" --subject \"{fewest.Term}\"";
     }
 
     public static string Pages(List<Row> matched, string subject, string module, string exe, int page, bool all, out bool complete)
     {
         complete = false;
         var clean = string.Join(" ", Terms(subject));
+        if (matched.Count == 0) return $"NOT READ: subject '{clean}' matches 0 bodies.";   // never a page: a page is what the gate counts as read
         var text = matched.Select(r => $"=== record #{r.Id} [{r.Kind}] {r.Name} (lane {r.Lane}) - {r.Description}\n{(r.Body ?? "").Trim()}").ToList();
         var chars = text.Sum(t => t.Length);
         if (chars > MaxChars && !all)

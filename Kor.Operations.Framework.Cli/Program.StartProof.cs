@@ -7,7 +7,7 @@ using Kor.Operations.Framework.Start;
 namespace Kor.Operations.Framework.Cli;
 
 /// <summary>
-/// Board row 1569: <c>kor start-proof --module M --dir D [--control] [--baseline] [--wiring] [--wire N] [--model M] [--claude path] [--out F]</c>.
+/// Board row 1569: <c>kor start-proof --module M --dir D [--control] [--baseline] [--wiring] [--wire N] [--model M] [--claude path] [--out F] [--temp-dir D]</c>.
 /// One no-tools cold session in D, graded from its own transcript (<see cref="ColdProof"/>). The proof session runs the settings the
 /// wiring will have, on THIS kor (the built Debug one before an install), and with no project settings of the old wiring beside it;
 /// --control runs the repo's own settings as they stand, the known-bad run the grader must fail. --baseline runs the repo's own SessionStart
@@ -59,7 +59,7 @@ public static partial class Program
             // CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD does not bring it back. So a proof's tokens are not a real start's:
             // --baseline runs the repo's OWN SessionStart lines in the same mode, and a real start after the wiring is the control's
             // tokens + (proof - baseline).
-            temp = Path.Combine(Path.GetTempPath(), $"kor-start-proof-{Guid.NewGuid():N}.json");
+            temp = Path.Combine(o.Get("--temp-dir") ?? Path.GetTempPath(), $"kor-start-proof-{Guid.NewGuid():N}.json");
             var commands = baseline ? ColdProof.CurrentSessionStart(settings) : ColdProof.Wiring(settings, module, exe, wire);
             var hooks = commands.Select(c => new { type = "command", command = c, timeout = 30 }).ToList();
             tempText = JsonSerializer.Serialize(new { hooks = new { SessionStart = new[] { new { hooks } } } });

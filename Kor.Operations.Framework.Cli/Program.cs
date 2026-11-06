@@ -131,7 +131,7 @@ public static partial class Program
             "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir", "--page", "--pages", "--cutoff",
             "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what", "--days", "--tag",
             "--replay", "--since", "--window-hours", "--auto-compact-window", "--auto-compact-model", "--ceiling", "--spend-root",
-            "--pages-wired", "--subject", "--model", "--claude", "--wire", "--out",
+            "--pages-wired", "--subject", "--model", "--claude", "--wire", "--out", "--temp-dir",
         };
 
         /// <summary>Options given more than once, every value kept in order (check-add's examples).</summary>

@@ -213,7 +213,7 @@ public static partial class Program
         var rows = db is not null ? ModuleState.ReadBodies(db, module)
             : BrainDb.Read(KorStandardsConnection.Login.Brain, d => ModuleState.ReadBodies(d, module));
         var exe = (Environment.ProcessPath ?? "kor").Replace('\\', '/');
-        output.WriteLine(BodyRead.Pages(BodyRead.Match(rows, subject), subject, module, exe, page, o.Get("--all") is not null, out _));
+        output.WriteLine(BodyRead.Read(rows, subject, module, exe, page, o.Get("--all") is not null));
         return 0;
     }
 
@@ -246,8 +246,8 @@ public static partial class Program
         var cacheDir = o.Get("--cache-dir") ?? StartCache.DefaultDir;
         var open = StartGate.OpenMarker(cacheDir, session);
         if (File.Exists(open)) { Say("allow: this session's gate is open"); return 0; }
-        if (StartGate.IsReadCommand(tool, command)) { Say("allow: the read the gate asks for"); return 0; }
         var exe = (Environment.ProcessPath ?? "kor").Replace('\\', '/');
+        if (StartGate.IsReadCommand(tool, command, exe)) { Say("allow: the read the gate asks for"); return 0; }
         var d = StartGate.Decide(StartGate.Scan(StartGate.ReadLines(transcript), module), module, exe, session);
         var deniedPath = StartGate.DeniedMarker(cacheDir, session);
         void Mark(string path, string text)

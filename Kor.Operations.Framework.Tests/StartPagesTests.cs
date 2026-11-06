@@ -10,7 +10,8 @@ namespace Kor.Operations.Framework.Tests;
 /// <summary>
 /// Board row 1569, PURE: THE PAGES carry every row with its full description, the index, the section and the resume whole; each page
 /// fits the hook; too few wired hook entries are said plainly on the last one and on the record part; the gate refuses until every
-/// page and one subject's bodies are in the transcript; the cold-test grader fails a known-bad run.
+/// page and one subject's bodies (or a read that found the subject in no body) are in the transcript and the session has said so with
+/// those numbers, and takes the read only from the kor it runs as; the cold-test grader fails a known-bad run.
 /// Does NOT cover: the real lanes and settings (StartPagesLiveTests) nor a real session (kor start-proof). Same-class miss: a table
 /// the start does not read at all.
 /// </summary>
@@ -110,7 +111,73 @@ public class StartPagesTests
     private static string Attachment(string text) => "{\"type\":\"attachment\",\"attachment\":{\"content\":[\"" + text + "\"]}}";
     private static string ToolResult(string text) => "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"content\":\"" + text + "\"}]}}";
     private static string Page(int n, int m) => $"{StartRender.PagesHead}{n} of {m} - module 'zz'";
-    private static string Bodies(string subject, int n, int m) => $"{BodyRead.Head}{subject}' - page {n} of {m} - 1 of 2 bodies";
+    private static string Bodies(string subject, int n, int m, string lane = "zz") => $"{BodyRead.Head}{subject}' - page {n} of {m} - 2 of 2 bodies read through this page (lanes {lane} and Office).";
+    private static string Said(string text) => "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"" + text + "\"}]}}";
+
+    [Fact]
+    public void ARealReadOfZeroBodiesDoesNotOpenTheGate()
+    {
+        var zero = BodyRead.Pages(new List<BodyRead.Row>(), "zzz", "zz", "kor", 1, false, out _).Replace("\n", " ", StringComparison.Ordinal);
+        Assert.False(StartGate.Decide(StartGate.Scan(new[] { Attachment(Page(1, 1)), ToolResult(zero) }, "zz"), "zz", "kor", "S").Allow, zero);
+    }
+
+    [Fact]
+    public void AHeadSayingZeroOfZeroIsNoRead()
+    {
+        var old = $"{BodyRead.Head}zzz' - page 1 of 1 - 0 of 0 bodies read through this page (lanes zz and Office).";
+        Assert.False(StartGate.Decide(StartGate.Scan(new[] { Attachment(Page(1, 1)), ToolResult(old) }, "zz"), "zz", "kor", "S").Allow);
+    }
+
+    [Fact]
+    public void ReadingIsNotEnoughTheSessionMustSayItBeforeItsFirstWork()
+    {
+        var lines = new List<string> { Attachment(Page(1, 1)), ToolResult(Bodies("peace river", 1, 1)) };
+        var d = StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S");
+        Assert.False(d.Allow);
+        Assert.Contains("pages 1 of 1 held, bodies 2 of 2 read for subject peace river", d.Reason);   // the exact words to say
+        lines.Add(Said("pages 1 of 1 held, bodies 9 of 9 read for subject peace river"));              // wrong count
+        Assert.False(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
+        lines.Add(Said("Pages 1 of 1 held, bodies 2 of 2 read for subject **Peace River**."));
+        Assert.True(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
+    }
+
+    [Fact]
+    public void WhatTheSessionSaidBeforeTheReadDoesNotCount()
+    {
+        var lines = new[] { Attachment(Page(1, 1)), Said("pages 1 of 1 held, bodies 2 of 2 read for subject x"), ToolResult(Bodies("x", 1, 1)) };
+        Assert.False(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
+    }
+
+    [Fact]
+    public void AnotherLanesBodiesAreNotThisSessionsRead()
+    {
+        var lines = new[] { Attachment(Page(1, 1)), ToolResult(Bodies("x", 1, 1, "another lane")), Said("pages 1 of 1 held, bodies 2 of 2 read for subject x") };
+        Assert.False(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
+    }
+
+    [Fact]
+    public void OnlyTheKorTheGateItselfIsPassesAsTheRead()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "kor-gate-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var transcript = Path.Combine(dir, "t.jsonl");
+            File.WriteAllLines(transcript, new[] { Attachment(Page(1, 1)) });
+            string Gate(string command)
+            {
+                var o = new StringWriter();
+                Assert.Equal(0, Program.Run(new[] { "start-gate", "--module", "zz", "--cache-dir", dir, "--hook" }, () => GateInput(transcript, "Bash", command), o,
+                                            new StringWriter(), Path.Combine(dir, "log.txt")));
+                return o.ToString();
+            }
+            var self = Environment.ProcessPath!.Replace('\\', '/');
+            Assert.Equal("", Gate($"\"{self}\" read --module zz --subject x"));
+            foreach (var fake in new[] { "./kor", "kor", "C:/Temp/kor.exe", "/tmp/kor", Path.GetDirectoryName(self)!.Replace('\\', '/') + "/kor.exe" })
+                Assert.Contains("\"permissionDecision\":\"deny\"", Gate($"\"{fake}\" read --module zz --subject x"));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
 
     [Fact]
     public void TheGateRefusesUntilEveryPageAndOneSubjectsBodiesAreInTheTranscript()
@@ -126,8 +193,87 @@ public class StartPagesTests
         lines.Add(ToolResult(Bodies("peace river", 1, 2)));
         Assert.False(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
         lines.Add(ToolResult(Bodies("peace river", 2, 2)));
+        Assert.False(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
+        lines.Add(Said("pages 3 of 3 held, bodies 2 of 2 read for subject peace river"));
         Assert.True(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
     }
+
+    private static readonly BodyRead.Row[] Lane =
+    {
+        new(1, "zz", "peace-river", "finding", "tender closes", "body one"),
+        new(2, "zz", "other", "finding", "something else", "river in the body"),
+    };
+
+    [Fact]
+    public void WhatARealReadPrintsIsWhatTheGateCounts()
+    {
+        var read = BodyRead.Read(Lane, "Peace River", "zz", "kor", 1, false);
+        var lines = new List<string> { Attachment(Page(1, 1)), ToolResult(read.Replace("\n", " ", StringComparison.Ordinal)) };
+        var d = StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S");
+        Assert.False(d.Allow);
+        Assert.Contains("'pages 1 of 1 held, bodies 1 of 1 read for subject peace river'", d.Reason);
+        lines.Add(Said("pages 1 of 1 held, bodies 1 of 1 read for subject peace river"));
+        Assert.True(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
+    }
+
+    [Fact]
+    public void ASubjectInNoBodyIsToldSoAndGoesOnOnlyBySayingSo()
+    {
+        var none = BodyRead.Read(Lane, "zzz qqq", "zz", "kor", 1, false);
+        Assert.StartsWith(BodyRead.NothingHead + "zzz qqq' - 0 of 0 bodies", none);
+        Assert.Contains("NOTHING WAS READ", none);
+        var lines = new List<string> { Attachment(Page(1, 1)), ToolResult(none) };
+        var d = StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S");
+        Assert.False(d.Allow);
+        Assert.Contains("You read 0 of 0 bodies for subject 'zzz qqq': NOTHING WAS READ", d.Reason);
+        Assert.Contains("pages 1 of 1 held, bodies 0 of 0 for subject zzz qqq: it truly matches nothing", d.Reason);
+        lines.Add(Said("pages 1 of 1 held, bodies 0 of 0 for subject aaa: it truly matches nothing"));   // a subject never read
+        Assert.False(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
+        lines.Add(Said("I read it."));
+        Assert.False(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
+        lines.Add(Said("Pages 1 of 1 held, bodies 0 of 0 for subject 'zzz qqq': it truly matches nothing."));
+        d = StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S");
+        Assert.True(d.Allow);
+        Assert.Contains("truly matches nothing", d.Reason);
+        lines.Add("{\"isCompactSummary\":true}");                                                         // compaction owes the sentence again
+        lines.Add(Attachment(Page(1, 1)));
+        Assert.False(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
+    }
+
+    [Fact]
+    public void ASubjectWithAWordInSomeBodyIsNotNothingAndNamesTheReadToTry()
+    {
+        const string exe = "C:/KOR-Operations/kor/kor.exe";
+        var partial = BodyRead.Read(Lane, "river zzz", "zz", exe, 1, false);
+        Assert.StartsWith("NOT READ: subject 'river zzz' matches 0 of 2 bodies", partial);
+        Assert.Contains("river 2, zzz 0", partial);
+        Assert.DoesNotContain(BodyRead.NothingHead, partial);
+        Assert.DoesNotContain(BodyRead.Head, partial);
+        Assert.True(StartGate.IsReadCommand("Bash", partial[partial.IndexOf('"')..], exe), partial);
+        var lines = new[]
+        {
+            Attachment(Page(1, 1)), ToolResult(partial.Replace("\"", "'", StringComparison.Ordinal)),
+            Said("pages 1 of 1 held, bodies 0 of 0 for subject river zzz: it truly matches nothing"),
+        };
+        var d = StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", exe, "S");
+        Assert.False(d.Allow);
+        Assert.Contains("The bodies are not read yet", d.Reason);
+    }
+
+    [Theory]
+    [InlineData("C:/KOR-Operations/kor/kor.exe", true)]
+    [InlineData("\"C:/KOR-Operations/kor/kor.exe\"", true)]
+    [InlineData("C:\\KOR-Operations\\kor\\kor.exe", true)]
+    [InlineData("/c/KOR-Operations/kor/kor.exe", true)]
+    [InlineData("c:/kor-operations/kor/kor", true)]
+    [InlineData("C:/KOR-Operations/kor/../kor/kor.exe", false)]
+    [InlineData("C:/KOR-Operations/kor2/kor.exe", false)]
+    [InlineData("D:/KOR-Operations/kor/kor.exe", false)]
+    [InlineData("/d/KOR-Operations/kor/kor.exe", false)]
+    [InlineData("./kor.exe", false)]
+    [InlineData("kor", false)]
+    public void TheReadIsThatOneKorByItsPath(string path, bool allowed) =>
+        Assert.Equal(allowed, StartGate.IsReadCommand("Bash", $"{path} read --module zz --subject x", "C:/KOR-Operations/kor/kor.exe"));
 
     [Fact]
     public void TheGateCountsNothingTheAssistantWroteAndACompactionOwesEverythingAgain()
@@ -156,6 +302,7 @@ public class StartPagesTests
             Attachment(Page(1, 1)), ToolResult(Bodies("x", 1, 1)),
             ToolResult($"{StartRender.PagesHead}3 of 20\""),                         // a comment quoting the head, as StartPages.cs does
             ToolResult($"{StartRender.PagesHead}1 of 99 - module 'another lane'"),   // another lane's page
+            Said("pages 1 of 1 held, bodies 2 of 2 read for subject x"),
         };
         var seen = StartGate.Scan(lines, "zz");
         Assert.Equal(1, seen.Total);
@@ -191,8 +338,10 @@ public class StartPagesTests
                 return o.ToString();
             }
             Assert.Contains("\"permissionDecision\":\"deny\"", Gate("Bash", "git status"));
-            Assert.Equal("", Gate("Bash", "kor read --module zz --subject x"));   // the read the refusal asks for passes
+            Assert.Equal("", Gate("Bash", $"\"{Environment.ProcessPath!.Replace('\\', '/')}\" read --module zz --subject x"));   // the read the refusal asks for passes
             File.AppendAllLines(transcript, new[] { ToolResult(Bodies("x", 1, 1)) });
+            Assert.Contains("\"permissionDecision\":\"deny\"", Gate("Bash", "git status"));   // read, not yet said
+            File.AppendAllLines(transcript, new[] { Said("pages 1 of 1 held, bodies 2 of 2 read for subject x") });
             Assert.Equal("", Gate("Bash", "git status"));
             Assert.True(File.Exists(StartGate.OpenMarker(dir, "gate-test")));
             File.WriteAllLines(transcript, new[] { "nothing delivered" });
@@ -270,7 +419,7 @@ public class StartPagesTests
     [InlineData("Bash", "git status", false)]
     [InlineData("Read", "kor read", false)]
     public void TheGatePassesOnlyTheReadAlone(string tool, string command, bool allowed) =>
-        Assert.Equal(allowed, StartGate.IsReadCommand(tool, command));
+        Assert.Equal(allowed, StartGate.IsReadCommand(tool, command, command.Contains("KOR-Operations", StringComparison.Ordinal) ? "C:/KOR-Operations/kor/kor.exe" : "kor"));
 
     [Fact]
     public void ASubjectIsEveryWordFromAWordsStartNamesFirstThenBodies()
@@ -295,7 +444,7 @@ public class StartPagesTests
         var rows = Enumerable.Range(0, 3).Select(i => new BodyRead.Row(i, "zz", $"n{i}", "finding", "d", new string('b', 20_000))).ToList();
         var page = BodyRead.Pages(rows, subject, "zz", "C:/KOR-Operations/kor/kor.exe", 1, false, out _);
         var next = page.Split('\n').Last(l => l.StartsWith("NEXT: ", StringComparison.Ordinal))["NEXT: ".Length..];
-        Assert.True(StartGate.IsReadCommand("Bash", next), next);
+        Assert.True(StartGate.IsReadCommand("Bash", next, "C:/KOR-Operations/kor/kor.exe"), next);
     }
 
     [Fact]
@@ -448,6 +597,29 @@ public class StartPagesLiveTests
         if (resume.Chosen is { } r0) Assert.Contains(SecretGuard.Mask(r0.ResumeBlock.Trim())!, all);
         Assert.All(s.Pages, p => Assert.True(p.Length <= StartRender.PageRoom));
         Assert.True(s.Pages.Count <= EnrollCheck.PagesWired, $"{module} needs {s.Pages.Count} pages, {EnrollCheck.PagesWired} are wired: bring EnrollCheck.PagesWired and every repo's settings up");
+    }
+
+    /// <summary>
+    /// Row 1861: the failure paths of the verb itself, on the real Framework lane and settings, with no cold session spent: claude cannot start; claude
+    /// starts and answers nonsense. Each leaves no settings file behind. Does NOT cover the 10-minute timeout path (same finally, not run: it takes ten minutes).
+    /// </summary>
+    [Theory]
+    [InlineData(@"C:\no-such-folder\claude.exe")]
+    [InlineData(@"C:\Windows\System32\hostname.exe")]
+    public void StartProofLeavesNoSettingsFileBehindWhenTheSessionFails(string claude)
+    {
+        var temp = Path.Combine(Path.GetTempPath(), "kor-proof-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        try
+        {
+            var error = new StringWriter();
+            var code = Program.Run(new[] { "start-proof", "--module", "Framework", "--dir", @"C:\VIsual Studio Projects\Framework", "--temp-dir", temp, "--claude", claude, "--model", "haiku" },
+                                   new StringWriter(), error);
+            Assert.NotEqual(0, code);
+            Assert.False(string.IsNullOrWhiteSpace(error.ToString()));
+            Assert.Empty(Directory.GetFiles(temp));
+        }
+        finally { Directory.Delete(temp, true); }
     }
 
     [Theory]
