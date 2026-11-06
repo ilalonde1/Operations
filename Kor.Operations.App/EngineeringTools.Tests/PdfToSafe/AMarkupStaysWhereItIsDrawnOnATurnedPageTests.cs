@@ -23,7 +23,8 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe;
 /// inherited from /Pages, and with a CropBox inside the MediaBox; a /Rotation sketch's
 /// centre and bearing at 45 degrees; an ellipse sketch's roundness, cold and through the page cache; a turned markup
 /// column's sides and turn. Synthetic pages, built here. Does not compare the real package (checked by rendering it over
-/// the sheet), /Line or /InkList on a turned page, page CONTENT columns (step 181 stays parked), nor the app's window.
+/// the sheet), a /MediaBox on the page with its /CropBox inherited, a record left by earlier code (every PDF here has
+/// fresh bytes, so nothing here would catch a walk change without a PageReadCache.Version bump), /Line or /InkList on a turned page, page CONTENT columns (step 181 stays parked), nor the app's window.
 /// Same-class fault it would not catch: a /Rotation that is not a multiple of 45, or an appearance /Matrix that
 /// disagrees with /Rotation: this reads /Rotation alone.
 /// </remarks>

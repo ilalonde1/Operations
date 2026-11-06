@@ -16,7 +16,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe;
 /// </summary>
 public sealed class PageReadCache(string? root = null)
 {
-    private const byte Version = 4;   // 2: each content subpath says whether it was drawn with a curve (step 173). 4: a markup on a /Rotate page is in the page's frame, /Rotation runs clockwise, an ellipse sketch is round and its annotation path keeps HasCurve
+    private const byte Version = 5;   // 2: each content subpath says whether it was drawn with a curve (step 173). 4: a markup on a /Rotate page is in the page's frame, /Rotation runs clockwise, an ellipse sketch is round and its annotation path keeps HasCurve. 5: that frame is the crop box inside the media box, and an inherited box keeps the turn
     private static readonly object[] Gates = Enumerable.Range(0, 64).Select(_ => new object()).ToArray();
     private static readonly uint[] CrcTable = MakeCrcTable();
 

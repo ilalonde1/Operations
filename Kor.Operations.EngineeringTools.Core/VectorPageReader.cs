@@ -500,6 +500,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var crop = RawBox(page.Dictionary, "CropBox");
 
             // PdfPig's frame is the crop box inside the media box (measured on /Rotate 0, 90, 180, 270, review of 97d07212).
+            // Same-class faults this leaves, read not run: a /MediaBox on the page with its /CropBox inherited from /Pages frames
+            // on the media box; a box held by indirect reference with an origin not at 0,0 falls to the 0,0 below.
             if (media is { } m && crop is { } c)
             {
                 double x0 = Math.Max(m.X0, c.X0), y0 = Math.Max(m.Y0, c.Y0), x1 = Math.Min(m.X1, c.X1), y1 = Math.Min(m.Y1, c.Y1);
