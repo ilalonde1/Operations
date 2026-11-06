@@ -7,10 +7,11 @@ using Kor.Operations.Framework.Start;
 namespace Kor.Operations.Framework.Cli;
 
 /// <summary>
-/// Board row 1569: <c>kor start-proof --module M --dir D [--control] [--wiring] [--wire N] [--model M] [--claude path] [--out F]</c>.
+/// Board row 1569: <c>kor start-proof --module M --dir D [--control] [--baseline] [--wiring] [--wire N] [--model M] [--claude path] [--out F]</c>.
 /// One no-tools cold session in D, graded from its own transcript (<see cref="ColdProof"/>). The proof session runs the settings the
 /// wiring will have, on THIS kor (the built Debug one before an install), and with no project settings of the old wiring beside it;
-/// --control runs the repo's own settings as they stand, the known-bad run the grader must fail. --wiring prints the lines instead.
+/// --control runs the repo's own settings as they stand, the known-bad run the grader must fail. --baseline runs the repo's own SessionStart
+/// lines in the proof's mode, which the token arithmetic needs (see below). --wiring prints the lines instead.
 /// A prompt is the only thing it spends: it is not run by a test or a hook.
 /// </summary>
 public static partial class Program
@@ -74,32 +75,36 @@ public static partial class Program
         foreach (var a in args) psi.ArgumentList.Add(a);
         foreach (var e in SessionEnv) psi.Environment.Remove(e);
         var clock = Stopwatch.StartNew();
-        using var p = Process.Start(psi) ?? throw new InvalidOperationException("claude did not start");
-        var stderr = p.StandardError.ReadToEndAsync();
-        var stdout = p.StandardOutput.ReadToEndAsync();
-        p.StandardInput.Write(ColdProof.Prompt(questions));
-        p.StandardInput.Close();
-        if (!p.WaitForExit(TimeSpan.FromMinutes(10))) { p.Kill(true); throw new TimeoutException("the cold session did not finish in 10 minutes"); }
         string? session = null, result = null;
         double? cost = null;
         try
         {
-            using var doc = JsonDocument.Parse(stdout.Result);
-            session = Str(doc.RootElement, "session_id");
-            result = Str(doc.RootElement, "result");
-            cost = doc.RootElement.TryGetProperty("total_cost_usd", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetDouble() : null;
+            using var p = Process.Start(psi) ?? throw new InvalidOperationException("claude did not start");
+            var stderr = p.StandardError.ReadToEndAsync();
+            var stdout = p.StandardOutput.ReadToEndAsync();
+            p.StandardInput.Write(ColdProof.Prompt(questions));
+            p.StandardInput.Close();
+            if (!p.WaitForExit(TimeSpan.FromMinutes(10))) { p.Kill(true); throw new TimeoutException("the cold session did not finish in 10 minutes"); }
+            try
+            {
+                using var doc = JsonDocument.Parse(stdout.Result);
+                session = Str(doc.RootElement, "session_id");
+                result = Str(doc.RootElement, "result");
+                cost = doc.RootElement.TryGetProperty("total_cost_usd", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetDouble() : null;
+            }
+            catch (JsonException) { throw new InvalidOperationException($"the cold session gave no JSON: {stderr.Result}"); }
         }
-        catch (JsonException) { throw new InvalidOperationException($"the cold session gave no JSON: {stderr.Result}"); }
         finally { if (temp is not null) File.Delete(temp); }
+        if (session is null) throw new InvalidOperationException("the cold session's JSON named no session_id, so it has no transcript to grade");
         var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "projects");
-        var transcript = session is null ? null : Directory.EnumerateFiles(root, session + ".jsonl", SearchOption.AllDirectories).FirstOrDefault()
+        var transcript = Directory.EnumerateFiles(root, session + ".jsonl", SearchOption.AllDirectories).FirstOrDefault()
             ?? throw new InvalidOperationException($"no transcript for session {session} under {root}");
-        var lines = StartGate.ReadLines(transcript!).ToList();
+        var lines = StartGate.ReadLines(transcript).ToList();
         var delivered = ColdProof.Delivered(lines);
         var g = ColdProof.Grade(questions, result, delivered);
         var tokens = ColdProof.TokensAtRequestOne(lines);
         var w = new StringWriter();
-        w.WriteLine($"{(control ? "CONTROL" : baseline ? "BASELINE" : "PROOF")} {module}:{g.Passed} of {g.Of} right; invented {g.Invented}; pages in its context {g.PagesHeld} of {g.PagesTotal}, its count {(g.PagesRight ? "right" : "WRONG")}; " +
+        w.WriteLine($"{(control ? "CONTROL" : baseline ? "BASELINE" : "PROOF")} {module}: {g.Passed} of {g.Of} right; invented {g.Invented}; pages in its context {g.PagesHeld} of {g.PagesTotal}, its count {(g.PagesRight ? "right" : "WRONG")}; " +
                     $"tokens at request 1: {tokens?.ToString() ?? "not found"}; delivered {delivered.Length} chars; {clock.Elapsed.TotalSeconds:0} s; cost {cost?.ToString("0.00") ?? "?"} USD; kor {(control ? "installed, the repo's settings" : exe)}; session {session}; transcript {transcript}");
         foreach (var l in g.Lines) w.WriteLine($"  {(l.Pass ? "PASS" : "FAIL")} {l.Key}: {l.Detail}");
         output.Write(w.ToString());

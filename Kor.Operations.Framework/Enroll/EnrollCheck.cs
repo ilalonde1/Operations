@@ -222,6 +222,9 @@ public static class EnrollCheck
                 findings.Add($"SessionStart kor start --part record says --pages-wired {record?.Opt("--pages-wired") ?? "nothing"}, {wired} are wired");
             if (!calls.Any(c => c.Event == "PreToolUse" && c.Verb == "start-gate" && c.Has("--hook") && Covers(c.Matcher, "Bash") && Covers(c.Matcher, "Read")))
                 findings.Add("missing PreToolUse (*) kor start-gate --hook");
+            // both wirings at once load the old 4 + 4 pages beside the new ones at every start
+            var left = calls.Where(c => c.Event == "SessionStart" && c.Verb == "start" && c.Opt("--part") is "state" or "memory" or "records").Select(c => c.Opt("--part")).Distinct().ToList();
+            if (left.Count > 0) findings.Add($"old SessionStart kor start entries left beside THE PAGES: --part {string.Join(", ", left)}");
         }
         foreach (var need in Required)
         {

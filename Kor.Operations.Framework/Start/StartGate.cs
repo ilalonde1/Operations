@@ -9,20 +9,33 @@ namespace Kor.Operations.Framework.Start;
 /// what was wired, so a page lost to a hook timeout or short wiring is named and can be read by hand.
 /// Compares: page numbers against the highest "of M"; one subject's pages against its "of P". Does NOT cover: whether the session
 /// understood them; whether its subject is its real one; a subagent (allowed: agent_id, it has no start of its own) nor the
-/// KOR_START_GATE=off sessions (the reviewer's). Same-class miss: a tool result that merely quotes a page head counts as that page.
-/// After <see cref="MaxDenials"/> refusals it opens and says so, so that a broken database cannot wedge a session.
+/// KOR_START_GATE=off sessions (the reviewer's and the task judge's: neither has Bash). Same-class miss: a tool result that quotes this
+/// module's whole page head counts as that page. After <see cref="MaxDenials"/> refusals, the parallel calls of one turn counting once, it
+/// opens and says so, so that a broken database cannot wedge a session.
 /// </summary>
 public static class StartGate
 {
     public const int MaxDenials = 6;
 
-    private static readonly Regex PageHead = new(Regex.Escape(StartRender.PagesHead) + @"(\d+) of (\d+)\b", RegexOptions.CultureInvariant);
     private static readonly Regex BodyHead = new(Regex.Escape(BodyRead.Head) + @"([^']*)' - page (\d+) of (\d+)\b", RegexOptions.CultureInvariant);
 
-    /// <summary>A kor read or a kor start --part pages, alone: nothing chained behind it.</summary>
+    /// <summary>A real page head names its module: another lane's page, or a comment quoting "page 3 of 20", is not this session's.</summary>
+    private static Regex PageHeadOf(string module) =>
+        new(Regex.Escape(StartRender.PagesHead) + @"(\d+) of (\d+) - module '" + Regex.Escape(module) + "'", RegexOptions.CultureInvariant);
+
+    /// <summary>A kor read or a kor start --part pages, alone: the command word is kor (a path to it, quoted or not, and nothing
+    /// before it but PowerShell's call operator), and nothing behind it chains, redirects, substitutes or starts a new line.</summary>
     private static readonly Regex ReadCommand = new(
-        @"^\s*(?:&\s*)?[""']?[^""';&|<>]*\bkor(?:\.exe)?[""']?\s+(?:read\b|start\b[^;&|<>]*--part\s+pages\b)[^;&|<>]*$",
+        @"^\s*(?:&\s*)?(?:""[^""\r\n;&|<>$`]*\bkor(?:\.exe)?""|'[^'\r\n;&|<>$`]*\bkor(?:\.exe)?'|[^\s""';&|<>$`]*\bkor(?:\.exe)?)" +
+        @"\s+(?:read\b|start\b[^;&|<>$`\r\n]*--part\s+pages\b)[^;&|<>$`\r\n]*\s*\z",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+    /// <summary>Parallel calls of one turn are refused together and count once: a refusal inside this window of the last is the same refusal.</summary>
+    public static readonly TimeSpan SameRefusal = TimeSpan.FromSeconds(20);
+
+    /// <summary>The refusal count after this refusal.</summary>
+    public static int NextDenied(int denied, DateTime? lastAt, DateTime now) =>
+        lastAt is { } at && now - at < SameRefusal ? Math.Max(denied, 1) : denied + 1;
 
     public sealed class Seen
     {
@@ -35,21 +48,28 @@ public static class StartGate
 
     public sealed record Decision(bool Allow, string Reason);
 
+    /// <summary>KOR_START_GATE=off: a session with no Bash (kor_review.py's reviewer, kor_task.py's judge) could never run the read.</summary>
+    public static bool Lifted(Func<string, string?> env) => string.Equals(env("KOR_START_GATE"), "off", StringComparison.OrdinalIgnoreCase);
+
     public static bool IsReadCommand(string tool, string? command) =>
         tool is "Bash" or "PowerShell" && command is not null && ReadCommand.IsMatch(command);
 
     /// <summary>The session's transcript lines: page heads in delivered hook context and tool results only - never in what the assistant wrote.</summary>
-    public static Seen Scan(IEnumerable<string> lines)
+    public static Seen Scan(IEnumerable<string> lines, string module)
     {
         var seen = new Seen();
+        var pageHead = PageHeadOf(module);
         foreach (var line in lines)
         {
-            // a compaction loses the bodies, and SessionStart re-fires the pages: the bodies are owed again, the pages are not
-            if (line.Contains("\"isCompactSummary\":true", StringComparison.Ordinal)) { seen.Bodies.Clear(); continue; }
+            // A compaction loses everything read before it: only what is delivered after the newest one counts. Its SessionStart hooks
+            // finish after the summary is written (ModuleState.NewestCompactSummary, live 3 Nov: summary 09:44:58.35, record part
+            // 09:44:59.58). Not seen in a transcript: none of the newest 150 here holds a compaction; were the order ever the other way,
+            // the gate asks for the pages by hand, and opens after MaxDenials.
+            if (line.Contains("\"isCompactSummary\":true", StringComparison.Ordinal)) { seen.Bodies.Clear(); seen.Pages.Clear(); seen.Total = 0; continue; }
             var attachment = line.Contains("\"type\":\"attachment\"", StringComparison.Ordinal);
             var result = line.Contains("\"tool_result\"", StringComparison.Ordinal);
             if (!attachment && !result) continue;
-            foreach (Match m in PageHead.Matches(line))
+            foreach (Match m in pageHead.Matches(line))
             {
                 var total = int.Parse(m.Groups[2].Value);
                 if (total != seen.Total && total > 0) { if (total > seen.Total) { seen.Pages.Clear(); seen.Total = total; } else continue; }

@@ -9,7 +9,7 @@ namespace Kor.Operations.Framework.Start;
 /// description the old 4+4 pages do not carry, an index line past old page 4, the resume's tail when the old cap cuts it. The key is
 /// what the session was actually given, from its own transcript (lesson #114269); the first request's tokens come from there too.
 /// Compares: last-words quotes and the session's page count against the delivered hook context. Does NOT cover: bodies (kor read is
-/// tool-read, so a no-tools session cannot show it - StartGateTests hold that path); understanding beyond quoting. Same-class miss: a
+/// tool-read, so a no-tools session cannot show it - StartPagesTests hold that path); understanding beyond quoting. Same-class miss: a
 /// session that holds a page and misreads it fails here as if the page were absent. The grader is trusted only because it fails the
 /// control (lesson #114267).
 /// </summary>
@@ -40,7 +40,7 @@ public static class ColdProof
             StartRender.Memory(side, p, OldPages, StartRender.HookBudget), StartRender.RecordsPage(side, p, OldPages, StartRender.HookBudget),
         }));
 
-    /// <summary>Six questions, spread over the content the old pages leave out.</summary>
+    /// <summary>Five questions, spread over the content the old pages leave out; the page count is graded beside them, so six in all.</summary>
     public static List<Question> Make(StartSide side, ResumeChoice resume)
     {
         var old = OldPagesText(side);

@@ -1,4 +1,5 @@
 using Kor.Operations.Framework.Capture;
+using Kor.Operations.Framework.Cli;
 using Kor.Operations.Framework.Enroll;
 using Kor.Operations.Framework.Records;
 using Kor.Operations.Framework.Start;
@@ -115,32 +116,127 @@ public class StartPagesTests
     public void TheGateRefusesUntilEveryPageAndOneSubjectsBodiesAreInTheTranscript()
     {
         var lines = new List<string> { Attachment(Page(1, 3)), Attachment(Page(3, 3)) };
-        var d = StartGate.Decide(StartGate.Scan(lines), "zz", "kor", "S");
+        var d = StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S");
         Assert.False(d.Allow);
         Assert.Contains("MEMORY LEFT OUT: you hold pages 2 of 3; missing 2", d.Reason);
         lines.Add(ToolResult(Page(2, 3)));
-        d = StartGate.Decide(StartGate.Scan(lines), "zz", "kor", "S");
+        d = StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S");
         Assert.False(d.Allow);
         Assert.Contains("The bodies are not read yet", d.Reason);
         lines.Add(ToolResult(Bodies("peace river", 1, 2)));
-        Assert.False(StartGate.Decide(StartGate.Scan(lines), "zz", "kor", "S").Allow);
+        Assert.False(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
         lines.Add(ToolResult(Bodies("peace river", 2, 2)));
-        Assert.True(StartGate.Decide(StartGate.Scan(lines), "zz", "kor", "S").Allow);
+        Assert.True(StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Allow);
     }
 
     [Fact]
-    public void TheGateCountsNothingTheAssistantWroteAndACompactionOwesTheBodiesAgain()
+    public void TheGateCountsNothingTheAssistantWroteAndACompactionOwesEverythingAgain()
     {
         var mine = "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"" + Page(1, 1) + Bodies("x", 1, 1) + "\"}]}}";
-        Assert.Equal(0, StartGate.Scan(new[] { mine }).Total);
-        Assert.False(StartGate.Decide(StartGate.Scan(new[] { mine }), "zz", "kor", "S").Allow);
-        var lines = new[] { Attachment(Page(1, 1)), ToolResult(Bodies("x", 1, 1)), "{\"isCompactSummary\":true}" };
-        var d = StartGate.Decide(StartGate.Scan(lines), "zz", "kor", "S");
+        Assert.Equal(0, StartGate.Scan(new[] { mine }, "zz").Total);
+        Assert.False(StartGate.Decide(StartGate.Scan(new[] { mine }, "zz"), "zz", "kor", "S").Allow);
+        var lines = new List<string> { Attachment(Page(1, 2)), ToolResult(Page(2, 2)), ToolResult(Bodies("x", 1, 1)), "{\"isCompactSummary\":true}" };
+        var d = StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S");
         Assert.False(d.Allow);
-        Assert.Contains("The bodies are not read yet", d.Reason);
+        Assert.Contains("not in your context", d.Reason);
+        // the compact start re-delivers page 1; page 2, read by hand before it, is gone from context and is named
+        lines.Add(Attachment(Page(1, 2)));
+        d = StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S");
+        Assert.False(d.Allow);
+        Assert.Contains("missing 2", d.Reason);
+        lines.Add(Attachment(Page(2, 2)));
+        Assert.Contains("The bodies are not read yet", StartGate.Decide(StartGate.Scan(lines, "zz"), "zz", "kor", "S").Reason);
+    }
+
+    [Fact]
+    public void AQuotedHeadOrAnotherLanesPageRaisesNothing()
+    {
+        var lines = new[]
+        {
+            Attachment(Page(1, 1)), ToolResult(Bodies("x", 1, 1)),
+            ToolResult($"{StartRender.PagesHead}3 of 20\""),                         // a comment quoting the head, as StartPages.cs does
+            ToolResult($"{StartRender.PagesHead}1 of 99 - module 'another lane'"),   // another lane's page
+        };
+        var seen = StartGate.Scan(lines, "zz");
+        Assert.Equal(1, seen.Total);
+        Assert.True(StartGate.Decide(seen, "zz", "kor", "S").Allow);
+    }
+
+    [Fact]
+    public void ParallelCallsOfOneTurnAreOneRefusal()
+    {
+        var now = new DateTime(2026, 11, 5, 22, 0, 0);
+        Assert.Equal(1, StartGate.NextDenied(0, null, now));
+        Assert.Equal(1, StartGate.NextDenied(1, now, now.AddSeconds(1)));
+        Assert.Equal(2, StartGate.NextDenied(1, now, now + StartGate.SameRefusal));
+    }
+
+    private static string GateInput(string transcript, string tool, string command) =>
+        System.Text.Json.JsonSerializer.Serialize(new { session_id = "gate-test", transcript_path = transcript, tool_name = tool, tool_input = new { command } });
+
+    [Fact]
+    public void TheVerbRefusesThenOpensThenStaysOpenAndGivesUpAfterTheLimit()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "kor-gate-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var transcript = Path.Combine(dir, "t.jsonl");
+            File.WriteAllLines(transcript, new[] { Attachment(Page(1, 1)) });
+            string Gate(string tool, string command, string? cache = null)
+            {
+                var o = new StringWriter();
+                Assert.Equal(0, Program.Run(new[] { "start-gate", "--module", "zz", "--cache-dir", cache ?? dir, "--hook" }, () => GateInput(transcript, tool, command), o,
+                                            new StringWriter(), Path.Combine(dir, "log.txt")));
+                return o.ToString();
+            }
+            Assert.Contains("\"permissionDecision\":\"deny\"", Gate("Bash", "git status"));
+            Assert.Equal("", Gate("Bash", "kor read --module zz --subject x"));   // the read the refusal asks for passes
+            File.AppendAllLines(transcript, new[] { ToolResult(Bodies("x", 1, 1)) });
+            Assert.Equal("", Gate("Bash", "git status"));
+            Assert.True(File.Exists(StartGate.OpenMarker(dir, "gate-test")));
+            File.WriteAllLines(transcript, new[] { "nothing delivered" });
+            Assert.Equal("", Gate("Read", "anything"));   // open stays open, with no transcript read
+            // never wedged: at the limit it opens and says what is not read
+            var other = Path.Combine(dir, "other");
+            Directory.CreateDirectory(Path.Combine(other, "gate"));
+            File.WriteAllText(StartGate.DeniedMarker(other, "gate-test"), StartGate.MaxDenials.ToString());
+            var gaveUp = Gate("Read", "x", other);
+            Assert.DoesNotContain("\"permissionDecision\":\"deny\"", gaveUp);
+            Assert.Contains("WITHOUT the read", gaveUp);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void KorStartGateOffLiftsItForASessionWithNoBash()
+    {
+        Assert.True(StartGate.Lifted(_ => "off"));
+        Assert.True(StartGate.Lifted(_ => "OFF"));
+        Assert.False(StartGate.Lifted(_ => null));
+        Assert.False(StartGate.Lifted(_ => "on"));
+    }
+
+    [Fact]
+    public void AFullLastWiredPageWithTheLongestRealPathsStaysUnderTheBudget()
+    {
+        const string exe = "C:/VIsual Studio Projects/Operations/Kor.Operations.Framework.Cli/bin/Debug/net8.0-windows/kor.exe";
+        var side = Side(300, 300) with { Module = "KOR Inspections Bookings" };
+        var s = StartRender.BuildPages(side, Resume(100), null);
+        Assert.Contains(s.Pages.Take(4), p => p.Length > StartRender.PageRoom - 300);   // a full page, or the test proves nothing
+        for (var p = 1; p <= 4; p++)
+            Assert.True(StartRender.Page(s, p, p, exe, Guid.NewGuid().ToString()).Length <= StartRender.HookBudget, $"page {p}");
     }
 
     [Theory]
+    [InlineData("Bash", "kor read --module X --subject a\ngit push", false)]
+    [InlineData("Bash", "rm -rf x kor read --subject a", false)]
+    [InlineData("Bash", "git push origin kor read", false)]
+    [InlineData("Bash", "kor read --subject $(git push)", false)]
+    [InlineData("Bash", "kor read --subject `git push`", false)]
+    [InlineData("Bash", "kor read --subject a > out.txt", false)]
+    [InlineData("Bash", "notkor read --subject a", false)]
+    [InlineData("Bash", "C:/KOR-Operations/kor/kor.exe read --module X --subject a\n", true)]
     [InlineData("Bash", "kor read --module X --subject \"peace river\"", true)]
     [InlineData("Bash", "\"C:/KOR-Operations/kor/kor.exe\" read --module \"X\" --subject a --page 2", true)]
     [InlineData("PowerShell", "& \"C:/KOR-Operations/kor/kor.exe\" start --module X --part pages --page 2 --pages 3 --text", true)]
@@ -275,6 +371,9 @@ public class StartPagesTests
         Assert.Contains(Findings(WiredSettings(EnrollCheck.PagesWired - 1, gate: true)), f => f.Contains("under the", StringComparison.Ordinal));
         Assert.Contains(Findings(WiredSettings(EnrollCheck.PagesWired, gate: true, skip: 7)), f => f.Contains("--page 7 of", StringComparison.Ordinal));
         Assert.Contains(Findings(WiredSettings(EnrollCheck.PagesWired, gate: true, recordSays: 4)), f => f.Contains("--pages-wired 4", StringComparison.Ordinal));
+        // half-migrated: the old 4 + 4 pages beside the new ones
+        var both = WiredSettings(EnrollCheck.PagesWired, gate: true).Replace("\"SessionStart\":[{\"hooks\":[", "\"SessionStart\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"C:/KOR-Operations/kor/kor.exe start --module M --part memory --page 1 --pages 4 --hook\"},", StringComparison.Ordinal);
+        Assert.Contains(Findings(both), f => f.Contains("left beside THE PAGES: --part memory", StringComparison.Ordinal));
     }
 }
 

@@ -23,8 +23,9 @@ public sealed record PagesSnapshot(string Module, DateTimeOffset ReadAt, IReadOn
 /// </summary>
 public static partial class StartRender
 {
-    /// <summary>Text per page; the rest of <see cref="HookBudget"/> is the head line and the short-wiring note.</summary>
-    public const int PageRoom = HookBudget - 400;
+    /// <summary>Text per page; the rest of <see cref="HookBudget"/> is the head line and the short-wiring note (about 447 chars with the
+    /// longest real exe path, session id and module: StartPagesTests holds the longest of them under the budget).</summary>
+    public const int PageRoom = HookBudget - 700;
 
     /// <summary>What the pages name in their head: "KNOWN AT START - PAGES, page 3 of 20".</summary>
     public const string PagesHead = "KNOWN AT START - PAGES, page ";

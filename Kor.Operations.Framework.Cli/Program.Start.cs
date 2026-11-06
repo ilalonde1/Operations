@@ -222,11 +222,11 @@ public static partial class Program
     /// (a marker file, no transcript read). Else: <see cref="StartGate"/> on the session's own transcript. Bad input, a subagent, no
     /// transcript, KOR_START_GATE=off: allow, nothing printed. Exit 0 always in hook mode; never reads the database.
     /// </summary>
-    private static int StartGateVerb(Options o, Func<string?> stdin, TextWriter output, bool hook, Func<string, string?>? env = null)
+    private static int StartGateVerb(Options o, Func<string?> stdin, TextWriter output, bool hook)
     {
         void Say(string text) { if (!hook) output.WriteLine(text); }
         var module = o.Get("--module") ?? throw new ArgumentException("start-gate needs --module <lane>");
-        if (string.Equals((env ?? Environment.GetEnvironmentVariable)("KOR_START_GATE"), "off", StringComparison.OrdinalIgnoreCase)) { Say("allow: KOR_START_GATE=off"); return 0; }
+        if (StartGate.Lifted(Environment.GetEnvironmentVariable)) { Say("allow: KOR_START_GATE=off"); return 0; }
         var raw = stdin();
         if (string.IsNullOrWhiteSpace(raw)) { Say("allow: no hook input"); return 0; }
         string? tool, session, transcript, agent, command;
@@ -248,7 +248,7 @@ public static partial class Program
         if (File.Exists(open)) { Say("allow: this session's gate is open"); return 0; }
         if (StartGate.IsReadCommand(tool, command)) { Say("allow: the read the gate asks for"); return 0; }
         var exe = (Environment.ProcessPath ?? "kor").Replace('\\', '/');
-        var d = StartGate.Decide(StartGate.Scan(StartGate.ReadLines(transcript)), module, exe, session);
+        var d = StartGate.Decide(StartGate.Scan(StartGate.ReadLines(transcript), module), module, exe, session);
         var deniedPath = StartGate.DeniedMarker(cacheDir, session);
         void Mark(string path, string text)
         {
@@ -270,7 +270,9 @@ public static partial class Program
             output.WriteLine(hook ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", additionalContext = text } }) : "allow: " + text);
             return 0;
         }
-        Mark(deniedPath, (denied + 1).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        var lastAt = File.Exists(deniedPath) ? File.GetLastWriteTime(deniedPath) : (DateTime?)null;
+        var next = StartGate.NextDenied(denied, lastAt, DateTime.Now);
+        if (next != denied || lastAt is null) Mark(deniedPath, next.ToString(System.Globalization.CultureInfo.InvariantCulture));
         output.WriteLine(hook
             ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", permissionDecision = "deny", permissionDecisionReason = d.Reason } })
             : "deny: " + d.Reason);
