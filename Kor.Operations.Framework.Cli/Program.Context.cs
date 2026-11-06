@@ -28,10 +28,12 @@ public static partial class Program
     {
         if (o.Get("--replay") is { } replay)
             return ContextReplay(replay, o.Get("--since"), o.Get("--auto-compact-window"), o.Get("--auto-compact-model"), output);
+        if (o.Get("--read-replay") is { } readReplay) return ReadReplay(readReplay, output);
         var raw = stdin();
         if (string.IsNullOrWhiteSpace(raw)) { if (!hook) output.WriteLine("allow: no hook input"); return 0; }
         string? ev, tool, session, transcript, agent, cwd, scratch;
         string text = "";
+        ReadCall? readCall = null;
         bool stopActive;
         try
         {
@@ -46,7 +48,11 @@ public static partial class Program
             cwd = Str(root, "cwd");
             scratch = Str(root, "scratchpad_dir");
             stopActive = root.TryGetProperty("stop_hook_active", out var sa) && sa.ValueKind == JsonValueKind.True;
-            if (tool is not null && root.TryGetProperty("tool_input", out var ti)) text = ContextGuard.TextOf(tool, ti);
+            if (tool is not null && root.TryGetProperty("tool_input", out var ti))
+            {
+                text = ContextGuard.TextOf(tool, ti);
+                if (tool == "Read") readCall = ReadGuard.Parse(ti);
+            }
         }
         catch (JsonException) { if (!hook) output.WriteLine("allow: the input is not JSON"); return 0; }
         var path = StallTranscript.PathFor(transcript, session, agent);
@@ -94,7 +100,26 @@ public static partial class Program
                         : $"{head}\ndeny{(logged is null ? " (not logged)" : $" (oversight.GuardRefusal #{logged})")}: {d.Say}");
                     return 0;
                 }
-                var callSay = JoinSay(d.Say, hook ? SpendLineForHook(o, session, prompt: false, hookErrorLog) : null);
+                // row 1936: a main session holds findings. A subagent's read passes, and any fault in this rule allows
+                if (!sub && readCall is not null && ReadRefusal(readCall, cwd, scratch) is { } refused)
+                {
+                    int? rowId = null;
+                    try
+                    {
+                        var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+                        var rule = $"read of {refused.Kind} over the size (board row 1936)";
+                        rowId = board is not null
+                            ? StallStore.LogGuardRefusal(board, ReadGuard.GuardName, rule, session, repo, $"Read: {readCall.Path} ({refused.Size} bytes)")
+                            : BrainDb.Use3s(KorStandardsConnection.Login.Board, b => StallStore.LogGuardRefusal(b, ReadGuard.GuardName, rule, session, repo, $"Read: {readCall.Path} ({refused.Size} bytes)"));
+                    }
+                    catch (Exception e) { LogHookError(hookErrorLog, o, e); }   // the refusal stands whether or not it was logged
+                    var why = ReadGuard.Says(readCall, refused.Kind, refused.Size);
+                    output.WriteLine(hook
+                        ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", permissionDecision = "deny", permissionDecisionReason = why } })
+                        : $"{head}\ndeny{(rowId is null ? " (not logged)" : $" (oversight.GuardRefusal #{rowId})")}: {why}");
+                    return 0;
+                }
+                var callSay = JoinSay(JoinSay(d.Say, sub ? null : OutputWarningOf(path)), hook ? SpendLineForHook(o, session, prompt: false, hookErrorLog) : null);
                 if (callSay is not null)
                     output.WriteLine(hook
                         ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", additionalContext = callSay } })
@@ -111,7 +136,7 @@ public static partial class Program
                     ContextLevel.Warn when ContextGuard.ShouldWarn(r.Tokens, ceiling, r.LastWarned) => ContextGuard.WarnText(r, cs, module),
                     _ => null,
                 };
-                say = JoinSay(say, hook ? SpendLineForHook(o, session, prompt: true, hookErrorLog) : null);
+                say = JoinSay(JoinSay(say, sub ? null : OutputWarningOf(path)), hook ? SpendLineForHook(o, session, prompt: true, hookErrorLog) : null);
                 if (say is not null)
                     output.WriteLine(hook ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "UserPromptSubmit", additionalContext = say } }) : $"{head}\nsay: {say}");
                 else if (!hook) output.WriteLine($"{head}\nsilent ({level})");
@@ -132,6 +157,24 @@ public static partial class Program
                 if (!hook) output.WriteLine($"{head}\nnothing to do for event {ev ?? "-"}");
                 return 0;
         }
+    }
+
+    /// <summary>Row 1936: what the rule refuses of this Read, or null. Any fault allows: a guard fault must never stop the work.</summary>
+    private static (string Kind, long Size)? ReadRefusal(ReadCall call, string? cwd, string? scratch)
+    {
+        try
+        {
+            var size = ReadGuard.SizeOf(call, cwd);
+            return ReadGuard.Refuses(call, size, scratch) is { } kind ? (kind, size ?? 0) : null;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { return null; }
+    }
+
+    /// <summary>Row 1936: the warning for a big command output on the transcript tail, once per crossing. Any fault says nothing.</summary>
+    private static string? OutputWarningOf(string path)
+    {
+        try { return ReadGuard.OutputWarning(ContextTranscript.TailLines(path)); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { return null; }
     }
 
     /// <summary>

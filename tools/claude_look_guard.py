@@ -67,6 +67,16 @@ Framework row 1203 (3 Nov 2026; GuardRefusal 440, 441, 893, 898 judged wrong). T
   - and a sentence ABOUT the guard that uses the word unquoted. Deciding either needs the sentence understood; a
   regex guess would also wave through real claims ("all three passes"), so the miss stays named here.
 
+Framework row 1936 (6 Nov 2026): a main session may not hold a big picture (kor context, ReadGuard), so a HELPER'S LOOK COUNTS,
+or the two rules deadlock. Ian's rule that every sheet is looked at stands: a helper's Read calls, read from its own transcript
+(<session>/subagents/agent-<id>.jsonl), count as Reads at the place it was LAUNCHED, once its finish is in the main transcript
+(a queued_command attachment holding <status>completed</status>, or a foreground result with status completed). So a helper
+launched before the last render earns nothing, one still running earns nothing, and one that failed earns nothing. It credits
+Read calls only: the other kinds' looks are Bash and PowerShell, which a main session may still run. A Workflow's agents are not
+credited, and a helper resumed with SendMessage after a render earns nothing: launch a fresh one. Same-class fault it would miss:
+a helper sent to do something else that reads one unrelated picture satisfies the drawing rule, and the helper's finding may
+never mention what it saw, exactly as one Read of page 1 of 26 already does.
+
 stdin  : the Stop payload (transcript_path, stop_hook_active) or the PreToolUse payload (tool_name SendMessage)
 stdout : nothing (allow); Stop -> {"decision": "block", ...}; PreToolUse -> permissionDecision "deny"
 """
@@ -97,6 +107,8 @@ TRUNCATED = re.compile(r"\|\s*head\b|\|\s*tail\b(?!\s+(?:-n\s*)?\+\d)|Select-Obj
                        r"|\bgrep\s+(?:-\w+\s+)*-m\s*\d", re.I)
 # the written rows returned by the write itself: each row the statement wrote, as its own result
 OUTPUT_ROWS = re.compile(r"\bOUTPUT\s+(?:inserted|deleted)\.", re.I)
+# row 1936: a background helper's end, as the main transcript holds it (an attachment of type queued_command)
+HELPER_DONE = re.compile(r"<task-notification>\s*<task-id>([\w-]+)</task-id>(?:(?!</task-notification>).)*?<status>completed</status>", re.S)
 QUOTES = "\"'`‘’“”"
 CACHE_S = 600
 CACHE = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "KOR", "look_rules_cache.json")
@@ -188,20 +200,54 @@ def result_text(c):
     return ""
 
 
+def helper_reads(path, agent):
+    """The Read calls in a helper's own transcript, beside its session's: <session>/subagents/agent-<id>.jsonl."""
+    reads = []
+    try:
+        with open(os.path.join(os.path.splitext(path)[0], "subagents", f"agent-{agent}.jsonl"), encoding="utf-8") as f:
+            for line in f:
+                if '"Read"' not in line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except ValueError:
+                    continue
+                if entry.get("type") != "assistant":
+                    continue
+                for c in entry.get("message", {}).get("content", []) or []:
+                    if isinstance(c, dict) and c.get("type") == "tool_use" and c.get("name") == "Read":
+                        reads.append(("Read", str((c.get("input") or {}).get("file_path") or "")))
+    except OSError:
+        pass   # no transcript, no credit
+    return reads
+
+
 def tool_calls(path):
     """Every tool call AND tool result in the transcript, in order: (name, text) - a command or file path for a call;
-    ("__output__", its text) for a result (migration 141: a write may announce itself only in its output)."""
+    ("__output__", its text) for a result (migration 141: a write may announce itself only in its output). A helper that has
+    FINISHED adds its Read calls at the place it was launched (row 1936: see the header)."""
     out = []
+    done = set()
     with open(path, encoding="utf-8") as f:
         for line in f:
             try:
                 entry = json.loads(line)
             except ValueError:
                 continue
+            if entry.get("type") == "attachment":
+                att = entry.get("attachment")
+                if isinstance(att, dict) and att.get("type") == "queued_command":
+                    done.update(HELPER_DONE.findall(str(att.get("prompt") or "")))
+                continue
             if entry.get("type") == "user" and isinstance(entry.get("message", {}).get("content"), list):
                 for c in entry["message"]["content"]:
                     if isinstance(c, dict) and c.get("type") == "tool_result":
                         out.append(("__output__", result_text(c)))
+                launched = entry.get("toolUseResult")
+                if isinstance(launched, dict) and launched.get("agentId"):
+                    out.append(("__helper__", str(launched["agentId"])))
+                    if launched.get("status") == "completed":
+                        done.add(str(launched["agentId"]))
                 continue
             if entry.get("type") != "assistant":
                 continue
@@ -211,7 +257,13 @@ def tool_calls(path):
                 inp = c.get("input") or {}
                 text = str(inp.get("command") or inp.get("file_path") or inp.get("path") or "")
                 out.append((c.get("name") or "", text))
-    return out
+    expanded = []
+    for name, text in out:
+        if name != "__helper__":
+            expanded.append((name, text))
+        elif text in done:
+            expanded.extend(helper_reads(path, text))
+    return expanded
 
 
 def last_assistant_text(path):
@@ -294,6 +346,9 @@ def reason_for(missing, claim, surfaces=None):
             for s in hits:
                 lines.append(f"  {key}: oversight.Surface {s.get('Code')} ({s.get('Name')}) - its consumers' check: "
                              f"{s.get('Check')}. Read the rows back (a SELECT of {key}, no tail/head), and run that check")
+    if any("Read" in r["LookTools"].split("|") for r, _, _ in missing):
+        lines.append("A picture too big for a main session (row 1936) is looked at by a helper: launch it after the change; "
+                     "its Read of the picture counts here once the helper has finished.")
     lines.append("Do the look, then claim. Or reword so the text states only what was looked at.")
     return "\n".join(lines)
 

@@ -12,7 +12,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from claude_look_guard import load_rules, load_surfaces, verdict  # noqa: E402
+from claude_look_guard import load_rules, load_surfaces, tool_calls, verdict  # noqa: E402
 
 GUARD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "claude_look_guard.py")
 RULES = load_rules()
@@ -263,6 +263,67 @@ def run_hook(payload):
     return p.stdout.strip()
 
 
+# Board row 1936: a main session may not hold a big picture, so a helper's look must count, or the two rules deadlock. The
+# lines below have the shape of a real transcript (c60a5e28 lines 577-606, read 6 Nov): the launch's tool_result carries
+# toolUseResult.agentId; a background helper's end is an attachment of type queued_command holding a <task-notification>.
+RENDER = B("python tools/drafted_set.py job.json out")
+HELPER = "a99d0a3540bb6b6b2"
+
+
+def launch(agent, status="async_launched"):
+    return [{"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Agent", "id": "t" + agent, "input": {"prompt": "look"}}]}},
+            {"type": "user", "toolUseResult": {"status": status, "agentId": agent},
+             "message": {"content": [{"type": "tool_result", "tool_use_id": "t" + agent, "content": [{"type": "text", "text": "launched"}]}]}}]
+
+
+def finished(agent, status="completed"):
+    return {"type": "attachment", "attachment": {"type": "queued_command", "prompt":
+            f"<task-notification>\n<task-id>{agent}</task-id>\n<tool-use-id>t{agent}</tool-use-id>\n<status>{status}</status>\n<summary>done</summary>\n</task-notification>"}}
+
+
+def call(name, text):
+    key = "file_path" if name in ("Edit", "Write", "Read") else "command"
+    return {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": name, "input": {key: text}}]}}
+
+
+def helper_case(lines, reads=("C:/x/sheet-01.png",), agent=HELPER, make_file=True):
+    """(verdict on a claim, a main transcript of `lines` and a helper transcript of `reads`)"""
+    d = tempfile.mkdtemp()
+    main = os.path.join(d, "session.jsonl")
+    with open(main, "w", encoding="utf-8") as f:
+        for ln in lines:
+            f.write(json.dumps(ln) + "\n")
+    if make_file:
+        sub = os.path.join(d, "session", "subagents")
+        os.makedirs(sub)
+        with open(os.path.join(sub, f"agent-{agent}.jsonl"), "w", encoding="utf-8") as f:
+            for r in reads:
+                f.write(json.dumps(call("Read", r)) + "\n")
+    return verdict("The sheets are done.", tool_calls(main), RULES, SURFACES)
+
+
+HELPER_CASES = {
+    # (expected to pass, lines, reads, make_file)
+    "credited: render, helper launched after it reads a picture and finishes": (True, [call(*RENDER), *launch(HELPER), finished(HELPER)], ("C:/x/sheet-01.png",), True),
+    "credited: a foreground helper, whose result is its end": (True, [call(*RENDER), *launch(HELPER, "completed")], ("C:/x/sheet-01.png",), True),
+    "refused: the helper has not finished": (False, [call(*RENDER), *launch(HELPER)], ("C:/x/sheet-01.png",), True),
+    "refused: a helper launched BEFORE the last render": (False, [*launch(HELPER), call(*RENDER), finished(HELPER)], ("C:/x/sheet-01.png",), True),
+    "refused: the helper read no picture": (False, [call(*RENDER), *launch(HELPER), finished(HELPER)], ("C:/x/notes.txt",), True),
+    "refused: the helper failed": (False, [call(*RENDER), *launch(HELPER), finished(HELPER, "failed")], ("C:/x/sheet-01.png",), True),
+    "refused: the helper's transcript is gone": (False, [call(*RENDER), *launch(HELPER), finished(HELPER)], (), False),
+    "refused: another helper finished": (False, [call(*RENDER), *launch(HELPER), finished("a000000000000000")], ("C:/x/sheet-01.png",), True),
+    "the main's own Read still counts": (True, [call(*RENDER), call("Read", "C:/x/crop.png")], (), False),
+}
+for name, (passes, lines, reads, make_file) in HELPER_CASES.items():
+    why = helper_case(lines, reads, make_file=make_file)
+    ok = (why is None) == passes
+    print(("PASS" if ok else "FAIL") + f"  {name}" + ("" if ok else f"  <- {str(why)[:160]}"))
+    fails += not ok
+why = helper_case([call(*RENDER)], make_file=False) or ""
+ok = "helper" in why and "row 1936" in why
+print(("PASS" if ok else "FAIL") + "  the refusal names the helper route"); fails += not ok
+
+
 calls, text, _ = MISSES["code compiled, never run"]
 t = transcript(calls, text)
 out = run_hook({"transcript_path": t, "stop_hook_active": False})
@@ -278,6 +339,6 @@ print(("PASS" if out == "" else "FAIL") + "  SendMessage door allows a message w
 os.unlink(t)
 
 # Every check counted: the NO_CLAIMS cases were left out (review row 24, 2 Nov: "31 checks run but the summary says 29").
-total = len(MISSES) + len(LOOKED) + 1 + len(NO_CLAIMS) + len(NO_CLAIM_1203) + 3 + 4
+total = len(MISSES) + len(LOOKED) + 1 + len(NO_CLAIMS) + len(NO_CLAIM_1203) + 3 + 4 + len(HELPER_CASES) + 1
 print(f"{total - fails} of {total} passed")
 sys.exit(1 if fails else 0)

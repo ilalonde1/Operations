@@ -128,7 +128,7 @@ public static partial class Program
     {
         private static readonly string[] Valued =
         {
-            "--module", "--prompts-dir", "--dir", "--result", "--last", "--kind", "--because", "--body-file", "--source-path", "--name",
+            "--module", "--prompts-dir", "--read-replay", "--dir", "--result", "--last", "--kind", "--because", "--body-file", "--source-path", "--name",
             "--says", "--source", "--cap", "--session", "--description", "--check", "--check-ref", "--issue",
             "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir", "--page", "--pages", "--cutoff",
             "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what", "--days", "--tag",

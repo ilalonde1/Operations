@@ -49,6 +49,14 @@ public static class ContextTranscript
         }
     }
 
+    /// <summary>The last lines of a transcript, up to <see cref="FirstScan"/> (row 1936's output warning reads these).</summary>
+    public static List<string> TailLines(string path)
+    {
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        var len = fs.Length;
+        return Tail(fs, len, Math.Min(len, FirstScan), out _);
+    }
+
     private static List<string> Tail(FileStream fs, long len, long take, out bool whole)
     {
         whole = take >= len;
