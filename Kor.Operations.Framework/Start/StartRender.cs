@@ -25,7 +25,7 @@ namespace Kor.Operations.Framework.Start;
 /// memory past the pages wired in settings.json (cut on the last with a note); records past the wired pages even as ids
 /// and names (the last page says how many, and how to read them); a part whose hook entry is not wired.
 /// </summary>
-public static class StartRender
+public static partial class StartRender
 {
     public const int HookBudget = 9900;
     public const int ResumeCap = 3000;
@@ -44,7 +44,7 @@ public static class StartRender
     /// those parts (<see cref="PartsLine"/>) and one line with the records' counts per group (RecordsLine). Without it, one
     /// page with every section (--text, --part all).
     /// </summary>
-    public static string Record(ModuleState s, int? budget, bool split)
+    public static string Record(ModuleState s, int? budget, bool split, PagesWiring? pages = null, string? exe = null, string? session = null)
     {
         // mistake 138: every credential value in what was read is masked BEFORE any section clips it (a clipped value
         // could fall under the classifier's length rule), and each rendered section is masked again below
@@ -61,14 +61,16 @@ public static class StartRender
         {
             new("header", 0, _ => Header(s)),
             new("five", 2, l => FiveQuestions(five, staleIds, l)),
-            split ? new("state", 0, _ => PartsLine(m))
+            pages is not null ? new("state", 0, _ => PagesLine(m, pages, exe ?? "kor", session))
+            : split ? new("state", 0, _ => PartsLine(m))
                   : new("state", 2, l => StateNow(s.Handover, m, l, whole: budget is null)),
-            new("resume", 2, l => Resume(s, l)),
+            new("resume", 2, l => ResumeText(s.Resume, s.LastSessionEnd, m, l, whole: false, onPages: pages is not null)),
             new("issues", 3, l => Issues(s.OpenIssues, l)),
             new("stale", 3, l => Stale(stale, unverifiable, l)),
             // the hook's record part (split): the records are on the RECORDS pages beside it (board row: 107 harvested
             // KOR.Drafter records were a count line at 4,783 of 9,900) - here one line with their counts and where they are
-            split ? new("records", 0, _ => RecordsLine(m, sourced))
+            pages is not null ? new("records", 0, _ => "RECORDS (current): " + string.Join(", ", RecordGroups(sourced).Select(g => $"{g.Rows.Count} {Label(g.Title)}")) + " - each with its full description on THE PAGES.")
+            : split ? new("records", 0, _ => RecordsLine(m, sourced))
                   : new("records", 4, l => Records(m, sourced, l)),
             new("events", 3, l => Events(m, s.Events, l)),
         };
@@ -459,23 +461,26 @@ public static class StartRender
         };
     }
 
-    private static string Resume(ModuleState s, int level)
+    /// <summary>The resume. Row 1569: <paramref name="whole"/> (THE PAGES) never cuts it and <paramref name="onPages"/> (the record part when the
+    /// pages are wired) leaves it to them; only the old wiring's record part still cuts it at <see cref="ResumeCap"/>.</summary>
+    private static string ResumeText(ResumeChoice c, StoredEvent? end, string module, int level, bool whole, bool onPages)
     {
-        var c = s.Resume;
         var lines = new List<string>();
         if (c.Chosen is { } r)
         {
+            var block = r.ResumeBlock.Trim();
             lines.Add((r.Id == 0 ? $"RESUME - not yet a LaneState: {r.WrittenBy}, written {Stamp(r.WrittenAtUtc)}"
                                  : $"RESUME - LaneState #{r.Id}, written {Stamp(r.WrittenAtUtc)} by {r.WrittenBy}") +
-                      (r.Session is null ? "" : $" (session {r.Session})") + $"; chosen: {c.Why}:");
+                      (r.Session is null ? "" : $" (session {r.Session})") + $"; chosen: {c.Why}" +
+                      (onPages ? $" - {block.Length} chars, whole on THE PAGES." : ":"));
             // the first ResumeKeep characters are a floor: kept whole, the note goes AFTER them
-            var block = r.ResumeBlock.Trim();
             var keep = level == 0 ? ResumeCap : ResumeKeep;
-            lines.Add(block.Length <= keep ? block
-                : block[..keep] + $" ... [resume cut at {keep} of {block.Length} chars - kor start --module \"{s.Module}\" --text]");
+            if (!onPages)
+                lines.Add(whole || block.Length <= keep ? block
+                    : block[..keep] + $" ... [resume cut at {keep} of {block.Length} chars - kor start --module \"{module}\" --text]");
         }
         else lines.Add($"RESUME: {c.Why}.");
-        if (s.LastSessionEnd is { } e)
+        if (end is { } e)
             lines.Add($"LAST SESSION END: event #{e.Id} {Stamp(e.AtUtc)} ({e.Outcome ?? "no reason"})" + (e.Session is null ? "" : $" session {e.Session}"));
         if (level < 2 && c.Others.Count > 0)
         {

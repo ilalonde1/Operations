@@ -18,6 +18,8 @@ namespace Kor.Operations.Framework.Cli;
 /// the content prints nothing). 3 Nov: <c>--part records --page N --pages M</c> carries the module's records the same way
 /// (the record part names them with their counts); with <c>--text</c> and a --page it prints that one page, without one
 /// every record. <c>--text</c> and <c>--part all</c> stay one page with every section.
+/// Row 1569 (5 Nov): <c>--part pages --page N --pages W</c> is THE PAGES, the whole memory on as many pages as it needs (<see cref="StartRender.PagesBody"/>),
+/// with <c>--part record --pages-wired W</c> beside it; state, memory and records stay only for the old wiring, until a repo's settings move.
 /// </summary>
 public static partial class Program
 {
@@ -31,8 +33,8 @@ public static partial class Program
         StartTrace.Mark("begin");
         var module = o.Get("--module") ?? throw new ArgumentException("start needs --module <lane>");
         var part = o.Get("--part") ?? "all";
-        if (part is not ("record" or "state" or "memory" or "records" or "board" or "all"))
-            throw new ArgumentException($"--part is record, state, memory, records, board or all, not '{part}'");
+        if (part is not ("record" or "state" or "memory" or "records" or "pages" or "board" or "all"))
+            throw new ArgumentException($"--part is record, state, memory, records, pages, board or all, not '{part}'");
         if (hook && o.Get("--text") is not null)
             throw new ArgumentException("--hook prints the SessionStart JSON and --text prints plain text: give one (review row 194)");
         if (hook && part == "all")
@@ -42,8 +44,11 @@ public static partial class Program
         var pages = Count("--pages");
         var page = Count("--page");
         var paged = o.Get("--page") is not null || o.Get("--pages") is not null;
-        if (part is not ("memory" or "records") && paged)
-            throw new ArgumentException("--page and --pages belong to --part memory or --part records");
+        if (part is not ("memory" or "records" or "pages") && paged)
+            throw new ArgumentException("--page and --pages belong to --part memory, records or pages");
+        var pagesWired = o.Get("--pages-wired") is null ? (int?)null
+            : o.Int("--pages-wired") ?? throw new ArgumentException($"--pages-wired takes a whole number, not '{o.Get("--pages-wired")}'");
+        if (pagesWired is not null && part != "record") throw new ArgumentException("--pages-wired belongs to --part record");
         if (pages < 1 || page < 1 || page > pages) throw new ArgumentException($"--page {page} --pages {pages}: need 1 <= page <= pages");
         string? session = o.Get("--session"), source = o.Get("--start-source"), transcript = null;
         var dir = o.Get("--dir");
@@ -66,13 +71,32 @@ public static partial class Program
         void Log(Exception e) => LogHookError(hookErrorLog, o, e);
         var texts = new List<string>();
         IReadOnlyList<string>? watch = null;
+        var exe = (Environment.ProcessPath ?? "kor").Replace('\\', '/');
+        // row 1569: every hook of one start prints from the one read of THE PAGES (StartPages)
+        PagesSnapshot SharedPages() => StartPages.Shared(cacheDir, module, session, source, hook, StartPart.Deadline, () =>
+        {
+            var start = new ModuleState.Start(session, source, transcript);
+            var (side, resume, end) = db is not null ? ModuleState.ReadPages(db, module, start, dir)
+                : BrainDb.Read(KorStandardsConnection.Login.Brain, d => ModuleState.ReadPages(d, module, start, dir));
+            return StartRender.BuildPages(side, resume, end);
+        }, () => DateTime.Now);
+        if (part == "pages")
+        {
+            var r = StartPart.Run(() => (paged || hook ? StartRender.Page(SharedPages(), page, pages, exe, session) : StartRender.WholePages(SharedPages()),
+                                         (IReadOnlyList<string>)Array.Empty<string>()),
+                StartCache.PathFor(cacheDir, module, $"pages{page}of{pages}{(paged ? "" : "all")}", hook), budget, deadline,
+                $"read the memory by hand: \"{exe}\" start --module \"{module}\" --part pages --text", () => DateTime.Now, Log);
+            texts.Add(SecretGuard.Mask(r.Text)!);
+        }
         if (part is "record" or "all")
         {
             var start = new ModuleState.Start(session, source, transcript);
+            if (source == "compact" && session is not null) StartGate.Rearm(cacheDir, session);   // a compaction loses the bodies
             (string, IReadOnlyList<string>) Show(ModuleState s)
             {
                 // the hook's record part is split (board row 1198): STATE NOW and LEGACY MEMORY are their own parts
-                var rendered = (StartRender.Record(s, budget, split: hook), StartRender.WatchPaths(s.Fresh));
+                var wiring = pagesWired is { } wired ? new PagesWiring(wired, SharedPages().Pages.Count) : null;
+                var rendered = (StartRender.Record(s, budget, split: hook, wiring, exe, session), StartRender.WatchPaths(s.Fresh));
                 StartTrace.Mark("rendered");
                 return rendered;
             }
@@ -158,7 +182,7 @@ public static partial class Program
         // a memory page past the lane's content has nothing to say: the hook prints nothing (Claude Code adds no context).
         // After every part, so it reads the one part this hook ran (review row 247: placed before the board block it threw
         // on --part board, whose failure a hook logs and exits 0 on - THE BOARD would have vanished from every start).
-        if (hook && part is "memory" or "records" && texts.Count == 1 && texts[0].Length == 0) return 0;
+        if (hook && part is "memory" or "records" or "pages" && texts.Count == 1 && texts[0].Length == 0) return 0;
         if (hook)
         {
             var payload = new
@@ -173,6 +197,83 @@ public static partial class Program
             output.WriteLine(JsonSerializer.Serialize(payload, HookJson));
         }
         else output.WriteLine(string.Join("\n\n", texts));
+        return 0;
+    }
+
+    /// <summary>
+    /// Row 1569: <c>kor read --module M --subject "words" [--page N] [--all]</c> - the bodies for a session's subject, whole, one
+    /// page at a time (<see cref="BodyRead"/>). It reads and writes nothing else.
+    /// </summary>
+    private static int ReadVerb(Options o, TextWriter output, BrainDb? db)
+    {
+        var module = o.Get("--module") ?? throw new ArgumentException("read needs --module <lane>");
+        var subject = o.Get("--subject") ?? throw new ArgumentException("read needs --subject \"<words for your task>\"");
+        if (BodyRead.Terms(subject).Count == 0) throw new ArgumentException("--subject needs a word of two letters or more");
+        var page = o.Get("--page") is null ? 1 : o.Int("--page") ?? throw new ArgumentException($"--page takes a whole number, not '{o.Get("--page")}'");
+        var rows = db is not null ? ModuleState.ReadBodies(db, module)
+            : BrainDb.Read(KorStandardsConnection.Login.Brain, d => ModuleState.ReadBodies(d, module));
+        var exe = (Environment.ProcessPath ?? "kor").Replace('\\', '/');
+        output.WriteLine(BodyRead.Pages(BodyRead.Match(rows, subject), subject, module, exe, page, o.Get("--all") is not null, out _));
+        return 0;
+    }
+
+    /// <summary>
+    /// Row 1569: <c>kor start-gate --module M --hook</c> on PreToolUse, every tool. Allow at once when this session's gate is open
+    /// (a marker file, no transcript read). Else: <see cref="StartGate"/> on the session's own transcript. Bad input, a subagent, no
+    /// transcript, KOR_START_GATE=off: allow, nothing printed. Exit 0 always in hook mode; never reads the database.
+    /// </summary>
+    private static int StartGateVerb(Options o, Func<string?> stdin, TextWriter output, bool hook, Func<string, string?>? env = null)
+    {
+        void Say(string text) { if (!hook) output.WriteLine(text); }
+        var module = o.Get("--module") ?? throw new ArgumentException("start-gate needs --module <lane>");
+        if (string.Equals((env ?? Environment.GetEnvironmentVariable)("KOR_START_GATE"), "off", StringComparison.OrdinalIgnoreCase)) { Say("allow: KOR_START_GATE=off"); return 0; }
+        var raw = stdin();
+        if (string.IsNullOrWhiteSpace(raw)) { Say("allow: no hook input"); return 0; }
+        string? tool, session, transcript, agent, command;
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) { Say("allow: the input is not a JSON object"); return 0; }
+            tool = Str(root, "tool_name");
+            session = Str(root, "session_id");
+            transcript = Str(root, "transcript_path");
+            agent = Str(root, "agent_id");
+            command = StartGate.CommandOf(root);
+        }
+        catch (JsonException) { Say("allow: the input is not JSON"); return 0; }
+        if (tool is null || session is null || agent is not null || transcript is null || !File.Exists(transcript)) { Say("allow: no session transcript, or a subagent"); return 0; }
+        var cacheDir = o.Get("--cache-dir") ?? StartCache.DefaultDir;
+        var open = StartGate.OpenMarker(cacheDir, session);
+        if (File.Exists(open)) { Say("allow: this session's gate is open"); return 0; }
+        if (StartGate.IsReadCommand(tool, command)) { Say("allow: the read the gate asks for"); return 0; }
+        var exe = (Environment.ProcessPath ?? "kor").Replace('\\', '/');
+        var d = StartGate.Decide(StartGate.Scan(StartGate.ReadLines(transcript)), module, exe, session);
+        var deniedPath = StartGate.DeniedMarker(cacheDir, session);
+        void Mark(string path, string text)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, text);
+        }
+        if (d.Allow)
+        {
+            Mark(open, d.Reason);
+            Say("allow: " + d.Reason);
+            return 0;
+        }
+        var denied = File.Exists(deniedPath) && int.TryParse(File.ReadAllText(deniedPath), out var n) ? n : 0;
+        if (denied >= StartGate.MaxDenials)
+        {
+            // never wedge a session: it opens, and says what is not read
+            Mark(open, "gave up: " + d.Reason);
+            var text = $"START GATE OPENED after {denied} refusals WITHOUT the read it asks for: {d.Reason} What that would hold is NOT read: answer it 'not checked'.";
+            output.WriteLine(hook ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", additionalContext = text } }) : "allow: " + text);
+            return 0;
+        }
+        Mark(deniedPath, (denied + 1).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        output.WriteLine(hook
+            ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", permissionDecision = "deny", permissionDecisionReason = d.Reason } })
+            : "deny: " + d.Reason);
         return 0;
     }
 }

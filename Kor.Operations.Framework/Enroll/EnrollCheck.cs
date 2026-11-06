@@ -15,7 +15,8 @@ public sealed record KorRepo(string Folder, string[] PrePushGuards)
 /// <c>kor enroll-check</c> (Framework board row 1209, mistake 139: capture was wired only in Framework while "all repos" was
 /// claimed). Three checks per repo, each naming what is missing:
 /// <list type="number">
-/// <item>.claude/settings.json holds every framework hook (<see cref="Required"/>): the kor start parts record, state,
+/// <item>.claude/settings.json holds every framework hook (<see cref="Required"/>; row 1569: a repo on THE PAGES wires --part record --pages-wired W,
+/// pages 1..W and start-gate in place of state, memory and records): the kor start parts record, state,
 /// memory (pages 1..M, every one), records (pages 1..4, every one - 3 Nov) and board (--owner or --tag); capture-start; capture-tool on PostToolUse AND PostToolUseFailure covering
 /// Bash and PowerShell; capture-check on Stop with a timeout of at least 30 s (row 1393: it reads the ending turn off the
 /// transcript - an entry left at the old 15 s fails, naming the timeout); capture-compact; capture-end; kor enforce; kor stall on PreToolUse
@@ -86,6 +87,10 @@ public static class EnrollCheck
                                                      "WebFetch", "WebSearch", "SendMessage", "NotebookEdit", "mcp__networkops__networkops_run" };
 
     public const int RecordsPages = 4;
+
+    /// <summary>Row 1569: how many <c>--part pages</c> hook entries a repo wires (a page past the content prints nothing). The most any
+    /// of the 6 lanes needs is held under it by StartPagesLiveTests; bring it up before that test fails, or a start says MEMORY LEFT OUT.</summary>
+    public const int PagesWired = 40;
 
     /// <summary>Row 1393: the Stop capture-check's least timeout, in seconds.</summary>
     public const int StopCheckMinTimeout = 30;
@@ -202,8 +207,26 @@ public static class EnrollCheck
         var (calls, unreadable) = KorCalls(settingsJson);
         if (unreadable is not null) return new List<string> { unreadable };
         var findings = new List<string>();
+        // row 1569: a repo on THE PAGES needs the record part, every page entry and the gate; its old state, memory and records entries are gone
+        var pagesCalls = calls.Where(c => c.Event == "SessionStart" && c.Verb == "start" && c.Opt("--part") == "pages" && c.Has("--hook")).ToList();
+        var onPages = pagesCalls.Count > 0;
+        if (onPages)
+        {
+            var wired = pagesCalls.Select(c => int.TryParse(c.Opt("--pages"), out var n) ? n : 1).Max();
+            var have = pagesCalls.Select(c => int.TryParse(c.Opt("--page"), out var p) ? p : 1).ToHashSet();
+            var gaps = Enumerable.Range(1, wired).Where(p => !have.Contains(p)).ToList();
+            if (gaps.Count > 0) findings.Add($"missing SessionStart kor start --part pages --page {string.Join(",", gaps)} of {wired}");
+            if (wired < PagesWired) findings.Add($"SessionStart kor start --part pages wires {wired} pages, under the {PagesWired} a repo wires");
+            var record = calls.FirstOrDefault(c => c.Event == "SessionStart" && c.Verb == "start" && c.Opt("--part") == "record");
+            if (record?.Opt("--pages-wired") != wired.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                findings.Add($"SessionStart kor start --part record says --pages-wired {record?.Opt("--pages-wired") ?? "nothing"}, {wired} are wired");
+            if (!calls.Any(c => c.Event == "PreToolUse" && c.Verb == "start-gate" && c.Has("--hook") && Covers(c.Matcher, "Bash") && Covers(c.Matcher, "Read")))
+                findings.Add("missing PreToolUse (*) kor start-gate --hook");
+        }
         foreach (var need in Required)
         {
+            if (onPages && need.Verb == "start" && need.Name.Contains("--part ", StringComparison.Ordinal)
+                && need.Name.Split("--part ")[1].Split(' ')[0] is "state" or "memory" or "records") continue;
             var fit = calls.Where(c => c.Event == need.Event && c.Verb == need.Verb && need.Fits(c)).ToList();
             var named = need.Name + " --hook";
             if (fit.Count == 0) { findings.Add($"missing {named}"); continue; }

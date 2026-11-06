@@ -333,17 +333,43 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
         return new StartSide(module, DateTimeOffset.Now, records, h) { Office = office };
     }
 
-    /// <summary>One round trip, six result sets (see <see cref="Load"/>).</summary>
-    internal const string Batch =
-        // 1. live records of the lane (not issues: those come from vw_OpenIssues), as kor_brain lists them: Kind, Name
-        $"SELECT {RecordColumns} FROM brain.vw_ModuleState WHERE Module = @m AND Kind <> N'issue' ORDER BY Kind, Name; " +
-        // 2. open issues
-        "SELECT Id, Module, Name, N'issue' AS Kind, Description, CAST(NULL AS nvarchar(max)) AS Body, Status, SourceKind, SourceRepo, " +
-        "SourceCommit, SourcePath, SourceRef, CheckKind, CheckRef, RegressionOf FROM brain.vw_OpenIssues WHERE Module = @m ORDER BY Id; " +
-        // 3. the Office lane (every KOR lead gets it; never onto itself)
-        $"SELECT {RecordColumns} FROM brain.vw_ModuleState WHERE Module = @office AND @m <> @office AND Kind <> N'issue' ORDER BY Kind, Name; " +
-        // 4. resume candidates: the 12 newest of the lane, and this session's newest, each with its session and whether
-        //    that session did work here (a commit, record or push event under it in this module)
+    /// <summary>
+    /// Row 1569: what THE PAGES render, read once for a start: the lane's records and Office (<see cref="ReadSide"/>, with the
+    /// handover), the resume chosen as the record part chooses it, and the last session-end. Writes nothing.
+    /// </summary>
+    public static (StartSide Side, ResumeChoice Resume, StoredEvent? LastEnd) ReadPages(BrainDb db, string module, Start start, string? fromDir)
+    {
+        var side = ReadSide(db, module, fromDir, handover: true);
+        using var c = db.Command(ResumeSql + $"SELECT TOP (1) {EventColumns} FROM brain.Event WHERE Module = @m AND Kind = N'session-end' ORDER BY Id DESC;", 30);
+        c.Parameters.Add("@m", SqlDbType.NVarChar, 60).Value = module;
+        c.Parameters.Add("@me", SqlDbType.NVarChar, 64).Value = (object?)start.SessionId ?? DBNull.Value;
+        using var r = c.ExecuteReader();
+        var resumes = new List<ResumeRow>();
+        while (r.Read())
+            resumes.Add(new ResumeRow(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetDateTimeOffset(3), S(r, 4),
+                                      r.GetInt32(5) == 1, r.GetInt32(6) == 1));
+        r.NextResult();
+        var end = ReadEvents(r).FirstOrDefault();
+        var transcript = start.Source == "compact" ? NewestCompactSummary(start.TranscriptPath) : null;
+        return (side, ChooseResume(resumes, start, transcript), end);
+    }
+
+    /// <summary>Row 1569: every live row of the lane and of Office with its body (kor read).</summary>
+    public static List<BodyRead.Row> ReadBodies(BrainDb db, string module)
+    {
+        using var c = db.Command("SELECT Id, Module, Name, Kind, Description, Body FROM brain.vw_ModuleState " +
+                                 "WHERE Module IN (@m, @office) AND Kind <> N'issue' AND Name NOT IN (N'_five-questions', N'_index');", 60);
+        c.Parameters.Add("@m", SqlDbType.NVarChar, 60).Value = module;
+        c.Parameters.Add("@office", SqlDbType.NVarChar, 60).Value = OfficeLane;
+        using var r = c.ExecuteReader();
+        var rows = new List<BodyRead.Row>();
+        while (r.Read()) rows.Add(new BodyRead.Row(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4), S(r, 5)));
+        return rows;
+    }
+
+    /// <summary>The resume candidates: the 12 newest of the lane, and this session's newest, each with its session and whether
+    /// that session did work here (a commit, record or push event under it in this module). @m, @me.</summary>
+    private const string ResumeSql =
         "WITH c AS (SELECT a.Id FROM (SELECT TOP (12) Id FROM brain.LaneState WHERE Lane = @m ORDER BY WrittenAtUtc DESC, Id DESC) a " +
         "           UNION SELECT b.Id FROM (SELECT TOP (1) Id FROM brain.LaneState WHERE Lane = @m AND @me IS NOT NULL " +
         "                 AND (Session = @me OR WrittenBy = N'compaction ' + @me) ORDER BY WrittenAtUtc DESC, Id DESC) b) " +
@@ -353,7 +379,19 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
         "FROM brain.LaneState s JOIN c ON c.Id = s.Id " +
         "CROSS APPLY (SELECT CASE WHEN s.WrittenBy LIKE N'compaction %' THEN 1 ELSE 0 END AS IsCompaction, " +
         "             COALESCE(s.Session, CASE WHEN s.WrittenBy LIKE N'compaction %' THEN LTRIM(RTRIM(SUBSTRING(s.WrittenBy, 12, 64))) END) AS Sess) x " +
-        "ORDER BY s.WrittenAtUtc DESC, s.Id DESC; " +
+        "ORDER BY s.WrittenAtUtc DESC, s.Id DESC; ";
+
+    /// <summary>One round trip, six result sets (see <see cref="Load"/>).</summary>
+    internal const string Batch =
+        // 1. live records of the lane (not issues: those come from vw_OpenIssues), as kor_brain lists them: Kind, Name
+        $"SELECT {RecordColumns} FROM brain.vw_ModuleState WHERE Module = @m AND Kind <> N'issue' ORDER BY Kind, Name; " +
+        // 2. open issues
+        "SELECT Id, Module, Name, N'issue' AS Kind, Description, CAST(NULL AS nvarchar(max)) AS Body, Status, SourceKind, SourceRepo, " +
+        "SourceCommit, SourcePath, SourceRef, CheckKind, CheckRef, RegressionOf FROM brain.vw_OpenIssues WHERE Module = @m ORDER BY Id; " +
+        // 3. the Office lane (every KOR lead gets it; never onto itself)
+        $"SELECT {RecordColumns} FROM brain.vw_ModuleState WHERE Module = @office AND @m <> @office AND Kind <> N'issue' ORDER BY Kind, Name; " +
+        // 4. resume candidates
+        ResumeSql +
         // 5. the last 10 events of the module
         $"SELECT TOP (10) {EventColumns} FROM brain.Event WHERE Module = @m ORDER BY Id DESC; " +
         // 6. the last session-end
