@@ -74,6 +74,7 @@ public static partial class Program
                 "migration-lint" => MigrationLintVerb(o, stdin, output),
                 "enroll-check" => EnrollCheckVerb(o, output, hook, db),
                 "read" => ReadVerb(o, output, db),
+                "recall" => RecallVerb(o, output, db),
                 "start-gate" => StartGateVerb(o, stdin, output, hook),
                 "start-proof" => StartProofVerb(o, output, db),
                 "stall" => StallVerb(o, stdin, output, hook, db, board, hookErrorLog),
@@ -132,7 +133,7 @@ public static partial class Program
             "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir", "--page", "--pages", "--cutoff",
             "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what", "--days", "--tag",
             "--replay", "--since", "--window-hours", "--auto-compact-window", "--auto-compact-model", "--ceiling", "--spend-root",
-            "--pages-wired", "--subject", "--model", "--claude", "--wire", "--out", "--temp-dir",
+            "--pages-wired", "--subject", "--model", "--claude", "--wire", "--out", "--temp-dir", "--budget",
         };
 
         /// <summary>Options given more than once, every value kept in order (check-add's examples).</summary>
@@ -564,6 +565,7 @@ public static partial class Program
         error.WriteLine("       kor state --module M (--file F | --text T)   (a resume block -> brain.LaneState; a credential value is MASKED and said in one line)");
         error.WriteLine("       kor migration-lint <file.sql> | - --name NNN_x.sql [--cutoff N (177)]   (a migration above the cut-off: L1 a 'PROBES:' header line, L2 no hand-written probe handling without migration.usp_MigrationProbe; one line per finding, exit 1)");
         error.WriteLine("       kor read --module M --subject \"words\" [--page N] [--all]   (row 1569: the bodies for a subject, whole, X of Y)");
+        error.WriteLine("       kor recall --module M \"task\" [--budget tokens (12600)]   (row 1893 pilot: ranked whole sections by SQL Full-Text, with terms found nowhere; read-only)");
         error.WriteLine("       kor start-gate --module M --hook   (row 1569, PreToolUse every tool: refused until every memory page is held and the subject's bodies are read; KOR_START_GATE=off lifts it)");
         error.WriteLine("       kor start-proof --module M --dir D [--control] [--baseline] [--wiring] [--model M] [--wire N] [--claude path] [--out F] [--temp-dir D]   (row 1569: one no-tools cold test, graded from its own transcript; --wiring prints the settings lines)");
         error.WriteLine("       kor stall --hook   (PreToolUse JSON on stdin; Bash|PowerShell|WebFetch|mcp__.*: G1 stall guard, board row 1308)");
