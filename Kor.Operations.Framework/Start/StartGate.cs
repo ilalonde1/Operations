@@ -26,7 +26,7 @@ public static class StartGate
     /// <summary>
     /// A kor read or a kor start --part pages, alone. An ALLOW-LIST (reviews 571, 575 and 577 each found a new way past a list of what to refuse: a chain,
     /// parentheses, a newline after kor): the whole command is the call operator at most, a path ending in kor or kor.exe, the verb, and
-    /// arguments of word characters and . : / \ - = # + only, a quoted one also holding spaces and commas; blanks are spaces and tabs; one
+    /// arguments of word characters and . : / \ - = + only, a quoted one also holding spaces, commas and #; blanks are spaces and tabs; one
     /// line end at most. Same-class miss: any path ending in kor or kor.exe passes, so ./kor read runs whatever executable has that name.
     /// </summary>
     private static readonly Regex ReadCommand = new(
@@ -35,8 +35,8 @@ public static class StartGate
         @"[ \t]+(?:read|start(?:" + Arg + @")*[ \t]+--part[ \t]+pages)(?:" + Arg + @")*[ \t]*(?:\r?\n)?\z",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
-    // "#" starts a comment in Bash only at a word's start, where the rest of the line is then just not run: nothing more runs than the read
-    private const string Arg = @"[ \t]+(?:""[\w.:/\\ =#+,-]*""|'[\w.:/\\ =#+,-]*'|[\w.:/\\=#+-]+)";
+    // "#" only inside quotes: bare, it starts a comment in both shells, and a comment could hide the --part pages this check read
+    private const string Arg = @"[ \t]+(?:""[\w.:/\\ =#+,-]*""|'[\w.:/\\ =#+,-]*'|[\w.:/\\=+-]+)";
 
     /// <summary>Parallel calls of one turn are refused together and count once: a refusal inside this window of the last is the same refusal.</summary>
     public static readonly TimeSpan SameRefusal = TimeSpan.FromSeconds(20);
