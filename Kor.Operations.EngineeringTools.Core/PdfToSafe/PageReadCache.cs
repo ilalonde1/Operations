@@ -16,7 +16,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe;
 /// </summary>
 public sealed class PageReadCache(string? root = null)
 {
-    private const byte Version = 2;   // 2: each content subpath says whether it was drawn with a curve (step 173)
+    private const byte Version = 4;   // 2: each content subpath says whether it was drawn with a curve (step 173). 4: a markup on a /Rotate page is in the page's frame, /Rotation runs clockwise, an ellipse sketch is round and its annotation path keeps HasCurve
     private static readonly object[] Gates = Enumerable.Range(0, 64).Select(_ => new object()).ToArray();
     private static readonly uint[] CrcTable = MakeCrcTable();
 
@@ -92,7 +92,7 @@ public sealed class PageReadCache(string? root = null)
             w.Write(path.IsClosed); w.Write(path.IsFilled); w.Write(path.IsStroked);
             w.Write(path.MinX); w.Write(path.MinY); w.Write(path.MaxX); w.Write(path.MaxY);
             WriteColor(w, path.Color); w.Write(path.IsAnnotation); w.Write(path.LineWidth);
-            w.Write(path.IsClipping); w.Write(path.PathOrdinal);
+            w.Write(path.IsClipping); w.Write(path.PathOrdinal); w.Write(path.HasCurve);
         }
     }
 
@@ -133,7 +133,7 @@ public sealed class PageReadCache(string? root = null)
             subpaths.Add(new RawContentSubpath(pathOrdinal, subpathOrdinal, points,
                 r.ReadBoolean(), r.ReadBoolean(), r.ReadBoolean(), r.ReadDouble(), ReadColor(r), r.ReadBoolean()) { HasCurve = r.ReadBoolean() });
         }
-        count = ReadCount(r, 56);
+        count = ReadCount(r, 57);
         var annotations = new List<GeomPath>(count);
         for (int i = 0; i < count; i++)
         {
@@ -142,7 +142,7 @@ public sealed class PageReadCache(string? root = null)
                 r.ReadDouble(), r.ReadDouble(), r.ReadDouble(), r.ReadDouble())
             {
                 Color = ReadColor(r), IsAnnotation = r.ReadBoolean(), LineWidth = r.ReadDouble(),
-                IsClipping = r.ReadBoolean(), PathOrdinal = r.ReadInt32(),
+                IsClipping = r.ReadBoolean(), PathOrdinal = r.ReadInt32(), HasCurve = r.ReadBoolean(),
             });
         }
         if (payload.Position != payload.Length) throw new InvalidDataException("The page-walk record contains trailing data.");
@@ -198,7 +198,7 @@ public sealed class PageReadCache(string? root = null)
             if (!PointsEqual(x.Points, y.Points) || x.IsClosed != y.IsClosed || x.IsFilled != y.IsFilled || x.IsStroked != y.IsStroked
                 || !Bits(x.MinX, y.MinX) || !Bits(x.MinY, y.MinY) || !Bits(x.MaxX, y.MaxX) || !Bits(x.MaxY, y.MaxY)
                 || x.Color != y.Color || x.IsAnnotation != y.IsAnnotation || !Bits(x.LineWidth, y.LineWidth)
-                || x.IsClipping != y.IsClipping || x.PathOrdinal != y.PathOrdinal) return false;
+                || x.IsClipping != y.IsClipping || x.PathOrdinal != y.PathOrdinal || x.HasCurve != y.HasCurve) return false;
         }
         return true;
     }

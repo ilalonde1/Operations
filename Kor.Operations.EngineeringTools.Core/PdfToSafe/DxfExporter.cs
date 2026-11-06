@@ -674,7 +674,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     G(62, NearestAci(xColumnColours[i]).ToString(ic));
                     Num(10, px); Num(20, py); Num(30, 0);
                     Num(40, (hw + hd) / 2.0);
-                    Num(50, 0); Num(51, 360);
+                    // Not 0 to 360: DWG TrueView drew that as a dot (seen 2026-11-06, the OAP DXF; our own reader adds 360 to a
+                    // zero sweep and never noticed). DxfPlanReader reads ARC and not CIRCLE, so it stays an ARC, short by 0.001 degree.
+                    Num(50, 0); Num(51, 359.999);
                     continue;
                 }
                 // turned as drawn (step 178): the width side along the column's bearing, the depth across it

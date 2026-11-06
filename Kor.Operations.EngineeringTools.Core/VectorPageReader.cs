@@ -339,6 +339,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     var vertPts = ReadAnnotVertices(dict, rawPageOrigin);
                     if (vertPts.Count >= 3)
                     {
+                        bool ellipse = IsEllipseSketch(dict, vertPts);
+                        if (ellipse) vertPts = EllipseThrough(vertPts);
+
                         int rotation = 0;
                         if (dict.Data.TryGetValue("Rotation", out var rotToken) && rotToken is NumericToken rotNum)
                             rotation = (int)rotNum.Data;
@@ -346,7 +349,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         {
                             double cx = (rect.BottomLeft.X + rect.TopRight.X) / 2.0;
                             double cy = (rect.BottomLeft.Y + rect.TopRight.Y) / 2.0;
-                            double rad = rotation * Math.PI / 180.0;
+                            // /Rotation runs CLOCKWISE: its appearance /Matrix turns by 360 - /Rotation, on 685 of 685 turned
+                            // sketches of the OAP arch package (2026-11-06). Right angles hide the sign; 45 degrees does not.
+                            double rad = -rotation * Math.PI / 180.0;
                             double cos = Math.Cos(rad), sin = Math.Sin(rad);
                             vertPts = vertPts.Select(p =>
                             {
@@ -357,7 +362,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
                         bool isClosed = ann.Type != AnnotationType.PolyLine &&
                                         ann.Type != AnnotationType.Line;
-                        result.Add(ToGeomPath(vertPts, isClosed, isClosed, true, annColor, 1, true));
+                        result.Add(ToGeomPath(vertPts, isClosed, isClosed, true, annColor, 1, true) with { HasCurve = ellipse });
                         continue;
                     }
 
@@ -467,16 +472,32 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return (0, 0, 0);
         }
 
-        private readonly record struct RawPageOrigin(double X, double Y)
+        /// <summary>
+        /// Raw numbers out of an annotation's dictionary, into the frame PdfPig reads everything else in. PdfPig shifts AND
+        /// TURNS what it parses (page paths, ann.Rectangle) to the page as it is read; /Vertices, /L and /InkList stay as
+        /// stored. So a page stored with /Rotate needs the same turn here, or its markup and its own Rect are in two frames
+        /// (2026-11-06, a /Rotate 90 sheet: every /Rotation rectangle swung around a centre in the other frame, up to 150 ft).
+        /// </summary>
+        private readonly record struct RawPageOrigin(double X, double Y, int Rotate = 0, double Width = 0, double Height = 0)
         {
-            public (double X, double Y) ToPageSpace(double rawX, double rawY) =>
-                (rawX - X, rawY - Y);
+            public (double X, double Y) ToPageSpace(double rawX, double rawY)
+            {
+                double x = rawX - X, y = rawY - Y;
+                return Rotate switch
+                {
+                    90 => (y, Width - x),
+                    180 => (Width - x, Height - y),
+                    270 => (Height - y, x),
+                    _ => (x, y),
+                };
+            }
         }
 
         private static RawPageOrigin ReadRawPageOrigin(Page page)
         {
-            if (TryRawBoxOrigin(page.Dictionary, "MediaBox", out var origin) ||
-                TryRawBoxOrigin(page.Dictionary, "CropBox", out origin))
+            int rotate = ((page.Rotation.Value % 360) + 360) % 360;
+            if (TryRawBoxOrigin(page.Dictionary, "MediaBox", rotate, out var origin) ||
+                TryRawBoxOrigin(page.Dictionary, "CropBox", rotate, out origin))
             {
                 return origin;
             }
@@ -484,7 +505,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return new RawPageOrigin(0, 0);
         }
 
-        private static bool TryRawBoxOrigin(DictionaryToken dict, string key, out RawPageOrigin origin)
+        private static bool TryRawBoxOrigin(DictionaryToken dict, string key, int rotate, out RawPageOrigin origin)
         {
             origin = default;
             if (!dict.Data.TryGetValue(key, out var token) || token is not ArrayToken arr)
@@ -494,8 +515,33 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             if (ns.Count < 2)
                 return false;
 
-            origin = new RawPageOrigin(ns[0], ns[1]);
+            origin = ns.Count >= 4
+                ? new RawPageOrigin(ns[0], ns[1], rotate, ns[2] - ns[0], ns[3] - ns[1])
+                : new RawPageOrigin(ns[0], ns[1]);
             return true;
+        }
+
+        /// <summary>
+        /// Bluebeam's "Ellipse Sketch to Scale" keeps four points on the ellipse in /Vertices, one along each axis, and the
+        /// real curve in /Curves: read as a polygon it is a diamond. True for that sketch; the corners go round through both axes.
+        /// </summary>
+        private static bool IsEllipseSketch(DictionaryToken dict, List<(double X, double Y)> vertices) =>
+            vertices.Count == 4
+            && dict.Data.TryGetValue("IT", out var it) && it is NameToken name
+            && string.Equals(name.Data, "EllipseSketchToScale", StringComparison.Ordinal);
+
+        private static List<(double X, double Y)> EllipseThrough(List<(double X, double Y)> v, int segments = 32)
+        {
+            double cx = v.Average(p => p.X), cy = v.Average(p => p.Y);
+            double ax = (v[0].X - v[2].X) / 2, ay = (v[0].Y - v[2].Y) / 2;
+            double bx = (v[1].X - v[3].X) / 2, by = (v[1].Y - v[3].Y) / 2;
+            var pts = new List<(double X, double Y)>(segments);
+            for (int i = 0; i < segments; i++)
+            {
+                double t = 2 * Math.PI * i / segments, c = Math.Cos(t), s = Math.Sin(t);
+                pts.Add((cx + ax * c + bx * s, cy + ay * c + by * s));
+            }
+            return pts;
         }
 
         /// <summary>An appearance stream's bytes, inflated when it is Flate-encoded — the only filter

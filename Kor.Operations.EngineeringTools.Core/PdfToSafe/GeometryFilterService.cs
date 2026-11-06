@@ -603,9 +603,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         result.Columns.Add(PolygonProcessor.Centroid(pts));
                         result.ColumnColors.Add(color);
                         result.ColumnIsAnnotation.Add(sub.IsAnnotation);
-                        result.ColumnSizes.Add((bboxW, bboxH));
-                        result.ColumnTurnDegrees.Add(0);   // the page's turn is not read yet (step 181, parked)
-                        result.ColumnIsRound.Add(DrawnRound(sub, pts, bboxW, bboxH, clipPieces, rawSubpaths));
+                        bool round = DrawnRound(sub, pts, bboxW, bboxH, clipPieces, rawSubpaths);
+                        // A markup the engineer drew at an angle keeps its angle and its own sides; its box on the sheet's
+                        // axes is neither (2026-11-06: a 16 x 40 at 45 degrees written as a 40 x 40 upright square). A shape
+                        // square to the sheet within a degree takes the path it always did. Page content stays parked below.
+                        if (sub.IsAnnotation && !round && pts.Count == 4
+                            && LoopGeometry.MinAreaBox(pts.Select(p => new DxfPoint(p.X, p.Y)).ToList()) is { } drawn
+                            && MarkupTurnDegrees(drawn) is { } markupTurn)
+                        {
+                            result.ColumnSizes.Add((drawn.Length, drawn.Thickness));
+                            result.ColumnTurnDegrees.Add(markupTurn);
+                        }
+                        else
+                        {
+                            result.ColumnSizes.Add((bboxW, bboxH));
+                            result.ColumnTurnDegrees.Add(0);   // the page's turn is not read yet (step 181, parked)
+                        }
+                        result.ColumnIsRound.Add(round);
                         columnByShape.Add(true);
                         Fate(PathReason.BecameColumnByShape, result.Columns.Count - 1);
                     }
@@ -3576,6 +3590,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (big <= 0 || Math.Abs(w - h) > 0.1 * big) return false;
             double fill = Math.Abs(PolygonProcessor.PolygonAreaMm2(pts)) / (w * h);
             return fill is > 0.72 and < 0.85;
+        }
+
+        /// <summary>The bearing of a markup rectangle's long side in degrees, or null when it is square to the sheet within a degree.</summary>
+        private static double? MarkupTurnDegrees(OrientedBox box)
+        {
+            double bearing = Math.Atan2(box.AxisEnd.Y - box.AxisStart.Y, box.AxisEnd.X - box.AxisStart.X) * 180 / Math.PI;
+            double offSquare = ((bearing % 90) + 90) % 90;
+            return Math.Min(offSquare, 90 - offSquare) < 1 ? null : bearing;
         }
 
         /// <summary>
