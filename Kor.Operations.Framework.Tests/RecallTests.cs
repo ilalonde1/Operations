@@ -102,7 +102,17 @@ public class RecallTests
         var (code, text, err) = Run("recall", "--module", "KOR.Drafter", "--budget", budget.ToString(), "wall thickness read from the plan drawing");
         Assert.True(code == 0, err);
         Assert.True(MemoryRecall.Tokens(text.Length) <= budget, $"{text.Length} chars is over the budget");
-        Assert.Contains("LEFT OUT BY THE BUDGET:", text);
+        var named = Regex.Match(text, @"^LEFT OUT BY THE BUDGET: \d+ records, highest rank first: (#\d+.*)$", RegexOptions.Multiline);
+        Assert.True(named.Success, "the budget left nothing out, or did not say what");
+        var leftIds = Regex.Matches(named.Groups[1].Value, @"#(\d+)").Select(m => int.Parse(m.Groups[1].Value)).ToList();
+        Assert.NotEmpty(leftIds);
+        using (var live = BrainDb.OpenRead(KorStandardsConnection.Login.Brain, snapshot: false))
+            foreach (var id in leftIds)
+            {
+                using var c = live.Command("SELECT Module FROM brain.vw_ModuleState WHERE Id = @i");
+                c.Parameters.AddWithValue("@i", id);
+                Assert.Equal("KOR.Drafter", c.ExecuteScalar() as string);   // a real row of this lane, not a stray id
+            }
         var pieces = Regex.Matches(text, @"=== record #(\d+) .*?\n(.*?)\n=== end #\1\n", RegexOptions.Singleline);
         Assert.NotEmpty(pieces);
         using var db = BrainDb.OpenRead(KorStandardsConnection.Login.Brain, snapshot: false);
@@ -133,6 +143,65 @@ public class RecallTests
         Assert.True(parts.Count > 2);
         Assert.Contains(parts, p => p.Contains(new string('x', 5000), StringComparison.Ordinal)); // one line over the size stays whole, never cut
         Assert.All(parts.Where(p => !p.Contains('x')), p => Assert.True(p.Length <= 300, p));
+        Assert.All(parts.SkipLast(1), p => Assert.EndsWith("\n", p));   // every cut is at a line's end, none inside a line
+    }
+
+    private static MemoryRecall.Hit Hit(int id, string body, string name = "r") =>
+        new(id, 100, "lesson", name, "d", body, "current", "s", DateTimeOffset.Parse("2026-11-06T00:00:00Z"));
+
+    private static MemoryRecall.Found Found(params MemoryRecall.Hit[] hits) =>
+        new(hits.Length, hits, new[] { new MemoryRecall.TermCount("wall", hits.Length) }, Array.Empty<string>());
+
+    [Fact]
+    public void AHitWithAnEmptyBodyIsDeliveredAndNeverCalledLeftOutByTheBudget()
+    {
+        var text = MemoryRecall.Render("m", "wall", Found(Hit(7, "")), 2_000, "now");
+        Assert.Contains("=== record #7 ", text);
+        Assert.Contains("LEFT OUT BY THE BUDGET: none", text);
+    }
+
+    [Fact]
+    public void ASectionTheBudgetDroppedFromADeliveredRecordIsNamed()
+    {
+        var first = "wall one " + new string('a', 500) + "\n\n";
+        var second = "wall two " + new string('b', 1_400) + "\n\n";
+        var third = "wall three " + new string('c', 1_400);
+        var text = MemoryRecall.Render("m", "wall", Found(Hit(7, first + second + third)), 1_000, "now");
+        Assert.Contains("=== record #7 ", text);
+        Assert.Matches(@"(?m)^SECTIONS LEFT OUT OF RECORDS DELIVERED: .*#7 section \d", text);
+        Assert.DoesNotContain("#7,", text.Split('\n').Single(l => l.StartsWith("LEFT OUT BY THE BUDGET:", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void AHeadOverTheBudgetIsRefusedRatherThanClaimedHeld()
+    {
+        var task = string.Join(" ", Enumerable.Range(1, 500).Select(i => $"word{i}"));
+        var (code, _, err) = Run("recall", "--module", Lane, "--budget", "1000", task);
+        Assert.NotEqual(0, code);
+        Assert.Contains("budget", err);
+    }
+
+    [Fact]
+    public void TheFullestOutputStaysWithinItsBudget()
+    {
+        // every line at its longest: 40 left-out and 40 part-delivered records with long ids, under the smallest budget
+        var hits = Enumerable.Range(1, 40).Select(i => Hit(9_000_000 + i, new string('a', 700) + " wall\n\n" + new string('b', 900) + " wall")).ToArray();
+        foreach (var budget in new[] { 1_000, 1_500, 2_000 })
+            Assert.True(MemoryRecall.Tokens(MemoryRecall.Render("m", "wall", Found(hits), budget, "now").Length) <= budget, $"over {budget}");
+    }
+
+    [Theory]
+    [InlineData("session", null, "session unknown", "session session unknown")]
+    [InlineData("query", null, "SELECT 1", "query SELECT 1")]
+    [InlineData(null, null, null, "none recorded, history only")]
+    public void EverySourceKindSaysWhatItHolds(string? kind, string? path, string? sourceRef, string expected) =>
+        Assert.Equal(expected, MemoryRecall.SourceLabel(kind, null, null, path, sourceRef, null));
+
+    [Fact]
+    public void APossessiveIsNotCalledFoundNowhere()
+    {
+        var line = Run("recall", "--module", Lane, "grader's").Out.Split('\n').Single(l => l.StartsWith("FOUND NOWHERE IN THIS MODULE:", StringComparison.Ordinal));
+        Assert.DoesNotContain("grader", line);
     }
 
     [Fact]
@@ -147,7 +216,7 @@ public class RecallTests
 
     [Fact]
     public void TermsSplitOnEveryNonWordAndDropSingleCharacters() =>
-        Assert.Equal(new[] { "dont", "use", "the", "pdf", "in2" }, MemoryRecall.Terms("Don't-use the_PDF: a in2 PDF!".Replace("Don't", "Dont")));
+        Assert.Equal(new[] { "don't", "use", "the", "pdf", "in2" }, MemoryRecall.Terms("Don't-use the_PDF: a in2 'PDF'!"));
 
     [Fact]
     public void TheBestSectionIsTheOneHoldingTheMostTaskTerms()

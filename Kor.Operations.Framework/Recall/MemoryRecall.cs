@@ -34,6 +34,10 @@ public static class MemoryRecall
     public const int SectionChars = 1_500;
     public const int MostSectionsPerRecord = 2;
     public const int MostLeftOutNamed = 30;
+    public const int MostPartlyNamed = 12;
+
+    /// <summary>Kept back for the RESULTS line (under 200 chars) and the tail's two lines at their longest: 30 ids of up to 7 digits, 12 "#id section N".</summary>
+    private const int TailReserveChars = 1_000;
     public const string NowhereHead = "FOUND NOWHERE IN THIS MODULE:";
     public const string LeftOutHead = "LEFT OUT BY THE BUDGET:";
 
@@ -43,9 +47,10 @@ public static class MemoryRecall
 
     public static int Tokens(int chars) => (int)Math.Ceiling(chars * TokensPerChar);
 
-    /// <summary>The task's words, lower case, in order, once each: letters and digits only, so each is safe inside a CONTAINS string.</summary>
+    /// <summary>The task's words, lower case, in order, once each: letters, digits and an inner apostrophe only ("don't" stays one word, so it is
+    /// not reported as "don"), so each is safe inside a double-quoted CONTAINS term.</summary>
     public static List<string> Terms(string task) =>
-        Regex.Split(task, @"[^\p{L}\p{N}]+").Select(t => t.ToLowerInvariant()).Where(t => t.Length >= 2).Distinct().ToList();
+        Regex.Split(task.Replace('’', '\''), @"[^\p{L}\p{N}']+").Select(t => t.Trim('\'').ToLowerInvariant()).Where(t => t.Length >= 2).Distinct().ToList();
 
     /// <summary>
     /// A body cut at paragraph ends into pieces of at most <paramref name="size"/> chars; a paragraph over the size is cut at line ends; a line
@@ -138,6 +143,7 @@ public static class MemoryRecall
         if (kind == "git" && path is not null) return $"{repo}:{path}{(commit is null ? "" : "@" + commit[..Math.Min(7, commit.Length)])}";
         if (kind == "run") return $"run {sourceRef}";
         if (!string.IsNullOrWhiteSpace(path)) return path;
+        if (kind is not null && kind != "file" && !string.IsNullOrWhiteSpace(sourceRef)) return $"{kind} {sourceRef}";   // query, session: their ref is their source
         return string.IsNullOrWhiteSpace(source) ? "none recorded, history only" : $"{source} (no path, history only)";
     }
 
@@ -153,6 +159,9 @@ public static class MemoryRecall
         head.Append($"{NowhereHead} {(nowhere.Count == 0 ? "none" : string.Join(", ", nowhere))}\n");
         if (found.StopWords.Count > 0) head.Append($"IGNORED AS STOP WORDS: {string.Join(", ", found.StopWords)}\n");
         head.Append("A ranked search always returns something: a result may have nothing to do with the task. Absence here is only absence of these words.\n");
+        var room = (int)Math.Floor(budgetTokens / TokensPerChar) - TailReserveChars;
+        if (head.Length > room)
+            throw new ArgumentException($"the task's head alone is {head.Length} chars and the budget of {budgetTokens} tokens leaves {room} for it: give a shorter task or a larger --budget");
         if (found.Hits.Count == 0)
         {
             head.Append("NOTHING FOUND: no live record of this module matches. Nothing here says the record does not exist under other words.\n");
@@ -160,32 +169,41 @@ public static class MemoryRecall
         }
         var terms = found.Terms.Where(t => t.Records > 0).Select(t => t.Term).ToList();
         var spent = head.Length;
-        var room = (int)Math.Floor(budgetTokens / TokensPerChar) - 160 - (MostLeftOutNamed * 9);
         var body = new StringBuilder();
         var delivered = 0;
         var left = new List<Hit>();
+        var partly = new List<string>();
         foreach (var hit in found.Hits)
         {
             var sections = Sections(SecretGuard.Mask(hit.Body) ?? "", SectionChars);
+            if (sections.Count == 0) sections.Add("");   // an empty body: the record's head still says what it is
             var pick = BestSections(sections, terms, MostSectionsPerRecord);
-            if (pick.Count == 0 && sections.Count > 0) pick.Add(0);
+            if (pick.Count == 0) pick.Add(0);
             var any = false;
+            var dropped = new List<int>();
             foreach (var i in pick)
             {
                 var piece = $"=== record #{hit.Id} [{hit.Kind}] {SecretGuard.Mask(hit.Name)} - score {hit.Score} - source {SecretGuard.Mask(hit.Source)} - as of " +
                             $"{hit.AsOf.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} - status {hit.Status} - section {i + 1} of {sections.Count} - {SecretGuard.Mask(hit.Description)}\n" +
                             $"{sections[i]}\n=== end #{hit.Id}\n";
-                if (spent + piece.Length > room) continue;
+                if (spent + piece.Length > room) { dropped.Add(i + 1); continue; }
                 body.Append(piece);
                 spent += piece.Length;
                 any = true;
             }
-            if (any) delivered++; else left.Add(hit);
+            if (any)
+            {
+                delivered++;
+                partly.AddRange(dropped.Select(d => $"#{hit.Id} section {d}"));
+            }
+            else left.Add(hit);
         }
         var named = string.Join(", ", left.Take(MostLeftOutNamed).Select(h => $"#{h.Id}"));
         head.Append($"RESULTS: {found.Hits.Count} records matched; {delivered} delivered, in rank order, up to {MostSectionsPerRecord} whole sections each, within {budgetTokens.ToString("N0", CultureInfo.InvariantCulture)} tokens.\n");
         var tail = left.Count == 0 ? $"{LeftOutHead} none\n"
             : $"{LeftOutHead} {left.Count} records, highest rank first: {named}{(left.Count > MostLeftOutNamed ? $" and {left.Count - MostLeftOutNamed} more" : "")}\n";
+        if (partly.Count > 0)
+            tail += $"SECTIONS LEFT OUT OF RECORDS DELIVERED: {string.Join(", ", partly.Take(MostPartlyNamed))}{(partly.Count > MostPartlyNamed ? $" and {partly.Count - MostPartlyNamed} more" : "")}\n";
         return head.ToString() + body + tail;
     }
 }
