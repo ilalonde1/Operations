@@ -12,7 +12,7 @@ namespace Kor.Operations.Framework.Cli;
 /// wiring will have, on THIS kor (the built Debug one before an install), and with no project settings of the old wiring beside it;
 /// --control runs the repo's own settings as they stand, the known-bad run the grader must fail. --baseline runs the repo's own SessionStart
 /// lines in the proof's mode, which the token arithmetic needs (see below). --wiring prints the lines instead.
-/// A prompt is the only thing it spends: it is not run by a test or a hook.
+/// A prompt is the only thing it spends: no hook runs it, and the one test that does (its cleanup when the session fails) gives it a --claude that spends none.
 /// </summary>
 public static partial class Program
 {
