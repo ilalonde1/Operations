@@ -283,7 +283,7 @@
             "type": "command",
             "command": "C:/KOR-Operations/kor/kor.exe context --module \"Operations\" --hook",
             "timeout": 10,
-            "statusMessage": "How full is this session's context? WARN at 250k, STOP at 300k: only the handover then (G5, board row 1474)"
+            "statusMessage": "How full is this session's context? WARN at 300k and every 100k, STOP at 850k: only the handover then (G5, board row 1474)"
           }
         ]
       }
