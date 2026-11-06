@@ -248,6 +248,10 @@ public class StartPagesTests
     [InlineData("PowerShell", "kor read-host", false)]
     [InlineData("Bash", "not-kor read --subject a", false)]
     [InlineData("Bash", "kor read --subject {a}", false)]
+    [InlineData("Bash", "kor read --subject \"Peace River #1163, a=b\"", true)]
+    [InlineData("Bash", "kor read --subject a=b", true)]
+    [InlineData("PowerShell", "&\"C:/KOR-Operations/kor/kor.exe\" read --subject a", true)]
+    [InlineData("Bash", "kor read --subject \"it's\"", false)]
     [InlineData("Bash", "kor read --subject 'a' \"b c\" --page 2", true)]
     [InlineData("Bash", "kor start --module X --part pages --page 2 --pages 3 --text --session 1a-2b", true)]
     [InlineData("PowerShell", "C:\\KOR-Operations\\kor\\kor.exe read --module \"KOR Inspections Bookings\" --subject \"a b\"", true)]
@@ -277,6 +281,18 @@ public class StartPagesTests
         Assert.Equal(new[] { 1 }, BodyRead.Match(rows, "peace river").Select(r => r.Id));
         Assert.Equal(new[] { 3 }, BodyRead.Match(rows, "this body").Select(r => r.Id));
         Assert.Empty(BodyRead.Match(rows, "zzz"));
+    }
+
+    [Theory]
+    [InlineData("Peace River #1163, a=b")]
+    [InlineData("it's O&M (phase 2); done")]
+    [InlineData("$(git push) `x` | y")]
+    public void TheNextLineAPagePrintsIsAlwaysTheReadTheGateLetsThrough(string subject)
+    {
+        var rows = Enumerable.Range(0, 3).Select(i => new BodyRead.Row(i, "zz", $"n{i}", "finding", "d", new string('b', 20_000))).ToList();
+        var page = BodyRead.Pages(rows, subject, "zz", "C:/KOR-Operations/kor/kor.exe", 1, false, out _);
+        var next = page.Split('\n').Last(l => l.StartsWith("NEXT: ", StringComparison.Ordinal))["NEXT: ".Length..];
+        Assert.True(StartGate.IsReadCommand("Bash", next), next);
     }
 
     [Fact]

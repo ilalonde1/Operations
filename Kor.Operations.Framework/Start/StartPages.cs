@@ -40,7 +40,7 @@ public static partial class StartRender
         blocks.Add(ResumeText(resume, lastEnd, module, 0, whole: true, onPages: false));
         blocks.Add(WriteLine(module));
         blocks.Add($"OFFICE LESSONS (lane '{ModuleState.OfficeLane}', {side.Office.Count(r => r.Name != ModuleState.IndexName)} records) - every KOR lead gets these, " +
-                   $"the same day they are learned. They bind here too. Body: kor read --module \"{module}\" --subject \"<words>\".");
+                   $"the same day they are learned. They bind here too. Body: kor read --module \"{module}\" --subject \"<plain words>\".");
         if (side.Office.FirstOrDefault(r => r.Name == ModuleState.IndexName)?.Body is { } officeIndex) blocks.Add(officeIndex.Trim());
         blocks.AddRange(side.Office.Where(r => r.Name != ModuleState.IndexName).Select(FullEntry));
         var rows = side.Records.Where(r => r.Name != ModuleState.FiveQuestionsName && r.Name != ModuleState.IndexName).ToList();
@@ -97,7 +97,7 @@ public static partial class StartRender
     public static string PagesLine(string module, PagesWiring w, string exe, string? session) =>
         $"THE PAGES: this module's whole memory (STATE NOW, the resume whole, OFFICE LESSONS, the index, every record with its full description) is on " +
         $"{w.Needed} session-start page(s) headed '{PagesHead}N of {w.Needed}'; {w.Wired} hook entries are wired. Count the pages you hold: a part not in your context was not read - " +
-        $"answer what it would hold 'not checked'. The bodies are not on the pages: \"{exe}\" read --module \"{module}\" --subject \"<words for your task>\" prints them whole, X of Y. " +
+        $"answer what it would hold 'not checked'. The bodies are not on the pages: \"{exe}\" read --module \"{module}\" --subject \"<plain words for your task>\" prints them whole, X of Y. " +
         "Your first work tool is refused until every page is held and that read is done. Your first words before any work: " +
         "'pages X of Y held, bodies A of B read for subject S'. When the work moves to a new subject, read its bodies too." +
         (w.Needed > w.Wired ? "\n" + ShortNote(module, w.Wired, w.Needed, exe, session) : "");
@@ -185,7 +185,8 @@ public static class BodyRead
     public sealed record Row(int Id, string Lane, string Name, string Kind, string Description, string? Body);
 
     public static List<string> Terms(string subject) =>
-        subject.Split(new[] { ' ', '\t', ',', ';', ':', '/', '\'', '"', '(', ')' }, StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim('.').ToLowerInvariant())
+        // only what StartGate lets through as a read's argument survives, so the NEXT line a page prints is never refused
+        System.Text.RegularExpressions.Regex.Split(subject, @"[^\w.=#+-]+").Select(t => t.Trim('.').ToLowerInvariant())
                .Where(t => t.Length >= 2).Distinct().ToList();
 
     public static List<Row> Match(IEnumerable<Row> rows, string subject)

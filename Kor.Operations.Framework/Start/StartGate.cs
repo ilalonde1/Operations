@@ -26,16 +26,17 @@ public static class StartGate
     /// <summary>
     /// A kor read or a kor start --part pages, alone. An ALLOW-LIST (reviews 571, 575 and 577 each found a new way past a list of what to refuse: a chain,
     /// parentheses, a newline after kor): the whole command is the call operator at most, a path ending in kor or kor.exe, the verb, and
-    /// arguments of word characters and . : / \ - = only, a quoted one also holding spaces; blanks are spaces and tabs; one line end at most.
-    /// So a subject is plain words. Same-class miss: none known in Bash or PowerShell for these characters; a shell that runs a bare path argument would pass.
+    /// arguments of word characters and . : / \ - = # + only, a quoted one also holding spaces and commas; blanks are spaces and tabs; one
+    /// line end at most. Same-class miss: any path ending in kor or kor.exe passes, so ./kor read runs whatever executable has that name.
     /// </summary>
     private static readonly Regex ReadCommand = new(
-        @"\A[ \t]*(?:&[ \t]+)?" +
+        @"\A[ \t]*(?:&[ \t]*)?" +
         @"(?:""(?:[\w.:/\\ -]*[/\\])?kor(?:\.exe)?""|'(?:[\w.:/\\ -]*[/\\])?kor(?:\.exe)?'|(?:[\w.:/\\-]*[/\\])?kor(?:\.exe)?)" +
         @"[ \t]+(?:read|start(?:" + Arg + @")*[ \t]+--part[ \t]+pages)(?:" + Arg + @")*[ \t]*(?:\r?\n)?\z",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
-    private const string Arg = @"[ \t]+(?:""[\w.:/\\ -]*""|'[\w.:/\\ -]*'|[\w.:/\\=-]+)";
+    // "#" starts a comment in Bash only at a word's start, where the rest of the line is then just not run: nothing more runs than the read
+    private const string Arg = @"[ \t]+(?:""[\w.:/\\ =#+,-]*""|'[\w.:/\\ =#+,-]*'|[\w.:/\\=#+-]+)";
 
     /// <summary>Parallel calls of one turn are refused together and count once: a refusal inside this window of the last is the same refusal.</summary>
     public static readonly TimeSpan SameRefusal = TimeSpan.FromSeconds(20);
@@ -105,7 +106,7 @@ public static class StartGate
                                        StartRender.ReadPageCommand(module, exe, session, missing[0], seen.Total));
         if (!seen.BodiesDone)
             return new Decision(false, $"You hold {seen.Total} of {seen.Total} memory pages. The bodies are not read yet: run \"{exe}\" read --module \"{module}\" --subject \"<plain words for your task>\" " +
-                                       "alone, every page it names, then say 'pages X of Y held, bodies A of B read for subject S' and go on (row 1569).");
+                                       "alone, on one line with nothing chained (a subject holds letters, digits, spaces and . : / - = # + , only; other characters are refused), every page it names, then say 'pages X of Y held, bodies A of B read for subject S' and go on (row 1569).");
         return new Decision(true, $"pages {seen.Total} of {seen.Total} held; bodies read");
     }
 
