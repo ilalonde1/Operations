@@ -7,7 +7,8 @@ since 2 Nov: 1,100 transcripts, 991 main and 109 helper. By script only, no tran
 and was read only.
 
 **What the replay stands on.** A Read's size is the result's own (characters, or an image's base64 x 3/4), because a file on disk
-may have changed since; the live rule reads bytes on disk, so it is a little stricter on a big picture Claude Code had shrunk. Tokens
+may have changed since; the live rule reads bytes on disk. So 979 below is a floor: live, a picture Claude Code had shrunk is judged at its size on
+disk, a read that failed is judged too, and a read with no range or over 300 lines is judged on the whole file, where the replay saw only the part returned. Tokens
 of an image are the next request's context less this one's, shared across the calls of the batch. Tokens of a text file are characters
 / 3. "Re-sent" counts raw tokens over the requests left before the next compaction or the transcript's end, the same weight for
 main and helper. It does not price a cheaper model or the cache.

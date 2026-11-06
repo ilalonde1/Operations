@@ -90,8 +90,16 @@ public sealed class DrafterPythonGuardTests : IDisposable
     [InlineData("PowerShell", "Copy-Item C:/x/new_tool.py -Destination \"{T}\"")]
     [InlineData("PowerShell", "Rename-Item \"{T}/existing.py\" \"{T}/renamed.py\"")]
     [InlineData("PowerShell", "cmd /c \"copy C:\\x\\a.py {T}/new_tool.py\"")]
+    // review row 615: a trailing cmd switch; New-Item's -Name; a trailing comment; git -C
+    [InlineData("PowerShell", "cmd /c \"copy C:\\x\\a.py {T}/new_tool.py /Y\"")]
+    [InlineData("PowerShell", "xcopy C:\\x\\new_tool.py {T}/ /Y")]
+    [InlineData("PowerShell", "robocopy C:\\x {T}/ new_tool.py /NFL /NDL")]
+    [InlineData("PowerShell", "New-Item -Path {T} -Name new_tool.py -ItemType File")]
+    [InlineData("PowerShell", "New-Item -Name new_tool.py -ItemType File -Path {T}")]
+    [InlineData("Bash", "cp /tmp/a.py \"{T}/new_tool.py\" # copy it")]
+    [InlineData("Bash", "git -C \"{R}\" mv tools/existing.py tools/renamed.py")]
     public void AShellCommandCreatingANewPyIsRefused(string tool, string command) =>
-        Assert.NotNull(D(tool, command.Replace("{T}", Tools)));
+        Assert.NotNull(D(tool, command.Replace("{T}", Tools).Replace("{R}", _repo.Replace('\\', '/'))));
 
     [Fact]
     public void ARelativeTargetIsReadAfterCd()
@@ -129,6 +137,15 @@ public sealed class DrafterPythonGuardTests : IDisposable
     [InlineData("PowerShell", "Test-Path \"{T}/new_tool.py\"")]
     [InlineData("PowerShell", "Set-Content -Path C:/x/notes.txt -Value '{T}/new_tool.py'")]
     [InlineData("PowerShell", "Write-Output '> {T}/new_tool.py'")]
+    // review row 615: a mention in a comment, or as the text a cmdlet writes; a bare name beside another folder
+    [InlineData("Bash", "echo ok # > {T}/new_tool.py")]
+    [InlineData("Bash", "cp /tmp/a.py /tmp/b.py # {T}/new_tool.py")]
+    [InlineData("PowerShell", "Set-Content C:/x/notes.txt '{T}/new_tool.py'")]
+    [InlineData("PowerShell", "Add-Content C:/x/notes.txt '{T}/new_tool.py'")]
+    [InlineData("PowerShell", "'x' | Out-File C:/x/notes.txt -Append")]
+    [InlineData("PowerShell", "New-Item -Path C:/x -Name new_tool.py -ItemType File")]
+    [InlineData("PowerShell", "cmd /c \"copy C:\\x\\a.py C:\\y\\b.py /Y\"")]
+    [InlineData("Bash", "git -C /c/elsewhere mv tools/existing.py tools/renamed.py")]
     public void ACommandThatCreatesNoNewToolPasses(string tool, string command) =>
         Assert.Null(D(tool, command.Replace("{T}", Tools)));
 

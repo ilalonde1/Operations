@@ -108,6 +108,7 @@ public static class ReadGuard
         {
             var ends = term.Split('-');
             if (ends.Length > 2 || !ends.All(e => int.TryParse(e, NumberStyles.None, CultureInfo.InvariantCulture, out _))) return null;
+            if (ends.Length == 2 && int.Parse(ends[1], CultureInfo.InvariantCulture) < int.Parse(ends[0], CultureInfo.InvariantCulture)) return null;
             total += ends.Length == 1 ? 1 : int.Parse(ends[1], CultureInfo.InvariantCulture) - int.Parse(ends[0], CultureInfo.InvariantCulture) + 1;
         }
         return total > 0 ? total : null;

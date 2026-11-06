@@ -67,6 +67,7 @@ public sealed class ReadGuardTests : IDisposable
     [InlineData("a.pdf", ReadGuard.MaxFileBytes * 10, null, null, "3", false)]
     [InlineData("a.pdf", ReadGuard.MaxFileBytes * 10, null, null, "3-4", false)]
     [InlineData("a.pdf", ReadGuard.MaxFileBytes * 10, null, null, "3-5", true)]
+    [InlineData("a.pdf", ReadGuard.MaxFileBytes * 10, null, null, "100-1,1-100", true)]         // review row 616: a reversed range is no count
     [InlineData("docs/HANDOVER.md", ReadGuard.MaxFileBytes * 10, null, null, null, false)]      // every handover step
     [InlineData("docs/LEAD-HANDOVER-2026.md", ReadGuard.MaxFileBytes * 10, null, null, null, false)]
     [InlineData("RESUME-HERE.md", ReadGuard.MaxFileBytes * 10, null, null, null, false)]

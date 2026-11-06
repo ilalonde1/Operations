@@ -21,11 +21,12 @@ namespace Kor.Operations.Framework.Enforce;
 /// COVERS: Write, Edit (an empty old_string creates a file) and MultiEdit on a path that does not exist yet, relative paths from
 /// the hook's cwd, Git Bash's /c/ form, '..' resolved. Bash and PowerShell, on the same segments kor enforce reads (so also inside
 /// bash -c, pwsh -Command, cmd /c and a .sh/.ps1/.cmd the command runs): a redirect outside quotes; tee, Tee-Object, touch,
-/// New-Item, Set-Content, Add-Content, Out-File, install, ln; the destination of cp, mv, git mv, copy, move, xcopy, robocopy,
-/// Copy-Item, Move-Item, ren, Rename-Item, including a .py or *.py copied into a folder under tools/; a relative path after a cd.
+/// New-Item (with -Path and -Name too), the first word of Set-Content, Add-Content and Out-File, install, ln; the destination of cp,
+/// mv, git mv (from git -C's folder), copy, move, xcopy, robocopy (past their /Y switches), Copy-Item, Move-Item, ren, Rename-Item,
+/// including a .py or *.py copied into a folder under tools/; a relative path after a cd.
 ///
 /// PASSES: an Edit or a Write of an existing .py; a new .py elsewhere; a .pyc; the scratchpad; anything that only reads or runs
-/// a tool; a mention in quotes, a commit message or a heredoc body.
+/// a tool; a mention in quotes, a comment, a commit message, a heredoc body or the text a cmdlet writes.
 ///
 /// DOES NOT COVER (the same-class fault it misses first): A PYTHON FILE WRITTEN BY A PROGRAM THE SESSION RUNS. python gen.py that
 /// opens tools/x.py, python -c or python - with an open() in its text, a generator, git checkout/restore/apply/stash pop, tar,
@@ -48,7 +49,10 @@ public static class DrafterPythonGuard
     public sealed record Refusal(string Path, string How);
 
     private static readonly string[] FileTools = { "Write", "Edit", "MultiEdit", "NotebookEdit" };
-    private static readonly string[] NamesItsTarget = { "touch", "tee", "tee-object", "new-item", "ni", "set-content", "sc", "add-content", "ac", "out-file", "install", "ln" };
+    private static readonly string[] NamesItsTarget = { "touch", "tee", "tee-object", "new-item", "ni", "install", "ln" };
+    private static readonly string[] WritesToItsFirstWord = { "set-content", "sc", "add-content", "ac", "out-file" };
+    private static readonly string[] CmdVerbs = { "copy", "xcopy", "robocopy", "move" };
+    private static readonly Regex CmdSwitch = new(@"\A/[A-Za-z0-9?]+(?::\S*)?\z", RegexOptions.CultureInvariant);
     private static readonly string[] CopiesToALastWord = { "cp", "copy", "copy-item", "cpi", "mv", "move", "move-item", "mi", "xcopy" };
     private static readonly string[] Renames = { "ren", "rename", "rename-item", "rni" };
     private static readonly string[] ChangesDir = { "cd", "chdir", "pushd", "set-location", "sl" };
@@ -138,12 +142,22 @@ public static class DrafterPythonGuard
         if (prog == "git")
         {
             var i = 0;
-            while (i < rest.Count && rest[i].StartsWith('-')) i += rest[i] is "-C" or "-c" ? 2 : 1;
+            while (i < rest.Count && rest[i].StartsWith('-'))
+            {
+                // git -C moves where the paths after it are read from
+                if (rest[i] == "-C" && i + 1 < rest.Count)
+                    dir = dir is null && !IsRooted(rest[i + 1]) ? null : CommandSegments.ResolvePath(rest[i + 1], dir ?? Path.GetTempPath());
+                i += rest[i] is "-C" or "-c" ? 2 : 1;
+            }
             if (i >= rest.Count || rest[i] != "mv") return null;
             prog = "mv";
             rest = rest.Skip(i + 1).ToList();
         }
-        var args = Args(rest.Prepend("").ToList());
+        var args = Args(rest.Prepend("").ToList(), CmdVerbs.Contains(prog));
+        if (prog is "new-item" or "ni" && FlagValue(rest, "-name") is { } itemName)
+            return NewTool((FlagValue(rest, "-path") ?? "") is { Length: > 0 } parentPath ? parentPath + "/" + itemName : itemName, dir, scratchpad);
+        // the first word names the file; a second is the text it writes
+        if (WritesToItsFirstWord.Contains(prog)) return args.Count > 0 ? NewTool(args[0], dir, scratchpad) : null;
         if (NamesItsTarget.Contains(prog)) return args.Select(a => NewTool(a, dir, scratchpad)).FirstOrDefault(n => n is not null);
         string? dest;
         IEnumerable<string> sources;
@@ -185,14 +199,23 @@ public static class DrafterPythonGuard
         return null;
     }
 
-    /// <summary>The words after the first that are not flags, nor the value of a flag that holds text rather than a path.</summary>
-    private static List<string> Args(List<string> words)
+    private static string? FlagValue(List<string> rest, string flag)
+    {
+        for (var i = 0; i + 1 < rest.Count; i++)
+            if (rest[i].Equals(flag, StringComparison.OrdinalIgnoreCase)) return rest[i + 1];
+        return null;
+    }
+
+    /// <summary>The words after the first that are not flags, nor the value of a flag that holds text rather than a path. For a
+    /// cmd copy, a /Y or /R:3 is a switch; a path like /c/x has a second slash and is not.</summary>
+    private static List<string> Args(List<string> words, bool cmdSwitches = false)
     {
         var args = new List<string>();
         for (var i = 1; i < words.Count; i++)
         {
             var w = words[i];
             if (w.Length == 0) continue;
+            if (cmdSwitches && CmdSwitch.IsMatch(w)) continue;
             if (w.StartsWith('-'))
             {
                 if (ValueFlags.Contains(w.ToLowerInvariant())) i++;
@@ -245,6 +268,8 @@ public static class DrafterPythonGuard
                 cur.Append(ch);
                 continue;
             }
+            // a comment runs to the end of the segment: a # at the start of a word, outside quotes, in bash or PowerShell
+            if (ch == '#' && shell != Shell.Cmd && cur.Length == 0 && !any) break;
             if (ch is '"' or '\'' && !(ch == '\'' && shell == Shell.Cmd)) { q = ch; any = true; continue; }
             if (shell == Shell.Bash && ch == '\\' && next == ' ') { cur.Append(' '); i++; continue; }
             if (shell == Shell.PowerShell && ch == '`' && next != '\0') { cur.Append(next); i++; continue; }
