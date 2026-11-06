@@ -34,6 +34,9 @@ public static class DirectorActions
         }
         if (card.Row.Questions.Count > 0 && await LatestReviewAsync(card, ct).ConfigureAwait(true) is { } review)
         {
+            if (card.HasNewDocuments && MessageBox.Show(owner,
+                    $"{card.NewDocumentsNote}\n\nSome questions may already be answered or out of date. Open the email anyway?",
+                    "Questions email", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
             await PursuitReviewWindow.DraftQuestionsAsync(owner, review, card.Row.Project, card.Row.QuestionsTo).ConfigureAwait(true);
             return;
         }
@@ -52,6 +55,28 @@ public static class DirectorActions
         new PursuitReviewWindow(review, card.Row.Project, card.Row.Buyer, null, card.Row.DeadlineUtc,
             () => OpenChecklist(owner, card, actor), card.Row.OwnerMailbox) { Owner = owner }.Show();
     }
+
+    public static void OpenDocuments(Window owner, DirectorCard card) =>
+        new PursuitDocumentsWindow(card.Row.EngagementId, card.Title, AppServices.Get<IPursuitFileStore>(), AppServices.Get<IPursuitFileOpener>()) { Owner = owner }.Show();
+
+    /// <summary>Opens Claude Code on the pursuit's documents again: the same run as My Pursuits' "Run the RFP review again".</summary>
+    public static async Task ReReadAsync(Window owner, DirectorCard card, string actor, Func<Task> reload, CancellationToken ct)
+    {
+        try
+        {
+            await RfpReviewLauncher.OpenAsync(AppServices.Get<SqlPursuitReviewStore>(), AppServices.Get<IBdDoctrineStore>(),
+                card.Row.EngagementId, actor, onlyIfNone: false, ct).ConfigureAwait(true);
+            await reload().ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Warning(ex, "Re-reading pursuit {Id} failed", card.Row.EngagementId);
+            MessageBox.Show(owner, ex.Message, "Claude's RFP review", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
+    public static void SignInToApc(Window owner, string actor) =>
+        new ApcSignInWindow(AppServices.Get<Kor.Opportunities.Data.Portals.SqlPortalSessionStore>(), actor) { Owner = owner }.Show();
 
     public static async Task ArchiveAsync(Window owner, DirectorCard card, string actor, Func<Task> reload, CancellationToken ct)
     {

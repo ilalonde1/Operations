@@ -35,7 +35,8 @@ public sealed record PursuitReviewRow(long Id, long EngagementId, long? PromptRu
 public sealed record TenderBoardRow(long EngagementId, string Project, string? Buyer, int Stage, string? OwnerMailbox, string? OwnerName,
     DateTimeOffset? DeadlineUtc, string? NextStep, DateTimeOffset? NextStepDueUtc, string? Recommendation, string? Reasons,
     IReadOnlyList<RfpQuestion> Questions, string? QuestionsDeadline, IReadOnlyList<RfpAction> Actions, string? QuestionsTo,
-    bool ReviewRunning, long? OpportunityId, DateTimeOffset? UpdatedAtUtc)
+    bool ReviewRunning, long? OpportunityId, DateTimeOffset? UpdatedAtUtc,
+    int DocumentCount = 0, int DocumentsSinceReview = 0, bool ApcSignInNeeded = false)
 {
     /// <summary>A grabbed forward project with no tender yet: no RFP to read, no deadline.</summary>
     public bool IsForward => OpportunityId is null;
@@ -530,7 +531,15 @@ SELECT Id, FileName, SizeBytes, UploadedBy, UploadedAtUtc FROM opportunities.Opp
 SELECT e.Id, COALESCE(o.Name, fwd.ProjectName), COALESCE(o.BuyerName, fwd.ProponentName, fwd.MunicipalityName), e.Stage, e.OwnerStaffId, who.DisplayName,
        o.SubmissionDeadlineUtc, e.NextActionNote, e.NextActionDueUtc,
        r.Recommendation, r.Reasons, r.QuestionsJson, r.QuestionsDeadline, r.ActionsJson, r.QuestionsTo,
-       CAST(CASE WHEN run.Id IS NOT NULL AND run.OutcomeAtUtc IS NULL THEN 1 ELSE 0 END AS bit), e.OpportunityId, e.UpdatedAtUtc
+       CAST(CASE WHEN run.Id IS NOT NULL AND run.OutcomeAtUtc IS NULL THEN 1 ELSE 0 END AS bit), e.OpportunityId, e.UpdatedAtUtc,
+       (SELECT COUNT(*) FROM opportunities.OpportunityFiles f WHERE f.EngagementId = e.Id),
+       -- Portal documents the latest review cannot have read. None when there is no review.
+       (SELECT COUNT(*) FROM opportunities.OpportunityFiles f WHERE f.EngagementId = e.Id AND f.UploadedBy IN (N'apc', N'bids-and-tenders') AND f.UploadedAtUtc > r.ReportedAtUtc),
+       -- An open APC tender while the saved sign-in is refused: its new documents are not arriving.
+       CAST(CASE WHEN e.Stage = 1 AND o.SubmissionDeadlineUtc > SYSDATETIMEOFFSET()
+                  AND EXISTS (SELECT 1 FROM opportunities.PortalSession s WHERE s.Portal = N'APC' AND s.LastError IS NOT NULL)
+                  AND EXISTS (SELECT 1 FROM opportunities.OpportunityObservations x WHERE x.OpportunityId = e.OpportunityId AND x.Url LIKE N'https://purchasing.alberta.ca/posting/AB-%')
+            THEN 1 ELSE 0 END AS bit)
 FROM opportunities.CrmEngagements e
 LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
 -- A forward pursuit (a grabbed project, no tender yet) shows under its project's name.
@@ -538,7 +547,7 @@ OUTER APPLY (SELECT TOP (1) m.ProjectName, m.ProponentName, m.MunicipalityName
              FROM opportunities.CrmEngagementProjectLink l JOIN opportunities.MajorProjectsInventory m ON m.Id = l.MajorProjectsInventoryId
              WHERE l.EngagementId = e.Id AND l.MatchedBy = N'Grab') fwd
 OUTER APPLY (SELECT TOP (1) s.DisplayName FROM opportunities.BdStaff s WHERE s.Mailbox = e.OwnerStaffId COLLATE DATABASE_DEFAULT) who
-OUTER APPLY (SELECT TOP (1) v.Recommendation, v.Reasons, v.QuestionsJson, v.QuestionsDeadline, v.ActionsJson, v.QuestionsTo
+OUTER APPLY (SELECT TOP (1) v.Recommendation, v.Reasons, v.QuestionsJson, v.QuestionsDeadline, v.ActionsJson, v.QuestionsTo, v.ReportedAtUtc
              FROM opportunities.PursuitReview v WHERE v.EngagementId = e.Id ORDER BY v.ReportedAtUtc DESC, v.Id DESC) r
 OUTER APPLY (SELECT TOP (1) x.Id, x.OutcomeAtUtc FROM opportunities.BdPromptRun x WHERE x.EngagementId = e.Id AND x.Kind = N'rfp' ORDER BY x.Id DESC) run
 WHERE e.Stage IN (1, 3)
@@ -559,7 +568,7 @@ ORDER BY COALESCE(o.SubmissionDeadlineUtc, '9999-12-31'), e.Id;";
             DateTimeOffset? D(int i) => r.IsDBNull(i) ? null : r.GetDateTimeOffset(i);
             rows.Add(new TenderBoardRow(r.GetInt64(0), r.GetString(1), S(2), r.GetInt32(3), S(4), S(5), D(6), S(7), D(8), S(9), S(10),
                 PursuitRfpReview.ReadQuestions(S(11)), S(12), PursuitRfpReview.ReadActions(S(13)), S(14), r.GetBoolean(15),
-                r.IsDBNull(16) ? null : r.GetInt64(16), D(17)));
+                r.IsDBNull(16) ? null : r.GetInt64(16), D(17), r.GetInt32(18), r.GetInt32(19), r.GetBoolean(20)));
         }
         return rows;
     }

@@ -108,11 +108,15 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                    <TextBlock Text="{Binding NewDocumentsNote}" FontSize="13" FontWeight="SemiBold" Foreground="#B91C1C" TextWrapping="Wrap"
+                               Margin="0,12,0,0" Visibility="{Binding HasNewDocuments, Converter={StaticResource Vis}}"/>
+                    <WrapPanel Margin="0,14,0,0">
                         <Button Content="Open review" Style="{StaticResource D.Primary}" Margin="0,0,6,0" Click="Review_Click"
                                 Visibility="{Binding HasReview, Converter={StaticResource Vis}}"/>
+                        <Button Content="{Binding DocumentsLabel}" Style="{StaticResource D.Button}" Margin="0,0,6,0" Click="Documents_Click"
+                                Visibility="{Binding HasDocuments, Converter={StaticResource Vis}}"/>
                         <Button Content="Open in My Pursuits" Style="{StaticResource D.Ghost}" Click="Pursuit_Click"/>
-                    </StackPanel>
+                    </WrapPanel>
 
                     <TextBlock Text="NEXT STEPS" Style="{StaticResource D.Section}" Margin="2,26,0,6"/>
                     <ItemsControl ItemsSource="{Binding Steps}">

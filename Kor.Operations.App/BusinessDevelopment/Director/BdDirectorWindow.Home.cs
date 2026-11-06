@@ -90,6 +90,12 @@ public partial class BdDirectorWindow : IDirectorHomeHost
 
     public Task OpenReviewAsync(DirectorCard card) => DirectorActions.OpenReviewAsync(this, card, _actor, _lifetime.Token);
 
+    public void OpenDocuments(DirectorCard card) => DirectorActions.OpenDocuments(this, card);
+
+    public Task ReReadAsync(DirectorCard card) => DirectorActions.ReReadAsync(this, card, _actor, ReloadAsync, _lifetime.Token);
+
+    public void SignInToApc() => DirectorActions.SignInToApc(this, _actor);
+
     public async Task OpenPursuitAsync(DirectorCard card)
     {
         try

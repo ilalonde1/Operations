@@ -10,6 +10,11 @@ public interface IDirectorHomeHost
 {
     Task CardPrimaryAsync(DirectorCard card);
     Task OpenReviewAsync(DirectorCard card);
+    /// <summary>The pursuit's files: list, open, save all.</summary>
+    void OpenDocuments(DirectorCard card);
+    /// <summary>Claude reads the RFP again, with the documents that arrived after its review.</summary>
+    Task ReReadAsync(DirectorCard card);
+    void SignInToApc();
     Task CompleteAskAsync(DirectorListItem item);
     void BookTime(DirectorTeamCard person);
     void OpenHour();
@@ -44,6 +49,18 @@ public partial class DirectorTodayView : UserControl
     {
         if (sender is FrameworkElement { DataContext: DirectorCard card } && Host is { } host) await host.OpenReviewAsync(card).ConfigureAwait(true);
     }
+
+    private void Documents_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: DirectorCard card }) Host?.OpenDocuments(card);
+    }
+
+    private async void ReRead_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: DirectorCard card } && Host is { } host) await host.ReReadAsync(card).ConfigureAwait(true);
+    }
+
+    private void ApcSignIn_Click(object sender, RoutedEventArgs e) => Host?.SignInToApc();
 
     private async void Done_Click(object sender, RoutedEventArgs e)
     {

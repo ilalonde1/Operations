@@ -1,0 +1,43 @@
+<Window x:Class="Kor.Operations.App.BusinessDevelopment.Director.PursuitDocumentsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Documents" Width="760" Height="560" MinWidth="520" MinHeight="320"
+        WindowStartupLocation="CenterOwner" Background="#F4F5F7">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="DirectorStyles.xaml"/></ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <!-- Everything stored on one pursuit, newest first, so an addendum is the first thing seen. -->
+    <DockPanel Margin="24,20,24,18">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+            <TextBlock x:Name="Heading" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{StaticResource D.Ink}"/>
+            <TextBlock x:Name="Byline" FontSize="12.5" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{StaticResource D.Ink2}"/>
+        </StackPanel>
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,14,0,0" LastChildFill="True">
+            <Button x:Name="SaveAllButton" DockPanel.Dock="Left" Content="Save all to a folder…" Style="{StaticResource D.Primary}" Click="SaveAll_Click"/>
+            <Button DockPanel.Dock="Right" Content="Close" Style="{StaticResource D.Button}" Click="Close_Click"/>
+            <TextBlock x:Name="Status" FontSize="12.5" Margin="12,0" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{StaticResource D.Ink2}"/>
+        </DockPanel>
+        <Border Style="{StaticResource D.Card}" Padding="20,4">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="Files">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{StaticResource D.Line}" BorderThickness="0,0,0,1" Padding="0,10">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="Open" Style="{StaticResource D.Button}" Padding="14,5" Margin="12,0,0,0"
+                                            VerticalAlignment="Center" Click="Open_Click"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{StaticResource D.Ink}"/>
+                                        <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{StaticResource D.Ink2}" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+    </DockPanel>
+</Window>

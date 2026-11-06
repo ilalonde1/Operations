@@ -31,6 +31,11 @@ public partial class DirectorPursuitsView : UserControl
         if (Vm?.Selected is { } card && Host is { } host) await host.OpenReviewAsync(card).ConfigureAwait(true);
     }
 
+    private void Documents_Click(object sender, RoutedEventArgs e)
+    {
+        if (Vm?.Selected is { } card) Host?.OpenDocuments(card);
+    }
+
     private async void Pursuit_Click(object sender, RoutedEventArgs e)
     {
         if (Vm?.Selected is { } card && Host is { } host) await host.OpenPursuitAsync(card).ConfigureAwait(true);

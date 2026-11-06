@@ -93,6 +93,12 @@ public partial class BdWorkspaceWindow : IDirectorHomeHost
 
     public Task OpenReviewAsync(DirectorCard card) => DirectorActions.OpenReviewAsync(this, card, Actor(), CancellationToken.None);
 
+    public void OpenDocuments(DirectorCard card) => DirectorActions.OpenDocuments(this, card);
+
+    public Task ReReadAsync(DirectorCard card) => DirectorActions.ReReadAsync(this, card, Actor(), LoadTodayAsync, CancellationToken.None);
+
+    public void SignInToApc() => DirectorActions.SignInToApc(this, Actor());
+
     public Task CompleteAskAsync(DirectorListItem item) => DirectorActions.CompleteAskAsync(this, item, Actor(), _today, CancellationToken.None);
 
     public Task OpenPursuitAsync(DirectorCard card)

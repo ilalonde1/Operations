@@ -8,6 +8,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Windows.Media;
+using Kor.Operations.App.Crm;
 using Kor.Opportunities.Data.Crm;
 
 namespace Kor.Operations.App.BusinessDevelopment.Director;
@@ -31,6 +32,10 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
     }
     private string _loadProblem = "";
     public bool HasLoadProblem => _loadProblem.Length > 0;
+
+    /// <summary>Said at the top of Today when the APC sign-in is dead, because nothing else shows that documents stopped arriving.</summary>
+    public string ApcSignInProblem { get; private set; } = "";
+    public bool HasApcSignInProblem => ApcSignInProblem.Length > 0;
 
     public ObservableCollection<DirectorCard> Decisions { get; } = new();
     public ObservableCollection<DirectorWeekItem> Week { get; } = new();
@@ -187,6 +192,12 @@ public sealed class BdDirectorHomeViewModel : INotifyPropertyChanged
     public void Load(IReadOnlyList<TenderBoardRow> board, IReadOnlyList<BdAsk> myAsks, IReadOnlyList<BdDirectorPersonRow> people,
         IReadOnlyList<DirectorPerson> roster, string actor, string? actorName, DateTimeOffset now, bool ownOnly = false)
     {
+        // Counted before a lead's view is cut to their own: one sign-in serves every APC tender, so anyone can restore it.
+        var apcWaiting = board.Count(r => r.ApcSignInNeeded);
+        ApcSignInProblem = apcWaiting == 0 ? ""
+            : $"The APC sign-in has expired, so new documents and addenda on {apcWaiting} open tender{(apcWaiting == 1 ? "" : "s")} are not arriving.";
+        Changed(nameof(ApcSignInProblem));
+        Changed(nameof(HasApcSignInProblem));
         if (ownOnly)
         {
             board = board.Where(r => string.Equals(r.OwnerMailbox, actor, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -436,6 +447,15 @@ public sealed class DirectorCard : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    /// <summary>The pursuit's files, one click from the card (Ian, 6 Nov: "consolidated and easy").</summary>
+    public bool HasDocuments { get; }
+    public string DocumentsLabel { get; } = "";
+    /// <summary>Portal documents newer than the review, so nobody sends questions written without them.</summary>
+    public bool HasNewDocuments { get; }
+    public string NewDocumentsNote { get; } = "";
+    /// <summary>The review only runs on a PC with Claude Code signed in as the KOR account, so the button shows only there.</summary>
+    public bool CanReRead { get; }
+
     public DirectorCard(TenderBoardRow row, string actor, DateTimeOffset now)
     {
         Row = row;
@@ -493,12 +513,20 @@ public sealed class DirectorCard : INotifyPropertyChanged
         PrimaryAction = row.IsForward ? "Open pursuit" : row.Recommendation switch
         {
             "no-go" => "Archive it",
-            _ when row.Questions.Count > 0 => $"Draft {row.Questions.Count} question{(row.Questions.Count == 1 ? "" : "s")}",
+            _ when row.Questions.Count > 0 => $"Email {row.Questions.Count} question{(row.Questions.Count == 1 ? "" : "s")}",
             _ => "Open review",
         };
         SecondaryAction = PrimaryAction is "Open review" or "Open pursuit" ? "" : "Open review";
         HasSecondary = SecondaryAction.Length > 0;
-        Steps = row.Actions.Take(3).Select((a, i) => new DirectorStep(i + 1, a.Action,
+        HasDocuments = row.DocumentCount > 0;
+        DocumentsLabel = $"Documents ({row.DocumentCount})";
+        var newDocs = row.DocumentsSinceReview;
+        HasNewDocuments = newDocs > 0;
+        NewDocumentsNote = newDocs == 0 ? ""
+            : (newDocs == 1 ? "1 document arrived" : $"{newDocs} documents arrived") + " after Claude's review, so the review and its questions do not cover "
+                + (newDocs == 1 ? "it." : "them.") + (row.ReviewRunning ? " Claude is reading them now." : "");
+        CanReRead = newDocs > 0 && !row.ReviewRunning && RfpReviewLauncher.CanRunHere;
+        Steps =row.Actions.Take(3).Select((a, i) => new DirectorStep(i + 1, a.Action,
             a.Owner.Equals("owner", StringComparison.OrdinalIgnoreCase) ? "Owner" : a.Owner.Equals("Ian", StringComparison.OrdinalIgnoreCase) ? "Ian" : a.Owner.Split('@')[0],
             a.Due.ToString("ddd d MMM", CultureInfo.InvariantCulture))).ToList();
         More = row.Actions.Count > 3 ? $"+ {row.Actions.Count - 3} more steps" : "";
