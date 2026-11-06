@@ -78,7 +78,7 @@ public static partial class Program
             var start = new ModuleState.Start(session, source, transcript);
             var (side, resume, end) = db is not null ? ModuleState.ReadPages(db, module, start, dir)
                 : BrainDb.Read(KorStandardsConnection.Login.Brain, d => ModuleState.ReadPages(d, module, start, dir));
-            return StartRender.BuildPages(side, resume, end);
+            return StartRender.BuildPages(side, resume, end, exe);
         }, () => DateTime.Now);
         if (part == "pages")
         {
@@ -132,7 +132,7 @@ public static partial class Program
                     return Show(shown);
                 },
                 StartCache.PathFor(cacheDir, module, "record", hook), budget, deadline,
-                $"read the record by hand: kor memory --module \"{module}\" and kor events --module \"{module}\"", () => DateTime.Now, Log);
+                $"read the record by hand: \"{exe}\" memory --module \"{module}\" and kor events --module \"{module}\"", () => DateTime.Now, Log);
             texts.Add(SecretGuard.Mask(r.Text)!);   // mistake 138: a page from the cache, written before the guard, is masked too
             watch = r.WatchPaths;
         }
@@ -145,13 +145,13 @@ public static partial class Program
             var records = part == "records";
             int? pageBudget = budget ?? (records && paged ? StartRender.HookBudget : null);
             string Render(StartSide side) => state ? StartRender.State(side, budget)
-                : records ? StartRender.RecordsPage(side, page, pages, pageBudget) : StartRender.Memory(side, page, pages, budget);
+                : records ? StartRender.RecordsPage(side, page, pages, pageBudget, exe) : StartRender.Memory(side, page, pages, budget, exe);
             var r = StartPart.Run(() => (db is not null ? Render(ModuleState.ReadSide(db, module, dir, state))
                                          : Render(BrainDb.Read(KorStandardsConnection.Login.Brain, d => ModuleState.ReadSide(d, module, dir, state))),
                                          (IReadOnlyList<string>)Array.Empty<string>()),
                 StartCache.PathFor(cacheDir, module, state ? "state" : records ? $"records{page}of{pages}{(paged ? "" : "all")}" : $"memory{page}of{pages}", hook), budget, deadline,
                 state ? $"read the handover's STATE NOW by hand (kor start --module \"{module}\" --part state --text)"
-                      : records ? $"read the lane's records by hand: kor start --module \"{module}\" --part records --text (or kor memory --module \"{module}\")"
+                      : records ? $"read the lane's records by hand: kor start --module \"{module}\" --part records --text (or \"{exe}\" memory --module \"{module}\")"
                       : $"read the lane's memory by hand: kor start --module \"{module}\" --part memory --text", () => DateTime.Now, Log);
             texts.Add(SecretGuard.Mask(r.Text)!);
         }

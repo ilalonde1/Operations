@@ -100,7 +100,7 @@ public class StartSplitTests
         records.Add(Sourced(10, "resolution"));
         records.Add(Sourced(11, "decision") with { Status = "superseded" });
         var side = Side(null, records);
-        var pages = Enumerable.Range(1, 4).Select(p => StartRender.RecordsPage(side, p, 4, StartRender.HookBudget)).ToList();
+        var pages = Enumerable.Range(1, 4).Select(p => StartRender.RecordsPage(side, p, 4, StartRender.HookBudget, "kor")).ToList();
         Assert.All(pages.Where(p => p.Length > 0), p => Assert.True(p.Length <= StartRender.HookBudget, $"{p.Length}"));
         Assert.StartsWith("KNOWN AT START - RECORDS, page 1 of ", pages[0]);
         var ids = pages.SelectMany(EntryIds).ToList();
@@ -109,8 +109,8 @@ public class StartSplitTests
         Assert.DoesNotContain("past page", string.Concat(pages));
         if (n == 20) Assert.Contains(new string('d', 300), pages[0]);                                       // room: descriptions whole
         else Assert.Contains("Descriptions are cut to", pages[0]);
-        Assert.Equal("", StartRender.RecordsPage(side, 10, 10, StartRender.HookBudget));                       // past the content: nothing
-        var all = StartRender.RecordsPage(side, 1, 1, null);                                                  // --text: every record whole
+        Assert.Equal("", StartRender.RecordsPage(side, 10, 10, StartRender.HookBudget, "kor"));                       // past the content: nothing
+        var all = StartRender.RecordsPage(side, 1, 1, null, "kor");                                                  // --text: every record whole
         Assert.Equal(want, EntryIds(all));
         Assert.Contains(new string('d', 300), all);
     }
@@ -119,7 +119,7 @@ public class StartSplitTests
     public void WhenEvenIdsAndNamesDoNotFitTheLastPageSaysHowManyAreLeftAndHowToReadThem()
     {
         var side = Side(null, ManySourced(3000));
-        var pages = Enumerable.Range(1, 4).Select(p => StartRender.RecordsPage(side, p, 4, StartRender.HookBudget)).ToList();
+        var pages = Enumerable.Range(1, 4).Select(p => StartRender.RecordsPage(side, p, 4, StartRender.HookBudget, "kor")).ToList();
         Assert.All(pages, p => Assert.True(p.Length <= StartRender.HookBudget, $"{p.Length}"));
         var shown = pages.SelectMany(EntryIds).ToList();
         Assert.Equal(shown.Count, shown.Distinct().Count());
@@ -144,7 +144,7 @@ public class StartSplitTests
             foreach (var wired in new[] { 1, 2, 3, 4 })
                 for (var p = 1; p <= wired; p++)
                 {
-                    var page = StartRender.RecordsPage(side, p, wired, StartRender.HookBudget);
+                    var page = StartRender.RecordsPage(side, p, wired, StartRender.HookBudget, "kor");
                     Assert.DoesNotContain("... [0 record(s)", page);
                     if (page.Length == 0 || p == 1) continue;
                     var body = page.Split('\n').Skip(1).Where(l => l.Length > 0).ToList();
@@ -154,7 +154,7 @@ public class StartSplitTests
         }
         // and when they fit they are still printed (review row 344: a change that always dropped them would pass the above)
         var one = Side(null, new List<StartRecord> { Sourced(300_000, "decision", 280) });
-        var first = StartRender.RecordsPage(one, 1, 4, StartRender.HookBudget);
+        var first = StartRender.RecordsPage(one, 1, 4, StartRender.HookBudget, "kor");
         Assert.Contains("LESSONS: none current.", first);
         Assert.Contains("DEAD ENDS: none current.", first);
     }
@@ -208,10 +208,10 @@ public class StartSplitTests
     public void MemoryPagesCarryEveryLineOnceInOrderEachWithinTheBudget()
     {
         var side = Side(null, new[] { Legacy(7, ModuleState.IndexName, Index(120)), Legacy(8, "feedback_one") });   // ~23,500 with office
-        var whole = StartRender.Memory(side, 1, 1, null);
+        var whole = StartRender.Memory(side, 1, 1, null, "kor");
         var wholeBody = Body(whole).Split('\n');
         Assert.True(Body(whole).Length > 2 * StartRender.HookBudget, $"{Body(whole).Length}");
-        var pages = Enumerable.Range(1, 4).Select(p => StartRender.Memory(side, p, 4, StartRender.HookBudget)).ToList();
+        var pages = Enumerable.Range(1, 4).Select(p => StartRender.Memory(side, p, 4, StartRender.HookBudget, "kor")).ToList();
         Assert.All(pages, p => Assert.True(p.Length <= StartRender.HookBudget, $"{p.Length}"));
         Assert.Equal("", pages[3]);                                                   // past the content: nothing
         Assert.StartsWith("KNOWN AT START - MEMORY, page 1 of 3 - module 'zz'", pages[0]);
@@ -227,7 +227,7 @@ public class StartSplitTests
     public void MemoryPastTheLastWiredPageIsCutThereWithANote()
     {
         var side = Side(null, new[] { Legacy(7, ModuleState.IndexName, Index(400)) });   // ~55,000
-        var last = StartRender.Memory(side, 2, 2, StartRender.HookBudget);
+        var last = StartRender.Memory(side, 2, 2, StartRender.HookBudget, "kor");
         Assert.True(last.Length <= StartRender.HookBudget, $"{last.Length}");
         Assert.StartsWith("KNOWN AT START - MEMORY, page 2 of 2", last);
         Assert.Matches(@"\.\.\. \[memory continues past page 2 of the session start \(\d+ more page\(s\)\) - kor start --module ""zz"" --part memory --text for all\]$", last);
@@ -239,9 +239,9 @@ public class StartSplitTests
     public void ALaneWithNoLegacySaysSoOnPageOneAndPrintsNothingAfter()
     {
         var side = Side(null, Array.Empty<StartRecord>(), Array.Empty<StartRecord>());
-        Assert.Contains("LEGACY MEMORY: none - this lane has no imported file memory.", StartRender.Memory(side, 1, 4, StartRender.HookBudget));
-        Assert.Equal("", StartRender.Memory(side, 2, 4, StartRender.HookBudget));
-        Assert.Throws<ArgumentException>(() => StartRender.Memory(side, 5, 4, StartRender.HookBudget));
+        Assert.Contains("LEGACY MEMORY: none - this lane has no imported file memory.", StartRender.Memory(side, 1, 4, StartRender.HookBudget, "kor"));
+        Assert.Equal("", StartRender.Memory(side, 2, 4, StartRender.HookBudget, "kor"));
+        Assert.Throws<ArgumentException>(() => StartRender.Memory(side, 5, 4, StartRender.HookBudget, "kor"));
     }
 
     [Fact]
@@ -249,7 +249,7 @@ public class StartSplitTests
     {
         // synthetic value (SecretGuardTests' own sample), never a real one
         var side = Side(null, new[] { Legacy(7, ModuleState.IndexName, "# Memory Index\n- the db: Server=srv;Database=db;User Id=u;Password=Zx9vQ2mT;") });
-        var page = StartRender.Memory(side, 1, 4, StartRender.HookBudget);
+        var page = StartRender.Memory(side, 1, 4, StartRender.HookBudget, "kor");
         Assert.DoesNotContain("Zx9vQ2mT", page);
         Assert.Contains("[REDACTED len=8]", page);
     }

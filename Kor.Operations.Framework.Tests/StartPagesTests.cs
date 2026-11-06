@@ -45,7 +45,7 @@ public class StartPagesTests
     {
         var index = string.Join("\n", Enumerable.Range(0, 400).Select(i => $"- [line {i}](file_{i}.md) - index text {i}"));
         var side = Side(300, 500, index);
-        var s = StartRender.BuildPages(side, Resume(16_000), null);
+        var s = StartRender.BuildPages(side, Resume(16_000), null, "kor");
         var all = string.Join("\n", s.Pages);
         var rows = StartRender.PageRows(side).ToList();
         var present = rows.Count(r => all.Contains($"- record #{r.Id} [{r.Kind}] {r.Name} - {r.Description}", StringComparison.Ordinal));
@@ -63,14 +63,14 @@ public class StartPagesTests
     public void AResumeLongerThanAPageSpansPagesAndComesBackByteForByte()
     {
         var resume = "first\n" + string.Join("\n", Enumerable.Range(0, 900).Select(i => $"resume line {i}")) + "\nlast";
-        var s = StartRender.BuildPages(Side(1, 0), new ResumeChoice(new ResumeRow(9, resume, "lead", DateTimeOffset.Now, "s1", false, true), "t", Array.Empty<ResumeRow>()), null);
+        var s = StartRender.BuildPages(Side(1, 0), new ResumeChoice(new ResumeRow(9, resume, "lead", DateTimeOffset.Now, "s1", false, true), "t", Array.Empty<ResumeRow>()), null, "kor");
         Assert.Contains(resume, string.Join("\n", s.Pages));
     }
 
     [Fact]
     public void EachPageFitsTheHookAndAPagePastTheContentIsEmpty()
     {
-        var s = StartRender.BuildPages(Side(300, 300), Resume(100), null);
+        var s = StartRender.BuildPages(Side(300, 300), Resume(100), null, "kor");
         Assert.True(s.Pages.Count > 4);
         var wired = s.Pages.Count + 3;
         for (var p = 1; p <= s.Pages.Count; p++)
@@ -85,7 +85,7 @@ public class StartPagesTests
     [Fact]
     public void TooFewWiredPagesAreSaidPlainlyOnTheLastOneAndOnTheRecordPart()
     {
-        var s = StartRender.BuildPages(Side(300, 300), Resume(100), null);
+        var s = StartRender.BuildPages(Side(300, 300), Resume(100), null, "kor");
         var last = StartRender.Page(s, 4, 4, "kor", "S");
         Assert.Contains($"!! MEMORY LEFT OUT: {s.Pages.Count} pages, 4 wired - pages 5 to {s.Pages.Count} are NOT in your context", last);
         Assert.Contains("--part pages --page 5", last);
@@ -106,6 +106,50 @@ public class StartPagesTests
         Assert.DoesNotContain("resume cut", r);
         Assert.Contains("whole on THE PAGES", r);
         Assert.Contains("'pages X of Y held, bodies A of B read for subject S'", r);
+    }
+
+    private const string Installed = "C:/KOR-Operations/kor/kor.exe";
+
+    /// <summary>A kor read or kor memory with no path before it: kor is not on PATH in Git Bash or PowerShell (measured 5 Nov), so such a line never ran.</summary>
+    private static readonly System.Text.RegularExpressions.Regex BareRead = new(@"(?<![\w./\\""'-])kor (?:read|memory)\b");
+
+    /// <summary>
+    /// Row 1861. Compares: what THE PAGES, the record part at every budget's cut, the RECORDS pages (with an entry too long for a page) and the MEMORY pages
+    /// each tell a session to run for a body, against the kor path they were given; and that the pages' own read line passes the gate as built.
+    /// Does NOT cover: Program.Start's by-hand lines (only printed when a read fails); kor start, record, recheck, events or check, still bare;
+    /// text a record itself holds; whether the quoted form parses in PowerShell (it does not). Same-class miss: a bare kor written some other way, as kor.exe read.
+    /// </summary>
+    [Fact]
+    public void EveryBodyReadAPartPrintsNamesTheKorItRunsAs()
+    {
+        var side = Side(300, 300);
+        var five = Row(1, ModuleState.FiveQuestionsName, "five", body: string.Join(" ", Enumerable.Range(0, 1200).Select(i => $"q{i}")));
+        var fresh = new FreshnessReport(new List<Checked>(), new Dictionary<string, string?> { ["Framework"] = new string('c', 40) }, true);
+        var state = new ModuleState("zz", DateTimeOffset.Now, fresh, side.Records.Skip(1).Prepend(five).ToList(), Array.Empty<StartRecord>(), side.Office, Resume(100), null,
+                                    Array.Empty<StoredEvent>(), Array.Empty<string>());
+        var tooLong = new StartSide("zz", DateTimeOffset.Now, new List<StartRecord> { Row(7, "too-long", new string('x', 12_000)) }, null);
+        var parts = new List<(string Where, string Text)>();
+        parts.AddRange(StartRender.BuildPages(side, Resume(100), null, Installed).Pages.Select((t, i) => ($"pages {i + 1}", t)));
+        foreach (var budget in new int?[] { null, StartRender.HookBudget, 6000, 3000, 1500 })
+            foreach (var split in new[] { true, false })
+                parts.Add(($"record {budget} split {split}", StartRender.Record(state, budget, split, null, Installed, "S")));
+        parts.Add(("record wired", StartRender.Record(state, StartRender.HookBudget, split: true, new PagesWiring(40, 20), Installed, "S")));
+        parts.AddRange(Enumerable.Range(1, 4).Select(p => ($"records {p}", StartRender.RecordsPage(side, p, 4, StartRender.HookBudget, Installed))));
+        parts.Add(("records whole", StartRender.RecordsPage(side, 1, 1, null, Installed)));
+        parts.Add(("records entry cut", StartRender.RecordsPage(tooLong, 1, 4, StartRender.HookBudget, Installed)));
+        parts.AddRange(Enumerable.Range(1, 4).Select(p => ($"memory {p}", StartRender.Memory(side, p, 4, StartRender.HookBudget, Installed))));
+        parts.Add(("memory whole", StartRender.Memory(side, 1, 1, null, Installed)));
+
+        Assert.Contains("[entry cut", parts.Single(p => p.Where == "records entry cut").Text);   // the cut lines this looks at did print
+        Assert.Contains(parts, p => p.Text.Contains("[Office cut at"));
+        Assert.Contains(parts, p => p.Text.Contains("q1199") is false && p.Text.Contains("[cut - "));
+        var bare = parts.SelectMany(p => BareRead.Matches(p.Text).Select(m => $"{p.Where}: ...{p.Text[Math.Max(0, m.Index - 40)..Math.Min(p.Text.Length, m.Index + 40)]}...")).ToList();
+        Assert.True(bare.Count == 0, $"{bare.Count} bare in {parts.Count} parts:\n" + string.Join("\n", bare));
+
+        var pages = string.Join("\n", parts.Where(p => p.Where.StartsWith("pages ", StringComparison.Ordinal)).Select(p => p.Text));
+        var line = $"\"{Installed}\" read --module \"zz\" --subject \"<plain words>\"";
+        Assert.Contains(line, pages);
+        Assert.True(StartGate.IsReadCommand("Bash", line.Replace("<plain words>", "peace river"), Installed));   // the line a page prints is the read the gate takes
     }
 
     private static string Attachment(string text) => "{\"type\":\"attachment\",\"attachment\":{\"content\":[\"" + text + "\"]}}";
@@ -371,7 +415,7 @@ public class StartPagesTests
     {
         const string exe = "C:/VIsual Studio Projects/Operations/Kor.Operations.Framework.Cli/bin/Debug/net8.0-windows/kor.exe";
         var side = Side(300, 300) with { Module = "KOR Inspections Bookings" };
-        var s = StartRender.BuildPages(side, Resume(100), null);
+        var s = StartRender.BuildPages(side, Resume(100), null, "kor");
         Assert.Contains(s.Pages.Take(4), p => p.Length > StartRender.PageRoom - 300);   // a full page, or the test proves nothing
         for (var p = 1; p <= 4; p++)
             Assert.True(StartRender.Page(s, p, p, exe, Guid.NewGuid().ToString()).Length <= StartRender.HookBudget, $"page {p}");
@@ -587,7 +631,7 @@ public class StartPagesLiveTests
     {
         var dir = Path.Combine(@"C:\VIsual Studio Projects", folder);
         var (side, resume, end) = BrainDb.Read(KorStandardsConnection.Login.Brain, d => ModuleState.ReadPages(d, module, new ModuleState.Start(null, "startup"), dir));
-        var s = StartRender.BuildPages(side, resume, end);
+        var s = StartRender.BuildPages(side, resume, end, "kor");
         var all = string.Join("\n", s.Pages);
         var rows = StartRender.PageRows(side).ToList();
         var missing = rows.Where(r => !all.Contains($"- record #{r.Id} [{r.Kind}] ", StringComparison.Ordinal)

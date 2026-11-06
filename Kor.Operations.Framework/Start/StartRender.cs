@@ -59,8 +59,8 @@ public static partial class StartRender
         var legacy = split ? new List<StartRecord>() : s.Records.Where(r => r.FromFileMemory).ToList();
         var sections = new List<Section>
         {
-            new("header", 0, _ => Header(s)),
-            new("five", 2, l => FiveQuestions(five, staleIds, l)),
+            new("header", 0, _ => Header(s, exe ?? "kor")),
+            new("five", 2, l => FiveQuestions(five, staleIds, l, exe ?? "kor")),
             pages is not null ? new("state", 0, _ => PagesLine(m, pages, exe ?? "kor", session))
             : split ? new("state", 0, _ => PartsLine(m))
                   : new("state", 2, l => StateNow(s.Handover, m, l, whole: budget is null)),
@@ -74,7 +74,7 @@ public static partial class StartRender
                   : new("records", 4, l => Records(m, sourced, l)),
             new("events", 3, l => Events(m, s.Events, l)),
         };
-        if (!split) sections.Add(new("office", 2, l => Office(s.Office, l)));
+        if (!split) sections.Add(new("office", 2, l => Office(s.Office, l, exe ?? "kor")));
         var levels = new int[sections.Count];
         // cut from the bottom up, except STATE NOW: it is cut last, after every other section is at its floor (only the
         // issue and stale ids and the resume's first 1,500 chars outlive it)
@@ -150,7 +150,7 @@ public static partial class StartRender
     // ---- sections ---------------------------------------------------------------------------------------------------
     private static string Stamp(DateTimeOffset t) => t.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
 
-    private static string Header(ModuleState s)
+    private static string Header(ModuleState s, string exe)
     {
         var f = s.Fresh;
         var heads = f.RepoHeads.Count == 0 ? "no source-cited record read a repo"
@@ -160,7 +160,7 @@ public static partial class StartRender
         {
             NotReadLine,
             $"KNOWN AT START - module '{s.Module}' (KorStandards brain, read {Stamp(s.ReadAt)}). Ids: record #N = brain.Memory, " +
-            "resume LaneState #N = brain.LaneState, event #N = brain.Event. A record's body: kor memory --module \"" + s.Module +
+            "resume LaneState #N = brain.LaneState, event #N = brain.Event. A record's body: \"" + exe + "\" memory --module \"" + s.Module +
             "\"; this page uncut: kor start --module \"" + s.Module + "\" --text.",
             $"HEAD: {heads} | freshness: {f.Count(Verdict.Current)} current, {f.Count(Verdict.Stale)} stale, " +
             $"{f.Count(Verdict.Unverifiable)} unverifiable{(f.Partial ? $" (PARTIAL - cap hit after {Freshness.Secs(f.Elapsed)} s)" : "")}" +
@@ -211,7 +211,7 @@ public static partial class StartRender
     /// The records are those the record part would list - current, not imported file memory, not the five questions, not
     /// a resolution - by their STORED status (the record part's own freshness check this start is not run here).
     /// </summary>
-    public static string RecordsPage(StartSide side, int page, int pages, int? budget)
+    public static string RecordsPage(StartSide side, int page, int pages, int? budget, string exe)
     {
         if (page < 1 || pages < page) throw new ArgumentException($"--page {page} is not within 1..{pages}");
         var sourced = side.Records.Where(r => !r.FromFileMemory && r.Name != ModuleState.FiveQuestionsName && r.Kind != "resolution"
@@ -236,7 +236,7 @@ public static partial class StartRender
         };
         if (budget is null)
         {
-            var all = new List<string> { SideHead(side.Module, "RECORDS", side.ReadAt), RecordsWhere(side.Module, int.MaxValue) };
+            var all = new List<string> { SideHead(side.Module, "RECORDS", side.ReadAt), RecordsWhere(side.Module, int.MaxValue, exe) };
             string? at = null;
             foreach (var (title, r) in ordered)
             {
@@ -263,14 +263,14 @@ public static partial class StartRender
                 cur = new List<string>();
                 curLen = 0;
                 curCount = 0;
-                if (pageLines.Count == 0) Add(RecordsWhere(side.Module, width));
+                if (pageLines.Count == 0) Add(RecordsWhere(side.Module, width, exe));
                 if (continuing is not null) Add(GroupHead(continuing, counts[continuing], true));
             }
             NewPage(null);
             foreach (var (title, r) in ordered)
             {
                 var raw = Entry(r, width);
-                var line = raw.Length <= cap - 200 ? raw : raw[..(cap - 260)].TrimEnd() + " ... [entry cut - kor memory --module]";
+                var line = raw.Length <= cap - 200 ? raw : raw[..(cap - 260)].TrimEnd() + $" ... [entry cut - \"{exe}\" memory --module \"{side.Module}\"]";
                 var head = title != group ? GroupHead(title, counts[title], false) : null;
                 var need = line.Length + 1 + (head is null ? 0 : head.Length + 1);
                 if (curCount > 0 && curLen + need > cap) NewPage(head is null ? title : null);
@@ -319,8 +319,8 @@ public static partial class StartRender
         return SecretGuard.Mask(SideHead(side.Module, $"RECORDS, page {page} of {shown}", side.ReadAt) + "\n" + string.Join("\n", lines))!;
     }
 
-    private static string RecordsWhere(string module, int width) =>
-        $"The module's current sourced records (brain.Memory), newest first in each kind. A record's body: kor memory --module \"{module}\". " +
+    private static string RecordsWhere(string module, int width, string exe) =>
+        $"The module's current sourced records (brain.Memory), newest first in each kind. A record's body: \"{exe}\" memory --module \"{module}\". " +
         "Listed by their stored status: this start's freshness check is on the record part, and a record its STALE section names is stale here too." +
         (width == int.MaxValue ? "" : width > 0 ? $" Descriptions are cut to {width} chars here so that every record fits the session-start pages."
             : width == 0 ? " Descriptions are left out here so that every record fits the session-start pages."
@@ -373,7 +373,7 @@ public static partial class StartRender
     /// print); content past the last wired page is cut there with a note. Measured 3 Nov: the longest is NetworkOps',
     /// 1,866 office + 21,617 legacy chars - 3 pages of the 4 wired.
     /// </summary>
-    public static string Memory(StartSide side, int page, int pages, int? budget)
+    public static string Memory(StartSide side, int page, int pages, int? budget, string exe)
     {
         if (page < 1 || pages < page) throw new ArgumentException($"--page {page} is not within 1..{pages}");
         static StartRecord M(StartRecord r) => r with
@@ -383,7 +383,7 @@ public static partial class StartRender
         var legacy = side.Records.Where(r => r.FromFileMemory).Select(M).ToList();
         var office = side.Office.Select(M).ToList();
         var blocks = new List<string> { WriteLine(side.Module) };
-        if (office.Count > 0) blocks.Add(Office(office, 0, capOverride: int.MaxValue));
+        if (office.Count > 0) blocks.Add(Office(office, 0, exe, capOverride: int.MaxValue));
         blocks.Add(legacy.Count > 0 ? Legacy(side.Module, legacy, null) : "LEGACY MEMORY: none - this lane has no imported file memory.");
         var body = string.Join("\n", blocks);
         if (budget is null) return SecretGuard.Mask(SideHead(side.Module, "MEMORY", side.ReadAt) + "\n" + body)!;
@@ -444,7 +444,7 @@ public static partial class StartRender
         return string.Join("\n", lines);
     }
 
-    private static string FiveQuestions(StartRecord? five, HashSet<int> staleIds, int level)
+    private static string FiveQuestions(StartRecord? five, HashSet<int> staleIds, int level, string exe)
     {
         if (five is null)
             return "FIVE QUESTIONS: no _five-questions record in this module - read its handover (docs/HANDOVER.md) for them.";
@@ -456,7 +456,7 @@ public static partial class StartRender
         return level switch
         {
             0 => head + "\n" + body,
-            1 => head + "\n" + Clip(body, 1500, $"[cut - kor memory --module \"{five.Lane}\"]"),
+            1 => head + "\n" + Clip(body, 1500, $"[cut - \"{exe}\" memory --module \"{five.Lane}\"]"),
             _ => head + " [body cut at the session-start limit - kor start --text]",
         };
     }
@@ -587,19 +587,19 @@ public static partial class StartRender
         return string.Join("\n", lines);
     }
 
-    private static string Office(IReadOnlyList<StartRecord> office, int level, int? capOverride = null)
+    private static string Office(IReadOnlyList<StartRecord> office, int level, string exe, int? capOverride = null)
     {
         if (office.Count == 0) return "";
         var cap = capOverride ?? (level == 0 ? OfficeMax : 1200);
         var head = $"OFFICE LESSONS (lane '{ModuleState.OfficeLane}') - every KOR lead gets these, the same day they are learned. They bind here too. " +
-                   $"Body: kor memory --module {ModuleState.OfficeLane}.";
+                   $"Body: \"{exe}\" memory --module {ModuleState.OfficeLane}.";
         if (level >= 2) return head + " [cut at the session-start limit - kor start --text]";
         var index = office.FirstOrDefault(r => r.Name == ModuleState.IndexName)?.Body;
         var text = index is not null ? head + "\n" + index.Trim()
             : string.Join("\n", new[] { head }.Concat(office.Where(r => r.Name != ModuleState.IndexName)
                                                            .Select(r => $"- record #{r.Id} [{r.Kind}] {r.Name} - {r.Description}")));
         if (text.Length <= cap) return text;
-        var note = $"\n... [Office cut at {cap} chars of {text.Length} - kor memory --module {ModuleState.OfficeLane}]";
+        var note = $"\n... [Office cut at {cap} chars of {text.Length} - \"{exe}\" memory --module {ModuleState.OfficeLane}]";
         return text[..(cap - note.Length)].TrimEnd() + note;
     }
 

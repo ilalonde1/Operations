@@ -37,7 +37,7 @@ public static class ColdProof
     public static string OldPagesText(StartSide side) =>
         string.Join("\n", Enumerable.Range(1, OldPages).SelectMany(p => new[]
         {
-            StartRender.Memory(side, p, OldPages, StartRender.HookBudget), StartRender.RecordsPage(side, p, OldPages, StartRender.HookBudget),
+            StartRender.Memory(side, p, OldPages, StartRender.HookBudget, "kor"), StartRender.RecordsPage(side, p, OldPages, StartRender.HookBudget, "kor"),
         }));
 
     /// <summary>Five questions, spread over the content the old pages leave out; the page count is graded beside them, so six in all.</summary>

@@ -52,7 +52,7 @@ public class FileMemoryTests
                         Row(3, "project_two", "file", Dir + "project_two.md"),
                         Row(4, "reference_not_indexed", "file", Dir + "reference_not_indexed.md"),
                         Row(5, "a_session_note", "session", "session x"));
-        var pages = string.Join("\n", Enumerable.Range(1, 4).Select(p => StartRender.Memory(side, p, 4, StartRender.HookBudget)));
+        var pages = string.Join("\n", Enumerable.Range(1, 4).Select(p => StartRender.Memory(side, p, 4, StartRender.HookBudget, "kor")));
         Assert.Contains("LEGACY MEMORY (3 rows imported from the file memories", pages);
         Assert.Contains(index.Trim(), pages);
         Assert.Contains("Imported, not named in the index (1): reference_not_indexed", pages);
@@ -66,7 +66,7 @@ public class FileMemoryTests
     {
         var side = Side(Row(1, ModuleState.IndexName, "file", Dir + "MEMORY.md", body: "- [one](feedback_one.md)"),
                         Row(2, "feedback_one", "file", Dir + "feedback_one.md", status: "stale"));
-        var page = StartRender.Memory(side, 1, 4, StartRender.HookBudget);
+        var page = StartRender.Memory(side, 1, 4, StartRender.HookBudget, "kor");
         Assert.Contains("STALE - the memory file changed since it was imported (read the file, or re-import the lane) (1): feedback_one", page);
     }
 
@@ -76,7 +76,7 @@ public class FileMemoryTests
         // review row 268: the STALE list came before the ':' and the row list named the stale one a second time
         var side = Side(Row(2, "feedback_one", "file", Dir + "feedback_one.md", status: "stale"),
                         Row(3, "project_two", "file", Dir + "project_two.md"));
-        var page = StartRender.Memory(side, 1, 4, StartRender.HookBudget);
+        var page = StartRender.Memory(side, 1, 4, StartRender.HookBudget, "kor");
         Assert.Contains("one imported before 168 has no source):\n- record #2 [feedback] feedback_one - desc of 2 [STALE - the memory file changed since it was imported]\n" +
                         "- record #3 [feedback] project_two - desc of 3", page);
         Assert.Equal(1, Count(page, "feedback_one"));
@@ -87,7 +87,7 @@ public class FileMemoryTests
     {
         var rows = new List<StartRecord> { Row(1, ModuleState.IndexName, "file", Dir + "MEMORY.md", body: "# Memory Index") };
         rows.AddRange(Enumerable.Range(0, 200).Select(i => Row(10 + i, $"feedback_unindexed_number_{i:D3}", "file", Dir + $"feedback_unindexed_number_{i:D3}.md")));
-        var page = StartRender.Memory(Side(rows.ToArray()), 1, 4, null);
+        var page = StartRender.Memory(Side(rows.ToArray()), 1, 4, null, "kor");
         Assert.Matches(@"Imported, not named in the index: 200 rows \([\d,]+ chars of names\) - python -I "".*kor_brain\.py"" list --lane ""zz""", page);
         Assert.DoesNotContain("feedback_unindexed_number_000", page);
     }

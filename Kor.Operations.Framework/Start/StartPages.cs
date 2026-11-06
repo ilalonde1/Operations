@@ -31,7 +31,7 @@ public static partial class StartRender
     public const string PagesHead = "KNOWN AT START - PAGES, page ";
 
     /// <summary>The whole stream, unmasked (<see cref="BuildPages"/> masks it once, before any cut can split a value).</summary>
-    public static string PagesBody(StartSide side, ResumeChoice resume, StoredEvent? lastEnd)
+    public static string PagesBody(StartSide side, ResumeChoice resume, StoredEvent? lastEnd, string exe)
     {
         var module = side.Module;
         var blocks = new List<string>();
@@ -40,7 +40,7 @@ public static partial class StartRender
         blocks.Add(ResumeText(resume, lastEnd, module, 0, whole: true, onPages: false));
         blocks.Add(WriteLine(module));
         blocks.Add($"OFFICE LESSONS (lane '{ModuleState.OfficeLane}', {side.Office.Count(r => r.Name != ModuleState.IndexName)} records) - every KOR lead gets these, " +
-                   $"the same day they are learned. They bind here too. Body: kor read --module \"{module}\" --subject \"<plain words>\".");
+                   $"the same day they are learned. They bind here too. Body: \"{exe}\" read --module \"{module}\" --subject \"<plain words>\".");
         if (side.Office.FirstOrDefault(r => r.Name == ModuleState.IndexName)?.Body is { } officeIndex) blocks.Add(officeIndex.Trim());
         blocks.AddRange(side.Office.Where(r => r.Name != ModuleState.IndexName).Select(FullEntry));
         var rows = side.Records.Where(r => r.Name != ModuleState.FiveQuestionsName && r.Name != ModuleState.IndexName).ToList();
@@ -68,8 +68,8 @@ public static partial class StartRender
     public static IEnumerable<StartRecord> PageRows(StartSide side) =>
         side.Records.Concat(side.Office).Where(r => r.Name != ModuleState.FiveQuestionsName && r.Name != ModuleState.IndexName);
 
-    public static PagesSnapshot BuildPages(StartSide side, ResumeChoice resume, StoredEvent? lastEnd) =>
-        new(side.Module, side.ReadAt, Chunk(SecretGuard.Mask(PagesBody(side, resume, lastEnd))!, PageRoom));
+    public static PagesSnapshot BuildPages(StartSide side, ResumeChoice resume, StoredEvent? lastEnd, string exe) =>
+        new(side.Module, side.ReadAt, Chunk(SecretGuard.Mask(PagesBody(side, resume, lastEnd, exe))!, PageRoom));
 
     /// <summary>Page <paramref name="page"/> of the <paramref name="wired"/> hook entries: "" past the content. When the content needs
     /// more pages than are wired, the last wired one says which are not loaded and how to read them.</summary>
