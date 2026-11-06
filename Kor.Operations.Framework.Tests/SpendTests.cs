@@ -183,7 +183,7 @@ public class SpendTests : IDisposable
             Assert.Null(slow.Reading);
         }
         finally { gate.Set(); }
-        Assert.True(SpendMeter.ReadingWithin(() => throw new TimeoutException("the DB"), TimeSpan.FromSeconds(30)).Failed);
+        Assert.True(SpendMeter.ReadingWithin<ScreenReading>(() => throw new TimeoutException("the DB"), TimeSpan.FromSeconds(30)).Failed);
         var read = new ScreenReading(77, Now);
         Assert.Equal((read, false), SpendMeter.ReadingWithin(() => (read, false), TimeSpan.FromSeconds(30)));
     }

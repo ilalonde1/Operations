@@ -48,8 +48,7 @@ public static partial class Program
             : BrainDb.Read(KorStandardsConnection.Login.Brain, d => ModuleState.ReadPages(d, module, start, dir));
         var questions = ColdProof.Make(side, resume);
         var exe = (Environment.ProcessPath ?? throw new InvalidOperationException("no process path")).Replace('\\', '/');
-        var args = new List<string> { "-p", "--output-format", "json", "--permission-mode", "dontAsk", "--strict-mcp-config", "--effort", "low", "--max-turns", "1" };
-        if (o.Get("--model") is { } model) args.AddRange(new[] { "--model", model });
+        var args = StartProofArgs(o.Get("--model"));
         string? temp = null, tempText = null;
         var baseline = o.Get("--baseline") is not null;
         if (!control)

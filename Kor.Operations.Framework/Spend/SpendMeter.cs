@@ -27,6 +27,9 @@ public sealed record SpendCount(DateTimeOffset WeekStart, long Raw, long RawSinc
 /// `kor record`: its says begins "77% at 2026-11-04T14:49:00-07:00") and adds the raw tokens since on each of the two slopes.
 /// It says what it reads and that it is an estimate; his screen rules.
 ///
+/// THE REAL READING COMES FIRST (row 1892). When <see cref="StatusLine"/> has stored a reading that has not passed its reset, the line
+/// gives that percent, says it is real and how old it is, and the estimate is not said. The estimate is the fallback only.
+///
 /// THE COUNT IS INCREMENTAL: a cache under %LOCALAPPDATA%\KOR\spend holds each file's offset and each message's total. A hook
 /// reads only new bytes, at most once per <see cref="ScanEvery"/>, and for at most its deadline. A cold cache is filled over
 /// several calls, and the line says it is partial until it is whole. Two sessions writing the cache at once: the last wins
@@ -76,10 +79,12 @@ public static class SpendMeter
     private static string M(long raw) => (raw / 1_000_000).ToString("N0", CultureInfo.InvariantCulture) + "M";
 
     /// <summary>The one line. A reading from before this week's start is not used.</summary>
-    public static string Line(SpendCount c, ScreenReading? reading, bool readingFailed = false)
+    public static string Line(SpendCount c, ScreenReading? reading, bool readingFailed = false, UsageReading? real = null, DateTimeOffset? now = null)
     {
         var head = $"{Marker}this PC since {c.WeekStart.LocalDateTime.ToString("ddd d MMM HH:mm", CultureInfo.InvariantCulture)}: {M(c.Raw)} raw tokens";
         if (c.FilesLeft > 0) head += $" so far ({c.FilesLeft} transcript(s) still to count)";
+        if (real is not null && StatusLine.Current(real, c.WeekStart, now ?? DateTimeOffset.Now))
+            return head + "; " + RealText(real, now ?? DateTimeOffset.Now);
         const string Rules = "An ESTIMATE from this PC's transcripts, not the provider's meter: Ian's Usage screen rules.";
         if (readingFailed) return $"{head}; Ian's screen reading could not be read just now. {Rules}";
         if (reading is null || reading.At < c.WeekStart) return $"{head}; no reading of Ian's screen recorded this week. {Rules}";
@@ -91,9 +96,19 @@ public static class SpendMeter
                $"(no one slope held: {M(FlatRawPerPoint)} to {M(SteepRawPerPoint)} a point). {Rules}";
     }
 
+    private static string RealText(UsageReading real, DateTimeOffset now)
+    {
+        var old = now - real.At;
+        var minutes = Math.Max(0, (long)old.TotalMinutes);
+        var age = minutes < 60 ? $"{minutes} min" : minutes < 2880 ? $"{minutes / 60} h {minutes % 60} min" : $"{minutes / 1440} days";
+        var resets = real.ResetsAt is { } r ? $", resets {r.LocalDateTime.ToString("ddd d MMM HH:mm", CultureInfo.InvariantCulture)}" : "";
+        return $"REAL: {real.Percent.ToString("0.#", CultureInfo.InvariantCulture)}% of the weekly limit, {age} old, from Claude Code's status line " +
+               $"(read {real.At.LocalDateTime.ToString("d MMM HH:mm", CultureInfo.InvariantCulture)}{resets}).";
+    }
+
     /// <summary>The reading within <paramref name="wait"/>. A read that is slow or throws is Failed: the DB could not say, which
     /// is not the same as none recorded. The abandoned read's later fault is observed here, never thrown.</summary>
-    public static (ScreenReading? Reading, bool Failed) ReadingWithin(Func<(ScreenReading? Reading, bool Failed)> read, TimeSpan wait)
+    public static (T? Reading, bool Failed) ReadingWithin<T>(Func<(T? Reading, bool Failed)> read, TimeSpan wait) where T : class
     {
         var task = Task.Run(read);
         try { if (task.Wait(wait)) return task.Result; }
@@ -263,12 +278,12 @@ public static class SpendMeter
 
     /// <summary>Should a session's tool call try to say the line? Once per <see cref="SayEvery"/> per session, counted from its last
     /// attempt, by a marker file's time.</summary>
-    public static bool ShouldTry(string cacheDir, string? session, DateTime nowUtc)
+    public static bool ShouldTry(string cacheDir, string? session, DateTime nowUtc, TimeSpan? every = null)
     {
         try
         {
             var marker = Marker_(cacheDir, session);
-            if (File.Exists(marker) && nowUtc - File.GetLastWriteTimeUtc(marker) < SayEvery) return false;
+            if (File.Exists(marker) && nowUtc - File.GetLastWriteTimeUtc(marker) < (every ?? SayEvery)) return false;
             Stamp(cacheDir, session, nowUtc);   // a marker that cannot be written: false, so a failing disk never tries on every call
             return true;
         }

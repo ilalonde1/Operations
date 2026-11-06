@@ -16,37 +16,39 @@ public static partial class Program
     private static readonly TimeSpan HookReadingWait = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan HookScanBudget = TimeSpan.FromSeconds(1.5);
 
-    private static int SpendVerb(Options o, TextWriter output)
+    private static int SpendVerb(Options o, TextWriter output, BrainDb? db = null)
     {
-        output.WriteLine(SpendLine(o.Get("--spend-root"), TimeSpan.FromSeconds(10), TimeSpan.FromMinutes(10)));
+        output.WriteLine(SpendLine(o.Get("--spend-root"), TimeSpan.FromSeconds(10), TimeSpan.FromMinutes(10), db));
         return 0;
     }
 
-    /// <summary>The newest recorded screen reading. Failed true: the DB could not say, which is not the same as none recorded.</summary>
-    private static (ScreenReading? Reading, bool Failed) NewestReading()
+    /// <summary>The newest real reading and the newest recorded screen reading, in one read (SNAPSHOT: an open write on brain.Event does
+    /// not hold it). Failed true: the DB could not say, which is not the same as none recorded.</summary>
+    private static (Readings? Reading, bool Failed) NewestReadings(BrainDb? db)
     {
-        try
+        Readings Both(BrainDb d)
         {
-            return (BrainDb.Use3s(KorStandardsConnection.Login.Brain, d =>
-            {
-                using var c = d.Command("SELECT TOP 1 Description FROM brain.Memory WHERE Lane = N'Framework' AND Name = @n AND RetiredAtUtc IS NULL AND Kind <> N'issue'", 3);
-                c.Parameters.Add("@n", System.Data.SqlDbType.NVarChar, 120).Value = SpendMeter.ReadingRecord;
-                return SpendMeter.ParseReading(c.ExecuteScalar() as string);
-            }), false);
+            using var c = d.Command("SELECT TOP 1 Description FROM brain.Memory WHERE Lane = N'Framework' AND Name = @n AND RetiredAtUtc IS NULL AND Kind <> N'issue'", 3);
+            c.Parameters.Add("@n", System.Data.SqlDbType.NVarChar, 120).Value = SpendMeter.ReadingRecord;
+            var screen = SpendMeter.ParseReading(c.ExecuteScalar() as string);
+            return new Readings(screen, StatusLine.Newest(d));
         }
+        try { return (db is not null ? Both(db) : BrainDb.Read3s(Both), false); }
         catch (Exception e) when (e is Microsoft.Data.SqlClient.SqlException or InvalidOperationException or ArgumentException) { return (null, true); }
     }
 
-    private static string SpendLine(string? root, TimeSpan readingWait, TimeSpan budget)
+    private sealed record Readings(ScreenReading? Screen, UsageReading? Real);
+
+    private static string SpendLine(string? root, TimeSpan readingWait, TimeSpan budget, BrainDb? db = null)
     {
-        ScreenReading? reading = null;
+        Readings? readings = null;
         var failed = false;
-        if (root is null)   // a test's root has no record behind it
+        if (root is null || db is not null)   // a test's root has no record behind it, unless the test gives it the DB
         {
-            (reading, failed) = SpendMeter.ReadingWithin(NewestReading, readingWait);
+            (readings, failed) = SpendMeter.ReadingWithin(() => NewestReadings(db), readingWait);
         }
-        var count = SpendMeter.Count(root ?? SpendMeter.DefaultProjectsRoot, CacheDirFor(root), DateTimeOffset.Now, reading?.At, budget);
-        return SpendMeter.Line(count, reading, failed);
+        var count = SpendMeter.Count(root ?? SpendMeter.DefaultProjectsRoot, CacheDirFor(root), DateTimeOffset.Now, readings?.Screen?.At, budget);
+        return SpendMeter.Line(count, readings?.Screen, failed, readings?.Real, DateTimeOffset.Now);
     }
 
     private static string CacheDirFor(string? root) => root is null ? SpendMeter.DefaultCacheDir : Path.Combine(root, ".spend");
