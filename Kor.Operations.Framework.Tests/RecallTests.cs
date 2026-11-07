@@ -204,7 +204,7 @@ public class RecallTests
     [InlineData("git", "Operations", "c4be25482a", "a/b.cs", null, "Operations:a/b.cs@c4be254")]
     [InlineData("git", "Operations", null, "a/b.cs", null, "Operations:a/b.cs")]
     [InlineData("run", null, null, null, "brain.Event #1", "run brain.Event #1")]
-    [InlineData("file", null, null, null, "m.md sha256:ab", "file: m.md sha256:ab (imported file, history only)")]
+    [InlineData("file", null, null, null, @"C:\Users\x\.claude\projects\p\memory\m.md", @"file: C:\Users\x\.claude\projects\p\memory\m.md")]
     [InlineData("file", null, null, "m.md", null, "m.md")]
     [InlineData(null, null, null, null, null, "none recorded, history only")]
     public void EverySourceKindSaysWhatItHolds(string? kind, string? repo, string? commit, string? path, string? sourceRef, string expected) =>
