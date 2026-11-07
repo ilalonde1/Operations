@@ -143,7 +143,8 @@ public static class MemoryRecall
         if (kind == "git" && path is not null) return $"{repo}:{path}{(commit is null ? "" : "@" + commit[..Math.Min(7, commit.Length)])}";
         if (kind == "run") return $"run {sourceRef}";
         if (!string.IsNullOrWhiteSpace(path)) return path;
-        if (kind is not null && kind != "file" && !string.IsNullOrWhiteSpace(sourceRef)) return $"{kind} {sourceRef}";   // query, session: their ref is their source
+        if (kind == "file" && !string.IsNullOrWhiteSpace(sourceRef)) return $"file: {sourceRef} (imported file, history only)";   // the ref cites the file and its SHA-256 (ModuleState.Where)
+        if (kind is not null && !string.IsNullOrWhiteSpace(sourceRef)) return $"{kind} {sourceRef}";   // query, session: their ref is their source
         return string.IsNullOrWhiteSpace(source) ? "none recorded, history only" : $"{source} (no path, history only)";
     }
 

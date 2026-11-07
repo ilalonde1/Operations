@@ -169,7 +169,7 @@ public class RecallTests
         var text = MemoryRecall.Render("m", "wall", Found(Hit(7, first + second + third)), 1_000, "now");
         Assert.Contains("=== record #7 ", text);
         Assert.Matches(@"(?m)^SECTIONS LEFT OUT OF RECORDS DELIVERED: .*#7 section \d", text);
-        Assert.DoesNotContain("#7,", text.Split('\n').Single(l => l.StartsWith("LEFT OUT BY THE BUDGET:", StringComparison.Ordinal)));
+        Assert.Equal("LEFT OUT BY THE BUDGET: none", text.Split('\n').Single(l => l.StartsWith("LEFT OUT BY THE BUDGET:", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -184,18 +184,31 @@ public class RecallTests
     [Fact]
     public void TheFullestOutputStaysWithinItsBudget()
     {
-        // every line at its longest: 40 left-out and 40 part-delivered records with long ids, under the smallest budget
-        var hits = Enumerable.Range(1, 40).Select(i => Hit(9_000_000 + i, new string('a', 700) + " wall\n\n" + new string('b', 900) + " wall")).ToArray();
+        // both tail lines at their longest: long ids; each record's first section a few chars and its second too big for the room, so it is dropped from
+        // every record delivered; 60 records, so more than MostLeftOutNamed are left out too. The two caps are what this holds: take one away and it fails.
+        var hits = Enumerable.Range(1, 60).Select(i => Hit(9_000_000 + i, "wall\n\n" + new string('b', 4_000) + " wall")).ToArray();
         foreach (var budget in new[] { 1_000, 1_500, 2_000 })
             Assert.True(MemoryRecall.Tokens(MemoryRecall.Render("m", "wall", Found(hits), budget, "now").Length) <= budget, $"over {budget}");
+        var lines = MemoryRecall.Render("m", "wall", Found(hits), 2_000, "now").Split('\n');
+        var partly = lines.Single(l => l.StartsWith("SECTIONS LEFT OUT OF RECORDS DELIVERED:", StringComparison.Ordinal));
+        Assert.Equal(MemoryRecall.MostPartlyNamed, Regex.Matches(partly, @"#\d+ section \d").Count);
+        Assert.Matches(@" and \d+ more$", partly);
+        var left = lines.Single(l => l.StartsWith(MemoryRecall.LeftOutHead, StringComparison.Ordinal));
+        Assert.Equal(MemoryRecall.MostLeftOutNamed, Regex.Matches(left, @"#\d+").Count);
+        Assert.Matches(@" and \d+ more$", left);
     }
 
     [Theory]
-    [InlineData("session", null, "session unknown", "session session unknown")]
-    [InlineData("query", null, "SELECT 1", "query SELECT 1")]
-    [InlineData(null, null, null, "none recorded, history only")]
-    public void EverySourceKindSaysWhatItHolds(string? kind, string? path, string? sourceRef, string expected) =>
-        Assert.Equal(expected, MemoryRecall.SourceLabel(kind, null, null, path, sourceRef, null));
+    [InlineData("session", null, null, null, "session unknown", "session session unknown")]
+    [InlineData("query", null, null, null, "SELECT 1", "query SELECT 1")]
+    [InlineData("git", "Operations", "c4be25482a", "a/b.cs", null, "Operations:a/b.cs@c4be254")]
+    [InlineData("git", "Operations", null, "a/b.cs", null, "Operations:a/b.cs")]
+    [InlineData("run", null, null, null, "brain.Event #1", "run brain.Event #1")]
+    [InlineData("file", null, null, null, "m.md sha256:ab", "file: m.md sha256:ab (imported file, history only)")]
+    [InlineData("file", null, null, "m.md", null, "m.md")]
+    [InlineData(null, null, null, null, null, "none recorded, history only")]
+    public void EverySourceKindSaysWhatItHolds(string? kind, string? repo, string? commit, string? path, string? sourceRef, string expected) =>
+        Assert.Equal(expected, MemoryRecall.SourceLabel(kind, repo, commit, path, sourceRef, null));
 
     [Fact]
     public void APossessiveIsNotCalledFoundNowhere()
