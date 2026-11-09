@@ -681,13 +681,12 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
 
             if (!File.Exists(goldenPath))
             {
-                // First run: create the baseline. Subsequent runs diff against it.
-                File.WriteAllText(goldenPath, snapshot);
-                _out.WriteLine("Golden file created (first run). Review and commit:");
-                _out.WriteLine(goldenPath);
-                _out.WriteLine(snapshot);
-                // Don't fail — the golden file now exists for the next run.
-                return;
+                // A missing golden FAILS (row 1964, S0a, 9 Nov 2026). It used to write the snapshot as the golden and
+                // pass, so the only golden on the SAFE path proved nothing whenever its file was absent. The snapshot
+                // goes to .actual.txt for a person to review and commit as the golden; it never becomes one by itself.
+                string firstActual = goldenPath.Replace(".expected.txt", ".actual.txt");
+                File.WriteAllText(firstActual, snapshot);
+                Assert.Fail($"Golden file not found: {goldenPath}. This run's snapshot is in {firstActual}; review it and commit it as the golden.");
             }
 
             string expected = File.ReadAllText(goldenPath);
