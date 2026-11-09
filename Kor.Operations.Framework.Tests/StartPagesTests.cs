@@ -623,6 +623,7 @@ public class StartPagesLiveTests
     {
         { "Framework", "Framework" }, { "Operations", "Operations" }, { "NetworkOps", "NetworkOps" }, { "KOR.RevitTools", "KOR.RevitTools" },
         { "KOR Inspections Bookings", "KOR Inspections Bookings" }, { "KOR.Drafter", "KOR.Drafter" },
+        { "KOR Website", "KOR Website" },   // split from Operations 9 Nov 2026 (board row 1980)
     };
 
     [Theory]

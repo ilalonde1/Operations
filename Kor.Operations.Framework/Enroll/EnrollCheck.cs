@@ -45,7 +45,7 @@ public static class EnrollCheck
     private const string ReviewGuard = "Framework/tools/git_hooks/pre_push_review.py";
     private const string OwnershipGuard = "Operations/tools/git_hooks/pre_push.py";
 
-    /// <summary>The six KOR repos (as Framework tools/framework_selftest.py FOLDERS), with their pre-push guards as wired on
+    /// <summary>The seven KOR repos (KOR Website added 9 Nov 2026, row 1980; as Framework tools/framework_selftest.py FOLDERS), with their pre-push guards as wired on
     /// 3 Nov: the review guard everywhere (F3), the ownership guard where a repo had it before F3.</summary>
     public static readonly IReadOnlyList<KorRepo> Repos = new[]
     {
@@ -55,6 +55,7 @@ public static class EnrollCheck
         new KorRepo("KOR.RevitTools", new[] { ReviewGuard }),
         new KorRepo("NetworkOps", new[] { ReviewGuard }),
         new KorRepo("KOR Inspections Bookings", new[] { ReviewGuard }),
+        new KorRepo("KOR Website", new[] { ReviewGuard }),   // split from Operations 9 Nov 2026 (board row 1980)
     };
 
     public static readonly string[] GitCaptureHooks = { "post-commit", "post-merge", "post-checkout" };
@@ -328,7 +329,7 @@ public static class EnrollCheck
         return findings;
     }
 
-    /// <summary>The repo of this table a folder is, by its leaf name; null = not one of the six.</summary>
+    /// <summary>The repo of this table a folder is, by its leaf name; null = not one of the seven.</summary>
     public static KorRepo? RepoOf(string dir) =>
         Git.Leaf(dir) is { } leaf ? Repos.FirstOrDefault(r => string.Equals(r.Folder, leaf, StringComparison.OrdinalIgnoreCase)) : null;
 }
