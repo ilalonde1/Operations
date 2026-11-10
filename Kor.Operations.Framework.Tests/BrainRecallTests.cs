@@ -18,6 +18,8 @@ namespace Kor.Operations.Framework.Tests;
 ///   (c) OverLORD cde1e168 19:33:46Z SendMessage briefing the 31218 lane                 -> board row 1647: NOT REACHED, see TrapC
 ///   (d) kor-drafter-14 fbcc2875 19:50:59Z Bash, "cover 3D from viewer ... a block"      -> board row 1647 then; #131897 now (recorded 10 Nov)
 ///   (e) OverLORD cde1e168 19:42:28Z reply, "the sheets you've seen"                     -> nothing to recall; the push-back's SEEN rule
+/// AS OF IS APPROXIMATE (review row 1248): the as-of index leaves out rows CREATED after the moment, but it indexes today's text of older
+/// rows, and leaves out rows retired, superseded or closed since; it is the brain of today minus what was added, not the brain as it was.
 /// RED BEFORE: the installed kor (3743b04c) has no recall verb at all; the pilot's module recall on the same texts is stated in the
 /// BRAIN lane's report. Same-class misses these do NOT catch: a record that shares no word with the moment (c is one), a moment whose words
 /// change after today's records are written (the as-of pool cannot undo an edit to an older row), and a new record outranking the target
@@ -174,6 +176,8 @@ public class BrainRecallTests
         Assert.Null(PushBack.SeenClaim("The run made \"the sheets you've seen\" according to my earlier reply, which was wrong."));
         Assert.Null(PushBack.SeenClaim("These are the sheets you've seen in record #131821 from the blind look this morning."));
         Assert.NotNull(PushBack.SeenClaim("This morning's run made the sheets you've seen, and the blind look found 20 problems."));
+        Assert.NotNull(PushBack.SeenClaim("You've seen the sheets from this morning, right?"));
+        Assert.NotNull(PushBack.SeenClaim("The sheets you've seen look fine, should I ship them to Omar?"));
         Assert.False(PushBack.Decide("Have you seen the sheets from the 08:19 run yet? I can open them on your screen now.", none, new HashSet<string>()).Refuse);
     }
 

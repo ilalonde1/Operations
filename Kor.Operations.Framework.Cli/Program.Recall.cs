@@ -73,8 +73,12 @@ public static partial class Program
     {
         var lockPath = IndexPath + ".lock";
         Directory.CreateDirectory(Path.GetDirectoryName(lockPath)!);
-        if (File.Exists(lockPath) && DateTime.UtcNow - File.GetLastWriteTimeUtc(lockPath) < TimeSpan.FromMinutes(2)) return 0;
-        File.WriteAllText(lockPath, Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
+        // atomic: CreateNew fails when another rebuild holds the lock (review row 1248: check-then-write let two start); a lock older
+        // than two minutes is a dead rebuild's and is taken over
+        if (File.Exists(lockPath) && DateTime.UtcNow - File.GetLastWriteTimeUtc(lockPath) >= TimeSpan.FromMinutes(2))
+            try { File.Delete(lockPath); } catch (IOException) { }
+        try { using var held = new FileStream(lockPath, FileMode.CreateNew, FileAccess.Write); }
+        catch (IOException) { return 0; }
         try
         {
             var ix = WithStores((b, w) => BrainRecall.Build(b, w), db, board, 15);
@@ -94,7 +98,8 @@ public static partial class Program
         if (ix is null)
         {
             RecallRebuild(TextWriter.Null, null, null);
-            return BrainRecall.Load(IndexPath, terms) ?? throw new InvalidOperationException($"kor recall: no index at {IndexPath} after a rebuild");
+            // another process held the rebuild lock: build in memory for this call rather than fail (review row 1248)
+            return BrainRecall.Load(IndexPath, terms) ?? WithStores((b, w) => BrainRecall.Build(b, w), null, null, 3);
         }
         // only the installed kor.exe starts a rebuild: under 'dotnet kor.dll' or a test host ProcessPath is dotnet/testhost (review row 1240)
         if (DateTime.UtcNow - ix.BuiltUtc > IndexFreshFor && Environment.ProcessPath is { } exe
