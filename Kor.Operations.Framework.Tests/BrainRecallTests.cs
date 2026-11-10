@@ -182,6 +182,55 @@ public class BrainRecallTests
     }
 
     [Fact]
+    public void AQuestionThatOpensAsOneIsNotASeenClaim()
+    {
+        Assert.Null(PushBack.SeenClaim("Is this what you've seen on the cover sheet of the package?"));
+        Assert.Null(PushBack.SeenClaim("Can you tell me what you saw on the cover sheet this morning?"));
+    }
+
+    /// <summary>The rebuild lock and the no-index fallback, on a temporary index path (KOR_RECALL_INDEX) and the real database
+    /// (review row 1250: neither was tested).</summary>
+    [Fact]
+    public void ALiveLockStopsARebuildADeadOneIsTakenOverAndAHookWithNoIndexStillAnswers()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "kor-recall-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var index = Path.Combine(dir, "index.txt");
+        var before = Environment.GetEnvironmentVariable("KOR_RECALL_INDEX");
+        Environment.SetEnvironmentVariable("KOR_RECALL_INDEX", index);
+        try
+        {
+            var lockPath = index + ".lock";
+            File.WriteAllText(lockPath, "1");   // a live rebuild's lock
+            var log = Path.Combine(dir, "errors.log");
+            var o = new StringWriter();
+            Assert.Equal(0, Program.Run(new[] { "recall", "--rebuild" }, () => null, o, new StringWriter(), log));
+            Assert.False(File.Exists(index), "a live lock must stop the rebuild");
+
+            // a hook with no index while the lock is held: built in memory for the call, nothing written, no crash
+            var hook = new StringWriter();
+            var json = "{\"hook_event_name\":\"PreToolUse\",\"session_id\":\"test-brain-" + Guid.NewGuid().ToString("N") +
+                       "\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo\",\"description\":\"cover 3D pictures from the HTML viewer for the cover sheet\"}}";
+            Program.Run(new[] { "recall", "--hook" }, () => json, hook, new StringWriter(), log);
+            Assert.False(File.Exists(log), File.Exists(log) ? File.ReadAllText(log) : "");
+            Assert.Contains(BrainRecall.HookHead, hook.ToString());
+            Assert.False(File.Exists(index));
+
+            File.SetLastWriteTimeUtc(lockPath, DateTime.UtcNow.AddMinutes(-3));   // a dead rebuild's lock
+            Assert.Equal(0, Program.Run(new[] { "recall", "--rebuild" }, () => null, new StringWriter(), new StringWriter(), log));
+            Assert.True(File.Exists(index), "a dead lock must be taken over");
+            Assert.False(File.Exists(lockPath), "the rebuild removes its lock");
+            Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
+            Assert.NotNull(BrainRecall.Load(index, new HashSet<string> { "cover" }));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("KOR_RECALL_INDEX", before);
+            try { Directory.Delete(dir, true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
     public void TheHookIgnoresAToolItDoesNotRead()
     {
         var (o, _) = Hook("PreToolUse", new { tool_name = "Read", tool_input = new { file_path = "C:/x/cover 3D pictures viewer.md" } });

@@ -46,6 +46,11 @@ public static class PushBack
     /// through too (review row 1249).</summary>
     private static readonly Regex Asks = new(@"(?i)\b(have|did|if|once|when|after|until|unless|before)\s*$", RegexOptions.CultureInvariant);
 
+    /// <summary>A question that opens as one ("Is this what you've seen?", "Can you tell me what you saw?"). A claim with a tag or a question
+    /// after it ("You've seen the sheets, right?", "The sheets you've seen look fine, should I ship them?") opens otherwise and stays a claim.</summary>
+    private static readonly Regex Interrogative = new(
+        @"^(?i)\W*(is|are|was|were|can|could|do|does|did|have|has|had|what|which|where|when|would|will|should|shall)\b", RegexOptions.CultureInvariant);
+
     /// <summary>Evidence named in the claim's own sentence: a record or row id, or quoted words.</summary>
     private static readonly Regex Evidence = new(@"(#\d{3,}|\brows? \d{3,}|[""“][^""”]{3,}[""”])", RegexOptions.CultureInvariant);
 
@@ -70,6 +75,7 @@ public static class PushBack
             var sentence = reply[start..(end < 0 ? reply.Length : end + 1)].Trim();
             var before = reply[start..m.Index];
             if (before.Count(c => c is '"' or '“' or '”') % 2 == 1) continue;   // inside a quotation
+            if (sentence.EndsWith('?') && Interrogative.IsMatch(sentence)) continue;   // "Is this what you've seen?" (review row 1250)
             if (Asks.IsMatch(before)) continue;   // a question or a condition, not a claim (review row 1246); a trailing "?" is not
                                                   // enough: "You've seen the sheets, right?" is the 10 Nov claim (review row 1249)
             if (Evidence.IsMatch(sentence)) continue;

@@ -29,7 +29,8 @@ public static partial class Program
     /// <summary>Quotes and apostrophes as themselves, not 6-byte escapes: every byte here is re-sent with the context.</summary>
     private static readonly JsonSerializerOptions RecallJson = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    internal static string IndexPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KOR", "kor-recall", "index.txt");
+    /// <summary>The index file; KOR_RECALL_INDEX overrides it (tests of the lock and the fallback use their own temporary file).</summary>
+    internal static string IndexPath => Environment.GetEnvironmentVariable("KOR_RECALL_INDEX") is { Length: > 0 } p ? p : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KOR", "kor-recall", "index.txt");
 
     private static int RecallVerb(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? db, BrainDb? board)
     {
@@ -73,24 +74,34 @@ public static partial class Program
     {
         var lockPath = IndexPath + ".lock";
         Directory.CreateDirectory(Path.GetDirectoryName(lockPath)!);
-        // atomic: CreateNew fails when another rebuild holds the lock (review row 1248: check-then-write let two start); a lock older
-        // than two minutes is a dead rebuild's and is taken over
-        if (File.Exists(lockPath) && DateTime.UtcNow - File.GetLastWriteTimeUtc(lockPath) >= TimeSpan.FromMinutes(2))
-            try { File.Delete(lockPath); } catch (IOException) { }
-        try { using var held = new FileStream(lockPath, FileMode.CreateNew, FileAccess.Write); }
-        catch (IOException) { return 0; }
+        // CreateNew fails when a live rebuild holds the lock (review row 1248: check-then-write let two start). A lock older than two
+        // minutes is a dead rebuild's and is deleted first; two processes taking over the same dead lock at once can both rebuild
+        // (review row 1250). That race is accepted: each rebuild writes its own tmp file and replaces the index whole (Save), so the
+        // cost is one extra rebuild, never a broken file.
+        static bool Busy(Exception e) => e is IOException or UnauthorizedAccessException;
+        try
+        {
+            if (File.Exists(lockPath) && DateTime.UtcNow - File.GetLastWriteTimeUtc(lockPath) >= TimeSpan.FromMinutes(2)) File.Delete(lockPath);
+        }
+        catch (Exception e) when (Busy(e)) { return 0; }
+        try
+        {
+            using var held = new FileStream(lockPath, FileMode.CreateNew, FileAccess.Write);
+            held.Write(Encoding.ASCII.GetBytes(Environment.ProcessId.ToString(CultureInfo.InvariantCulture)));   // who holds it
+        }
+        catch (Exception e) when (Busy(e)) { return 0; }
         try
         {
             var ix = WithStores((b, w) => BrainRecall.Build(b, w), db, board, 15);
             BrainRecall.Save(ix, IndexPath);
             output.WriteLine($"kor recall: index rebuilt, {ix.Docs.Count} docs, {ix.Postings.Count} words, {IndexPath}");
         }
-        finally { try { File.Delete(lockPath); } catch (IOException) { } }
+        finally { try { File.Delete(lockPath); } catch (Exception e) when (Busy(e)) { } }
         return 0;
     }
 
     /// <summary>The index for a hook call: the local file with only <paramref name="terms"/> loaded; when it is stale a detached rebuild is
-    /// started (its own pipes, so Claude Code does not wait on it); when there is none, built here.</summary>
+    /// started (ShellExecute, no inherited handles, so Claude Code does not wait on it); when there is none, built here.</summary>
     private static BrainRecall.Index HookIndex(IReadOnlySet<string> terms, BrainDb? db, BrainDb? board)
     {
         if (db is not null && board is not null) return BrainRecall.Build(db, board);   // tests: the database they pass
