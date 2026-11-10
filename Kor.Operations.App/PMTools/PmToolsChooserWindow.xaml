@@ -62,8 +62,8 @@
         </Style>
     </Window.Resources>
     <!-- Round 51: cards row becomes Auto + UniformGrid VerticalAlignment=Top
-         so cards size to content (matches EngineeringToolsWindow chooser height
-         per ss4) rather than stretching to fill a fixed 640px window. -->
+         so cards size to content (it matched the old Engineering Tools chooser,
+         removed 9 Nov) rather than stretching to fill a fixed 640px window. -->
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
