@@ -10,14 +10,19 @@ namespace Kor.Operations.Framework.Recall;
 /// <see cref="MinScore"/> on at least <see cref="MinTermsHit"/> shared words, and the reply does not cite it by id. Then the turn is
 /// refused once, quoting his words and the record: re-read it, cite it, or say plainly to Ian that the proposal goes against it.
 ///
-/// RULE 2, SEEN. The reply tells Ian he has seen, looked at or approved something (<see cref="SeenClaim"/>). Nothing in the brain
+/// RULE 2, SEEN. The reply tells Ian he has seen or looked at something (<see cref="SeenClaim"/>), and the claim's sentence names no
+/// evidence (a record or row id, quoted words) and is not itself inside quotation marks. Nothing in the brain
 /// records what Ian has seen, so no claim of it can be checked: the turn is refused once, asking for the evidence (his message, a file
 /// opened on his screen) or the claim out. From 10 Nov: "the sheets you've seen" - Ian: "I HAVEN"T SEEN ANY THING YET?!?!?!".
 ///
 /// Each refusal fires once per session per key (a record id, or rule 2's sentence), and never when Claude Code says a Stop hook is
 /// already active, so it cannot loop. Does NOT: judge whether the proposal really contradicts the decision (a shared-word match is
 /// not a contradiction, so rule 1 asks, it does not decide); see a decision recorded under other words; check a finding (reviews,
-/// measurements: only Ian's decisions and dead ends); look at tool calls (Stop only). False alarms are stated in BrainRecallTests.
+/// measurements: only Ian's decisions and dead ends); look at tool calls (Stop only).
+/// FALSE ALARMS, measured 10 Nov with kor recall --replay: OverLORD cde1e168, 44 replies - first version 6 refusals, 5 false (3 "you
+/// approved" claims naming their record or date, 1 the phrase quoted back, 1 the bare word "proposal"), so those were cut; after, 2
+/// refusals: the trap-e claim, and #131858 (Ian: "I dont want this delaying the packages for omar and jm") on a reply proposing a new lane,
+/// judged plausibly right. Drafter lane fbcc2875, 7 replies: 0.
 /// </summary>
 public static class PushBack
 {
@@ -85,7 +90,7 @@ public static class PushBack
             var key = "seen:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(seen)))[..16];
             if (!alreadyRefused.Contains(key))
                 return new Verdict(true, key,
-                    $"BRAIN PUSH-BACK (seen): this reply tells Ian he has seen or approved something - \"{Cut(seen, 200)}\". Nothing in the record shows " +
+                    $"BRAIN PUSH-BACK (seen): this reply tells Ian he has seen something - \"{Cut(seen, 200)}\". Nothing in the record shows " +
                     "what Ian has seen. Name the evidence (his own message, or the file opened on his screen and when) or take the claim out. " +
                     "10 Nov, after \"the sheets you've seen\", Ian: \"I HAVEN'T SEEN ANY THING YET?!?!?!\"");
         }

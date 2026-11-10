@@ -134,7 +134,10 @@ public class BrainRecallTests
         node["session_id"] = session;
         var json = node.ToJsonString();
         var o = new StringWriter();
-        Program.Run(new[] { "recall", "--hook", "--push-back" }, () => json, o, new StringWriter(), Path.Combine(Path.GetTempPath(), "kor-test-hook-errors.log"));
+        // the database passed in: the hook builds its index from it, never touching the machine's index file or starting a rebuild (review row 1240)
+        using var b = BrainDb.OpenRead(KorStandardsConnection.Login.Brain, true, 15);
+        using var w = BrainDb.OpenRead(KorStandardsConnection.Login.Board, true, 15);
+        Program.Run(new[] { "recall", "--hook", "--push-back" }, () => json, o, new StringWriter(), Path.Combine(Path.GetTempPath(), "kor-test-hook-errors.log"), b, w);
         return (o.ToString(), session);
     }
 

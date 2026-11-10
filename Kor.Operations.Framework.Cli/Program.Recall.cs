@@ -96,14 +96,16 @@ public static partial class Program
             RecallRebuild(TextWriter.Null, null, null);
             return BrainRecall.Load(IndexPath, terms) ?? throw new InvalidOperationException($"kor recall: no index at {IndexPath} after a rebuild");
         }
-        if (DateTime.UtcNow - ix.BuiltUtc > IndexFreshFor && Environment.ProcessPath is { } exe)
+        // only the installed kor.exe starts a rebuild: under 'dotnet kor.dll' or a test host ProcessPath is dotnet/testhost (review row 1240)
+        if (DateTime.UtcNow - ix.BuiltUtc > IndexFreshFor && Environment.ProcessPath is { } exe
+            && string.Equals(Path.GetFileName(exe), "kor.exe", StringComparison.OrdinalIgnoreCase))
         {
             var lockPath = IndexPath + ".lock";
             if (!File.Exists(lockPath) || DateTime.UtcNow - File.GetLastWriteTimeUtc(lockPath) > TimeSpan.FromMinutes(2))
             {
-                var psi = new ProcessStartInfo(exe) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true };
-                psi.ArgumentList.Add("recall");
-                psi.ArgumentList.Add("--rebuild");
+                // ShellExecute starts it without inheriting this process's handles, so the hook's stdout pipe closes when this process
+                // exits and Claude Code does not wait on the rebuild (review row 1240: CreateProcess with inheritance could hold it open)
+                var psi = new ProcessStartInfo(exe, "recall --rebuild") { UseShellExecute = true, WindowStyle = ProcessWindowStyle.Hidden };
                 using var _ = Process.Start(psi);
             }
         }

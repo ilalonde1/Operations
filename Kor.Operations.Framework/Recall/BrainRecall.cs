@@ -32,7 +32,9 @@ public static class BrainRecall
     public const int MostQueryWords = 120;
     public const double K1 = 1.2, B = 0.75;
 
-    /// <summary>The hook's floor, calibrated 10 Nov on the 5 traps and on ordinary commands (BrainRecallTests states the calibration).</summary>
+    /// <summary>The hook's floor, set 10 Nov from two measurements (kor recall "text" and kor recall --replay --floor F): the trap targets scored 22.5-83 (a's #129845 32.7 at its moment); a command with no topic ("List files / ls -la") 12. On
+    /// OverLORD's transcript cde1e168 (181 calls) floor 20 added context on 78% of calls, 30 on 62% (551 B mean per call), 40 on 49% but lost
+    /// trap a, 50 on 36%. BrainRecallTests asserts the no-topic case only.</summary>
     public const double MinScore = 30.0;
     public const int MinTermsHit = 3;
 
@@ -209,14 +211,25 @@ public static class BrainRecall
             foreach (var (term, list) in ix.Postings)
                 w.WriteLine(term + '\t' + string.Join(',', list.Select(p => p.Item1.ToString(CultureInfo.InvariantCulture) + ':' + p.Item2.ToString(CultureInfo.InvariantCulture))));
         }
-        File.Move(tmp, path, true);
+        try
+        {
+            // a hook may be reading the old file (Load shares Delete, so the replace normally succeeds); retry a busy file briefly
+            for (var attempt = 1; ; attempt++)
+            {
+                try { File.Move(tmp, path, true); break; }
+                catch (IOException) when (attempt < 5) { Thread.Sleep(200); }
+                catch (UnauthorizedAccessException) when (attempt < 5) { Thread.Sleep(200); }
+            }
+        }
+        finally { try { if (File.Exists(tmp)) File.Delete(tmp); } catch (IOException) { } }
     }
 
     /// <summary>The file back, with the postings of <paramref name="terms"/> only (null: all). Null when the file is missing or not this format.</summary>
     public static Index? Load(string path, IReadOnlySet<string>? terms)
     {
         if (!File.Exists(path)) return null;
-        using var rd = new StreamReader(path, Encoding.UTF8);
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var rd = new StreamReader(fs, Encoding.UTF8);
         var head = rd.ReadLine()?.Split('\t');
         if (head is null || head.Length != 4 || head[0] != FileHead) return null;
         var n = int.Parse(head[2], CultureInfo.InvariantCulture);
@@ -261,7 +274,6 @@ public static class BrainRecall
     public static HashSet<string> QueryWords(string text) =>
         Words(text.Length > MostTextChars ? text[..MostTextChars] : text).Distinct().Take(MostQueryWords).ToHashSet(StringComparer.Ordinal);
 
-    /// <summary>BM25 over the whole index (document frequency over every record and open row), best first.</summary>
     /// <summary>A word on the moment's first line counts this many times when there is more than one line: <see cref="MomentText"/> puts the
     /// tool's own statement of intent there (a command's description, a brief's description, a message's summary), and the lines after it -
     /// the command, the brief - carry most of the noise. Trap A (10 Nov): the description names the subject, the sed/printf line does not.</summary>
@@ -272,6 +284,7 @@ public static class BrainRecall
     public static bool Names(string w) =>
         w.Any(char.IsDigit) && (w.Any(char.IsLetter) || w.Length >= 4);
 
+    /// <summary>BM25 over the whole index (document frequency over every record and open row), best first.</summary>
     public static List<Ranked> Rank(string text, Index ix)
     {
         var q = QueryWords(text);
