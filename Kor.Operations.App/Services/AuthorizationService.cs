@@ -36,7 +36,6 @@ internal sealed class AuthorizationService : IAuthorizationService
         ["PMTools"] = KnownRoles.PMTools,
         ["StandardDetails"] = KnownRoles.StandardDetails,
         ["FeeProposalBuilder"] = KnownRoles.FeeProposalBuilder,
-        ["EngineeringTools"] = KnownRoles.EngineeringTools,
         ["Contracts"] = KnownRoles.Contracts,
     };
 

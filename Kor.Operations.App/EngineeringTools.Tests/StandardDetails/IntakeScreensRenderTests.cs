@@ -28,6 +28,11 @@ namespace Kor.Operations.EngineeringTools.Tests.StandardDetails;
 /// as its background — it renders, it is non-blank, and it is invisible.
 /// </summary>
 [Trait("Speed", "Slow")]
+// One WPF Application per process, and this class and StandardDetailsLiveRenderTests each make it behind an unlocked
+// "Application.Current is null" check on their own STA thread: run in parallel, both see null and the second throws
+// "Cannot create more than one System.Windows.Application instance" (3 of 3 runs, 9 Nov, after the row 1964 move took
+// the PdfToSafe render test out of this project). One collection: never at the same time.
+[Collection("One WPF Application per test process")]
 public sealed class IntakeScreensRenderTests
 {
     [Fact]

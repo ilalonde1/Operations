@@ -193,15 +193,6 @@ internal static class AppModule
         services.AddTransient<PMTools.PmCapacityWindow>(sp => new PMTools.PmCapacityWindow(
             sp.GetRequiredService<PMTools.PmToolsViewModel>(),
             sp.GetRequiredService<DeltekOdbcOptions>()));
-        services.AddTransient<EngineeringTools.EngineeringToolsWindow>(sp =>
-            new EngineeringTools.EngineeringToolsWindow(sp));
-        services.AddTransient<EngineeringTools.PdfToSafe.PdfToSafeWindow>();
-        services.AddTransient<EngineeringTools.StructuralTakeoff.StructuralQuantityTakeoffWindow>();
-        services.AddTransient<EngineeringTools.DxfToEtabs.DxfToEtabsWindow>();
-        services.AddTransient<EngineeringTools.ArchitectureMap.ArchitectureMapWindow>();
-        // Superseded by StructuralQuantityTakeoffWindow; kept registered until the consolidated tool is field-verified.
-        services.AddTransient<EngineeringTools.QuantityTakeoff.QuantityTakeoffWindow>();
-        services.AddTransient<EngineeringTools.RebarChange.RebarChangeWindow>();
         services.AddTransient<FeeProposalBuilderWindow>();
         services.AddTransient<Func<GeneralToolsWindow>>(sp => () => sp.GetRequiredService<GeneralToolsWindow>());
         services.AddTransient<Func<BrochureBuilderWindow>>(sp => () => sp.GetRequiredService<BrochureBuilderWindow>());

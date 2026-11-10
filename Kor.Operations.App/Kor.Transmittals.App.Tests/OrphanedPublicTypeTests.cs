@@ -125,8 +125,8 @@ public sealed class OrphanedPublicTypeTests
         "Kor.Opportunities.Data",
         "Kor.Opportunities.Worker",
         "Kor.EmailCommon",
-        "Kor.EmailSearch.Core",
-        "Kor.Operations.EngineeringTools.Core"
+        "Kor.EmailSearch.Core"
+        // Kor.Operations.EngineeringTools.Core left for KOR.Drafter with the engine (row 1964, 9 Nov).
     ];
 
     /// <summary>

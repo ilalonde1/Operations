@@ -37,6 +37,7 @@ namespace Kor.Operations.EngineeringTools.Tests.StandardDetails;
 /// Skipped (passes without doing anything) on a machine without the installed app's config.
 /// </summary>
 [Trait("Speed", "Slow")]
+[Collection("One WPF Application per test process")]    // never beside IntakeScreensRenderTests: see that class
 public sealed class StandardDetailsLiveRenderTests
 {
     private const string InstalledConfig = @"C:\KOR-Operations\Kor.Operations.App.dll.config";

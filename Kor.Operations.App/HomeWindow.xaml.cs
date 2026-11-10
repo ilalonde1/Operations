@@ -175,13 +175,6 @@ namespace Kor.Operations
             win.Show();
         }
 
-        private void OpenEngineeringTools_Click(object sender, RoutedEventArgs e)
-        {
-            var win = _services.GetRequiredService<EngineeringTools.EngineeringToolsWindow>();
-            win.Owner = this;
-            win.Show();
-        }
-
         private void OpenFileSyncCommandCenter_Click(object sender, RoutedEventArgs e)
         {
             var win = _services.GetRequiredService<App.FileSync.FileSyncCommandCenterWindow>();
@@ -274,9 +267,6 @@ namespace Kor.Operations
                 var canSeeContracts = SecurityGroupAccess.IsUserInGroup(KnownRoles.Contracts, userIdentity);
                 ContractsCard.Visibility = canSeeContracts ? Visibility.Visible : Visibility.Collapsed;
 
-                var canSeeEngineeringTools = SecurityGroupAccess.IsUserInGroup(KnownRoles.EngineeringTools, userIdentity);
-                EngineeringToolsTileHost.Visibility = canSeeEngineeringTools ? Visibility.Visible : Visibility.Collapsed;
-
                 var canSeeFileSyncCommandCenter = SecurityGroupAccess.IsUserInGroup(KnownRoles.FileSyncCommandCenter, userIdentity);
                 FileSyncCommandCenterTileHost.Visibility = canSeeFileSyncCommandCenter ? Visibility.Visible : Visibility.Collapsed;
 
@@ -337,7 +327,6 @@ namespace Kor.Operations
             StandardDetailsTileHost.Visibility = state.StandardDetails;
             GeneralToolsCard.Visibility = state.GeneralTools;
             FeeProposalBuilderCard.Visibility = state.FeeProposalBuilder;
-            EngineeringToolsTileHost.Visibility = state.EngineeringTools;
             FileSyncCommandCenterTileHost.Visibility = state.FileSyncCommandCenter;
             NetworkOpsTileHost.Visibility = state.NetworkOps;
             MondayBriefingCard.Visibility = state.MondayBriefing;
@@ -373,7 +362,6 @@ namespace Kor.Operations
                 GeneralToolsCard,
                 FeeProposalBuilderCard,
                 OpportunitiesTileHost,
-                EngineeringToolsTileHost,
                 FileSyncCommandCenterTileHost,
                 NetworkOpsTileHost,
                 PreferencesCard

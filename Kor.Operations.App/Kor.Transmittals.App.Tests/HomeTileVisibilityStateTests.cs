@@ -45,7 +45,6 @@ public sealed class HomeTileVisibilityStateTests
         Assert.Equal(Visibility.Visible, state.StandardDetails);
         Assert.Equal(Visibility.Visible, state.GeneralTools);
         Assert.Equal(Visibility.Visible, state.FeeProposalBuilder);
-        Assert.Equal(Visibility.Visible, state.EngineeringTools);
     }
 
     [Fact]

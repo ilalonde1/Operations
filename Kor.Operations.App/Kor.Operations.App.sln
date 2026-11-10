@@ -60,10 +60,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BdOpportunityPurge", "..\to
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BdOrphanOrgPurge", "..\tools\BdOrphanOrgPurge\BdOrphanOrgPurge.csproj", "{A64B6C8E-7E6C-4C1C-A7CE-0BB1582AD7A1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.EngineeringTools.Core", "..\Kor.Operations.EngineeringTools.Core\Kor.Operations.EngineeringTools.Core.csproj", "{610794B1-F5E6-49EE-A53E-F17557DB3334}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.EngineeringTools.Core.Tests", "..\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj", "{51BA11BA-C2B1-4DE6-908A-8150EC060AC4}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.Architecture", "..\Kor.Operations.Architecture\Kor.Operations.Architecture.csproj", "{59D0B1E0-2C31-4164-8685-004461AB3208}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.Architecture.Tests", "..\Kor.Operations.Architecture.Tests\Kor.Operations.Architecture.Tests.csproj", "{7FCF194E-0F83-4897-9C50-3C6411B1E7CD}"
@@ -204,14 +200,6 @@ Global
 		{A64B6C8E-7E6C-4C1C-A7CE-0BB1582AD7A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A64B6C8E-7E6C-4C1C-A7CE-0BB1582AD7A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A64B6C8E-7E6C-4C1C-A7CE-0BB1582AD7A1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{610794B1-F5E6-49EE-A53E-F17557DB3334}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{610794B1-F5E6-49EE-A53E-F17557DB3334}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{610794B1-F5E6-49EE-A53E-F17557DB3334}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{610794B1-F5E6-49EE-A53E-F17557DB3334}.Release|Any CPU.Build.0 = Release|Any CPU
-		{51BA11BA-C2B1-4DE6-908A-8150EC060AC4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{51BA11BA-C2B1-4DE6-908A-8150EC060AC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{51BA11BA-C2B1-4DE6-908A-8150EC060AC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{51BA11BA-C2B1-4DE6-908A-8150EC060AC4}.Release|Any CPU.Build.0 = Release|Any CPU
 		{59D0B1E0-2C31-4164-8685-004461AB3208}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{59D0B1E0-2C31-4164-8685-004461AB3208}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{59D0B1E0-2C31-4164-8685-004461AB3208}.Release|Any CPU.ActiveCfg = Release|Any CPU
