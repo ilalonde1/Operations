@@ -126,8 +126,10 @@ public class BrainRecallTests
 
     // ---- the hook, end to end on the real database ----
 
+    /// <summary>The hook's output. The hook fails open, so its error log is asserted empty, or a crash would read as "nothing to add" (review row 1246).</summary>
     private static (string Out, string Session) Hook(string ev, object payload, string? session = null)
     {
+        var log = Path.Combine(Path.GetTempPath(), "kor-test-recall-" + Guid.NewGuid().ToString("N") + ".log");
         session ??= "test-brain-" + Guid.NewGuid().ToString("N");
         var node = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(payload))!.AsObject();
         node["hook_event_name"] = ev;
@@ -137,7 +139,8 @@ public class BrainRecallTests
         // the database passed in: the hook builds its index from it, never touching the machine's index file or starting a rebuild (review row 1240)
         using var b = BrainDb.OpenRead(KorStandardsConnection.Login.Brain, true, 15);
         using var w = BrainDb.OpenRead(KorStandardsConnection.Login.Board, true, 15);
-        Program.Run(new[] { "recall", "--hook", "--push-back" }, () => json, o, new StringWriter(), Path.Combine(Path.GetTempPath(), "kor-test-hook-errors.log"), b, w);
+        Program.Run(new[] { "recall", "--hook", "--push-back" }, () => json, o, new StringWriter(), log, b, w);
+        Assert.False(File.Exists(log), File.Exists(log) ? File.ReadAllText(log) : "");
         return (o.ToString(), session);
     }
 
@@ -160,6 +163,18 @@ public class BrainRecallTests
     {
         var (o, _) = Hook("PreToolUse", new { tool_name = "Bash", tool_input = new { command = "ls -la", description = "List files" } });
         Assert.Equal("", o.Trim());
+    }
+
+    [Fact]
+    public void ASeenQuestionOrConditionIsNotAClaim()
+    {
+        var none = new List<BrainRecall.Ranked>();
+        Assert.Null(PushBack.SeenClaim("Have you seen the sheets from the 08:19 run yet, or should I open them on your screen?"));
+        Assert.Null(PushBack.SeenClaim("Once you've looked at the cover pictures, the package can go to Omar for his markup."));
+        Assert.Null(PushBack.SeenClaim("The run made \"the sheets you've seen\" according to my earlier reply, which was wrong."));
+        Assert.Null(PushBack.SeenClaim("These are the sheets you've seen in record #131821 from the blind look this morning."));
+        Assert.NotNull(PushBack.SeenClaim("This morning's run made the sheets you've seen, and the blind look found 20 problems."));
+        Assert.False(PushBack.Decide("Have you seen the sheets from the 08:19 run yet? I can open them on your screen now.", none, new HashSet<string>()).Refuse);
     }
 
     [Fact]

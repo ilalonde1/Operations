@@ -15,7 +15,7 @@ namespace Kor.Operations.Framework.Recall;
 ///
 /// HOW IT RANKS. BM25 in this code (k1 1.2, b 0.75) over an <see cref="Index"/> of the whole searchable brain, on this code's own words:
 /// lower case, letters and digits, a light suffix stem (<see cref="Stem"/>), stop words and path noise dropped (<see cref="Words"/>), a word
-/// holding a digit weighted <see cref="DigitWeight"/>. A record is scored on Name + Description + the first <see cref="BodyChars"/> of its
+/// that names one thing (<see cref="Names"/>: 150k, g5, 1647 - not a bare number under 4 digits) weighted <see cref="DigitWeight"/>. A record is scored on Name + Description + the first <see cref="BodyChars"/> of its
 /// Body; a board row on What + DoneWhen. Document frequency is over the whole index. Copies of one record across lanes (same Name and
 /// Description; 49% of live rows, answer-memory.md) are indexed once, under the newest id. NOT SQL Full-Text: FREETEXTTABLE took 6.6 s on
 /// one real 700-char brief (10 Nov, sqlcmd), too slow for a hook on every tool call; the reviewed design's ranking is BM25 either way.
@@ -221,7 +221,7 @@ public static class BrainRecall
                 catch (UnauthorizedAccessException) when (attempt < 5) { Thread.Sleep(200); }
             }
         }
-        finally { try { if (File.Exists(tmp)) File.Delete(tmp); } catch (IOException) { } }
+        finally { try { if (File.Exists(tmp)) File.Delete(tmp); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } }
     }
 
     /// <summary>The file back, with the postings of <paramref name="terms"/> only (null: all). Null when the file is missing or not this format.</summary>

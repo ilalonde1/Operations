@@ -41,6 +41,9 @@ public static class PushBack
         @"(?i)\b(you(?:'ve|’ve| have)? (?:already )?(?:seen|saw|looked at)|(?:as|that|which) you (?:saw|looked at)|you(?:'ve|’ve| have) (?:already )?had (?:a )?look)\b",
         RegexOptions.CultureInvariant);
 
+    /// <summary>Words just before the claim that make it a question or a condition: "have you seen", "once you've looked at", "if you saw".</summary>
+    private static readonly Regex Asks = new(@"(?i)\b(have|did|if|once|when|after|until|unless|before)\s*$", RegexOptions.CultureInvariant);
+
     /// <summary>Evidence named in the claim's own sentence: a record or row id, or quoted words.</summary>
     private static readonly Regex Evidence = new(@"(#\d{3,}|\brows? \d{3,}|[""“][^""”]{3,}[""”])", RegexOptions.CultureInvariant);
 
@@ -65,6 +68,7 @@ public static class PushBack
             var sentence = reply[start..(end < 0 ? reply.Length : end + 1)].Trim();
             var before = reply[start..m.Index];
             if (before.Count(c => c is '"' or '“' or '”') % 2 == 1) continue;   // inside a quotation
+            if (sentence.EndsWith('?') || Asks.IsMatch(before)) continue;      // a question or a condition, not a claim (review row 1246)
             if (Evidence.IsMatch(sentence)) continue;
             return sentence;
         }
