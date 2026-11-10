@@ -14,8 +14,9 @@ namespace Kor.Operations.EngineeringTools.Tests.StandardDetails;
 /// the buttons gone. Lindsay was handed the gatekeeper role while being in NONE of the five groups,
 /// which would have looked exactly like the feature not existing.
 ///
-/// WHAT IT COVERS: that the App.config that ships actually lists the gatekeeper in the three groups
-/// her role needs, matched the same way SecurityGroupAccess matches — full identity or the part
+/// WHAT IT COVERS: that the App.config that ships actually lists the gatekeeper in the two groups her
+/// role needs today (StandardDetails, StandardDetailsApprovers), and Ian in StandardDetailsPublishers
+/// (Publish-to-Master is his until the generator replaces it, 89eb4983; Ian, 9 Nov: "as is"), matched the same way SecurityGroupAccess matches — full identity or the part
 /// before the '@', case-insensitive, separators ; , tab or newline.
 /// WHAT IT DOES NOT COVER: whether the address is the one Windows resolves for her at runtime (that
 /// comes from Environment.UserName or a UPN override on her machine, not from here); whether anyone
@@ -30,7 +31,7 @@ public sealed class GatekeeperCanDoTheJobTests
     private const string Gatekeeper = "lfinnigan@korstructural.com";
 
     [Theory]
-    // Seeing the module at all, then the two that unlock the verbs.
+    // Seeing the module at all, then the one that unlocks her verbs.
     [InlineData("StandardDetails")]
     // Approve/reject, and from migration 102: Add detail, Edit, Retire. Also satisfies CanContribute.
     [InlineData("StandardDetailsApprovers")]
