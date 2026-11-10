@@ -22,6 +22,9 @@
 //      analysis .LOG verbatim (instability, lost digits), the base reaction FZ against N (KOR.Drafter e2k_selfweight.py),
 //      and each storey's largest vertical (and horizontal) movement. COVERS: does it stand under its own weight, does the
 //      weight add up. DOES NOT: loads beyond self-weight, lateral, P-delta, cracked stiffness, design, springs.
+//   7. with --reactions <uses.csv> <transfers.csv> (10 Nov 2026, KOR.Drafter row 1964): DEAD, SDL and LIVE on the copy,
+//      pinned on a storey (--support-storey, default Base), and the forces at the bottom of every member a transfer slab carries - see Reactions() for its
+//      gates, what it covers and what it does not.
 // ETABS is closed at the end without saving anything else. Only the ETABS this tool started is ever closed or ended.
 //
 // COVERS: does it import (return code, what ETABS wrote, any dialog on screen); does ETABS hold the same storeys,
@@ -219,6 +222,20 @@ internal static class Program
                 Gravity(model, "as-delivered", pin: false, expect);
                 Gravity(model, "pinned-at-base", pin: true, expect);
             }
+
+            // 7. --reactions <uses.csv> <transfers.csv> [--support-storey S]: DEAD, SDL and LIVE on THIS copy, pinned on S, and the force at
+            // the bottom of every member a transfer slab carries (row 1964, record #131651)
+            int rx = Array.FindIndex(args, x => x.Equals("--reactions", StringComparison.OrdinalIgnoreCase));
+            if (rx >= 0 && rx + 2 < args.Length)
+            {
+                // --support-storey <name>: the storey whose every point is pinned (default Base). 01819 (10 Nov): Base held 0
+                // points - the tower stands on its P3 foundation slab at elevation 0 with no member below it.
+                int ss = Array.FindIndex(args, x => x.Equals("--support-storey", StringComparison.OrdinalIgnoreCase));
+                string supportStorey = ss >= 0 && ss + 1 < args.Length ? args[ss + 1] : "Base";
+                int bad = Reactions(model, mine, Path.GetFullPath(args[rx + 1]), Path.GetFullPath(args[rx + 2]), supportStorey);
+                Say($"GATE import, counts and analysis model: {(exit == 0 ? "PASS" : "FAIL")}");
+                if (bad != 0 || exit != 0) exit = 2;
+            }
         }
         finally
         {
@@ -326,6 +343,244 @@ internal static class Program
             Say($"     {g.Key,-18} UZ {u3[w] * 12,9:F3} at {obj[w],-8} max |UX| {g.Max(i => Math.Abs(u1[i])) * 12:F3} |UY| {g.Max(i => Math.Abs(u2[i])) * 12:F3}");
         }
     }
+
+    // 7. REACTIONS FOR THE TRANSFER SLABS (KOR.Drafter row 1964, record #131651: a transfer slab's SAFE model takes the loads
+    // from above as reactions of our ETABS model, per pattern, never a combination). On THIS copy only:
+    //   - UX UY UZ pinned at every point of the support storey (--support-storey, default Base) - a TEST assumption (the
+    //     composed .e2k carries no support), stated;
+    //   - patterns: the file's own "Dead" (self-weight 1) as case KOR-Dead; SDL (SuperDead) and LIVE (Live), each with its own
+    //     linear static case, loaded uniformly (gravity) on every FLOOR area of a storey that uses.csv names, at that row's kPa
+    //     (uses.csv: storey,use,sdl_kpa,ll_kpa - the storey's use as the SAFE route's one rule chose it, written by the caller);
+    //   - the model saved, OPENED AGAIN from the saved .EDB (on 28 Oct the API's RunAnalysis did not start the solver on a
+    //     model it had just set up, while F5 on the saved .EDB, opened fresh, ran at once - Operations 635a4976), and run;
+    //     if the cases still have not finished, F5 is posted to OUR ETABS's window and the analysis .LOG is waited on;
+    //   - written: reactions.csv - for each member of transfers.csv (storey,storey_above,kind,member,...: COLUMN = a frame,
+    //     PANEL = a wall; the label on storey_above), each case: a column's forces at its bottom station (FrameForce, the
+    //     smallest station), a wall's pier forces at the pier's Bottom on that storey (PierForce); kN and kN-m, ETABS's sign
+    //     (P < 0 is compression). Plus base-reactions.csv.
+    // GATES (each a line "GATE ... PASS|FAIL"): supports set; floor areas loaded X of Y; 3 of 3 cases finished; SDL and LIVE
+    // base reaction within 2 % of the load applied (the floor polygons' plan area less the openings' on the same storey,
+    // times kPa); reactions written X of N members x 3 cases.
+    // COVERS: the vertical load each discontinued member delivers, per pattern, from a linear elastic model of the whole
+    // tower as composed. DOES NOT: cracked stiffness, construction sequence, P-delta, lateral loads, live load reduction,
+    // partition or snow drift loads, the engineer's own supports (pins at Base are ours); a member whose label is not on
+    // storey_above in ETABS is listed, not guessed.
+    // SAME-CLASS FAULT IT MISSES: a floor area ETABS holds but no use row names gets no SDL/LIVE - it is counted in "loaded
+    // X of Y", so the gate fails, but a floor that is MISSING from the composed model takes no load and no gate sees it.
+    private static int Reactions(cSapModel model, Process? mine, string usesCsv, string transfersCsv, string supportStorey)
+    {
+        int bad = 0;
+        var Ic = CultureInfo.InvariantCulture;
+        Say($"7. REACTIONS (uses {usesCsv}, SHA-256 {Sha(usesCsv)}; transfers {transfersCsv}, SHA-256 {Sha(transfersCsv)})");
+        var uses = File.ReadAllLines(usesCsv).Skip(1).Where(l => l.Trim().Length > 0).Select(l => l.Split(','))
+            .ToDictionary(p => p[0].Trim(), p => (Use: p[1].Trim(), Sdl: double.Parse(p[2], Ic), Live: double.Parse(p[3], Ic)), StringComparer.OrdinalIgnoreCase);
+        var members = File.ReadAllLines(transfersCsv).Skip(1).Where(l => l.Trim().Length > 0).Select(l => l.Split(','))
+            .Select(p => (Storey: p[0].Trim(), Above: p[1].Trim(), Kind: p[2].Trim(), Label: p[3].Trim())).ToList();
+        Say($"   uses: {uses.Count} storey row(s); transfer members: {members.Count} on {members.Select(m => m.Storey).Distinct().Count()} storey(s)");
+
+        model.SetModelIsLocked(false);
+        model.SetPresentUnits(eUnits.kN_m_C);
+
+        // supports
+        int nb = 0; string[] basePts = Array.Empty<string>();
+        model.PointObj.GetNameListOnStory(supportStorey, ref nb, ref basePts);
+        int pinned = basePts.Count(p => { var v = new[] { true, true, true, false, false, false }; return model.PointObj.SetRestraint(p, ref v) == 0; });
+        Say($"GATE supports: UX UY UZ pinned at {pinned} of {nb} point(s) on storey {supportStorey} - a TEST assumption, this copy only: {(nb > 0 && pinned == nb ? "PASS" : "FAIL")}");
+        if (!(nb > 0 && pinned == nb)) bad++;
+
+        // patterns and cases
+        Say($"   LoadPatterns.Add(SDL, SuperDead): {model.LoadPatterns.Add("SDL", eLoadPatternType.SuperDead, 0, true)}; Add(LIVE, Live): {model.LoadPatterns.Add("LIVE", eLoadPatternType.Live, 0, true)}");
+        Say($"   StaticLinear.SetCase(KOR-Dead): {model.LoadCases.StaticLinear.SetCase("KOR-Dead")}");
+        { string[] lt = { "Load" }, ln = { "Dead" }; double[] sf = { 1.0 }; Say($"   StaticLinear.SetLoads(KOR-Dead, Dead x1): {model.LoadCases.StaticLinear.SetLoads("KOR-Dead", 1, ref lt, ref ln, ref sf)}"); }
+        string[] cases = { "KOR-Dead", "SDL", "LIVE" };
+
+        // floor loads, and the load applied (for the equilibrium gate)
+        int na = 0; string[] an = Array.Empty<string>();
+        model.AreaObj.GetNameList(ref na, ref an);
+        double PlanArea(string a)
+        {
+            int np = 0; string[] pts = Array.Empty<string>();
+            model.AreaObj.GetPoints(a, ref np, ref pts);
+            var xy = pts.Select(p => { double x = 0, y = 0, z = 0; model.PointObj.GetCoordCartesian(p, ref x, ref y, ref z, "Global"); return (x, y); }).ToList();
+            double s = 0; for (int i = 0; i < xy.Count; i++) { var (x1, y1) = xy[i]; var (x2, y2) = xy[(i + 1) % xy.Count]; s += x1 * y2 - x2 * y1; }
+            return Math.Abs(s) / 2;
+        }
+        int floors = 0, loaded = 0; double appliedSdl = 0, appliedLive = 0, openSdl = 0, openLive = 0;
+        var unnamed = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        var statedNone = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        foreach (var a in an)
+        {
+            string label = "", story = ""; model.AreaObj.GetLabelFromName(a, ref label, ref story);
+            bool isOpening = false; model.AreaObj.GetOpening(a, ref isOpening);
+            if (isOpening)
+            {
+                if (uses.TryGetValue(story, out var uo)) { double ar = PlanArea(a); openSdl += uo.Sdl * ar; openLive += uo.Live * ar; }
+                continue;
+            }
+            eAreaDesignOrientation o = default; model.AreaObj.GetDesignOrientation(a, ref o);
+            if (o != eAreaDesignOrientation.Floor) continue;
+            floors++;
+            if (!uses.TryGetValue(story, out var u)) { unnamed[story] = unnamed.GetValueOrDefault(story) + 1; continue; }
+            if (u.Sdl == 0 && u.Live == 0) { statedNone[story] = statedNone.GetValueOrDefault(story) + 1; continue; }   // a row that says: no use, no load
+            // Dir 10 = the gravity direction (a positive value acts down). NOT 6: 6 is global +Z, and run 2 (10 Nov 14:24) pushed
+            // SDL and LIVE UP - base FZ -43,212.6 kN against the self-weight's +404,048.6 kN; the equilibrium gate caught it.
+            int r1 = u.Sdl > 0 ? model.AreaObj.SetLoadUniform(a, "SDL", u.Sdl, 10, true, "Global") : 0;
+            int r2 = u.Live > 0 ? model.AreaObj.SetLoadUniform(a, "LIVE", u.Live, 10, true, "Global") : 0;
+            if (r1 == 0 && r2 == 0) { loaded++; double ar = PlanArea(a); appliedSdl += u.Sdl * ar; appliedLive += u.Live * ar; }
+            else Say($"   SetLoadUniform {a} ({label} on {story}): SDL {r1}, LIVE {r2}");
+        }
+        foreach (var kv in unnamed) Say($"   no use row for storey {kv.Key}: {kv.Value} floor area(s) carry no SDL or LIVE");
+        foreach (var kv in statedNone) Say($"   storey {kv.Key}: {kv.Value} floor area(s) carry no SDL or LIVE - its row in uses.csv says no use ({uses[kv.Key].Use})");
+        int none = statedNone.Values.Sum();
+        bool loadsOk = floors > 0 && loaded + none == floors;
+        Say($"GATE floor areas loaded: {loaded} of {floors} loaded, {none} unloaded as uses.csv states, {floors - loaded - none} neither: {(loadsOk ? "PASS" : "FAIL")}");
+        if (!loadsOk) bad++;
+        Say($"   applied (floor plan area x kPa, less the openings' on a named storey): SDL {appliedSdl - openSdl:N1} kN ({appliedSdl:N1} - {openSdl:N1}), LIVE {appliedLive - openLive:N1} kN ({appliedLive:N1} - {openLive:N1})");
+
+        // save, open again, run
+        string edb = Path.Combine(_out, "reactions.EDB");
+        Say($"   saved {Path.GetFileName(edb)}: {model.File.Save(edb)}");
+        Say($"   OpenFile({Path.GetFileName(edb)}) again: {model.File.OpenFile(edb)}");
+        model.SetPresentUnits(eUnits.kN_m_C);
+        Say($"   SetRunCaseFlag(all, off): {model.Analyze.SetRunCaseFlag("", false, true)}; on: {string.Join(", ", cases.Select(c => $"{c} {model.Analyze.SetRunCaseFlag(c, true, false)}"))}");
+        Say($"   cases to run: {Cases(model)}");
+        int stype = 0, ptype = 0, par = 0, fsize = 0, threads = 0; string stiff = "";
+        model.Analyze.GetSolverOption_3(ref stype, ref ptype, ref par, ref fsize, ref threads, ref stiff);
+        Say($"   solver as ETABS has it (kept): type {stype}, process type {ptype} (0 auto, 1 GUI process, 2 separate), threads {threads}");
+        var t0 = DateTime.Now.AddSeconds(-2);
+        var sw = Stopwatch.StartNew();
+        int run = model.Analyze.RunAnalysis();
+        Say($"   RunAnalysis: {run} in {sw.Elapsed.TotalSeconds:F1} s; case status: {Status(model, cases)}");
+        CaptureScreen("reactions-run-after");
+        if (!Finished(model, cases))
+        {
+            // F5 to OUR ETABS's window, as Ian ran it by hand on 28 Oct; the .LOG is watched, the API is not called meanwhile
+            mine?.Refresh();
+            IntPtr h = mine?.MainWindowHandle ?? IntPtr.Zero;
+            Say($"   not finished by the API - F5 posted to our ETABS's window {h}: {(h != IntPtr.Zero && PostMessage(h, 0x0100, (IntPtr)0x74, IntPtr.Zero) && PostMessage(h, 0x0101, (IntPtr)0x74, IntPtr.Zero))}");
+            string log = Path.ChangeExtension(edb, ".LOG");
+            var deadline = DateTime.Now.AddMinutes(25); bool done = false; int shot = 0;
+            while (DateTime.Now < deadline && !done)
+            {
+                Thread.Sleep(10_000);
+                if (++shot % 6 == 1) CaptureScreen($"reactions-f5-{shot:D3}");
+                try { done = File.Exists(log) && File.GetLastWriteTime(log) >= t0 && Regex.IsMatch(ReadShared(log), @"ANALYSIS\s+COMPLETE", RegexOptions.IgnoreCase); } catch (IOException) { }
+            }
+            Say($"   .LOG {(done ? "says ANALYSIS COMPLETE" : "did not say ANALYSIS COMPLETE in 25 min")} after {sw.Elapsed.TotalMinutes:F1} min");
+            Thread.Sleep(15_000);
+            CaptureScreen("reactions-f5-after");
+            Say($"   case status: {Status(model, cases)}");
+        }
+        foreach (var f in Directory.GetFiles(_out, "reactions.*").Where(f => File.GetLastWriteTime(f) >= t0 && f.EndsWith(".LOG", StringComparison.OrdinalIgnoreCase)))
+        {
+            Say($"   analysis log {Path.GetFileName(f)}, verbatim:");
+            foreach (var l in ReadShared(f).Split('\n')) Say($"   | {l.TrimEnd()}");
+        }
+        bool fin = Finished(model, cases);
+        Say($"GATE cases finished: {cases.Count(c => CaseStatus(model, c) == 4)} of {cases.Length}: {(fin ? "PASS" : "FAIL")}");
+        if (!fin) { bad++; Say("   no results read"); return bad; }
+
+        // results
+        model.SetPresentUnits(eUnits.kN_m_C);
+        model.Results.Setup.DeselectAllCasesAndCombosForOutput();
+        foreach (var c in cases) model.Results.Setup.SetCaseSelectedForOutput(c);
+        var baseLines = new List<string> { "case,FX_kN,FY_kN,FZ_kN,MX_kNm,MY_kNm,MZ_kNm" };
+        var fz = new Dictionary<string, double>();
+        {
+            int nr = 0; string[] lc = Array.Empty<string>(), st = Array.Empty<string>(); double[] sn = Array.Empty<double>(), fx = Array.Empty<double>(), fy = Array.Empty<double>(), z = Array.Empty<double>(), mx = Array.Empty<double>(), my = Array.Empty<double>(), mz = Array.Empty<double>();
+            double gx = 0, gy = 0, gz = 0;
+            model.Results.BaseReact(ref nr, ref lc, ref st, ref sn, ref fx, ref fy, ref z, ref mx, ref my, ref mz, ref gx, ref gy, ref gz);
+            for (int i = 0; i < nr; i++) { fz[lc[i]] = z[i]; baseLines.Add(string.Join(",", lc[i], fx[i].ToString("F2", Ic), fy[i].ToString("F2", Ic), z[i].ToString("F2", Ic), mx[i].ToString("F1", Ic), my[i].ToString("F1", Ic), mz[i].ToString("F1", Ic))); }
+        }
+        File.WriteAllLines(Path.Combine(_out, "base-reactions.csv"), baseLines);
+        foreach (var (c, want) in new[] { ("SDL", appliedSdl - openSdl), ("LIVE", appliedLive - openLive) })
+        {
+            double got = fz.GetValueOrDefault(c);
+            bool ok = want > 0 && Math.Abs(got - want) / want <= 0.02;
+            Say($"GATE equilibrium {c}: base FZ {got:N1} kN vs applied {want:N1} kN ({(want > 0 ? (got - want) / want : double.NaN):P2}): {(ok ? "PASS" : "FAIL")}");
+            if (!ok) bad++;
+        }
+        Say($"   KOR-Dead base FZ {fz.GetValueOrDefault("KOR-Dead"):N1} kN (self-weight; not gated here)");
+
+        // the members
+        int np2 = 0; string[] st2 = Array.Empty<string>(), pn = Array.Empty<string>(), plc = Array.Empty<string>(), loc = Array.Empty<string>();
+        double[] pp = Array.Empty<double>(), pv2 = Array.Empty<double>(), pv3 = Array.Empty<double>(), pt = Array.Empty<double>(), pm2 = Array.Empty<double>(), pm3 = Array.Empty<double>();
+        int pr = model.Results.PierForce(ref np2, ref st2, ref pn, ref plc, ref loc, ref pp, ref pv2, ref pv3, ref pt, ref pm2, ref pm3);
+        Say($"   PierForce: {pr}, {np2} row(s)");
+        var pierAt = new Dictionary<(string Story, string Pier, string Case), int>();
+        for (int i = 0; i < np2; i++) if (loc[i].Equals("Bottom", StringComparison.OrdinalIgnoreCase)) pierAt[(st2[i], pn[i], plc[i])] = i;
+        var rows = new List<string> { "storey,storey_above,kind,member,etabs_name,pier,panels_in_pier,case,P_kN,V2_kN,V3_kN,T_kNm,M2_kNm,M3_kNm,at" };
+        int written = 0; var missing = new List<string>();
+        var panelsInPier = new Dictionary<(string, string), int>();
+        foreach (var a in an)
+        {
+            string l = "", s = "", p = ""; model.AreaObj.GetLabelFromName(a, ref l, ref s);
+            if (model.AreaObj.GetPier(a, ref p) == 0 && p.Length > 0 && p != "None") panelsInPier[(s, p)] = panelsInPier.GetValueOrDefault((s, p)) + 1;
+        }
+        foreach (var m in members)
+        {
+            string name = "";
+            bool col = m.Kind.Equals("COLUMN", StringComparison.OrdinalIgnoreCase);
+            int got = col ? model.FrameObj.GetNameFromLabel(m.Label, m.Above, ref name) : model.AreaObj.GetNameFromLabel(m.Label, m.Above, ref name);
+            if (got != 0 || name.Length == 0) { missing.Add($"{m.Kind} {m.Label} on {m.Above}: no such label in ETABS"); continue; }
+            int casesWritten = 0;
+            if (col)
+            {
+                int n = 0; string[] obj = Array.Empty<string>(), elm = Array.Empty<string>(), lc = Array.Empty<string>(), stt = Array.Empty<string>();
+                double[] os = Array.Empty<double>(), es = Array.Empty<double>(), sn = Array.Empty<double>(), P = Array.Empty<double>(), V2 = Array.Empty<double>(), V3 = Array.Empty<double>(), T = Array.Empty<double>(), M2 = Array.Empty<double>(), M3 = Array.Empty<double>();
+                model.Results.FrameForce(name, eItemTypeElm.ObjectElm, ref n, ref obj, ref os, ref elm, ref es, ref lc, ref stt, ref sn, ref P, ref V2, ref V3, ref T, ref M2, ref M3);
+                foreach (var c in cases)
+                {
+                    var idx = Enumerable.Range(0, n).Where(i => lc[i] == c).OrderBy(i => os[i]).ToList();
+                    if (idx.Count == 0) continue;
+                    int i0 = idx[0];
+                    rows.Add(string.Join(",", Q(m.Storey), Q(m.Above), m.Kind, m.Label, name, "", "", c, P[i0].ToString("F2", Ic), V2[i0].ToString("F2", Ic), V3[i0].ToString("F2", Ic), T[i0].ToString("F2", Ic), M2[i0].ToString("F2", Ic), M3[i0].ToString("F2", Ic), $"station {os[i0].ToString("F3", Ic)} m (bottom)"));
+                    casesWritten++;
+                }
+            }
+            else
+            {
+                string pier = ""; model.AreaObj.GetPier(name, ref pier);
+                foreach (var c in cases)
+                {
+                    if (pier.Length == 0 || pier == "None" || !pierAt.TryGetValue((m.Above, pier, c), out int i)) continue;
+                    rows.Add(string.Join(",", Q(m.Storey), Q(m.Above), m.Kind, m.Label, name, pier, panelsInPier.GetValueOrDefault((m.Above, pier)).ToString(Ic), c, pp[i].ToString("F2", Ic), pv2[i].ToString("F2", Ic), pv3[i].ToString("F2", Ic), pt[i].ToString("F2", Ic), pm2[i].ToString("F2", Ic), pm3[i].ToString("F2", Ic), "pier bottom"));
+                    casesWritten++;
+                }
+                if (casesWritten < cases.Length) missing.Add($"PANEL {m.Label} on {m.Above}: pier '{pier}', {casesWritten} of {cases.Length} case(s) at the pier's bottom");
+            }
+            if (casesWritten == cases.Length) written++;
+            else if (col) missing.Add($"COLUMN {m.Label} on {m.Above}: {casesWritten} of {cases.Length} case(s)");
+        }
+        File.WriteAllLines(Path.Combine(_out, "reactions.csv"), rows);
+        foreach (var x in missing) Say($"   NOT WRITTEN: {x}");
+        Say($"GATE reactions written: {written} of {members.Count} member(s) x {cases.Length} cases ({rows.Count - 1} row(s) in reactions.csv): {(written == members.Count && members.Count > 0 ? "PASS" : "FAIL")}");
+        if (!(written == members.Count && members.Count > 0)) bad++;
+        return bad;
+    }
+
+    private static string Q(string s) => s.Contains(',') || s.Contains('"') ? "\"" + s.Replace("\"", "\"\"") + "\"" : s;
+
+    private static int CaseStatus(cSapModel model, string c)
+    {
+        int nc = 0; string[] cn = Array.Empty<string>(); int[] cs = Array.Empty<int>();
+        model.Analyze.GetCaseStatus(ref nc, ref cn, ref cs);
+        int i = Array.IndexOf(cn, c);
+        return i >= 0 ? cs[i] : 0;
+    }
+
+    private static bool Finished(cSapModel model, string[] cases) => cases.All(c => CaseStatus(model, c) == 4);
+
+    private static string Status(cSapModel model, string[] cases) => string.Join(", ", cases.Select(c => $"{c}={CaseStatus(model, c)}")) + " (1 not run, 2 could not start, 3 not finished, 4 finished)";
+
+    private static string ReadShared(string path)
+    {
+        using var s = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var r = new StreamReader(s);
+        return r.ReadToEnd();
+    }
+
+    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     private static string Cases(cSapModel model)
     {
