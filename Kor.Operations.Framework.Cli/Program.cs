@@ -74,7 +74,7 @@ public static partial class Program
                 "migration-lint" => MigrationLintVerb(o, stdin, output),
                 "enroll-check" => EnrollCheckVerb(o, output, hook, db),
                 "read" => ReadVerb(o, output, db),
-                "recall" => RecallVerb(o, output, db),
+                "recall" => RecallVerb(o, stdin, output, hook, db, board),
                 "start-gate" => StartGateVerb(o, stdin, output, hook),
                 "start-proof" => StartProofVerb(o, output, db),
                 "stall" => StallVerb(o, stdin, output, hook, db, board, hookErrorLog),
@@ -133,13 +133,13 @@ public static partial class Program
             "--kinds", "--restates", "--timeout", "--part", "--start-source", "--cache-dir", "--page", "--pages", "--cutoff",
             "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what", "--days", "--tag",
             "--replay", "--since", "--window-hours", "--auto-compact-window", "--auto-compact-model", "--ceiling", "--spend-root",
-            "--pages-wired", "--subject", "--model", "--claude", "--wire", "--out", "--temp-dir", "--budget",
+            "--pages-wired", "--subject", "--model", "--claude", "--wire", "--out", "--temp-dir", "--budget", "--top", "--as-of", "--floor",
         };
 
         /// <summary>Options given more than once, every value kept in order (check-add's examples).</summary>
         private static readonly string[] Repeated = { "--refuse", "--allow" };
 
-        private static readonly string[] Flags = { "--explain", "--full", "--file-changed", "--resolved", "--commit-hook", "--no-helpers", "--text", "--offsets", "--all", "--never-records", "--control", "--wiring", "--baseline" };
+        private static readonly string[] Flags = { "--explain", "--full", "--file-changed", "--resolved", "--commit-hook", "--no-helpers", "--text", "--offsets", "--all", "--never-records", "--control", "--wiring", "--baseline", "--push-back", "--proposal", "--rebuild" };
 
         /// <summary>Every --owner given, in order (kor start --part board: one lead, several board names).</summary>
         public List<string> Owners { get; init; } = new();

@@ -81,9 +81,10 @@ public class RecallTests
     }
 
     [Fact]
-    public void ARecallNeedsAModuleAndATask()
+    public void ARecallNeedsATask()
     {
-        Assert.NotEqual(0, Run("recall", "grader").Code);
+        // 10 Nov: with no --module, recall is the brain-wide ranking (BrainRecallTests), so "recall grader" is no longer an error
+        Assert.NotEqual(0, Run("recall").Code);
         Assert.NotEqual(0, Run("recall", "--module", Lane).Code);
     }
 
