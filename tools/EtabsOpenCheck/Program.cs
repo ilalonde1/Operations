@@ -24,7 +24,11 @@
 //      weight add up. DOES NOT: loads beyond self-weight, lateral, P-delta, cracked stiffness, design, springs.
 //   7. with --reactions <uses.csv> <transfers.csv> (10 Nov 2026, KOR.Drafter row 1964): DEAD, SDL and LIVE on the copy,
 //      pinned on a storey (--support-storey, default Base), and the forces at the bottom of every member a transfer slab carries - see Reactions() for its
-//      gates, what it covers and what it does not.
+//      gates, what it covers and what it does not. REFUSED before ETABS starts (exit 2): --reactions without two files after
+//      it, --support-storey without a name or without --reactions, --gravity with --reactions. The step refuses a uses.csv
+//      kPa that is not a finite number of 0 or more. reactions.csv columns: storey, storey_above, kind, member, etabs_name,
+//      pier, panels_in_pier, transfer_panels_in_pier (added 10 Nov after review 1254: every transfer panel of that pier on
+//      that storey - a pier's force is the whole pier's, sum it once), case, P_kN, V2_kN, V3_kN, T_kNm, M2_kNm, M3_kNm, at.
 // ETABS is closed at the end without saving anything else. Only the ETABS this tool started is ever closed or ended.
 //
 // COVERS: does it import (return code, what ETABS wrote, any dialog on screen); does ETABS hold the same storeys,
@@ -100,6 +104,9 @@ internal static class Program
         Say($"ETABS   : {etabsExe} [{FileVersionInfo.GetVersionInfo(etabsExe).ProductVersion}]");
         Say($"as      : {Environment.UserDomainName}\\{Environment.UserName}, session {Process.GetCurrentProcess().SessionId}");
         var want = E2k.Read(copy);
+        // a malformed --reactions/--support-storey, or --gravity with --reactions, is refused HERE, before ETABS starts:
+        // the flags are only read, so a bad command line costs nothing (reviews 1254, 1255)
+        if (ReactionArgsRefusal(args) is { } refusal) { Say($"REFUSED: {refusal} - ETABS was not started"); return 2; }
 
         var before = Process.GetProcessesByName("ETABS").Select(p => p.Id).ToHashSet();
         cHelper helper = new Helper();
@@ -225,16 +232,10 @@ internal static class Program
 
             // 7. --reactions <uses.csv> <transfers.csv> [--support-storey S]: DEAD, SDL and LIVE on THIS copy, pinned on S, and the force at
             // the bottom of every member a transfer slab carries (row 1964, record #131651)
+            // the flags were checked before ETABS started (ReactionArgsRefusal)
             int rx = Array.FindIndex(args, x => x.Equals("--reactions", StringComparison.OrdinalIgnoreCase));
             int ss = Array.FindIndex(args, x => x.Equals("--support-storey", StringComparison.OrdinalIgnoreCase));
-            // a malformed flag fails the run, never skips the step (review row 1254)
-            if (rx >= 0 && (rx + 2 >= args.Length || args[rx + 1].StartsWith("--") || args[rx + 2].StartsWith("--")))
-            { Say("REFUSED: --reactions needs <uses.csv> <transfers.csv> after it - nothing reacted"); exit = 2; }
-            else if (ss >= 0 && (ss + 1 >= args.Length || args[ss + 1].StartsWith("--")))
-            { Say("REFUSED: --support-storey needs a storey name after it - nothing reacted"); exit = 2; }
-            else if (rx >= 0 && args.Any(x => x.Equals("--gravity", StringComparison.OrdinalIgnoreCase)))
-            { Say("REFUSED: --gravity and --reactions together - --gravity has already pinned every Base point on this model, supports the reactions' gate would not state"); exit = 2; }
-            else if (rx >= 0)
+            if (rx >= 0)
             {
                 // --support-storey <name>: the storey whose every point is pinned (default Base). 01819 (10 Nov): Base held 0
                 // points - the tower stands on its P3 foundation slab at elevation 0 with no member below it.
@@ -382,8 +383,8 @@ internal static class Program
         // both files are read as CSV with quoted fields, the way reactions.csv is written (review row 1254)
         var uses = File.ReadAllLines(usesCsv).Skip(1).Where(l => l.Trim().Length > 0).Select(CsvFields)
             .ToDictionary(p => p[0].Trim(), p => (Use: p[1].Trim(), Sdl: double.Parse(p[2], Ic), Live: double.Parse(p[3], Ic)), StringComparer.OrdinalIgnoreCase);
-        var negative = uses.Where(kv => kv.Value.Sdl < 0 || kv.Value.Live < 0).Select(kv => kv.Key).ToList();
-        if (negative.Count > 0) { Say($"REFUSED: uses.csv gives a negative kPa for storey(s) {string.Join(", ", negative)} - nothing loaded or run"); return 1; }
+        var negative = uses.Where(kv => !double.IsFinite(kv.Value.Sdl) || kv.Value.Sdl < 0 || !double.IsFinite(kv.Value.Live) || kv.Value.Live < 0).Select(kv => kv.Key).ToList();
+        if (negative.Count > 0) { Say($"REFUSED: uses.csv gives a kPa that is not a finite number of 0 or more for storey(s) {string.Join(", ", negative)} - nothing loaded or run"); return 1; }
         var members = File.ReadAllLines(transfersCsv).Skip(1).Where(l => l.Trim().Length > 0).Select(CsvFields)
             .Select(p => (Storey: p[0].Trim(), Above: p[1].Trim(), Kind: p[2].Trim(), Label: p[3].Trim())).ToList();
         Say($"   uses: {uses.Count} storey row(s); transfer members: {members.Count} on {members.Select(m => m.Storey).Distinct().Count()} storey(s)");
@@ -555,7 +556,7 @@ internal static class Program
                     var idx = Enumerable.Range(0, n).Where(i => lc[i] == c).OrderBy(i => os[i]).ToList();
                     if (idx.Count == 0) continue;
                     int i0 = idx[0];
-                    rows.Add(string.Join(",", Q(m.Storey), Q(m.Above), m.Kind, m.Label, name, "", "", "", c, P[i0].ToString("F2", Ic), V2[i0].ToString("F2", Ic), V3[i0].ToString("F2", Ic), T[i0].ToString("F2", Ic), M2[i0].ToString("F2", Ic), M3[i0].ToString("F2", Ic), $"station {os[i0].ToString("F3", Ic)} m (bottom)"));
+                    rows.Add(string.Join(",", Q(m.Storey), Q(m.Above), Q(m.Kind), Q(m.Label), Q(name), "", "", "", c, P[i0].ToString("F2", Ic), V2[i0].ToString("F2", Ic), V3[i0].ToString("F2", Ic), T[i0].ToString("F2", Ic), M2[i0].ToString("F2", Ic), M3[i0].ToString("F2", Ic), $"station {os[i0].ToString("F3", Ic)} m (bottom)"));
                     casesWritten++;
                 }
             }
@@ -565,7 +566,7 @@ internal static class Program
                 foreach (var c in cases)
                 {
                     if (pier.Length == 0 || pier == "None" || !pierAt.TryGetValue((m.Above, pier, c), out int i)) continue;
-                    rows.Add(string.Join(",", Q(m.Storey), Q(m.Above), m.Kind, m.Label, name, pier, panelsInPier.GetValueOrDefault((m.Above, pier)).ToString(Ic), Q(string.Join(";", transferPanelsInPier.GetValueOrDefault((m.Above, pier)) ?? new List<string>())), c, pp[i].ToString("F2", Ic), pv2[i].ToString("F2", Ic), pv3[i].ToString("F2", Ic), pt[i].ToString("F2", Ic), pm2[i].ToString("F2", Ic), pm3[i].ToString("F2", Ic), "pier bottom"));
+                    rows.Add(string.Join(",", Q(m.Storey), Q(m.Above), Q(m.Kind), Q(m.Label), Q(name), Q(pier), panelsInPier.GetValueOrDefault((m.Above, pier)).ToString(Ic), Q(string.Join(";", transferPanelsInPier.GetValueOrDefault((m.Above, pier)) ?? new List<string>())), c, pp[i].ToString("F2", Ic), pv2[i].ToString("F2", Ic), pv3[i].ToString("F2", Ic), pt[i].ToString("F2", Ic), pm2[i].ToString("F2", Ic), pm3[i].ToString("F2", Ic), "pier bottom"));
                     casesWritten++;
                 }
                 if (casesWritten < cases.Length) missing.Add($"PANEL {m.Label} on {m.Above}: pier '{pier}', {casesWritten} of {cases.Length} case(s) at the pier's bottom");
@@ -578,6 +579,20 @@ internal static class Program
         Say($"GATE reactions written: {written} of {members.Count} member(s) x {cases.Length} cases ({rows.Count - 1} row(s) in reactions.csv): {(written == members.Count && members.Count > 0 ? "PASS" : "FAIL")}");
         if (!(written == members.Count && members.Count > 0)) bad++;
         return bad;
+    }
+
+    private static string? ReactionArgsRefusal(string[] args)
+    {
+        int rx = Array.FindIndex(args, x => x.Equals("--reactions", StringComparison.OrdinalIgnoreCase));
+        int ss = Array.FindIndex(args, x => x.Equals("--support-storey", StringComparison.OrdinalIgnoreCase));
+        if (rx >= 0 && (rx + 2 >= args.Length || args[rx + 1].StartsWith("--") || args[rx + 2].StartsWith("--")))
+            return "--reactions needs <uses.csv> <transfers.csv> after it";
+        if (ss >= 0 && (ss + 1 >= args.Length || args[ss + 1].StartsWith("--")))
+            return "--support-storey needs a storey name after it";
+        if (ss >= 0 && rx < 0) return "--support-storey is read only with --reactions";
+        if (rx >= 0 && args.Any(x => x.Equals("--gravity", StringComparison.OrdinalIgnoreCase)))
+            return "--gravity and --reactions together - --gravity pins every Base point on the same model, supports the reactions' gate would not state";
+        return null;
     }
 
     private static string Q(string s) => s.Contains(',') || s.Contains('"') ? "\"" + s.Replace("\"", "\"\"") + "\"" : s;
