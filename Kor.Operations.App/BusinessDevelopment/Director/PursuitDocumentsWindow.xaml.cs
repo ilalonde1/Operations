@@ -91,7 +91,7 @@ public partial class PursuitDocumentsWindow : Window
             var result = await PursuitDocumentSaver.SaveAllAsync(_store, _files, dialog.FolderName, progress, _closing.Token).ConfigureAwait(true);
             Status.Text = $"{result.Saved} saved"
                 + (result.AlreadyThere > 0 ? $", {result.AlreadyThere} already in the folder" : "")
-                + (result.NotSaved.Count > 0 ? $". Not saved, open them instead: {string.Join(", ", result.NotSaved)}" : ".");
+                + (result.NotSaved.Count > 0 ? $". Not saved, try opening them from the list: {string.Join(", ", result.NotSaved)}" : ".");
         }
         catch (OperationCanceledException) { /* The window closed mid-save; the file in progress was removed. */ }
         catch (Exception ex)

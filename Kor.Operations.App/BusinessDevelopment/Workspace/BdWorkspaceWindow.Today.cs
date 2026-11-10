@@ -97,7 +97,7 @@ public partial class BdWorkspaceWindow : IDirectorHomeHost
 
     public Task ReReadAsync(DirectorCard card) => DirectorActions.ReReadAsync(this, card, Actor(), LoadTodayAsync, CancellationToken.None);
 
-    public void SignInToApc() => DirectorActions.SignInToApc(this, Actor());
+    public void SignInToApc() => DirectorActions.SignInToApc(this, Actor(), LoadTodayAsync);
 
     public Task CompleteAskAsync(DirectorListItem item) => DirectorActions.CompleteAskAsync(this, item, Actor(), _today, CancellationToken.None);
 

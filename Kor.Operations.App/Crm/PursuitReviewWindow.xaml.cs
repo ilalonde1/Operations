@@ -20,6 +20,7 @@ public partial class PursuitReviewWindow : Window
     private readonly PursuitReviewRow _review;
     private readonly string _project;
     private readonly string? _sendTo;
+    private readonly string? _staleNote;
     private readonly Action _openChecklist;
 
     /// <summary>A question as the window shows it: numbered, with why it matters and where it comes from.</summary>
@@ -29,10 +30,11 @@ public partial class PursuitReviewWindow : Window
     public sealed record ActionLine(int Number, string Action, string Why, string Who, string When, System.Windows.Media.Brush WhenBrush);
 
     public PursuitReviewWindow(PursuitReviewRow review, string project, string? buyer, string? buyerEmail,
-        DateTimeOffset? submissionDeadlineUtc, Action openChecklist, string? pursuitOwner = null)
+        DateTimeOffset? submissionDeadlineUtc, Action openChecklist, string? pursuitOwner = null, string? staleNote = null)
     {
         InitializeComponent();
         _review = review;
+        _staleNote = staleNote;
         _project = project;
         // questionsTo is meant to be an address; a session may write a sentence there (Leduc, run 17: "Through the bids&tenders
         // 'Submit a Question' feature only…"), which must never land in an email's To line.
@@ -92,7 +94,16 @@ public partial class PursuitReviewWindow : Window
         reasons.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(l => l.TrimStart('-', '•', '*', ' ')).Where(l => l.Length > 0).ToList();
 
-    private async void DraftEmail_Click(object sender, RoutedEventArgs e) => await DraftQuestionsAsync(this, _review, _project, _sendTo).ConfigureAwait(true);
+    private async void DraftEmail_Click(object sender, RoutedEventArgs e)
+    {
+        if (StillWantsStaleQuestions(this, _staleNote)) await DraftQuestionsAsync(this, _review, _project, _sendTo).ConfigureAwait(true);
+    }
+
+    /// <summary>Documents that arrived after the review: every route to the email asks first. True when there is nothing to warn about.</summary>
+    internal static bool StillWantsStaleQuestions(Window owner, string? staleNote) =>
+        string.IsNullOrEmpty(staleNote) || MessageBox.Show(owner,
+            $"{staleNote}\n\nSome questions may already be answered or out of date. Open the email anyway?",
+            "Questions email", MessageBoxButton.OKCancel, MessageBoxImage.Warning) == MessageBoxResult.OK;
 
     /// <summary>
     /// The review's questions as an email to the buyer, opened UNSENT in the person's Outlook (questions to a buyer are Ian's to

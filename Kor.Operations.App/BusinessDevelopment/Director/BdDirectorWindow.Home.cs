@@ -94,7 +94,7 @@ public partial class BdDirectorWindow : IDirectorHomeHost
 
     public Task ReReadAsync(DirectorCard card) => DirectorActions.ReReadAsync(this, card, _actor, ReloadAsync, _lifetime.Token);
 
-    public void SignInToApc() => DirectorActions.SignInToApc(this, _actor);
+    public void SignInToApc() => DirectorActions.SignInToApc(this, _actor, ReloadAsync);
 
     public async Task OpenPursuitAsync(DirectorCard card)
     {

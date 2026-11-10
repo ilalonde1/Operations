@@ -70,6 +70,19 @@ public static class PursuitRfpReview
     /// <summary>The uploaders that mean "fetched from the portal by the Worker": a review starts when one of these lands.</summary>
     public static IReadOnlyList<string> PortalUploaders { get; } = Array.AsReadOnly(new[] { "apc", "bids-and-tenders" });
 
+    /// <summary>
+    /// Documents the portal delivered after the review was reported: the review and its questions do not cover them. The same
+    /// rule as the Director board's SQL (BoardSql: UploadedBy in the portal uploaders, UploadedAtUtc &gt; ReportedAtUtc), for a
+    /// screen that already holds the pursuit's files (review row 629 #3: the Pursuits screen).
+    /// </summary>
+    public static int DocumentsSinceReview(IEnumerable<(string UploadedBy, DateTimeOffset UploadedAtUtc)> files, DateTimeOffset reportedAtUtc) =>
+        files.Count(f => PortalUploaders.Contains(f.UploadedBy, StringComparer.Ordinal) && f.UploadedAtUtc > reportedAtUtc);
+
+    /// <summary>The one sentence every route to the questions email shows when documents arrived after the review ("" when none).</summary>
+    public static string StaleNote(int newDocuments, bool running) => newDocuments <= 0 ? ""
+        : (newDocuments == 1 ? "1 document arrived" : $"{newDocuments} documents arrived") + " after Claude's review, so the review and its questions do not cover "
+            + (newDocuments == 1 ? "it." : "them.") + (running ? " Claude is reading them now." : "");
+
     public static string Subject(long engagementId, string project) => Clip($"RFP review: pursuit #{engagementId} {project}", 200);
 
     public static string Prompt(RfpReviewInput i, BdPromptHandle report)
@@ -531,7 +544,7 @@ SELECT Id, FileName, SizeBytes, UploadedBy, UploadedAtUtc FROM opportunities.Opp
 SELECT e.Id, COALESCE(o.Name, fwd.ProjectName), COALESCE(o.BuyerName, fwd.ProponentName, fwd.MunicipalityName), e.Stage, e.OwnerStaffId, who.DisplayName,
        o.SubmissionDeadlineUtc, e.NextActionNote, e.NextActionDueUtc,
        r.Recommendation, r.Reasons, r.QuestionsJson, r.QuestionsDeadline, r.ActionsJson, r.QuestionsTo,
-       CAST(CASE WHEN run.Id IS NOT NULL AND run.OutcomeAtUtc IS NULL THEN 1 ELSE 0 END AS bit), e.OpportunityId, e.UpdatedAtUtc,
+       CAST(CASE WHEN run.Id IS NOT NULL AND run.OutcomeAtUtc IS NULL AND run.CreatedAtUtc > DATEADD(hour, -6, SYSDATETIMEOFFSET()) THEN 1 ELSE 0 END AS bit), e.OpportunityId, e.UpdatedAtUtc,
        (SELECT COUNT(*) FROM opportunities.OpportunityFiles f WHERE f.EngagementId = e.Id),
        -- Portal documents the latest review cannot have read. None when there is no review.
        (SELECT COUNT(*) FROM opportunities.OpportunityFiles f WHERE f.EngagementId = e.Id AND f.UploadedBy IN (N'apc', N'bids-and-tenders') AND f.UploadedAtUtc > r.ReportedAtUtc),
@@ -549,7 +562,7 @@ OUTER APPLY (SELECT TOP (1) m.ProjectName, m.ProponentName, m.MunicipalityName
 OUTER APPLY (SELECT TOP (1) s.DisplayName FROM opportunities.BdStaff s WHERE s.Mailbox = e.OwnerStaffId COLLATE DATABASE_DEFAULT) who
 OUTER APPLY (SELECT TOP (1) v.Recommendation, v.Reasons, v.QuestionsJson, v.QuestionsDeadline, v.ActionsJson, v.QuestionsTo, v.ReportedAtUtc
              FROM opportunities.PursuitReview v WHERE v.EngagementId = e.Id ORDER BY v.ReportedAtUtc DESC, v.Id DESC) r
-OUTER APPLY (SELECT TOP (1) x.Id, x.OutcomeAtUtc FROM opportunities.BdPromptRun x WHERE x.EngagementId = e.Id AND x.Kind = N'rfp' ORDER BY x.Id DESC) run
+OUTER APPLY (SELECT TOP (1) x.Id, x.OutcomeAtUtc, x.CreatedAtUtc FROM opportunities.BdPromptRun x WHERE x.EngagementId = e.Id AND x.Kind = N'rfp' ORDER BY x.Id DESC) run
 WHERE e.Stage IN (1, 3)
   -- A submitted bid stays until it is won or lost, however long ago it closed (audit C10, 2026-10-21).
   AND (o.Id IS NOT NULL AND (e.Stage = 3 OR r.Recommendation IS NOT NULL OR o.SubmissionDeadlineUtc >= DATEADD(day, -7, SYSDATETIMEOFFSET()))

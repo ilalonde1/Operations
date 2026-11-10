@@ -452,6 +452,11 @@ public sealed class DirectorCard : INotifyPropertyChanged
     public string DocumentsLabel { get; } = "";
     /// <summary>Portal documents newer than the review, so nobody sends questions written without them.</summary>
     public bool HasNewDocuments { get; }
+    public string? PrimaryTip { get; }
+
+    /// <summary>Re-read only with documents the review has not seen, no run under way, and Claude Code able to run on this PC.</summary>
+    public static bool OffersReRead(int newDocuments, bool reviewRunning, bool canRunHere) => newDocuments > 0 && !reviewRunning && canRunHere;
+
     public string NewDocumentsNote { get; } = "";
     /// <summary>The review only runs on a PC with Claude Code signed in as the KOR account, so the button shows only there.</summary>
     public bool CanReRead { get; }
@@ -522,11 +527,10 @@ public sealed class DirectorCard : INotifyPropertyChanged
         DocumentsLabel = $"Documents ({row.DocumentCount})";
         var newDocs = row.DocumentsSinceReview;
         HasNewDocuments = newDocs > 0;
-        NewDocumentsNote = newDocs == 0 ? ""
-            : (newDocs == 1 ? "1 document arrived" : $"{newDocs} documents arrived") + " after Claude's review, so the review and its questions do not cover "
-                + (newDocs == 1 ? "it." : "them.") + (row.ReviewRunning ? " Claude is reading them now." : "");
-        CanReRead = newDocs > 0 && !row.ReviewRunning && RfpReviewLauncher.CanRunHere;
-        Steps =row.Actions.Take(3).Select((a, i) => new DirectorStep(i + 1, a.Action,
+        NewDocumentsNote = PursuitRfpReview.StaleNote(newDocs, row.ReviewRunning);   // the same words the Pursuits screen shows
+        CanReRead = OffersReRead(newDocs, row.ReviewRunning, RfpReviewLauncher.CanRunHere);
+        PrimaryTip = PrimaryAction.StartsWith("Email", StringComparison.Ordinal) ? "The questions open unsent in Outlook. Nothing is sent from here." : null;
+        Steps = row.Actions.Take(3).Select((a, i) => new DirectorStep(i + 1, a.Action,
             a.Owner.Equals("owner", StringComparison.OrdinalIgnoreCase) ? "Owner" : a.Owner.Equals("Ian", StringComparison.OrdinalIgnoreCase) ? "Ian" : a.Owner.Split('@')[0],
             a.Due.ToString("ddd d MMM", CultureInfo.InvariantCulture))).ToList();
         More = row.Actions.Count > 3 ? $"+ {row.Actions.Count - 3} more steps" : "";

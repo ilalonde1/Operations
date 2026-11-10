@@ -12,6 +12,7 @@ using Kor.Operations.Brochures;
 using Kor.Operations.Controls;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Crm;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -396,8 +397,11 @@ public partial class CrmView : UserControl
             return;
         }
         var label = string.IsNullOrWhiteSpace(row.ProjectName) ? row.OpportunityKey : row.ProjectName;
+        // Review row 629 #3: this route warns too when the portal delivered documents after the review (the Director card does).
+        var newDocs = PursuitRfpReview.DocumentsSinceReview(_vm.Files.Select(f => (f.Model.UploadedBy, f.Model.UploadedAtUtc)), review.ReportedAtUtc);
+        var staleNote = PursuitRfpReview.StaleNote(newDocs, running: false);
         new PursuitReviewWindow(review, label, row.Buyer, row.Opportunity?.BuyerContactEmail, row.Opportunity?.SubmissionDeadlineUtc,
-            () => ChecklistButton_Click(sender, e), row.Engagement.OwnerStaffId) { Owner = owner }.Show();
+            () => ChecklistButton_Click(sender, e), row.Engagement.OwnerStaffId, staleNote.Length > 0 ? staleNote : null) { Owner = owner }.Show();
     }
 
     /// <summary>2026-10-21: opens Claude Code (KOR account) on this PC to read the selected pursuit's documents again.</summary>

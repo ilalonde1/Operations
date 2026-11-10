@@ -34,9 +34,7 @@ public static class DirectorActions
         }
         if (card.Row.Questions.Count > 0 && await LatestReviewAsync(card, ct).ConfigureAwait(true) is { } review)
         {
-            if (card.HasNewDocuments && MessageBox.Show(owner,
-                    $"{card.NewDocumentsNote}\n\nSome questions may already be answered or out of date. Open the email anyway?",
-                    "Questions email", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
+            if (!PursuitReviewWindow.StillWantsStaleQuestions(owner, card.HasNewDocuments ? card.NewDocumentsNote : null)) return;
             await PursuitReviewWindow.DraftQuestionsAsync(owner, review, card.Row.Project, card.Row.QuestionsTo).ConfigureAwait(true);
             return;
         }
@@ -53,7 +51,7 @@ public static class DirectorActions
             return;
         }
         new PursuitReviewWindow(review, card.Row.Project, card.Row.Buyer, null, card.Row.DeadlineUtc,
-            () => OpenChecklist(owner, card, actor), card.Row.OwnerMailbox) { Owner = owner }.Show();
+            () => OpenChecklist(owner, card, actor), card.Row.OwnerMailbox, card.HasNewDocuments ? card.NewDocumentsNote : null) { Owner = owner }.Show();
     }
 
     public static void OpenDocuments(Window owner, DirectorCard card) =>
@@ -75,8 +73,17 @@ public static class DirectorActions
         }
     }
 
-    public static void SignInToApc(Window owner, string actor) =>
-        new ApcSignInWindow(AppServices.Get<Kor.Opportunities.Data.Portals.SqlPortalSessionStore>(), actor) { Owner = owner }.Show();
+    /// <summary>Opens the sign-in; when it closes, the screen reloads, or a sign-in that worked would still show the banner.</summary>
+    public static void SignInToApc(Window owner, string actor, Func<Task> reload)
+    {
+        var window = new ApcSignInWindow(AppServices.Get<Kor.Opportunities.Data.Portals.SqlPortalSessionStore>(), actor) { Owner = owner };
+        window.Closed += async (_, _) =>
+        {
+            try { await reload().ConfigureAwait(true); }
+            catch (Exception ex) { Log.Warning(ex, "Reloading after the APC sign-in failed"); }
+        };
+        window.Show();
+    }
 
     public static async Task ArchiveAsync(Window owner, DirectorCard card, string actor, Func<Task> reload, CancellationToken ct)
     {

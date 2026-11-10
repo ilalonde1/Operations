@@ -66,8 +66,19 @@ public sealed class PursuitCardDocumentsTests : IDisposable
     [Fact]
     public void ARunningReviewOffersNoSecondRead()
     {
-        Assert.False(Card(Row(since: 2, running: true)).CanReRead);
-        Assert.False(Card(Row(since: 0)).CanReRead);
+        Assert.True(DirectorCard.OffersReRead(2, reviewRunning: false, canRunHere: true));
+        Assert.False(DirectorCard.OffersReRead(2, reviewRunning: true, canRunHere: true));
+        Assert.False(DirectorCard.OffersReRead(0, reviewRunning: false, canRunHere: true));
+        Assert.False(DirectorCard.OffersReRead(2, reviewRunning: false, canRunHere: false));
+    }
+
+    [Fact]
+    public void TheOutlookTipIsOnAnEmailButtonOnly()
+    {
+        Assert.Contains("Outlook", Card(Row()).PrimaryTip, StringComparison.Ordinal);
+        var noQuestions = Row() with { Questions = Array.Empty<RfpQuestion>() };
+        Assert.Equal("Open review", Card(noQuestions).PrimaryAction);
+        Assert.Null(Card(noQuestions).PrimaryTip);
     }
 
     [Fact]
@@ -117,6 +128,46 @@ public sealed class PursuitCardDocumentsTests : IDisposable
         Assert.Equal(1, result.Saved);
         Assert.Equal("somebody's own edit", await File.ReadAllTextAsync(Path.Combine(_folder, "RFP.pdf")));
         Assert.Equal("the rfp", await File.ReadAllTextAsync(Path.Combine(_folder, "RFP (2).pdf")));
+
+        var second = await PursuitDocumentSaver.SaveAllAsync(store.Object, new[] { file }, _folder, null, CancellationToken.None);
+        Assert.Equal((0, 1), (second.Saved, second.AlreadyThere));
+        Assert.Equal(2, Directory.GetFiles(_folder).Length);
+    }
+
+    [Fact]
+    public async Task OneFileThatCannotBeReadIsNamedAndTheNextIsStillSaved()
+    {
+        var (store, bad) = Stored(1, "Bad.pdf", "bad");
+        store.Setup(s => s.OpenContentAsync(1, It.IsAny<CancellationToken>())).ThrowsAsync(new IOException("held open"));
+        var (other, good) = Stored(2, "Good.pdf", "good");
+        store.Setup(s => s.OpenContentAsync(2, It.IsAny<CancellationToken>())).Returns(() => other.Object.OpenContentAsync(2, CancellationToken.None));
+
+        var result = await PursuitDocumentSaver.SaveAllAsync(store.Object, new[] { bad, good }, _folder, null, CancellationToken.None);
+
+        Assert.Equal("Bad.pdf", result.NotSaved.Single());
+        Assert.Equal(1, result.Saved);
+        Assert.True(File.Exists(Path.Combine(_folder, "Good.pdf")));
+    }
+
+    [Fact]
+    public async Task BytesThatDoNotMatchTheFingerprintNeverAppearUnderTheName()
+    {
+        var (store, file) = Stored(1, "RFP.pdf", "the rfp");
+        store.Setup(s => s.OpenContentAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(() => new MemoryStream(Encoding.UTF8.GetBytes("damaged")));
+
+        var result = await PursuitDocumentSaver.SaveAllAsync(store.Object, new[] { file }, _folder, null, CancellationToken.None);
+
+        Assert.Equal("RFP.pdf", result.NotSaved.Single());
+        Assert.Empty(Directory.GetFiles(_folder));
+    }
+
+    [Fact]
+    public async Task AStoredFileWithNoFingerprintIsNamedNotCopied()
+    {
+        var (store, file) = Stored(1, "RFP.pdf", "the rfp");
+        var result = await PursuitDocumentSaver.SaveAllAsync(store.Object, new[] { file with { Sha256 = null } }, _folder, null, CancellationToken.None);
+        Assert.Equal("RFP.pdf", result.NotSaved.Single());
+        Assert.Empty(Directory.GetFiles(_folder));
     }
 
     [Fact]

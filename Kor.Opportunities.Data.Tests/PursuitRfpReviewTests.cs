@@ -113,4 +113,40 @@ public sealed class PursuitRfpReviewTests
         Assert.Contains("FROM opportunities.PursuitReview v WHERE v.EngagementId = e.Id", sql);
         Assert.Equal(PursuitRfpReview.PortalUploaders, new[] { "apc", "bids-and-tenders" });
     }
+
+    // Review row 629 #2: a run that never reported stops counting as "Claude is reading" after 6 hours, so the card offers
+    // Re-read again. The board's SQL and the status line must draw that line at the same hour.
+    [Fact]
+    public void A_run_that_never_reported_stops_blocking_a_re_read_after_the_same_six_hours_the_status_line_uses()
+    {
+        Assert.Contains("run.OutcomeAtUtc IS NULL AND run.CreatedAtUtc > DATEADD(hour, -6, SYSDATETIMEOFFSET())", SqlPursuitReviewStore.BoardSql);
+
+        static PursuitReviewStatus Running(DateTimeOffset opened) =>
+            new(1, "APC", 3, null, null, null, null, null, 7, opened, "ilalonde", null, 0);
+        Assert.StartsWith("Claude is reading the RFP", PursuitRfpReview.Describe(Running(Now.AddHours(-6).AddMinutes(1)), Now));
+        Assert.StartsWith("Claude started reading the RFP", PursuitRfpReview.Describe(Running(Now.AddHours(-6).AddMinutes(-1)), Now));
+    }
+
+    // Review row 629 #3: every route to the questions email warns when documents arrived after the review. The Director card
+    // and the Pursuits screen count the same documents (the portal's, after the review was reported) and print the same words.
+    [Fact]
+    public void Documents_after_the_review_are_counted_one_way_and_named_in_one_sentence()
+    {
+        var reported = Now.AddDays(-2);
+        var files = new (string UploadedBy, DateTimeOffset UploadedAtUtc)[]
+        {
+            ("apc", reported.AddHours(1)),                // after, from the portal: counts
+            ("bids-and-tenders", reported.AddDays(1)),    // after, from the portal: counts
+            ("apc", reported.AddHours(-1)),               // before the review: does not
+            ("ilalonde", reported.AddHours(2)),           // after, but put there by a person, not the portal: does not
+            ("apc", reported),                            // at the same instant: not after
+        };
+        Assert.Equal(2, PursuitRfpReview.DocumentsSinceReview(files, reported));
+
+        Assert.Equal("", PursuitRfpReview.StaleNote(0, running: false));
+        Assert.Equal("1 document arrived after Claude's review, so the review and its questions do not cover it.",
+            PursuitRfpReview.StaleNote(1, running: false));
+        Assert.Equal("2 documents arrived after Claude's review, so the review and its questions do not cover them. Claude is reading them now.",
+            PursuitRfpReview.StaleNote(2, running: true));
+    }
 }

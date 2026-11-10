@@ -57,7 +57,10 @@ public partial class DirectorTodayView : UserControl
 
     private async void ReRead_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: DirectorCard card } && Host is { } host) await host.ReReadAsync(card).ConfigureAwait(true);
+        if (sender is not Button { DataContext: DirectorCard card } button || Host is not { } host) return;
+        button.IsEnabled = false;   // a second click before the reload would open a second Claude terminal
+        try { await host.ReReadAsync(card).ConfigureAwait(true); }
+        finally { button.IsEnabled = true; }
     }
 
     private void ApcSignIn_Click(object sender, RoutedEventArgs e) => Host?.SignInToApc();
