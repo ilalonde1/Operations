@@ -177,14 +177,41 @@ def preflight_cases():
     empty = _t.mkdtemp()
     core = 'dotnet test "Kor.Operations.EngineeringTools.Core.Tests/Kor.Operations.EngineeringTools.Core.Tests.csproj"'
     app = 'dotnet test "Kor.Operations.App/EngineeringTools.Tests/Kor.Operations.EngineeringTools.Tests.csproj"'
+    # Row 1985 (9 Nov): the Core tests moved to KOR.Drafter, so the six-set file the gate names is read there. With
+    # every input present in temp mirrors, an unfiltered Core run is ALLOWED - before the fix it was denied because
+    # the guard still looked in Operations, where the file no longer is.
+    sys.path.insert(0, os.path.dirname(GUARD))
+    import claude_bash_guard as g
+    import re as _re
+    drafter_six = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(GUARD))), "KOR.Drafter",
+                               "Kor.Operations.EngineeringTools.Core.Tests", "Intake", "SixSetsBuildAsBankedTests.cs")
+    sticks, mirror_root = _t.mkdtemp(), _t.mkdtemp()
+    for job in g.STICK_JOBS:
+        open(os.path.join(sticks, job + ".pdf"), "wb").close()
+    old_root = os.environ.get("KOR_GUARD_MIRROR_ROOT")
+    os.environ["KOR_GUARD_MIRROR_ROOT"] = mirror_root
+    try:
+        sources = _re.findall(r'@"(\\\\Kor-fs01[^"]+\.pdf)"', open(drafter_six, encoding="utf-8").read())
+        for remote in sources:
+            local = g.mirror_copy_of(remote)
+            os.makedirs(os.path.dirname(local), exist_ok=True)
+            open(local, "wb").close()
+    finally:
+        if old_root is None:
+            os.environ.pop("KOR_GUARD_MIRROR_ROOT", None)
+        else:
+            os.environ["KOR_GUARD_MIRROR_ROOT"] = old_root
+    present = {"KOR_GUARD_STICKFILES": sticks, "KOR_GUARD_MIRROR_ROOT": mirror_root}
     probes = [
-        ("full Core run, mirror empty",        core,                                        {"KOR_GUARD_STICKFILES": empty}, "deny"),
+        ("full Core run, all inputs present (KOR.Drafter six-set file)", core, present, "allow"),
+        ("full Core run, mirror empty",       core,                                        {"KOR_GUARD_STICKFILES": empty}, "deny"),
         ("SixSets filter, mirror empty",       core + " --filter FullyQualifiedName~SixSets", {"KOR_GUARD_STICKFILES": empty}, "deny"),
         ("fast filter, mirror empty",          core + ' --filter "Speed!=Slow"',             {"KOR_GUARD_STICKFILES": empty}, "allow"),
         ("App engineering suite, unfiltered",  app,                                         None,                            "deny"),
         ("App engineering suite, filtered",    app + ' --filter "FullyQualifiedName~PdfToSafe"', None,                       "allow"),
     ]
-    return [(label, expected, verdict(cmd, env=env)) for label, cmd, env, expected in probes]
+    found = [(f"six-set sources found in KOR.Drafter file: {len(sources)}", "some", "some" if sources else "none")]
+    return found + [(label, expected, verdict(cmd, env=env)) for label, cmd, env, expected in probes]
 
 
 def main():

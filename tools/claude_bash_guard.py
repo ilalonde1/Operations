@@ -189,14 +189,18 @@ DURATION_FIRST = re.compile(r"(?i)^\s*~?\s*\d+\s*(?:s|sec|secs|seconds|m|min|min
 #    CHECKS: a `dotnet test` of the Core test project that is not filtered to the fast set (Speed!=Slow) is denied
 #    unless every \\Kor-fs01 source SixSetsBuildAsBankedTests names exists and the stick-file mirror holds its five
 #    PDFs. The unfiltered App EngineeringTools.Tests suite is denied outright: it hangs headless (297 s, 10-19).
+#    Since 9 Nov (Operations 5da3715c, board row 1985) the Core tests live in KOR.Drafter, so the source list is
+#    read from KOR.Drafter's SixSetsBuildAsBankedTests.cs; if that file cannot be read the run is denied (fail closed).
 #    DOES NOT CATCH: a source that exists but is a different file (the gate's own hash check does that); inputs of
 #    other slow tests (LiveProjects share paths); a run started from inside the test project's folder with no
-#    project path in the command.
+#    project path in the command. It ASSUMES KOR.Drafter is a sibling folder of this Operations checkout: a
+#    KOR.Drafter cloned anywhere else reads as a missing file and every unfiltered Core run is denied.
 CORE_TESTS = re.compile(r"dotnet\s+test\b[^\n|;&]*EngineeringTools\.Core\.Tests")
 FAST_ONLY = re.compile(r"Speed!=Slow")
 ENGINEERING_APP_TESTS = re.compile(r"dotnet\s+test\b[^\n|;&]*(?:EngineeringTools\.Tests\.csproj|App[\\/]EngineeringTools\.Tests)")
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SIX_SETS = os.path.join(REPO, "Kor.Operations.EngineeringTools.Core.Tests", "Intake", "SixSetsBuildAsBankedTests.cs")
+SIX_SETS = os.path.join(os.path.dirname(REPO), "KOR.Drafter", "Kor.Operations.EngineeringTools.Core.Tests", "Intake",
+                        "SixSetsBuildAsBankedTests.cs")
 STICK_JOBS = ("31130-01", "31138-01", "31168-01", "31065-01", "31202-01")
 
 
