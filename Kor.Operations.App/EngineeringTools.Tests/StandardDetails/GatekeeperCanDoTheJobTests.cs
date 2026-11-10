@@ -34,8 +34,9 @@ public sealed class GatekeeperCanDoTheJobTests
     [InlineData("StandardDetails")]
     // Approve/reject, and from migration 102: Add detail, Edit, Retire. Also satisfies CanContribute.
     [InlineData("StandardDetailsApprovers")]
-    // Releasing a detail to MASTER — without it she could approve a detail and never ship it.
-    [InlineData("StandardDetailsPublishers")]
+    // NOT StandardDetailsPublishers: since 89eb4983 (26 Oct) Publish-to-Master is Ian + administrator until the template
+    // generator replaces it (migration 120). Ian, 9 Nov 18:0x: App.config Publishers stays as is; Lindsay goes back on when
+    // the generator replaces Publish-to-Master (record #131557, superseded by his "as is"). The case below holds that rule.
     public void The_gatekeeper_is_in_the_group_that_unlocks_her_job(string group)
     {
         var members = MembersOf($"SecurityGroup.{group}.Members");
@@ -51,6 +52,19 @@ public sealed class GatekeeperCanDoTheJobTests
         Assert.True(found,
             $"{Gatekeeper} is not in SecurityGroup.{group}.Members, so the Standard Details buttons that "
             + $"group unlocks will simply be absent for her. Present: {string.Join(", ", members)}");
+    }
+
+    /// <summary>
+    /// Publish-to-Master is Ian's until the generator replaces it (89eb4983; Ian, 9 Nov: "as is"). Asserts Ian is a
+    /// Publisher; it does not assert Lindsay either way - whether she publishes is Ian's to say, and this test must not decide it.
+    /// </summary>
+    [Fact]
+    public void Publishing_to_master_is_ians_until_the_generator_replaces_it()
+    {
+        var members = MembersOf("SecurityGroup.StandardDetailsPublishers.Members");
+        Assert.True(members.Any(x => string.Equals(x, "ilalonde@korstructural.com", StringComparison.OrdinalIgnoreCase)
+                                  || string.Equals(x, "ilalonde", StringComparison.OrdinalIgnoreCase)),
+            $"Ian is not in SecurityGroup.StandardDetailsPublishers.Members. Present: {string.Join(", ", members)}");
     }
 
     private static string[] MembersOf(string key)
