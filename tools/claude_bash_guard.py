@@ -246,7 +246,11 @@ def testhost_running():
             capture_output=True, text=True, timeout=15).stdout
     except Exception:
         return False
-    return "kor.operations" in out.lower()
+    # Only a host running from THIS checkout holds its lock. 10 Nov 13:24: a KOR.Drafter suite copy
+    # (KOR.Drafter\work\_suite\<sha>\Kor.Operations.EngineeringTools.Core.Tests) held no Operations output and still
+    # refused every Operations build for over an hour.
+    return any("\\visual studio projects\\operations\\" in line.lower().replace("/", "\\")
+               for line in out.splitlines() if "kor.operations" in line.lower())
 
 
 PAYLOAD = {}
