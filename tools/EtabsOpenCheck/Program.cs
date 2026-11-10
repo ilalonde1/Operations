@@ -226,12 +226,19 @@ internal static class Program
             // 7. --reactions <uses.csv> <transfers.csv> [--support-storey S]: DEAD, SDL and LIVE on THIS copy, pinned on S, and the force at
             // the bottom of every member a transfer slab carries (row 1964, record #131651)
             int rx = Array.FindIndex(args, x => x.Equals("--reactions", StringComparison.OrdinalIgnoreCase));
-            if (rx >= 0 && rx + 2 < args.Length)
+            int ss = Array.FindIndex(args, x => x.Equals("--support-storey", StringComparison.OrdinalIgnoreCase));
+            // a malformed flag fails the run, never skips the step (review row 1254)
+            if (rx >= 0 && (rx + 2 >= args.Length || args[rx + 1].StartsWith("--") || args[rx + 2].StartsWith("--")))
+            { Say("REFUSED: --reactions needs <uses.csv> <transfers.csv> after it - nothing reacted"); exit = 2; }
+            else if (ss >= 0 && (ss + 1 >= args.Length || args[ss + 1].StartsWith("--")))
+            { Say("REFUSED: --support-storey needs a storey name after it - nothing reacted"); exit = 2; }
+            else if (rx >= 0 && args.Any(x => x.Equals("--gravity", StringComparison.OrdinalIgnoreCase)))
+            { Say("REFUSED: --gravity and --reactions together - --gravity has already pinned every Base point on this model, supports the reactions' gate would not state"); exit = 2; }
+            else if (rx >= 0)
             {
                 // --support-storey <name>: the storey whose every point is pinned (default Base). 01819 (10 Nov): Base held 0
                 // points - the tower stands on its P3 foundation slab at elevation 0 with no member below it.
-                int ss = Array.FindIndex(args, x => x.Equals("--support-storey", StringComparison.OrdinalIgnoreCase));
-                string supportStorey = ss >= 0 && ss + 1 < args.Length ? args[ss + 1] : "Base";
+                string supportStorey = ss >= 0 ? args[ss + 1] : "Base";
                 int bad = Reactions(model, mine, Path.GetFullPath(args[rx + 1]), Path.GetFullPath(args[rx + 2]), supportStorey);
                 Say($"GATE import, counts and analysis model: {(exit == 0 ? "PASS" : "FAIL")}");
                 if (bad != 0 || exit != 0) exit = 2;
@@ -372,9 +379,12 @@ internal static class Program
         int bad = 0;
         var Ic = CultureInfo.InvariantCulture;
         Say($"7. REACTIONS (uses {usesCsv}, SHA-256 {Sha(usesCsv)}; transfers {transfersCsv}, SHA-256 {Sha(transfersCsv)})");
-        var uses = File.ReadAllLines(usesCsv).Skip(1).Where(l => l.Trim().Length > 0).Select(l => l.Split(','))
+        // both files are read as CSV with quoted fields, the way reactions.csv is written (review row 1254)
+        var uses = File.ReadAllLines(usesCsv).Skip(1).Where(l => l.Trim().Length > 0).Select(CsvFields)
             .ToDictionary(p => p[0].Trim(), p => (Use: p[1].Trim(), Sdl: double.Parse(p[2], Ic), Live: double.Parse(p[3], Ic)), StringComparer.OrdinalIgnoreCase);
-        var members = File.ReadAllLines(transfersCsv).Skip(1).Where(l => l.Trim().Length > 0).Select(l => l.Split(','))
+        var negative = uses.Where(kv => kv.Value.Sdl < 0 || kv.Value.Live < 0).Select(kv => kv.Key).ToList();
+        if (negative.Count > 0) { Say($"REFUSED: uses.csv gives a negative kPa for storey(s) {string.Join(", ", negative)} - nothing loaded or run"); return 1; }
+        var members = File.ReadAllLines(transfersCsv).Skip(1).Where(l => l.Trim().Length > 0).Select(CsvFields)
             .Select(p => (Storey: p[0].Trim(), Above: p[1].Trim(), Kind: p[2].Trim(), Label: p[3].Trim())).ToList();
         Say($"   uses: {uses.Count} storey row(s); transfer members: {members.Count} on {members.Select(m => m.Storey).Distinct().Count()} storey(s)");
 
@@ -509,7 +519,7 @@ internal static class Program
         Say($"   PierForce: {pr}, {np2} row(s)");
         var pierAt = new Dictionary<(string Story, string Pier, string Case), int>();
         for (int i = 0; i < np2; i++) if (loc[i].Equals("Bottom", StringComparison.OrdinalIgnoreCase)) pierAt[(st2[i], pn[i], plc[i])] = i;
-        var rows = new List<string> { "storey,storey_above,kind,member,etabs_name,pier,panels_in_pier,case,P_kN,V2_kN,V3_kN,T_kNm,M2_kNm,M3_kNm,at" };
+        var rows = new List<string> { "storey,storey_above,kind,member,etabs_name,pier,panels_in_pier,transfer_panels_in_pier,case,P_kN,V2_kN,V3_kN,T_kNm,M2_kNm,M3_kNm,at" };
         int written = 0; var missing = new List<string>();
         var panelsInPier = new Dictionary<(string, string), int>();
         foreach (var a in an)
@@ -517,6 +527,17 @@ internal static class Program
             string l = "", s = "", p = ""; model.AreaObj.GetLabelFromName(a, ref l, ref s);
             if (model.AreaObj.GetPier(a, ref p) == 0 && p.Length > 0 && p != "None") panelsInPier[(s, p)] = panelsInPier.GetValueOrDefault((s, p)) + 1;
         }
+        // a pier's force is the WHOLE pier's: every transfer PANEL in one pier on one storey repeats it, so each such row
+        // names all of them (transfer_panels_in_pier) - a reader sums a pier once, never once per panel (review row 1254)
+        var transferPanelsInPier = new Dictionary<(string, string), List<string>>();
+        foreach (var m in members.Where(m => !m.Kind.Equals("COLUMN", StringComparison.OrdinalIgnoreCase)))
+        {
+            string n = "", p = "";
+            if (model.AreaObj.GetNameFromLabel(m.Label, m.Above, ref n) != 0 || n.Length == 0 || model.AreaObj.GetPier(n, ref p) != 0 || p.Length == 0 || p == "None") continue;
+            if (!transferPanelsInPier.TryGetValue((m.Above, p), out var list)) transferPanelsInPier[(m.Above, p)] = list = new List<string>();
+            list.Add(m.Label);
+        }
+        Say($"   piers holding more than one transfer panel: {transferPanelsInPier.Count(kv => kv.Value.Count > 1)} of {transferPanelsInPier.Count}");
         foreach (var m in members)
         {
             string name = "";
@@ -534,7 +555,7 @@ internal static class Program
                     var idx = Enumerable.Range(0, n).Where(i => lc[i] == c).OrderBy(i => os[i]).ToList();
                     if (idx.Count == 0) continue;
                     int i0 = idx[0];
-                    rows.Add(string.Join(",", Q(m.Storey), Q(m.Above), m.Kind, m.Label, name, "", "", c, P[i0].ToString("F2", Ic), V2[i0].ToString("F2", Ic), V3[i0].ToString("F2", Ic), T[i0].ToString("F2", Ic), M2[i0].ToString("F2", Ic), M3[i0].ToString("F2", Ic), $"station {os[i0].ToString("F3", Ic)} m (bottom)"));
+                    rows.Add(string.Join(",", Q(m.Storey), Q(m.Above), m.Kind, m.Label, name, "", "", "", c, P[i0].ToString("F2", Ic), V2[i0].ToString("F2", Ic), V3[i0].ToString("F2", Ic), T[i0].ToString("F2", Ic), M2[i0].ToString("F2", Ic), M3[i0].ToString("F2", Ic), $"station {os[i0].ToString("F3", Ic)} m (bottom)"));
                     casesWritten++;
                 }
             }
@@ -544,7 +565,7 @@ internal static class Program
                 foreach (var c in cases)
                 {
                     if (pier.Length == 0 || pier == "None" || !pierAt.TryGetValue((m.Above, pier, c), out int i)) continue;
-                    rows.Add(string.Join(",", Q(m.Storey), Q(m.Above), m.Kind, m.Label, name, pier, panelsInPier.GetValueOrDefault((m.Above, pier)).ToString(Ic), c, pp[i].ToString("F2", Ic), pv2[i].ToString("F2", Ic), pv3[i].ToString("F2", Ic), pt[i].ToString("F2", Ic), pm2[i].ToString("F2", Ic), pm3[i].ToString("F2", Ic), "pier bottom"));
+                    rows.Add(string.Join(",", Q(m.Storey), Q(m.Above), m.Kind, m.Label, name, pier, panelsInPier.GetValueOrDefault((m.Above, pier)).ToString(Ic), Q(string.Join(";", transferPanelsInPier.GetValueOrDefault((m.Above, pier)) ?? new List<string>())), c, pp[i].ToString("F2", Ic), pv2[i].ToString("F2", Ic), pv3[i].ToString("F2", Ic), pt[i].ToString("F2", Ic), pm2[i].ToString("F2", Ic), pm3[i].ToString("F2", Ic), "pier bottom"));
                     casesWritten++;
                 }
                 if (casesWritten < cases.Length) missing.Add($"PANEL {m.Label} on {m.Above}: pier '{pier}', {casesWritten} of {cases.Length} case(s) at the pier's bottom");
@@ -560,6 +581,22 @@ internal static class Program
     }
 
     private static string Q(string s) => s.Contains(',') || s.Contains('"') ? "\"" + s.Replace("\"", "\"\"") + "\"" : s;
+
+    // one CSV line into its fields: a field in double quotes may hold commas, and "" inside it is one quote
+    private static string[] CsvFields(string line)
+    {
+        var fields = new List<string>(); var cur = new StringBuilder(); bool quoted = false;
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+            if (quoted) { if (c == '"' && i + 1 < line.Length && line[i + 1] == '"') { cur.Append('"'); i++; } else if (c == '"') quoted = false; else cur.Append(c); }
+            else if (c == '"') quoted = true;
+            else if (c == ',') { fields.Add(cur.ToString()); cur.Clear(); }
+            else cur.Append(c);
+        }
+        fields.Add(cur.ToString());
+        return fields.ToArray();
+    }
 
     private static int CaseStatus(cSapModel model, string c)
     {
