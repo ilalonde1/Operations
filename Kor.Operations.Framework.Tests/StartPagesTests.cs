@@ -613,7 +613,7 @@ public class StartPagesTests
 }
 
 /// <summary>
-/// Row 1569, LIVE on the real KorStandards (read only) and each repo's real settings.json on this PC: on each of the 6 lanes, X of Y rows on
+/// Row 1569, LIVE on the real KorStandards (read only) and each repo's real settings.json on this PC: on each of the 7 lanes, X of Y rows on
 /// the pages with Y = X; the pages needed are within what a repo wires; and a repo that has gone onto the pages wires enough. A repo still on the
 /// old wiring (until Ian's go) is named on its own check, not failed. Does NOT cover: a real session (kor start-proof).
 /// </summary>

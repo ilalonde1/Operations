@@ -270,7 +270,7 @@ public class StartSplitTests
 /// over one page, a STATE NOW). Covers: the JSON is SessionStart's, each part within 9,900; a page past the content prints
 /// nothing; --page outside --pages and --page on another part are refused; the parts write nothing (the module's
 /// brain.Memory and brain.Event counts equal before and after, read on their own connection).
-/// Does NOT cover: another module's content (the 6 modules are measured by the cold test).
+/// Does NOT cover: another module's content (the 6 modules of 3 Nov are measured by the cold test; KOR Website, added 9 Nov, has its own start-proof).
 /// </summary>
 [Collection(LiveDb.Name)]
 public class StartSplitLiveTests

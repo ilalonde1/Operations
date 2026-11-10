@@ -15,7 +15,7 @@ namespace Kor.Operations.Framework.Start;
 /// else docs/HANDOVER.md in the repo named like the module. The section starts at the first heading (#, ## or ###) whose
 /// text begins "STATE NOW" and ends at the next heading of level max(its own, 2) or higher: a # or ## STATE NOW ends at
 /// the next # or ## (a ### inside it stays in it); a ### STATE NOW ends at the next #, ## or ### (review row 211). Seen 3 Nov in the
-/// 6 KOR repos: five use "## STATE NOW - ...", KOR.Drafter uses "# STATE NOW - ..." with its "## 2 Nov log" next.
+/// 7 KOR repos: six use "## STATE NOW - ...", KOR.Drafter uses "# STATE NOW - ..." with its "## 2 Nov log" next.
 /// Not covered: whether the section is TRUE or recent; a heading inside a code fence ends the section early; a handover
 /// that names its state otherwise ("## Where things stand") is reported as having no STATE NOW section.
 /// </summary>

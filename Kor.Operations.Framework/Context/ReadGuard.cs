@@ -9,7 +9,7 @@ public sealed record ReadCall(string Path, int? Offset, int? Limit, string? Page
 
 /// <summary>
 /// Board row 1936 (Ian, 6 Nov: "that should be a REQUIREMENT"). A main session's context is re-sent every turn, so it holds
-/// findings, not raw material. Runs inside kor context on PreToolUse, which all 6 enrolled repos already run on every tool, so no
+/// findings, not raw material. Runs inside kor context on PreToolUse, which all 7 enrolled repos already run on every tool, so no
 /// settings entry is added. Each refusal is one oversight.GuardRefusal row (Guard <see cref="GuardName"/>). The replay is
 /// <c>kor context --read-replay</c>; its results and every name are in docs/READ-GUARD-REPLAY-2026-11-06.md.
 ///

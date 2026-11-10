@@ -10,7 +10,7 @@ namespace Kor.Operations.Framework.Enforce;
 /// Board row 1935 (Ian, 6 Nov): KOR.Drafter's tools/ went from 487 to 514 .py files after the 3 Nov C# port order, with nothing
 /// to stop it. A call that CREATES a new .py under tools/ in the KOR.Drafter checkout is refused, whichever session or start
 /// folder makes it, unless Ian's own latest message holds <see cref="Approval"/>. Each refusal is one oversight.GuardRefusal
-/// row (Guard <see cref="GuardName"/>). It runs inside kor enforce because enforce already holds these tools in all 6 enrolled
+/// row (Guard <see cref="GuardName"/>). It runs inside kor enforce because enforce already holds these tools in all 7 enrolled
 /// repos, so no settings entry is added. It is not a brain.Check, because a check is a pattern on the call: it cannot ask
 /// whether the file exists (a Write replacing a file must pass) and it has no typed-word lift.
 ///
@@ -34,7 +34,7 @@ namespace Kor.Operations.Framework.Enforce;
 /// ($f, built at run time, as <see cref="CommandSegments"/> says); a whole folder copied into tools/ (cp -r, robocopy /E); a
 /// cmdlet flag it does not know that takes a value, read as the first word (Out-File -NoClobber is a switch, -Width is listed);
 /// cp -t; curl -o and wget -O; a .pyw or .pyi; a checkout not named KOR.Drafter (the office has one, decision "nothing built on
-/// the side"); a session outside the 6 enrolled repos, which runs no kor enforce; a kor older than this build. The lift reads
+/// the side"); a session outside the 7 enrolled repos, which runs no kor enforce; a kor older than this build. The lift reads
 /// claude_prompt_recorder.py's record, as claude_api_guard.py does, so: words past that record's 4000-character clip are not seen;
 /// a lead's relayed prompt to a helper reads as a user message, so a lead quoting the words lifts its helper; a session set on
 /// getting round it can write that file. This holds an honest session against momentum and is not a sandbox.

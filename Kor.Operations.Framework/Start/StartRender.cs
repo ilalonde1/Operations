@@ -350,7 +350,7 @@ public static partial class StartRender
     /// <summary>
     /// The STATE NOW part (the SessionStart hook, board row 1198): the handover's STATE NOW section WHOLE when it fits
     /// <paramref name="budget"/>, else cut at a whole line with a note naming the rest (git show HEAD:path). Measured 3 Nov:
-    /// the longest of the 6 KOR modules' is KOR.Drafter's: a 7,330-char section (7,465 with the citation line above it, 7,616
+    /// the longest of the 6 KOR modules' (measured before KOR Website joined, 9 Nov) is KOR.Drafter's: a 7,330-char section (7,465 with the citation line above it, 7,616
     /// as the whole part), which fits whole.
     /// </summary>
     public static string State(StartSide side, int? budget)

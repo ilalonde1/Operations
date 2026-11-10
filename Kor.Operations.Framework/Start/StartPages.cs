@@ -18,7 +18,7 @@ public sealed record PagesSnapshot(string Module, DateTimeOffset ReadAt, IReadOn
 /// pages under the per-hook cap. A start wires more hook entries than it needs (a page past the content prints nothing);
 /// when it wires too few, the last wired page, the record part and <see cref="StartGate"/> each say so plainly.
 /// Compares: every live row (id, name, full description), the index, the resume and the section against the pages
-/// (StartPagesTests, and live on the 6 lanes). Does NOT cover: a record's body (kor read and the gate); THE BOARD, whose own
+/// (StartPagesTests, and live on the 7 lanes). Does NOT cover: a record's body (kor read and the gate); THE BOARD, whose own
 /// COMPACT form still cuts titles; whether a record is true. Same-class miss: content in a table the start does not read.
 /// </summary>
 public static partial class StartRender

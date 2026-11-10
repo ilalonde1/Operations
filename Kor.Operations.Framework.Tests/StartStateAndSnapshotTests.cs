@@ -11,7 +11,7 @@ namespace Kor.Operations.Framework.Tests;
 /// <summary>
 /// K6 follow-up (3 Nov, done-when 1 failed), PURE: the handover's STATE NOW in the record part, the page's first line, and
 /// the read policy of kor start (SNAPSHOT, READ COMMITTED when the database refuses it, once more on a deadlock).
-/// Covers: the STATE NOW section found in both header forms the 6 KOR handovers use ("## STATE NOW" ended by the next
+/// Covers: the STATE NOW section found in both header forms the 7 KOR handovers use ("## STATE NOW" ended by the next
 /// ##, "# STATE NOW" ended by the next ## with a ### inside kept), CRLF, no section; the cap cuts whole lines; the section
 /// sits right after FIVE QUESTIONS, carries its repo:path@commit blob citation and the uncommitted-changes line, and is
 /// cut only after every other section is at its floor; SQL 3952 falls back, 1205 retries, anything else is thrown.

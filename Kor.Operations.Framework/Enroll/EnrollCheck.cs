@@ -90,7 +90,7 @@ public static class EnrollCheck
     public const int RecordsPages = 4;
 
     /// <summary>Row 1569: how many <c>--part pages</c> hook entries a repo wires (a page past the content prints nothing). The most any
-    /// of the 6 lanes needs is held under it by StartPagesLiveTests; bring it up before that test fails, or a start says MEMORY LEFT OUT.</summary>
+    /// of the 7 lanes needs is held under it by StartPagesLiveTests; bring it up before that test fails, or a start says MEMORY LEFT OUT.</summary>
     public const int PagesWired = 40;
 
     /// <summary>Row 1393: the Stop capture-check's least timeout, in seconds.</summary>
