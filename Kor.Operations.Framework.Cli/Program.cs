@@ -75,6 +75,7 @@ public static partial class Program
                 "enroll-check" => EnrollCheckVerb(o, output, hook, db),
                 "read" => ReadVerb(o, output, db),
                 "recall" => RecallVerb(o, stdin, output, hook, db, board),
+                "repeat" => RepeatVerb(o, stdin, output, hook, db, board, hookErrorLog),
                 "start-gate" => StartGateVerb(o, stdin, output, hook),
                 "start-proof" => StartProofVerb(o, output, db),
                 "stall" => StallVerb(o, stdin, output, hook, db, board, hookErrorLog),
