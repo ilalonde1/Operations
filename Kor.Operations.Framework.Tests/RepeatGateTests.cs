@@ -117,6 +117,29 @@ public class RepeatGateTests
         Assert.Empty(Logged(board, session));
     }
 
+    // row 2042: GuardRefusal 5591 (10 Nov 23:59, OverLORD, transcript 5f0008d6) - the real description and command, refused on #131677
+    // (migration 159) sharing only check/count/read; and 5587 (23:54) refused on #131210 sharing scratch/script/read. Neither a repeat.
+    private const string Refusal5591Command = """
+        cd "/c/VIsual Studio Projects/KOR.Drafter"; echo "py at dfe7da09: $(git ls-tree -r --name-only dfe7da09 | grep -c '\.py$')  ps1: $(git ls-tree -r --name-only dfe7da09 | grep -c '\.ps1$')"; ls -d work/*/ 2>/dev/null | wc -l; cd "/c/VIsual Studio Projects/Framework"; git log --oneline -1 cb7a5e22; wc -l docs/PHASE2-CENSUS.md; grep -n "^#" docs/PHASE2-CENSUS.md | head -30
+        """;
+
+    // 5587's command, read off transcript 827ca6fd
+    private const string Refusal5587Command = """
+        cd "C:/VIsual Studio Projects/Framework"; D=docs/PHASE2-CENSUS.md; { for f in inv.py roots2.py graph.py inputs.py; do printf '### `_census/%s`\n' "$f"; [ "$f" = roots2.py ] && printf 'The roots reader as run (the doc calls it roots.py; this is the whole-file, any-number-prefix version whose output `roots-runs.json` the graph read).\n'; printf '\n```python\n'; cat "_census/$f"; printf '```\n\n'; done; printf 'Order run: `python -I _census/inv.py "C:/VIsual Studio Projects/KOR.Drafter" dfe7da09a005b92c00093bec4d57678908c425c7`; `python -I _census/roots2.py _census/roots-runs.json`; `python -I _census/graph.py dfe7da09a005b92c00093bec4d57678908c425c7 _census/graph-out.txt` (reads `_census/roots-runs.json`); `python -I _census/inputs.py dfe7da09 31218-01-137th-street 31180-01-halifax-v6 6th-g-hotel-san-diego`.\n'; } >> $D; wc -l $D; grep -c '```' $D; sed -i 's#`python -I _census/roots.py` (Appendix A)#`python -I _census/roots2.py _census/roots-runs.json` (Appendix A)#' $D; grep -n 'roots2.py _census/roots-runs.json` (Appendix' $D
+        """;
+
+    [Fact]
+    public void LiveCommonVerbsAreNotATopicRow2042()
+    {
+        using var brain = BrainDb.OpenRead(KorStandardsConnection.Login.Brain, true, 15);
+        using var board = BrainDb.OpenRolledBack(KorStandardsConnection.Login.Board);
+        var session = "zz-test-repeat-" + Guid.NewGuid().ToString("N");
+        foreach (var (d, c) in new[] { ("Spot-check census counts and read its outline", Refusal5591Command),
+                                       ("Append scratch scripts to the census doc and read it back", Refusal5587Command) })
+            Assert.True(string.IsNullOrWhiteSpace(Hook(brain, board, session, "Bash", new { command = c, description = d })), d);
+        Assert.Empty(Logged(board, session));
+    }
+
     [Fact]
     public void TheIntentIsTheStartOfWorkOnly()
     {

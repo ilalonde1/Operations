@@ -126,14 +126,52 @@ public class BrainRecallTests
         Assert.Contains("board row 1647 [", text);
     }
 
+    // row 2042: a moment that WORKS 31218 - its job folder's job.json, as a Drafter lane reads it
+    private const string Works31218 = """
+        Read the job config
+        cat "/c/VIsual Studio Projects/KOR.Drafter/jobs/31218-01-137th-street/job.json"
+        """;
+
+    /// <summary>Row 2042: the hook prints only the rows NAMING the job; Ian's standing asks are one line (count + the command that lists
+    /// them), once per session; the job's list once per session; a second job in the same session gets its naming rows and no standing line.
+    /// RED BEFORE (57b9ee0e): the same call printed every standing ask (22 at 31218, row 1647 among them, ~4k tokens).</summary>
     [Fact]
-    public void TheHookBringsAJobsFixListOncePerSession()
+    public void TheHookBringsAWorkedJobsNamingRowsAndTheStandingAsksAsOneLine()
     {
-        var (first, session) = Hook("PreToolUse", new { tool_name = "SendMessage", tool_input = new { summary = "Build last two items before one rerun", message = MomentC } });
+        var (first, session) = Hook("PreToolUse", new { tool_name = "Bash", tool_input = new { description = "Read the job config", command = Works31218 } });
         Assert.Contains("JOB FIX LIST", first);
         Assert.Contains("job 31218", first);
-        var (second, _) = Hook("PreToolUse", new { tool_name = "SendMessage", tool_input = new { summary = "Build last two items before one rerun", message = MomentC } }, session);
+        Assert.Contains("board row 1934 [", first);                       // Ian on 31218-01, names the job
+        Assert.DoesNotContain("board row 1647 [", first);                 // a standing ask: counted, not listed
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(first, "IAN'S STANDING ASKS: \\d+ open row"));
+        Assert.Contains("kor recall --job 31218", first);
+        var (second, _) = Hook("PreToolUse", new { tool_name = "Bash", tool_input = new { description = "Read the job config", command = Works31218 } }, session);
         Assert.DoesNotContain("JOB FIX LIST", second);
+        var (other, _) = Hook("PreToolUse", new { tool_name = "Bash", tool_input = new { description = "List the job", command = "ls jobs/31180-01-halifax-v6/" } }, session);
+        Assert.DoesNotContain("IAN'S STANDING ASKS", other);
+    }
+
+    /// <summary>Row 2042: a 5-digit number in text is not a job the session works. 10 Nov the list fired for 31097 because a census note
+    /// named Heather Lands 31097; the 31218 brief (MomentC) mentions 31218 without working it; a bare argument "31218-01-137th-street" too.
+    /// RED BEFORE (57b9ee0e): MomentC printed the 31218 list. Does NOT catch: a job worked only by its name, or a project share path.</summary>
+    [Fact]
+    public void AMentionedNumberIsNotAWorkedJob()
+    {
+        Assert.Empty(JobAsks.WorkedJobs("census note: Heather Lands 31097 has 3 scripts"));
+        Assert.Empty(JobAsks.WorkedJobs(MomentC));
+        Assert.Empty(JobAsks.WorkedJobs("python -I _census/inputs.py dfe7da09 31218-01-137th-street 31180-01-halifax-v6"));
+        Assert.Equal(new[] { "31218" }, JobAsks.WorkedJobs(Works31218));
+        Assert.Equal(new[] { "31218" }, JobAsks.WorkedJobs(@"C:\VIsual Studio Projects\KOR.Drafter\work\31218-01\t1.log"));
+        Assert.Equal(new[] { "01819" }, JobAsks.WorkedJobs("takeoff run --job 01819"));
+        Assert.Equal(new[] { "31097" }, JobAsks.WorkedJobs("Your job: 31097 Heather Lands, job #31097"));
+        var (said, _) = Hook("PreToolUse", new { tool_name = "SendMessage", tool_input = new { summary = "Build last two items before one rerun", message = MomentC } });
+        Assert.DoesNotContain("JOB FIX LIST", said);
+        // a Write works a job by where it writes: 10 Nov 23:5x a census doc quoting jobs/31218-01-... brought three lists (lane 827ca6fd)
+        var census = "# Phase 2 census\n| `jobs/31218-01-137th-street` | 4 |\n| `jobs/01819-01-renfrew/job.json` | 1 |\n";
+        var (doc, _) = Hook("PreToolUse", new { tool_name = "Write", tool_input = new { file_path = "C:/VIsual Studio Projects/Framework/docs/PHASE2-CENSUS.md", content = census } });
+        Assert.DoesNotContain("JOB FIX LIST", doc);
+        var (into, _) = Hook("PreToolUse", new { tool_name = "Write", tool_input = new { file_path = "C:/VIsual Studio Projects/KOR.Drafter/jobs/31218-01-137th-street/notes.md", content = "x" } });
+        Assert.Contains("job 31218", into);
     }
 
     [Fact]

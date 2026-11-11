@@ -24,6 +24,7 @@ public static partial class Program
 {
     private const int HookTop = 3;
     private const int HookLeadChars = 240;
+    private const string StandingKey = "standing";   // the job ledger's key once Ian's standing asks were shown (row 2042)
     internal static readonly TimeSpan IndexFreshFor = TimeSpan.FromMinutes(10);
 
     /// <summary>Quotes and apostrophes as themselves, not 6-byte escapes: every byte here is re-sent with the context.</summary>
@@ -151,7 +152,7 @@ public static partial class Program
     {
         var raw = stdin();
         if (string.IsNullOrWhiteSpace(raw)) return 0;
-        string? ev, session, text;
+        string? ev, session, text, jobText;
         bool stopActive;
         try
         {
@@ -169,6 +170,11 @@ public static partial class Program
                 "Stop" or "SubagentStop" => S("last_assistant_message"),
                 _ => null,
             };
+            // row 2042: a Write works a job by WHERE it writes, not by what its document quotes (10 Nov 23:5x a census doc listing
+            // jobs/31218-01-..., 31180-01 and 01819-01 paths brought three fix lists)
+            jobText = ev == "PreToolUse" && S("tool_name") == "Write" && root.TryGetProperty("tool_input", out var wi)
+                      && wi.ValueKind == JsonValueKind.Object && wi.TryGetProperty("file_path", out var fp) && fp.ValueKind == JsonValueKind.String
+                ? fp.GetString() : text;
         }
         catch (JsonException) { return 0; }
         if (string.IsNullOrWhiteSpace(text)) return 0;
@@ -184,7 +190,8 @@ public static partial class Program
             return 0;
         }
         var terms = BrainRecall.QueryWords(text);
-        var jobTerms = JobAsks.TermsFor(text);
+        var worked = JobAsks.WorkedJobs(jobText ?? "");
+        var jobTerms = JobAsks.TermsFor(worked);
         if (terms.Count < BrainRecall.MinTermsHit && jobTerms.Count == 0) return 0;
         var ix = HookIndex(terms.Union(jobTerms).ToHashSet(StringComparer.Ordinal), db, board);
         var parts = new List<string>();
@@ -194,14 +201,18 @@ public static partial class Program
             var say = BrainRecall.HookText(all, ReadLedger(session, "deliver "), o.Int("--top") ?? HookTop, HookLeadChars, out var refs);
             if (say is not null) { AddLedger(session, "deliver ", refs); parts.Add(say); }
         }
-        // row 2031 (trap c): the first moment in a session that names a job brings that job's fix list - Ian's open asks on every board
+        // row 2031 (trap c): the first moment in a session that WORKS a job (row 2042: a job folder, --job, "job NNNNN"; not any 5-digit
+        // number) brings that job's fix list - the open rows naming it that quote Ian; Ian's standing asks once per session as one line
         var listed = ReadLedger(session, "job ");
-        foreach (var job in JobAsks.JobsIn(text, ix).Where(j => !listed.Contains(j)))
+        var standingShown = listed.Contains(StandingKey);
+        foreach (var job in worked.Where(j => !listed.Contains(j)))
         {
-            var f = JobAsks.For(job, ix);
-            if (f.Naming.Count + f.Standing.Count == 0) continue;
-            parts.Add(JobAsks.Text(f));
-            AddLedger(session, "job ", new[] { job });
+            var say = JobAsks.HookText(JobAsks.For(job, ix), !standingShown);
+            if (say is null) continue;
+            parts.Add(say);
+            var keys = new List<string> { job };
+            if (!standingShown && say.Contains("IAN'S STANDING ASKS", StringComparison.Ordinal)) { keys.Add(StandingKey); standingShown = true; }
+            AddLedger(session, "job ", keys);
         }
         if (parts.Count == 0) return 0;
         output.WriteLine(JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = ev, additionalContext = string.Join("\n", parts) } }, RecallJson));

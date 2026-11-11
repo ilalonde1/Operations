@@ -76,6 +76,9 @@ public static class RepeatGate
         "start", "stop", "update", "set", "mark", "copy", "move", "fix", "review", "recall", "query", "count",
     };
 
+    /// <summary>The NotWork verbs as index stems: words any call carries, so they never count as a shared TOPIC word (row 2042).</summary>
+    private static readonly HashSet<string> CommonStems = BrainRecall.Words(string.Join(" ", NotWork)).ToHashSet(StringComparer.Ordinal);
+
     public const int MostRankChars = 1_000;
 
     /// <summary>The text a moment is RANKED on: a new file's name and first line (its intent; on a whole brief every big record scores over
@@ -124,7 +127,10 @@ public static class RepeatGate
         if (work.Count == 0) return none;
         // a finding or dead end IS a result (its text need not say "measured"); it must share TopicWordsHit words of the intent itself -
         // a command's or prompt's other words rank it, but alone they matched job names and boilerplate (replay 10 Nov)
-        var own = BrainRecall.Words(intent).Where(w => !IsWork(w)).ToHashSet(StringComparer.Ordinal);
+        // row 2042: nor the common verbs of NotWork (check, read, count, ...): 10 Nov 23:59 "Spot-check census counts and read its outline" was
+        // refused on #131677 (migration 159) sharing only check/count/read, and 23:54 "Append scratch scripts to the census doc and read it back"
+        // on #131210 sharing scratch/script/read - neither a repeat (GuardRefusal 5591, 5587; record #132289)
+        var own = BrainRecall.Words(intent).Where(w => !IsWork(w) && !CommonStems.Contains(w)).ToHashSet(StringComparer.Ordinal);
         var named = BrainRecall.Rank(rankText ?? intent, ix)
             .Where(r => !r.Doc.Board && ResultKinds.Contains(r.Doc.Kind) && r.Score >= Floor && r.Hit.Count(own.Contains) >= TopicWordsHit)
             .Take(3).ToList();
