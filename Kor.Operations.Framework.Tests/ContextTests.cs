@@ -156,6 +156,9 @@ public class ContextTests
         Assert.Contains("Nothing is refused", text);
         Assert.Contains("850,000", text);
         Assert.Contains("--module <module> --file", ContextGuard.WarnText(new ContextReading(400_123, "claude-opus-5-5", T0, 1), Off, null));
+        // row 2059: a role-holding session's handover starts at the FIRST warning, with the one command
+        Assert.Contains("starts its handover AT THIS LINE", text);
+        Assert.Contains("python -I \"C:/VIsual Studio Projects/Framework/tools/kor_handover.py\" hand --role <role> --module Operations", text);
     }
 
     [Theory]
@@ -288,6 +291,13 @@ public class ContextTests
     [InlineData("Grep", "{\"pattern\":\"x\"}")]
     [InlineData("Glob", "{\"pattern\":\"**/*.md\"}")]
     [InlineData("Agent", "{\"prompt\":\"read everything\"}")]
+    // row 2059: only the handover command's own verbs at its own path - a look-alike script, another verb or a chained step is work
+    [InlineData("Bash", "python -I tools/kor_handover.py hand --role X")]
+    [InlineData("Bash", "python -I \"C:/temp/Framework/tools/kor_handover.py\" hand --role X")]
+    [InlineData("Bash", "python -I \"C:/VIsual Studio Projects/Framework/tools/kor_handover.py\" guard --hook")]
+    [InlineData("Bash", "python -I \"C:/VIsual Studio Projects/Framework/tools/kor_handover.py\" hand --role X && dotnet build")]
+    [InlineData("Bash", "python -I \"C:/VIsual Studio Projects/Framework/tools/kor_handover.py\" hand --role $(dotnet build)")]
+    [InlineData("Bash", "python -c \"import os\" \"C:/VIsual Studio Projects/Framework/tools/kor_handover.py\" hand")]
     [InlineData("WebFetch", "https://code.claude.com/docs")]
     [InlineData("SendMessage", "{\"to\":\"Virtual Drafter\",\"message\":\"do the next step\"}")]   // a lead dispatching work
     [InlineData("ToolSearch", "{\"query\":\"select:WebSearch\"}")]
@@ -325,6 +335,10 @@ public class ContextTests
     [InlineData("PowerShell", "& \"C:/KOR-Operations/kor/kor.exe\" state --module Operations --file s.md; Get-Date")]
     [InlineData("TaskStop", "{\"task_id\":\"b4onajjem\"}")]
     [InlineData("ToolSearch", "{\"query\":\"select:TaskStop\",\"max_results\":1}")]
+    // row 2059: the one handover command, at its absolute path
+    [InlineData("Bash", "python -I \"C:/VIsual Studio Projects/Framework/tools/kor_handover.py\" hand --role CONDUCTOR-5 --module Framework --state-file s.md --brief-file b.txt --cwd \"C:/VIsual Studio Projects/Framework\"")]
+    [InlineData("Bash", "date && python -I \"C:/VIsual Studio Projects/Framework/tools/kor_handover.py\" unacked")]
+    [InlineData("PowerShell", "python -I \"C:\\VIsual Studio Projects\\Framework\\tools\\kor_handover.py\" read --id 5")]
     public void AtStopEveryHandoverStepIsAllowed(string tool, string text)
     {
         var d = AtStop(tool, text);

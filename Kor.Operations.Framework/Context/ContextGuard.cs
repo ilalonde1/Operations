@@ -196,6 +196,9 @@ public static class ContextGuard
         return $"{WarnMarker}{N(r.Tokens)} tokens of context ({Of(r.Model, w, cs)}). " +
                "Save your state now: write what is done, what is half-done and the next step to a file, " +
                $"run `kor state --module {m} --file <file>`, then carry on working. Nothing is refused at this line. " +
+               $"A session that holds a role (OverLORD, conductor, lead, lane) starts its handover AT THIS LINE, not at STOP, so a failed launch can be retried: " +
+               $"{HandoverCommand} --role <role> --module {m} --state-file <handover> --brief-file <the role's brief> (row 2059; Framework docs/OVERLORD-ROLE.md). " +
+               "Run it in the foreground; you keep the role until it prints HANDED. " +
                $"At {N(StopAt(w))} every work tool is refused and only the handover can be written, so a fresh session continues (G5, board row 1474).";
     }
 
@@ -222,9 +225,10 @@ public static class ContextGuard
                "3. `kor record` any finding not yet recorded. " +
                "4. `git add docs/HANDOVER.md && git commit docs/HANDOVER.md -m \"handover: ...\"` (no push: the fresh session reviews and pushes). " +
                "5. Tell Ian in one plain line that this session has stopped for a fresh start, with its handover written, naming anything LIVE. Ian or the lead " +
-               "starts the fresh session. " +
+               "starts the fresh session - or, for a session that holds a role, run the handover command, which starts and holds for the successor itself: " +
+               $"{HandoverCommand} --role <role> --module {m} --state-file <that file> --brief-file <the role's brief> (row 2059). " +
                "Allowed now: Read/Edit/Write of a *HANDOVER*.md or *RESUME*.md (either counts as the handover); Read/Write of STATE-NOW.md in the scratchpad; kor state; kor record; date; " +
-               "git status/diff/log/show; ls; git add of the handover; git commit of the handover by its path; TaskStop. A chain with any other step in it is " +
+               "git status/diff/log/show; ls; git add of the handover; git commit of the handover by its path; TaskStop; the handover command (hand, read, ack, unacked). A chain with any other step in it is " +
                "refused whole: if a command is refused, run the allowed steps on their own and finish all 5. Nothing else runs until a fresh session.";
     }
 
@@ -398,6 +402,13 @@ public static class ContextGuard
         return paths > 0;
     }
 
+    /// <summary>The handover command every role-holding session runs from its first warning line (Framework board row 2059).</summary>
+    public const string HandoverCommand = "python -I \"C:/VIsual Studio Projects/Framework/tools/kor_handover.py\" hand";
+
+    /// <summary>Only Framework's own kor_handover.py at its absolute path: a file of that name anywhere else is any script.</summary>
+    private static bool IsHandoverScript(string arg) =>
+        string.Equals(arg.Replace('\\', '/'), "C:/VIsual Studio Projects/Framework/tools/kor_handover.py", StringComparison.OrdinalIgnoreCase);
+
     private static bool SegmentAllowed(string seg)
     {
         var words = Enroll.EnrollCheck.SplitArgs(seg).Where(w => w.Trim().Length > 0).ToList();
@@ -414,6 +425,13 @@ public static class ContextGuard
         // a heredoc body feeding a commit message: cat <<'EOF' (its body lines are blank in the neutral text)
         if (name == "cat" && words.Count == 1) return true;   // what is left of `cat <<'EOF' ... EOF` once the heredoc is blanked
         if (KorExe.IsMatch(prog)) return words.Count > 1 && words[1] is "state" or "record";
+        // the one handover command (row 2059): python [-I] "<...>/Framework/tools/kor_handover.py" hand|read|ack|unacked, no shell escape
+        if (name is "python" or "python3" or "py")
+        {
+            if (HasShellEscape(seg)) return false;
+            var i = words.Count > 1 && words[1] == "-I" ? 2 : 1;
+            return words.Count > i + 1 && IsHandoverScript(words[i]) && words[i + 1] is "hand" or "read" or "ack" or "unacked";
+        }
         if (name == "git")
         {
             if (HasShellEscape(seg)) return false;
