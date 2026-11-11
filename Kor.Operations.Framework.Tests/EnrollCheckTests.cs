@@ -98,6 +98,27 @@ public class EnrollCheckTests
     public void AG5HookWithoutHookFlagIsAFinding() =>
         Assert.Contains(ContextFindings(ContextSettings(pre: "")), f => f.Contains("has no --hook", StringComparison.Ordinal));
 
+    /// <summary>Row 1893 (RESET step 1): the small start drops the records pages at start; kor recall --hook on UserPromptSubmit brings
+    /// the matching records at the moment of acting. Without recall, no records pages is a finding; a partial set is one either way.</summary>
+    private static List<string> RecordsFindings(string recordsPages, bool recall)
+    {
+        var start = "{\"hooks\":[" + string.Join(",", recordsPages.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(p => $"{{\"type\":\"command\",\"command\":\"kor.exe start --module M --part records --page {p} --pages 4 --hook\"}}")) + "]}";
+        var prompt = recall ? ",\"UserPromptSubmit\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"kor.exe recall --hook\"}]}]" : "";
+        return EnrollCheck.SettingsFindings("{\"hooks\":{\"SessionStart\":[" + start + "]" + prompt + "}}", "M")
+            .Where(f => f.Contains("--part records", StringComparison.Ordinal)).ToList();
+    }
+
+    [Fact]
+    public void TheSmallStartNeedsNoRecordsPagesButRecallOrAllFour()
+    {
+        Assert.Empty(RecordsFindings("", recall: true));                                   // the small start
+        Assert.Empty(RecordsFindings("1,2,3,4", recall: false));                           // the old start
+        Assert.Contains(RecordsFindings("", recall: false), f => f.Contains("kor recall --hook", StringComparison.Ordinal));
+        Assert.Contains(RecordsFindings("1,2,4", recall: true), f => f.Contains("--page 3 of 4", StringComparison.Ordinal));
+        Assert.Contains(RecordsFindings("1,3", recall: false), f => f.Contains("--page 2,4 of 4", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void EveryKorHookIsEnumerated()
     {

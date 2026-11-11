@@ -99,18 +99,14 @@ public static class EnrollCheck
     /// <summary>Claude Code's timeout for a command hook that sets none, in seconds.</summary>
     public const int DefaultHookTimeout = 60;
 
-    private static Hook RecordsPage(int n) =>
-        new($"SessionStart kor start --part records --page {n} --pages {RecordsPages}", "SessionStart", Array.Empty<string>(), "start",
-            c => c.Opt("--part") == "records" && c.Opt("--page") == n.ToString(System.Globalization.CultureInfo.InvariantCulture)
-                 && c.Opt("--pages") == RecordsPages.ToString(System.Globalization.CultureInfo.InvariantCulture));
-
     public static readonly IReadOnlyList<Hook> Required = new[]
     {
         new Hook("SessionStart kor start --part record", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "record"),
         new Hook("SessionStart kor start --part state", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "state"),
         new Hook("SessionStart kor start --part memory", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "memory"),
-        // the RECORDS pages (the lead, 3 Nov): every one of the 4, each its own entry - a missing page is records not read
-        RecordsPage(1), RecordsPage(2), RecordsPage(3), RecordsPage(4),
+        // the RECORDS pages (the lead, 3 Nov) are checked after this list: all RecordsPages of them, unless the repo runs the SMALL
+        // START (row 1893, RESET step 1, framework-84's ruling 10 Nov): kor recall --hook on UserPromptSubmit brings the records that
+        // match at the moment of acting instead of 4 pages at every start
         // --tag T alone is a board too (3 Nov: one product owner, tag-filtered board - the front-door repo's start)
         new Hook("SessionStart kor start --part board --owner ... (or --tag ...)", "SessionStart", Array.Empty<string>(), "start",
                  c => c.Opt("--part") == "board" && (c.Opt("--owner") is not null || c.Opt("--tag") is not null)),
@@ -255,6 +251,17 @@ public static class EnrollCheck
         var pages = mem.Select(c => int.TryParse(c.Opt("--page"), out var p) ? p : 1).ToHashSet();
         var lost = Enumerable.Range(1, declared).Where(p => !pages.Contains(p)).ToList();
         if (lost.Count > 0) findings.Add($"missing SessionStart kor start --part memory --page {string.Join(",", lost)} of {declared}");
+        // records pages: every page 1..M of the M the hooks declare; none at all only on THE PAGES or the small start (kor recall --hook
+        // on UserPromptSubmit, row 1893) - without either, the records reach the session nowhere
+        var rec = calls.Where(c => c.Event == "SessionStart" && c.Verb == "start" && c.Opt("--part") == "records" && c.Has("--hook")).ToList();
+        var recDeclared = rec.Select(c => int.TryParse(c.Opt("--pages"), out var n) ? n : 1).DefaultIfEmpty(0).Max();
+        var recPages = rec.Select(c => int.TryParse(c.Opt("--page"), out var p) ? p : 1).ToHashSet();
+        var recall = calls.Any(c => c.Event == "UserPromptSubmit" && c.Verb == "recall" && c.Has("--hook"));
+        if (recDeclared == 0 && !onPages && !recall)
+            findings.Add($"missing SessionStart kor start --part records --page 1..{RecordsPages} --pages {RecordsPages} --hook " +
+                         "(or the small start: UserPromptSubmit kor recall --hook)");
+        var recLost = Enumerable.Range(1, recDeclared).Where(p => !recPages.Contains(p)).ToList();
+        if (recLost.Count > 0) findings.Add($"missing SessionStart kor start --part records --page {string.Join(",", recLost)} of {recDeclared}");
         return findings;
     }
 
