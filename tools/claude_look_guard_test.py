@@ -109,6 +109,8 @@ LOOKED["row 2010: git add of several tools ending in drafted_set.py"] = (
 MISSES["row 2010: the real run behind refusal 5384 is still a drawing change"] = (
     [B('cd "/c/x/KOR.Drafter"; export KOR_REVIT_RUN_OK=1; python -u tools/virtual_drafter.py run jobs/x/job.json --from drafting')],
     "The run is done.", "drawing")
+MISSES["review 1419: a db write through a dotted db.run( is still a write (the word-start skip is drawing-only)"] = (
+    [B("python -c \"import kor.db; kor.db.run(open('x.sql').read())\"")], "Applied - done.", "db-write")
 MISSES["row 2010: a real run after a git add of .py files in one command"] = (
     [B("git add tools/a.py tools/b.py && python tools/drafted_set.py job.json out")], "Drawn - done.", "drawing")
 # --- ALLOWED: a commit whose MESSAGE names a drawing tool is not a drawing run (10-27 dry run's false positive)

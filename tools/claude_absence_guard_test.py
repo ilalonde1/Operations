@@ -20,6 +20,8 @@ CAUGHT = [
     "When I searched the share, I couldn't find the file.",                                         # comma ends the condition
     "It doesn't have to be first. Separately, this PC doesn't have the bridge add-in.",            # the next phrase is read
     "I tried that path, but that path doesn't exist, and I didn't try other names.",               # 4108
+    "I searched the share and it doesn't have the file.",                     # review 1419: a pronoun for a store
+    "The board shows 0 open rows. Separately, there is no deploy script in tools/.",  # review 1419: another sentence's 0
 ]
 # row 2010: the judged-wrong refusals of 2-10 Nov (GuardRefusal ids), verbatim windows: allowed now.
 MISFIRES = [

@@ -22,13 +22,14 @@ The class of misfire, in one sentence: the phrase was not a report of what a loo
 does not hold"), a modal ("doesn't have to"), a condition in code ("fails when the file is missing"), a check's or the
 diff's reach ("this test cannot see", "the commit does not contain"), a quoted mention, or an absence already counted
 ("shows 0 open rows"). So "hold" is dropped, "have to" is not "have", and each match is excused (excused()) when it is
-one of those; the next phrase in the reply is still read. Replay over the stored window of all 246: 88 now allowed,
-158 still refused; 7 of 7 judged-wrong allowed; 11 of 11 that RESET-3 judged right (ids 2728 2768 4108 4179 4215 4284
-4589 4590 4643 4968 4986) still refused. Every one of the 88 was read.
+one of those; the next phrase in the reply is still read. Replay over the stored window of all 246: 85 now allowed,
+161 still refused; 7 of 7 judged-wrong allowed; 11 of 11 that RESET-3 judged right (ids 2728 2768 4108 4179 4215 4284
+4589 4590 4643 4968 4986) still refused. Every one of the 85 was read. After review row 1419 a bare pronoun (it, this, that, which) excuses only a reach (see,
+reach), so "it doesn't have the file" about a share is refused, and a zero count excuses only in its own sentence.
 What the excuses do NOT cover, and same-class faults they now MISS: a real absence claim inside a condition clause
 ("once that reader exists (its files were not there at 09:35)" - refusal 5169, now allowed); a machine's reach with a
 check as subject ("its Revit check can't see KOR-302N" - 4525, allowed); a code noun as subject of a wrong claim ("the
-commit does not contain X" when it does); and any absence near an unrelated "shows 0". "exist" is never excused by
+commit does not contain X" when it does); and an absence in the same sentence as an unrelated "shows 0". "exist" is never excused by
 its subject, so "the SAFE tool doesn't exist" (4643, wrong and corrected) is still refused.
 
 stdin  : the Stop payload (transcript_path, stop_hook_active)
@@ -56,8 +57,12 @@ CONDITION = re.compile(r"\b(?:if|when|whenever|unless|until|once|whose|where|wit
 # (2) A subject that is a check, code or a piece of the diff: "this test cannot see", "the commit does not contain",
 #     "a lookup can't find it", "so it cannot reach line 337" - a reviewer's reading of code in front of it.
 CODE_SUBJECT = re.compile(
-    r"\b(?:it|this|that|which|test|tests|selftest|check|checks|gate|gates|guard|hook|lookup|tool|code|case|cases|"
+    r"\b(?:test|tests|selftest|check|checks|gate|gates|guard|hook|lookup|tool|code|case|cases|"
     r"commit|diff|message|comment|docstring|header|text|function|script|replay|reader|verb|grader|rows)\s+$", re.I)
+# A bare pronoun may stand for a share or a machine ("I searched the share and it doesn't have the file" - review row
+# 1419), so it excuses only a reach - "so it cannot see this", "it cannot reach line 337" - never have/find/contain.
+PRONOUN_SUBJECT = re.compile(r"\b(?:it|this|that|which)\s+$", re.I)
+SENTENCE_END = re.compile(r"[.!?\n]")
 # (3) A mention in double quotes or backticks on its line: 'written up as "cause not found"'.
 QUOTED = re.compile(r"\"[^\"\n]{0,120}\"|“[^”\n]{0,120}”|`[^`\n]{0,120}`")
 ZERO_READ = re.compile(r"\b(?:shows?|showed|reads?|returned|returns|finds|found|counts?|counted)\s+(?:0|zero)\b", re.I)
@@ -71,14 +76,18 @@ def excused(text, m):
     # "exist" stays a claim whatever its subject: 'the SAFE tool doesn't exist' was wrong and corrected (refusal 4644)
     if CODE_SUBJECT.search(before) and re.search(r"(?i)(?:see|find|reach|access|connect|contain|carry|have)$", m.group(0)):
         return True
+    if PRONOUN_SUBJECT.search(before) and re.search(r"(?i)(?:see|reach)$", m.group(0)):
+        return True
     line_start = text.rfind("\n", 0, m.start()) + 1
     line_end = text.find("\n", m.end()); line_end = len(text) if line_end < 0 else line_end
     for q in QUOTED.finditer(text, line_start, line_end):
         if q.start() < m.start() and m.end() < q.end():
             return True
-    # (4) A counted absence: a read that returned zero, within 200 characters ("the board read shows 0 open rows, so
+    # (4) A counted absence: a read that returned zero, in the SAME sentence ("the board read shows 0 open rows, so
     #     there are no row ids"; refusals 52 and 106, judged wrong on 2 Nov). A count is its own check.
-    if ZERO_READ.search(text, max(0, m.start() - 200), m.end() + 200):
+    s_start = max([e.end() for e in SENTENCE_END.finditer(text, 0, m.start())] or [0])
+    s_end = SENTENCE_END.search(text, m.end()); s_end = s_end.start() if s_end else len(text)
+    if ZERO_READ.search(text, s_start, s_end):
         return True
     return False
 

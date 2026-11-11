@@ -26,6 +26,12 @@ NOTICE = [
     ("Get-ChildItem | Select-Object -First 5", lines(5)),
     ("grep -m 3 x a.txt", lines(3)),
     ("tail -n +2 x.csv", lines(2)),                             # the limit cannot be read: not provable
+    # review row 1419: the cut's lines are not what got printed
+    ("for f in $(ls | head -5); do grep -n x $f; done", lines(2)),
+    ("x=$(git log --oneline | head -3); echo $x", lines(1)),
+    ("n=`ls | head -5`; echo $n", lines(1)),
+    ("git log --oneline | head -5 >&2", lines(0)),
+    ("git log --oneline | head -5 &> f.txt", lines(0)),
 ]
 SILENT = [
     # row 2010: the cut kept more lines than were printed, so it dropped nothing
@@ -35,6 +41,7 @@ SILENT = [
     ("grep -n a f.py | head; grep -n b g.py", lines(5)),
     ("sed -n 1,80p short.py", lines(40)),
     ("Get-ChildItem | Select-Object -First 5", lines(2)),
+    ("dotnet test x 2>&1 | head -50", lines(12)),                 # 2>&1 before the cut is not a redirect after it
     # unchanged: a command that counts its population
     ("grep -c x f | head -5", lines(5)),
     ("ls | wc -l", lines(1)),

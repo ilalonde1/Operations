@@ -80,7 +80,8 @@ never mention what it saw, exactly as one Read of page 1 of 26 already does.
 Framework rows 2010 and 1650 (10 Nov 2026). The class, in one sentence: a read-only command that LISTS a .py file before a
 drawing script (git show/diff/add, grep, ls, for-loops) read as a drawing run, because the drawing ChangePattern opens with
 (?:python|py) and no left boundary, so 'virtual_drafter.py tools/drafted_set.py' holds 'py tools/drafted_set.py'.
-change_in() now skips a match that starts inside a word or file name (previous character a letter, digit, '_' or '.').
+change_in() now skips a drawing match that starts inside a word or file name (previous character a letter, digit, '_'
+or '.'); the other kinds match as before (review row 1419: on db-write the skip would have dropped `kor.db.run(`).
 Replay of all 196 look refusals of 3-10 Nov on their own transcripts, cut at the refused text (187 of 196 reproduce the
 stored kinds; 1 transcript not found): 85 change, 83 of 86 drawing refusals cleared - 10 of 10 judged wrong (2776-2780,
 5095-5097, 5427-5430) now allowed - and the one real run left (5384, `python -u tools/virtual_drafter.py run`) still
@@ -340,7 +341,9 @@ def unlooked(calls, rules):
             # run (the first dry run on the 10-27 transcript flagged exactly that)
             text = COMMIT_MSG.sub("-m ''", text)
             read = as_read(text) if name in ("Bash", "PowerShell") else text   # row 1203: for looks only
-            cm = change_in(cpat, text) if name in ctools else None
+            # the word-start skip is the drawing kind's only (review row 1419: on db-write it would drop `kor.db.run(`)
+            cm = ((change_in(cpat, text) if r["Kind"] == "drawing" else cpat.search(text))
+                  if name in ctools else None)
             lm = None
             if name in ltools:
                 # a look in the same command counts only when it comes after the change in the text

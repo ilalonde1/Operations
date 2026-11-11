@@ -21,11 +21,11 @@ Silent unless the command truncates. If the command ALSO computes a population -
 sort | uniq -c -- nothing is said, because then the claim is supportable.
 
 Row 2010 (10 Nov 2026): also nothing is said when the OUTPUT proves the cut dropped nothing - the cut is the last stage
-of its pipeline (no later | and no > redirect), its limit can be read (head/tail -N or -n N, bare head/tail = 10,
+of its pipeline (no later |, no stdout redirect such as > f or >&2, not closed by a ) or inside backticks), its limit can be read (head/tail -N or -n N, bare head/tail = 10,
 sed -n '1,Np', Select-Object -First N), and the command printed fewer lines than that limit. Measured on
-1,255 transcripts written 3-10 Nov: 6,301 notices; 1,334 of them were such cuts and are now silent, 4,967 still print
-(head 2,183, tail 1,570, sed -n 1,193, grep -m 21). Behind the 6,301: 649 printed 0-1 lines, 1,016 2-5, 2,203 6-20,
-2,433 more - so small results were about a quarter, not the bulk, and every one still noticed is a cut that may have
+1,268 transcripts written 3-10 Nov: 6,387 notices; 1,330 of them were such cuts and are now silent, 5,057 still print
+(head 2,227, tail 1,598, sed -n 1,210, grep -m 22). Behind the 6,387: 653 printed 0-1 lines, 1,025 2-5, 2,232 6-20,
+2,477 more - so small results were about a quarter, not the bulk, and every one still noticed is a cut that may have
 dropped a line. What it does NOT cover: a cut whose limit cannot be read (tail -n +N, grep -m, a sed window not from
 line 1, head -c) or that is followed by another stage - noticed as before, even when nothing was cut; a | tail -1
 read for a test's own "X of Y passed" line is still noticed (the line counts the population, the guard cannot tell).
@@ -74,7 +74,7 @@ LIMIT = [
     (re.compile(r"Select-Object\s+-First\s+(\d+)"), None),
 ]
 STAGE_END = re.compile(r"[;\n)]|&&|\|\|")
-REDIRECT = re.compile(r"(?<![2&])>(?!&)")
+REDIRECT = re.compile(r"(?<!2)>")   # every stdout redirect: > f, >> f, >&2, &> f; not 2>&1 or 2>/dev/null
 
 
 def kept_whole(cmd, start, out_lines):
@@ -91,8 +91,10 @@ def kept_whole(cmd, start, out_lines):
             return False
         end = STAGE_END.search(cmd, m.end())
         rest = cmd[m.end():end.start() if end else len(cmd)]
-        # a later stage could filter; a > redirect sends the cut's lines to a file, so the printed count says nothing
-        if "|" in rest or REDIRECT.search(rest):
+        # a later stage could filter; a > redirect (a file, or >&2) sends the cut's lines where stdout does not count
+        # them; a cut closed by ')' or inside backticks feeds $( ), <( ) or a group whose printing is another command's
+        # (review row 1419: `for f in $(ls | head -5); do ...`)
+        if "|" in rest or REDIRECT.search(rest) or (end and end.group(0) == ")") or cmd.count("`", 0, start) % 2:
             return False
         return out_lines < n
     return False
