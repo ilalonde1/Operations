@@ -160,6 +160,16 @@ MISSES["row 2032: echo piped to bash is run"] = (
     [B('echo "dotnet build x.sln" | bash')], "Built - done.", "build")
 MISSES["row 2032: a quoted path to build.ps1 is still a build (refusal 4849's shape)"] = (
     [P(r"& 'C:\x\work\s9-wip\build.ps1' -Stem p1-sln")], "Built - done.", "build")
+MISSES["review 1436: a here-string <<< is not a heredoc - the build after it is run"] = (
+    [B('cat <<< "word"\ndotnet build x.sln')], "Built - done.", "build")
+MISSES["review 1436: a shift in $(( )) is not a heredoc - the build after it is run"] = (
+    [B("n=$((1<<n))\ndotnet build x.sln")], "Built - done.", "build")
+MISSES["review 1436: a spaced shift in (( )) is not a heredoc either"] = (
+    [B("n=$(( 1 << n ))\ndotnet build x.sln")], "Built - done.", "build")
+MISSES["review 1436: an 'echo' inside python -c code is not an echo command"] = (
+    [B("python -c \"print('echo'); import os; os.system('dotnet build x.sln')\"")], "Built - done.", "build")
+MISSES["review 1436: one unbalanced ``` fence does not hide a later claim"] = (
+    [B("dotnet build x.sln")], "Output:\n```\nBuild succeeded\nThe build is done.", "build")
 MISSES["row 2032: a claim outside a code span is still a claim"] = (
     [B("dotnet build x.sln")], "`dotnet build` passed.", "build")
 # --- ALLOWED: a commit whose MESSAGE names a drawing tool is not a drawing run (10-27 dry run's false positive)

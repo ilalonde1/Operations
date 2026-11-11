@@ -118,7 +118,11 @@ literal names a build) is still matched; a heredoc fed to an unknown command is 
 interpreter; prose that names a command unquoted still reads as one; looks inside a commit message still count as looks.
 Same-class faults it would MISS (a run hidden as a mention): `cat > x.txt <<EOF` then `bash x.txt`, or `echo "dotnet
 build" > b.txt; pwsh b.txt` - the file is run under a name that is not a script's; `xargs`/`ssh host <<EOF` running a
-heredoc. Pre-existing, not this class: the drawing LookRule does not match a QUOTED script path
+heredoc; an echo or grep that starts a command INSIDE another's quoted code after a ';' (python -c "x; echo 'dotnet
+build'" blanks the quoted text after it). Review row 1436 (APPROVE, 4 MINOR, all fixed): a here-string <<< and a shift
+1<<n are not heredocs, and a head holding (( is arithmetic; echo/grep count only at a command's start; an unbalanced ```
+fence skips no claim. Errs toward refusing, stated: an interpreter name after any path separator (a path ending /sh or
+\cmd) makes a heredoc count as run. Pre-existing, not this class: the drawing LookRule does not match a QUOTED script path
 (`python "C:/x/tools/virtual_drafter.py" run`) - the quote between .py and run breaks it; a KorStandards fix.
 
 stdin  : the Stop payload (transcript_path, stop_hook_active) or the PreToolUse payload (tool_name SendMessage)
@@ -156,7 +160,8 @@ HELPER_DONE = re.compile(r"<task-notification>\s*<task-id>([\w-]+)</task-id>(?:(
 QUOTES = "\"'`‘’“”"
 # row 2032: where quoted text is a MENTION. A heredoc opener; an interpreter that runs what it is fed; a file whose body
 # runs; a message flag whose quoted value is prose; a command whose quoted arguments are text or a search pattern.
-HEREDOC = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_]\w*)\1")
+# review row 1436: not a here-string (<<<) and not a shift (1<<n): no '<' or word character right before, no '<' after
+HEREDOC = re.compile(r"(?<![<\w)])<<(?!<)-?[ \t]*(['\"]?)([A-Za-z_]\w*)\1")
 INTERPRETER = re.compile(r"(?:^|[\s(|;&{])(?:\S*[\\/])?(?:python3?|py|bash|sh|zsh|pwsh|powershell|cmd|node|sqlcmd|iex"
                          r"|Invoke-Expression)(?:\.exe)?(?=[\s;|&)]|$)", re.I)
 PIPE_TO_INTERPRETER = re.compile(r"\|\s*(?:\S*[\\/])?(?:python3?|py|bash|sh|zsh|pwsh|powershell|cmd|node|sqlcmd|iex"
@@ -167,8 +172,10 @@ SQL_RUNNER = re.compile(r"\b(?:oq|oqwide)\.py\b|\bsqlcmd\b", re.I)
 PY_SCRIPT = re.compile(r"(?:python3?|py)(?:\.exe)?\s+(?:-\S+\s+)*[\"']?[^\s\"'|;&-][^\s\"'|;&]*\.py\b", re.I)
 MESSAGE_FLAG = re.compile(r"""(?<![\w-])(?:-m|--message|--note|--says|--body|--because|--description|--evidence|--what"""
                           r"""|--why|--reason|--title|--summary)(?:\s+|=)("(?:[^"\\]|\\.)*"|'[^']*')""")
-TEXT_COMMAND = re.compile(r"(?<![\w.\\/-])(?:grep|egrep|fgrep|rg|findstr|Select-String|echo|printf|Write-Host"
-                          r"|Write-Output)(?![\w-])", re.I)
+# review row 1436: only at a command's start (text start, a line break, ; | & ( { or after then/do/else), so an 'echo'
+# inside another command's quoted code (python -c "print('echo'); ...") is not taken for one
+TEXT_COMMAND = re.compile(r"(?:^|[\n;|&({])[ \t]*(?:(?:then|do|else|!)[ \t]+)*(grep|egrep|fgrep|rg|findstr|Select-String"
+                          r"|echo|printf|Write-Host|Write-Output)(?![\w-])", re.I)
 CACHE_S = 600
 CACHE = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "KOR", "look_rules_cache.json")
 SURFACE_CACHE = os.path.join(os.path.dirname(CACHE), "look_surface_cache.json")
@@ -421,7 +428,7 @@ def mentions_blanked(text, kind):
         if line_end < 0:
             continue
         head = t[t.rfind("\n", 0, m.start()) + 1:line_end]
-        if _heredoc_runs(head, kind):
+        if "((" in head or _heredoc_runs(head, kind):   # (( ... << n )) is arithmetic (review row 1436)
             continue
         close = re.compile(r"^[ \t]*" + re.escape(m.group(2)) + r"[ \t]*$", re.M).search(t, line_end + 1)
         t = _blank(t, line_end + 1, close.start() if close else len(t))
@@ -429,9 +436,9 @@ def mentions_blanked(text, kind):
         if not _expands(m.group(1)):
             t = _blank(t, m.start(1), m.end(1))
     for m in list(TEXT_COMMAND.finditer(t)):
-        spans, end = _quoted_args(t, m.end())
-        if m.group(0).lower() in ("echo", "printf", "write-host", "write-output"):
-            seg = t[m.start():end]
+        spans, end = _quoted_args(t, m.end(1))
+        if m.group(1).lower() in ("echo", "printf", "write-host", "write-output"):
+            seg = t[m.start(1):end]
             if (PIPE_TO_INTERPRETER.match(t, end) or SCRIPT_SINK.search(seg)
                     or (kind == "db-write" and SQL_SINK.search(seg))):
                 continue
@@ -518,7 +525,8 @@ def reason_for(missing, claim, surfaces=None):
 def in_code(text, pos):
     """Is `pos` inside a fenced ``` block, or inside a `code span` on its own line (row 2032, refusal 41: "should read
     `DONE|1|1|0...`" quotes an expected output)?"""
-    if text.count("```", 0, pos) % 2:
+    # an unbalanced fence (review row 1436) proves nothing: without the even count, no claim is skipped as fenced
+    if text.count("```") % 2 == 0 and text.count("```", 0, pos) % 2:
         return True
     ls = text.rfind("\n", 0, pos) + 1
     le = text.find("\n", pos)
