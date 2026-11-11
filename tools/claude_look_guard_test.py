@@ -113,6 +113,55 @@ MISSES["review 1419: a db write through a dotted db.run( is still a write (the w
     [B("python -c \"import kor.db; kor.db.run(open('x.sql').read())\"")], "Applied - done.", "db-write")
 MISSES["row 2010: a real run after a git add of .py files in one command"] = (
     [B("git add tools/a.py tools/b.py && python tools/drafted_set.py job.json out")], "Drawn - done.", "drawing")
+# --- row 2032: a command MENTIONED in quoted text - a heredoc body fed to something that does not run it, a message
+# flag's quoted value, a grep pattern, an echo's argument - was not run. Each case is a stored refusal's shape.
+LOOKED["row 2032: guard_log --note naming dotnet publish (refusals 5519-5526, build)"] = (
+    [B('cd "C:/x/Framework" && for i in 1 2; do python -I tools/guard_log.py judge $i right --by "RESET-3" '
+       '--note "real run; the dotnet publish of the CLI is not this" 2>&1 | tail -n 1; done')],
+    "Judged - done.")
+LOOKED["row 2032: a git commit -F - heredoc naming kor.db.run(, drafted_set.py and dotnet build (5519, db-write/drawing)"] = (
+    [B("cd \"C:/x/Operations\" && git add tools/a.py && git commit -q -F - <<'EOF'\nlook: kor.db.run( is a write; "
+       "'virtual_drafter.py\ntools/drafted_set.py' held 'py tools/drafted_set.py'\npython tools/drafted_set.py job out\n"
+       "dotnet build x.sln\nUPDATE oversight.Commitment SET State='done'\ngit push fs01 HEAD\nEOF\ngit log --oneline -1")],
+    "Committed - done.")
+LOOKED["row 2032: a SQL heredoc whose string literal names dotnet build (refusal 445)"] = (
+    [B("cd \"/c/x/tools/SqlQuery\" && cat > row2.sql <<'EOF'\nUSE KorStandards;\nINSERT oversight.Commitment (Owner, What)\n"
+       "OUTPUT inserted.Id\nVALUES (N'Framework', N'the review runs dotnet build of each commit');\nEOF\n"
+       "python -I oq.py -i row2.sql 2>&1; rm row2.sql")],
+    "Row added - done.")
+LOOKED["row 2032: a grep pattern naming dotnet publish (refusal 2741)"] = (
+    [B("cd \"C:/x/Operations\"; wc -l tools/deploy.ps1; grep -n -E 'dotnet publish|PublishDir|robocopy' tools/deploy.ps1 "
+       "| head -24 | cut -c1-150")],
+    "Read it - the deploy script is fixed so far.")
+LOOKED["row 2032: kor record --says naming a build"] = (
+    [B('kor record --module Operations --kind finding --says "the lane ran dotnet build twice and & build.ps1 once"')],
+    "Recorded - done.")
+LOOKED["row 2032: echo into a slot file naming dotnet publish (refusal 4906)"] = (
+    [B('SLOT="$LOCALAPPDATA/Temp/slot.txt" && ( set -C; echo "31218-S8 dotnet publish TakeoffCli export" > "$SLOT" )')],
+    "Slot held - done.")
+LOOKED["row 2032: a cat heredoc into a brief .txt naming an UPDATE (refusal 4926)"] = (
+    [B("D=/c/x/lanes; cat > \"$D/brief.txt\" <<'EOF'\nUPDATE KorStandards.oversight.Commitment SET State='doing' WHERE Id=1;\n"
+       "python tools/drafted_set.py job out\nEOF\nwc -l \"$D/brief.txt\"")],
+    "Brief written - done.")
+MISSES["row 2032: a heredoc fed to bash is run"] = (
+    [B("bash <<'EOF'\ndotnet build x.sln\nEOF")], "Built - done.", "build")
+MISSES["row 2032: a heredoc into a .ps1 that is then run"] = (
+    [B("cat > b.ps1 <<'EOF'\ndotnet publish x.csproj\nEOF\npwsh -File b.ps1")], "Published - done.", "build")
+MISSES["row 2032: a heredoc into a .sql file that is then run is still a write"] = (
+    [B("cat > w.sql <<'EOF'\nUPDATE KorStandards.oversight.Commitment SET State='done' WHERE Id=1;\nEOF\n"
+       "python -I oq.py -i w.sql 2>&1 | tail -1")], "Closed - done.", "db-write")
+MISSES["row 2032: python reading its code from a heredoc runs it"] = (
+    [B("python - <<'EOF'\nimport standards_db as db\ndb.run(open('x.sql').read())\nEOF")], "Applied - done.", "db-write")
+MISSES["row 2032: a --note holding $( ) runs what is inside"] = (
+    [B('python tools/guard_log.py judge 1 right --note "$(dotnet build x.sln)"')], "Judged - done.", "build")
+MISSES["row 2032: a real build after a commit heredoc"] = (
+    [B("git commit -q -F - <<'EOF'\nmsg\nEOF\ndotnet build x.sln")], "Built - done.", "build")
+MISSES["row 2032: echo piped to bash is run"] = (
+    [B('echo "dotnet build x.sln" | bash')], "Built - done.", "build")
+MISSES["row 2032: a quoted path to build.ps1 is still a build (refusal 4849's shape)"] = (
+    [P(r"& 'C:\x\work\s9-wip\build.ps1' -Stem p1-sln")], "Built - done.", "build")
+MISSES["row 2032: a claim outside a code span is still a claim"] = (
+    [B("dotnet build x.sln")], "`dotnet build` passed.", "build")
 # --- ALLOWED: a commit whose MESSAGE names a drawing tool is not a drawing run (10-27 dry run's false positive)
 LOOKED["commit message naming e2k_book.py"] = (
     [B("python tools/e2k_book.py m.e2k b.pdf"), R(r"C:\x\b.png"),
@@ -213,6 +262,10 @@ NO_CLAIM_1203 = {
     "a quoted claim word is a mention (898's sentence)":
         "The guard blocked the first send by misreading \"passes\" as a completion claim.",
     "single quotes, backticks and curly quotes": "It read 'done', `fixed` and “verified” as claims.",
+    # row 2032, refusal 41: a claim word inside a code span is the expected output being quoted, not a claim
+    "row 2032: a claim word inside an inline code span (refusal 41)":
+        "Run it. The last result should read `DONE|1|1|0|1|0|0|refused|refused|refused|0|0`.",
+    "row 2032: a claim word inside a fenced block": "Its output should be:\n```\nPassed! 68 of 68\nall done\n```\nNext I run it.",
 }
 # --- ALLOWED: no completion claim at all
 NO_CLAIM = ([E(r"C:\x\tools\drafted_set.py")], "Working on the drawing changes next.")

@@ -94,6 +94,33 @@ or after this change; a CLAIM word in the future tense ("I'll ask once it's buil
 the sentence understood (row 1650 asked for that or this line). Same-class fault it would MISS: a drawing script run as
 `./tools/drafted_set.py` or through `uv run` names no interpreter and is not seen.
 
+Framework row 2032 (10 Nov 2026). The class, in one sentence: text that is QUOTED - mentioned, not run - was read as a
+change that ran (and, in a reply, as a claim). A change is now matched only on mentions_blanked(command, kind), which
+blanks, keeping every position: (1) a heredoc body unless it is run - piped to or read as code by an interpreter
+(bash, pwsh, python with no script, ...), or written to a script file (.ps1 .sh .py .cmd .bat .js); a .sql file, sqlcmd
+or oq.py run it as SQL, which counts for db-write only; so `git commit -F - <<EOF`, `cat > brief.txt <<EOF` and a SQL
+literal that names `dotnet build` are text; (2) the quoted value of a message flag (-m --message --note --says --body
+--because --description --evidence --what --why --reason --title --summary); (3) the quoted arguments of grep, egrep,
+fgrep, rg, findstr, Select-String, and of echo, printf, Write-Host, Write-Output unless that output is piped to an
+interpreter or redirected into a script file (or a .sql file, for db-write). A double-quoted string holding $( ) or
+backticks is never blanked: the shell runs that. And a claim word inside a `code span` or a fenced ``` block is a quoted
+output, not a claim (claim_in). Looks are matched on the raw text, as before.
+Replay of all 202 look refusals in GuardRefusal (3-10 Nov window plus every judged one), on their own transcripts cut at
+the refused text, HEAD vs this (201 of 202 replayed): refused 110 -> 99, no replay gained a kind; every one of the 13
+that changed was read - each blamed change was a mention (guard_log --note, git commit -F - heredoc, a grep pattern, a
+SQL or brief heredoc, printf into a lesson file) and 3092 keeps its real dotnet build. Judged wrong allowed 20 of 22
+(445 and 2741 by this change, with 42-45 440 441 893 898 2776-2780 5095-5097 5427-5430 from before); judged right still
+refused 1 of 1 (5384). Not freed, other classes: 41 - its code-span `DONE` is now skipped, but the same reply says "the
+applied run kept everything" after a .sql Write that was never run here; 403 - "nothing built on it", a NEGATED claim
+word. Claim words replayed on 199 of 202 refused texts: 0 changed, so the code-span rule frees no stored refusal but 41.
+What it does NOT cover: a quoted argument of any other command (python -c "...", oq.py -q "...", a quoted SQL whose
+literal names a build) is still matched; a heredoc fed to an unknown command is blanked unless the line pipes it to an
+interpreter; prose that names a command unquoted still reads as one; looks inside a commit message still count as looks.
+Same-class faults it would MISS (a run hidden as a mention): `cat > x.txt <<EOF` then `bash x.txt`, or `echo "dotnet
+build" > b.txt; pwsh b.txt` - the file is run under a name that is not a script's; `xargs`/`ssh host <<EOF` running a
+heredoc. Pre-existing, not this class: the drawing LookRule does not match a QUOTED script path
+(`python "C:/x/tools/virtual_drafter.py" run`) - the quote between .py and run breaks it; a KorStandards fix.
+
 stdin  : the Stop payload (transcript_path, stop_hook_active) or the PreToolUse payload (tool_name SendMessage)
 stdout : nothing (allow); Stop -> {"decision": "block", ...}; PreToolUse -> permissionDecision "deny"
 """
@@ -127,6 +154,21 @@ OUTPUT_ROWS = re.compile(r"\bOUTPUT\s+(?:inserted|deleted)\.", re.I)
 # row 1936: a background helper's end, as the main transcript holds it (an attachment of type queued_command)
 HELPER_DONE = re.compile(r"<task-notification>\s*<task-id>([\w-]+)</task-id>(?:(?!</task-notification>).)*?<status>completed</status>", re.S)
 QUOTES = "\"'`‘’“”"
+# row 2032: where quoted text is a MENTION. A heredoc opener; an interpreter that runs what it is fed; a file whose body
+# runs; a message flag whose quoted value is prose; a command whose quoted arguments are text or a search pattern.
+HEREDOC = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_]\w*)\1")
+INTERPRETER = re.compile(r"(?:^|[\s(|;&{])(?:\S*[\\/])?(?:python3?|py|bash|sh|zsh|pwsh|powershell|cmd|node|sqlcmd|iex"
+                         r"|Invoke-Expression)(?:\.exe)?(?=[\s;|&)]|$)", re.I)
+PIPE_TO_INTERPRETER = re.compile(r"\|\s*(?:\S*[\\/])?(?:python3?|py|bash|sh|zsh|pwsh|powershell|cmd|node|sqlcmd|iex"
+                                 r"|Invoke-Expression)\b", re.I)
+SCRIPT_SINK = re.compile(r">{1,2}\s*[\"']?[^\s\"'|;&]+\.(?:ps1|psm1|sh|bash|py|cmd|bat|js)\b", re.I)
+SQL_SINK = re.compile(r">{1,2}\s*[\"']?[^\s\"'|;&]+\.sql\b", re.I)
+SQL_RUNNER = re.compile(r"\b(?:oq|oqwide)\.py\b|\bsqlcmd\b", re.I)
+PY_SCRIPT = re.compile(r"(?:python3?|py)(?:\.exe)?\s+(?:-\S+\s+)*[\"']?[^\s\"'|;&-][^\s\"'|;&]*\.py\b", re.I)
+MESSAGE_FLAG = re.compile(r"""(?<![\w-])(?:-m|--message|--note|--says|--body|--because|--description|--evidence|--what"""
+                          r"""|--why|--reason|--title|--summary)(?:\s+|=)("(?:[^"\\]|\\.)*"|'[^']*')""")
+TEXT_COMMAND = re.compile(r"(?<![\w.\\/-])(?:grep|egrep|fgrep|rg|findstr|Select-String|echo|printf|Write-Host"
+                          r"|Write-Output)(?![\w-])", re.I)
 CACHE_S = 600
 CACHE = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "KOR", "look_rules_cache.json")
 SURFACE_CACHE = os.path.join(os.path.dirname(CACHE), "look_surface_cache.json")
@@ -317,6 +359,88 @@ def change_in(cpat, text):
         pos = m.start() + 1
 
 
+def _blank(s, a, b):
+    """`s` with s[a:b] turned to spaces (line breaks kept), so every other position in it is unchanged."""
+    return s[:a] + re.sub(r"[^\n]", " ", s[a:b]) + s[b:]
+
+
+def _expands(q):
+    """A double-quoted string the shell runs code in while expanding it: $( ) or backticks. Never a mention."""
+    return q.startswith('"') and ("$(" in q or "`" in q)
+
+
+def _heredoc_runs(head, kind):
+    """Is a heredoc's body RUN, judged from the command line that opens it (`head`)? Yes when it is piped to or read by
+    an interpreter as its code, or written to a script file; a .sql file, sqlcmd or oq.py run it as SQL, which can be
+    a db-write and nothing else. A python SCRIPT reading it (guard_log.py, kor_brain.py) reads data. Everything else -
+    git commit -F -, cat > note.txt, kor record - holds text."""
+    if PIPE_TO_INTERPRETER.search(head) or SCRIPT_SINK.search(head):
+        return True
+    if SQL_SINK.search(head):
+        return kind == "db-write"
+    im = INTERPRETER.search(head)
+    if not im:
+        return False
+    word = im.group(0).strip(" \t(|;&{").lower()
+    if "sqlcmd" in word:
+        return kind == "db-write"
+    if re.search(r"(?:python3?|py)(?:\.exe)?$", word) and PY_SCRIPT.search(head):
+        return kind == "db-write" and bool(SQL_RUNNER.search(head))
+    return True
+
+
+def _quoted_args(text, i):
+    """[(start, end)] of each quoted string in the shell command from `i` to its end (an unquoted line break, ';', '|',
+    ')' or a '&' that is not part of a redirect), and that end."""
+    spans = []; n = len(text)
+    while i < n:
+        c = text[i]
+        if c in "\"'":
+            j = i + 1
+            while j < n and text[j] != c:
+                j += 2 if c == '"' and text[j] == "\\" else 1
+            spans.append((i, min(j + 1, n))); i = j + 1
+            continue
+        if c in "\n;|)" or (c == "&" and text[i - 1:i] != ">"):
+            break
+        i += 1
+    return spans, i
+
+
+def mentions_blanked(text, kind):
+    """A command with the text it only MENTIONS blanked (row 2032), for the change match of rule `kind`: the body of a
+    heredoc that is not run (_heredoc_runs), the quoted value of a message flag (-m, --note, --says, --body, ...), and
+    the quoted arguments of a search (grep, rg, findstr, Select-String) or of echo / printf / Write-Host /
+    Write-Output - unless that output is piped to an interpreter or written to a script file (or a .sql file, for a
+    db-write). A double-quoted string holding $( ) or backticks is never blanked: the shell runs that."""
+    t = text
+    for m in list(HEREDOC.finditer(t)):
+        if t[m.start():m.end()].strip() == "":   # already blanked (inside an earlier heredoc)
+            continue
+        line_end = t.find("\n", m.end())
+        if line_end < 0:
+            continue
+        head = t[t.rfind("\n", 0, m.start()) + 1:line_end]
+        if _heredoc_runs(head, kind):
+            continue
+        close = re.compile(r"^[ \t]*" + re.escape(m.group(2)) + r"[ \t]*$", re.M).search(t, line_end + 1)
+        t = _blank(t, line_end + 1, close.start() if close else len(t))
+    for m in MESSAGE_FLAG.finditer(t):
+        if not _expands(m.group(1)):
+            t = _blank(t, m.start(1), m.end(1))
+    for m in list(TEXT_COMMAND.finditer(t)):
+        spans, end = _quoted_args(t, m.end())
+        if m.group(0).lower() in ("echo", "printf", "write-host", "write-output"):
+            seg = t[m.start():end]
+            if (PIPE_TO_INTERPRETER.match(t, end) or SCRIPT_SINK.search(seg)
+                    or (kind == "db-write" and SQL_SINK.search(seg))):
+                continue
+        for a, b in spans:
+            if not _expands(t[a:b]):
+                t = _blank(t, a, b)
+    return t
+
+
 def unlooked(calls, rules):
     """[(rule, last change text, tables it wrote)] for every kind changed and not looked at since its last change.
     The tables are the db-write kind's (row 1203), used only to name them and their oversight.Surface in the refusal;
@@ -341,8 +465,10 @@ def unlooked(calls, rules):
             # run (the first dry run on the 10-27 transcript flagged exactly that)
             text = COMMIT_MSG.sub("-m ''", text)
             read = as_read(text) if name in ("Bash", "PowerShell") else text   # row 1203: for looks only
+            # row 2032: a change is matched only in what the command RUNS - text it mentions is blanked, positions kept
+            ctext = mentions_blanked(text, r["Kind"]) if name in ("Bash", "PowerShell") else text
             # the word-start skip is the drawing kind's only (review row 1419: on db-write it would drop `kor.db.run(`)
-            cm = ((change_in(cpat, text) if r["Kind"] == "drawing" else cpat.search(text))
+            cm = ((change_in(cpat, ctext) if r["Kind"] == "drawing" else cpat.search(ctext))
                   if name in ctools else None)
             lm = None
             if name in ltools:
@@ -356,7 +482,7 @@ def unlooked(calls, rules):
                     lm = OUTPUT_ROWS.search(text, cm.end())
             if cm:
                 last_change, change_text = i, text
-                tables = sorted({k for k, _ in written_tables(text, cpat) if k != "*"}) if db else []
+                tables = sorted({k for k, _ in written_tables(ctext, cpat) if k != "*"}) if db else []
             if lm:
                 last_look = i
         if last_change is not None and (last_look is None or last_look < last_change):
@@ -389,6 +515,17 @@ def reason_for(missing, claim, surfaces=None):
     return "\n".join(lines)
 
 
+def in_code(text, pos):
+    """Is `pos` inside a fenced ``` block, or inside a `code span` on its own line (row 2032, refusal 41: "should read
+    `DONE|1|1|0...`" quotes an expected output)?"""
+    if text.count("```", 0, pos) % 2:
+        return True
+    ls = text.rfind("\n", 0, pos) + 1
+    le = text.find("\n", pos)
+    before, after = text[ls:pos].replace("```", ""), text[pos:le if le >= 0 else len(text)].replace("```", "")
+    return before.count("`") % 2 == 1 and "`" in after
+
+
 def claim_in(text):
     """The first claim word that is USED, not mentioned: a word wrapped in quotes ("passes") is skipped (row 1203)."""
     text = text or ""
@@ -396,6 +533,8 @@ def claim_in(text):
         before = text[m.start() - 1] if m.start() else ""
         after = text[m.end()] if m.end() < len(text) else ""
         if before and after and before in QUOTES and after in QUOTES:
+            continue
+        if in_code(text, m.start()):
             continue
         return m
     return None
