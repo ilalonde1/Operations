@@ -107,6 +107,17 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "Bash|PowerShell|SendMessage",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -I \"C:/VIsual Studio Projects/Framework/tools/board_time_guard.py\" --hook",
+            "timeout": 15,
+            "statusMessage": "Board time guard: no time not yet reached, no id never read (row 1967; mistakes 32-34, 54, 63, 142)"
+          }
+        ]
+      },
+      {
         "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit",
         "hooks": [
           {
