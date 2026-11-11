@@ -14,6 +14,25 @@ GUARD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "claude_absence
 CAUGHT = [
     "The three IT readings failed only because this PC doesn't have the NetworkOps connection set.",
     "There is no Worker deploy script in tools/, so I'll write one.",
+    # row 2010: refused before and still refused - each sits next to an excuse that must not reach it
+    "e the same way yet: the opens-in-real-SAFE tool doesn't exist, and building it is a step",   # 4643: exist, any subject
+    "I couldn't find Omar's updated file. The only copy I can see is v2.",                         # 4284: I, not code
+    "When I searched the share, I couldn't find the file.",                                         # comma ends the condition
+    "It doesn't have to be first. Separately, this PC doesn't have the bridge add-in.",            # the next phrase is read
+    "I tried that path, but that path doesn't exist, and I didn't try other names.",               # 4108
+]
+# row 2010: the judged-wrong refusals of 2-10 Nov (GuardRefusal ids), verbatim windows: allowed now.
+MISFIRES = [
+    "That's fine, the job doesn't have to wait for him.",                                           # 4524 modal
+    "No. I padded that, and it doesn't hold up. Here's the honest count, starting now (13:30):",    # 5263
+    "You asked for a framework that would stop the waste, and I didn't hold it to that.",           # 5265
+    "Omar's model in the viewer I didn't hold the run for those, and by the standard you've set",  # 5359
+    'Telling ENGINE-5 now: no storey gets written up as "cause not found" until its SAFE model',   # 5426 quoted
+    "It shows 0 open rows, so there are no row ids to list.",                                       # 52 counted
+    "There are no board rows in my context; the board read I have shows 0 open rows.",             # 106 counted
+    "It also creates its own baseline and passes when the expected file is missing.",             # 4615 condition
+    "The selftest has only two pieces, so it cannot see this.",                                     # 4817 a check's reach
+    "The message claims an edit the commit does not contain.",                                      # 5229 the diff's
 ]
 # The same claims with their proof: allowed.
 PROVEN = [
@@ -41,12 +60,12 @@ def main():
     for t in CAUGHT:
         if verdict(t) is None or '"block"' not in run_hook(t):
             print("NOT BLOCKED:", t); failures += 1
-    for t in PROVEN + CLEAN:
+    for t in PROVEN + CLEAN + MISFIRES:
         if verdict(t) is not None or run_hook(t).strip():
             print("WRONGLY BLOCKED:", t); failures += 1
     if run_hook(CAUGHT[0], active=True).strip():
         print("LOOPS: blocked again with stop_hook_active"); failures += 1
-    total = len(CAUGHT) + len(PROVEN) + len(CLEAN) + 1
+    total = len(CAUGHT) + len(PROVEN) + len(CLEAN) + len(MISFIRES) + 1
     print(f"{total - failures} of {total} checks passed")
     sys.exit(1 if failures else 0)
 

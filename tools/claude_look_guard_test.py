@@ -97,6 +97,20 @@ LOOKED["output merely MENTIONING the write line is not a write (reading migratio
 LOOKED["a script that announces nothing is not a db write"] = (
     [B("python tools/catalogue/place_detail.py --no-record --detail KOR-D-01014"), O("placed on S1.05 (not recorded)")],
     "Placed - done.")
+# --- row 2010 / row 1650: a read-only command LISTING .py files reads 'py' + space + tools/drafted_set.py as a run
+LOOKED["row 1650: a grep of tools/drafted_set.py after another .py file (refusals 4976-5027)"] = (
+    [B('cd "/c/x/KOR.Drafter" && grep -n -E "virtual_drafter" tools/drafted_set_replay.py tools/drafted_set.py | cut -c1-200')],
+    "Found it - done.")
+LOOKED["row 2010: git show --stat naming virtual_drafter.py then drafted_set.py (refusals 5095-5097)"] = (
+    [B('cd "/c/x/KOR.Drafter" && git diff --ignore-all-space --stat -- tools/virtual_drafter.py tools/drafted_set.py')],
+    "Verified: the last commit equals HEAD - done.")
+LOOKED["row 2010: git add of several tools ending in drafted_set.py"] = (
+    [B("git add tools/settle_text.py tools/settle_dims.py tools/drafted_set.py")], "Committed - done.")
+MISSES["row 2010: the real run behind refusal 5384 is still a drawing change"] = (
+    [B('cd "/c/x/KOR.Drafter"; export KOR_REVIT_RUN_OK=1; python -u tools/virtual_drafter.py run jobs/x/job.json --from drafting')],
+    "The run is done.", "drawing")
+MISSES["row 2010: a real run after a git add of .py files in one command"] = (
+    [B("git add tools/a.py tools/b.py && python tools/drafted_set.py job.json out")], "Drawn - done.", "drawing")
 # --- ALLOWED: a commit whose MESSAGE names a drawing tool is not a drawing run (10-27 dry run's false positive)
 LOOKED["commit message naming e2k_book.py"] = (
     [B("python tools/e2k_book.py m.e2k b.pdf"), R(r"C:\x\b.png"),

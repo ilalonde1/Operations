@@ -20,6 +20,19 @@ from.
 Silent unless the command truncates. If the command ALSO computes a population -- wc -l,
 sort | uniq -c -- nothing is said, because then the claim is supportable.
 
+Row 2010 (10 Nov 2026): also nothing is said when the OUTPUT proves the cut dropped nothing - the cut is the last stage
+of its pipeline (no later | and no > redirect), its limit can be read (head/tail -N or -n N, bare head/tail = 10,
+sed -n '1,Np', Select-Object -First N), and the command printed fewer lines than that limit. Measured on
+1,255 transcripts written 3-10 Nov: 6,301 notices; 1,334 of them were such cuts and are now silent, 4,967 still print
+(head 2,183, tail 1,570, sed -n 1,193, grep -m 21). Behind the 6,301: 649 printed 0-1 lines, 1,016 2-5, 2,203 6-20,
+2,433 more - so small results were about a quarter, not the bulk, and every one still noticed is a cut that may have
+dropped a line. What it does NOT cover: a cut whose limit cannot be read (tail -n +N, grep -m, a sed window not from
+line 1, head -c) or that is followed by another stage - noticed as before, even when nothing was cut; a | tail -1
+read for a test's own "X of Y passed" line is still noticed (the line counts the population, the guard cannot tell).
+Same-class fault it would MISS: a cut whose kept lines END in blank lines that the tool trims from its stdout - `| head
+-5` keeping three lines and two blanks reads as three printed, so a cut sixth line goes unnoticed. A payload with no
+tool_response falls back to the notice on every cut, as before.
+
 stdin  : the PostToolUse payload
 stdout : nothing, or hookSpecificOutput.additionalContext
 """
@@ -53,6 +66,55 @@ NOTE = (
 )
 
 
+# Row 2010: the limit a cut keeps, read off the cut itself - head/tail -N, -n N, bare (10), sed -n '1,Np',
+# Select-Object -First N. None when it cannot be read (tail -n +N, grep -m, a sed window not starting at line 1).
+LIMIT = [
+    (re.compile(r"\|\s*(?:head|tail)(?:\s+-n)?\s*(?:-(\d+)|(\d+))?(?=\s*(?:$|[|;&)\n]))"), 10),
+    (re.compile(r"sed\s+-n\s+['\"]?1\s*,\s*(\d+)p"), None),
+    (re.compile(r"Select-Object\s+-First\s+(\d+)"), None),
+]
+STAGE_END = re.compile(r"[;\n)]|&&|\|\|")
+REDIRECT = re.compile(r"(?<![2&])>(?!&)")
+
+
+def kept_whole(cmd, start, out_lines):
+    """True when the cut starting at `start` provably removed nothing: it is the LAST stage of its pipeline (no later
+    | that could filter) and the command printed fewer lines than the cut keeps. A cut that keeps 5 lines of a command
+    that printed 3 kept everything; one that printed 5 may have dropped the sixth."""
+    for pat, bare in LIMIT:
+        m = pat.match(cmd, start) or pat.search(cmd, start, start + 40)
+        if not m or m.start() > start + 2:
+            continue
+        nums = [g for g in m.groups() if g]
+        n = int(nums[0]) if nums else bare
+        if n is None:
+            return False
+        end = STAGE_END.search(cmd, m.end())
+        rest = cmd[m.end():end.start() if end else len(cmd)]
+        # a later stage could filter; a > redirect sends the cut's lines to a file, so the printed count says nothing
+        if "|" in rest or REDIRECT.search(rest):
+            return False
+        return out_lines < n
+    return False
+
+
+def output_lines(payload):
+    r = payload.get("tool_response")
+    text = r.get("stdout", "") if isinstance(r, dict) else (r if isinstance(r, str) else None)
+    if text is None:
+        return None
+    return len(str(text).splitlines())   # every line, blank ones too: a blank line the cut kept is a line it kept
+
+
+def first_cut(cmd, out_lines):
+    """The name of the first cut that may have dropped something, or None (row 2010: proven-whole cuts are skipped)."""
+    for pattern, how in TRUNCATES:
+        for m in pattern.finditer(cmd):
+            if out_lines is None or not kept_whole(cmd, m.start(), out_lines):
+                return how
+    return None
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -63,13 +125,12 @@ def main():
     if not cmd or COUNTS.search(cmd):
         return
 
-    for pattern, how in TRUNCATES:
-        if pattern.search(cmd):
-            json.dump({"hookSpecificOutput": {
-                "hookEventName": "PostToolUse",
-                "additionalContext": NOTE.format(how=how),
-            }}, sys.stdout)
-            return
+    how = first_cut(cmd, output_lines(payload))
+    if how:
+        json.dump({"hookSpecificOutput": {
+            "hookEventName": "PostToolUse",
+            "additionalContext": NOTE.format(how=how),
+        }}, sys.stdout)
 
 
 if __name__ == "__main__":
