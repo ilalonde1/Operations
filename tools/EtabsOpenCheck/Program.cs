@@ -71,6 +71,7 @@ internal static class Program
     private const string DefaultEtabs = @"C:\Program Files\Computers and Structures\ETABS 23\ETABS.exe";
     private static readonly List<string> Report = new();
     private static string _out = ".";
+    private static bool _standardSolver;
 
     private static void Say(string line) { Console.WriteLine(line); Report.Add(line); }
 
@@ -112,6 +113,7 @@ internal static class Program
         if (args.Length < 2) { Console.Error.WriteLine("Usage: EtabsOpenCheck <model.e2k> <outDir> [--etabs <ETABS.exe>]"); return 1; }
         string source = Path.GetFullPath(args[0]);
         _out = Path.GetFullPath(args[1]);
+        _standardSolver = args.Any(x => x.Equals("--standard-solver", StringComparison.OrdinalIgnoreCase));
         Directory.CreateDirectory(_out);
         string copy = Path.Combine(_out, "etabs-check.e2k");
         File.Copy(source, copy, overwrite: true);
@@ -473,7 +475,12 @@ internal static class Program
         Say($"   cases to run: {Cases(model)}");
         int stype = 0, ptype = 0, par = 0, fsize = 0, threads = 0; string stiff = "";
         model.Analyze.GetSolverOption_3(ref stype, ref ptype, ref par, ref fsize, ref threads, ref stiff);
-        Say($"   solver as ETABS has it (kept): type {stype}, process type {ptype} (0 auto, 1 GUI process, 2 separate), threads {threads}");
+        if (_standardSolver)
+            // --standard-solver: ETABS's advanced solver gives "LIMITED INSTABILITY INFORMATION"; the standard one names the
+            // joints and DOFs that lose stiffness in the analysis log, which is how an unstable model's mechanisms are found.
+            Say($"   solver was type {stype}; SetSolverOption_3(type 0 standard, as asked by --standard-solver): {model.Analyze.SetSolverOption_3(0, ptype, par, fsize, threads, stiff)}");
+        else
+            Say($"   solver as ETABS has it (kept): type {stype}, process type {ptype} (0 auto, 1 GUI process, 2 separate), threads {threads}");
         var t0 = DateTime.Now.AddSeconds(-2);
         var sw = Stopwatch.StartNew();
         int run = model.Analyze.RunAnalysis();
