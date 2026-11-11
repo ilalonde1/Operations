@@ -37,6 +37,7 @@ public static partial class Program
         if (o.Get("--module") is not null) return ModuleRecallVerb(o, output, db);
         if (o.Positional.ElementAtOrDefault(1) == "--rebuild" || o.Get("--rebuild") is not null) return RecallRebuild(output, db, board);
         if (o.Get("--replay") is { } replay) return RecallReplay(replay, o.Int("--last"), o.Int("--floor") ?? BrainRecall.MinScore, output, db, board);
+        if (o.Get("--job") is { } job) return RecallJob(job, output, db, board);
         if (hook) return RecallHook(o, stdin, output, db, board);
         var text = o.Positional.ElementAtOrDefault(1);
         if (string.IsNullOrWhiteSpace(text)) throw new ArgumentException("recall needs the text: kor recall \"<what you are about to do>\" [--top N], or --module M for the pilot");
@@ -183,12 +184,38 @@ public static partial class Program
             return 0;
         }
         var terms = BrainRecall.QueryWords(text);
-        if (terms.Count < BrainRecall.MinTermsHit) return 0;
-        var all = BrainRecall.Rank(text, HookIndex(terms, db, board));
-        var say = BrainRecall.HookText(all, ReadLedger(session, "deliver "), o.Int("--top") ?? HookTop, HookLeadChars, out var refs);
-        if (say is null) return 0;
-        AddLedger(session, "deliver ", refs);
-        output.WriteLine(JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = ev, additionalContext = say } }, RecallJson));
+        var jobTerms = JobAsks.TermsFor(text);
+        if (terms.Count < BrainRecall.MinTermsHit && jobTerms.Count == 0) return 0;
+        var ix = HookIndex(terms.Union(jobTerms).ToHashSet(StringComparer.Ordinal), db, board);
+        var parts = new List<string>();
+        if (terms.Count >= BrainRecall.MinTermsHit)
+        {
+            var all = BrainRecall.Rank(text, ix);
+            var say = BrainRecall.HookText(all, ReadLedger(session, "deliver "), o.Int("--top") ?? HookTop, HookLeadChars, out var refs);
+            if (say is not null) { AddLedger(session, "deliver ", refs); parts.Add(say); }
+        }
+        // row 2031 (trap c): the first moment in a session that names a job brings that job's fix list - Ian's open asks on every board
+        var listed = ReadLedger(session, "job ");
+        foreach (var job in JobAsks.JobsIn(text, ix).Where(j => !listed.Contains(j)))
+        {
+            var f = JobAsks.For(job, ix);
+            if (f.Naming.Count + f.Standing.Count == 0) continue;
+            parts.Add(JobAsks.Text(f));
+            AddLedger(session, "job ", new[] { job });
+        }
+        if (parts.Count == 0) return 0;
+        output.WriteLine(JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = ev, additionalContext = string.Join("\n", parts) } }, RecallJson));
+        return 0;
+    }
+
+    /// <summary><c>kor recall --job NNNNN</c>: the job's fix list (<see cref="JobAsks"/>, row 2031), fresh from the database - the read a job's
+    /// run start makes before its brief or fix list is written.</summary>
+    private static int RecallJob(string job, TextWriter output, BrainDb? db, BrainDb? board)
+    {
+        if (JobAsks.Candidates(job) is not [var n] || n != job.Trim()) throw new ArgumentException($"--job takes a 5-digit job number (31218), not '{job}'");
+        var ix = WithStores((b, w) => BrainRecall.Build(b, w), db, board, 15);
+        if (JobAsks.JobsIn(n, ix).Count == 0) output.WriteLine($"NOTE: no open row names {n} as NNNNN-NN and fewer than two name it, so the hook would not take {n} as a job.");
+        output.WriteLine(JobAsks.Text(JobAsks.For(n, ix)));
         return 0;
     }
 

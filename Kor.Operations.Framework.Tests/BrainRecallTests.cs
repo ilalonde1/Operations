@@ -15,7 +15,7 @@ namespace Kor.Operations.Framework.Tests;
 /// left out, BrainRecall.Build's asOfUtc), and asserts the record that covered it is in the top 3:
 ///   (a) OverLORD cde1e168 19:25:41Z Bash, re-running the week's token breakdown        -> #129845 (5 Nov: 97% of the week re-sent)
 ///   (b) OverLORD cde1e168 19:26:27Z reply proposing the context stop at 150k           -> #129933 (5 Nov: three reviews reject 150k)
-///   (c) OverLORD cde1e168 19:33:46Z SendMessage briefing the 31218 lane                 -> board row 1647: NOT REACHED, see TrapC
+///   (c) OverLORD cde1e168 19:33:46Z SendMessage briefing the 31218 lane                 -> board row 1647: not by words (TrapC); by the job fix list (row 2031, TrapC_TheJobFixList...)
 ///   (d) kor-drafter-14 fbcc2875 19:50:59Z Bash, "cover 3D from viewer ... a block"      -> board row 1647 then; #131897 now (recorded 10 Nov)
 ///   (e) OverLORD cde1e168 19:42:28Z reply, "the sheets you've seen"                     -> nothing to recall; the push-back's SEEN rule
 /// AS OF IS APPROXIMATE (review row 1248): the as-of index leaves out rows CREATED after the moment, but it indexes today's text of older
@@ -104,6 +104,50 @@ public class BrainRecallTests
     {
         var r = RankAsOf(MomentC, AtC);
         Assert.False(r.Take(3).Any(x => x.Doc.Ref == "board row 1647"), Top(r, 8));
+    }
+
+    /// <summary>Trap c, the 5th trap, PASSED by job rather than by words (row 2031, <see cref="JobAsks"/>): at the moment of the 31218 brief,
+    /// the brief names job 31218, the job's fix list holds a row quoting Ian that names 31218, and Ian's standing ask row 1647 on the same
+    /// board. As of the moment (rows recorded later left out).</summary>
+    [Fact]
+    public void TrapC_TheJobFixListBringsRow1647ToThe31218Brief()
+    {
+        var ix = BrainDb.ReadWithFallback(snapshot =>
+        {
+            using var b = BrainDb.OpenRead(KorStandardsConnection.Login.Brain, snapshot, 15);
+            using var w = BrainDb.OpenRead(KorStandardsConnection.Login.Board, snapshot, 15);
+            return BrainRecall.Build(b, w, AtC);
+        }, BrainDb.IsSnapshotRefused, BrainDb.IsDeadlock, Thread.Sleep);
+        Assert.Equal(new[] { "31218" }, JobAsks.JobsIn(MomentC, ix));
+        var f = JobAsks.For("31218", ix);
+        var text = JobAsks.Text(f);
+        Assert.Contains(f.Naming, d => d.Lead.Contains("31218") && d.Lead.Contains("Ian"));
+        Assert.Contains(f.Standing, d => d.Ref == "board row 1647");
+        Assert.Contains("board row 1647 [", text);
+    }
+
+    [Fact]
+    public void TheHookBringsAJobsFixListOncePerSession()
+    {
+        var (first, session) = Hook("PreToolUse", new { tool_name = "SendMessage", tool_input = new { summary = "Build last two items before one rerun", message = MomentC } });
+        Assert.Contains("JOB FIX LIST", first);
+        Assert.Contains("job 31218", first);
+        var (second, _) = Hook("PreToolUse", new { tool_name = "SendMessage", tool_input = new { summary = "Build last two items before one rerun", message = MomentC } }, session);
+        Assert.DoesNotContain("JOB FIX LIST", second);
+    }
+
+    [Fact]
+    public void ANumberNoOpenRowTreatsAsAJobBringsNoFixList()
+    {
+        var ix = new BrainRecall.Index { Docs = new() { new BrainRecall.Doc("board row 1", 1, true, "open", "Virtual Drafter", "", "Ian asked for 12345 once", "", null) },
+                                         Len = new[] { 5 }, AvgLen = 5, Postings = new() { ["12345"] = new() { (0, 1) }, ["ian"] = new() { (0, 1) } } };
+        Assert.Empty(JobAsks.JobsIn("a budget of 12345 tokens", ix));
+        ix.Docs[0] = ix.Docs[0] with { Lead = "Ian asked for 12345-01 once" };
+        Assert.Equal(new[] { "12345" }, JobAsks.JobsIn("a budget of 12345 tokens", ix));
+        // another job's own row is not a standing ask; a product ask that cites a job as an example is
+        Assert.True(JobAsks.TitleNamesAJob("[RERUN 01819 incremental] Ian 10 Nov 21:4x"));
+        Assert.True(JobAsks.TitleNamesAJob("31170 (Griffin): do three Level 6 columns really turn"));
+        Assert.False(JobAsks.TitleNamesAJob("[cover 3D pictures] Ian, 4 Nov 12:3x, on the hotel and Halifax covers ... 31180-01 call"));
     }
 
     [Fact]
