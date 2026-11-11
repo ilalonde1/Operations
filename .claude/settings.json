@@ -264,6 +264,12 @@
             "command": "C:/KOR-Operations/kor/kor.exe recall --hook",
             "timeout": 15,
             "statusMessage": "Ranked recall: the records and board rows that match this action (row 1893)"
+          },
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe repeat --hook",
+            "timeout": 15,
+            "statusMessage": "No duplicate work: is this measurement or analysis already recorded? (row 1998)"
           }
         ]
       }
