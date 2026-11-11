@@ -65,11 +65,11 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit|Bash|PowerShell",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell",
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_run_sample_guard.py\"",
+            "command": "python -I \"$CLAUDE_PROJECT_DIR/tools/claude_run_sample_guard.py\"",
             "timeout": 20,
             "statusMessage": "Checking the sample-first stop is not taken out"
           }
