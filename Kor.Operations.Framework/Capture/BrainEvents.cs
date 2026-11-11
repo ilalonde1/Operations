@@ -28,6 +28,16 @@ public sealed record StoredLaneState(int Id, string Lane, string ResumeBlock, st
 /// </summary>
 public static class BrainStore
 {
+    /// <summary>The end of a TEST resume's WrittenBy (<c>kor state --test</c>; kor_handover hand --test). brain.LaneState has no
+    /// flag column, so the mark is in WrittenBy, and kor start never offers such a row as a resume (Framework row 2059,
+    /// HANDOVER-3: test LaneState #28209 was the session-start RESUME until the next real kor state).</summary>
+    public const string TestStateWrittenBy = " kor state TEST";
+
+    /// <summary>What <c>kor state --test</c> prints; kor_handover refuses a test state whose output lacks it.</summary>
+    public const string TestStateSaid = "TEST (never a session-start resume)";
+
+    public static bool IsTestState(string? writtenBy) => writtenBy?.EndsWith(TestStateWrittenBy, StringComparison.Ordinal) == true;
+
     /// <summary>THE 16 kinds of 171's CK_Event_Kind (168's 12 + K4's 3 + K5b's check).</summary>
     public static readonly string[] Kinds =
     {

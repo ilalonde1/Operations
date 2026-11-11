@@ -140,7 +140,7 @@ public static partial class Program
         /// <summary>Options given more than once, every value kept in order (check-add's examples).</summary>
         private static readonly string[] Repeated = { "--refuse", "--allow" };
 
-        private static readonly string[] Flags = { "--explain", "--full", "--file-changed", "--resolved", "--commit-hook", "--no-helpers", "--text", "--offsets", "--all", "--never-records", "--control", "--wiring", "--baseline", "--push-back", "--proposal", "--rebuild" };
+        private static readonly string[] Flags = { "--explain", "--full", "--file-changed", "--resolved", "--commit-hook", "--no-helpers", "--text", "--offsets", "--all", "--never-records", "--control", "--wiring", "--baseline", "--push-back", "--proposal", "--rebuild", "--test" };
 
         /// <summary>Every --owner given, in order (kor start --part board: one lead, several board names).</summary>
         public List<string> Owners { get; init; } = new();
@@ -450,10 +450,13 @@ public static partial class Program
         if ((file is null) == (text is null)) throw new ArgumentException("state needs exactly one of --file F or --text T");
         var block = text ?? File.ReadAllText(file!, new UTF8Encoding(false));
         if (string.IsNullOrWhiteSpace(block)) throw new ArgumentException("state: the resume block is empty - nothing written");
-        var by = $"{Environment.UserName} kor state";
+        // --test (kor_handover hand --test): WrittenBy ends ' kor state TEST' and kor start never offers it as a resume
+        var test = o.Get("--test") is not null;
+        var by = test ? Environment.UserName + BrainStore.TestStateWrittenBy : $"{Environment.UserName} kor state";
         var (id, masked) = BrainStore.InsertLaneStateMasked(module, block, by, db, BrainStore.CurrentSession());
         if (SecretGuard.MaskedLine(masked, "resume block") is { } line) output.WriteLine(line);
-        output.WriteLine($"brain.LaneState {id}: {module}, {block.Length} characters, session {BrainStore.CurrentSession() ?? "none (not in a Claude session)"}");
+        output.WriteLine($"brain.LaneState {id}: {module}, {block.Length} characters, session {BrainStore.CurrentSession() ?? "none (not in a Claude session)"}" +
+                         (test ? ", " + BrainStore.TestStateSaid : ""));
         return 0;
     }
 
@@ -563,7 +566,7 @@ public static partial class Program
         error.WriteLine("       kor check-retire <id> --because \"...\" | kor check-test [--module M] [--tool T --command C|--path P [--cwd D]] | kor checks [--module M] [--hits N]");
         error.WriteLine("       kor secret-scan [--explain] [--offsets]   (read-only: ids and counts of brain rows holding a credential value; --offsets adds offset, length and the 40 characters BEFORE each value)");
         error.WriteLine("       kor secret-scan --text - [--what W]   (the text on stdin: 'clean' exit 0, or one refusal line exit 1 - never the value)");
-        error.WriteLine("       kor state --module M (--file F | --text T)   (a resume block -> brain.LaneState; a credential value is MASKED and said in one line)");
+        error.WriteLine("       kor state --module M (--file F | --text T) [--test]   (a resume block -> brain.LaneState; a credential value is MASKED and said in one line; --test: never a session-start resume)");
         error.WriteLine("       kor migration-lint <file.sql> | - --name NNN_x.sql [--cutoff N (177)]   (a migration above the cut-off: L1 a 'PROBES:' header line, L2 no hand-written probe handling without migration.usp_MigrationProbe; one line per finding, exit 1)");
         error.WriteLine("       kor read --module M --subject \"words\" [--page N] [--all]   (row 1569: the bodies for a subject, whole, X of Y)");
         error.WriteLine("       kor recall --module M \"task\" [--budget tokens (12600)]   (row 1893 pilot: ranked whole sections by SQL Full-Text, with terms found nowhere; read-only)");

@@ -253,7 +253,8 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
     /// </summary>
     public static ResumeChoice ChooseResume(IReadOnlyList<ResumeRow> rows, Start start, TranscriptSummary? transcript = null)
     {
-        var ordered = rows.GroupBy(x => x.Id).Select(g => g.First())
+        // a TEST state (kor state --test) is never the resume nor listed as one (row 2059; the SQL leaves it out too)
+        var ordered = rows.Where(x => !BrainStore.IsTestState(x.WrittenBy)).GroupBy(x => x.Id).Select(g => g.First())
                           .OrderByDescending(x => x.WrittenAtUtc).ThenByDescending(x => x.Id).ToList();
         ResumeRow? chosen = null;
         string why;
@@ -368,10 +369,13 @@ public sealed record ModuleState(string Module, DateTimeOffset ReadAt, Freshness
     }
 
     /// <summary>The resume candidates: the 12 newest of the lane, and this session's newest, each with its session and whether
-    /// that session did work here (a commit, record or push event under it in this module). @m, @me.</summary>
+    /// that session did work here (a commit, record or push event under it in this module). @m, @me. A TEST state (WrittenBy
+    /// ending <see cref="BrainStore.TestStateWrittenBy"/>) is never a candidate, nor listed among the others (row 2059).</summary>
     private const string ResumeSql =
-        "WITH c AS (SELECT a.Id FROM (SELECT TOP (12) Id FROM brain.LaneState WHERE Lane = @m ORDER BY WrittenAtUtc DESC, Id DESC) a " +
+        "WITH c AS (SELECT a.Id FROM (SELECT TOP (12) Id FROM brain.LaneState WHERE Lane = @m AND WrittenBy NOT LIKE N'%" + BrainStore.TestStateWrittenBy + "' " +
+        "                 ORDER BY WrittenAtUtc DESC, Id DESC) a " +
         "           UNION SELECT b.Id FROM (SELECT TOP (1) Id FROM brain.LaneState WHERE Lane = @m AND @me IS NOT NULL " +
+        "                 AND WrittenBy NOT LIKE N'%" + BrainStore.TestStateWrittenBy + "' " +
         "                 AND (Session = @me OR WrittenBy = N'compaction ' + @me) ORDER BY WrittenAtUtc DESC, Id DESC) b) " +
         "SELECT s.Id, s.ResumeBlock, s.WrittenBy, s.WrittenAtUtc, x.Sess, x.IsCompaction, " +
         "       CASE WHEN x.Sess IS NOT NULL AND EXISTS (SELECT 1 FROM brain.Event e WHERE e.Session = x.Sess AND e.Module = @m " +

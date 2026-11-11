@@ -613,6 +613,47 @@ public class StartLiveTests(Xunit.Abstractions.ITestOutputHelper log)
         Assert.Contains("already at the top of your context", unstored.Resume.Why);
     }
 
+    /// <summary>Row 2059 HANDOVER-3: a kor_handover hand --test writes its state with kor state --test. Before, test LaneState
+    /// #28209 (checkword included) was the session-start RESUME until the next real kor state.</summary>
+    [Fact]
+    public void LiveATestStateIsNeverTheResumeNorListedAsOne()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        string State(string body, bool test)
+        {
+            var f = Path.Combine(Path.GetTempPath(), $"kor-k6-state-{Guid.NewGuid():N}.txt");
+            File.WriteAllText(f, body);
+            var o = new StringWriter();
+            var args = new List<string> { "state", "--module", Lane, "--file", f };
+            if (test) args.Add("--test");
+            Assert.Equal(0, Program.Run(args.ToArray(), () => null, o, new StringWriter(), Path.Combine(Path.GetTempPath(), $"kor-k6-{Guid.NewGuid():N}.log"), db));
+            File.Delete(f);
+            return o.ToString();
+        }
+        var real = State("REAL STATE", false);
+        var said = State("TEST STATE with its checkword", true);
+        Assert.Contains("TEST (never a session-start resume)", said);   // = BrainStore.TestStateSaid (a literal: the test also runs on HEAD, red)
+        Assert.DoesNotContain("TEST (never a session-start resume)", real);
+        foreach (var source in new[] { "startup", "clear", "resume" })
+        {
+            var s = ModuleState.Load(db, Lane, new ModuleState.Start(BrainStore.CurrentSession(), source), RepoDir());
+            Assert.Equal("REAL STATE", s.Resume.Chosen?.ResumeBlock);
+            Assert.DoesNotContain(s.Resume.Others, x => x.ResumeBlock.Contains("TEST STATE"));
+            Assert.DoesNotContain("TEST STATE", StartRender.Record(s, StartRender.HookBudget, "kor"));
+        }
+    }
+
+    [Fact]
+    public void ATestStateRowIsDroppedByTheChooserToo()
+    {
+        var now = DateTimeOffset.Now;
+        var real = new ResumeRow(1, "REAL", "ian kor state", now.AddMinutes(-5), "s1", false, false);
+        var test = new ResumeRow(2, "TEST", "ian kor state TEST", now, "s1", false, false);
+        var c = ModuleState.ChooseResume(new[] { real, test }, new ModuleState.Start("s1", "resume"));
+        Assert.Equal(1, c.Chosen!.Id);
+        Assert.Empty(c.Others);
+    }
+
     [Fact]
     public void LiveTheHookPrintsSessionStartJsonWithinBudgetAndAbsoluteWatchPaths()
     {
