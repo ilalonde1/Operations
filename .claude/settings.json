@@ -65,6 +65,17 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -I \"C:/VIsual Studio Projects/Framework/tools/commit_scope_guard.py\" --hook",
+            "timeout": 30,
+            "statusMessage": "Commit scope guard: a commit carries only paths this session named (row 1211; mistakes 4, 143)"
+          }
+        ]
+      },
+      {
         "matcher": "Bash|PowerShell|SendMessage",
         "hooks": [
           {
