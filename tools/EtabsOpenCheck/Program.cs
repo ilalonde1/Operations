@@ -74,8 +74,24 @@ internal static class Program
 
     private static void Say(string line) { Console.WriteLine(line); Report.Add(line); }
 
+    // The stability gate's reading of an ETABS analysis log: every "NUMBER OF NEGATIVE EIGENVALUES = N" it states.
+    internal static List<int> NegativeEigenvalues(string logText) =>
+        Regex.Matches(logText, @"NUMBER OF NEGATIVE EIGENVALUES\s*=\s*(\d+)").Select(m => int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)).ToList();
+
+    private static string StabilityGate(List<int> negEig, out bool stable)
+    {
+        stable = negEig.Count > 0 && negEig.All(n => n == 0);
+        return $"GATE stability: NUMBER OF NEGATIVE EIGENVALUES = {(negEig.Count > 0 ? string.Join(", ", negEig) : "not in the analysis log")}: {(stable ? "PASS" : "FAIL - UNSTABLE, reactions are NOT a basis for SAFE")}";
+    }
+
     private static int Main(string[] args)
     {
+        // Offline: the stability gate alone on a saved log (an ETABS .LOG or a gate log quoting it). No ETABS needed.
+        if (args.Length == 2 && args[0].Equals("--stability-of", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine(StabilityGate(NegativeEigenvalues(File.ReadAllText(args[1])), out bool ok));
+            return ok ? 0 : 1;
+        }
         string etabsExe = DefaultEtabs;
         for (int i = 0; i + 1 < args.Length; i++)
             if (args[i].Equals("--etabs", StringComparison.OrdinalIgnoreCase)) etabsExe = args[i + 1];
@@ -482,13 +498,20 @@ internal static class Program
             CaptureScreen("reactions-f5-after");
             Say($"   case status: {Status(model, cases)}");
         }
+        var negEig = new List<int>();
         foreach (var f in Directory.GetFiles(_out, "reactions.*").Where(f => File.GetLastWriteTime(f) >= t0 && f.EndsWith(".LOG", StringComparison.OrdinalIgnoreCase)))
         {
             Say($"   analysis log {Path.GetFileName(f)}, verbatim:");
-            foreach (var l in ReadShared(f).Split('\n')) Say($"   | {l.TrimEnd()}");
+            string text = ReadShared(f);
+            foreach (var l in text.Split('\n')) Say($"   | {l.TrimEnd()}");
+            negEig.AddRange(NegativeEigenvalues(text));
         }
         bool fin = Finished(model, cases);
         Say($"GATE cases finished: {cases.Count(c => CaseStatus(model, c) == 4)} of {cases.Length}: {(fin ? "PASS" : "FAIL")}");
+        // ETABS's own stability check: a model with negative stiffness eigenvalues is unstable (a mechanism or a free part), and
+        // reactions read off it are no basis for the transfer slabs. FAIL when the count is above 0 or the log does not state it.
+        Say(StabilityGate(negEig, out bool stable));
+        if (!stable) bad++;
         if (!fin) { bad++; Say("   no results read"); return bad; }
 
         // results
