@@ -240,12 +240,12 @@ public class K4Tests
     public void LiveARunSourceMustBeAnExistingEvent()
     {
         using var db = BrainDb.OpenRolledBack();
-        var (code, _, e) = Run(db, null, "record", "--module", Module, "--kind", "lesson", "--name", "k4-run-missing", "--says", "x",
+        var (code, _, e) = Run(db, null, "record", "--module", Module, "--kind", "lesson", "--name", "k4-run-missing", "--says", "x", "--check", "row:1997",
                                "--source", "run:2000000000");
         Assert.Equal(1, code);
         Assert.Contains("there is no brain.Event #2000000000", e);
         var ev = BrainStore.Insert(new BrainEvent(Module, "test", "Operations", Head(), "dotnet test", "pass", null, "k4-test"), db);
-        var (c2, o, e2) = Run(db, null, "record", "--module", Module, "--kind", "lesson", "--name", "k4-run", "--says", "x", "--source", $"run:{ev}");
+        var (c2, o, e2) = Run(db, null, "record", "--module", Module, "--kind", "lesson", "--name", "k4-run", "--says", "x", "--check", "row:1997", "--source", $"run:{ev}");
         Assert.True(c2 == 0, e2);
         var r = RecordStore.Get(db, int.Parse(Regex.Match(o, @"brain\.Memory #(\d+)").Groups[1].Value))!;
         Assert.Equal(("run", $"brain.Event #{ev} (test pass)", Head()), (r.SourceKind, r.SourceRef, r.SourceCommit));
@@ -299,10 +299,58 @@ public class K4Tests
         Start(db, s);
         Commit(db, Module, s);
         var (code, o, e) = Run(db, null, "record", "--module", Module, "--session", s, "--kind", "lesson", "--name", "k4-marker",
-                               "--says", "the commit taught this", "--source", "git:docs/KNOWLEDGE-IDE.md", "--dir", FrameworkDir());
+                               "--says", "the commit taught this", "--check", "row:1997", "--source", "git:docs/KNOWLEDGE-IDE.md", "--dir", FrameworkDir());
         Assert.True(code == 0, e);
         Assert.Contains("record event #", o);
         Assert.Equal("", Check(db, s));   // the record event is newer than the commit: nothing left to ask
+    }
+
+    // 13b - board row 1997, Office decision #131857: a lesson ships with its check, or with the board row that builds it.
+    [Fact]
+    public void LiveALessonWithoutItsCheckIsRefused()
+    {
+        using var db = BrainDb.OpenRolledBack();
+        string[] Lesson(string name, params string[] check) => new[] { "record", "--module", Module, "--kind", "lesson", "--name", name,
+            "--says", "x", "--source", "git:docs/KNOWLEDGE-IDE.md", "--dir", FrameworkDir() }.Concat(check).ToArray();
+        int Count() { using var c = db.Command("SELECT COUNT(*) FROM brain.Memory WHERE Lane = @m", 5); c.Parameters.AddWithValue("@m", Module); return (int)c.ExecuteScalar()!; }
+        var before = Count();
+        // refused, nothing written: no check at all; a board row that does not exist; a check id that is not live; a path that is not there
+        foreach (var (check, says) in new[]
+                 {
+                     (Array.Empty<string>(), "a lesson ships with its check"),
+                     (new[] { "--check", "row:2000000000" }, "there is no board row 2000000000"),
+                     (new[] { "--check", "check:2000000000" }, "there is no live brain.Check #2000000000"),
+                     (new[] { "--check", "tools/no_such_guard_k4.py" }, "is not a file"),
+                 })
+        {
+            var (c, _, e) = Run(db, null, Lesson("k4-lesson-refused", check));
+            Assert.Equal(1, c);
+            Assert.Contains(says, e);
+        }
+        Assert.Equal(before, Count());
+        // accepted: the board row that builds the check; a tracked hook file; each lands on the record, in Body and Description
+        foreach (var (check, cites) in new[] { ("row:1997", "board row 1997"), ("board row 1997", "board row 1997"),
+                                               ("tools/kor_review.py", "Framework:tools/kor_review.py"),
+                                               (Path.Combine(FrameworkDir(), "tools", "kor_review.py"), "Framework:tools/kor_review.py") })
+        {
+            var (c, o, e) = Run(db, null, Lesson("k4-lesson-" + Count(), "--check", check));
+            Assert.True(c == 0, e);
+            var r = RecordStore.Get(db, int.Parse(Regex.Match(o, @"brain\.Memory #(\d+)").Groups[1].Value))!;
+            Assert.Contains("CHECK: " + cites, r.Body);
+            Assert.EndsWith($"[check: {cites}]", r.Description);
+        }
+        // a live brain.Check id is a check too
+        using (var q = db.Command("SELECT TOP 1 Id FROM brain.vw_LiveCheck ORDER BY Id", 5))
+        {
+            var live = (int)q.ExecuteScalar()!;
+            var (c, o, e) = Run(db, null, Lesson("k4-lesson-check-id", "--check", $"check:{live}"));
+            Assert.True(c == 0, e);
+            Assert.Contains($"CHECK: brain.Check #{live}", RecordStore.Get(db, int.Parse(Regex.Match(o, @"brain\.Memory #(\d+)").Groups[1].Value))!.Body);
+        }
+        // a finding is not a lesson: it records with no --check, as before
+        var (fc, _, fe) = Run(db, null, "record", "--module", Module, "--kind", "finding", "--name", "k4-finding-no-check", "--says", "x",
+                              "--source", "git:docs/KNOWLEDGE-IDE.md", "--dir", FrameworkDir());
+        Assert.True(fc == 0, fe);
     }
 
     // 14

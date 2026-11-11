@@ -56,7 +56,7 @@ public static partial class Program
                 "events" => Events(o, output, db),
                 "fresh" => Fresh(o, stdin, output, hook, db),
                 "recheck" => Recheck(o, output, db),
-                "record" => Record(o, output, db),
+                "record" => Record(o, output, db, board),
                 "memory" => Memory(o, output, db),
                 "capture-start" => CaptureStart(o, stdin, output, hook, db),
                 "capture-check" => CaptureCheck(o, stdin, output, hook, db),
@@ -550,7 +550,7 @@ public static partial class Program
         error.WriteLine("       kor events --module M [--last N] [--kind K] [--full]");
         error.WriteLine("       kor fresh --module M [--dir D] [--cap SECONDS (10)] [--hook] | kor fresh --file-changed [--hook]   (FileChanged JSON on stdin)");
         error.WriteLine("       kor recheck <id> confirm|supersede|withdraw --because \"...\" [--body-file F] [--says D] [--source-path P] [--dir D]");
-        error.WriteLine("       kor record --module M --kind finding|decision|dead-end|lesson|reference --name N --says D --source git:path[@rev]|run:<event id>|query:SELECT... [--session S] [--body-file F] [--dir D]");
+        error.WriteLine("       kor record --module M --kind finding|decision|dead-end|lesson|reference --name N --says D --source git:path[@rev]|run:<event id>|query:SELECT... [--session S] [--body-file F] [--dir D]; a lesson also --check row:N|check:N|<path of its hook, guard, gate or test> (row 1997)");
         error.WriteLine("       kor memory --module M [--last N]");
         error.WriteLine("       kor capture-start|capture-check [--module M] [--hook]   (SessionStart / Stop JSON on stdin)");
         error.WriteLine("       kor capture-check --replay <transcript.jsonl|list.txt> [--since ISO-UTC]   (row 1393 dry run: every turn through the Stop rules; reads only)");

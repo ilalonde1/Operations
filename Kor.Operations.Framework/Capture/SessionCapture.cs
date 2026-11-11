@@ -211,7 +211,8 @@ public static class SessionCapture
                           string.Join(", ", runEvents.Take(12).Select(e => $"#{e.Id} {e.Kind} {e.Outcome ?? "-"} {BrainStore.Clip(e.Ref, 60) ?? ""}")));
             var m = module ?? "<module>";
             lines.Add($"  C:/KOR-Operations/kor/kor.exe record --session {session} --module \"{m}\" --kind finding|dead-end|lesson " +
-                      "--name <short-slug> --says \"<what it found>\" --source run:<event id>|git:<path>@<sha>|query:SELECT ...");
+                      "--name <short-slug> --says \"<what it found>\" --source run:<event id>|git:<path>@<sha>|query:SELECT ..." +
+                      " (a lesson also names its check: --check row:<board row that builds it>|check:<brain.Check id>|<hook or test path>, row 1997)");
             if (turn.Any(r => r.Kind == "ian-decision"))
                 lines.Add($"  Ian's decision, his words verbatim: C:/KOR-Operations/kor/kor.exe record --session {session} --module \"{m}\" " +
                           $"--kind decision --name <short-slug> --says \"Ian: <his words>\" --source run:{askId?.ToString(CultureInfo.InvariantCulture) ?? "<this ask's event id>"}" +
@@ -230,7 +231,7 @@ public static class SessionCapture
         lines.Add("Record each finding, decision, dead end or lesson (the source is the file at that commit):");
         lines.Add($"  C:/KOR-Operations/kor/kor.exe record --session {session} --module {first.Module} --kind finding|decision|dead-end|lesson " +
                   $"--name <short-slug> --says \"<what it taught>\" --source git:{path}@{Short(first.Commit, 10)} --dir <the {first.Repo ?? first.Module} checkout>");
-        lines.Add("An issue is written with `kor issue` (it needs its check). If the commit taught nothing new, stopping again is allowed.");
+        lines.Add("A lesson names its check (--check row:N|check:N|<hook or test path>, row 1997); an issue is written with `kor issue` (it needs its check). If the commit taught nothing new, stopping again is allowed.");
         return string.Join("\n", lines);
     }
 

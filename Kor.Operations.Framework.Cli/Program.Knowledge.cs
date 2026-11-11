@@ -128,7 +128,7 @@ public static partial class Program
     /// | query:[brain:|board:]SELECT ... [--session S] [--body-file F] [--dir D]. The same live name is superseded. Writes a
     /// 'record' event (the K4 marker) in the same unit of work. Issues and resolutions are refused: they need a check.
     /// </summary>
-    private static int Record(Options o, TextWriter output, BrainDb? db)
+    private static int Record(Options o, TextWriter output, BrainDb? db, BrainDb? board)
     {
         var lane = o.Get("--module") ?? throw new ArgumentException("record needs --module <lane>");
         var kind = o.Get("--kind") ?? throw new ArgumentException("record needs --kind finding|decision|dead-end|lesson|reference");
@@ -143,6 +143,14 @@ public static partial class Program
         var session = o.Get("--session") ?? BrainStore.CurrentSession();
         var by = Who(session);
         var where = o.Get("--dir") ?? Environment.CurrentDirectory;
+        if (kind == "lesson")
+        {
+            // row 1997, Office #131857: the check is named and proven to exist BEFORE anything is written; it lands on the record
+            var check = LessonCheck(o.Get("--check"), where, db, board);
+            body = body.TrimEnd() + "\nCHECK: " + check;
+            var tag = $" [check: {check}]";
+            if (says.Length + tag.Length <= 400) says += tag;
+        }
         var line = BrainDb.Use(db, d =>
         {
             var s = SourceOf(d, src, where);
@@ -155,6 +163,61 @@ public static partial class Program
         });
         output.WriteLine(line);   // after the commit (review row 165)
         return 0;
+    }
+
+    /// <summary>
+    /// Board row 1997, Office decision #131857 ("a lesson ships with its check"; Ian 10 Nov: "why are we filling up the DB with this if
+    /// the mechanism doesnt work"). <c>--check</c> names what enforces the lesson, and kor proves it exists before writing:
+    /// <c>row:N</c> (or "board row N") - an oversight.Commitment row, the row that builds the check (read as the Board login);
+    /// <c>check:N</c> - a live brain.Check (brain.vw_LiveCheck); otherwise a path (absolute, or under <c>--dir</c>) to a file git
+    /// tracks: the hook, guard, gate or test. Returns the citation stored on the record ("board row N", "brain.Check #N",
+    /// "Repo:path"). Does NOT judge that the row or file actually enforces the lesson - a wrong but existing citation passes; a
+    /// direct INSERT into brain.Memory bypasses kor record (no trigger: that is a migration).
+    /// </summary>
+    internal static string LessonCheck(string? check, string where, BrainDb? db, BrainDb? board)
+    {
+        if (string.IsNullOrWhiteSpace(check))
+            throw new RecordRefusedException("a lesson ships with its check (Office decision #131857, board row 1997): add --check row:<the board " +
+                                             "row that builds it> | check:<live brain.Check id> | <path of the hook, guard, gate or test that enforces it>. " +
+                                             "A lesson with none is text that is read and skipped; if nothing will enforce it, record it as a finding.");
+        var c = check.Trim();
+        var row = Regex.Match(c, @"^(?:board\s+)?row\s*[:#]?\s*(\d+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (row.Success)
+        {
+            var id = int.Parse(row.Groups[1].Value, CultureInfo.InvariantCulture);
+            static object? Find(BrainDb b, int id)
+            {
+                using var q = b.Command("SELECT State FROM oversight.Commitment WHERE Id = @id", 10);
+                q.Parameters.AddWithValue("@id", id);
+                return q.ExecuteScalar();
+            }
+            var state = board is not null ? Find(board, id) : BrainDb.Read(KorStandardsConnection.Login.Board, b => Find(b, id));
+            if (state is null or DBNull) throw new RecordRefusedException($"--check row:{id} - there is no board row {id}");
+            return $"board row {id}";
+        }
+        var chk = Regex.Match(c, @"^(?:brain\.)?check\s*[:#]?\s*(\d+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (chk.Success)
+        {
+            var id = int.Parse(chk.Groups[1].Value, CultureInfo.InvariantCulture);
+            var live = BrainDb.Use(db, d =>
+            {
+                using var q = d.Command("SELECT COUNT(*) FROM brain.vw_LiveCheck WHERE Id = @id", 10);
+                q.Parameters.AddWithValue("@id", id);
+                return Convert.ToInt32(q.ExecuteScalar(), CultureInfo.InvariantCulture);
+            });
+            if (live == 0) throw new RecordRefusedException($"--check check:{id} - there is no live brain.Check #{id}");
+            return $"brain.Check #{id}";
+        }
+        var full = Path.GetFullPath(Path.IsPathRooted(c) ? c : Path.Combine(where, c));
+        if (!File.Exists(full))
+            throw new RecordRefusedException($"--check {c} is not a file ({full}): name the hook, guard, gate or test that enforces the lesson, " +
+                                             "row:<board row> that builds it, or check:<brain.Check id>");
+        var dir = Path.GetDirectoryName(full)!;
+        var top = Git.TopLevel(dir) ?? throw new RecordRefusedException($"--check {c} is not in a git repo: a check is code the office keeps");
+        var rel = Path.GetRelativePath(top, full).Replace('\\', '/');
+        if (Git.Run(top, "ls-files", "--error-unmatch", "--", rel) is null)
+            throw new RecordRefusedException($"--check {c} is not tracked by git in {top}: commit the check, then cite it");
+        return $"{Git.Leaf(top) ?? top}:{rel}";
     }
 
     private sealed record Src(GitSource? Git, string? Kind, string? Ref, string? Hash, string? Commit);
