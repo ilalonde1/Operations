@@ -22,51 +22,9 @@
           },
           {
             "type": "command",
-            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part memory --page 1 --pages 4 --hook",
+            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part memory --page 1 --pages 1 --hook",
             "timeout": 30,
-            "statusMessage": "Reading this module's memory from the DB, page 1 (board rows 1198/1199)"
-          },
-          {
-            "type": "command",
-            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part memory --page 2 --pages 4 --hook",
-            "timeout": 30,
-            "statusMessage": "Reading this module's memory from the DB, page 2 (board rows 1198/1199)"
-          },
-          {
-            "type": "command",
-            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part memory --page 3 --pages 4 --hook",
-            "timeout": 30,
-            "statusMessage": "Reading this module's memory from the DB, page 3 (board rows 1198/1199)"
-          },
-          {
-            "type": "command",
-            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part memory --page 4 --pages 4 --hook",
-            "timeout": 30,
-            "statusMessage": "Reading this module's memory from the DB, page 4 (board rows 1198/1199)"
-          },
-          {
-            "type": "command",
-            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part records --page 1 --pages 4 --hook",
-            "timeout": 30,
-            "statusMessage": "Reading this module's records from the DB, page 1 (decisions, lessons, findings, dead ends)"
-          },
-          {
-            "type": "command",
-            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part records --page 2 --pages 4 --hook",
-            "timeout": 30,
-            "statusMessage": "Reading this module's records from the DB, page 2 (decisions, lessons, findings, dead ends)"
-          },
-          {
-            "type": "command",
-            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part records --page 3 --pages 4 --hook",
-            "timeout": 30,
-            "statusMessage": "Reading this module's records from the DB, page 3 (decisions, lessons, findings, dead ends)"
-          },
-          {
-            "type": "command",
-            "command": "C:/KOR-Operations/kor/kor.exe start --module \"Operations\" --part records --page 4 --pages 4 --hook",
-            "timeout": 30,
-            "statusMessage": "Reading this module's records from the DB, page 4 (decisions, lessons, findings, dead ends)"
+            "statusMessage": "Reading this module's memory from the DB, page 1 only: the small start (row 1893); kor recall brings the rest at the moment of acting"
           },
           {
             "type": "command",
@@ -297,6 +255,17 @@
             "statusMessage": "How full is this session's context? WARN at 300k and every 100k, STOP at 850k: only the handover then (G5, board row 1474)"
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell|Write|Agent|SendMessage",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe recall --hook",
+            "timeout": 15,
+            "statusMessage": "Ranked recall: the records and board rows that match this action (row 1893)"
+          }
+        ]
       }
     ],
     "Stop": [
@@ -347,6 +316,16 @@
             "statusMessage": "At STOP, is the handover written? (G5, board row 1474)"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe recall --hook --push-back",
+            "timeout": 15,
+            "statusMessage": "Push-back: does the reply contradict a decision of Ian's (row 1893)"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -378,6 +357,16 @@
             "command": "C:/KOR-Operations/kor/kor.exe context --module \"Operations\" --hook",
             "timeout": 10,
             "statusMessage": "Is this session at its context line? (G5, board row 1474)"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/KOR-Operations/kor/kor.exe recall --hook",
+            "timeout": 15,
+            "statusMessage": "Ranked recall: the records and board rows that match this prompt (row 1893)"
           }
         ]
       }
