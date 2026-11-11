@@ -37,6 +37,9 @@ SIBLING_GUARD = "tools/claude_bash_guard.py"
 SIBLING_MIGRATION = "Kor.Opportunities.Data/Schema/331_ViewsRespectDismissal.sql"
 
 
+ARGS = []   # the guard's command-line flags; case 18 sets --content-search
+
+
 def run(tool, inp, session, root=REPO):
     payload = {"session_id": session, "tool_name": tool, "tool_input": inp}
     env = dict(os.environ)
@@ -44,7 +47,7 @@ def run(tool, inp, session, root=REPO):
         env.pop("CLAUDE_PROJECT_DIR", None)
     else:
         env["CLAUDE_PROJECT_DIR"] = root
-    r = subprocess.run([sys.executable, GUARD], input=json.dumps(payload),
+    r = subprocess.run([sys.executable, GUARD] + ARGS, input=json.dumps(payload),
                        capture_output=True, text=True, env=env)
     out = (r.stdout or "").strip()
     if not out:
@@ -248,6 +251,94 @@ def main():
     read(SIBLING_BRIEF, s)
     verdict, _ = write(SIBLING_BRIEF, s)
     r.append(check("rewriting a sibling you read is allowed", verdict, "allow"))
+
+    # 18. THE THIRD CHECK (--content-search; mistakes 145 and 141). Each write below passes checks 1 and 3 (the
+    #     directory is listed, a sibling is read), so the third check is the only thing that can refuse it.
+    global ARGS
+    ARGS = ["--content-search"]
+    NEW_BRIEF = "docs/codex/CODEX-AUDIT-PDF-INGESTION-" + uuid.uuid4().hex[:6] + ".md"
+
+    s = "t-" + uuid.uuid4().hex   # 145 itself: a filename search two folders deep, cut by head, then the write
+    bash("find docs -maxdepth 2 -iname '*audit*' | head -20", s)
+    bash("ls docs/codex/", s)
+    read(SIBLING_BRIEF, s)
+    verdict, reason = write(NEW_BRIEF, s)
+    r.append(check("18a RED mistake 145: find/ls by name then a new Codex brief is DENIED", verdict, "deny"))
+    r.append(check("...by the content-search check", "NO CONTENT SEARCH" in reason, True))
+
+    bash("rg -il 'pdf ingestion|virtual drafting' docs/codex | head -20", s)
+    verdict, _ = write(NEW_BRIEF, s)
+    r.append(check("18b RED: a content search cut by head does not count", verdict, "deny"))
+
+    bash("rg -il 'pdf ingestion|virtual drafting|standard details' docs/codex | wc -l", s)
+    verdict, _ = write(NEW_BRIEF, s)
+    r.append(check("18c GREEN: an untruncated rg over the content clears it", verdict, "allow"))
+
+    s = "t-" + uuid.uuid4().hex   # the Grep tool over docs, no head_limit, also counts
+    bash("ls docs/codex/", s)
+    read(SIBLING_BRIEF, s)
+    run("Grep", {"pattern": "ingestion", "path": "docs"}, s)
+    verdict, _ = write(NEW_BRIEF, s)
+    r.append(check("18d GREEN: the Grep tool over docs/ clears it", verdict, "allow"))
+
+    s = "t-" + uuid.uuid4().hex   # Grep with a head_limit is truncated
+    bash("ls docs/codex/", s)
+    read(SIBLING_BRIEF, s)
+    run("Grep", {"pattern": "zzqx", "path": "docs/codex", "head_limit": 20}, s)
+    verdict, _ = write(NEW_BRIEF, s)
+    r.append(check("18e RED: the Grep tool with a head_limit does not count", verdict, "deny"))
+
+    s = "t-" + uuid.uuid4().hex   # 141's shape: the Schema folder listed, a sibling read, no content search
+    bash("ls Kor.Opportunities.Data/Schema/", s)
+    read(SIBLING_MIGRATION, s)
+    NEW_MIG = "Kor.Opportunities.Data/Schema/999_ResearchIntel" + uuid.uuid4().hex[:4] + ".sql"
+    verdict, reason = write(NEW_MIG, s)
+    r.append(check("18f RED mistake 141: a new migration after only a listing is DENIED",
+                   (verdict, "NO CONTENT SEARCH" in reason), ("deny", True)))
+    bash('rg -l "Intel" Kor.Opportunities.Data/ Kor.Opportunities.Web/', s)
+    verdict, _ = write(NEW_MIG, s)
+    r.append(check("18g GREEN: a content search sharing a topic word ('intel') clears it", verdict, "allow"))
+
+    s = "t-" + uuid.uuid4().hex   # ordinary work: a non-brief doc and a tools/ file are not under the third check
+    bash("ls docs/ tools/", s)
+    read(SIBLING_GUARD, s)
+    verdict, _ = run("Write", {"file_path": REPO + "/tools/claude_zz_" + uuid.uuid4().hex[:4] + "_guard.py",
+                               "content": "x"}, s)
+    r.append(check("18h GREEN: a new tools/ file is not under the third check", verdict, "allow"))
+
+    s = "t-" + uuid.uuid4().hex   # a grep that is not recursive is not a content search over an area
+    bash("ls docs/codex/", s)
+    read(SIBLING_BRIEF, s)
+    bash("grep -c ingestion docs/codex/CODEX-arcgis-frozen-ingest.md", s)
+    verdict, _ = write(NEW_BRIEF, s)
+    r.append(check("18i RED: a one-file grep is not a content search", verdict, "deny"))
+
+    s = "t-" + uuid.uuid4().hex   # dry-run false refusal (KOR.Drafter migration 181): a grep over db/*.sql IS a search
+    bash("ls Kor.Opportunities.Data/Schema/", s)
+    read(SIBLING_MIGRATION, s)
+    bash('grep -n -E "5179[26789]" Kor.Opportunities.Data/Schema/*.sql', s)
+    verdict, _ = write("Kor.Opportunities.Data/Schema/998_Zq" + uuid.uuid4().hex[:4] + ".sql", s)
+    r.append(check("18i2 GREEN: a grep over the target folder's wildcard is a content search", verdict, "allow"))
+
+    s = "t-" + uuid.uuid4().hex   # ...but a '*' inside a quoted regex is not a file glob
+    bash("ls docs/codex/", s)
+    read(SIBLING_BRIEF, s)
+    bash("git show HEAD:tools/x.py | grep -nE 'def .*reply|argv'", s)
+    verdict, _ = write(NEW_BRIEF, s)
+    r.append(check("18i3 RED: a quoted regex holding '*' is not a content search over an area", verdict, "deny"))
+
+    s = "t-" + uuid.uuid4().hex   # rewriting an EXISTING brief is not a creation
+    bash("ls docs/codex/", s)
+    read(SIBLING_BRIEF, s)
+    verdict, _ = write(SIBLING_BRIEF, s)
+    r.append(check("18j GREEN: rewriting an existing brief you read is not judged by the third check", verdict, "allow"))
+
+    s = "t-" + uuid.uuid4().hex   # without the flag the third check is off (KOR.Drafter until its reruns end)
+    ARGS = []
+    bash("ls docs/codex/", s)
+    read(SIBLING_BRIEF, s)
+    verdict, _ = write(NEW_BRIEF, s)
+    r.append(check("18k: without --content-search the third check is off", verdict, "allow"))
 
     print("\n%d/%d passed" % (sum(r), len(r)))
     sys.exit(0 if all(r) else 1)

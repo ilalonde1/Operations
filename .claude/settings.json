@@ -137,7 +137,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_prior_art_guard.py\"",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_prior_art_guard.py\" --content-search",
             "timeout": 20,
             "statusMessage": "Checking the prior art was looked for"
           },

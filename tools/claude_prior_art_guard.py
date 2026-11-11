@@ -92,6 +92,37 @@ WHAT IT DOES NOT COVER, deliberately:
     wrong word, finding nothing, and concluding absence. The guard forces a look and a
     read, not a good one.
 
+--------------------------------------------------------------------------------
+THE THIRD CHECK, added 2026-11-10 (Framework OWED lane, mistakes 145 and 141), switched on
+by `--content-search` on the Write hook's command line (wired in Framework and Operations;
+KOR.Drafter after its reruns - D12).
+
+Mistake 145, 10 Nov 21:4x: OverLORD told Ian the prior Codex audits did not cover a scope,
+from a FILENAME search two folders deep whose output was cut to 20 of 333 hits, then launched
+a lane to write a new brief. Ian: "that's not really a search", "It's dangerous". The first
+check passed it: a listing counts as looking. Mistake 141, 4 Nov: three migrations (382-384)
+and a 2-day build were put to Ian while IntelPersistenceService and BdResearchImport already
+did it - the guard passed because the Schema folder had been LISTED.
+
+  (4) NO CONTENT SEARCH -- CREATING (the file does not exist yet) one of:
+        * anything under docs/codex/
+        * a doc under docs/ whose name says brief / plan / audit / proposal / design /
+          research / spec / review
+        * a new migration (Schema/*.sql, db/*.sql)
+      needs a CONTENT search in this session -- the Grep tool, or rg / git grep /
+      grep -r|-R / Select-String / findstr -- that is NOT truncated (no `| head`, `| tail`,
+      `Select-Object -First/-Last`, `-m N` / `--max-count`, Grep head_limit) and that either
+      shares a topic word with the new filename or names the target's directory (or a parent
+      of it) as its path. `ls`, `find`, `dir`, Glob and Get-ChildItem are filename listings
+      and never count here.
+
+  WHAT IT DOES NOT CATCH (same class): a content search with the wrong words over the right
+  place, read and misjudged; a search of the right words over too narrow a path that still
+  shares a topic word with the filename; a truncation done some other way (a pager, `awk
+  'NR<20'`, a later `Select-Object` in a separate command); writing a brief by `Edit` of an
+  existing file, or by a Bash redirect. It proves an untruncated content search happened,
+  not that it was the right one.
+
 stdin  : the PreToolUse payload
 stdout : nothing (allow), or a permissionDecision of "deny"
 """
@@ -132,6 +163,20 @@ STOP = {
 }
 
 READ_MARK = "read\t"
+CONTENT_MARK = "content\t"
+
+# THE THIRD CHECK (mistakes 145, 141): what is a CONTENT search, what truncates one, and which creations need one.
+CONTENT_VERB = re.compile(
+    r"(?:^|[\s;&|(])(?:rg|ripgrep|git\s+grep|Select-String|sls|findstr)\b"
+    r"|(?:^|[\s;&|(])[ef]?grep\b[^|;&]*\s(?:-[A-Za-z]*[rR][A-Za-z]*|--recursive|--dereference-recursive)\b"
+    # a grep over a wildcard of files ("grep -n x db/*.sql") searches the area too (dry run, 10 Nov: migration 181)
+    # - an UNQUOTED file glob ("dir/*.sql", "*.cs"), not a '*' inside a quoted regex ('def .*foo')
+    r"|(?:^|[\s;&|(])[ef]?grep\b[^|;&]*\s(?![\"'])[^\s|;&\"'*]*(?:/[^\s|;&\"']*\*|\*\.[A-Za-z0-9]+)(?=[\s|;&)]|$)",
+    re.IGNORECASE)
+TRUNCATED = re.compile(
+    r"\|\s*(?:head|tail)\b|\bSelect-Object\s+[^|;]*-(?:First|Last)\b|\bselect\s+-(?:first|last)\b"
+    r"|(?:^|\s)(?:-m\s*\d+|--max-count(?:=|\s+)\d+)", re.IGNORECASE)
+STRICT_DOC_NAME = re.compile(r"(brief|plan|audit|proposal|design|research|spec|review)", re.IGNORECASE)
 
 
 def norm(p):
@@ -231,14 +276,33 @@ def record(tool, inp, session):
     duplicated artefact, a false DENY blocks real work, and the second is worse."""
     if tool in ("Grep", "Glob"):
         remember(session, " ".join(str(inp.get(k) or "") for k in ("pattern", "path", "glob")))
+        if tool == "Grep" and not inp.get("head_limit"):
+            remember(session, norm(" ".join(str(inp.get(k) or "") for k in ("pattern", "path", "glob")))
+                     or ".", kind=CONTENT_MARK)
     elif tool == "Read":
         remember(session, norm(str(inp.get("file_path") or "")), kind=READ_MARK)
     elif tool in ("Bash", "PowerShell"):
         command = str(inp.get("command") or "")
         if SEARCH_VERB.search(command):
             remember(session, command)
+        if CONTENT_VERB.search(command) and not TRUNCATED.search(command):
+            remember(session, norm(command), kind=CONTENT_MARK)
         if READ_VERB.search(command):
             remember(session, norm(command), kind=READ_MARK)
+
+
+CONTENT_SEARCH_ON = "--content-search" in sys.argv[1:]
+
+
+def strict_target(target):
+    """A creation that the third check covers: docs/codex/*, a brief/plan-like doc under docs/, a migration."""
+    t = norm(target)
+    base = t.rsplit("/", 1)[-1]
+    if re.search(r"(?:^|/)docs/codex/", t, re.IGNORECASE):
+        return True
+    if re.search(r"(?:^|/)docs/", t, re.IGNORECASE) and STRICT_DOC_NAME.search(base):
+        return True
+    return bool(GUARDED[2].search(t) or GUARDED[3].search(t))
 
 
 def relative(path, root):
@@ -303,6 +367,45 @@ def main():
             "  ls " + shown + "/\n"
             "  grep -ril \"" + (sorted(want)[0] if want else "topic") + "\" docs/ tools/\n"
             "Topic words that would satisfy it: " + ", ".join(sorted(want)))
+
+    # (4) THE THIRD CHECK (mistakes 145, 141): creating a brief/plan/codex doc or a migration needs an untruncated
+    #     CONTENT search that shares a topic word or names the target's directory or a parent of it.
+    if CONTENT_SEARCH_ON and strict_target(target) and not os.path.exists(target):
+        contents = [ln[len(CONTENT_MARK):] for ln in lines if ln.startswith(CONTENT_MARK)]
+        # The target's directory and its ancestors up to its git root: each as an absolute path, and each
+        # below the root also as its path relative to the root ("docs/codex", "docs").
+        gitroot = directory_raw
+        while gitroot and not os.path.exists(gitroot + "/.git") and "/" in gitroot:
+            gitroot = gitroot.rsplit("/", 1)[0]
+        if not os.path.exists(gitroot + "/.git"):
+            gitroot = root or directory_raw
+        rel = directory_raw[len(gitroot):].lstrip("/") if directory.startswith(gitroot.lower()) else ""
+        parts = [p for p in rel.lower().split("/") if p]
+        prefixes = ["/".join(parts[:i]) for i in range(len(parts), 0, -1)]
+        absolutes = [gitroot.lower()] + [gitroot.lower() + "/" + p for p in prefixes]
+
+        def covers(c):
+            # a directory named as the search PATH: it ends there ("docs", "docs/", ".../docs/codex"), not a file in it
+            end = r"/?(?:\*[^\s\"')]*)?(?=[\"'\s)]|$)"   # "db", "db/", "db/*.sql"
+            if any(re.search(re.escape(a) + end, c) for a in absolutes):
+                return True
+            return any(re.search(r"(?<![\w.-])" + re.escape(p) + end, c) for p in prefixes)
+        hit_word = sorted(t for t in want if any(t in c for c in contents))
+        hit_dir = any(covers(c) for c in contents)
+        if not (hit_word or hit_dir):
+            deny(
+                "NO CONTENT SEARCH: creating " + target + " -- a new brief, plan, codex doc or migration -- and "
+                "nothing in this session has searched file CONTENTS for the prior work (a listing by name, or a "
+                "search cut by head/tail/-m/Select-Object -First, does not count).\n"
+                "Mistake 145, 10 Nov: OverLORD told Ian prior Codex audits did not cover a scope, from a FILENAME "
+                "search cut to 20 of 333 hits, and launched a lane to write a new brief. Ian: \"that's not really "
+                "a search\", \"It's dangerous\". Mistake 141, 4 Nov: three migrations and a 2-day build put to Ian "
+                "while the pipeline already did it -- the folder had only been listed.\n"
+                "Run an untruncated content search over the area, count it, and say it (\"rg -il 'x|y' over N "
+                "files in <dirs>: M hits, read K of M\"), then re-issue the write. For example:\n"
+                "  rg -il \"" + "|".join(sorted(want)[:3] or ["topic"]) + "\" " + (prefixes[-1] if prefixes else ".")
+                + "/ | wc -l\n"
+                "Topic words that would satisfy it: " + (", ".join(sorted(want)) or "(none - search the directory)"))
 
     # (3) does this filename join an established family, and did we open one of its members?
     #     Rewriting a file you have ALREADY READ is ordinary work -- the same reasoning that
