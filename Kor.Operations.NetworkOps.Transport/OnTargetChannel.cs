@@ -62,8 +62,10 @@ public sealed class OnTargetChannel
 
         try
         {
-            // The payload kills itself on the target at the same limit this side stops waiting.
-            var payload = OnTargetPayload.Build(script, localResult, killAfter: _timeout, alivePath: localAlive);
+            // The payload kills itself on the target a margin BEFORE this side stops waiting (its clock starts after
+            // the launch, and the watchdog takes a moment to start), so its "killed on the target" result is read here
+            // and the staged files are deleted, rather than landing after the caller has gone.
+            var payload = OnTargetPayload.Build(script, localResult, killAfter: KillAfter(_timeout), alivePath: localAlive);
             await File.WriteAllTextAsync(uncScript, payload, OnTargetPayload.ScriptEncoding, ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -99,6 +101,8 @@ public sealed class OnTargetChannel
         {
             TryDelete(uncScript);
             TryDelete(uncResult);
+            TryDelete(uncResult + ".tmp");
+            TryDelete(uncResult + ".tmp.kill");
         }
     }
 
@@ -163,6 +167,15 @@ public sealed class OnTargetChannel
                 return $"StartService failed: {new Win32Exception(err).Message} ({err})";
         }
         return null;
+    }
+
+    /// <summary>The target-side kill for a caller that waits <paramref name="wait"/>: a quarter of it, at most 15 s,
+    /// earlier; never under 1 s.</summary>
+    public static TimeSpan KillAfter(TimeSpan wait)
+    {
+        var margin = TimeSpan.FromTicks(Math.Min(TimeSpan.FromSeconds(15).Ticks, wait.Ticks / 4));
+        var kill = wait - margin;
+        return kill < TimeSpan.FromSeconds(1) ? TimeSpan.FromSeconds(1) : kill;
     }
 
     private static void TryDelete(string path)

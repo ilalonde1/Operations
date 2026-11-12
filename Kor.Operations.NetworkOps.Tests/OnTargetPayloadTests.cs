@@ -209,6 +209,35 @@ public sealed class OnTargetPayloadTests
         finally { TryDeleteDir(dir); }
     }
 
+    // Review 1814: a kill at the caller's own wait lands after the caller has gone; it must come first.
+    [Theory]
+    [InlineData(600, 585)]
+    [InlineData(90, 75)]
+    [InlineData(20, 15)]
+    [InlineData(1, 1)]
+    public void The_target_kills_before_the_caller_stops_waiting(int waitSeconds, int killSeconds)
+        => Assert.Equal(TimeSpan.FromSeconds(killSeconds), Kor.Operations.NetworkOps.Transport.OnTargetChannel.KillAfter(TimeSpan.FromSeconds(waitSeconds)));
+
+    // Review 1814: a marker that cannot be opened is a published reason, not a silent death and a caller timeout.
+    [Fact]
+    [Trait("Speed", "Slow")]
+    public void A_marker_that_cannot_be_opened_publishes_why()
+    {
+        var ps = WindowsPowerShell();
+        if (ps is null) return;
+        var dir = NewDir();
+        try
+        {
+            var result = Path.Combine(dir, "result.json");
+            var payload = OnTargetPayload.Build("'x'", result, killAfter: TimeSpan.FromMinutes(1), alivePath: Path.Combine(dir, "no-such-dir", "korrun-x-k.alive"));
+            Assert.True(RunBounded(ps, dir, payload, TimeSpan.FromSeconds(60)));
+            var r = OnTargetPayload.ParseResult(File.ReadAllText(result));
+            Assert.False(r.Ok);
+            Assert.Equal(0, r.Line);   // the wrapper failed, not a line the caller wrote
+        }
+        finally { TryDeleteDir(dir); }
+    }
+
     [Fact]
     public void A_marker_nobody_holds_is_stale_and_removed_so_it_never_blocks_a_host()
     {

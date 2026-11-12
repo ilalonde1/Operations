@@ -51,7 +51,10 @@ public static class OnTargetPayload
     /// <item>a watchdog process kills the payload after <paramref name="killAfter"/> -- the body AND the
     /// serialisation -- and publishes an error result saying so;</item>
     /// <item>the output is flattened to plain values (strings, numbers, bools, arrays, ordered maps) before
-    /// ConvertTo-Json ever sees it, so no PSDrive/PSProvider graph reaches the serialiser;</item>
+    /// ConvertTo-Json ever sees it, so no PSDrive/PSProvider graph reaches the serialiser. This CHANGES shapes for
+    /// probes that return rich values: a wrapped DateTime is a bare \/Date()\/ (not {value,DisplayHint,DateTime}),
+    /// TimeSpan/Version and other value types are strings, a rich object is one level of its properties. No
+    /// consumer read the old shapes (grep of NetworkOps for them, 12 Nov); probes should return plain values anyway;</item>
     /// <item>when <paramref name="alivePath"/> is given, the payload holds that file open (delete-on-close) for
     /// its whole life, so the caller can see a payload is still alive there and not stack another
     /// (<see cref="OnTargetAlive"/>).</item>
@@ -74,7 +77,6 @@ public static class OnTargetPayload
             $"$korAlive = [IO.FileStream]::new('{alivePath}', [IO.FileMode]::Create, [IO.FileAccess]::Write, [IO.FileShare]'Read, Delete', 4096, [IO.FileOptions]::DeleteOnClose)";
         var head = $$"""
             $ErrorActionPreference = 'Stop'
-            {{aliveOpen}}
             # The watchdog: a separate process, because nothing inside this one runs while a cmdlet spins.
             # It waits on THIS process (pid and start time, so a reused pid is never killed), and past the limit
             # publishes an error result, then kills this process and anything it started.
@@ -127,6 +129,7 @@ public static class OnTargetPayload
             }
 
             $r = try {
+                {{aliveOpen}}
                 $korSelf = Get-Process -Id $PID
                 $korWatchdog = $korWatchdog.Replace('__KORPID__', [string]$PID).Replace('__KORTICKS__', [string]$korSelf.StartTime.Ticks)
                 $korEncoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($korWatchdog))
@@ -135,12 +138,14 @@ public static class OnTargetPayload
             """;
         // Line numbers are reported relative to the body, as the caller wrote it, not to this wrapper.
         var bodyFirstLine = head.Count(c => c == '\n') + 2;
+        var bodyLastLine = bodyFirstLine + body.Count(c => c == '\n');
         var tail = $$"""
                 }
                 [ordered]@{ Ok = $true; Output = (ConvertTo-KorPlain @($o) {{PlainDepth + 1}}) }
             } catch {
                 $korLine = [int]$_.InvocationInfo.ScriptLineNumber
-                if ($korLine -ge {{bodyFirstLine}}) { $korLine -= {{bodyFirstLine - 1}} }
+                # Inside the body: its own line number. Outside it (the wrapper failed): 0, never a line the caller did not write.
+                $korLine = if ($korLine -ge {{bodyFirstLine}} -and $korLine -le {{bodyLastLine}}) { $korLine - {{bodyFirstLine - 1}} } else { 0 }
                 [ordered]@{ Ok = $false; Error = [string]$_.Exception.Message; Line = $korLine }
             }
             $json = $r | ConvertTo-Json -Depth {{PlainDepth + 4}}
