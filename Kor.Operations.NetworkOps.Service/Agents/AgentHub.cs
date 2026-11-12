@@ -132,7 +132,7 @@ internal sealed class AgentHub(TimeProvider clock)
                 }
                 if (!mine) continue;   // withdrawn by its caller, or taken elsewhere: leave it
                 string script;
-                try { script = OnTargetPayload.Build(job.Body, Path.Combine(workDir, job.Id + ".json")); }
+                try { script = OnTargetPayload.Build(job.Body, Path.Combine(workDir, job.Id + ".json"), killAfter: job.Timeout); }
                 catch (ArgumentException ex)
                 {
                     job.Done.TrySetResult(new AgentJobOutcome("error", null, $"cannot build the job for this agent: {ex.Message}", 0));

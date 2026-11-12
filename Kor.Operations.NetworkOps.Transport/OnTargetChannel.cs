@@ -39,15 +39,32 @@ public sealed class OnTargetChannel
         var reachMs = (int)clock.ElapsedMilliseconds;
 
         var id = Guid.NewGuid().ToString("N")[..8];
+        var kind = OnTargetAlive.KindOf(script);
         var serviceName = "KorRun" + id;
         var localScript = $@"C:\Windows\Temp\korrun-{id}.ps1";
         var localResult = $@"C:\Windows\Temp\korrun-{id}.json";
-        var uncScript = $@"\\{computer}\c$\Windows\Temp\korrun-{id}.ps1";
-        var uncResult = $@"\\{computer}\c$\Windows\Temp\korrun-{id}.json";
+        var localAlive = $@"C:\Windows\Temp\{OnTargetAlive.FileName(id, kind)}";
+        var uncTemp = $@"\\{computer}\c$\Windows\Temp";
+        var uncScript = $@"{uncTemp}\korrun-{id}.ps1";
+        var uncResult = $@"{uncTemp}\korrun-{id}.json";
+
+        // Never stack: an earlier payload of this script still alive there means the last caller gave up on it,
+        // not that it stopped (12 Nov 2026, brain #133338).
+        try
+        {
+            var refusal = OnTargetAlive.Refusal(OnTargetAlive.Find(uncTemp), kind, computer, DateTime.UtcNow);
+            if (refusal is not null) return OnTargetRun.Failed(computer, OnTargetStatus.Busy, refusal);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return OnTargetRun.Failed(computer, OnTargetStatus.NoAdminShare, ex.Message);
+        }
 
         try
         {
-            await File.WriteAllTextAsync(uncScript, OnTargetPayload.Build(script, localResult), OnTargetPayload.ScriptEncoding, ct).ConfigureAwait(false);
+            // The payload kills itself on the target at the same limit this side stops waiting.
+            var payload = OnTargetPayload.Build(script, localResult, killAfter: _timeout, alivePath: localAlive);
+            await File.WriteAllTextAsync(uncScript, payload, OnTargetPayload.ScriptEncoding, ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -155,7 +172,8 @@ public sealed class OnTargetChannel
     }
 }
 
-public enum OnTargetStatus { Ok, Offline, NoAdminShare, LaunchFailed, Timeout, ScriptError }
+/// <summary>Busy: not sent, because earlier payloads are still alive on that host (<see cref="OnTargetAlive"/>).</summary>
+public enum OnTargetStatus { Ok, Offline, NoAdminShare, LaunchFailed, Timeout, ScriptError, Busy }
 
 /// <param name="OutputJson">The probe's output as a JSON array, when <see cref="Status"/> is Ok.</param>
 public sealed record OnTargetRun(string Computer, OnTargetStatus Status, string? OutputJson, string? Error)
