@@ -172,6 +172,70 @@ MISSES["review 1436: one unbalanced ``` fence does not hide a later claim"] = (
     [B("dotnet build x.sln")], "Output:\n```\nBuild succeeded\nThe build is done.", "build")
 MISSES["row 2032: a claim outside a code span is still a claim"] = (
     [B("dotnet build x.sln")], "`dotnet build` passed.", "build")
+# --- row 2091 (12 Nov): GuardRefusal judged 4 right, 37 wrong. The 4 RIGHT ones, with their real change and their
+# stored text, must still refuse (red-first: each passes on the old code and must stay passing).
+DOTNET_BUILD = B('cd "/c/x/KOR.Drafter" && set -o pipefail && dotnet build src/KOR.Drafter.Pipeline -c Release -v q -nologo '
+                 '2>&1 | grep -E "error|Build succeeded"')
+MISSES["row 2091 right 4585: a real dotnet build, then 'stages have passed'"] = (
+    [DOTNET_BUILD], "The v3 full run is still going: 4 of its 6 stages have passed (preflight, read, ETABS, stage-2 checks).",
+    "build")
+MISSES["row 2091 right 5384: a real virtual_drafter run, then 'The cloud check passed'"] = (
+    [B('cd "/c/x/KOR.Drafter"; export KOR_REVIT_RUN_OK=1; python -u tools/virtual_drafter.py run jobs/x/job.json --from drafting')],
+    "The run is on the 3D model step (\"the Revit model, drawn\"). The cloud check passed on 4 clouds.", "drawing")
+MISSES["row 2091 right 6362: a real dotnet build, then 'JM-WOW-COORD DONE:'"] = (
+    [DOTNET_BUILD], "JM-WOW-COORD DONE: 37 of 38 storeys swept (P3 footing storey has no architect plan).", "build")
+MISSES["row 2091 right 6806: an oversight write announced in its output, then 'is built, reviewed'"] = (
+    [B("python tools/close_row.py 2058"), O("KORSTANDARDS WRITE oversight.Commitment (1 statements)")],
+    "PKGCHECK: whole-package check is built, reviewed and pinned; it refuses the 11 sets.", "db-write")
+# the narrowing's own edges: a hedged claim, a commit/report NOUN at a sentence start, a negator in another clause
+MISSES["row 2091: 'should be fixed now' is the hedged claim this guard is for - still a claim"] = (
+    [DOTNET_BUILD], "It should be fixed now.", "build")
+MISSES["row 2091: 'Commit 3f2a landed' - Commit is a noun, not an instruction"] = (
+    [DOTNET_BUILD], "Commit 3f2a landed on main.", "build")
+MISSES["row 2091: 'Report written - done.' - Report is a noun"] = ([DOTNET_BUILD], "Report written - done.", "build")
+MISSES["row 2091: a negator in an earlier clause does not reach the claim"] = (
+    [DOTNET_BUILD], "No errors, and the app is built.", "build")
+MISSES["row 2091: a negator four words back does not reach the claim"] = (
+    [DOTNET_BUILD], "No errors in the log and it's built.", "build")
+MISSES["row 2091: 'DONE:' as a report status is still a claim"] = ([DOTNET_BUILD], "S12 DONE: 4 of 4 gates.", "build")
+# class (b) as judged: 6670/6672's change was NOT a misread - the sed edits a .sql file that fw29_sql.py then RUNS
+# (kor_review.run_sql); 5020's command held a real `dotnet publish` after the takeoff.exe run. Both stay changes.
+MISSES["row 2091: 6670's sed into a .sql file then run by a script is a real write"] = (
+    [B("cd /c/x/lanes; sed -i 's/^UPDATE.*WHERE Id = 1934;$/UPDATE KorStandards.oversight.Commitment SET BlockedOn = "
+       "N'x' WHERE Id = 1982;/' fw13_u.sql; grep -c 1982 fw13_u.sql; python -I fw29_sql.py fw13_u.sql")],
+    "Row 1982 updated - done.", "db-write")
+MISSES["row 2091: 5020's command held a real dotnet publish after the takeoff.exe run"] = (
+    [B('set -o pipefail && cd "/c/x/KOR.Drafter" && work/_tools/takeoff/fa670bb9/takeoff.exe 2>&1 | grep -A4 "^  stickfile"; '
+       'X="$LOCALAPPDATA/Temp/x"; cd "$X" && (dotnet publish TakeoffCli/TakeoffCli.csproj -c Release -o "$X/pub" -nologo '
+       '> publish.log 2>&1; echo "publish exit $?")')],
+    "DONE on my side: 21adbd5b (APPROVE 995).", "build")
+# --- row 2091: the WRONG classes, each with a real change left unlooked, so only the claim's frame lets it go
+NOT_A_CLAIM_2091 = {
+    "negated 5091: 'Release was NOT built'": "Release was NOT built: kor-drafter.exe is still 07:20:58.",
+    "negated 6709: '**Not built yet**'": "**Not built yet** (the successor has these misses by name):",
+    "negated 403: 'nothing built on it'": "The helper tried it on LocalDB (temp procs, nothing persisted, nothing built on it).",
+    "negated: 'haven't verified it yet'": "I've rewritten that step but haven't verified it yet.",
+    "conditional 4730: 'it would have to be built properly'":
+        "As a job anyone can run again, it would have to be built properly.",
+    "future 2780: 'I'll ask once it's built'": "Your only open item is the leak fix, and I'll ask once it's built and reviewed.",
+    "future 6215: 'sent as each passes'": "S2.15 and S2.01 are in their second look - sent as each passes.",
+    "conditional 6544: 'if the sample passes'": "Full run follows at the same sha if the sample passes.",
+    "status word 4721: 'You hear from me next at DONE'": "You hear from me next at DONE or a DECISION.",
+    "status word 5115: 'report to me only DONE or DECISION'":
+        "From now on, to cut spend: report to me only DONE or DECISION, in at most 5 lines.",
+    "status word 5429: 'Reply only at done'": "Reply only at done, as the brief says.",
+    "instruction 6672: 'Commit what works now'": "You are at 266k, past your brief's 220k line. Commit what works now, then hand over.",
+    "instruction 6670: 'Put in the state: the GT items done'":
+        "Put in the state: the GT items done and those left, the rule files, and the worktree path.",
+}
+# class (b) shapes that are NOT changes (already true before row 2091; kept so a change to them is seen)
+LOOKED["row 2091: a takeoff.exe run alone is not a build (5020's first half)"] = (
+    [B('cd "/c/x/KOR.Drafter" && work/_tools/takeoff/fa670bb9/takeoff.exe 2>&1 | grep -A4 "^  stickfile"')], "DONE on my side.")
+LOOKED["row 2091: git log alone is not a build (4277's first half)"] = (
+    [P('git -C $op log -1 --format="HEAD %h %ad %s" --date=iso; "commits touching Core since the 28 Oct build:"')],
+    "The app is built.")
+LOOKED["row 2091: a grep loop over job.json is not a drawing run (5031)"] = (
+    [B('for f in jobs/*/job.json; do grep -c "drafted_set.py" "$f"; done')], "PUSH lane 2 DONE (row 1975).")
 # --- ALLOWED: a commit whose MESSAGE names a drawing tool is not a drawing run (10-27 dry run's false positive)
 LOOKED["commit message naming e2k_book.py"] = (
     [B("python tools/e2k_book.py m.e2k b.pdf"), R(r"C:\x\b.png"),
@@ -214,6 +278,8 @@ WRITE_2086 = B('cd "/c/VIsual Studio Projects/Operations/tools/SqlQuery" && cat 
 WRITE_NO_OUTPUT = ("Bash", WRITE_2086[1].replace("\nOUTPUT inserted.Id, inserted.State, inserted.ClosedAtUtc, "
                                                  "inserted.MitigationRef WHERE Id = 138;", "\nWHERE Id = 138;"))
 assert WRITE_NO_OUTPUT[1] != WRITE_2086[1]
+for _name, _text in NOT_A_CLAIM_2091.items():   # row 2091: a build AND a write left unlooked behind each text
+    LOOKED["row 2091 " + _name] = ([DOTNET_BUILD, WRITE_NO_OUTPUT], _text)
 READBACK_2094 = B('cd "/c/VIsual Studio Projects/Operations/tools/SqlQuery" && printf "USE KorStandards;\\nSET NOCOUNT ON;'
                   '\\nSELECT Id, State, ClosedAtUtc, MitigationKind, MitigationRef FROM oversight.Mistake WHERE Id = 138;'
                   '\\n" > rb138.sql && python -I oq.py -i rb138.sql 2>&1; rm rb138.sql')

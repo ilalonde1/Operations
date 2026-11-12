@@ -125,6 +125,34 @@ fence skips no claim. Errs toward refusing, stated: an interpreter name after an
 \cmd) makes a heredoc count as run. Pre-existing, not this class: the drawing LookRule does not match a QUOTED script path
 (`python "C:/x/tools/virtual_drafter.py" run`) - the quote between .py and run breaks it; a KorStandards fix.
 
+Framework row 2091 (12 Nov 2026, FW-RESET-2; HOW-WE-BUILD 7: narrowed, not deleted). The class, in one sentence: a claim
+word used in a frame that does not claim the work is done was read as a claim. claim_in now skips a claim word when
+not_a_claim() finds, in the last three words of its own clause (back to . , ; : ! ? ( ) | * a line break or ' - '):
+a NEGATOR (not, never, nothing, no, nor, none, neither, cannot, any n't) - "Release was NOT built", "Not built yet";
+a MODAL or SUBORDINATOR (would, will, 'll, shall, could, might, must, once, until, till, if, unless, when, whenever,
+'to be', 'as each', 'as soon') - "it would have to be built", "I'll ask once it's built", "sent as each passes";
+done/DONE as a STATUS WORD (right after 'at' or 'only', or before 'or (a) DECISION') - "you hear from me next at DONE";
+or when its SENTENCE (back to . ! ? or a line break; ':' does not end it) opens with an imperative verb (put, commit,
+reply, report, send, tell, hand, write, ...) FOLLOWED BY a function word (what, to, only, in, the, ...) - "Commit what
+works now", "Put in the state: the GT items done". Kept as claims on purpose: 'should' and 'can' ("It should be fixed
+now" is the hedged claim this guard is for); a sentence-start noun ("Commit 3f2a landed", "Report written - done");
+"X DONE:"; a negator in an earlier clause or four words back.
+Replay of every judged look refusal (GuardRefusal, 4 right / 37 wrong) on its own transcript cut at the refused text,
+HEAD vs this: right refused 4 of 4 -> 4 of 4; wrong allowed 26 of 36 replayed -> 33 of 36 (refusal Id 36's text was not
+found in its transcript, so 36 of 37 wrong replayed). Tests 119 of 119 (13 of the new ones red on HEAD first). Claim words on all 443 stored look texts, HEAD vs this: 66 freed, every one read - each negated, future,
+conditional, a status word or an instruction; none a completion claim. Changes were NOT touched: of the judged
+"change misread" class, 6670/6672's sed edits a .sql that fw29_sql.py then RUNS (kor_review.run_sql) - a real write -
+and 5020's command and 4277's command each held a real `dotnet publish` / `dotnet build`: the judges' notes were wrong
+on the change, so those stay changes (6670/6672 are freed by their instruction frame).
+NOT closed: 4277 ("The app is built and I'm not disputing that") and 6209 ("every test I re-ran passes" with a
+drawing run unlooked) - a real claim about a DIFFERENT artefact than the unlooked change; deciding that needs the
+sentence's subject understood. 5020 - a real publish, then "DONE on my side": refused, and right to be.
+What it does NOT cover: a negator or modal more than three words back, or past a comma ("nothing failed, it's done"
+stays a claim - correct - but so does "not, as I said, built"); an imperative not in the list ("Ship what passes");
+tense from verb forms alone ("it gets built tonight"). Same-class fault it would MISS (a real claim waved through): a
+claim whose last three words happen to hold a listed word - "if anyone asks, it's done" splits at the comma and is
+caught, but "the step I said would fail passed" and "the one that never ran is fixed" read 'would' / 'never' and go.
+
 stdin  : the Stop payload (transcript_path, stop_hook_active) or the PreToolUse payload (tool_name SendMessage)
 stdout : nothing (allow); Stop -> {"decision": "block", ...}; PreToolUse -> permissionDecision "deny"
 """
@@ -141,6 +169,14 @@ import time
 CLAIM = re.compile(
     r"\b(?:done(?!-when\b| when\b)|fixed|built|rebuilt|published|deployed|applied|verified|landed|shipped|works|passes|passed"
     r"|complete|completed|ready to (?:send|issue|go)|all good|confirmed working)\b", re.I)
+# row 2091: the frames in which a claim word claims nothing (not_a_claim)
+NEGATORS = {"not", "never", "nothing", "no", "nor", "none", "neither", "cannot"}
+MODALS = {"would", "will", "shall", "could", "might", "must", "once", "until", "till", "if", "unless", "when", "whenever"}
+STATUS_AFTER = re.compile(r"\s+or\s+(?:a\s+)?DECISION\b", re.I)
+IMPERATIVE = re.compile(
+    r"[\s>#*\-\d)]*(?:put|commit|reply|report|send|tell|hand|write|answer|message|give|include|record|keep|wait|stop"
+    r"|say|list|name|mark|leave|return)\s+(?:what|to|only|in|it|me|back|your|each|every|all|them|this|that|when|once"
+    r"|at|as|now|the|an?|us|nothing|no|everything|anything|whatever|which|over)\b", re.I)
 COMMIT_MSG = re.compile(r"""-m\s+(?:"(?:[^"\\]|\\.)*"|'[^']*'|@'.*?'@)""", re.S)
 # row 1203: the shell's line-break escapes, so "\nSELECT" in a printf reads as a SELECT
 ESCAPES = re.compile(r"\\[nrt]|`[nrt]")
@@ -534,8 +570,43 @@ def in_code(text, pos):
     return before.count("`") % 2 == 1 and "`" in after
 
 
+def _words(s):
+    return re.findall(r"[A-Za-z]+(?:['’][A-Za-z]+)?", s)
+
+
+def not_a_claim(text, m):
+    """Row 2091: is the claim word at `m` used in a frame that does not claim the work is done? The frame is read from
+    the words before it in its own CLAUSE (back to . , ; : ! ? ( ) | * a line break or ' - '), at most three of them:
+    (1) NEGATED - a negator among them ("Release was NOT built", "Not built yet", "nothing built on it");
+    (2) FUTURE or CONDITIONAL - a modal or subordinator among them ("it would have to be built", "I'll ask once it's
+        built", "sent as each passes"); `should` and `can` are NOT in the list: "should be fixed now" is the hedged
+        claim this guard exists for;
+    (3) a STATUS WORD - done/DONE right after 'at' or 'only', or followed by 'or (a) DECISION' ("you hear from me next
+        at DONE", "report only DONE or DECISION", "Reply only at done");
+    (4) inside an INSTRUCTION - its SENTENCE (back to . ! ? or a line break; a ':' does not end it) opens with an
+        imperative verb followed by a function word ("Commit what works now", "Put in the state: the items done").
+        The function word is what keeps "Commit 3f2a landed" and "Report written - done" claims."""
+    s = text[:m.start()]
+    clause = re.split(r"[.,;:!?()|*\n]| - | — ", s)[-1]
+    last = [w.lower() for w in _words(clause)[-3:]]
+    if any(w in NEGATORS or w.endswith("n't") or w.endswith("n’t") for w in last):
+        return True
+    if any(w in MODALS or w.endswith("'ll") or w.endswith("’ll") for w in last):
+        return True
+    if any(a == "to" and b == "be" for a, b in zip(last, last[1:])) or any(
+            a == "as" and b in ("each", "soon") for a, b in zip(last, last[1:])):
+        return True
+    word = m.group(0).lower()
+    if word == "done" and (last[-1:] in (["at"], ["only"]) or STATUS_AFTER.match(text, m.end())):
+        return True
+    sentence = re.split(r"[.!?\n]", s)[-1]
+    return bool(IMPERATIVE.match(sentence))
+
+
 def claim_in(text):
-    """The first claim word that is USED, not mentioned: a word wrapped in quotes ("passes") is skipped (row 1203)."""
+    """The first claim word that is USED, not mentioned: a word wrapped in quotes ("passes") is skipped (row 1203); so
+    is one in a code span or fence (row 2032), and one in a negated, future/conditional, status-word or instruction
+    frame (row 2091, not_a_claim)."""
     text = text or ""
     for m in CLAIM.finditer(text):
         before = text[m.start() - 1] if m.start() else ""
@@ -543,6 +614,8 @@ def claim_in(text):
         if before and after and before in QUOTES and after in QUOTES:
             continue
         if in_code(text, m.start()):
+            continue
+        if not_a_claim(text, m):
             continue
         return m
     return None
