@@ -10,6 +10,10 @@
 //   'APPLICATION DID NOT START', the windows of every process started since named, start-stuck-<n>s-screen.png, an ETABS
 //   that is this process's CHILD ended (none = nothing ended, said), exit 5. StartWatch.cs is a copy of KOR.Drafter's
 //   tested Core/Csi/CsiStartWatch.cs. UNPROVEN LIVE: no licence box was planted; the first staged start proves it.
+// PRE-CHECK START GATE (KOR.Drafter row 2103 step B, Ian 12 Nov #133436 M1): --precheck-takeoff <takeoff.exe> [--pin-storey P]
+//   runs `takeoff precheck model` on the model ETABS opens (--precheck-e2k may be left out; given, it must be the same
+//   bytes) before ETABS starts; anything but its exit 0, or neither that nor --no-precheck "<why>" given, = PRECHECK
+//   REFUSED, nothing started, exit 6. PrecheckStartGate.cs is a copy of KOR.Drafter's tested Core/Csi/PrecheckStartGate.cs.
 //
 // It copies the .e2k into <outDir> and opens THE COPY (the deliverable is never written), then writes <outDir>\report.txt:
 //   1. the import: File.ImportFile(TextFile) - the API returns a code and no log (ETABS 22.6 and 23.3 alike: the same
@@ -78,6 +82,7 @@ internal static class Program
     private static readonly List<string> Report = new();
     private static string _out = ".";
     private static bool _standardSolver;
+    private static (string? Takeoff, string? E2k, string? Pin, string? NoPrecheck, string? Bad, List<string> Others) _gate;
 
     private static void Say(string line) { Console.WriteLine(line); Report.Add(line); }
 
@@ -99,6 +104,10 @@ internal static class Program
             Console.WriteLine(StabilityGate(NegativeEigenvalues(File.ReadAllText(args[1])), out bool ok));
             return ok ? 0 : 1;
         }
+        // PRE-CHECK START GATE (KOR.Drafter row 2103 step B, Ian 12 Nov #133436 M1): its flags are taken out first and checked
+        // in Run on the very e2k ETABS opens, before ETABS starts
+        _gate = PrecheckStartGate.Parse(args);
+        args = _gate.Others.ToArray();
         string etabsExe = DefaultEtabs;
         for (int i = 0; i + 1 < args.Length; i++)
             if (args[i].Equals("--etabs", StringComparison.OrdinalIgnoreCase)) etabsExe = args[i + 1];
@@ -131,6 +140,16 @@ internal static class Program
         // a malformed --reactions/--support-storey, or --gravity with --reactions, is refused HERE, before ETABS starts:
         // the flags are only read, so a bad command line costs nothing (reviews 1254, 1255)
         if (ReactionArgsRefusal(args) is { } refusal) { Say($"REFUSED: {refusal} - ETABS was not started"); return 2; }
+        // the pre-check gate on the EXACT model ETABS opens: --precheck-e2k may be left out (then it is this source); given,
+        // it must be these bytes (sha256), else refused - the gate proves the file that runs, never a neighbour
+        string? gateE2k = _gate.E2k ?? (_gate.Takeoff != null ? source : null);
+        string? gateBad = _gate.Bad;
+        if (gateBad == null && _gate.E2k != null && (!File.Exists(_gate.E2k) || Sha(_gate.E2k) != Sha(source)))
+            gateBad = $"--precheck-e2k {_gate.E2k} is not the model ETABS opens ({Path.GetFileName(source)}, SHA-256 {Sha(source)[..16]})";
+        var verdict = PrecheckStartGate.Check(_gate.Takeoff, gateE2k, _gate.Pin, _gate.NoPrecheck, gateBad);
+        foreach (var l in verdict.Output) Say("   precheck| " + l);
+        Say(verdict.Line);
+        if (!verdict.Start) return PrecheckStartGate.RefusedExit;
 
         var before = Process.GetProcessesByName("ETABS").Select(p => p.Id).ToHashSet();
         var allBefore = CsiStartWatch.Snapshot();
