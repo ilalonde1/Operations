@@ -45,13 +45,14 @@ PROVEN = [
 CLEAN = ["The rehearsal recorded six of the nine readings.", "Deploy verified: 5 of 5 assemblies."]
 
 
-def run_hook(text, active=False):
+def run_hook(text, active=False, env=None):
     with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False, encoding="utf-8") as f:
         f.write(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": text}]}}) + "\n")
         path = f.name
     try:
         out = subprocess.run([sys.executable, "-I", GUARD], input=json.dumps({"transcript_path": path, "stop_hook_active": active}),
-                             capture_output=True, text=True, timeout=20).stdout
+                             capture_output=True, text=True, timeout=20,
+                             env={**{k: v for k, v in os.environ.items() if k != "KOR_REVIEWER_SESSION"}, **(env or {})}).stdout
     finally:
         os.unlink(path)
     return out
@@ -67,7 +68,16 @@ def main():
             print("WRONGLY BLOCKED:", t); failures += 1
     if run_hook(CAUGHT[0], active=True).strip():
         print("LOOPS: blocked again with stop_hook_active"); failures += 1
-    total = len(CAUGHT) + len(PROVEN) + len(CLEAN) + len(MISFIRES) + 1
+    # FW-RESET M8 (12 Nov): a kor_review reviewer session (KOR_REVIEWER_SESSION=1) is not read - 0 of 8 right, 159 of 315
+    # refusals in the week. 6774-like reviewer wording: blocked in a lead session, allowed in a reviewer session.
+    rev = "There are no rules yet for this table, and there is no secret in the diff."
+    if '"block"' not in run_hook(rev):
+        print("NOT BLOCKED in a lead session:", rev); failures += 1
+    if run_hook(rev, env={"KOR_REVIEWER_SESSION": "1"}).strip():
+        print("WRONGLY BLOCKED in a reviewer session:", rev); failures += 1
+    if '"block"' not in run_hook(CAUGHT[1], env={"KOR_REVIEWER_SESSION": "0"}):
+        print("NOT BLOCKED with the variable set to 0:", CAUGHT[1]); failures += 1
+    total = len(CAUGHT) + len(PROVEN) + len(CLEAN) + len(MISFIRES) + 1 + 3
     print(f"{total - failures} of {total} checks passed")
     sys.exit(1 if failures else 0)
 

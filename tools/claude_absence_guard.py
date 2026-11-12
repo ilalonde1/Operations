@@ -36,6 +36,7 @@ stdin  : the Stop payload (transcript_path, stop_hook_active)
 stdout : nothing (allow), or {"decision": "block", "reason": ...}
 """
 import json
+import os
 import re
 import sys
 
@@ -125,9 +126,19 @@ def first_claim(text):
     return None
 
 
-def main():
+# FW-RESET M8 (12 Nov, RESET-PLAN item 3): 159 of the 315 absence refusals in the week to 12 Nov were kor_review reviewer
+# sessions, judged on transcripts 0 of 8 right: a reviewer describes the diff it was handed ("there are no rules yet",
+# "no secrets", "I could not see the rest") and resends the same verdict, one paid turn each. The 3 judged right were all
+# lead sessions. kor_review (and kor_task's judge) start their sessions with KOR_REVIEWER_SESSION=1, and the hook inherits
+# the session's environment, so such a session is not read. DOES NOT CATCH: a reviewer whose verdict really claims an
+# absence it did not check - its verdict is read by the pre-push hook and by people, not by this gate.
+REVIEWER_ENV = "KOR_REVIEWER_SESSION"
+
+
+def main(env=None):
+    env = os.environ if env is None else env
     payload = json.load(sys.stdin)
-    if payload.get("stop_hook_active"):
+    if payload.get("stop_hook_active") or env.get(REVIEWER_ENV) == "1":
         return
     path = payload.get("transcript_path")
     if not path:
