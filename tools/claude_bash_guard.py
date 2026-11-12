@@ -20,6 +20,38 @@ import sys
 import tempfile
 import time
 
+class HeredocEscape:
+    """Rule 3b's matcher (narrowed 12 Nov, see the rule): .search(cmd) is truthy when a heredoc body holds an escape that
+    Python or bash will change."""
+    HEAD = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_][\w-]*)\1[^\n]*\n")
+    RAW = re.compile(r"(?<![\w])(?:[rR][bB]?|[bB][rR])(?:'''[\s\S]*?'''|\"\"\"[\s\S]*?\"\"\"|'[^'\n]*'|\"[^\"\n]*\")")
+    BAD = re.compile(r"\\[^nrt'\"$`\\\s]")
+
+    def search(self, cmd):
+        for m in self.HEAD.finditer(cmd):
+            quoted, delim = bool(m.group(1)), m.group(2)
+            end = re.search(rf"(?m)^[ \t]*{re.escape(delim)}[ \t]*$", cmd[m.end():])
+            body = cmd[m.end():m.end() + end.start()] if end else cmd[m.end():]
+            if not quoted and "\\\\" in body:
+                return True
+            text = self.RAW.sub("''", body).replace("\\\\", "")
+            if self.BAD.search(text):
+                return True
+        return None
+
+
+class QuotesBlanked:
+    """Rule 8's matcher (narrowed 12 Nov): the pattern runs on the command with every quoted string emptied, so a '|' inside
+    --filter "A|B", or 'dotnet build' inside an echo or a JSON string, is not a pipe or a build."""
+    QUOTED = re.compile(r"\"(?:[^\"\\\n]|\\.)*\"|'[^'\n]*'")
+
+    def __init__(self, pattern):
+        self.pattern = pattern
+
+    def search(self, cmd):
+        return self.pattern.search(self.QUOTED.sub('""', cmd))
+
+
 # Repo rule 7 in force here too: every pattern is a raw string.
 RULES = [
     # 1. A RECURSIVE WALK OVER SMB. db/tools/verify_e2k_claims.ps1 says it in its own
@@ -86,9 +118,19 @@ RULES = [
      "Backslashes inside python -c. Repo rule 7: bash eats them and the path or regex "
      "silently changes. Write the script to a file with the Write tool and run that."),
 
-    (re.compile(r"<<\s*['\"]?(?:EOF|PY|SH)\b[\s\S]*\\[A-Za-z]"),
-     "A backslash-letter sequence inside a heredoc. Repo rule 7: this is how \\P, \\03 and "
-     "a lost UNC prefix happened. Use the Write or Edit tool for a Windows path or regex."),
+    #    NARROWED 12 Nov (FW-RESET M8, RESET-PLAN item 3): `<<'EOF' ... \\[A-Za-z]` matched ANY backslash-letter after a
+    #    heredoc began. 587 refusals in the week to 12 Nov; judged on transcripts, 1 of 8 right (4970: a C# regex through a
+    #    non-raw Python string) and 7 of 8 wrong - '\r\n' and '\n' in Python strings, regexes already in r'' literals, all
+    #    in quoted heredocs where bash changes nothing (5120: nl='\r\n' if '\r\n' in t else '\n').
+    #    CHECKS (HeredocEscape): an UNQUOTED delimiter whose body holds '\\' (bash collapses it: the lost UNC prefix);
+    #      in any heredoc body, a backslash followed by anything but n r t, a quote, $, ` or another backslash, outside
+    #      r''/r"" literals (\b becomes a backspace, \0 octal, \U a SyntaxError, \P/\d kept only by luck).
+    #    ALLOWS: '\n', '\r\n', '\t', '\\' pairs, and anything inside a raw literal.
+    #    DOES NOT CATCH: a '\n' that was meant for C# and lands as a real newline; a non-Python body (PowerShell, SQL)
+    #      whose backslash is harmless is still refused; a path in a raw literal that ends in a backslash.
+    (HeredocEscape(), "A backslash escape inside a heredoc that Python (or bash, for an unquoted delimiter) will change. Repo rule 7: "
+     "this is how \\P, \\03, a \\b backspace in a C# regex and a lost UNC prefix happened. Use a raw literal (r'...'), or "
+     "the Write or Edit tool for a Windows path or regex."),
 
     # 4. KILLING A PROCESS BY NAME. Several Claude sessions run test suites on this box at once.
     #    On 2026-09-18 a session's pre-build `Get-Process testhost* | Stop-Process -Force` and
@@ -108,7 +150,11 @@ RULES = [
     #    On 2026-10-14 `dotnet build ... 2>&1 | tail -30` exited 0 over four CS0104 errors; "build
     #    green" was reported, the filtered tests and the render harness then ran on the previous
     #    binaries, and five stale PNGs were read as evidence of the new code. CLAUDE.md rule 5.
-    (re.compile(r"(?is)^(?!.*pipefail).*?\bdotnet\s+(?:build|test|publish)\b[^|;\n]*\|(?!\|)"),
+    #    NARROWED 12 Nov (FW-RESET M8): 62 refusals in the week, judged 1 of 8 right (4753: dotnet test | grep). 5 of 8
+    #    wrong were the '|' inside --filter "A|B" with the output sent to a file and the exit code echoed (6351); 2 of 8
+    #    were 'dotnet build' inside a JSON or echo string (3565, 5361). So quoted strings are emptied first and dotnet
+    #    must stand in command position. DOES NOT CATCH: a build run through a variable ($D build | tail).
+    (QuotesBlanked(re.compile(r"(?is)^(?!.*pipefail).*?(?:^|[;&|(\n])\s*(?:\S*[/\\])?dotnet(?:\.exe)?\s+(?:build|test|publish)\b[^|;\n]*\|(?!\|)")),
      "A dotnet build/test/publish piped without pipefail: the pipe's exit code replaces the build's "
      "(2026-10-14: four CS0104 errors reported as a green build; tests and PNGs then ran on stale "
      "binaries). Prefix the command with `set -o pipefail &&`, or do not pipe it."),
@@ -180,7 +226,8 @@ SQLCMD_QUERY_TIMEOUT = re.compile(r'(?<!\S)-t\s*\d+')
 #    that asks for more than two minutes must open that line with its expected duration
 #    ("~3 min: ..."), or it does not run.
 LONG_TIMEOUT_MS = 120_000
-DURATION_FIRST = re.compile(r"(?i)^\s*~?\s*\d+\s*(?:s|sec|secs|seconds|m|min|mins|minutes|h|hr|hours)\b")
+# 12 Nov (FW-RESET M8): a range ("~1-2 min:", "~5-10 min") is a duration too - 6696 was refused for it.
+DURATION_FIRST = re.compile(r"(?i)^\s*~?\s*\d+(?:\s*(?:-|–|to)\s*\d+)?\s*(?:s|sec|secs|seconds|m|min|mins|minutes|h|hr|hours)\b")
 
 # 8. A SLOW RUN WHOSE INPUTS ARE NOT THERE. On 2026-10-19 three runs were wasted in one afternoon on inputs a
 #    second's check would have shown missing: the five stick-file PDFs gone from the local mirror (empty since

@@ -50,6 +50,8 @@ def duration_cases():
         ("long, no description",         600000, None,                              "deny"),
         ("long, duration not first",     600000, "Run the App suite (~3 min)",     "deny"),
         ("long, duration first",         600000, "~3 min: run the App suite",      "allow"),
+        ("long, duration range first (6696, 12 Nov)", 600000, "~1-2 min: run the viewer check", "allow"),
+        ("long, range with no unit",     600000, "~1-2: run the viewer check",     "deny"),
         ("long, seconds first",          180000, "90 s: build and test",           "allow"),
         ("short, no description",        60000,  None,                              "allow"),
         ("default timeout",              None,   "Run the Data suite",             "allow"),
@@ -80,6 +82,23 @@ CASES = [
     ("set -o pipefail && dotnet build Kor.Opportunities.Data/Kor.Opportunities.Data.csproj -c Debug 2>&1 | tail -30", "allow"),
     ("dotnet build Kor.Opportunities.Data/Kor.Opportunities.Data.csproj -c Debug -nologo", "allow"),
     ("dotnet build Kor.Opportunities.Data/Kor.Opportunities.Data.csproj || echo build failed", "allow"),
+    # rule 8 narrowed 12 Nov (FW-RESET M8): judged wrong 6351 (a '|' inside --filter "A|B", output to a file), 3565/5361
+    # (dotnet build inside a quoted string); judged right 4753 (dotnet test | grep) must still be denied
+    ('dotnet test X.Tests --filter "FullyQualifiedName~A|FullyQualifiedName~B" > /tmp/t1.log 2>&1; echo "rc=$?"', "allow"),
+    ("python -I -c \"import json; print(json.dumps({'cmd': 'dotnet build X.csproj'}))\" | head -3", "allow"),
+    ('echo "run dotnet publish next" | tee note.txt', "allow"),
+    ('cd "/c/x" && dotnet test X.Tests --list-tests 2>&1 | grep -c Test', "deny"),
+    ('dotnet test X.Tests --filter "A|B" 2>&1 | tail -5', "deny"),
+    # rule 3b narrowed 12 Nov: judged wrong 5120-like ('\r\n' and '\n' in a quoted heredoc), right 4970-like (a C# \b
+    # through a non-raw Python string), and the UNC collapse an unquoted delimiter does
+    ("python - <<'EOF'\nnl = '\\r\\n' if '\\r\\n' in t else '\\n'\nprint('a\\tb')\nEOF", "allow"),
+    ("python - <<'EOF'\nimport re\nR = re.compile(r'\\bLEVEL\\s+\\d+')\nP = r\"C:\\Users\\x\"\nEOF", "allow"),
+    ("python - <<'EOF'\ns = s.replace('x', '@\"\\bLEVEL\\b\"')\nEOF", "deny"),
+    ("python - <<'EOF'\np = 'C:\\Users\\ilalonde\\x.txt'\nEOF", "deny"),
+    ("python - <<'EOF'\nc = '\\03'\nEOF", "deny"),
+    ("cat > x.ps1 <<EOF\n\\\\Kor-fs01\\Projects\nEOF", "deny"),
+    ("python - <<'EOF'\np = 'a\\\\b'\nEOF", "allow"),
+    ("python - <<PY\nprint('\\P')\nPY", "deny"),
     # rule 2: destroying uncommitted work
     ("git checkout -- src/File.cs", "deny"),
     ("git stash push -- src/File.cs", "allow"),
