@@ -113,6 +113,11 @@ CASES = [
     ("cp a.py /tmp/ && git checkout -- a.py b.py", "deny"),
     ("git checkout -- a.py && cp a.py /tmp/", "deny"),
     ("git restore -- a.py", "deny"),
+    # review row 2025 minors: a stash that saves nothing, and a longer path that merely contains the discarded one
+    ("git stash list; echo a.py; git checkout -- a.py", "deny"),
+    ("cp tools/xa.py /tmp/ && git checkout -- a.py", "deny"),
+    ("git stash && git checkout -- a.py", "allow"),
+    ("git stash push -- a.py && git checkout -- a.py", "allow"),
     ('git commit -q -m "never git checkout -- x without a save"', "allow"),
     # rule 6 narrowed 12 Nov: judged wrong 4941/6288 (the word in a grep pattern after \|), 6380 (sqlcmd -?); judged right
     # 6292/6648 (a real -Q query with no -t) must still be denied

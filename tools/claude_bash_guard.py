@@ -66,7 +66,8 @@ class UnsavedCheckout:
     unless the same command, BEFORE the discard, saved the work (git stash, a cp / Copy-Item, or a git diff/show
     redirected to a file) and names every path it discards."""
     CALL = re.compile(r"git\s+(?:checkout|restore)\s+--(?=\s|$)([^;&|\n)]*)")
-    SAVE = re.compile(r"git\s+stash\b"
+    STASH_ALL = re.compile(r"git\s+stash(?:\s+push)?\s*(?:$|[;&|)\n])")
+    SAVE = re.compile(r"git\s+stash\s+(?:push|save)\b"
                       r"|(?:^|[;&|(\n]\s*|\bdo\s+|\bthen\s+)(?:cp|Copy-Item)\b"
                       r"|git\s+(?:diff|show)\b(?![^;&|\n]*--(?:stat|shortstat|numstat|name-only|name-status)\b)"
                       r"[^;&|\n]*?(?<![\d&>])>{1,2}(?!&)")
@@ -76,7 +77,11 @@ class UnsavedCheckout:
         for m in self.CALL.finditer(blank):
             args = [a.strip("\"'") for a in cmd[m.start(1):m.end(1)].split()]
             before = cmd[:m.start()]
-            if args and self.SAVE.search(blank[:m.start()]) and all(a in before for a in args):
+            if self.STASH_ALL.search(blank[:m.start()]):   # a bare `git stash` / `git stash push` keeps every change
+                continue
+            # each path must stand in `before` as a whole path (review row 2025: 'tools/xa.py' is not 'a.py')
+            if args and self.SAVE.search(blank[:m.start()]) and all(
+                    re.search(r"(?<![\w./\\-])" + re.escape(a) + r"(?![\w./\\-])", before) for a in args):
                 continue
             return m
         return None
@@ -141,7 +146,8 @@ RULES = [
     #      git diff/show (not --stat/--name-only) redirected to a file - and names every path it discards.
     #    DOES NOT CATCH: a save step that writes nothing (cp to a folder that does not exist, an empty diff of an
     #      untracked file), or a save of different paths that merely mention the discarded ones; a discard through a
-    #      variable that the save step never expanded the same way.
+    #      variable that the save step never expanded the same way; a discard inside a quoted string run by another
+    #      shell (bash -c "git checkout -- x", pwsh -Command "...") - quoted strings are emptied first, as in rules 6/8.
     (UnsavedCheckout(),
      "git checkout/restore -- discards uncommitted work with no undo, and another session "
      "may own it. Use: git stash push -- <paths>, or save each path first in the same command "
