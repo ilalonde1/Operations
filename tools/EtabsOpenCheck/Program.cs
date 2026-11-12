@@ -125,7 +125,12 @@ internal static class Program
 
     private static int Run(string[] args, string etabsExe)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: EtabsOpenCheck <model.e2k> <outDir> [--etabs <ETABS.exe>]"); return 1; }
+        if (args.Length < 2)
+        {
+            Console.Error.WriteLine("Usage: EtabsOpenCheck <model.e2k> <outDir> [--etabs <ETABS.exe>]");
+            Console.Error.WriteLine("       (--precheck-takeoff <takeoff.exe> [--precheck-e2k <the same e2k>] [--pin-storey P] | --no-precheck \"<why>\"; a value may not start with --)");
+            return 1;
+        }
         string source = Path.GetFullPath(args[0]);
         _out = Path.GetFullPath(args[1]);
         _standardSolver = args.Any(x => x.Equals("--standard-solver", StringComparison.OrdinalIgnoreCase));
@@ -140,12 +145,12 @@ internal static class Program
         // a malformed --reactions/--support-storey, or --gravity with --reactions, is refused HERE, before ETABS starts:
         // the flags are only read, so a bad command line costs nothing (reviews 1254, 1255)
         if (ReactionArgsRefusal(args) is { } refusal) { Say($"REFUSED: {refusal} - ETABS was not started"); return 2; }
-        // the pre-check gate on the EXACT model ETABS opens: --precheck-e2k may be left out (then it is this source); given,
-        // it must be these bytes (sha256), else refused - the gate proves the file that runs, never a neighbour
-        string? gateE2k = _gate.E2k ?? (_gate.Takeoff != null ? source : null);
+        // the pre-check gate on the EXACT file ETABS opens - THE COPY (review 1928 (b)): --precheck-e2k may be left out;
+        // given, it must be the same bytes (full sha256), else refused - the gate proves the file that runs, never a neighbour
+        string? gateE2k = _gate.E2k != null || _gate.Takeoff != null ? copy : null;
         string? gateBad = _gate.Bad;
-        if (gateBad == null && _gate.E2k != null && (!File.Exists(_gate.E2k) || Sha(_gate.E2k) != Sha(source)))
-            gateBad = $"--precheck-e2k {_gate.E2k} is not the model ETABS opens ({Path.GetFileName(source)}, SHA-256 {Sha(source)[..16]})";
+        if (gateBad == null && _gate.E2k != null && (!File.Exists(_gate.E2k) || ShaFull(_gate.E2k) != ShaFull(copy)))
+            gateBad = $"--precheck-e2k {_gate.E2k} is not the model ETABS opens ({copy}, SHA-256 {ShaFull(copy)})";
         var verdict = PrecheckStartGate.Check(_gate.Takeoff, gateE2k, _gate.Pin, _gate.NoPrecheck, gateBad);
         foreach (var l in verdict.Output) Say("   precheck| " + l);
         Say(verdict.Line);
@@ -820,6 +825,13 @@ internal static class Program
     {
         using var s = File.OpenRead(path);
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(s))[..16];
+    }
+
+    /// <summary>The whole SHA-256 (Sha above is a 16-hex prefix, for the report); compares use this (review 1928 (a)).</summary>
+    private static string ShaFull(string path)
+    {
+        using var s = File.OpenRead(path);
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(s)).ToLowerInvariant();
     }
 
     [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
