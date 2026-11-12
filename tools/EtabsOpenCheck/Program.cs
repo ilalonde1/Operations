@@ -4,6 +4,12 @@
 // user, and its windows need a desktop to be pictured), started as a one-off interactive scheduled task.
 //
 //     EtabsOpenCheck <model.e2k> <outDir> [--etabs "C:\Program Files\Computers and Structures\ETABS 23\ETABS.exe"]
+//                    [--start-timeout-s 120]
+//
+// START WATCH (KOR.Drafter row 2104, 12 Nov): ApplicationStart not returned within --start-timeout-s (default 120) ->
+//   'APPLICATION DID NOT START', the windows of every process started since named, start-stuck-<n>s-screen.png, an ETABS
+//   that is this process's CHILD ended (none = nothing ended, said), exit 5. StartWatch.cs is a copy of KOR.Drafter's
+//   tested Core/Csi/CsiStartWatch.cs. UNPROVEN LIVE: no licence box was planted; the first staged start proves it.
 //
 // It copies the .e2k into <outDir> and opens THE COPY (the deliverable is never written), then writes <outDir>\report.txt:
 //   1. the import: File.ImportFile(TextFile) - the API returns a code and no log (ETABS 22.6 and 23.3 alike: the same
@@ -127,9 +133,11 @@ internal static class Program
         if (ReactionArgsRefusal(args) is { } refusal) { Say($"REFUSED: {refusal} - ETABS was not started"); return 2; }
 
         var before = Process.GetProcessesByName("ETABS").Select(p => p.Id).ToHashSet();
+        var allBefore = CsiStartWatch.Snapshot();
         cHelper helper = new Helper();
         cOAPI etabs = helper.CreateObject(etabsExe) ?? throw new InvalidOperationException("cHelper.CreateObject gave nothing back");
-        int ret = etabs.ApplicationStart();
+        // KOR.Drafter row 2104: ApplicationStart blocks behind a licence or start box (SAFE L2, 12 Nov: 37.6 min, then -1)
+        int ret = CsiStartWatch.Run(() => etabs.ApplicationStart(), TimeSpan.FromSeconds(StartTimeoutS(args)), () => StartDidNotReturn(StartTimeoutS(args), allBefore));
         Say($"ApplicationStart: {ret}{(ret != 0 ? " (licence? nothing else was tried)" : "")}");
         if (ret != 0) return 3;
         Process? mine = null;
@@ -622,6 +630,9 @@ internal static class Program
         if (ss >= 0 && rx < 0) return "--support-storey is read only with --reactions";
         if (rx >= 0 && args.Any(x => x.Equals("--gravity", StringComparison.OrdinalIgnoreCase)))
             return "--gravity and --reactions together - --gravity pins every Base point on the same model, supports the reactions' gate would not state";
+        int st = Array.FindIndex(args, x => x.Equals("--start-timeout-s", StringComparison.OrdinalIgnoreCase));
+        if (st >= 0 && (st + 1 >= args.Length || !int.TryParse(args[st + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int s) || s < 10))
+            return "--start-timeout-s wants whole seconds, at least 10";
         return null;
     }
 
@@ -737,6 +748,41 @@ internal static class Program
             Say($"   picture: {name}.png{(h == IntPtr.Zero ? " (no window handle - screen only)" : "")} + {name}-screen.png");
         }
         catch (Exception ex) { Say($"   picture {name} not taken: {ex.GetType().Name}: {ex.Message}"); }
+    }
+
+    /// <summary>--start-timeout-s N (KOR.Drafter row 2104; default 120, at least 10 - checked with the other flags before
+    /// ETABS starts, see ReactionArgsRefusal).</summary>
+    private static int StartTimeoutS(string[] args)
+    {
+        int i = Array.FindIndex(args, a => a.Equals("--start-timeout-s", StringComparison.OrdinalIgnoreCase));
+        return i >= 0 && i + 1 < args.Length && int.TryParse(args[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int s) && s >= 10 ? s : 120;
+    }
+
+    /// <summary>From the start watch's thread when ApplicationStart has not returned within the cap: name every window of a
+    /// process started since (the licence or start box), picture the screen, end only an ETABS that is THIS process's
+    /// child (none = nothing ended, said; a sibling run's ETABS is never touched), write the report and exit 5 - the COM
+    /// call never returns. Exit 5: 0-4 are taken. UNPROVEN LIVE: no licence box was planted.</summary>
+    private static void StartDidNotReturn(int capS, HashSet<int> allBefore)
+    {
+        lock (Report)
+        {
+            Say($"APPLICATION DID NOT START within {capS} s: ApplicationStart has not returned (a licence or start dialog holds it?)");
+            var titles = CsiStartWatch.WindowTitlesOfProcessesNotIn(allBefore);
+            Say(titles.Count == 0 ? "   windows of processes started since: none visible" : "   windows of processes started since: " + string.Join("; ", titles));
+            CaptureScreen($"start-stuck-{capS}s-screen");
+            var mine = CsiStartWatch.ChildrenNamed("ETABS", Environment.ProcessId);
+            var others = Process.GetProcessesByName("ETABS").Select(p => { using (p) return p.Id; }).Where(id => !mine.Any(m => m.Id == id)).ToList();
+            if (mine.Count == 0) Say($"   no ETABS is a child of this process (pid {Environment.ProcessId}): NOTHING ENDED - end the stuck one by hand");
+            foreach (var p in mine)
+                using (p)
+                {
+                    try { p.Kill(); Say($"   our ETABS (pid {p.Id}, child of this process) ended"); }
+                    catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { Say($"   our ETABS (pid {p.Id}) not ended: {ex.Message}"); }
+                }
+            Say($"   other ETABS left alone: {(others.Count == 0 ? "none" : string.Join(", ", others))}");
+            try { File.WriteAllLines(Path.Combine(_out, "report.txt"), Report, new UTF8Encoding(true)); } catch (IOException) { }
+        }
+        Environment.Exit(5);
     }
 
     private static void CaptureScreen(string name)
