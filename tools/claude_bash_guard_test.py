@@ -102,6 +102,31 @@ CASES = [
     # rule 2: destroying uncommitted work
     ("git checkout -- src/File.cs", "deny"),
     ("git stash push -- src/File.cs", "allow"),
+    # rule 2 narrowed 12 Nov (FW-RESET-2 M8): judged wrong 4822/5092 (git diff -- <p> > file first), 6472/5618 (cp aside
+    # first); judged right 6790 (only --stat before it) must still be denied, and so must a save that comes AFTER, a save
+    # that misses a path, and a diff whose only redirect is 2>&1
+    ('cd "/c/x" && git diff -- tools/s.py > work/s8/attempt.patch && sha256sum work/s8/attempt.patch && git checkout -- tools/s.py', "allow"),
+    ('cd "/c/x" && cp coord/sweep.csv "$TEMP/sweep-new.csv" && git checkout -- coord/sweep.csv && python -I x.py', "allow"),
+    ('S="a.cs b.cs"; mkdir -p ../_jfl; for f in $S; do cp $f ../_jfl/; done; git checkout -- $S', "allow"),
+    ('cd "C:/x" && git diff --stat -- Tests/X.cs && git checkout -- Tests/X.cs', "deny"),
+    ("git diff -- a.py 2>&1 && git checkout -- a.py", "deny"),
+    ("cp a.py /tmp/ && git checkout -- a.py b.py", "deny"),
+    ("git checkout -- a.py && cp a.py /tmp/", "deny"),
+    ("git restore -- a.py", "deny"),
+    ('git commit -q -m "never git checkout -- x without a save"', "allow"),
+    # rule 6 narrowed 12 Nov: judged wrong 4941/6288 (the word in a grep pattern after \|), 6380 (sqlcmd -?); judged right
+    # 6292/6648 (a real -Q query with no -t) must still be denied
+    (r'cd "/c/x" && python -I oqwide.py -i r.sql -d KorStandards 2>&1; echo "exit $?"; grep -n "argv\|-d\b\|sqlcmd" oqwide.py | head -20', "allow"),
+    (r'grep -n "sqlcmd\|STANDARDSDB\|KORBRAIN_SQL" tools/standards_db.py | head -20', "allow"),
+    ("sqlcmd -? >/dev/null 2>&1 && echo sqlcmd ok", "allow"),
+    (r'cd /tmp; sqlcmd -S "KOR-APP01\SQLEXPRESS" -d KorStandards -E -W -s"|" -Q "SET NOCOUNT ON; SELECT 1" 2>&1 | head -40', "deny"),
+    (r'sqlcmd -S "KOR-APP01\SQLEXPRESS" -d KorStandards -E -Q "SELECT TOP 0 * FROM brain.Memory" 2>&1 | head -3', "deny"),
+    ('sqlcmd -? ; sqlcmd -S h -Q "SELECT 1"', "deny"),
+    # rule 8, review row 1988 minor: a wrapper in front of dotnet is still command position
+    ("timeout 600 dotnet test X.Tests 2>&1 | tail -5", "deny"),
+    ("time dotnet build X.csproj | tail", "deny"),
+    ("env A=1 dotnet build X.csproj | tail", "deny"),
+    ("timeout 600 dotnet test X.Tests > t.log 2>&1", "allow"),
     # rule 1: a recursive walk over SMB
     ("find //Kor-fs01/Projects -name '*.e2k'", "deny"),
     ("ls //Kor-fs01/Projects/Projects", "allow"),

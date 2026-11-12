@@ -52,6 +52,36 @@ class QuotesBlanked:
         return self.pattern.search(self.QUOTED.sub('""', cmd))
 
 
+def blank_quotes(cmd, keep=None):
+    """cmd with the inside of every quoted string replaced by spaces - same length, so a position in the result is a
+    position in cmd. A quoted string whose inside matches keep (e.g. a quoted path to an executable) is left as it is."""
+    def sub(m):
+        inner = m.group(0)[1:-1]
+        return m.group(0) if keep and keep.match(inner) else m.group(0)[0] + " " * len(inner) + m.group(0)[-1]
+    return QuotesBlanked.QUOTED.sub(sub, cmd)
+
+
+class UnsavedCheckout:
+    """Rule 2's matcher for `git checkout/restore -- <paths>` (narrowed 12 Nov, see the rule): .search(cmd) is truthy
+    unless the same command, BEFORE the discard, saved the work (git stash, a cp / Copy-Item, or a git diff/show
+    redirected to a file) and names every path it discards."""
+    CALL = re.compile(r"git\s+(?:checkout|restore)\s+--(?=\s|$)([^;&|\n)]*)")
+    SAVE = re.compile(r"git\s+stash\b"
+                      r"|(?:^|[;&|(\n]\s*|\bdo\s+|\bthen\s+)(?:cp|Copy-Item)\b"
+                      r"|git\s+(?:diff|show)\b(?![^;&|\n]*--(?:stat|shortstat|numstat|name-only|name-status)\b)"
+                      r"[^;&|\n]*?(?<![\d&>])>{1,2}(?!&)")
+
+    def search(self, cmd):
+        blank = blank_quotes(cmd)
+        for m in self.CALL.finditer(blank):
+            args = [a.strip("\"'") for a in cmd[m.start(1):m.end(1)].split()]
+            before = cmd[:m.start()]
+            if args and self.SAVE.search(blank[:m.start()]) and all(a in before for a in args):
+                continue
+            return m
+        return None
+
+
 # Repo rule 7 in force here too: every pattern is a raw string.
 RULES = [
     # 1. A RECURSIVE WALK OVER SMB. db/tools/verify_e2k_claims.ps1 says it in its own
@@ -103,9 +133,19 @@ RULES = [
     # 2. DESTROYING UNCOMMITTED WORK. On 2026-08-25 a `git checkout --` wiped a parallel
     #    session's uncommitted module. There is no undo; it survived only because a
     #    transcript still held the edit. `git stash push` keeps it.
-    (re.compile(r"git\s+(?:checkout|restore)\s+--(?:\s|$)"),
+    #    NARROWED 12 Nov (FW-RESET-2 M8, RESET-PLAN item 3): judged on transcripts 1 of 5 right (6790: only a
+    #    `git diff --stat` before it, in a shared checkout) and 4 of 5 wrong - 4822, 5092 saved the paths with
+    #    `git diff -- <p> > file`, 6472 and 5618 cp'd them aside first, in the same command.
+    #    CHECKS (UnsavedCheckout): every `git checkout|restore -- <paths>` outside a quoted string.
+    #    ALLOWS: one whose command, BEFORE it, has a save step - git stash, cp / Copy-Item in command position, or a
+    #      git diff/show (not --stat/--name-only) redirected to a file - and names every path it discards.
+    #    DOES NOT CATCH: a save step that writes nothing (cp to a folder that does not exist, an empty diff of an
+    #      untracked file), or a save of different paths that merely mention the discarded ones; a discard through a
+    #      variable that the save step never expanded the same way.
+    (UnsavedCheckout(),
      "git checkout/restore -- discards uncommitted work with no undo, and another session "
-     "may own it. Use: git stash push -- <paths>"),
+     "may own it. Use: git stash push -- <paths>, or save each path first in the same command "
+     "(git diff -- <paths> > file, or cp)."),
 
     (re.compile(r"git\s+reset\s+--hard|git\s+clean\s+-\w*[dfx]"),
      "git reset --hard / git clean destroys uncommitted work with no undo. "
@@ -154,7 +194,12 @@ RULES = [
     #    wrong were the '|' inside --filter "A|B" with the output sent to a file and the exit code echoed (6351); 2 of 8
     #    were 'dotnet build' inside a JSON or echo string (3565, 5361). So quoted strings are emptied first and dotnet
     #    must stand in command position. DOES NOT CATCH: a build run through a variable ($D build | tail).
-    (QuotesBlanked(re.compile(r"(?is)^(?!.*pipefail).*?(?:^|[;&|(\n])\s*(?:\S*[/\\])?dotnet(?:\.exe)?\s+(?:build|test|publish)\b[^|;\n]*\|(?!\|)")),
+    #    12 Nov (review row 1988 minor): a wrapper in front of dotnet - timeout N, time, env, nice, command, VAR=x - is
+    #    still command position (`timeout 600 dotnet test X | tail` refused again). DOES NOT CATCH either: a build
+    #    inside a quoted string run by bash -c / pwsh -Command (the quotes are emptied first).
+    (QuotesBlanked(re.compile(r"(?is)^(?!.*pipefail).*?(?:^|[;&|(\n])\s*"
+                              r"(?:(?:timeout(?:\s+-\S+)*\s+\S+|time|env|nice|command|[A-Za-z_]\w*=\S*)\s+)*"
+                              r"(?:\S*[/\\])?dotnet(?:\.exe)?\s+(?:build|test|publish)\b[^|;\n]*\|(?!\|)")),
      "A dotnet build/test/publish piped without pipefail: the pipe's exit code replaces the build's "
      "(2026-10-14: four CS0104 errors reported as a green build; tests and PNGs then ran on stale "
      "binaries). Prefix the command with `set -o pipefail &&`, or do not pipe it."),
@@ -217,8 +262,25 @@ DELIBERATE_FULL = re.compile(r"\bFULL_SUITE=1\b")
 #    `python [-flags]`) without -t. ALLOWS: oq.py / oqwide.py, which pass -l 15 -t 120 themselves.
 #    DOES NOT CATCH: a copy of oq.py edited to drop its timeouts; a SqlClient tool with
 #    CommandTimeout = 0; a query that is merely slow, not hung, inside its 120 seconds.
+#    NARROWED 12 Nov (FW-RESET-2 M8): judged 2 of 5 right (6292, 6648: a real -Q query with no -t) and 3 of 5 wrong -
+#    4941 and 6288 were the WORD sqlcmd inside a grep pattern after '\|' (read as a pipe), 6288/6380 a `sqlcmd -?`
+#    (help, no query). So the call is looked for with quoted strings emptied (a quoted string that is itself a path
+#    to sqlcmd is kept: "C:/Program Files/sqlcmd" is still a call), and a call whose only argument is -? or /? passes.
+#    DOES NOT CATCH, added: sqlcmd run as a quoted argument of another shell (pwsh -Command "sqlcmd ...").
+#    KNOWN FALSE REFUSAL (seen 12 Nov on this commit's own message): a heredoc body - a `git commit -F -` message -
+#    with sqlcmd at a line start or after '(' is read as a call. Write the message to a file and use -F <file>.
 RAW_SQLCMD_CALL = re.compile(r'(?im)(?:^|[;&|(])\s*(?:&\s*)?(?:"[^"\n]*[/\\]|[^\s"]*[/\\])?sqlcmd(?:\.exe)?"?(?=\s|$)')
 SQLCMD_QUERY_TIMEOUT = re.compile(r'(?<!\S)-t\s*\d+')
+SQLCMD_PATH = re.compile(r'(?i)^[^|"\n]*?(?:^|[/\\])sqlcmd(?:\.exe)?$')
+SQLCMD_HELP = re.compile(r'\s+[-/]\?(?=\s|$|[;&|)])')
+
+
+def sqlcmd_without_timeout(cmd):
+    """Rule 6: a sqlcmd call (not a mention inside a quoted string, not `sqlcmd -?`) in a command with no -t."""
+    if SQLCMD_QUERY_TIMEOUT.search(cmd):
+        return False
+    text = blank_quotes(cmd, keep=SQLCMD_PATH)
+    return any(not SQLCMD_HELP.match(text, m.end()) for m in RAW_SQLCMD_CALL.finditer(text))
 
 # 7. GOING SILENT. "Say the duration before any step over a minute" was promised on
 #    2026-10-13 and broken the same afternoon: a 3.5-minute suite ran with no word, then a
@@ -365,7 +427,7 @@ def main():
                  "Missing:\n  " + "\n  ".join(missing) + "\nFind where each went, mend the path in "
                  "SixSetsBuildAsBankedTests.cs or restore the mirror, then run. (Rule 8, 2026-10-19.)")
 
-    if RAW_SQLCMD_CALL.search(cmd) and not SQLCMD_QUERY_TIMEOUT.search(cmd):
+    if sqlcmd_without_timeout(cmd):
         deny("sqlcmd without a query timeout: its default is 0, which waits forever, and three calls hung "
              "for minutes over the VPN on 2026-10-13. Add -t <seconds> (and -l 15 for the login), or use "
              "oq.py, which sets both.")
