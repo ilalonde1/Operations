@@ -159,8 +159,44 @@ REMAP_RE = [
 ]
 
 
+# Row 1982 JM-NO-PHASE2 (Ian, 13 Nov: "remove phase 2"; #133596: a FULL peer review, this issue gravity, the lateral
+# and seismic review the next issue): each source wording is rewritten here (the frozen package is not edited), and
+# the build refuses any "phase 2" / "phase two" left in the PDFs, the viewer or a shipped text file (PHASE2_RE).
+SCOPE_RE = [
+    # Ian #133596: a FULL peer review; this issue covers gravity, the lateral and seismic review is the next issue
+    (r"\*\*Gravity only\.\*\* Lateral \(wind and seismic\) is \*\*not reviewed\*\*\. For a 31-storey concrete tower in "
+     r"Vancouver with\s+coupled shear walls, we recommend a \*\*phase 2 lateral review\*\*: the core's coupling beams, "
+     r"drift, the core pad's\s+overturning, and the diaphragms at the transfer levels\. F10, F15 and F21 list what WHM "
+     r"would need to provide\.",
+     "**This issue covers gravity.** The lateral and seismic review (wind and seismic: the core's coupling beams, drift, "
+     "the core pad's overturning, and the diaphragms at the transfer levels) follows as the next issue of this package. "
+     "F10, F15 and F21 list what WHM would need to provide."),
+    (r"\(F15, for phase 2\)", "(F15, for the next issue)"),
+    (r" \(for phase 2\)", ""),
+    (r"WHM to provide these with the phase 2 lateral review\.",
+     "WHM to provide these for the lateral and seismic review (next issue)."),
+    (r"Not reviewed \(gravity only\)\.", "Lateral not yet run (next issue)."),
+    (r" now and lateral stiffness in phase 2\.", " now and lateral stiffness in the next issue."),
+    (r"\(lateral, phase 2\)", "(lateral; next issue)"),
+    (r"\(not reviewed, phase 2\)", "(next issue)"),
+    (r"; this review does not cover lateral loads\.", "; this issue covers gravity, and lateral loads are in the next issue."),
+    (r"S001 to S811\), gravity only\.", "S001 to S811). This issue covers gravity; the lateral and seismic review "
+                                         "follows as the next issue."),
+    (r"^gravity review, first issue$", "First issue: gravity; lateral and seismic to follow"),
+]
+# no offer of a "phase 2", and no framing of lateral as excluded from the review
+PHASE2_RE = r"(?i)phase[\s-]*(?:2|two|ii)\b|outside (?:the scope|this review)"
+
+
+def scope(text: str) -> str:
+    for pat, new in SCOPE_RE:
+        text = re.sub(pat, new, text)
+    return text
+
+
 def remap(text: str, doc: str = "01") -> str:
     """doc '01': a section reference points inside the same PDF; '05': it names PDF 01."""
+    text = scope(text)
     for old, new in REMAP_EXACT:
         text = text.replace(old, new)
     for pat, new in REMAP_RE:
@@ -243,7 +279,7 @@ def viewer_links(html_text: str, root: Path) -> tuple[int, list[str]]:
 
 
 def viewer_text(p: Path, transfer: set | None = None) -> str:
-    t = read(p)
+    t = scope(read(p))
     for old, new in VIEWER_REMAP:
         t = t.replace(old, new)
     if transfer is not None:
@@ -814,13 +850,19 @@ def main() -> int:
     for st in TRANSFER_STOREYS:
         if not (src / "safe/models" / f"{st}.f2k").exists():
             raise SystemExit(f"SAFE results for {st} but no model {st}.f2k")
+    # Row 1982 JM-SAFE-FOLDER: F.1's model count names both folders the models are in (counted, not typed)
+    REMAP_RE.insert(0, (rf"{n_tr + n_other} SAFE models \(models/<storey>\.f2k\), one per storey layout that differs;",
+                        f"{n_tr + n_other} SAFE models, one per storey layout that differs: {n_tr} in 03 Models/SAFE/, "
+                        f"the other {n_other} in 03 Models/SAFE/Storeys with no transfer/ (<storey>.f2k);\n "))
+    # (a line break: F.1 is a monospace block, and a line over its width turns into a prose paragraph mid-block)
     n_key = len(list(csv.reader(open(src / "answer-key.csv", encoding="utf-8", newline="")))) - 1
     n_grav = len(list(csv.reader(open(src / "gravity-tower-columns.csv", encoding="utf-8", newline="")))) - 1
 
     # ---------- viewer pins and the register CSV
     vtxt = read(viewer)
     pins = {m.group(1): m.group(2) for m in re.finditer(r'\{"id": "(F\d\d)", "storey": "([^"]+)"', vtxt)}
-    reg = {r["id"]: r for r in csv.DictReader(open(src / "review/FINDINGS-REGISTER.csv", encoding="utf-8"))}
+    reg = {r["id"]: {k: scope(v) if isinstance(v, str) else v for k, v in r.items()}
+           for r in csv.DictReader(open(src / "review/FINDINGS-REGISTER.csv", encoding="utf-8"))}
     for fid, r in reg.items():
         if pins.get(fid) != r["pin_storey"]:
             raise SystemExit(f"{fid}: viewer pin storey {pins.get(fid)} != register pin_storey {r['pin_storey']}")
@@ -835,6 +877,7 @@ def main() -> int:
     if not mm:
         raise SystemExit(f"letter meta line not in the expected form: {meta_line}")
     for_who, letter_date, status = mm.groups()
+    status = scope(status)   # Row 1982 JM-NO-PHASE2: the first issue of a full review
     letter = md_sections(letter_md)
     enclosed_old = letter["Enclosed"]
     enclosed_new = (
@@ -988,7 +1031,7 @@ def main() -> int:
                prep(pandoc(remap(strip_h1(tr_md)), "tr")), "s5")
     cov1 = cover(
         f"Structural peer review \u2013 {PROJECT}, Vancouver",
-        f"Kor Structural \u00b7 Project {JOB} \u00b7 Gravity review",
+        f"Kor Structural \u00b7 Project {JOB} \u00b7 First issue: gravity",
         "Review letter, findings register, load path and transfer slab results. Peer review of WHM Structural's "
         "drawings, <strong>Re-issued for Tender 2026-09-09</strong> (42 sheets, S001 to S811).",
         [("For", html.escape(for_who)), ("From", "Kor Structural"), ("Date", letter_date),
@@ -1336,8 +1379,19 @@ def main() -> int:
           f"{', '.join(sorted(p.name for p in (out / '03 Models/SAFE').iterdir() if p.is_dir()))}")
     faults += [f"03 Models/SAFE/{n}: not a model, at the top of the SAFE folder" for n in not_model]
     for pdf in (pdf1, pdf5):
-        old = re.findall(r"03 Models/SAFE/(?:Storeys with no transfer/)?[^\s/]+\.(?:txt|csv)", pdf_text(pdf))
+        t = pdf_text(pdf)
+        old = re.findall(r"03 Models/SAFE/(?:Storeys with no transfer/)?[^\s/]+\.(?:txt|csv)", t)
+        old += re.findall(r"\d+ SAFE models \(03 Models/SAFE/<storey>\.f2k\)", t)
         faults += [f"{pdf.name}: names {o}" for o in old]
+    # Row 1982 JM-NO-PHASE2: no "phase 2" and no "outside the scope / this review" (lateral is the next issue, #133596).
+    # COVERS: both PDFs' text and every shipped .html/.csv/.txt as text (the README ships inside PDF 01). DOES NOT: the
+    # same framing in other words - same-class fault it would miss: "lateral is not part of this review".
+    texts = [(p.name, pdf_text(p)) for p in (pdf1, pdf5)] + [
+        (str(p.relative_to(out)), read(p)) for p in out.rglob("*") if p.suffix.lower() in (".html", ".csv", ".txt")]
+    hits = [(n, m[0]) for n, t in texts for m in re.finditer(PHASE2_RE, t)]
+    print(f"PHASE 2: {len(hits)} occurrence(s) of 'phase 2' / 'phase two' / 'outside the scope' / 'outside this review' in {len(texts)} shipped texts (2 PDFs + "
+          f"{len(texts) - 2} .html/.csv/.txt files)")
+    faults += [f"{n}: '{w}' (phase 2 offer, or lateral framed as excluded)" for n, w in hits]
     shipped = sorted(str(p.relative_to(out)) for p in out.rglob("*") if p.is_file())
     if any(s.lower().endswith(".md") for s in shipped):
         faults.append("a .md file shipped")
