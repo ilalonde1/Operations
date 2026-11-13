@@ -90,7 +90,8 @@ REMAP_EXACT = [
     (" Click a picture to open it full size.", " Each picture is embedded at full resolution: zoom in to read it."),
     ("the checks made are listed in the README.", "the checks made are listed in Section 2 of OF_LETTER."),
     ("(the full table, with element counts, is `design-at-a-glance.csv` beside this page)",
-     "(the full table, with element counts, is \"Per storey, as computed\" at the end of this appendix)"),
+     "(the full table, with element counts, is the file `05 Appendix D - per storey.csv` beside this PDF; its main "
+     "columns are \"Per storey, as computed\" at the end of this appendix)"),
     ("Pictures: pictures/beyond-300mm/<storey>-overview.png and <storey>-<member>.png.", "Pictures: Appendix H."),
     ("ANSWER-KEY.md MISSING (", "Appendix A, missing values ("),
     ("(README, 'Slab uses')", "(Appendix E, 'Slab uses')"),
@@ -114,8 +115,13 @@ REMAP_EXACT = [
     ("The 14 transfer storeys are the storeys of safe-transfers.csv:", "The 14 transfer storeys are the storeys of Appendix F.3:"),
     ("COORDINATION-SWEEP.md (architect against structure on 37 of 38 storeys)",
      "our coordination sweep (architect against structure on 37 of 38 storeys)"),
+    # Row 1982 JM-V7 (Codex V6-04): the L10 pop-up roof offset is stated in the README's model-geometry list
+    ("(README, 'Model geometry to check against the sheets')", "(Appendix E, 'Model geometry to check against the sheets')"),
 ]
 REMAP_RE = [
+    # Row 1982 JM-V7 (Codex V6-05): the model as written, the takeoff's source, ships beside the analysed save
+    (r"`?(?:\.\./)?etabs/takeoff-source/(01819-01 Renfrew - ETABS model as written \(takeoff source\)\.e2k)`?",
+     r"`03 Models/ETABS/\1`"),
     (r"`?(?:\.\./)?etabs/01819-01 Renfrew - ETABS model\.e2k`?", "`03 Models/ETABS/01819-01 Renfrew - ETABS model.e2k`"),
     (r"`?(?:\.\./)?etabs/ETABS-loads-onto-transfer-storeys\.csv`?", "`04 Results/ETABS/ETABS-loads-onto-transfer-storeys.csv`"),
     (r"`?(?:\.\./)?etabs/ETABS-base-reactions\.csv`?", "`04 Results/ETABS/ETABS-base-reactions.csv`"),
@@ -161,6 +167,8 @@ PDF01 = "01 Review letter and findings.pdf"
 # VIEWER_PICS; the full gravity table and the long SAFE tables are files, the PDF carries legible summaries of them.
 VIEWER_PICS = "02 Viewer pictures"
 GRAVCSV = "05 Appendix C - every column at every level.csv"
+E2K_WRITTEN = "01819-01 Renfrew - ETABS model as written (takeoff source).e2k"
+DGCSV = "05 Appendix D - per storey.csv"
 F_CSVS = ("safe-transfers.csv", "safe-levels.csv", "safe-loads.csv")   # shipped in 03 Models/SAFE/
 # The viewer's pin texts name the old files. No double quote may be introduced: they sit inside JS strings.
 VIEWER_REMAP = [
@@ -328,8 +336,64 @@ def csv_cells(path: Path) -> str:
     return "\n".join(c for r in rows for c in r)
 
 
-def pre_block(text: str) -> str:
-    return f'<pre class="plain">{html.escape(text)}</pre>'
+def pre_block(text: str, prose_from: int = 0) -> str:
+    """Fixed-width text. Row 1982 JM-V7 (Codex V5-03): with prose_from, a line longer than that is prose that the
+    monospace wraps into a dense block, so it is set as a paragraph in the body face (indent kept as a margin); the
+    shorter lines, which hold the column-aligned tables, stay fixed-width."""
+    if not prose_from:
+        return f'<pre class="plain">{html.escape(text)}</pre>'
+    out, run = [], []
+    flush = lambda: (out.append(f'<pre class="plain">{html.escape(chr(10).join(run))}</pre>') if run else None, run.clear())
+    for ln in text.split("\n"):
+        if len(ln) > prose_from:
+            flush()
+            ind = len(ln) - len(ln.lstrip(" "))
+            out.append(f'<p class="prose" style="margin-left:{min(ind, 8) * 1.2:.1f}mm">{html.escape(ln.strip())}</p>')
+        else:
+            run.append(ln)
+    flush()
+    return "".join(out)
+
+
+def summarise_over_080(gc: str, grav_csv: Path) -> str:
+    """Row 1982 JM-V7 (Codex V5-03): Appendix C's 'Every numeric row with utilisation > 0.80 unreduced' table (125 rows,
+    five pages) becomes the rows above 1.00 in full plus one line per column for the rows above 0.80; every row is in
+    the gravity file. Each row of the source table is first found in the file (column, level, both utilisations to
+    three decimals), so the summary cannot drop or alter a row the file does not hold."""
+    m = re.search(r"^## Every numeric row with utilisation > 0\.80 unreduced: (\d+) of (\d+)\n(.*?)(?=^## )", gc, re.S | re.M)
+    if not m:
+        raise SystemExit("gravity check: the > 0.80 section moved")
+    body = m.group(3)
+    hdr = "| column | level | size | bars | f'c | Pf kN | Pf reduced kN | Pr,max kN | util unreduced | util reduced |"
+    if hdr not in body:
+        raise SystemExit("gravity check: the > 0.80 table's columns changed")
+    lead = body[:body.index(hdr)].rstrip().replace(" Bold = above 1.00.", "")   # the summary tables carry no bold
+    rows = []
+    for ln in body[body.index(hdr):].splitlines()[2:]:
+        if not ln.startswith("| TC"):
+            break
+        rows.append([c.strip().strip("*") for c in ln.strip("|").split("|")])
+    if len(rows) != int(m.group(1)):
+        raise SystemExit(f"gravity check: {len(rows)} rows in the > 0.80 table, heading says {m.group(1)}")
+    fil = {(r["column"], r["level"]): r for r in csv.DictReader(open(grav_csv, encoding="utf-8", newline=""))}
+    for r in rows:
+        f = fil.get((r[0], r[1]))
+        if f is None or f"{float(f['utilisation']):.3f}" != r[8] or f"{float(f['utilisation_reduced']):.3f}" != r[9]:
+            raise SystemExit(f"gravity check: > 0.80 row {r[0]} {r[1]} is not the gravity file's")
+    over1 = [r for r in rows if float(r[8]) > 1.0]
+    per = {}
+    for r in rows:
+        per.setdefault(r[0], []).append(r)
+    t1 = "\n".join("| " + " | ".join(r) + " |" for r in over1)
+    t2 = "\n".join(
+        f"| {c} | {len(rs)} | {sum(float(x[8]) > 1.0 for x in rs)} | {', '.join(x[1] for x in rs)} | "
+        f"{max(rs, key=lambda x: float(x[8]))[8]} at {max(rs, key=lambda x: float(x[8]))[1]} |" for c, rs in per.items())
+    new = (f"{lead}\n\nAll {len(rows)} rows are in the file `{GRAVCSV}` (filter `utilisation` above 0.800). The "
+           f"{len(over1)} rows above 1.00, in full:\n\n{hdr}\n|---|---|---|---|---|---|---|---|---|---|\n{t1}\n\n"
+           f"The {len(rows)} rows above 0.80, by column:\n\n"
+           "| column | rows above 0.80 | of them above 1.00 | levels | highest, unreduced |\n|---|---|---|---|---|\n"
+           f"{t2}\n\n")
+    return gc[:m.start(3)] + new + gc[m.end(3):]
 
 
 # ---------------------------------------------------------------- HTML post-processing
@@ -341,7 +405,10 @@ def pill(sev: str) -> str:
 
 
 def widen_tables(soup: BeautifulSoup, min_cols: int = 8) -> None:
-    """Tables of min_cols or more columns go on a landscape page (Edge clips wide tables silently)."""
+    """Tables of min_cols or more columns go on a landscape page (Edge clips wide tables silently). Row 1982 JM-V7
+    (Codex V5-07): PDF 05 passes 11 - every switch to a landscape page and back ends a page early, so its tables of up to
+    10 short columns stay on the portrait page (the FONT check and the page looks catch one that does not fit); PDF 01
+    keeps 8 (its 10-column transfer table of long cells overflows a portrait page and Edge then shrinks the whole PDF)."""
     for t in soup.find_all("table"):
         if t.find_parent(class_="wide"):
             continue
@@ -476,7 +543,8 @@ body{margin:0;color:var(--ink);font-family:var(--sans);font-size:9.4pt;line-heig
 .pkg table{width:100%}
 .toc{break-before:page}
 .toc__title,.kicker{font-family:var(--mono);font-size:7.4pt;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-ink);margin:0 0 3mm;font-weight:600}
-.toc ol{list-style:none;margin:0;padding:0}
+.toc ol{list-style:none;margin:0;padding:0;column-count:2;column-gap:9mm}
+.toc li{break-inside:avoid}
 .toc li a{display:flex;align-items:baseline;gap:2mm;color:var(--ink);text-decoration:none;padding:.9mm 0}
 .toc li .dots{flex:1;border-bottom:1px dotted var(--line-strong);transform:translateY(-1mm)}
 .toc li .pg{font-variant-numeric:tabular-nums;min-width:7mm;text-align:right;color:var(--ink-soft)}
@@ -484,7 +552,8 @@ body{margin:0;color:var(--ink);font-family:var(--sans);font-size:9.4pt;line-heig
 .toc li.l2{padding-left:8mm;font-size:8.8pt}
 .toc li.l3{padding-left:8mm;font-size:8.2pt;color:var(--ink-soft)}
 .toc li.l3 a{padding:.35mm 0}
-section.sec{break-before:page}
+section.sec{break-before:auto;margin-top:11mm}
+section.sec.first{break-before:page;margin-top:0}
 h1{font-size:17pt;line-height:1.15;margin:0 0 5mm;color:var(--slate-deep);font-weight:700;letter-spacing:-.01em;
  padding-bottom:2.5mm;border-bottom:2px solid var(--accent);break-after:avoid}
 h2{font-size:12pt;margin:7mm 0 2.5mm;color:var(--slate-deep);font-weight:650;break-after:avoid}
@@ -492,6 +561,7 @@ h3{font-size:10pt;margin:5mm 0 2mm;color:var(--slate);font-weight:650;break-afte
 h4{font-size:9.4pt;margin:4mm 0 1.5mm;break-after:avoid}
 .hnum{color:var(--accent-ink);font-variant-numeric:tabular-nums;margin-right:1.5mm}
 p{margin:0 0 2.4mm}
+.kicker{break-after:avoid}
 ul,ol{margin:0 0 2.6mm;padding-left:5.5mm}
 li{margin:0 0 1.2mm}
 li::marker{color:var(--accent)}
@@ -509,6 +579,7 @@ td{padding:1.2mm 1.6mm;border-bottom:1px solid var(--line);vertical-align:top}
 tbody tr:nth-child(even) td{background:#F8F7F5}
 td.num,th.num,td[style*="right"],th[style*="right"]{text-align:right;font-variant-numeric:tabular-nums}
 .wide{page:wide}
+.wide figure.single img{max-height:125mm}
 .wide table{font-size:7.5pt}
 .wide th{font-size:7.5pt}
 table.data{font-size:7.5pt}
@@ -550,6 +621,7 @@ figure.single img{width:100%;max-height:200mm;object-fit:contain;border:1px soli
 .box{border:1px solid var(--line-strong);border-left:3px solid var(--accent);background:#FBFAF9;padding:2.5mm 3.5mm;margin:0 0 4mm;break-inside:avoid}
 .box p:last-child{margin:0}
 .box--warn{border-left-color:var(--warn);background:var(--warn-bg)}
+p.prose{font-size:8.4pt;line-height:1.42;margin:0 0 2.2mm;padding-left:3mm;border-left:2px solid var(--line-strong)}
 """
 
 
@@ -690,6 +762,8 @@ def main() -> int:
     viewer = src / "01819-01 Renfrew - 3D model viewer.html"
     copies.append((viewer, out / "02 3D model viewer.html"))
     copies.append((src / "etabs/01819-01 Renfrew - ETABS model.e2k", out / "03 Models/ETABS/01819-01 Renfrew - ETABS model.e2k"))
+    # Row 1982 JM-V7 (Codex V6-05): the as-written model, the source of Appendix D's quantities, under its own name
+    copies.append((src / f"etabs/takeoff-source/{E2K_WRITTEN}", out / f"03 Models/ETABS/{E2K_WRITTEN}"))
     for f in sorted((src / "safe/models").glob("*.f2k")):
         st = f.stem
         dest = out / "03 Models/SAFE" if st in TRANSFER_STOREYS else out / "03 Models/SAFE/Storeys with no transfer"
@@ -707,6 +781,7 @@ def main() -> int:
         copies.append((src / "safe" / n, out / "03 Models/SAFE" / n))
     for f in sorted((src / "review/pictures").iterdir()):
         copies.append((f, out / VIEWER_PICS / f.name))
+    copies.append((src / "review/value-add/design-at-a-glance.csv", out / DGCSV))
     for s, d in copies:
         d.parent.mkdir(parents=True, exist_ok=True)
         if s == viewer:
@@ -779,10 +854,15 @@ def main() -> int:
         f"`{VIEWER_PICS}/`). Geometry only. |\n"
         f"| `{VIEWER_PICS}/` | The register's pictures, as files, for the viewer's picture links (the same pictures are in "
         "Section 3). |\n"
-        "| `03 Models/ETABS/` | The ETABS model (`.e2k`). Every member's f'c is from the set (Appendix E, "
-        "\"Materials\"). |\n"
+        "| `03 Models/ETABS/` | Two ETABS files. `01819-01 Renfrew - ETABS model.e2k` is ETABS's save of the model it "
+        "analysed (1,956 members): the file to rerun, which reproduces the ETABS results. "
+        f"`{E2K_WRITTEN}` is the model as we wrote it, the file ETABS was given (1,957 members, with the L1 sliver KF56 "
+        "that ETABS does not import): it is enclosed only as the source of the quantities of Appendix D. Every member's "
+        "f'c is from the set (Appendix E, \"Materials\"). |\n"
         f"| `03 Models/SAFE/` | One SAFE model for each of the {n_tr} transfer storeys (`<storey>.f2k`), each with its "
-        "assumptions (`.assumptions.txt`) and the source of every slab use and load (`.provenance.csv`; "
+        "assumptions (`.assumptions.txt`: its loads carry SAFE's sign, z up, negative = down, so on the line 'LOADS FROM "
+        "ABOVE ON NO SLAB' of `P3.assumptions.txt` and `P2.assumptions.txt`, 'DEAD -75.1 kN' and 'DEAD -408.7 kN' are "
+        "loads of 75.1 and 408.7 kN downward, not uplift) and the source of every slab use and load (`.provenance.csv`; "
         "thicknesses, f'c and geometry are not in it: they are the ETABS model's, from WHM's sheets, Appendix E, "
         f"\"Materials\"). The other {n_other} storey layouts, which carry no load from above of that kind, are in "
         "`Storeys with no transfer/`. Which storeys each model stands for: Appendix F.2. The tables of Appendix F.3 "
@@ -796,7 +876,8 @@ def main() -> int:
         f"| `05 Appendix A - answer key.csv` | Every value the set states, {n_key:,} rows, each with its sheet and page "
         "and whether it was read off the page, inferred by a stated rule, or is missing from the set. |\n"
         f"| `{GRAVCSV}` | The tower column hand check of Appendix C, {n_grav:,} rows, one per column per level "
-        "(Section C.14 of Appendix C says what each column of the file holds). |\n")
+        "(Section C.14 of Appendix C says what each column of the file holds). |\n"
+        f"| `{DGCSV}` | The design at a glance per storey, every column (Appendix D.4 gives its main columns). |\n")
     intro_md = (readme_head + "\n\n" + pkg_md + "\n" + rs["What was checked, and how"] + "\n\n"
                 + rs["What this package does not do"])
     sources01.append(readme_head + rs["What was checked, and how"] + rs["What this package does not do"])
@@ -872,9 +953,10 @@ def main() -> int:
     tr_md = read(src / "review/TRANSFER-RESULTS.md")
     sources01 += [strip_h1(lp_md), strip_h1(tr_md)]
 
-    def prep(h: str) -> str:
+    def prep(h: str, min_cols: int = 8) -> str:
+        # Row 1982 JM-V7: 8 in PDF 01 (its 10-column transfer table of long cells needs the landscape page); 11 in 05
         s = BeautifulSoup(h, "html.parser")
-        widen_tables(s)
+        widen_tables(s, min_cols)
         return str(s)
 
     d1 = Doc("d1")
@@ -902,14 +984,15 @@ def main() -> int:
     d5 = Doc("d5")
     ak = read(src / "ANSWER-KEY.md")
     sources05.append(strip_h1(ak))
-    d5.section("A", APPX["A"], prep(pandoc(remap(strip_h1(ak), "05"), "ak")), "aA", kicker="Appendix A", first=True)
+    d5.section("A", APPX["A"], prep(pandoc(remap(strip_h1(ak), "05"), "ak"), 11), "aA", kicker="Appendix A", first=True)
     ec = read(src / "EARLY-COMMENTS.md")
     sources05.append(strip_h1(ec))
-    d5.section("B", APPX["B"], prep(pandoc(remap(strip_h1(ec), "05"), "ec")), "aB", kicker="Appendix B")
+    d5.section("B", APPX["B"], prep(pandoc(remap(strip_h1(ec), "05"), "ec"), 11), "aB", kicker="Appendix B")
 
     gc = read(src / "GRAVITY-CHECK.md")
     if not gc.startswith("# PRELIMINARY - hand check, not the model\n"):
         raise SystemExit("gravity check banner changed")
+    gc = summarise_over_080(gc, src / "gravity-tower-columns.csv")
     sources05.append(strip_h1(gc))
     gc_html = ('<div class="box box--warn"><p><strong>PRELIMINARY - hand check, not the model.</strong></p></div>'
                + pandoc(remap(strip_h1(gc), "05"), "gc"))
@@ -942,7 +1025,7 @@ def main() -> int:
         "<table class=\"data\"><thead><tr><th>Note</th><th>Text</th></tr></thead><tbody>"
         + "".join(f"<tr><td>{note_no[n]}</td><td>{html.escape(n)}</td></tr>" for n in notes) + "</tbody></table>")
     sources05.append("\n".join(notes))
-    d5.section("C", APPX["C"], prep(gc_html), "aC", kicker="Appendix C")
+    d5.section("C", APPX["C"], prep(gc_html, 11), "aC", kicker="Appendix C")
 
     dg = read(src / "review/value-add/DESIGN-AT-A-GLANCE.md")
     sources05.append(strip_h1(dg))
@@ -953,15 +1036,26 @@ def main() -> int:
         f'alt="{html.escape(img["alt"])}"><figcaption><b>Figure D1.</b> {html.escape(img["alt"])}</figcaption></figure>',
         "html.parser").figure
     (img.find_parent("figure") or img.find_parent("p") or img).replace_with(fig)
-    dg_html = str(dg_soup) + ('<div class="wide"><h2 id="dg-per-storey">Per storey, as computed</h2><p>The per-storey '
-                              'figures behind Sections 1 and 2 and the figure, one row per storey.</p>'
-                              + csv_table(src / "review/value-add/design-at-a-glance.csv") + "</div>")
-    sources05.append(csv_cells(src / "review/value-add/design-at-a-glance.csv"))
-    d5.section("D", APPX["D"], prep(dg_html), "aD", kicker="Appendix D")
+    # Row 1982 JM-V7 (Codex V5-03, V5-07, V6-05): the 17-column table ships as the file DGCSV; the PDF gives its main
+    # columns on the portrait page (no landscape page, so no page left short before and after it)
+    dgc = src / "review/value-add/design-at-a-glance.csv"
+    dg_cols = ["storey", "elevation_m", "slab_area_m2", "avg_slab_mm", "slab_m3", "wall_m3", "column_m3", "concrete_m3",
+               "concrete_m3_per_m2"]
+    dg_rows = list(csv.DictReader(open(dgc, encoding="utf-8", newline="")))
+    if not set(dg_cols) <= set(dg_rows[0]):
+        raise SystemExit("design-at-a-glance.csv columns changed")
+    dg_html = str(dg_soup) + ('<h2 id="dg-per-storey">Per storey, as computed</h2><p>The per-storey figures behind Sections '
+                              f'1 and 2 and the figure, one row per storey: its main columns. All {len(dg_rows[0])} columns '
+                              '(with the counts of slabs, walls and columns, and wall and column plan area and % of floor) '
+                              f'are in the file <code>{DGCSV}</code> beside this PDF.</p>'
+                              + csv_table(dgc, dg_cols, rename={"avg_slab_mm": "average slab (mm)",
+                                                                "concrete_m3_per_m2": "concrete (m³ per m²)"}))
+    sources05.append("\n".join(r[c] for r in dg_rows for c in dg_cols))
+    d5.section("D", APPX["D"], prep(dg_html, 11), "aD", kicker="Appendix D")
 
     e_md = (rs["ETABS and SAFE results"] + "\n\n" + rs["Assumptions you must confirm"])
     sources05.append(e_md)
-    d5.section("E", APPX["E"], prep(pandoc(remap(e_md, "05"), "e")), "aE", kicker="Appendix E")
+    d5.section("E", APPX["E"], prep(pandoc(remap(e_md, "05"), "e"), 11), "aE", kicker="Appendix E")
 
     f_parts = []
     # Row 1982 JM-V6: F.n numbering (as A.1, C.1); each table's file is in 03 Models/SAFE/; the rule behind F.3's
@@ -976,7 +1070,7 @@ def main() -> int:
         "F5": "<p>Every load row S101 and S111 state (the file <code>03 Models/SAFE/safe-loads.csv</code>). Every row was "
               "read off the sheet. Status: <b>mapped</b> = applied to the SAFE slabs of the use it names; <b>listed</b> = "
               "recorded and not applied, for the reason given. The reasons repeat, so each is given once, numbered, "
-              "under the table.</p>",
+              "under the table. The line of the sheet each row was read from is the file's <code>note</code> column.</p>",
     }
     for code, title, path, kind in (
             ("F1", "SAFE results by transfer storey", src / "safe/SAFE-RESULTS.txt", "pre"),
@@ -989,7 +1083,7 @@ def main() -> int:
         if kind == "pre":
             sources05.append(txt)
             # fixed-width text keeps its columns only if its lines fit: a landscape page holds them
-            f_parts.append(f'<div class="wide">{head}{pre_block(remap(txt, "05"))}</div>')
+            f_parts.append(f'<div class="wide">{head}{pre_block(remap(txt, "05"), prose_from=170)}</div>')
             continue
         if code == "F5":
             rows5 = list(csv.DictReader(open(path, encoding="utf-8", newline="")))
@@ -1000,12 +1094,53 @@ def main() -> int:
                 if r["why"] not in whys:
                     whys.append(r["why"])
             wno = {w: f"R{i + 1}" for i, w in enumerate(whys)}
-            cols5 = [c for c in rows5[0] if c not in ("section", "read_as") and any(r[c].strip() for r in rows5)]
+            # Row 1982 JM-V7 (Codex V5-03): the 'note' column (the sheet line each row was read from, often longer than the
+            # row) stays in the file; the PDF table keeps what was read, where, and what was done with it
+            cols5 = [c for c in rows5[0] if c not in ("section", "read_as", "note") and any(r[c].strip() for r in rows5)]
             body = (csv_table(path, cols5, rename={"why": "reason"}, extra={"why": lambda r: wno[r["why"]]})
                     + "<table class=\"data\"><thead><tr><th>Reason</th><th>Text</th></tr></thead><tbody>"
                     + "".join(f"<tr><td>{wno[w]}</td><td>{html.escape(w)}</td></tr>" for w in whys) + "</tbody></table>")
             sources05.append("\n".join(" ".join(r[c] for c in cols5 if c != "why") for r in rows5) + "\n" + "\n".join(whys))
             f_parts.append(f'<div class="wide">{head}{body}</div>')
+            continue
+        # Row 1982 JM-V7 (Codex V5-03): F.3 (238 rows) and F.4's sheet titles were full-row tables over many pages.
+        # F.3 is given per storey with every member named (each row's position stays in the file); F.4 gives each
+        # storey's sheet numbers (the full sheet titles stay in the file). Every row of the file is counted into its
+        # summary, so a dropped row is a build fault.
+        rows = list(csv.DictReader(open(path, encoding="utf-8", newline="")))
+        if code == "F3":
+            if {r["finding"] for r in rows} != {"nothing under it"} or {r["kind"] for r in rows} - {"COLUMN", "PANEL"}:
+                raise SystemExit("safe-transfers.csv: finding or kind is no longer what F.3's summary states")
+            per = {}
+            for r in rows:
+                per.setdefault((r["storey"], r["storey_above"]), {"COLUMN": [], "PANEL": []})[r["kind"]].append(r["member"])
+            if sum(len(v["COLUMN"]) + len(v["PANEL"]) for v in per.values()) != len(rows):
+                raise SystemExit("F.3 summary does not count every row of safe-transfers.csv")
+            trs = "".join(
+                f'<tr><td class="txt nw">{html.escape(s)}</td><td class="txt nw">{html.escape(a)}</td>'
+                f'<td class="num">{len(v["COLUMN"])}</td><td class="txt">{html.escape(", ".join(v["COLUMN"]) or "-")}</td>'
+                f'<td class="num">{len(v["PANEL"])}</td><td class="txt">{html.escape(", ".join(v["PANEL"]) or "-")}</td></tr>'
+                for (s, a), v in per.items())
+            body = ('<table class="data"><thead><tr><th>storey</th><th>members of</th><th class="num">columns</th>'
+                    '<th>column members</th><th class="num">walls</th><th>wall members</th></tr></thead><tbody>'
+                    + trs + "</tbody></table>"
+                    f"<p>{len(rows)} rows in all: {sum(len(v['COLUMN']) for v in per.values())} columns and "
+                    f"{sum(len(v['PANEL']) for v in per.values())} walls, each marked 'nothing under it'; each row of the "
+                    "file also gives where the member stands, in mm, and what the storey below has there.</p>")
+            sources05.append("\n".join(f"{s} {a} {len(v['COLUMN'])} {' '.join(v['COLUMN'])} {len(v['PANEL'])} "
+                                       f"{' '.join(v['PANEL'])}" for (s, a), v in per.items()))
+            f_parts.append(head + body)
+            continue
+        if code == "F4":
+            show = lambda r: "; ".join(dict.fromkeys(re.findall(r"\bS\d{3}\b", r["sheets"])))   # each sheet once, in order
+            if any(not re.findall(r"\bS\d{3}\b", r["sheets"]) for r in rows):
+                raise SystemExit("safe-levels.csv: a row names no S-sheet number")
+            body = csv_table(path, ["storey", "elevation", "status", "model", "sheets", "notes"],
+                             rename={"elevation": "elevation (mm)", "sheets": "sheets (numbers; titles in the file)"},
+                             extra={"sheets": show})
+            sources05.append("\n".join(" ".join([r["storey"], r["elevation"], r["status"], r["model"], show(r), r["notes"]])
+                                       for r in rows))
+            f_parts.append(head + body)
             continue
         sources05.append(csv_cells(path))
         body = csv_table(path, rename={"elevation": "elevation (mm)"} if code == "F4" else None)
@@ -1014,7 +1149,9 @@ def main() -> int:
 
     pg = read(src / "safe/P1_GF-unattached-supports.md")
     sources05.append(strip_h1(pg))
-    d5.section("G", APPX["G"], prep(pandoc(remap(strip_h1(pg), "05"), "pg")), "aG", kicker="Appendix G")
+    # Row 1982 JM-V7 (Codex V5-07): F is landscape (its fixed-width tables), so G and H follow it on landscape pages: no
+    # switch back to portrait, which would leave F's last page short
+    d5.section("G", APPX["G"], prep(pandoc(remap(strip_h1(pg), "05"), "pg"), 11), "aG", kicker="Appendix G", wide=True)
 
     # the paragraph that says how to read the pictures
     legend = next((p for p in rs["ETABS and SAFE results"].split("\n\n") if p.startswith("Forces below are in kN")), None)
@@ -1031,7 +1168,7 @@ def main() -> int:
                    f'<b>Figure {code}.</b> {html.escape(cap)}</figcaption></figure>')
     if sorted(n for _, n, _ in figs_h) != sorted(p.name for p in (src / "safe/pictures/beyond-300mm").iterdir()):
         raise SystemExit("beyond-300mm pictures changed")
-    d5.section("H", APPX["H"], h_html, "aH", kicker="Appendix H", number_h2=False)
+    d5.section("H", APPX["H"], h_html, "aH", kicker="Appendix H", number_h2=False, wide=True)
 
     cov5 = cover(
         f"Appendices \u2013 {PROJECT}, Vancouver",
@@ -1070,6 +1207,31 @@ def main() -> int:
               f"{sum(v for k, v in sizes.items() if k < 6.95)} of {sum(sizes.values())}")
         if min(sizes) < 6.95:
             faults.append(f"{name}: text at {min(sizes)} pt (under 7 pt)")
+    # Row 1982 JM-V7 (Codex V5-07): no near-empty page. A page's body is filled to the lowest text span or picture inside
+    # its margins (running head and foot excluded); under 40% of the body height is near-empty, except the last page and
+    # the cover. COVERS: text and placed pictures. DOES NOT: a page whose fill is one long thin table (it counts as full);
+    # same-class fault it would miss: a page holding only a heading and a picture caption over white.
+    for pdf in (pdf1, pdf5):
+        d = fitz.open(pdf)
+        thin = []
+        for i, pg in enumerate(d):
+            if i == 0 or i == d.page_count - 1:
+                continue
+            top, bot = 18 * 72 / 25.4, pg.rect.height - 15 * 72 / 25.4
+            low = top
+            for b in pg.get_text("dict")["blocks"]:
+                y0, y1 = b["bbox"][1], b["bbox"][3]
+                if y0 > top - 2 and y1 < bot + 2 and (b.get("type") == 1 or any(
+                        sp["text"].strip() for ln in b.get("lines", []) for sp in ln["spans"])):
+                    low = max(low, y1)
+            for im in pg.get_image_info():
+                low = max(low, min(im["bbox"][3], bot))
+            fill = (low - top) / (bot - top)
+            if fill < 0.40:
+                thin.append(f"p{i + 1} {fill:.0%}")
+        print(f"PAGE FILL {pdf.name}: {d.page_count - 2 - len(thin)} of {d.page_count - 2} pages (not the cover, not the "
+              f"last) filled to 40% or more; near-empty: {', '.join(thin) or 'none'}")
+        faults += [f"{pdf.name}: near-empty page {t}" for t in thin]
     d = fitz.open(pdf1)
     placements = sum(len(p.get_images(full=True)) for p in d)
     print(f"IMAGES 01: {placements} image placements (42 register pictures + the logo expected)")
