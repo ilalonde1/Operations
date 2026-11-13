@@ -730,6 +730,33 @@ internal static class Program
             return ok;
         }
 
+        // reactions summed per side of --split-x, per case, step type and step (a mode, for a modal case), over every joint of
+        // group All that has a reaction: FX FY FZ and the vertical reactions' moments about the global axes (MX = sum F3 y + M1,
+        // MY = sum -F3 x + M2). For a response-spectrum case each joint's value is its own maximum, so the side sum is NOT a
+        // modal combination - the per-building combination is made from the modal case's rows (written for that, 13 Nov).
+        var placed = new Dictionary<string, (double X, double Y)>(StringComparer.Ordinal);
+        void SideReactions(IEnumerable<string> which, string file, string what)
+        {
+            Select(which);
+            int n = 0; string[] obj = Array.Empty<string>(), elm = Array.Empty<string>(), lc = Array.Empty<string>(), st = Array.Empty<string>();
+            double[] sn = Array.Empty<double>(), f1 = Array.Empty<double>(), f2 = Array.Empty<double>(), f3 = Array.Empty<double>(), m1 = Array.Empty<double>(), m2 = Array.Empty<double>(), m3 = Array.Empty<double>();
+            var t = Stopwatch.StartNew();
+            int r = model.Results.JointReact("All", eItemTypeElm.GroupElm, ref n, ref obj, ref elm, ref lc, ref st, ref sn, ref f1, ref f2, ref f3, ref m1, ref m2, ref m3);
+            var sum = new SortedDictionary<(string Case, string Step, double Num, string Side), double[]>();
+            for (int i = 0; i < n; i++)
+            {
+                if (!placed.TryGetValue(obj[i], out var p)) { double x = 0, y = 0, z = 0; model.PointObj.GetCoordCartesian(obj[i], ref x, ref y, ref z, "Global"); placed[obj[i]] = p = (x, y); }
+                string side = double.IsNaN(splitMm) ? "ALL" : p.X * 1000 <= splitMm ? "W" : "E";
+                var k = (lc[i], st[i], sn[i], side);
+                if (!sum.TryGetValue(k, out var s)) sum[k] = s = new double[7];
+                s[0] += f1[i]; s[1] += f2[i]; s[2] += f3[i]; s[3] += f3[i] * p.Y + m1[i]; s[4] += -f3[i] * p.X + m2[i]; s[5] += m3[i]; s[6] += 1;
+            }
+            var lines = new List<string> { "case,step_type,step,side,FX_kN,FY_kN,FZ_kN,MX_kNm,MY_kNm,MZ_joint_kNm,joints" };
+            foreach (var kv in sum) lines.Add(string.Join(",", kv.Key.Case, kv.Key.Step, F(kv.Key.Num), kv.Key.Side, F(kv.Value[0]), F(kv.Value[1]), F(kv.Value[2]), F(kv.Value[3]), F(kv.Value[4]), F(kv.Value[5]), F(kv.Value[6])));
+            Say($"   JointReact(All): {r}, {n} row(s), {placed.Count} joint(s) placed, {t.Elapsed.TotalSeconds:F0} s");
+            Written(file, lines, what);
+        }
+
         // modal
         var modal = cases.Where(c => { eLoadCaseType t = default; int s = 0; model.LoadCases.GetTypeOAPI(c, ref t, ref s); return t == eLoadCaseType.Modal; }).ToList();
         foreach (var mc in modal)
@@ -746,6 +773,15 @@ internal static class Program
             for (int i = 0; i < Math.Min(n, m); i++)
                 lines.Add(string.Join(",", mc, F(sn[i]), F(per[i]), F(fr[i]), F(ev[i]), F(ux[i]), F(uy[i]), F(rz[i]), F(sux[i]), F(suy[i]), F(srz[i])));
             Written($"modal{(modal.Count > 1 ? "-" + mc : "")}.csv", lines, $"modal {mc}");
+            // the factors a per-building modal combination needs (13 Nov, rows 1982 / 2129): Gamma = factor / modal mass
+            int q = 0; string[] lc3 = Array.Empty<string>(), st3 = Array.Empty<string>(); double[] sn3 = Array.Empty<double>(), per3 = Array.Empty<double>(),
+                fx3 = Array.Empty<double>(), fy3 = Array.Empty<double>(), fz3 = Array.Empty<double>(), frx = Array.Empty<double>(), fry = Array.Empty<double>(), frz = Array.Empty<double>(), mm = Array.Empty<double>(), ms = Array.Empty<double>();
+            int r3 = model.Results.ModalParticipationFactors(ref q, ref lc3, ref st3, ref sn3, ref per3, ref fx3, ref fy3, ref fz3, ref frx, ref fry, ref frz, ref mm, ref ms);
+            Say($"   {mc}: ModalParticipationFactors {r3} ({q} rows)");
+            var fl = new List<string> { "case,mode,period_s,UX,UY,RZ,modal_mass,modal_stiffness" };
+            for (int i = 0; i < q; i++) fl.Add(string.Join(",", lc3[i], F(sn3[i]), F(per3[i]), F(fx3[i]), F(fy3[i]), F(frz[i]), F(mm[i]), F(ms[i])));
+            Written($"modal-factors{(modal.Count > 1 ? "-" + mc : "")}.csv", fl, $"modal factors {mc}");
+            SideReactions(new[] { mc }, $"modal-reactions-by-side{(modal.Count > 1 ? "-" + mc : "")}.csv", $"modal reactions by side {mc}");
             for (int i = 0; i < Math.Min(Math.Min(n, m), 3); i++)
                 Say($"   {mc} mode {sn[i]:0}: T = {per[i]:0.000} s; UX {ux[i]:P1} UY {uy[i]:P1} RZ {rz[i]:P1}");
             int ix = Enumerable.Range(0, m).FirstOrDefault(i => sux[i] >= 0.9, -1), iy = Enumerable.Range(0, m).FirstOrDefault(i => suy[i] >= 0.9, -1);
@@ -766,6 +802,7 @@ internal static class Program
             for (int i = 0; i < n; i++) Say($"   base {lc[i]} {st[i]}: FX {fx[i]:N1} FY {fy[i]:N1} kN");
             Written("base-shear.csv", lines, "base shear");
         }
+        SideReactions(loads, "reactions-by-side.csv", "reactions by side");
         {
             int n = 0; string[] story = Array.Empty<string>(), lc = Array.Empty<string>(), st = Array.Empty<string>(), dir = Array.Empty<string>(), label = Array.Empty<string>();
             double[] sn = Array.Empty<double>(), d = Array.Empty<double>(), x = Array.Empty<double>(), y = Array.Empty<double>(), z = Array.Empty<double>();
