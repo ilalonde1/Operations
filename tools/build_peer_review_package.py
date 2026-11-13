@@ -11,7 +11,7 @@ WHY THIS EXISTS
         <name>/01 Review letter and findings.pdf   letter, intro, ranked register with its pictures,
                                                     load path, transfer results
         <name>/02 3D model viewer.html              the viewer, renamed; its pin texts' file names mapped (VIEWER_REMAP)
-        <name>/03 Models/ETABS, 03 Models/SAFE      .e2k; .f2k with their assumptions and provenance
+        <name>/03 Models/ETABS, 03 Models/SAFE      .e2k; .f2k (SAFE/Notes: assumptions, provenance, F tables)
         <name>/04 Results/ETABS, 04 Results/SAFE    the result .csv files
         <name>/05 Appendices.pdf                    lettered appendices A-H
         <name>/05 Appendix A - answer key.csv       the 2,355-row key, a file an engineer filters
@@ -136,6 +136,10 @@ REMAP_RE = [
     (r"`?safe/safe-levels\.csv`?", "Appendix F.4"),
     (r"`?safe/safe-loads\.csv`?", "Appendix F.5"),
     (r"`?(?:safe/)?P1_GF-unattached-supports\.md`?", "Appendix G"),
+    # Row 1982 JM-SAFE-FOLDER (Ian 13 Nov): 03 Models/SAFE/ holds the models; every other file is in its Notes/ folder
+    (r"(?:safe/|(?<![\w/.]))models/(<storey>|\w+)(\.(?:assumptions\.txt|provenance\.csv))", r"03 Models/SAFE/Notes/\1\2"),
+    # a bare `<storey>.assumptions.txt` (Section 5's table) stays bare: Section 5's source line names the folder
+    (r"(`safe/models/<storey>\.f2k`)", r"\1 (its assumptions: `03 Models/SAFE/Notes/<storey>.assumptions.txt`)"),
     (r"safe/models/", "03 Models/SAFE/"),
     (r"(?<![\w/.])models/", "03 Models/SAFE/"),
     (r"safe/results/", "04 Results/SAFE/"),
@@ -173,7 +177,10 @@ VIEWER_PICS = "02 Viewer pictures"
 GRAVCSV = "05 Appendix C - every column at every level.csv"
 E2K_WRITTEN = "01819-01 Renfrew - ETABS model as written (takeoff source).e2k"
 DGCSV = "05 Appendix D - per storey.csv"
-F_CSVS = ("safe-transfers.csv", "safe-levels.csv", "safe-loads.csv")   # shipped in 03 Models/SAFE/
+F_CSVS = ("safe-transfers.csv", "safe-levels.csv", "safe-loads.csv")   # shipped in SAFE_NOTES
+# Row 1982 JM-SAFE-FOLDER (Ian, 13 Nov: "I would expect to see the Safe model(s) when I open the SAFE folder"): the
+# folder opens to the .f2k models alone; each model's assumptions and provenance and the F tables' files are in Notes/
+SAFE_NOTES = "03 Models/SAFE/Notes"
 # The viewer's pin texts name the old files. No double quote may be introduced: they sit inside JS strings.
 VIEWER_REMAP = [
     ("(FINDINGS-REGISTER.csv)", f"(the findings register, Section 3 of {PDF01})"),
@@ -195,7 +202,9 @@ def viewer_ref(s: str, transfer: set) -> str:
                lambda m: f"Appendix H, Figure {H_FIGS[m[1]]} in {PDF05}", s)
     s = re.sub(r"(?:\breview/|(?<![\w/]))pictures/(?=[\w.-]+\.(?:png|jpg))", f"{VIEWER_PICS}/", s)
     s = s.replace("safe/SAFE-RESULTS.txt", f"Appendix F.1 in {PDF05}")
-    s = re.sub(r"safe/models/(<storey>|[\w]+)(\.(?:f2k|assumptions\.txt|provenance\.csv))",
+    s = re.sub(r"safe/models/(<storey>|[\w]+)(\.(?:assumptions\.txt|provenance\.csv))",
+               lambda m: f"{SAFE_NOTES}/" + m[1] + m[2], s)
+    s = re.sub(r"safe/models/(<storey>|[\w]+)(\.f2k)",
                lambda m: ("03 Models/SAFE/" if m[1] == "<storey>" or m[1] in transfer
                           else "03 Models/SAFE/Storeys with no transfer/") + m[1] + m[2], s)
     s = s.replace("etabs/01819-01 Renfrew - ETABS model.e2k", "03 Models/ETABS/01819-01 Renfrew - ETABS model.e2k")
@@ -771,14 +780,15 @@ def main() -> int:
     for f in sorted((src / "safe/models").glob("*.f2k")):
         st = f.stem
         dest = out / "03 Models/SAFE" if st in TRANSFER_STOREYS else out / "03 Models/SAFE/Storeys with no transfer"
-        for ext in (".f2k", ".assumptions.txt", ".provenance.csv"):
-            copies.append((src / "safe/models" / f"{st}{ext}", dest / f"{st}{ext}"))
+        copies.append((f, dest / f.name))
+        for ext in (".assumptions.txt", ".provenance.csv"):
+            copies.append((src / "safe/models" / f"{st}{ext}", out / SAFE_NOTES / f"{st}{ext}"))
     for f in ("ETABS-base-reactions.csv", "ETABS-loads-onto-transfer-storeys.csv", "ETABS-solver-log-extract.txt"):
         copies.append((src / "etabs" / f, out / "04 Results/ETABS" / f))
     # Row 1982 JM-V8 (Codex V7-04, V5-03): each SAFE storey's run-log extract; safe-set.txt (F.2's full slab-use wording)
     for f in sorted((src / "safe/solver-log-extracts").glob("*.txt")):
         copies.append((f, out / "04 Results/SAFE/solver-log-extracts" / f.name))
-    copies.append((src / "safe/safe-set.txt", out / "03 Models/SAFE/safe-set.txt"))
+    copies.append((src / "safe/safe-set.txt", out / SAFE_NOTES / "safe-set.txt"))
     for f in sorted((src / "safe/results").rglob("*")):
         if f.is_file():
             copies.append((f, out / "04 Results/SAFE" / f.relative_to(src / "safe/results")))
@@ -786,7 +796,7 @@ def main() -> int:
     # Row 1982 JM-V6: the gravity table, the long SAFE tables and the viewer's pictures ship as files
     copies.append((src / "gravity-tower-columns.csv", out / GRAVCSV))
     for n in F_CSVS:
-        copies.append((src / "safe" / n, out / "03 Models/SAFE" / n))
+        copies.append((src / "safe" / n, out / SAFE_NOTES / n))
     for f in sorted((src / "review/pictures").iterdir()):
         copies.append((f, out / VIEWER_PICS / f.name))
     copies.append((src / "review/value-add/design-at-a-glance.csv", out / DGCSV))
@@ -867,14 +877,15 @@ def main() -> int:
         f"`{E2K_WRITTEN}` is the model as we wrote it, the file ETABS was given (1,957 members, with the L1 sliver KF56 "
         "that ETABS does not import): it is enclosed only as the source of the quantities of Appendix D. Every member's "
         "f'c is from the set (Appendix E, \"Materials\"). |\n"
-        f"| `03 Models/SAFE/` | One SAFE model for each of the {n_tr} transfer storeys (`<storey>.f2k`), each with its "
-        "assumptions (`.assumptions.txt`: its loads carry SAFE's sign, z up, negative = down, so on the line 'LOADS FROM "
-        "ABOVE ON NO SLAB' of `P3.assumptions.txt` and `P2.assumptions.txt`, 'DEAD -75.1 kN' and 'DEAD -408.7 kN' are "
-        "loads of 75.1 and 408.7 kN downward, not uplift) and the source of every slab use and load (`.provenance.csv`; "
-        "thicknesses, f'c and geometry are not in it: they are the ETABS model's, from WHM's sheets, Appendix E, "
-        f"\"Materials\"). The other {n_other} storey layouts, which carry no load from above of that kind, are in "
-        "`Storeys with no transfer/`. Which storeys each model stands for: Appendix F.2. The tables of Appendix F.3 "
-        f"to F.5 are also here as files: {', '.join(f'`{n}`' for n in F_CSVS)}. |\n"
+        f"| `03 Models/SAFE/` | The SAFE models: one for each of the {n_tr} transfer storeys (`<storey>.f2k`, SAFE's text "
+        f"file, which SAFE 22 imports to open the model). The other {n_other} storey layouts, which carry no load from above "
+        "of that kind, are in `Storeys with no transfer/`. Which storeys each model stands for: Appendix F.2. |\n"
+        f"| `{SAFE_NOTES}/` | Each model's assumptions (`<storey>.assumptions.txt`: its loads carry SAFE's sign, z up, "
+        "negative = down, so on the line 'LOADS FROM ABOVE ON NO SLAB' of `P3.assumptions.txt` and `P2.assumptions.txt`, "
+        "'DEAD -75.1 kN' and 'DEAD -408.7 kN' are loads of 75.1 and 408.7 kN downward, not uplift) and the source of every "
+        "slab use and load (`<storey>.provenance.csv`; thicknesses, f'c and geometry are not in it: they are the ETABS "
+        "model's, from WHM's sheets, Appendix E, \"Materials\"); the tables of Appendix F.2 to F.5 as files: "
+        f"{', '.join(f'`{n}`' for n in ('safe-set.txt',) + F_CSVS)}. |\n"
         "| `04 Results/ETABS/` | The ETABS base reactions and the loads it passes down onto the transfer storeys. |\n"
         "| `04 Results/SAFE/<storey>/` | SAFE's deflection, reaction and punching tables of each transfer storey. |\n"
         "| `05 Appendices.pdf` | A: answer key. B: early comment list to WHM. C: tower column gravity hand check "
@@ -1071,12 +1082,12 @@ def main() -> int:
     # sub-5 mm rows and the words of F.5 are stated, F.5's repeated reasons are numbered once (as Appendix C's notes)
     f_intro = {
         "F3": "<p>One row per member of the storey above that starts on the storey's slab (the file "
-              "<code>03 Models/SAFE/safe-transfers.csv</code>). A wall is listed when any part of its line has no wall of "
+              "<code>03 Models/SAFE/Notes/safe-transfers.csv</code>). A wall is listed when any part of its line has no wall of "
               "the storey below under it, with no tolerance; the rows whose part is under 5 mm long are drafting tolerance "
               "between the two storeys' wall lines, not walls with nothing under them, and none is a finding "
               "(Section 5 of 01 Review letter and findings, Notes).</p>",
-        "F4": "<p>Elevations in mm, P3 = 0 (the file <code>03 Models/SAFE/safe-levels.csv</code>).</p>",
-        "F5": "<p>Every load row S101 and S111 state (the file <code>03 Models/SAFE/safe-loads.csv</code>). Every row was "
+        "F4": "<p>Elevations in mm, P3 = 0 (the file <code>03 Models/SAFE/Notes/safe-levels.csv</code>).</p>",
+        "F5": "<p>Every load row S101 and S111 state (the file <code>03 Models/SAFE/Notes/safe-loads.csv</code>). Every row was "
               "read off the sheet. Status: <b>mapped</b> = applied to the SAFE slabs of the use it names; <b>listed</b> = "
               "recorded and not applied, for the reason given. The reasons repeat, so each is given once, numbered, "
               "under the table. The line of the sheet each row was read from is the file's <code>note</code> column.</p>",
@@ -1092,7 +1103,7 @@ def main() -> int:
         if code == "F2":
             # Row 1982 JM-V8 (Codex V5-03): the slab-use lines (one per storey, each listing every room label and sheet it
             # was read from) filled four pages of monospace. The PDF gives each storey's use, basis and loads as a table,
-            # consecutive storeys with the same use as one row; the full wording ships as 03 Models/SAFE/safe-set.txt.
+            # consecutive storeys with the same use as one row; the full wording ships as 03 Models/SAFE/Notes/safe-set.txt.
             # Every storey line is counted into the table, so a dropped line is a build fault.
             lines = txt.split("\n")
             k = next(i for i, ln in enumerate(lines) if ln.startswith("slab use from the plans' labels"))
@@ -1126,7 +1137,7 @@ def main() -> int:
                     '<th class="num">live (kPa)</th><th class="num">SDL (kPa)</th></tr></thead><tbody>' + trs
                     + "</tbody></table>"
                     f"<p>{len(uses)} storeys in all. The room labels and sheet pages each storey's use was read from are "
-                    "in the file <code>03 Models/SAFE/safe-set.txt</code>, one line per storey.</p>")
+                    "in the file <code>03 Models/SAFE/Notes/safe-set.txt</code>, one line per storey.</p>")
             sources05.append("\n".join(top + rule_lines) + "\n" + "\n".join(
                 f"{' '.join(s)} {u} {b} {lv} {sd}" for s, u, b, lv, sd in rows2))
             f_parts.append(f'<div class="wide">{head}{body}</div>')
@@ -1316,6 +1327,17 @@ def main() -> int:
     d = fitz.open(pdf1)
     placements = sum(len(p.get_images(full=True)) for p in d)
     print(f"IMAGES 01: {placements} image placements (42 register pictures + the logo expected)")
+    # Row 1982 JM-SAFE-FOLDER: 03 Models/SAFE/ opens to the models alone, and no PDF names a moved file at its old place.
+    # COVERS: the files at the top of the folder; PDF text with the path on one line. DOES NOT: a path the PDF breaks
+    # across lines; same-class fault it would miss: "03 Models/SAFE/" at a line end and "safe-set.txt" on the next.
+    top = sorted(p.name for p in (out / "03 Models/SAFE").iterdir() if p.is_file())
+    not_model = [n for n in top if not n.endswith(".f2k")]
+    print(f"SAFE FOLDER: {len(top) - len(not_model)} of {len(top)} files at its top are models (.f2k); folders: "
+          f"{', '.join(sorted(p.name for p in (out / '03 Models/SAFE').iterdir() if p.is_dir()))}")
+    faults += [f"03 Models/SAFE/{n}: not a model, at the top of the SAFE folder" for n in not_model]
+    for pdf in (pdf1, pdf5):
+        old = re.findall(r"03 Models/SAFE/(?:Storeys with no transfer/)?[^\s/]+\.(?:txt|csv)", pdf_text(pdf))
+        faults += [f"{pdf.name}: names {o}" for o in old]
     shipped = sorted(str(p.relative_to(out)) for p in out.rglob("*") if p.is_file())
     if any(s.lower().endswith(".md") for s in shipped):
         faults.append("a .md file shipped")
