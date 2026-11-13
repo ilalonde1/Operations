@@ -125,6 +125,10 @@ REMAP_RE = [
     (r"`?(?:\.\./)?etabs/01819-01 Renfrew - ETABS model\.e2k`?", "`03 Models/ETABS/01819-01 Renfrew - ETABS model.e2k`"),
     (r"`?(?:\.\./)?etabs/ETABS-loads-onto-transfer-storeys\.csv`?", "`04 Results/ETABS/ETABS-loads-onto-transfer-storeys.csv`"),
     (r"`?(?:\.\./)?etabs/ETABS-base-reactions\.csv`?", "`04 Results/ETABS/ETABS-base-reactions.csv`"),
+    # Row 1982 JM-V8 (Codex V7-04): the run-log extracts behind the run checks ship in 04 Results, tabulated in F.6
+    (r"`?(?:\.\./)?etabs/ETABS-solver-log-extract\.txt`?", "`04 Results/ETABS/ETABS-solver-log-extract.txt`"),
+    (r"`?(?:safe/)?solver-log-extracts/<storey>\.txt`?",
+     "`04 Results/SAFE/solver-log-extracts/<storey>.txt` (tabulated in Appendix F.6)"),
     (r"`?safe/SAFE-RESULTS\.txt`?", "Appendix F.1"),
     (r"SAFE-RESULTS\.txt", "Appendix F.1"),
     (r"`?safe/safe-set\.txt`?", "Appendix F.2"),
@@ -769,8 +773,12 @@ def main() -> int:
         dest = out / "03 Models/SAFE" if st in TRANSFER_STOREYS else out / "03 Models/SAFE/Storeys with no transfer"
         for ext in (".f2k", ".assumptions.txt", ".provenance.csv"):
             copies.append((src / "safe/models" / f"{st}{ext}", dest / f"{st}{ext}"))
-    for f in ("ETABS-base-reactions.csv", "ETABS-loads-onto-transfer-storeys.csv"):
+    for f in ("ETABS-base-reactions.csv", "ETABS-loads-onto-transfer-storeys.csv", "ETABS-solver-log-extract.txt"):
         copies.append((src / "etabs" / f, out / "04 Results/ETABS" / f))
+    # Row 1982 JM-V8 (Codex V7-04, V5-03): each SAFE storey's run-log extract; safe-set.txt (F.2's full slab-use wording)
+    for f in sorted((src / "safe/solver-log-extracts").glob("*.txt")):
+        copies.append((f, out / "04 Results/SAFE/solver-log-extracts" / f.name))
+    copies.append((src / "safe/safe-set.txt", out / "03 Models/SAFE/safe-set.txt"))
     for f in sorted((src / "safe/results").rglob("*")):
         if f.is_file():
             copies.append((f, out / "04 Results/SAFE" / f.relative_to(src / "safe/results")))
@@ -963,7 +971,8 @@ def main() -> int:
     d1.section("1", "Review letter", prep(pandoc(letter_body, "letter")), "s1", first=True)
     d1.section("2", "About this package", prep(pandoc(intro_md, "intro")), "s2")
     d1.section("3", "Findings register", reg_html, "s3")
-    d1.section("4", "Gravity load path, storey by storey", prep(pandoc(remap(strip_h1(lp_md)), "lp")), "s4")
+    # Row 1982 JM-V8 (Codex V7-03): the load-path summary starts on a fresh landscape page (a named page breaks before it)
+    d1.section("4", "Gravity load path, storey by storey", prep(pandoc(remap(strip_h1(lp_md)), "lp")), "s4", wide=True)
     d1.section("5", "Transfer slabs: what our SAFE runs give, and what they do not",
                prep(pandoc(remap(strip_h1(tr_md)), "tr")), "s5")
     cov1 = cover(
@@ -1080,6 +1089,48 @@ def main() -> int:
             ("F5", "Load rows of the set: applied to the SAFE slabs, or listed, and why", src / "safe/safe-loads.csv", "csv")):
         txt = read(path)
         head = f'<h2 id="f-{code.lower()}">{code[0]}.{code[1:]}\u2002{html.escape(title)}</h2>' + f_intro.get(code, "")
+        if code == "F2":
+            # Row 1982 JM-V8 (Codex V5-03): the slab-use lines (one per storey, each listing every room label and sheet it
+            # was read from) filled four pages of monospace. The PDF gives each storey's use, basis and loads as a table,
+            # consecutive storeys with the same use as one row; the full wording ships as 03 Models/SAFE/safe-set.txt.
+            # Every storey line is counted into the table, so a dropped line is a build fault.
+            lines = txt.split("\n")
+            k = next(i for i, ln in enumerate(lines) if ln.startswith("slab use from the plans' labels"))
+            top, rule_lines, uses = lines[:k + 1], [], []
+            for ln in lines[k + 1:]:
+                m = re.match(r"^  storey (.+?): (.*)$", ln)
+                if not m:
+                    if ln.strip():
+                        rule_lines.append(ln)
+                    continue
+                hd, _, tail = m[2].partition(" - ")
+                mm = re.match(r"^(.*) \(([^()]*)\)$", hd)
+                use, basis = mm.groups() if mm else (hd, "stated")
+                lv = re.search(re.escape(use) + r" \(live ([\d.]+) kPa, SDL ([\d.]+) kPa\)", tail)
+                uses.append((m[1], use, basis, lv[1] if lv else "-", lv[2] if lv else "-"))
+            if len(uses) != sum(1 for ln in lines if ln.startswith("  storey ")):
+                raise SystemExit("safe-set.txt: a storey's slab-use line was not read")
+            rows2 = []
+            for st, *rest in uses:
+                if rows2 and rows2[-1][1:] == rest:
+                    rows2[-1][0].append(st)
+                else:
+                    rows2.append([[st], *rest])
+            trs = "".join(
+                f'<tr><td class="txt nw">{html.escape(s[0] if len(s) == 1 else f"{s[0]} to {s[-1]} ({len(s)} storeys)")}'
+                f'</td><td class="txt">{html.escape(u)}</td><td class="txt">{html.escape(b)}</td>'
+                f'<td class="num">{lv}</td><td class="num">{sd}</td></tr>' for s, u, b, lv, sd in rows2)
+            body = (pre_block(remap("\n".join(top), "05"), prose_from=170)
+                    + "".join(f'<p class="prose">{html.escape(remap(ln.strip(), "05"))}</p>' for ln in rule_lines)
+                    + '<table class="data"><thead><tr><th>storey</th><th>slab use taken</th><th>basis</th>'
+                    '<th class="num">live (kPa)</th><th class="num">SDL (kPa)</th></tr></thead><tbody>' + trs
+                    + "</tbody></table>"
+                    f"<p>{len(uses)} storeys in all. The room labels and sheet pages each storey's use was read from are "
+                    "in the file <code>03 Models/SAFE/safe-set.txt</code>, one line per storey.</p>")
+            sources05.append("\n".join(top + rule_lines) + "\n" + "\n".join(
+                f"{' '.join(s)} {u} {b} {lv} {sd}" for s, u, b, lv, sd in rows2))
+            f_parts.append(f'<div class="wide">{head}{body}</div>')
+            continue
         if kind == "pre":
             sources05.append(txt)
             # fixed-width text keeps its columns only if its lines fit: a landscape page holds them
@@ -1145,6 +1196,36 @@ def main() -> int:
         sources05.append(csv_cells(path))
         body = csv_table(path, rename={"elevation": "elevation (mm)"} if code == "F4" else None)
         f_parts.append(f'<div class="wide">{head}{body}</div>' if len(txt.split("\n", 1)[0].split(",")) >= 8 else head + body)
+    # Row 1982 JM-V8 (Codex V7-04): F.6, the run checks behind PROVEN and the letter's run-check counts, one row per model,
+    # read from the shipped extracts (each quotes its run's log lines with line numbers). Refuses unless there is one
+    # extract per transfer storey and each gives a sha, the cases finished and the negative eigenvalues.
+    def run_row(p: Path, label: str) -> tuple[str, str, str, str]:
+        t = read(p)
+        sh = re.search(r"SHA-256 ([0-9a-f]{64})", t)
+        fin = re.search(r"load cases finished: +(\d+ of \d+)", t)
+        neg = re.search(r"negative eigenvalues: +(\d+)", t)
+        if not (sh and fin and neg):
+            raise SystemExit(f"{p.name}: no sha, cases finished or negative eigenvalues line")
+        return label, sh[1][:16], fin[1], neg[1]
+    ex = {p.stem: p for p in (src / "safe/solver-log-extracts").glob("*.txt")}
+    if sorted(ex) != TRANSFER_STOREYS:
+        raise SystemExit(f"solver-log extracts {sorted(ex)} != transfer storeys {TRANSFER_STOREYS}")
+    order = [ln.split(".f2k")[0].strip() for ln in read(src / "safe/safe-set.txt").split("\n") if ".f2k stands for" in ln]
+    runs = [run_row(src / "etabs/ETABS-solver-log-extract.txt", "ETABS, the whole building (the model as written)")]
+    runs += [run_row(ex[st], f"SAFE, {st.replace('_', ' ').replace('P1 GF', 'P1/GF')}") for st in order if st in ex]
+    f6 = ('<h2 id="f-f6">F.6 Run checks: the solver logs behind them</h2>'
+          "<p>One row per analysed model: the first 16 characters of the SHA-256 of the model file the run read, the load "
+          "cases the run finished, and the negative eigenvalues its solver reported (0 = stable). Each row's log lines are "
+          "quoted, with their line numbers, in the files <code>04 Results/ETABS/ETABS-solver-log-extract.txt</code> and "
+          "<code>04 Results/SAFE/solver-log-extracts/&lt;storey&gt;.txt</code>; each SAFE model is the file of that name in "
+          "<code>03 Models/SAFE/</code>.</p>"
+          '<table class="data"><thead><tr><th>model</th><th>SHA-256 (first 16)</th><th>load cases finished</th>'
+          '<th class="num">negative eigenvalues</th></tr></thead><tbody>'
+          + "".join(f'<tr><td class="txt">{html.escape(a)}</td><td class="txt nw"><code>{b}</code></td><td class="txt">{c}'
+                    f'</td><td class="num">{d}</td></tr>' for a, b, c, d in runs) + "</tbody></table>")
+    sources05.append("\n".join(" ".join(r) for r in runs))
+    f_parts.append(f6)
+    print(f"RUN CHECKS F.6: {len(runs)} models ({len(runs) - 1} SAFE of {len(TRANSFER_STOREYS)} transfer storeys + ETABS)")
     d5.section("F", APPX["F"], "".join(f_parts), "aF", kicker="Appendix F", number_h2=False, wide=True)
 
     pg = read(src / "safe/P1_GF-unattached-supports.md")
