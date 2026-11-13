@@ -301,7 +301,7 @@ class Doc:
         self.prefix = prefix
 
     def section(self, num: str, title: str, body_html: str, anchor: str, number_h2: bool = True,
-                kicker: str = "", first: bool = False) -> None:
+                kicker: str = "", first: bool = False, wide: bool = False) -> None:
         soup = BeautifulSoup(body_html, "html.parser")
         sub = 0
         for h in soup.find_all(["h2"]):
@@ -323,7 +323,7 @@ class Doc:
         # h3 stay unnumbered; h4+ are rare
         self.toc.insert(len(self.toc) - sum(1 for _ in soup.find_all("h2")),
                         (1, anchor, f"{num}\u2003{title}"))
-        cls = "sec first" if first else "sec"
+        cls = ("sec first" if first else "sec") + (" wide" if wide else "")
         k = f'<p class="kicker">{html.escape(kicker)}</p>' if kicker else ""
         self.parts.append(f'<section class="{cls}" id="{anchor}">{k}<h1><span class="hnum">{num}</span> '
                           f'{html.escape(title)}</h1>{soup}</section>')
@@ -430,6 +430,11 @@ td.nw{white-space:nowrap}
 table.data td.txt{padding-left:2.4mm}
 table.data td.num{padding-left:3mm}
 td.long{min-width:42mm}
+.wide td.long{min-width:62mm}
+table.data th{padding-left:2.4mm}
+table.data td.num + td.txt{padding-left:3.5mm}
+h1,h2,h3,h4{break-inside:avoid}
+p:has(> strong:only-child){break-after:avoid}
 table.meta th{background:#EEF1F4;color:var(--slate-deep);width:24mm;font-size:7pt;letter-spacing:.06em;text-transform:uppercase;vertical-align:top;padding:1.2mm 1.6mm}
 table.meta td{background:#fff !important}
 table.register td:first-child a{font-family:var(--mono);font-weight:600}
@@ -858,7 +863,7 @@ def main() -> int:
                 f_parts.append(f'<div class="wide"><h2 id="f-{code.lower()}">{code}\u2002{html.escape(title)}</h2>{body}</div>')
                 continue
         f_parts.append(f'<h2 id="f-{code.lower()}">{code}\u2002{html.escape(title)}</h2>{body}')
-    d5.section("F", APPX["F"], "".join(f_parts), "aF", kicker="Appendix F", number_h2=False)
+    d5.section("F", APPX["F"], "".join(f_parts), "aF", kicker="Appendix F", number_h2=False, wide=True)
 
     pg = read(src / "safe/P1_GF-unattached-supports.md")
     sources05.append(strip_h1(pg))
