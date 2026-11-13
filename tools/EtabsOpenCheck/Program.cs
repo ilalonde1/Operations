@@ -301,7 +301,10 @@ internal static class Program
                 {
                     int sx = Array.FindIndex(args, x => x.Equals("--split-x", StringComparison.OrdinalIgnoreCase));
                     double splitMm = sx >= 0 ? double.Parse(args[sx + 1], CultureInfo.InvariantCulture) : double.NaN;
-                    int lbad = Lateral(model, mine, args[lx + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), splitMm);
+                    int cx = Array.FindIndex(args, x => x.Equals("--cuts", StringComparison.OrdinalIgnoreCase));
+                    var cuts = cx >= 0 ? LateralEquilibrium.ParseCuts(args[cx + 1]) : new List<LateralEquilibrium.Cut>();
+                    int lbad = Lateral(model, mine, args[lx + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), splitMm,
+                        cuts, LateralEquilibrium.UserLoads(File.ReadAllText(copy)));
                     if (lbad != 0) exit = 2;
                 }
             }
@@ -670,7 +673,15 @@ internal static class Program
     // multiply drifts by RdRo/IE, combine cases, judge any value against a limit; the deformed shape is not pictured (the
     // API cannot switch the view). SAME-CLASS FAULT IT MISSES: a case the model defines wrongly (a wrong spectrum scale)
     // runs and reads like a right one - the basis file that wrote it is where that is checked.
-    private static int Lateral(cSapModel model, Process? mine, string[] cases, double splitMm)
+    // JM-LATERAL-2 (13 Nov, run r25's base reaction): reactions-by-side.csv carries the level (z_m) of each joint group, so
+    // what each storey's restraints take is read apart (ETABS's BaseReact does not carry the UX UY restraints above the
+    // pinned storey - r25: WX 4,319 kN against 3,763 applied); every mode's reactions (SetOptionModeShape, r25 gave mode 1
+    // only); --cuts: horizontal quadrilateral section cuts 100 mm above a storey, defined BEFORE the run and read for every
+    // case (section-cuts.csv) - ETABS combines an RS case's modes on the cut, so a building's RSA base shear is read off its
+    // own cut, not off joint maxima; GATE equilibrium lateral <case> for every linear static case: the reactions summed over
+    // EVERY restrained joint against the load applied (the e2k's USERLOAD lines, else a cut named ALL...), and a NOTE when
+    // BaseReact differs from that sum (base-shear.csv is then not the structure's base shear).
+    private static int Lateral(cSapModel model, Process? mine, string[] cases, double splitMm, List<LateralEquilibrium.Cut> cuts, Dictionary<string, (double Fx, double Fy)> userLoads)
     {
         int bad = 0;
         var Ic = CultureInfo.InvariantCulture;
@@ -683,6 +694,25 @@ internal static class Program
         if (absent.Count > 0) return 1;
 
         model.SetPresentUnits(eUnits.kN_m_C);
+        if (cuts.Count > 0)
+        {
+            // a locked model takes no new definition; the reactions are read already and every case named here runs again
+            Say($"   SetModelIsLocked(false) before the cuts: {model.SetModelIsLocked(false)}");
+            int defined = 0;
+            foreach (var c in cuts)
+            {
+                double elev = 0;
+                int re = model.Story.GetElevation(c.Storey, ref elev);
+                double z = elev + 0.1;   // 100 mm above the storey's level: the members of the storey above are cut
+                double[] qx = { c.X0 / 1000, c.X1 / 1000, c.X1 / 1000, c.X0 / 1000 }, qy = { c.Y0 / 1000, c.Y0 / 1000, c.Y1 / 1000, c.Y1 / 1000 }, qz = { z, z, z, z };
+                int rq = re == 0 ? model.SectCut.SetByQuad(c.Name, "All", 1, ref qx, ref qy, ref qz) : -1;
+                int rl = rq == 0 && c.Rx is double rx && c.Ry is double ry ? model.SectCut.SetResultLocation(c.Name, false, rx / 1000, ry / 1000, z) : 0;
+                if (re == 0 && rq == 0 && rl == 0) defined++;
+                Say($"   section cut {c.Name}: x {c.X0:0}..{c.X1:0}, y {c.Y0:0}..{c.Y1:0} mm at z {z:0.000} m ({c.Storey} {(re == 0 ? elev.ToString("0.000", CultureInfo.InvariantCulture) : "NOT FOUND")} + 0.1), result point {(c.Rx is null ? "ETABS's default" : $"{c.Rx:0}, {c.Ry:0} mm")}: GetElevation {re}, SetByQuad {rq}, SetResultLocation {rl}");
+            }
+            Say($"GATE section cuts defined: {defined} of {cuts.Count}: {(defined == cuts.Count ? "PASS" : "FAIL")}");
+            if (defined != cuts.Count) bad++;
+        }
         Say($"   SetRunCaseFlag(all, off): {model.Analyze.SetRunCaseFlag("", false, true)}; on: {string.Join(", ", cases.Select(c => $"{c} {model.Analyze.SetRunCaseFlag(c, true, false)}"))}");
         var t0 = DateTime.Now.AddSeconds(-2);
         var sw = Stopwatch.StartNew();
@@ -734,7 +764,8 @@ internal static class Program
         // group All that has a reaction: FX FY FZ and the vertical reactions' moments about the global axes (MX = sum F3 y + M1,
         // MY = sum -F3 x + M2). For a response-spectrum case each joint's value is its own maximum, so the side sum is NOT a
         // modal combination - the per-building combination is made from the modal case's rows (written for that, 13 Nov).
-        var placed = new Dictionary<string, (double X, double Y)>(StringComparer.Ordinal);
+        var placed = new Dictionary<string, (double X, double Y, double Z)>(StringComparer.Ordinal);
+        var totals = new Dictionary<(string Case, string Step, double Num), (double Fx, double Fy)>();
         void SideReactions(IEnumerable<string> which, string file, string what)
         {
             Select(which);
@@ -742,7 +773,7 @@ internal static class Program
             double[] sn = Array.Empty<double>(), f1 = Array.Empty<double>(), f2 = Array.Empty<double>(), f3 = Array.Empty<double>(), m1 = Array.Empty<double>(), m2 = Array.Empty<double>(), m3 = Array.Empty<double>();
             var t = Stopwatch.StartNew();
             int r = model.Results.JointReact("All", eItemTypeElm.GroupElm, ref n, ref obj, ref elm, ref lc, ref st, ref sn, ref f1, ref f2, ref f3, ref m1, ref m2, ref m3);
-            var sum = new SortedDictionary<(string Case, string Step, double Num, string Side), double[]>();
+            var sum = new SortedDictionary<(string Case, string Step, double Num, string Side, double Z), double[]>();
             for (int i = 0; i < n; i++)
             {
                 // run r21 (13 Nov): a reaction at a mesh joint has no point OBJECT (Obj null) - it is placed by its point ELEMENT
@@ -752,15 +783,16 @@ internal static class Program
                 {
                     double x = 0, y = 0, z = 0;
                     if (isObj) model.PointObj.GetCoordCartesian(obj[i], ref x, ref y, ref z, "Global"); else model.PointElm.GetCoordCartesian(elm[i] ?? "", ref x, ref y, ref z, "Global");
-                    placed[key] = p = (x, y);
+                    placed[key] = p = (x, y, Math.Round(z, 2));
                 }
                 string side = double.IsNaN(splitMm) ? "ALL" : p.X * 1000 <= splitMm ? "W" : "E";
-                var k = (lc[i], st[i], sn[i], side);
+                var k = (lc[i], st[i], sn[i], side, p.Z);
+                var tk = (lc[i], st[i], sn[i]); var tv = totals.GetValueOrDefault(tk); totals[tk] = (tv.Fx + f1[i], tv.Fy + f2[i]);
                 if (!sum.TryGetValue(k, out var s)) sum[k] = s = new double[7];
                 s[0] += f1[i]; s[1] += f2[i]; s[2] += f3[i]; s[3] += f3[i] * p.Y + m1[i]; s[4] += -f3[i] * p.X + m2[i]; s[5] += m3[i]; s[6] += 1;
             }
-            var lines = new List<string> { "case,step_type,step,side,FX_kN,FY_kN,FZ_kN,MX_kNm,MY_kNm,MZ_joint_kNm,joints" };
-            foreach (var kv in sum) lines.Add(string.Join(",", kv.Key.Case, kv.Key.Step, F(kv.Key.Num), kv.Key.Side, F(kv.Value[0]), F(kv.Value[1]), F(kv.Value[2]), F(kv.Value[3]), F(kv.Value[4]), F(kv.Value[5]), F(kv.Value[6])));
+            var lines = new List<string> { "case,step_type,step,side,z_m,FX_kN,FY_kN,FZ_kN,MX_kNm,MY_kNm,MZ_joint_kNm,joints" };
+            foreach (var kv in sum) lines.Add(string.Join(",", kv.Key.Case, kv.Key.Step, F(kv.Key.Num), kv.Key.Side, F(kv.Key.Z), F(kv.Value[0]), F(kv.Value[1]), F(kv.Value[2]), F(kv.Value[3]), F(kv.Value[4]), F(kv.Value[5]), F(kv.Value[6])));
             Say($"   JointReact(All): {r}, {n} row(s), {placed.Count} joint(s) placed, {t.Elapsed.TotalSeconds:F0} s");
             Written(file, lines, what);
         }
@@ -789,7 +821,15 @@ internal static class Program
             var fl = new List<string> { "case,mode,period_s,UX,UY,RZ,modal_mass,modal_stiffness" };
             for (int i = 0; i < q; i++) fl.Add(string.Join(",", lc3[i], F(sn3[i]), F(per3[i]), F(fx3[i]), F(fy3[i]), F(frz[i]), F(mm[i]), F(ms[i])));
             Written($"modal-factors{(modal.Count > 1 ? "-" + mc : "")}.csv", fl, $"modal factors {mc}");
+            // r25 (13 Nov): ETABS gave mode 1 only - its mode-shape output option names the modes read; every mode, here
+            int ms0 = 0, ms1 = 0; bool msAll = false;
+            int rms = model.Results.Setup.SetOptionModeShape(1, Math.Max(n, 1), true);
+            model.Results.Setup.GetOptionModeShape(ref ms0, ref ms1, ref msAll);
+            Say($"   SetOptionModeShape(1, {Math.Max(n, 1)}, all): {rms}; reads back {ms0}..{ms1}, all {msAll}");
             SideReactions(new[] { mc }, $"modal-reactions-by-side{(modal.Count > 1 ? "-" + mc : "")}.csv", $"modal reactions by side {mc}");
+            int modesBack = totals.Keys.Where(k => k.Case == mc).Select(k => k.Num).Distinct().Count();
+            Say($"GATE modal reactions every mode {mc}: {modesBack} of {n} mode(s): {(modesBack == n ? "PASS" : "FAIL")}");
+            if (modesBack != n) bad++;
             for (int i = 0; i < Math.Min(Math.Min(n, m), 3); i++)
                 Say($"   {mc} mode {sn[i]:0}: T = {per[i]:0.000} s; UX {ux[i]:P1} UY {uy[i]:P1} RZ {rz[i]:P1}");
             int ix = Enumerable.Range(0, m).FirstOrDefault(i => sux[i] >= 0.9, -1), iy = Enumerable.Range(0, m).FirstOrDefault(i => suy[i] >= 0.9, -1);
@@ -811,6 +851,56 @@ internal static class Program
             Written("base-shear.csv", lines, "base shear");
         }
         SideReactions(loads, "reactions-by-side.csv", "reactions by side");
+
+        // section cuts, every case (a modal case per mode)
+        var cutF = new Dictionary<(string Cut, string Case), (double F1, double F2)>();
+        if (cuts.Count > 0)
+        {
+            Select(cases);
+            int n = 0; string[] sc = Array.Empty<string>(), lc = Array.Empty<string>(), st = Array.Empty<string>();
+            double[] sn = Array.Empty<double>(), f1 = Array.Empty<double>(), f2 = Array.Empty<double>(), f3 = Array.Empty<double>(), m1 = Array.Empty<double>(), m2 = Array.Empty<double>(), m3 = Array.Empty<double>();
+            int r = model.Results.SectionCutAnalysis(ref n, ref sc, ref lc, ref st, ref sn, ref f1, ref f2, ref f3, ref m1, ref m2, ref m3);
+            Say($"   SectionCutAnalysis: {r}, {n} row(s)");
+            var lines = new List<string> { "cut,case,step_type,step,F1_kN,F2_kN,F3_kN,M1_kNm,M2_kNm,M3_kNm" };
+            for (int i = 0; i < n; i++)
+            {
+                lines.Add(string.Join(",", Q(sc[i]), lc[i], st[i], F(sn[i]), F(f1[i]), F(f2[i]), F(f3[i]), F(m1[i]), F(m2[i]), F(m3[i])));
+                if (st[i] != "Max" && st[i] != "Min" && !st[i].StartsWith("Mode", StringComparison.OrdinalIgnoreCase)) cutF[(sc[i], lc[i])] = (f1[i], f2[i]);
+            }
+            Written("section-cuts.csv", lines, "section cuts");
+            foreach (var c in cuts)
+                foreach (var lcase in loads)
+                    if (cutF.TryGetValue((c.Name, lcase), out var cf)) Say($"   cut {c.Name} {lcase}: F1 {cf.F1:N1} F2 {cf.F2:N1} kN");
+        }
+
+        // equilibrium of every linear static case: the reactions over EVERY restrained joint against the load applied
+        {
+            int n = 0; string[] lc = Array.Empty<string>(), st = Array.Empty<string>(); double[] sn = Array.Empty<double>(), fx = Array.Empty<double>(), fy = Array.Empty<double>(), fz = Array.Empty<double>(), mx = Array.Empty<double>(), my = Array.Empty<double>(), mz = Array.Empty<double>();
+            double gx = 0, gy = 0, gz = 0;
+            Select(loads);
+            model.Results.BaseReact(ref n, ref lc, ref st, ref sn, ref fx, ref fy, ref fz, ref mx, ref my, ref mz, ref gx, ref gy, ref gz);
+            var allCut = cuts.FirstOrDefault(c => c.Name.StartsWith("ALL", StringComparison.OrdinalIgnoreCase) || c.Name.EndsWith("-ALL", StringComparison.OrdinalIgnoreCase));
+            foreach (var lcase in loads)
+            {
+                eLoadCaseType t = default; int sub = 0; model.LoadCases.GetTypeOAPI(lcase, ref t, ref sub);
+                if (t != eLoadCaseType.LinearStatic) continue;
+                // lateral only: a case named after a Quake or Wind pattern (the e2k's EQ and wind cases are; gravity is not judged here)
+                eLoadPatternType pt = default;
+                if (model.LoadPatterns.GetLoadType(lcase, ref pt) != 0 || !(pt == eLoadPatternType.Quake || pt == eLoadPatternType.Wind)) continue;
+                var rk = totals.Keys.FirstOrDefault(k => k.Case == lcase);
+                if (rk.Case is null) { Say($"GATE equilibrium lateral {lcase}: no joint reaction read: FAIL"); bad++; continue; }
+                var react = totals[rk];
+                (bool ok, string line) g;
+                if (userLoads.TryGetValue(lcase, out var ul)) g = LateralEquilibrium.Gate(lcase, ul, react, "the e2k's USERLOAD lines");
+                else if (allCut is not null && cutF.TryGetValue((allCut.Name, lcase), out var cf)) g = LateralEquilibrium.Gate(lcase, (cf.F1, cf.F2), react, $"cut {allCut.Name} at {allCut.Storey}", signFree: true);
+                else { Say($"   equilibrium lateral {lcase}: applied load not known (no USERLOAD lines, no ALL cut) - not judged"); continue; }
+                Say(g.line);
+                if (!g.ok) bad++;
+                int bi = Array.IndexOf(lc, lcase);
+                if (bi >= 0 && Math.Sqrt(Math.Pow(fx[bi] - react.Fx, 2) + Math.Pow(fy[bi] - react.Fy, 2)) > 0.01 * Math.Max(1, Math.Sqrt(react.Fx * react.Fx + react.Fy * react.Fy)))
+                    Say($"   NOTE {lcase}: ETABS BaseReact FX {fx[bi]:N1} FY {fy[bi]:N1} kN is NOT the reactions over every restrained joint (FX {react.Fx:N1} FY {react.Fy:N1}) - base-shear.csv is not the structure's base shear; reactions-by-side.csv by level says which restraints it leaves out");
+            }
+        }
         {
             int n = 0; string[] story = Array.Empty<string>(), lc = Array.Empty<string>(), st = Array.Empty<string>(), dir = Array.Empty<string>(), label = Array.Empty<string>();
             double[] sn = Array.Empty<double>(), d = Array.Empty<double>(), x = Array.Empty<double>(), y = Array.Empty<double>(), z = Array.Empty<double>();
@@ -879,6 +969,12 @@ internal static class Program
         int sxi = Array.FindIndex(args, x => x.Equals("--split-x", StringComparison.OrdinalIgnoreCase));
         if (sxi >= 0 && (lx < 0 || sxi + 1 >= args.Length || !double.TryParse(args[sxi + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out _)))
             return "--split-x wants a plan x in mm after it, and is read only with --lateral";
+        int cxi = Array.FindIndex(args, x => x.Equals("--cuts", StringComparison.OrdinalIgnoreCase));
+        if (cxi >= 0)
+        {
+            if (lx < 0 || cxi + 1 >= args.Length || args[cxi + 1].StartsWith("--")) return "--cuts wants 'name=x0..x1,y0..y1@storey[@x,y];...' (mm) after it, and is read only with --lateral";
+            try { LateralEquilibrium.ParseCuts(args[cxi + 1]); } catch (FormatException ex) { return "--cuts: " + ex.Message; }
+        }
         if (rx >= 0 && args.Any(x => x.Equals("--gravity", StringComparison.OrdinalIgnoreCase)))
             return "--gravity and --reactions together - --gravity pins every Base point on the same model, supports the reactions' gate would not state";
         int st = Array.FindIndex(args, x => x.Equals("--start-timeout-s", StringComparison.OrdinalIgnoreCase));
