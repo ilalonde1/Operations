@@ -10,7 +10,7 @@ WHY THIS EXISTS
 
         <name>/01 Review letter and findings.pdf   letter, intro, ranked register with its pictures,
                                                     load path, transfer results
-        <name>/02 3D model viewer.html              the viewer, renamed, unchanged
+        <name>/02 3D model viewer.html              the viewer, renamed; its pin texts' file names mapped (VIEWER_REMAP)
         <name>/03 Models/ETABS, 03 Models/SAFE      .e2k; .f2k with their assumptions and provenance
         <name>/04 Results/ETABS, 04 Results/SAFE    the result .csv files
         <name>/05 Appendices.pdf                    lettered appendices A-H
@@ -135,7 +135,8 @@ REMAP_RE = [
     (r"`?DESIGN-AT-A-GLANCE\.md`?", "Appendix D"),
     (r"`?TRANSFER-RESULTS\.md`?", "Section 5 of OF_LETTER"),
     (r"`?LOAD-PATH-SUMMARY\.md`?", "Section 4 of OF_LETTER"),
-    (r"`?FINDINGS-REGISTER\.(?:csv|md)`?", "the findings register (Section 3 of OF_LETTER)"),
+    (r"`?(?:review/)?REVIEW-LETTER\.md`?", "Section 1 of OF_LETTER, the review letter"),
+    (r"`?(?:review/)?FINDINGS-REGISTER\.(?:csv|md)`?", "the findings register (Section 3 of OF_LETTER)"),
     (r"`01819-01 Renfrew - 3D model viewer\.html`", "`02 3D model viewer.html`"),
 ]
 
@@ -150,6 +151,36 @@ def remap(text: str, doc: str = "01") -> str:
 
 
 # ---------------------------------------------------------------- helpers
+PDF05 = "05 Appendices.pdf"
+PDF01 = "01 Review letter and findings.pdf"
+# The viewer's pin texts name the old files. No double quote may be introduced: they sit inside JS strings.
+VIEWER_REMAP = [
+    ("(FINDINGS-REGISTER.csv)", f"(the findings register, Section 3 of {PDF01})"),
+    (r"safe/P1_GF-unattached-supports.md", f"Appendix G in {PDF05}"),
+    (r"etabs/ETABS-loads-onto-transfer-storeys.csv", "04 Results/ETABS/ETABS-loads-onto-transfer-storeys.csv"),
+    ("gravity-tower-columns.csv", f"the table Every column-level in Appendix C of {PDF05}"),
+    ("GRAVITY-CHECK.md", f"Appendix C in {PDF05}"),
+    ("ANSWER-KEY.md", f"Appendix A in {PDF05}"),
+    ("EARLY-COMMENTS.md", f"Appendix B in {PDF05}"),
+]
+
+
+def viewer_text(p: Path) -> str:
+    t = read(p)
+    for old, new in VIEWER_REMAP:
+        t = t.replace(old, new)
+    # Row 1982 JM-V5: find each '.md'/'.csv' first, then read back at most 200 chars for its name. The old
+    # findall(r"[\w/.-]+\.(?:md|csv)\b") backtracks over the inlined model's base64 (one 1.8M-char run): quadratic, it hung.
+    left = []
+    for m in re.finditer(r"\.(?:md|csv)\b", t):
+        name = re.search(r"[\w/.-]*$", t[max(0, m.start() - 200):m.start()])[0] + m[0]
+        left.append(name)
+    left = [x for x in left if not x.startswith(("04 Results", "Results/"))]   # '04 Results/...': the name read stops at the space
+    if left:
+        raise SystemExit(f"viewer still names old files: {sorted(set(left))}")
+    return t
+
+
 def sha(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
@@ -602,10 +633,13 @@ def main() -> int:
     copies.append((src / "answer-key.csv", out / "05 Appendix A - answer key.csv"))
     for s, d in copies:
         d.parent.mkdir(parents=True, exist_ok=True)
+        if s == viewer:
+            d.write_text(viewer_text(viewer), encoding="utf-8", newline="")
+            continue
         shutil.copy2(s, d)
         if sha(s) != sha(d):
             raise SystemExit(f"copy differs: {d}")
-    print(f"COPIED {len(copies)} files, each SHA-256 equal to its source")
+    print(f"COPIED {len(copies)} files: {len(copies) - 1} each SHA-256 equal to its source; the viewer with its file names mapped")
     n_tr = len(TRANSFER_STOREYS)
     n_other = len(list((src / "safe/models").glob("*.f2k"))) - n_tr
     for st in TRANSFER_STOREYS:
