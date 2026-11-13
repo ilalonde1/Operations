@@ -293,6 +293,17 @@ internal static class Program
                 int bad = Reactions(model, mine, Path.GetFullPath(args[rx + 1]), Path.GetFullPath(args[rx + 2]), supportStorey);
                 Say($"GATE import, counts and analysis model: {(exit == 0 ? "PASS" : "FAIL")}");
                 if (bad != 0 || exit != 0) exit = 2;
+
+                // 8. --lateral <case,case,...> [--split-x <mm>] (KOR.Drafter row 1982 / Framework row 2129, 13 Nov 2026): the
+                // lateral cases the e2k defines, run on THIS pinned copy after the reactions, and their results read
+                int lx = Array.FindIndex(args, x => x.Equals("--lateral", StringComparison.OrdinalIgnoreCase));
+                if (lx >= 0)
+                {
+                    int sx = Array.FindIndex(args, x => x.Equals("--split-x", StringComparison.OrdinalIgnoreCase));
+                    double splitMm = sx >= 0 ? double.Parse(args[sx + 1], CultureInfo.InvariantCulture) : double.NaN;
+                    int lbad = Lateral(model, mine, args[lx + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), splitMm);
+                    if (lbad != 0) exit = 2;
+                }
             }
         }
         finally
@@ -643,6 +654,169 @@ internal static class Program
         return bad;
     }
 
+    // 8. LATERAL (KOR.Drafter row 1982, JM 01819 lateral issue; Framework row 2129 runner; framework-ca 13 Nov). On THIS copy,
+    // after Reactions() (the same pins on the support storey, the same saved reactions.EDB), the named cases - the e2k's own
+    // Modal, response-spectrum, equivalent-static and wind cases - are flagged and run, and read back:
+    //   modal.csv          mode, period, frequency, eigenvalue, UX UY RZ participating mass and their cumulative sums
+    //   base-shear.csv     BaseReact per case and step type (a response spectrum reads 'Max')
+    //   story-drifts.csv   StoryDrifts: the largest drift ratio per storey, case, direction, with its point and place
+    //   building-drifts.csv  JointDrifts, the largest |drift| per storey, case and side of --split-x (W / E), so two buildings
+    //                      on one podium are read apart
+    //   pier-forces.csv, spandrel-forces.csv   PierForce / SpandrelForce, every pier and spandrel label, top and bottom
+    // API signatures read off ETABSv1.dll 2.16 by reflection, 13 Nov (the dll beside ETABS 23 on KOR-210, sha256 393492bd).
+    // GATES: lateral cases defined X of N; finished X of N; stability (the .LOG's NEGATIVE EIGENVALUES); modal mass 90 % in
+    // UX and UY (the mode that reaches it); each csv written with rows.
+    // COVERS: what ETABS computes for the cases the model defines, unscaled. DOES NOT: scale RSA to V (4.1.8.12.(8)),
+    // multiply drifts by RdRo/IE, combine cases, judge any value against a limit; the deformed shape is not pictured (the
+    // API cannot switch the view). SAME-CLASS FAULT IT MISSES: a case the model defines wrongly (a wrong spectrum scale)
+    // runs and reads like a right one - the basis file that wrote it is where that is checked.
+    private static int Lateral(cSapModel model, Process? mine, string[] cases, double splitMm)
+    {
+        int bad = 0;
+        var Ic = CultureInfo.InvariantCulture;
+        string F(double v) => v.ToString("G6", Ic);
+        Say($"8. LATERAL: cases {string.Join(", ", cases)}; sides split at x = {(double.IsNaN(splitMm) ? "none" : splitMm.ToString(Ic) + " mm")}");
+        int nc = 0; string[] cn = Array.Empty<string>(); int[] cs = Array.Empty<int>();
+        model.Analyze.GetCaseStatus(ref nc, ref cn, ref cs);
+        var absent = cases.Where(c => Array.IndexOf(cn, c) < 0).ToList();
+        Say($"GATE lateral cases defined: {cases.Length - absent.Count} of {cases.Length}{(absent.Count > 0 ? " - not in the model: " + string.Join(", ", absent) : "")}: {(absent.Count == 0 ? "PASS" : "FAIL")}");
+        if (absent.Count > 0) return 1;
+
+        model.SetPresentUnits(eUnits.kN_m_C);
+        Say($"   SetRunCaseFlag(all, off): {model.Analyze.SetRunCaseFlag("", false, true)}; on: {string.Join(", ", cases.Select(c => $"{c} {model.Analyze.SetRunCaseFlag(c, true, false)}"))}");
+        var t0 = DateTime.Now.AddSeconds(-2);
+        var sw = Stopwatch.StartNew();
+        int run = model.Analyze.RunAnalysis();
+        Say($"   RunAnalysis: {run} in {sw.Elapsed.TotalSeconds:F1} s; case status: {Status(model, cases)}");
+        string log = Path.Combine(_out, "reactions.LOG");
+        if (!Finished(model, cases))
+        {
+            mine?.Refresh();
+            IntPtr h = mine?.MainWindowHandle ?? IntPtr.Zero;
+            Say($"   not finished by the API - F5 posted to our ETABS's window {h}: {(h != IntPtr.Zero && PostMessage(h, 0x0100, (IntPtr)0x74, IntPtr.Zero) && PostMessage(h, 0x0101, (IntPtr)0x74, IntPtr.Zero))}");
+            var deadline = DateTime.Now.AddMinutes(40); bool done = false;
+            while (DateTime.Now < deadline && !done)
+            {
+                Thread.Sleep(10_000);
+                try { done = File.Exists(log) && File.GetLastWriteTime(log) >= t0 && Regex.IsMatch(ReadShared(log), @"ANALYSIS\s+COMPLETE", RegexOptions.IgnoreCase); } catch (IOException) { }
+            }
+            Thread.Sleep(15_000);
+            Say($"   .LOG {(done ? "says ANALYSIS COMPLETE" : "did not say ANALYSIS COMPLETE in 40 min")}; case status: {Status(model, cases)}");
+        }
+        CaptureScreen("lateral-run-after");
+        var negEig = new List<int>();
+        if (File.Exists(log) && File.GetLastWriteTime(log) >= t0)
+        {
+            string text = ReadShared(log);
+            File.WriteAllText(Path.Combine(_out, "lateral.LOG"), text);
+            Say($"   analysis log of the lateral run copied to lateral.LOG ({text.Length:N0} chars); its lines with EIGEN, MODE or WARNING:");
+            foreach (var l in text.Split('\n').Where(l => Regex.IsMatch(l, "EIGEN|MODES|WARNING|INSTAB|LOST", RegexOptions.IgnoreCase)).Take(60)) Say($"   | {l.TrimEnd()}");
+            negEig.AddRange(NegativeEigenvalues(text));
+        }
+        bool fin = Finished(model, cases);
+        Say($"GATE lateral cases finished: {cases.Count(c => CaseStatus(model, c) == 4)} of {cases.Length}: {(fin ? "PASS" : "FAIL")}");
+        Say(StabilityGate(negEig, out bool stable));
+        if (!stable) bad++;
+        if (!fin) { bad++; Say("   no lateral results read"); return bad; }
+
+        model.SetPresentUnits(eUnits.kN_m_C);
+        void Select(IEnumerable<string> which) { model.Results.Setup.DeselectAllCasesAndCombosForOutput(); foreach (var c in which) model.Results.Setup.SetCaseSelectedForOutput(c, true); }
+        bool Written(string file, List<string> lines, string what)
+        {
+            File.WriteAllLines(Path.Combine(_out, file), lines);
+            bool ok = lines.Count > 1;
+            Say($"GATE {what} written: {lines.Count - 1} row(s) in {file}: {(ok ? "PASS" : "FAIL")}");
+            if (!ok) bad++;
+            return ok;
+        }
+
+        // modal
+        var modal = cases.Where(c => { eLoadCaseType t = default; int s = 0; model.LoadCases.GetTypeOAPI(c, ref t, ref s); return t == eLoadCaseType.Modal; }).ToList();
+        foreach (var mc in modal)
+        {
+            Select(new[] { mc });
+            int n = 0; string[] lc = Array.Empty<string>(), st = Array.Empty<string>(); double[] sn = Array.Empty<double>(), per = Array.Empty<double>(), fr = Array.Empty<double>(), cf = Array.Empty<double>(), ev = Array.Empty<double>();
+            int r1 = model.Results.ModalPeriod(ref n, ref lc, ref st, ref sn, ref per, ref fr, ref cf, ref ev);
+            int m = 0; string[] lc2 = Array.Empty<string>(), st2 = Array.Empty<string>(); double[] sn2 = Array.Empty<double>(), per2 = Array.Empty<double>(),
+                ux = Array.Empty<double>(), uy = Array.Empty<double>(), uz = Array.Empty<double>(), sux = Array.Empty<double>(), suy = Array.Empty<double>(), suz = Array.Empty<double>(),
+                rx = Array.Empty<double>(), ry = Array.Empty<double>(), rz = Array.Empty<double>(), srx = Array.Empty<double>(), sry = Array.Empty<double>(), srz = Array.Empty<double>();
+            int r2 = model.Results.ModalParticipatingMassRatios(ref m, ref lc2, ref st2, ref sn2, ref per2, ref ux, ref uy, ref uz, ref sux, ref suy, ref suz, ref rx, ref ry, ref rz, ref srx, ref sry, ref srz);
+            Say($"   {mc}: ModalPeriod {r1} ({n} modes), ModalParticipatingMassRatios {r2} ({m} rows)");
+            var lines = new List<string> { "case,mode,period_s,frequency_hz,eigenvalue,UX,UY,RZ,sum_UX,sum_UY,sum_RZ" };
+            for (int i = 0; i < Math.Min(n, m); i++)
+                lines.Add(string.Join(",", mc, F(sn[i]), F(per[i]), F(fr[i]), F(ev[i]), F(ux[i]), F(uy[i]), F(rz[i]), F(sux[i]), F(suy[i]), F(srz[i])));
+            Written($"modal{(modal.Count > 1 ? "-" + mc : "")}.csv", lines, $"modal {mc}");
+            for (int i = 0; i < Math.Min(Math.Min(n, m), 3); i++)
+                Say($"   {mc} mode {sn[i]:0}: T = {per[i]:0.000} s; UX {ux[i]:P1} UY {uy[i]:P1} RZ {rz[i]:P1}");
+            int ix = Enumerable.Range(0, m).FirstOrDefault(i => sux[i] >= 0.9, -1), iy = Enumerable.Range(0, m).FirstOrDefault(i => suy[i] >= 0.9, -1);
+            bool massOk = ix >= 0 && iy >= 0;
+            Say($"GATE modal mass 90 %: UX {(ix >= 0 ? $"at mode {sn2[ix]:0}" : $"not reached ({(m > 0 ? sux[m - 1] : 0):P1} at mode {m})")}, UY {(iy >= 0 ? $"at mode {sn2[iy]:0}" : $"not reached ({(m > 0 ? suy[m - 1] : 0):P1} at mode {m})")}: {(massOk ? "PASS" : "FAIL")}");
+            if (!massOk) bad++;
+        }
+
+        var loads = cases.Except(modal).ToList();
+        Select(loads);
+        {
+            int n = 0; string[] lc = Array.Empty<string>(), st = Array.Empty<string>(); double[] sn = Array.Empty<double>(), fx = Array.Empty<double>(), fy = Array.Empty<double>(), fz = Array.Empty<double>(), mx = Array.Empty<double>(), my = Array.Empty<double>(), mz = Array.Empty<double>();
+            double gx = 0, gy = 0, gz = 0;
+            int r = model.Results.BaseReact(ref n, ref lc, ref st, ref sn, ref fx, ref fy, ref fz, ref mx, ref my, ref mz, ref gx, ref gy, ref gz);
+            var lines = new List<string> { "case,step_type,FX_kN,FY_kN,FZ_kN,MX_kNm,MY_kNm,MZ_kNm" };
+            for (int i = 0; i < n; i++) lines.Add(string.Join(",", lc[i], st[i], F(fx[i]), F(fy[i]), F(fz[i]), F(mx[i]), F(my[i]), F(mz[i])));
+            Say($"   BaseReact: {r}");
+            for (int i = 0; i < n; i++) Say($"   base {lc[i]} {st[i]}: FX {fx[i]:N1} FY {fy[i]:N1} kN");
+            Written("base-shear.csv", lines, "base shear");
+        }
+        {
+            int n = 0; string[] story = Array.Empty<string>(), lc = Array.Empty<string>(), st = Array.Empty<string>(), dir = Array.Empty<string>(), label = Array.Empty<string>();
+            double[] sn = Array.Empty<double>(), d = Array.Empty<double>(), x = Array.Empty<double>(), y = Array.Empty<double>(), z = Array.Empty<double>();
+            int r = model.Results.StoryDrifts(ref n, ref story, ref lc, ref st, ref sn, ref dir, ref d, ref label, ref x, ref y, ref z);
+            var lines = new List<string> { "story,case,step_type,direction,drift,point_label,x_m,y_m,z_m" };
+            for (int i = 0; i < n; i++) lines.Add(string.Join(",", Q(story[i]), lc[i], st[i], dir[i], F(d[i]), Q(label[i]), F(x[i]), F(y[i]), F(z[i])));
+            Say($"   StoryDrifts: {r}");
+            Written("story-drifts.csv", lines, "storey drifts");
+        }
+        {
+            int n = 0; string[] story = Array.Empty<string>(), label = Array.Empty<string>(), name = Array.Empty<string>(), lc = Array.Empty<string>(), st = Array.Empty<string>();
+            double[] sn = Array.Empty<double>(), dx = Array.Empty<double>(), dy = Array.Empty<double>(), drx = Array.Empty<double>(), dry = Array.Empty<double>();
+            sw.Restart();
+            int r = model.Results.JointDrifts(ref n, ref story, ref label, ref name, ref lc, ref st, ref sn, ref dx, ref dy, ref drx, ref dry);
+            var xOf = new Dictionary<string, double>(StringComparer.Ordinal);
+            var max = new Dictionary<(string Story, string Case, string Step, string Side), (double X, string Px, double Y, string Py)>();
+            for (int i = 0; i < n; i++)
+            {
+                if (!xOf.TryGetValue(name[i], out double px)) { double yy = 0, zz = 0; px = 0; model.PointObj.GetCoordCartesian(name[i], ref px, ref yy, ref zz, "Global"); xOf[name[i]] = px; }
+                string side = double.IsNaN(splitMm) ? "ALL" : px * 1000 <= splitMm ? "W" : "E";
+                var k = (story[i], lc[i], st[i], side);
+                var cur = max.TryGetValue(k, out var c) ? c : (0.0, "", 0.0, "");
+                if (Math.Abs(drx[i]) > cur.Item1) cur = (Math.Abs(drx[i]), label[i], cur.Item3, cur.Item4);
+                if (Math.Abs(dry[i]) > cur.Item3) cur = (cur.Item1, cur.Item2, Math.Abs(dry[i]), label[i]);
+                max[k] = cur;
+            }
+            var lines = new List<string> { "story,case,step_type,side,max_drift_x,point_x,max_drift_y,point_y" };
+            foreach (var kv in max.OrderBy(k => k.Key.Case, StringComparer.Ordinal).ThenBy(k => k.Key.Side).ThenBy(k => k.Key.Story, StringComparer.Ordinal))
+                lines.Add(string.Join(",", Q(kv.Key.Story), kv.Key.Case, kv.Key.Step, kv.Key.Side, F(kv.Value.X), Q(kv.Value.Px), F(kv.Value.Y), Q(kv.Value.Py)));
+            Say($"   JointDrifts: {r}, {n} row(s), {xOf.Count} point(s) placed, {sw.Elapsed.TotalSeconds:F0} s");
+            Written("building-drifts.csv", lines, "drifts by building side");
+            foreach (var g in max.GroupBy(k => (k.Key.Case, k.Key.Side)).OrderBy(g => g.Key.Case, StringComparer.Ordinal))
+            {
+                var bx = g.MaxBy(k => k.Value.X); var by = g.MaxBy(k => k.Value.Y);
+                Say($"   drift {g.Key.Case} side {g.Key.Side}: max X {bx.Value.X:0.00000} at {bx.Key.Story}, max Y {by.Value.Y:0.00000} at {by.Key.Story}");
+            }
+        }
+        foreach (var (file, what, spandrel) in new[] { ("pier-forces.csv", "pier forces", false), ("spandrel-forces.csv", "spandrel forces", true) })
+        {
+            int n = 0; string[] story = Array.Empty<string>(), nm = Array.Empty<string>(), lc = Array.Empty<string>(), loc = Array.Empty<string>();
+            double[] p = Array.Empty<double>(), v2 = Array.Empty<double>(), v3 = Array.Empty<double>(), t = Array.Empty<double>(), m2 = Array.Empty<double>(), m3 = Array.Empty<double>();
+            int r = spandrel ? model.Results.SpandrelForce(ref n, ref story, ref nm, ref lc, ref loc, ref p, ref v2, ref v3, ref t, ref m2, ref m3)
+                             : model.Results.PierForce(ref n, ref story, ref nm, ref lc, ref loc, ref p, ref v2, ref v3, ref t, ref m2, ref m3);
+            var lines = new List<string> { $"story,{(spandrel ? "spandrel" : "pier")},case,location,P_kN,V2_kN,V3_kN,T_kNm,M2_kNm,M3_kNm" };
+            for (int i = 0; i < n; i++) lines.Add(string.Join(",", Q(story[i]), Q(nm[i]), lc[i], loc[i], F(p[i]), F(v2[i]), F(v3[i]), F(t[i]), F(m2[i]), F(m3[i])));
+            Say($"   {(spandrel ? "SpandrelForce" : "PierForce")}: {r}");
+            Written(file, lines, what);
+        }
+        return bad;
+    }
+
     private static string? ReactionArgsRefusal(string[] args)
     {
         int rx = Array.FindIndex(args, x => x.Equals("--reactions", StringComparison.OrdinalIgnoreCase));
@@ -652,6 +826,13 @@ internal static class Program
         if (ss >= 0 && (ss + 1 >= args.Length || args[ss + 1].StartsWith("--")))
             return "--support-storey needs a storey name after it";
         if (ss >= 0 && rx < 0) return "--support-storey is read only with --reactions";
+        int lx = Array.FindIndex(args, x => x.Equals("--lateral", StringComparison.OrdinalIgnoreCase));
+        if (lx >= 0 && (lx + 1 >= args.Length || args[lx + 1].StartsWith("--") || args[lx + 1].Trim().Length == 0))
+            return "--lateral needs a comma-separated list of the model's case names after it";
+        if (lx >= 0 && rx < 0) return "--lateral runs on the pinned copy --reactions makes: give --reactions too";
+        int sxi = Array.FindIndex(args, x => x.Equals("--split-x", StringComparison.OrdinalIgnoreCase));
+        if (sxi >= 0 && (lx < 0 || sxi + 1 >= args.Length || !double.TryParse(args[sxi + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out _)))
+            return "--split-x wants a plan x in mm after it, and is read only with --lateral";
         if (rx >= 0 && args.Any(x => x.Equals("--gravity", StringComparison.OrdinalIgnoreCase)))
             return "--gravity and --reactions together - --gravity pins every Base point on the same model, supports the reactions' gate would not state";
         int st = Array.FindIndex(args, x => x.Equals("--start-timeout-s", StringComparison.OrdinalIgnoreCase));
