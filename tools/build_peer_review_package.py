@@ -30,12 +30,14 @@ WHAT IT CHECKS (on the PDFs it wrote, read back as text) - and what it does not
              least as often as in its sources; every register picture is embedded in PDF 01 (count of
              image placements); the contents page numbers equal the pages the links land on; the
              register entry's heading line equals the register CSV's severity/title/storey/grid/sheets;
-             no ".md", no "safe/", "etabs/" or "README" left in the PDFs; the copied files hash equal
-             to their sources.
+             no ".md", "safe/", "etabs/", "README", "{" or "composed model" left in the PDFs; the copied
+             files hash equal to their sources; (JM-V6) every picture link, file and appendix the viewer's
+             pins name resolves from the laid-out folder, X of Y; the smallest text in each PDF, read from
+             its spans, is 7 pt or more (a wide table that overflows makes Edge shrink the whole PDF).
     does NOT check: that a sentence reads the same (only numbers are compared, and only as a
              multiset - a number moved to the wrong row would pass); that a table kept its columns on
-             the page (LOOK at the pages for that: wide tables clip silently in Edge); the viewer's own
-             pin texts, which still name the old file names.
+             the page (LOOK at the pages for that: wide tables clip silently in Edge); that a pin's
+             appendix or file is the RIGHT one (only that it exists).
     same-class fault it would miss: a remap that turns one file reference into the wrong appendix
              letter keeps every number and passes.
 
@@ -98,7 +100,9 @@ REMAP_EXACT = [
     ('see README "Materials"', 'see Appendix E "Materials"'),
     ('against the one rule under "What was checked" above.', 'against the one rule under "What was checked, and how" (Section 2 of OF_LETTER).'),
     ("Data: `gravity-tower-columns.csv` (this folder), one row per column per level.",
-     "Data: the table \"Every column-level\" at the end of this appendix, one row per column per level."),
+     "Data: the file `05 Appendix C - every column at every level.csv` beside this PDF, one row per column per level (Section C.14 says what it holds)."),
+    # Row 1982 JM-V6: the letter names the README's ETABS paragraph for the two model files
+    ("the README's ETABS paragraph names both files", "Appendix E, 'ETABS', names both files"),
     ("the package's `safe/` folder (", "the package's SAFE models and results ("),
     ("from the model in `etabs/`.", "from the model in `03 Models/ETABS/`."),
     ("the model file in `etabs/`", "the model file in `03 Models/ETABS/`"),
@@ -106,8 +110,8 @@ REMAP_EXACT = [
     ("`P3-overview.png`, `P3-KW6.png`", "Appendix H, Figures H3 and H4"),
     ("Pictures in `safe/pictures/beyond-300mm/` show", "Pictures in Appendix H show"),
     ("pictures in `safe/pictures/beyond-300mm/`", "pictures in Appendix H"),
-    ("(each listed in safe-loads.csv with why)", "(each listed in Appendix F5 with why)"),
-    ("The 14 transfer storeys are the storeys of safe-transfers.csv:", "The 14 transfer storeys are the storeys of Appendix F3:"),
+    ("(each listed in safe-loads.csv with why)", "(each listed in Appendix F.5 with why)"),
+    ("The 14 transfer storeys are the storeys of safe-transfers.csv:", "The 14 transfer storeys are the storeys of Appendix F.3:"),
     ("COORDINATION-SWEEP.md (architect against structure on 37 of 38 storeys)",
      "our coordination sweep (architect against structure on 37 of 38 storeys)"),
 ]
@@ -115,19 +119,19 @@ REMAP_RE = [
     (r"`?(?:\.\./)?etabs/01819-01 Renfrew - ETABS model\.e2k`?", "`03 Models/ETABS/01819-01 Renfrew - ETABS model.e2k`"),
     (r"`?(?:\.\./)?etabs/ETABS-loads-onto-transfer-storeys\.csv`?", "`04 Results/ETABS/ETABS-loads-onto-transfer-storeys.csv`"),
     (r"`?(?:\.\./)?etabs/ETABS-base-reactions\.csv`?", "`04 Results/ETABS/ETABS-base-reactions.csv`"),
-    (r"`?safe/SAFE-RESULTS\.txt`?", "Appendix F1"),
-    (r"SAFE-RESULTS\.txt", "Appendix F1"),
-    (r"`?safe/safe-set\.txt`?", "Appendix F2"),
-    (r"`?safe/safe-transfers\.csv`?", "Appendix F3"),
-    (r"`?safe/safe-levels\.csv`?", "Appendix F4"),
-    (r"`?safe/safe-loads\.csv`?", "Appendix F5"),
+    (r"`?safe/SAFE-RESULTS\.txt`?", "Appendix F.1"),
+    (r"SAFE-RESULTS\.txt", "Appendix F.1"),
+    (r"`?safe/safe-set\.txt`?", "Appendix F.2"),
+    (r"`?safe/safe-transfers\.csv`?", "Appendix F.3"),
+    (r"`?safe/safe-levels\.csv`?", "Appendix F.4"),
+    (r"`?safe/safe-loads\.csv`?", "Appendix F.5"),
     (r"`?(?:safe/)?P1_GF-unattached-supports\.md`?", "Appendix G"),
     (r"safe/models/", "03 Models/SAFE/"),
     (r"(?<![\w/.])models/", "03 Models/SAFE/"),
     (r"safe/results/", "04 Results/SAFE/"),
     (r"(?<![\w/.])results/", "04 Results/SAFE/"),
     (r"`?GRAVITY-CHECK\.md`?", "Appendix C"),
-    (r"`?gravity-tower-columns\.csv`?", "Appendix C, table \"Every column-level\""),
+    (r"`?gravity-tower-columns\.csv`?", "`05 Appendix C - every column at every level.csv`"),
     (r"`?ANSWER-KEY\.md`?", "Appendix A"),
     (r"`answer-key\.csv`", "`05 Appendix A - answer key.csv`"),
     (r"`?EARLY-COMMENTS\.md`?(?= [AB]\d)", "Appendix B,"),
@@ -153,22 +157,86 @@ def remap(text: str, doc: str = "01") -> str:
 # ---------------------------------------------------------------- helpers
 PDF05 = "05 Appendices.pdf"
 PDF01 = "01 Review letter and findings.pdf"
+# Row 1982 JM-V6 (Codex V5-03, V5-04): files a reader opens beside the PDFs. The viewer's picture links point into
+# VIEWER_PICS; the full gravity table and the long SAFE tables are files, the PDF carries legible summaries of them.
+VIEWER_PICS = "02 Viewer pictures"
+GRAVCSV = "05 Appendix C - every column at every level.csv"
+F_CSVS = ("safe-transfers.csv", "safe-levels.csv", "safe-loads.csv")   # shipped in 03 Models/SAFE/
 # The viewer's pin texts name the old files. No double quote may be introduced: they sit inside JS strings.
 VIEWER_REMAP = [
     ("(FINDINGS-REGISTER.csv)", f"(the findings register, Section 3 of {PDF01})"),
     (r"safe/P1_GF-unattached-supports.md", f"Appendix G in {PDF05}"),
     (r"etabs/ETABS-loads-onto-transfer-storeys.csv", "04 Results/ETABS/ETABS-loads-onto-transfer-storeys.csv"),
-    ("gravity-tower-columns.csv", f"the table Every column-level in Appendix C of {PDF05}"),
+    ("gravity-tower-columns.csv", "05 Appendix C - every column at every level.csv"),
     ("GRAVITY-CHECK.md", f"Appendix C in {PDF05}"),
     ("ANSWER-KEY.md", f"Appendix A in {PDF05}"),
     ("EARLY-COMMENTS.md", f"Appendix B in {PDF05}"),
 ]
 
 
-def viewer_text(p: Path) -> str:
+H_FIGS = {"P2-overview.png": "H1", "P2-KW61.png": "H2", "P3-overview.png": "H3", "P3-KW6.png": "H4"}
+
+
+def viewer_ref(s: str, transfer: set) -> str:
+    """Row 1982 JM-V6 (Codex V5-04, V5-05): a pin's source or picture path, as the laid-out package has it."""
+    s = re.sub(r"safe/pictures/beyond-300mm/([\w.-]+\.png)",
+               lambda m: f"Appendix H, Figure {H_FIGS[m[1]]} in {PDF05}", s)
+    s = re.sub(r"(?:\breview/|(?<![\w/]))pictures/(?=[\w.-]+\.(?:png|jpg))", f"{VIEWER_PICS}/", s)
+    s = s.replace("safe/SAFE-RESULTS.txt", f"Appendix F.1 in {PDF05}")
+    s = re.sub(r"safe/models/(<storey>|[\w]+)(\.(?:f2k|assumptions\.txt|provenance\.csv))",
+               lambda m: ("03 Models/SAFE/" if m[1] == "<storey>" or m[1] in transfer
+                          else "03 Models/SAFE/Storeys with no transfer/") + m[1] + m[2], s)
+    s = s.replace("etabs/01819-01 Renfrew - ETABS model.e2k", "03 Models/ETABS/01819-01 Renfrew - ETABS model.e2k")
+    s = re.sub(r"README (?=')", f"Appendix E in {PDF05}, ", s)
+    return s
+
+
+def viewer_links(html_text: str, root: Path) -> tuple[int, list[str]]:
+    """Every picture link and every file or appendix a pin names, resolved from the laid-out folder: (count, misses)."""
+    i = html_text.index("window.KOR_JOB = ") + len("window.KOR_JOB = ")
+    job = json.loads(html_text[i:html_text.index(";</script>", i)])
+    n, bad = 0, []
+    for a in job.get("assumptions", []):
+        for pic in a.get("pictures", []):
+            n += 1
+            if not (root / pic["href"]).is_file():
+                bad.append(f"{a['id']} picture link {pic['href']}")
+        words = " ".join(str(a.get(k, "")) for k in ("text", "rule")) + " " + \
+            " ".join(p.get("text", "") for p in a.get("pictures", []))
+        for m in re.finditer(r"(?<!\w)(?:01 Review letter and findings\.pdf|02 3D model viewer\.html|05 Appendices\.pdf"
+                             r"|0[2-5] (?:Viewer pictures|Models|Results)/[^;:,()'\"]*?\.(?:png|jpg|csv|f2k|txt|e2k)\b"
+                             r"|05 Appendix [AC] - [^;:,()'\"/]*?\.csv)", words):
+            n += 1
+            ref = m[0]
+            ok = any(root.glob(ref.replace("<storey>", "*"))) if "<storey>" in ref else (root / ref).is_file()
+            if not ok:
+                bad.append(f"{a['id']} names {ref}")
+        for m in re.finditer(r"Appendix ([A-Z])(?:\.(\d))?(?:, Figure (H\d))?", words):
+            n += 1
+            if m[1] not in APPX or (m[2] and not (m[1] == "F" and m[2] in "12345")) or (m[3] and m[3] not in H_FIGS.values()):
+                bad.append(f"{a['id']} names {m[0]}")
+        for old in ("safe/", "etabs/", "README", "review/", ".md"):
+            if old in words:
+                bad.append(f"{a['id']} still names '{old}'")
+    return n, bad
+
+
+def viewer_text(p: Path, transfer: set | None = None) -> str:
     t = read(p)
     for old, new in VIEWER_REMAP:
         t = t.replace(old, new)
+    if transfer is not None:
+        i = t.index("window.KOR_JOB = ") + len("window.KOR_JOB = ")
+        j = t.index(";</script>", i)
+        job = json.loads(t[i:j])
+        for a in job.get("assumptions", []):
+            for k in ("text", "rule"):
+                if isinstance(a.get(k), str):
+                    a[k] = viewer_ref(a[k], transfer)
+            for pic in a.get("pictures", []):
+                pic["href"] = viewer_ref(pic["href"], transfer)
+                pic["text"] = viewer_ref(pic["text"], transfer)
+        t = t[:i] + json.dumps(job).replace("</", "<\\/") + t[j:]
     # Row 1982 JM-V5: find each '.md'/'.csv' first, then read back at most 200 chars for its name. The old
     # findall(r"[\w/.-]+\.(?:md|csv)\b") backtracks over the inlined model's base64 (one 1.8M-char run): quadratic, it hung.
     left = []
@@ -176,6 +244,7 @@ def viewer_text(p: Path) -> str:
         name = re.search(r"[\w/.-]*$", t[max(0, m.start() - 200):m.start()])[0] + m[0]
         left.append(name)
     left = [x for x in left if not x.startswith(("04 Results", "Results/"))]   # '04 Results/...': the name read stops at the space
+    left = [x for x in left if not GRAVCSV.endswith(x)]                        # the same for the gravity table's file
     if left:
         raise SystemExit(f"viewer still names old files: {sorted(set(left))}")
     return t
@@ -380,7 +449,7 @@ def css() -> str:
 @page{size:Letter;margin:20mm 17mm 17mm;
  @top-left{content:"RUNHEAD";font:7.5pt var(--sans);color:#55636F;vertical-align:bottom;padding-bottom:3mm}
  @top-right{content:"Kor Structural";font:600 7.5pt var(--sans);color:#C6360F;vertical-align:bottom;padding-bottom:3mm}
- @bottom-left{content:"Confidential: another firm's design";font:7pt var(--sans);color:#8A97A2;vertical-align:top;padding-top:3mm}
+ @bottom-left{content:"Confidential: another firm's design";font:7.5pt var(--sans);color:#8A97A2;vertical-align:top;padding-top:3mm}
  @bottom-right{content:"DOCNAME \2003 Page " counter(page) " of " counter(pages);font:7.5pt var(--sans);color:#55636F;vertical-align:top;padding-top:3mm}}
 @page:first{@top-left{content:none}@top-right{content:none}}
 @page wide{size:Letter landscape;margin:18mm 15mm 15mm}
@@ -397,7 +466,7 @@ body{margin:0;color:var(--ink);font-family:var(--sans);font-size:9.4pt;line-heig
 .cover .lede{font-size:11pt;color:#CBD8E2;margin:0}
 .cover .band strong{color:#fff}
 .cover table.facts{margin:9mm 0 0;border-collapse:collapse;width:100%;font-size:9.4pt}
-.cover table.facts th{width:34mm;text-align:left;font:600 7pt var(--mono);letter-spacing:.12em;text-transform:uppercase;
+.cover table.facts th{width:34mm;text-align:left;font:600 7.5pt var(--mono);letter-spacing:.12em;text-transform:uppercase;
  color:var(--ink-faint);padding:2.2mm 0;border-bottom:1px solid var(--line);vertical-align:top;background:none}
 .cover table.facts td{padding:2.2mm 0;border-bottom:1px solid var(--line);background:none}
 .cover .spacer{flex:1}
@@ -428,6 +497,7 @@ li{margin:0 0 1.2mm}
 li::marker{color:var(--accent)}
 strong{font-weight:650}
 code{font-family:var(--mono);font-size:.86em;color:#2C3A47;background:#F4F2F0;padding:0 .25em;border-radius:2px}
+table code{font-size:1em}
 a{color:var(--accent-ink);text-decoration:none}
 hr{border:0;border-top:1px solid var(--line);margin:4mm 0}
 table{border-collapse:collapse;width:100%;margin:2mm 0 4mm;font-size:8pt;line-height:1.32}
@@ -439,15 +509,15 @@ td{padding:1.2mm 1.6mm;border-bottom:1px solid var(--line);vertical-align:top}
 tbody tr:nth-child(even) td{background:#F8F7F5}
 td.num,th.num,td[style*="right"],th[style*="right"]{text-align:right;font-variant-numeric:tabular-nums}
 .wide{page:wide}
-.wide table{font-size:7.2pt}
-.wide th{font-size:6.8pt}
-table.data{font-size:7pt}
-table.data th{font-size:6.6pt}
+.wide table{font-size:7.5pt}
+.wide th{font-size:7.5pt}
+table.data{font-size:7.5pt}
+table.data th{font-size:7.5pt}
 table.data td{padding:.7mm 1.2mm}
-.wide table.data{font-size:6.6pt}
-pre.plain{font-family:var(--mono);font-size:6.7pt;line-height:1.36;white-space:pre-wrap;word-break:break-word;
+.wide table.data{font-size:7.5pt}
+pre.plain{font-family:var(--mono);font-size:7.5pt;line-height:1.36;white-space:pre-wrap;word-break:break-word;
  background:#F8F7F5;border-left:2px solid var(--line-strong);padding:2.5mm 3mm;margin:0 0 4mm}
-.pill{display:inline-block;font:700 6.8pt var(--sans);letter-spacing:.06em;text-transform:uppercase;padding:.5mm 2mm;border-radius:8px;color:#fff;vertical-align:1px}
+.pill{display:inline-block;font:700 7.5pt var(--sans);letter-spacing:.06em;text-transform:uppercase;padding:.5mm 2mm;border-radius:8px;color:#fff;vertical-align:1px}
 .pill--crit{background:var(--crit)}.pill--sig{background:#C98A16}.pill--minor{background:var(--blue)}
 h2.finding{font-size:11.5pt;margin:0 0 2mm;padding-top:1mm;break-before:auto}
 h2.finding .fid{font-family:var(--mono);color:var(--accent-ink);margin-right:2mm}
@@ -461,12 +531,12 @@ td.nw{white-space:nowrap}
 table.data td.txt{padding-left:2.4mm}
 table.data td.num{padding-left:3mm}
 td.long{min-width:42mm}
-.wide td.long{min-width:62mm}
+.wide td.long{min-width:48mm}
 table.data th{padding-left:2.4mm}
 table.data td.num + td.txt{padding-left:3.5mm}
 h1,h2,h3,h4{break-inside:avoid}
 p:has(> strong:only-child){break-after:avoid}
-table.meta th{background:#EEF1F4;color:var(--slate-deep);width:24mm;font-size:7pt;letter-spacing:.06em;text-transform:uppercase;vertical-align:top;padding:1.2mm 1.6mm}
+table.meta th{background:#EEF1F4;color:var(--slate-deep);width:24mm;font-size:7.5pt;letter-spacing:.06em;text-transform:uppercase;vertical-align:top;padding:1.2mm 1.6mm}
 table.meta td{background:#fff !important}
 table.register td:first-child a{font-family:var(--mono);font-weight:600}
 .figs{display:flex;flex-wrap:wrap;gap:4mm;margin:3mm 0 4mm}
@@ -631,10 +701,16 @@ def main() -> int:
         if f.is_file():
             copies.append((f, out / "04 Results/SAFE" / f.relative_to(src / "safe/results")))
     copies.append((src / "answer-key.csv", out / "05 Appendix A - answer key.csv"))
+    # Row 1982 JM-V6: the gravity table, the long SAFE tables and the viewer's pictures ship as files
+    copies.append((src / "gravity-tower-columns.csv", out / GRAVCSV))
+    for n in F_CSVS:
+        copies.append((src / "safe" / n, out / "03 Models/SAFE" / n))
+    for f in sorted((src / "review/pictures").iterdir()):
+        copies.append((f, out / VIEWER_PICS / f.name))
     for s, d in copies:
         d.parent.mkdir(parents=True, exist_ok=True)
         if s == viewer:
-            d.write_text(viewer_text(viewer), encoding="utf-8", newline="")
+            d.write_text(viewer_text(viewer, set(TRANSFER_STOREYS)), encoding="utf-8", newline="")
             continue
         shutil.copy2(s, d)
         if sha(s) != sha(d):
@@ -646,6 +722,7 @@ def main() -> int:
         if not (src / "safe/models" / f"{st}.f2k").exists():
             raise SystemExit(f"SAFE results for {st} but no model {st}.f2k")
     n_key = len(list(csv.reader(open(src / "answer-key.csv", encoding="utf-8", newline="")))) - 1
+    n_grav = len(list(csv.reader(open(src / "gravity-tower-columns.csv", encoding="utf-8", newline="")))) - 1
 
     # ---------- viewer pins and the register CSV
     vtxt = read(viewer)
@@ -677,6 +754,8 @@ def main() -> int:
         "- **`05 Appendices.pdf`:** the answer key, every value in the set (Appendix A, with "
         "`05 Appendix A - answer key.csv`); the information requests to WHM (Appendix B); the gravity check "
         "(Appendix C); and the model basis and SAFE notes (Appendices D to H).\n")
+    # Row 1982 JM-V6 (look L16): Appendix B has one name everywhere, APPX["B"]
+    enclosed_new = enclosed_new.replace("the information requests to WHM (Appendix B)", "the early comment list to WHM (Appendix B)")
     letter_body = "\n".join(v for k, v in letter.items() if k not in ("_head", "Enclosed")) + "\n" + enclosed_new
     sources01.append("\n".join(v for k, v in letter.items() if k not in ("_head", "Enclosed")))
     letter_body = remap(letter_body)
@@ -695,15 +774,19 @@ def main() -> int:
         f"register ({len(reg)} entries, ranked, each with its sheets, grid, viewer pin and pictures), the gravity load path "
         "storey by storey, and the transfer slab results. |\n"
         "| `02 3D model viewer.html` | One offline page (open it in a browser): the ETABS model of WHM's set as drawn, "
-        "storey by storey and in 3D, with its 20 grid lines, the {len(reg)} findings and the assumptions of Appendix E as "
-        "numbered pins (click one to read it and where it is stated). Geometry only. |\n"
+        f"storey by storey and in 3D, with its 20 grid lines, the {len(reg)} findings and the assumptions of Appendix E as "
+        "numbered pins (click one to read it and where it is stated; a finding's pictures open from "
+        f"`{VIEWER_PICS}/`). Geometry only. |\n"
+        f"| `{VIEWER_PICS}/` | The register's pictures, as files, for the viewer's picture links (the same pictures are in "
+        "Section 3). |\n"
         "| `03 Models/ETABS/` | The ETABS model (`.e2k`). Every member's f'c is from the set (Appendix E, "
         "\"Materials\"). |\n"
         f"| `03 Models/SAFE/` | One SAFE model for each of the {n_tr} transfer storeys (`<storey>.f2k`), each with its "
         "assumptions (`.assumptions.txt`) and the source of every slab use and load (`.provenance.csv`; "
-        "thicknesses, f'c and geometry are not in it: they come from the composed model, Appendix E, "
+        "thicknesses, f'c and geometry are not in it: they are the ETABS model's, from WHM's sheets, Appendix E, "
         f"\"Materials\"). The other {n_other} storey layouts, which carry no load from above of that kind, are in "
-        "`Storeys with no transfer/`. Which storeys each model stands for: Appendix F2. |\n"
+        "`Storeys with no transfer/`. Which storeys each model stands for: Appendix F.2. The tables of Appendix F.3 "
+        f"to F.5 are also here as files: {', '.join(f'`{n}`' for n in F_CSVS)}. |\n"
         "| `04 Results/ETABS/` | The ETABS base reactions and the loads it passes down onto the transfer storeys. |\n"
         "| `04 Results/SAFE/<storey>/` | SAFE's deflection, reaction and punching tables of each transfer storey. |\n"
         "| `05 Appendices.pdf` | A: answer key. B: early comment list to WHM. C: tower column gravity hand check "
@@ -711,7 +794,9 @@ def main() -> int:
         "you must confirm. F: SAFE storey notes. G: the P1/GF supports with no reaction. H: SAFE plans of the "
         "loads not applied at P2 and P3. |\n"
         f"| `05 Appendix A - answer key.csv` | Every value the set states, {n_key:,} rows, each with its sheet and page "
-        "and whether it was read off the page, inferred by a stated rule, or is missing from the set. |\n")
+        "and whether it was read off the page, inferred by a stated rule, or is missing from the set. |\n"
+        f"| `{GRAVCSV}` | The tower column hand check of Appendix C, {n_grav:,} rows, one per column per level "
+        "(Section C.14 of Appendix C says what each column of the file holds). |\n")
     intro_md = (readme_head + "\n\n" + pkg_md + "\n" + rs["What was checked, and how"] + "\n\n"
                 + rs["What this package does not do"])
     sources01.append(readme_head + rs["What was checked, and how"] + rs["What this package does not do"])
@@ -842,18 +927,21 @@ def main() -> int:
           "utilisation_reduced", "utilisation_status", "source_sheets", "notes"]
     if set(t1) | set(t2) != set(grows[0].keys()):
         raise SystemExit("gravity csv columns changed")
+    # Row 1982 JM-V6 (Codex V5-03): the 672-row table at a legible size is about 60 pages; it ships as the file GRAVCSV
+    # and the PDF says what each of its columns holds and gives its notes (the rows over 1.00 and over 0.80 are tabled
+    # above, in the check's own text).
+    col_desc = "".join(f"<tr><td><code>{html.escape(c)}</code></td><td>{html.escape(label(c))}</td></tr>"
+                       for c in t1 + [c for c in t2 if c not in t1])
     gc_html += (
-        '<div class="wide"><h2 id="gc-every-column-level">Every column-level</h2>'
-        f"<p>The data of this check, {len(grows)} rows, one per column per level, in two tables with the same rows "
-        "in the same order: loads, then capacity and utilisation. Column names are as in the check's data file. "
-        f"The notes column gives a note number; the {len(notes)} distinct notes follow the tables.</p>"
-        '<h3>Loads</h3>' + csv_table(grav, t1) + "</div>"
-        '<div class="wide"><h3>Capacity and utilisation</h3>'
-        + csv_table(grav, t2, extra={"notes": lambda r: note_no[r["notes"]]}) + "</div>"
-        "<h3>Notes</h3><table class=\"data\"><thead><tr><th>Note</th><th>Text</th></tr></thead><tbody>"
+        '<h2 id="gc-every-column-level">Every column at every level (the data file)</h2>'
+        f"<p>The data of this check, {len(grows)} rows, one per column per level, is the file "
+        f"<code>{GRAVCSV}</code> beside this PDF; a spreadsheet opens it. Its columns, in order:</p>"
+        '<table class="data"><thead><tr><th>Column in the file</th><th>What it holds (unit)</th></tr></thead><tbody>'
+        + col_desc + "</tbody></table>"
+        f"<p>The <code>notes</code> column carries one of {len(notes)} distinct notes:</p>"
+        "<table class=\"data\"><thead><tr><th>Note</th><th>Text</th></tr></thead><tbody>"
         + "".join(f"<tr><td>{note_no[n]}</td><td>{html.escape(n)}</td></tr>" for n in notes) + "</tbody></table>")
-    # the numbers the tables must carry: every cell of every row, each distinct note once
-    sources05.append("\n".join(" ".join(r[c] for c in t1 + t2 if c != "notes") for r in grows) + "\n" + "\n".join(notes))
+    sources05.append("\n".join(notes))
     d5.section("C", APPX["C"], prep(gc_html), "aC", kicker="Appendix C")
 
     dg = read(src / "review/value-add/DESIGN-AT-A-GLANCE.md")
@@ -876,6 +964,20 @@ def main() -> int:
     d5.section("E", APPX["E"], prep(pandoc(remap(e_md, "05"), "e")), "aE", kicker="Appendix E")
 
     f_parts = []
+    # Row 1982 JM-V6: F.n numbering (as A.1, C.1); each table's file is in 03 Models/SAFE/; the rule behind F.3's
+    # sub-5 mm rows and the words of F.5 are stated, F.5's repeated reasons are numbered once (as Appendix C's notes)
+    f_intro = {
+        "F3": "<p>One row per member of the storey above that starts on the storey's slab (the file "
+              "<code>03 Models/SAFE/safe-transfers.csv</code>). A wall is listed when any part of its line has no wall of "
+              "the storey below under it, with no tolerance; the rows whose part is under 5 mm long are drafting tolerance "
+              "between the two storeys' wall lines, not walls with nothing under them, and none is a finding "
+              "(Section 5 of 01 Review letter and findings, Notes).</p>",
+        "F4": "<p>Elevations in mm, P3 = 0 (the file <code>03 Models/SAFE/safe-levels.csv</code>).</p>",
+        "F5": "<p>Every load row S101 and S111 state (the file <code>03 Models/SAFE/safe-loads.csv</code>). Every row was "
+              "read off the sheet. Status: <b>mapped</b> = applied to the SAFE slabs of the use it names; <b>listed</b> = "
+              "recorded and not applied, for the reason given. The reasons repeat, so each is given once, numbered, "
+              "under the table.</p>",
+    }
     for code, title, path, kind in (
             ("F1", "SAFE results by transfer storey", src / "safe/SAFE-RESULTS.txt", "pre"),
             ("F2", "SAFE models and the storeys they stand for", src / "safe/safe-set.txt", "pre"),
@@ -883,20 +985,31 @@ def main() -> int:
             ("F4", "Storey levels and the SAFE model of each", src / "safe/safe-levels.csv", "csv"),
             ("F5", "Load rows of the set: applied to the SAFE slabs, or listed, and why", src / "safe/safe-loads.csv", "csv")):
         txt = read(path)
+        head = f'<h2 id="f-{code.lower()}">{code[0]}.{code[1:]}\u2002{html.escape(title)}</h2>' + f_intro.get(code, "")
         if kind == "pre":
             sources05.append(txt)
-            body = pre_block(remap(txt, "05"))
             # fixed-width text keeps its columns only if its lines fit: a landscape page holds them
-            f_parts.append(f'<div class="wide"><h2 id="f-{code.lower()}">{code}\u2002{html.escape(title)}</h2>{body}</div>')
+            f_parts.append(f'<div class="wide">{head}{pre_block(remap(txt, "05"))}</div>')
             continue
-        else:
-            sources05.append(csv_cells(path))
-            body = csv_table(path)
-            ncols = len(txt.split("\n", 1)[0].split(","))
-            if ncols >= 8:
-                f_parts.append(f'<div class="wide"><h2 id="f-{code.lower()}">{code}\u2002{html.escape(title)}</h2>{body}</div>')
-                continue
-        f_parts.append(f'<h2 id="f-{code.lower()}">{code}\u2002{html.escape(title)}</h2>{body}')
+        if code == "F5":
+            rows5 = list(csv.DictReader(open(path, encoding="utf-8", newline="")))
+            if {r["read_as"] for r in rows5} != {"read"} or {r["section"] for r in rows5} != {"loads"}:
+                raise SystemExit("safe-loads.csv: read_as or section is no longer one value")
+            whys = []
+            for r in rows5:
+                if r["why"] not in whys:
+                    whys.append(r["why"])
+            wno = {w: f"R{i + 1}" for i, w in enumerate(whys)}
+            cols5 = [c for c in rows5[0] if c not in ("section", "read_as") and any(r[c].strip() for r in rows5)]
+            body = (csv_table(path, cols5, rename={"why": "reason"}, extra={"why": lambda r: wno[r["why"]]})
+                    + "<table class=\"data\"><thead><tr><th>Reason</th><th>Text</th></tr></thead><tbody>"
+                    + "".join(f"<tr><td>{wno[w]}</td><td>{html.escape(w)}</td></tr>" for w in whys) + "</tbody></table>")
+            sources05.append("\n".join(" ".join(r[c] for c in cols5 if c != "why") for r in rows5) + "\n" + "\n".join(whys))
+            f_parts.append(f'<div class="wide">{head}{body}</div>')
+            continue
+        sources05.append(csv_cells(path))
+        body = csv_table(path, rename={"elevation": "elevation (mm)"} if code == "F4" else None)
+        f_parts.append(f'<div class="wide">{head}{body}</div>' if len(txt.split("\n", 1)[0].split(",")) >= 8 else head + body)
     d5.section("F", APPX["F"], "".join(f_parts), "aF", kicker="Appendix F", number_h2=False, wide=True)
 
     pg = read(src / "safe/P1_GF-unattached-supports.md")
@@ -933,13 +1046,30 @@ def main() -> int:
 
     # ===================================================================== checks on what was written
     faults = []
+    # Row 1982 JM-V6 (Codex V5-04, V5-05): once both PDFs exist, every link and file a pin names, from the layout root
+    nlinks, badlinks = viewer_links(read(out / "02 3D model viewer.html"), out)
+    print(f"VIEWER LINKS: {nlinks - len(badlinks)} of {nlinks} picture links, files and appendices named by the pins "
+          "resolve from the laid-out folder")
+    faults += [f"viewer: {b}" for b in badlinks]
     for name, srcs, pdf in (("01", sources01, pdf1), ("05", sources05, pdf5)):
         short = check_numbers(name, [remap(s, name) for s in srcs], pdf)
         faults += [f"{name}: number {s}" for s in short]
         t = pdf_text(pdf)
-        for bad in (".md", "safe/", "etabs/", "README", "C:\\", "file:///"):
+        for bad in (".md", "safe/", "etabs/", "README", "C:\\", "file:///", "{", "composed model"):
             if bad in t:
-                faults.append(f"{name}: '{bad}' in the PDF text")
+                faults.append(f"{name}: '{bad}' in the PDF text ({t.count(bad)})")
+        # Row 1982 JM-V6 (Codex V5-03): the smallest text on any page, read from the PDF's own spans
+        sizes = collections.Counter()
+        for pg in fitz.open(pdf):
+            for b in pg.get_text("dict")["blocks"]:
+                for ln in b.get("lines", []):
+                    for sp in ln["spans"]:
+                        if sp["text"].strip():
+                            sizes[round(sp["size"], 1)] += len(sp["text"])
+        print(f"FONT {name}: smallest {min(sizes)} pt, most used {sizes.most_common(1)[0][0]} pt; characters under 7 pt: "
+              f"{sum(v for k, v in sizes.items() if k < 6.95)} of {sum(sizes.values())}")
+        if min(sizes) < 6.95:
+            faults.append(f"{name}: text at {min(sizes)} pt (under 7 pt)")
     d = fitz.open(pdf1)
     placements = sum(len(p.get_images(full=True)) for p in d)
     print(f"IMAGES 01: {placements} image placements (42 register pictures + the logo expected)")
