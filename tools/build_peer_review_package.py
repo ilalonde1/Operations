@@ -215,7 +215,7 @@ def csv_table(path: Path, cols: list[str] | None = None, rename: dict | None = N
         for c in cols:
             v = (extra or {}).get(c, lambda row: row[c])(r)
             over = c.startswith("utilisation") and is_num(v) and float(v.replace(",", "")) > 1.0
-            k = ("num" if numeric[c] else "txt") + (" over" if over else "") + (" nw" if len(v) <= 34 else "")
+            k = ("num" if numeric[c] else "txt") + (" over" if over else "") + (" nw" if len(v) <= 34 else "") + (" long" if len(v) > 80 else "")
             h.append(f'<td class="{k}">{html.escape(v)}</td>')
         h.append("</tr>")
     h.append("</tbody></table>")
@@ -401,7 +401,8 @@ a{color:var(--accent-ink);text-decoration:none}
 hr{border:0;border-top:1px solid var(--line);margin:4mm 0}
 table{border-collapse:collapse;width:100%;margin:2mm 0 4mm;font-size:8pt;line-height:1.32}
 thead{display:table-header-group}
-tr,li,figure{break-inside:avoid}
+tr,figure{break-inside:avoid}
+li{break-inside:auto}
 th{background:var(--slate);color:#fff;text-align:left;font-weight:600;font-size:7.4pt;padding:1.4mm 1.6mm;vertical-align:bottom}
 td{padding:1.2mm 1.6mm;border-bottom:1px solid var(--line);vertical-align:top}
 tbody tr:nth-child(even) td{background:#F8F7F5}
@@ -427,6 +428,8 @@ table.meta{font-size:8pt;margin:0 0 3mm;break-inside:avoid;break-after:avoid}
 td.over{color:var(--crit);font-weight:700}
 td.nw{white-space:nowrap}
 table.data td.txt{padding-left:2.4mm}
+table.data td.num{padding-left:3mm}
+td.long{min-width:42mm}
 table.meta th{background:#EEF1F4;color:var(--slate-deep);width:24mm;font-size:7pt;letter-spacing:.06em;text-transform:uppercase;vertical-align:top;padding:1.2mm 1.6mm}
 table.meta td{background:#fff !important}
 table.register td:first-child a{font-family:var(--mono);font-weight:600}
@@ -844,6 +847,9 @@ def main() -> int:
         if kind == "pre":
             sources05.append(txt)
             body = pre_block(remap(txt, "05"))
+            # fixed-width text keeps its columns only if its lines fit: a landscape page holds them
+            f_parts.append(f'<div class="wide"><h2 id="f-{code.lower()}">{code}\u2002{html.escape(title)}</h2>{body}</div>')
+            continue
         else:
             sources05.append(csv_cells(path))
             body = csv_table(path)
