@@ -745,7 +745,15 @@ internal static class Program
             var sum = new SortedDictionary<(string Case, string Step, double Num, string Side), double[]>();
             for (int i = 0; i < n; i++)
             {
-                if (!placed.TryGetValue(obj[i], out var p)) { double x = 0, y = 0, z = 0; model.PointObj.GetCoordCartesian(obj[i], ref x, ref y, ref z, "Global"); placed[obj[i]] = p = (x, y); }
+                // run r21 (13 Nov): a reaction at a mesh joint has no point OBJECT (Obj null) - it is placed by its point ELEMENT
+                bool isObj = !string.IsNullOrEmpty(obj[i]);
+                string key = isObj ? "o:" + obj[i] : "e:" + (elm[i] ?? "");
+                if (!placed.TryGetValue(key, out var p))
+                {
+                    double x = 0, y = 0, z = 0;
+                    if (isObj) model.PointObj.GetCoordCartesian(obj[i], ref x, ref y, ref z, "Global"); else model.PointElm.GetCoordCartesian(elm[i] ?? "", ref x, ref y, ref z, "Global");
+                    placed[key] = p = (x, y);
+                }
                 string side = double.IsNaN(splitMm) ? "ALL" : p.X * 1000 <= splitMm ? "W" : "E";
                 var k = (lc[i], st[i], sn[i], side);
                 if (!sum.TryGetValue(k, out var s)) sum[k] = s = new double[7];
@@ -821,7 +829,8 @@ internal static class Program
             var max = new Dictionary<(string Story, string Case, string Step, string Side), (double X, string Px, double Y, string Py)>();
             for (int i = 0; i < n; i++)
             {
-                if (!xOf.TryGetValue(name[i], out double px)) { double yy = 0, zz = 0; px = 0; model.PointObj.GetCoordCartesian(name[i], ref px, ref yy, ref zz, "Global"); xOf[name[i]] = px; }
+                string pn = name[i] ?? "";   // never a null key (run r21: JointReact gave a null object name)
+                if (!xOf.TryGetValue(pn, out double px)) { double yy = 0, zz = 0; px = 0; model.PointObj.GetCoordCartesian(pn, ref px, ref yy, ref zz, "Global"); xOf[pn] = px; }
                 string side = double.IsNaN(splitMm) ? "ALL" : px * 1000 <= splitMm ? "W" : "E";
                 var k = (story[i], lc[i], st[i], side);
                 var cur = max.TryGetValue(k, out var c) ? c : (0.0, "", 0.0, "");
