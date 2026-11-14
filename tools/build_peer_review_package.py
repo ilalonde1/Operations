@@ -259,6 +259,7 @@ class Numbers:
         self.from_pkg: set[str] = set()
         self.checked: set[str] = set()      # typed values checked against their rule (JM-V9-PREP)
         self.disagree: list[str] = []
+        self.rule_faults: dict[str, str] = {}   # key -> why its rule could not read this package (the key stays unfilled)
 
     @property
     def stand_in(self) -> bool:
@@ -270,7 +271,16 @@ class Numbers:
             return self.computed[k]
         e = self.keys.get(k)
         if e is not None and e.get("value") in (None, "") and e.get("rule") and self.pkg is not None:
-            self.computed[k] = self.rule(e["rule"], k)   # read off the package being laid out
+            if k in self.rule_faults:
+                return None
+            try:
+                self.computed[k] = self.rule(e["rule"], k)   # read off the package being laid out
+            except SystemExit as x:
+                # JM-V9-BUILDER (14 Nov): a rule this run cannot read (r40: no 'P2 NOT PROVEN' line, P2 is proven) leaves
+                # its key unfilled - listed with the reason, and the build refuses it - instead of stopping at the first
+                self.rule_faults[k] = str(x)
+                self.unfilled.add(k)
+                return None
             self.from_pkg.add(k)
             return self.value(k)
         if e is None or e.get("value") in (None, ""):
@@ -1117,6 +1127,21 @@ def main() -> int:
         src = a.src.resolve()
     out = a.out.resolve()
     NUMS.pkg = src
+    # Row 1982 JM-V9-BUILDER (14 Nov): the sign example is the package's own - the DEAD total of the 'LOADS FROM ABOVE ON NO
+    # SLAB' line of each assumptions file that has one and is downward (v8 typed 'DEAD -75.1 kN' / 'DEAD -408.7 kN', gone
+    # since r38); one computed key, {{G:SAFE.no_slab_sign_example}}, for the README source and pkg_md alike. COVERS: which
+    # files have the line and the value printed. DOES NOT: a storey whose total is uplift (no example drawn from it);
+    # same-class fault it would miss: another sentence quoting one of these loads in words.
+    nos = []
+    for f in sorted((src / "safe" / "models").glob("*.assumptions.txt")):
+        m = re.search(r"LOADS FROM ABOVE ON NO SLAB:[^\n]*?of the totals above: DEAD (-[\d.]+) kN", read(f))
+        if m:
+            nos.append((f.name, m[1]))
+    NUMS.computed["G:SAFE.no_slab_sign_example"] = (
+        "" if not nos else
+        ", so on the line 'LOADS FROM ABOVE ON NO SLAB' of " + " and ".join(f"`{n}`" for n, _ in nos) + ", "
+        + " and ".join(f"'DEAD {v} kN'" for _, v in nos) + (" is a load" if len(nos) == 1 else " are loads")
+        + " of " + " and ".join(v[1:] for _, v in nos) + " kN downward, not uplift")
     if a.write_filled:
         jobdir = Path(NUMS.d["job_dir"]) if "job_dir" in NUMS.d else a.numbers.resolve().parents[1]  # jobs/<job>/review/x.json
         a.write_filled.mkdir(parents=True, exist_ok=True)
@@ -1128,6 +1153,8 @@ def main() -> int:
                   + (f": {', '.join(left)}" if left else ""))
         print(f"TYPED vs RULE: {len(NUMS.checked) - len(NUMS.disagree)} of {len(NUMS.checked)} typed values with a rule "
               f"equal {src}'s run outputs" + "".join(f"\n   {x}" for x in NUMS.disagree))
+        print(f"RULES THIS RUN CANNOT READ (key left unfilled; its sentence is the refill's): {len(NUMS.rule_faults)}"
+              + "".join(f"\n   {x}" for x in sorted(NUMS.rule_faults.values())))
         if NUMS.disagree:
             print("REFUSED: typed numbers the package does not carry (--src must be the package assembled from the run; "
                   "clear 'value' to let the rule fill it, or correct it)")
@@ -1292,19 +1319,7 @@ def main() -> int:
               "Assumptions you must confirm", "What this package does not do"):
         if k not in rs:
             raise SystemExit(f"README section missing: {k}")
-    # Row 1982 JM-V9-BUILDER (14 Nov): the sign example is the package's own - the DEAD of the 'LOADS FROM ABOVE ON NO SLAB'
-    # line of each storey's assumptions file that has one and is downward (v8 typed 'DEAD -75.1 kN' / 'DEAD -408.7 kN',
-    # gone since r38). COVERS: which files have the line, and the value printed. DOES NOT: a storey whose line holds
-    # uplift only (no example is drawn from it); same-class fault it would miss: the README's own copy of the sentence.
-    nos = []
-    for f in sorted((src / "safe" / "models").glob("*.assumptions.txt")):
-        m = re.search(r"LOADS FROM ABOVE ON NO SLAB:[^\n]*?of the totals above: DEAD (-[\d.]+) kN", read(f))
-        if m:
-            nos.append((f.name, m[1]))
-    sign_eg = ("" if not nos else
-               ", so on the line 'LOADS FROM ABOVE ON NO SLAB' of " + " and ".join(f"`{n}`" for n, _ in nos) + ", "
-               + " and ".join(f"'DEAD {v} kN'" for _, v in nos) + (" is a load" if len(nos) == 1 else " are loads")
-               + " of " + " and ".join(v[1:] for _, v in nos) + " kN downward, not uplift")
+    sign_eg = NUMS.computed["G:SAFE.no_slab_sign_example"]
     pkg_md = (
         "## What is in this package\n\n"
         "| File | What it is |\n|---|---|\n"
@@ -1864,6 +1879,8 @@ def main() -> int:
     print(f"TYPED vs RULE: {len(NUMS.checked) - len(NUMS.disagree)} of {len(NUMS.checked)} typed values with a rule equal "
           f"the package's own run outputs" + "".join(f"\n   {x}" for x in NUMS.disagree))
     faults += [f"numbers: {x}" for x in NUMS.disagree]
+    print(f"RULES THIS RUN CANNOT READ: {len(NUMS.rule_faults)} (each key stays unfilled; its sentence is the refill's)"
+          + "".join(f"\n   {x}" for x in sorted(NUMS.rule_faults.values())))
     # every lateral file a PDF names is in the package. COVERS: names on one line of the PDF text. DOES NOT: a name the
     # PDF breaks across lines (same-class fault it would miss: '04 Results/ETABS lateral/' at a line end).
     for pdf in (pdf1, pdf5):
