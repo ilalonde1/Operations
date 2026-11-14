@@ -41,8 +41,25 @@ WHAT IT CHECKS (on the PDFs it wrote, read back as text) - and what it does not
     same-class fault it would miss: a remap that turns one file reference into the wrong appendix
              letter keeps every number and passes.
 
+THE COMPLETE REVIEW (row 1982 JM-BUILD-PREP, 13 Nov 2026: gravity + lateral in one package)
+    --lateral <draft dir>   LATERAL-SECTION.md (letter pieces 1.1-1.5 spliced into the v8 letter, each replacing v8 text
+                            found exactly once; Section 6) and LATERAL-FINDINGS.md (F32-F38 after F31, F15 rewritten in
+                            place; register rows and viewer pins from them; counts counted, not typed)
+    --changes <md>          Section 7, what we corrected in our own model since the issue JM has
+    --numbers <json>        v9-numbers.json: every number a rerun sets, by key ({{KEY}} in a source, or a GRAVITY SITE:
+                            a v8 number in a hand source found by the text around it). A key fills from 'value', else
+                            from its 'rule' read off the package being laid out (or '@run/' = the lateral run), else
+                            stays {{KEY}} and the build refuses it. status 'STAND-IN...' puts a NOT FOR ISSUE banner on
+                            both covers.
+    --write-filled <dir>    write the hand sources with their sites filled and stop (the assembly's TR_SRC/README_SRC)
+    checks added: no "first issue"/"next issue"/"to follow"/"gravity only"/lateral not reviewed in any shipped text
+    (SCOPE_FAULT_RE); no unfilled {{KEY}} (PLACEHOLDERS, besides the '{' check); every lateral file a PDF names is in the
+    package. Same-class fault they would miss: a number the rerun moves that no site lists (the site inventory is the
+    list), and prose whose sense changes with the numbers (the numbers file's prose_to_review lists the known ones).
+
 USAGE
     python -I build_peer_review_package.py --src <frozen package dir> --out <new package dir>
+        [--numbers v9-numbers.json --lateral <lateral draft dir> --changes CHANGES-SINCE-V8.md]
 """
 from __future__ import annotations
 
@@ -156,36 +173,271 @@ REMAP_RE = [
     (r"`?(?:review/)?REVIEW-LETTER\.md`?", "Section 1 of OF_LETTER, the review letter"),
     (r"`?(?:review/)?FINDINGS-REGISTER\.(?:csv|md)`?", "the findings register (Section 3 of OF_LETTER)"),
     (r"`01819-01 Renfrew - 3D model viewer\.html`", "`02 3D model viewer.html`"),
+    # Row 1982 JM-BUILD-PREP: the lateral draft's working files, as the package ships them (LAT_RES, LAT_CHK)
+    (r"`?(?:(?:review/)?lateral/)?run-r\d+/([\w.-]+\.csv)`?", r"`04 Results/ETABS lateral/\1`"),
+    (r"`?(?:lateral/)?capacity/CAPACITY\.md`?(?: section \d+)?", "our resistance tables (`04 Results/Lateral checks/`)"),
+    (r"`?(?:lateral/)?capacity/([\w.-]+\.csv)`?", r"`04 Results/Lateral checks/\1`"),
+    (r"`?(?:(?:lateral/)?yardsticks/)?YARDSTICKS\.md`?(?: [\d.]+(?:(?:,| and) [\d.]+)*)?", "our code yardsticks (Section 6.1)"),
+    (r"`?(?:lateral/)?(?:yardsticks/)?yardsticks\.csv`?", "`04 Results/Lateral checks/yardsticks.csv`"),
+    (r"`?(?:lateral/)?LATERAL-BASIS\.md`?(?: sections? [\d-]+)?", "Section 6.1"),
+    (r"\(`check\.txt`: ", "(Section 6.2: "),
 ]
 
 
-# Row 1982 JM-NO-PHASE2 (Ian, 13 Nov: "remove phase 2"; #133596: a FULL peer review, this issue gravity, the lateral
-# and seismic review the next issue): each source wording is rewritten here (the frozen package is not edited), and
-# the build refuses any "phase 2" / "phase two" left in the PDFs, the viewer or a shipped text file (PHASE2_RE).
+# Row 1982 JM-NO-PHASE2 (Ian, 13 Nov: "remove phase 2"; #133596: a FULL peer review) and JM-BUILD-PREP (Ian 13 Nov,
+# #133612/#133614/#133621: JM 01819 ships ONE complete package, gravity and lateral): each v8 source wording that framed
+# lateral as excluded or later is rewritten here (the sources are not edited) to the complete review, and the build
+# refuses "phase 2" (PHASE2_RE) and any "first issue" / "next issue" / "to follow" / "gravity only" (SCOPE_FAULT_RE) left
+# in the PDFs, the viewer or a shipped text file. 'Gravity' stays where it names a load case or the gravity models.
 SCOPE_RE = [
-    # Ian #133596: a FULL peer review; this issue covers gravity, the lateral and seismic review is the next issue
+    # v8 letter 'Scope limits' first bullet: replaced whole by the lateral splice; this is the fallback wording
     (r"\*\*Gravity only\.\*\* Lateral \(wind and seismic\) is \*\*not reviewed\*\*\. For a 31-storey concrete tower in "
      r"Vancouver with\s+coupled shear walls, we recommend a \*\*phase 2 lateral review\*\*: the core's coupling beams, "
      r"drift, the core pad's\s+overturning, and the diaphragms at the transfer levels\. F10, F15 and F21 list what WHM "
      r"would need to provide\.",
-     "**This issue covers gravity.** The lateral and seismic review (wind and seismic: the core's coupling beams, drift, "
-     "the core pad's overturning, and the diaphragms at the transfer levels) follows as the next issue of this package. "
-     "F10, F15 and F21 list what WHM would need to provide."),
-    (r"\(F15, for phase 2\)", "(F15, for the next issue)"),
+     "**This review covers gravity and lateral.** The lateral and seismic review is Section 6."),
+    (r"\(F15, for phase 2\)", "(F15, Section 6)"),
     (r" \(for phase 2\)", ""),
-    (r"WHM to provide these with the phase 2 lateral review\.",
-     "WHM to provide these for the lateral and seismic review (next issue)."),
-    (r"Not reviewed \(gravity only\)\.", "Lateral not yet run (next issue)."),
-    (r" now and lateral stiffness in phase 2\.", " now and lateral stiffness in the next issue."),
-    (r"\(lateral, phase 2\)", "(lateral; next issue)"),
-    (r"\(not reviewed, phase 2\)", "(next issue)"),
-    (r"; this review does not cover lateral loads\.", "; this issue covers gravity, and lateral loads are in the next issue."),
-    (r"S001 to S811\), gravity only\.", "S001 to S811). This issue covers gravity; the lateral and seismic review "
-                                         "follows as the next issue."),
-    (r"^gravity review, first issue$", "First issue: gravity; lateral and seismic to follow"),
+    (r"WHM to provide these with the phase 2 lateral review\.", "WHM to provide these (Section 6 states what we assumed)."),
+    (r"Not reviewed \(gravity only\)\.", "Our assumptions for each item are stated in Section 6."),
+    # F10 (register .md and .csv): the wall geometry also sets the lateral stiffness of Section 6
+    (r" now and lateral stiffness in phase 2\.", " and the lateral stiffness of our lateral model (Section 6)."),
+    (r"\(lateral, phase 2\)", "(lateral: F36 and Section 6)"),
+    (r"\(not reviewed, phase 2\)", "(Section 6)"),
+    (r"; this review does not cover lateral loads\.", "; Section 6 gives our lateral review."),
+    (r"S001 to S811\), gravity only\.", "S001 to S811), gravity and lateral."),
+    # register intro, line 11: the forces of the gravity entries; Section 6 gives the lateral ones
+    (r"unfactored service loads, gross \(uncracked\) sections, gravity only, given as",
+     "for the gravity entries, unfactored service loads on gross (uncracked) sections, given as"),
+    # register severity definition (CRITICAL): this review covers the lateral load path too
+    (r"\*\*CRITICAL\*\*: the gravity load path or", "**CRITICAL**: the gravity or lateral load path, or"),
+    # package README, 'Modelling': the gravity models carry gravity loads alone; the lateral model is Section 6
+    (r"Gravity only: no wind and no seismic load is in\s+either model\.",
+     "The gravity models carry gravity loads alone: no wind and no seismic load is in either of them (the lateral "
+     "model, its loads and its stiffness are Section 6 of OF_LETTER)."),
+    # SAFE-RESULTS.txt (Appendix F.1): the SAFE models are gravity models
+    (r"- Gravity only \(no wind, no seismic\);", "- Gravity loads alone (no wind, no seismic: these are the gravity models);"),
+    (r"^gravity review, first issue$", "gravity and lateral review"),
 ]
 # no offer of a "phase 2", and no framing of lateral as excluded from the review
 PHASE2_RE = r"(?i)phase[\s-]*(?:2|two|ii)\b|outside (?:the scope|this review)"
+# Row 1982 JM-BUILD-PREP: this issue is the complete review. COVERS: the words of the v8 framing (first/next issue, to
+# follow, gravity only, lateral not reviewed or run; 'gravity review' stays: it names the gravity part of the review). DOES NOT: the same idea in other words - same-class fault it
+# would miss: "lateral is reviewed separately".
+SCOPE_FAULT_RE = (r"(?i)\bfirst issue\b|\bnext issue\b|\bto follow\b|\bgravity only\b"
+                  r"|lateral[^.]{0,60}\bnot (?:yet )?(?:reviewed|run)\b")
+
+
+# ---------------------------------------------------------------- v9 numbers by data (row 1982 JM-BUILD-PREP)
+# Every number a rerun sets is a key of ONE data file (jobs/01819-01-renfrew/review/v9-numbers.json): a {{KEY}} in a
+# source (the lateral draft's {{R23:...}} / {{ISSUE:...}}, the changes page's {{AUDIT:...}}) or a GRAVITY SITE - a number
+# in a v8 hand source, found by its exact text around it, which the build turns into {{KEY}} before filling. A key's
+# value comes from 'value' (set from the run output the entry names); a key with no value stays {{KEY}} and the build
+# refuses it (the '{' and PLACEHOLDER checks). COVERS: every site the data file lists (each must be found once, either
+# with its v8 number or already filled); every {{KEY}} in a shipped text. DOES NOT: a model-moved number the data file
+# does not list (the site inventory is the list; same-class fault it would miss: a v8 number in a sentence no site names,
+# e.g. a count that changes but was never inventoried).
+PH_RE = re.compile(r"\{\{([A-Z0-9]+:[^{}\s]+?)\}\}")
+
+
+class Numbers:
+    def __init__(self, path: Path | None):
+        self.path = path
+        self.d = json.loads(path.read_text(encoding="utf-8")) if path else {"keys": {}, "gravity_sites": []}
+        self.keys = self.d.get("keys", {})
+        self.computed: dict[str, str] = {}
+        self.used: set[str] = set()
+        self.unfilled: set[str] = set()
+        self.site_log = collections.Counter()
+        self.pkg: Path | None = None        # the package being laid out: rules read its run outputs
+        self.from_pkg: set[str] = set()
+
+    @property
+    def stand_in(self) -> bool:
+        return str(self.d.get("status", "")).upper().startswith("STAND-IN")
+
+    def value(self, k: str) -> str | None:
+        if k in self.computed:
+            self.used.add(k)
+            return self.computed[k]
+        e = self.keys.get(k)
+        if e is not None and e.get("value") in (None, "") and e.get("rule") and self.pkg is not None:
+            self.computed[k] = self.rule(e["rule"], k)   # read off the package being laid out
+            self.from_pkg.add(k)
+            return self.value(k)
+        if e is None or e.get("value") in (None, ""):
+            self.unfilled.add(k)
+            return None
+        self.used.add(k)
+        return str(e["value"])
+
+    def rule(self, r: dict, k: str) -> str:
+        """A key's value read off the package's own run outputs. Kinds: 'line' (the n-th number on the one line of the
+        file whose text, spaces folded, starts with 'start'), 'after' (the first number after a literal), 'csv' (a
+        column of the row matching 'row'), 'rows' (data rows of a csv), 'distinct' (distinct values of 'cols').
+        'fmt': {'dp': decimals, 'comma': thousands separator, 'abs': drop the sign, 'neg': negate}."""
+        fp = r["file"]
+        f = (self.path.parent / self.d.get("lateral_run_dir", "") / fp[5:]) if fp.startswith("@run/") else self.pkg / fp
+        if not f.is_file():
+            raise SystemExit(f"{k}: rule file {r['file']} not in the package")
+        kind = r["kind"]
+        if kind == "line":
+            fold = lambda s: re.sub(r"\s+", " ", s.strip())
+            hits = [fold(ln) for ln in read(f).split("\n") if fold(ln).startswith(r["start"])]
+            if len(hits) != 1:
+                raise SystemExit(f"{k}: {len(hits)} lines of {r['file']} start '{r['start']}', not 1")
+            v = NUM_RE.findall(hits[0])[r["n"]]
+        elif kind == "after":
+            t = read(f)
+            if t.count(r["after"]) != 1:
+                raise SystemExit(f"{k}: '{r['after']}' found {t.count(r['after'])} times in {r['file']}, not once")
+            v = NUM_RE.search(t, t.index(r["after"]) + len(r["after"]))[0]
+        elif kind == "csv":
+            rows = list(csv.DictReader(open(f, encoding="utf-8")))
+            rows = rows[-1:] if r["row"] == "last" else [x for x in rows if all(x[c] == w for c, w in r["row"].items())]
+            if len(rows) != 1:
+                raise SystemExit(f"{k}: {len(rows)} rows of {r['file']} match {r['row']}, not 1")
+            v = rows[0][r["col"]]
+        elif kind in ("rows", "distinct"):
+            rows = [x for x in csv.DictReader(open(f, encoding="utf-8"))
+                    if all(x[c] == w for c, w in r.get("where", {}).items())]
+            v = str(len(rows) if kind == "rows" else len({tuple(x[c] for c in r["cols"]) for x in rows}))
+        elif kind == "sha":
+            v = sha(f)[:r.get("n", 16)]
+        else:
+            raise SystemExit(f"{k}: rule kind {kind}?")
+        fm = r.get("fmt", {})
+        if fm:
+            x = float(v.replace(",", ""))
+            x = (abs(x) if fm.get("abs") else (-x if fm.get("neg") else x)) * fm.get("mul", 1)
+            v = f"{x:{',' if fm.get('comma') else ''}.{fm.get('dp', 0)}f}"
+        return v
+
+    def sites(self, text: str, rel: str) -> str:
+        """Each gravity site of source `rel`: its v8 number becomes {{KEY}} (found by before+v8+after, exactly once)."""
+        edits = []
+        for s in self.d.get("gravity_sites", []):
+            if s["file"] != rel:
+                continue
+            anchor = s["before"] + s["v8"] + s["after"]
+            n = text.count(anchor)
+            if n == 1:
+                i = text.index(anchor) + len(s["before"])
+                edits.append((i, i + len(s["v8"]), "{{" + s["key"] + "}}"))
+                self.site_log["templated"] += 1
+                continue
+            v = self.value(s["key"])
+            if n == 0 and v is not None and text.count(s["before"] + v + s["after"]) == 1:
+                self.site_log["already filled"] += 1   # the source already carries the new number (e.g. TR_SRC filled)
+                continue
+            raise SystemExit(f"gravity site {s['key']} ({rel}:{s['line']}): '{anchor}' found {n} times, not once "
+                             "(the source changed: update the site in the numbers file)")
+        for i, j, new in sorted(edits, reverse=True):
+            text = text[:i] + new + text[j:]
+        return text
+
+    def fill(self, text: str) -> str:
+        return PH_RE.sub(lambda m: self.value(m[1]) if self.value(m[1]) is not None else m[0], text)
+
+    def source(self, text: str, rel: str) -> str:
+        return self.fill(self.sites(text, rel))
+
+
+NUMS = Numbers(None)
+
+
+def lateral_entries(md: str) -> dict[str, str]:
+    """LATERAL-FINDINGS.md: {id: entry body from its bold heading line to the end}, for F32-F38 and the rewritten F15."""
+    out = {}
+    for m in re.finditer(r"^## (F\d\d)(?: \(rewritten[^)\n]*\))?\n(.*?)(?=^## |^---\s*$|\Z)", md, re.S | re.M):
+        out[m[1]] = m[2].strip()
+    return out
+
+
+def entry_head(body: str) -> dict:
+    """The register columns an entry's first two lines give: severity, title, storey, grid, sheets."""
+    l1, l2 = body.split("\n")[:2]
+    m = re.fullmatch(r"\*\*(CRITICAL|SIGNIFICANT|MINOR): (.+)\*\*\s*", l1)
+    if not m:
+        raise SystemExit(f"lateral entry heading not '**SEVERITY: title**': {l1}")
+    rest, _, sheets = l2.strip().rpartition("; sheets ")
+    storey, _, grid = rest.partition("; ")
+    bul = dict(re.findall(r"^- \*\*([\w ]+)\.\*\* (.*)$", body, re.M))
+    return {"severity": m[1], "title": m[2], "storey": storey, "grid": grid, "sheets": sheets,
+            "source": bul.get("Source", ""), "pin": bul.get("Pin", "")}
+
+
+def splice(text: str, old: str, new: str, what: str, regex: bool = False) -> str:
+    """Replace `old` (exactly once) by `new`, or stop the build naming the piece."""
+    n = len(re.findall(old, text, re.M | re.S)) if regex else text.count(old)
+    if n != 1:
+        raise SystemExit(f"lateral splice '{what}': the v8 text it replaces was found {n} times, not once")
+    return re.sub(old, lambda _: new, text, flags=re.M | re.S) if regex else text.replace(old, new)
+
+
+def draft_piece(sec: dict, start: str) -> str:
+    """The body of the LATERAL-SECTION.md piece whose heading starts with `start`."""
+    k = [h for h in sec if h.startswith(start)]
+    if len(k) != 1:
+        raise SystemExit(f"LATERAL-SECTION.md: piece '{start}' found {len(k)} times")
+    return sec[k[0]].split("\n", 1)[1].strip()
+
+
+def lateral_letter(md: str, sec: dict, sev_n: collections.Counter) -> str:
+    """The v8 letter with the lateral pieces of LATERAL-SECTION.md (1.1 to 1.5; 1.6 is the build's Enclosed). Each piece
+    replaces or follows v8 text found exactly once, or the build stops naming the piece."""
+    meta = re.search(r"`(\*\*For:\*\*.+?)`", draft_piece(sec, "Letter meta line"))[1]
+    md = splice(md, md.splitlines()[2], meta, "meta line")
+    md = splice(md, r"We reviewed the gravity design of WHM Structural's drawings.*?\(the issue before it, 2026-08-28 "
+                    r"Issued for Tender\)\.", draft_piece(sec, "1.1 Scope"), "1.1 Scope", regex=True)
+    md = splice(md, "the 7 it does not are C42 at L5 to L9 (F30) and C34 at L1 and L2 (F31).\n",
+                "the 7 it does not are C42 at L5 to L9 (F30) and C34 at L1 and L2 (F31).\n"
+                + draft_piece(sec, "1.2 Method") + "\n", "1.2 Method")
+    md = splice(md, r"^## Key findings \(\d+ entries: \d+ critical, \d+ significant, \d+ minor\)$",
+                f"## Key findings ({sum(sev_n.values())} entries: {sev_n['CRITICAL']} critical, "
+                f"{sev_n['SIGNIFICANT']} significant, {sev_n['MINOR']} minor)", "1.3 heading", regex=True)
+    p13 = draft_piece(sec, "1.3 Key findings")
+    block = re.search(r"^(- \*\*Lateral and seismic.*?)\n\n", p13, re.M | re.S)[1]
+    md = splice(md, "\n\n**MINOR:**", "\n" + block + "\n\n**MINOR:**", "1.3 lateral block")
+    md = splice(md, "7. The missing values in F09-F15", "7. The missing values in F09-F14", "1.4 item 7")
+    md = splice(md, "with the assumption we use meanwhile.\n",
+                "with the assumption we use meanwhile.\n" + draft_piece(sec, "1.4 Items") + "\n", "1.4 items 8-12")
+    b15 = re.findall(r"^- (.*?)(?=^- |\Z)", draft_piece(sec, "1.5 Scope limits"), re.M | re.S)
+    if len(b15) != 4:
+        raise SystemExit(f"1.5 Scope limits: {len(b15)} bullets in the draft, 4 expected")
+    becomes = [re.sub(r"^The \"[^\"]+\" bullet becomes: ", "", b.strip()) for b in b15]
+    md = splice(md, r"^- \*\*Gravity only\.\*\*.*?would need to provide\.\n", "- " + becomes[0] + "\n",
+                "1.5 gravity-only bullet", regex=True)
+    md = splice(md, r"^- \*\*Unfactored service loads\.\*\*.*?the only factored check\.\n", "- " + becomes[1] + "\n",
+                "1.5 unfactored bullet", regex=True)
+    md = splice(md, r"^- \*\*Uncracked sections\.\*\*.*?long-term effects\.\n",
+                "- " + becomes[2] + "\n- " + re.sub(r"^New bullet: ", "", becomes[3]) + "\n", "1.5 uncracked bullet",
+                regex=True)
+    return md
+
+
+def section6(sec: dict) -> str:
+    """Section 6 of PDF 01: the draft's '## 6. Lateral and seismic' piece; its '### 6.n' headings become numbered H2s."""
+    body = draft_piece(sec, "6. Lateral and seismic")
+    body = "\n".join(ln for ln in body.split("\n") if ln.strip() != "---")
+    return re.sub(r"^### 6\.\d+ ", "## ", body, flags=re.M)
+
+
+def inject_pins(html_text: str, rows: list[dict]) -> str:
+    """The viewer's KOR_JOB: a pin per lateral register row (new, or F15's text replaced), as the assembly writes them."""
+    i = html_text.index("window.KOR_JOB = ") + len("window.KOR_JOB = ")
+    j = html_text.index(";</script>", i)
+    job = json.loads(html_text[i:j])
+    have = {a.get("id"): a for a in job["assumptions"]}
+    for r in rows:
+        a = have.get(r["id"]) or {"id": r["id"]}
+        a.update({"storey": r["pin_storey"], "x_mm": float(r["x_mm"]), "y_mm": float(r["y_mm"]),
+                  "text": f"{r['severity']} {r['id']}: {r['title']}. For the engineer of record to confirm.",
+                  "rule": f"Review finding {r['id']} (FINDINGS-REGISTER.csv); source: {r['source']}",
+                  "severity": r["severity"]})
+        if r["id"] not in have:
+            job["assumptions"].append(a)
+    return html_text[:i] + json.dumps(job) + html_text[j:]
 
 
 def scope(text: str) -> str:
@@ -278,8 +530,10 @@ def viewer_links(html_text: str, root: Path) -> tuple[int, list[str]]:
     return n, bad
 
 
-def viewer_text(p: Path, transfer: set | None = None) -> str:
+def viewer_text(p: Path, transfer: set | None = None, extra_pins: list | None = None) -> str:
     t = scope(read(p))
+    if extra_pins:
+        t = inject_pins(t, extra_pins)
     for old, new in VIEWER_REMAP:
         t = t.replace(old, new)
     if transfer is not None:
@@ -302,6 +556,7 @@ def viewer_text(p: Path, transfer: set | None = None) -> str:
         left.append(name)
     left = [x for x in left if not x.startswith(("04 Results", "Results/"))]   # '04 Results/...': the name read stops at the space
     left = [x for x in left if not GRAVCSV.endswith(x)]                        # the same for the gravity table's file
+    left = [x for x in left if not x.startswith(("lateral/", "checks/"))]      # '04 Results/ETABS lateral/', '.../Lateral checks/'
     if left:
         raise SystemExit(f"viewer still names old files: {sorted(set(left))}")
     return t
@@ -782,7 +1037,16 @@ def main() -> int:
     ap.add_argument("--out", required=True, type=Path, help="the laid-out package folder")
     ap.add_argument("--replace", action="store_true", help="delete --out first if it exists (it is a work product)")
     ap.add_argument("--build", type=Path, help="working folder for the HTML (default: <out>/../_build)")
+    # Row 1982 JM-BUILD-PREP: the complete review (gravity + lateral), its numbers by data
+    ap.add_argument("--numbers", type=Path, help="the numbers file (v9-numbers.json): every value a rerun sets, by key")
+    ap.add_argument("--lateral", type=Path, help="folder with LATERAL-SECTION.md (letter pieces + Section 6) and "
+                                                 "LATERAL-FINDINGS.md (F32-F38, F15 rewritten)")
+    ap.add_argument("--changes", type=Path, help="CHANGES-SINCE-V8.md: what we corrected in our model (Section 7)")
+    ap.add_argument("--write-filled", type=Path, help="write the hand sources with their gravity sites filled to this "
+                                                      "folder and stop (for the assembly's TR_SRC / README_SRC)")
     a = ap.parse_args()
+    global NUMS
+    NUMS = Numbers(a.numbers.resolve() if a.numbers else None)
     if a.assemble:
         env = a.assemble.resolve()
         runall = (a.runall or env.parent / "RUN-ALL.sh").resolve()
@@ -795,6 +1059,17 @@ def main() -> int:
     else:
         src = a.src.resolve()
     out = a.out.resolve()
+    NUMS.pkg = src
+    if a.write_filled:
+        jobdir = Path(NUMS.d["job_dir"]) if "job_dir" in NUMS.d else a.numbers.resolve().parents[1]  # jobs/<job>/review/x.json
+        a.write_filled.mkdir(parents=True, exist_ok=True)
+        for rel in sorted({s["file"] for s in NUMS.d.get("gravity_sites", []) if not s["file"].startswith("builder:")}):
+            t = NUMS.source(read(jobdir / rel), rel)
+            (a.write_filled / Path(rel).name).write_text(t, encoding="utf-8", newline="")
+            left = sorted(set(PH_RE.findall(t)))
+            print(f"FILLED {rel} -> {a.write_filled / Path(rel).name}: {len(left)} key(s) without a value"
+                  + (f": {', '.join(left)}" if left else ""))
+        return 0
     build = a.build or out.parent / "_build"
     if out.exists():
         if not a.replace:
@@ -803,6 +1078,31 @@ def main() -> int:
     print(f"SOURCE {src}", flush=True)
     build.mkdir(parents=True, exist_ok=True)
     out.mkdir(parents=True)
+
+    # ---------- Row 1982 JM-BUILD-PREP: the lateral review (draft pieces, findings) and the changes page, filled by data
+    lat_rows: list[dict] = []
+    lat_ents: dict[str, str] = {}
+    lat_sec: dict[str, str] = {}
+    if a.lateral:
+        lat_ents = lateral_entries(read(a.lateral / "LATERAL-FINDINGS.md"))   # filled where spliced
+        lat_sec = md_sections(read(a.lateral / "LATERAL-SECTION.md"))
+        v8rows = {r["id"]: r for r in csv.DictReader(open(src / "review/FINDINGS-REGISTER.csv", encoding="utf-8"))}
+        pin_storeys = NUMS.d.get("register_pins", {})
+        for fid, body in lat_ents.items():
+            h = entry_head(body)
+            if fid in v8rows:                       # a rewritten entry keeps its pin (F15: "Pin. Unchanged")
+                x, y, st = v8rows[fid]["x_mm"], v8rows[fid]["y_mm"], v8rows[fid]["pin_storey"]
+            else:
+                m = re.search(r"\(x ([\d,.]+), y ([\d,.]+) mm\)", h["pin"])
+                st = pin_storeys.get(fid)
+                if not m or not st or st not in h["pin"]:
+                    raise SystemExit(f"{fid}: its Pin line needs '(x N, y N mm)' and the numbers file's register_pins "
+                                     f"storey ({st}) named in it: {h['pin']}")
+                x, y = m[1].replace(",", ""), m[2].replace(",", "")
+            lat_rows.append({**{k: scope(v) for k, v in h.items()}, "id": fid, "x_mm": x, "y_mm": y, "pin_storey": st,
+                             "source": remap(h["source"], "05"), "title": scope(h["title"])})
+        print(f"LATERAL: {len(lat_ents)} register entries from LATERAL-FINDINGS.md ({', '.join(lat_ents)}); "
+              f"{len(lat_sec)} pieces of LATERAL-SECTION.md")
 
     # ---------- files that ship as files
     # the transfer storeys are the storeys SAFE results were shipped for
@@ -836,10 +1136,20 @@ def main() -> int:
     for f in sorted((src / "review/pictures").iterdir()):
         copies.append((f, out / VIEWER_PICS / f.name))
     copies.append((src / "review/value-add/design-at-a-glance.csv", out / DGCSV))
+    # Row 1982 JM-BUILD-PREP: the lateral model and its results, as the numbers file names them (paths relative to it)
+    lat_ship = NUMS.d.get("lateral_ship", {}) if a.lateral else {}
+    lat_files: dict[str, list[str]] = {}
+    for folder, files in lat_ship.items():
+        for f in files:
+            p = (NUMS.path.parent / f).resolve()
+            if not p.is_file():
+                raise SystemExit(f"lateral_ship: {p} not found")
+            copies.append((p, out / folder / p.name))
+            lat_files.setdefault(folder, []).append(p.name)
     for s, d in copies:
         d.parent.mkdir(parents=True, exist_ok=True)
         if s == viewer:
-            d.write_text(viewer_text(viewer, set(TRANSFER_STOREYS)), encoding="utf-8", newline="")
+            d.write_text(viewer_text(viewer, set(TRANSFER_STOREYS), lat_rows), encoding="utf-8", newline="")
             continue
         shutil.copy2(s, d)
         if sha(s) != sha(d):
@@ -859,10 +1169,17 @@ def main() -> int:
     n_grav = len(list(csv.reader(open(src / "gravity-tower-columns.csv", encoding="utf-8", newline="")))) - 1
 
     # ---------- viewer pins and the register CSV
-    vtxt = read(viewer)
+    vtxt = read(out / "02 3D model viewer.html")   # as laid out: with the lateral pins (JM-BUILD-PREP)
     pins = {m.group(1): m.group(2) for m in re.finditer(r'\{"id": "(F\d\d)", "storey": "([^"]+)"', vtxt)}
     reg = {r["id"]: {k: scope(v) if isinstance(v, str) else v for k, v in r.items()}
            for r in csv.DictReader(open(src / "review/FINDINGS-REGISTER.csv", encoding="utf-8"))}
+    for r in lat_rows:
+        reg[r["id"]] = {**reg.get(r["id"], {}), **{k: r[k] for k in ("id", "severity", "title", "storey", "grid",
+                                                                    "sheets", "x_mm", "y_mm", "pin_storey")}}
+    sev_n = collections.Counter(r["severity"] for r in reg.values())
+    n_reg = len(reg)
+    NUMS.computed.update({"ISSUE:n_total": str(n_reg), "ISSUE:n_crit": str(sev_n["CRITICAL"]),
+                          "ISSUE:n_sig": str(sev_n["SIGNIFICANT"]), "ISSUE:n_min": str(sev_n["MINOR"])})
     for fid, r in reg.items():
         if pins.get(fid) != r["pin_storey"]:
             raise SystemExit(f"{fid}: viewer pin storey {pins.get(fid)} != register pin_storey {r['pin_storey']}")
@@ -870,23 +1187,32 @@ def main() -> int:
 
     # ===================================================================== PDF 01
     sources01: list[str] = []
-    letter_md = read(src / "review/REVIEW-LETTER.md")
+    letter_md = NUMS.source(read(src / "review/REVIEW-LETTER.md"), "review/REVIEW-LETTER.md")
+    if lat_sec:
+        letter_md = NUMS.fill(lateral_letter(letter_md, lat_sec, sev_n))
     meta_line = letter_md.splitlines()[2]
-    mm = re.fullmatch(r"\*\*For:\*\* (.+?) \| \*\*From:\*\* KOR Structural \| \*\*Date:\*\* (\d{4}-\d\d-\d\d) \| "
+    PREV = NUMS.value("ISSUE:first_issue_date") or "{{ISSUE:first_issue_date}}"   # the issue JM has (v8)
+    mm = re.fullmatch(r"\*\*For:\*\* (.+?) \| \*\*From:\*\* KOR Structural \| \*\*Date:\*\* (\d{4}-\d\d-\d\d|\{\{[^{}]+\}\}) \| "
                       r"\*\*Status:\*\* (.+?) \| Confidential: another firm's design", meta_line)
     if not mm:
         raise SystemExit(f"letter meta line not in the expected form: {meta_line}")
     for_who, letter_date, status = mm.groups()
-    status = scope(status)   # Row 1982 JM-NO-PHASE2: the first issue of a full review
+    status = scope(status)   # Row 1982 JM-NO-PHASE2 / JM-BUILD-PREP: the complete review
     letter = md_sections(letter_md)
     enclosed_old = letter["Enclosed"]
     enclosed_new = (
         "## Enclosed\n\n"
         "- **This document:** the findings register (Section 3; each finding with sheet, grid, source, viewer pin and "
-        "pictures), the gravity load path storey by storey (Section 4) and the transfer slab results (Section 5).\n"
+        "pictures), the gravity load path storey by storey (Section 4) and the transfer slab results (Section 5)"
+        + ("; the lateral and seismic review (Section 6); and what we corrected in our own model since our issue of " + PREV + " "
+           "(Section 7).\n" if lat_sec else ".\n") +
         f"- **`02 3D model viewer.html`:** every one of the {len(reg)} findings is a pin at its storey and location; a set-wide "
         "finding stands at a representative location, named in its register entry.\n"
-        "- **`03 Models` and `04 Results`:** our ETABS and SAFE models and their result files.\n"
+        "- **`03 Models` and `04 Results`:** our ETABS and SAFE models and their result files"
+        + (": the gravity models, and the lateral model analysed, " + ", ".join(
+            f"`03 Models/ETABS/{n}`" for n in lat_files.get("03 Models/ETABS", [])) + " (ETABS's own save), with its "
+           "results in `04 Results/ETABS lateral/` (modes, base shears, drifts, pier and spandrel forces) and our "
+           "resistance tables and code yardsticks in `04 Results/Lateral checks/`.\n" if lat_sec else ".\n") +
         "- **`05 Appendices.pdf`:** the answer key, every value in the set (Appendix A, with "
         "`05 Appendix A - answer key.csv`); the information requests to WHM (Appendix B); the gravity check "
         "(Appendix C); and the model basis and SAFE notes (Appendices D to H).\n")
@@ -896,7 +1222,7 @@ def main() -> int:
     sources01.append("\n".join(v for k, v in letter.items() if k not in ("_head", "Enclosed")))
     letter_body = remap(letter_body)
 
-    readme = read(src / "README.md")
+    readme = NUMS.source(read(src / "README.md"), "PACKAGE-README.md")
     rs = md_sections(readme)
     readme_head = strip_h1(rs["_head"])
     for k in ("_head", "What is in this folder", "What was checked, and how", "ETABS and SAFE results",
@@ -908,7 +1234,9 @@ def main() -> int:
         "| File | What it is |\n|---|---|\n"
         "| `01 Review letter and findings.pdf` | This document: the review letter, this introduction, the findings "
         f"register ({len(reg)} entries, ranked, each with its sheets, grid, viewer pin and pictures), the gravity load path "
-        "storey by storey, and the transfer slab results. |\n"
+        "storey by storey, and the transfer slab results"
+        + ("; the lateral and seismic review (Section 6) and what we corrected in our own model since our issue of " + PREV + " "
+           "(Section 7). |\n" if lat_sec else ". |\n") +
         "| `02 3D model viewer.html` | One offline page (open it in a browser): the ETABS model of WHM's set as drawn, "
         f"storey by storey and in 3D, with its 20 grid lines, the {len(reg)} findings and the assumptions of Appendix E as "
         "numbered pins (click one to read it and where it is stated; a finding's pictures open from "
@@ -930,6 +1258,14 @@ def main() -> int:
         "model's, from WHM's sheets, Appendix E, \"Materials\"); the tables of Appendix F.2 to F.5 as files: "
         f"{', '.join(f'`{n}`' for n in ('safe-set.txt',) + F_CSVS)}. |\n"
         "| `04 Results/ETABS/` | The ETABS base reactions and the loads it passes down onto the transfer storeys. |\n"
+        + ("| `03 Models/ETABS/` (lateral) | " + ", ".join(f"`{n}`" for n in lat_files.get("03 Models/ETABS", []))
+           + ": the lateral model of Section 6 as ETABS saved it after the run, the file to rerun for the lateral "
+           "results (the gravity model with the lateral properties, mass and load cases of Section 6.1 added). |\n"
+           "| `04 Results/ETABS lateral/` | The lateral run's tables: " + ", ".join(
+               f"`{n}`" for n in lat_files.get("04 Results/ETABS lateral", [])) + ". |\n"
+           "| `04 Results/Lateral checks/` | Our resistance tables (coupling beams, walls, core pad) and code yardsticks "
+           "behind Section 6: " + ", ".join(f"`{n}`" for n in lat_files.get("04 Results/Lateral checks", []))
+           + ". |\n" if lat_sec else "") +
         "| `04 Results/SAFE/<storey>/` | SAFE's deflection, reaction and punching tables of each transfer storey. |\n"
         "| `05 Appendices.pdf` | A: answer key. B: early comment list to WHM. C: tower column gravity hand check "
         "(preliminary). D: the design at a glance. E: model basis, ETABS and SAFE results, and the assumptions "
@@ -940,12 +1276,35 @@ def main() -> int:
         f"| `{GRAVCSV}` | The tower column hand check of Appendix C, {n_grav:,} rows, one per column per level "
         "(Section C.14 of Appendix C says what each column of the file holds). |\n"
         f"| `{DGCSV}` | The design at a glance per storey, every column (Appendix D.4 gives its main columns). |\n")
+    pkg_md = NUMS.source(pkg_md, "builder:pkg_md")   # its model counts and loads are gravity sites too (JM-BUILD-PREP)
     intro_md = (readme_head + "\n\n" + pkg_md + "\n" + rs["What was checked, and how"] + "\n\n"
                 + rs["What this package does not do"])
     sources01.append(readme_head + rs["What was checked, and how"] + rs["What this package does not do"])
     intro_md = remap(intro_md)
 
-    reg_md = read(src / "review/FINDINGS-REGISTER.md")
+    reg_md = NUMS.source(read(src / "review/FINDINGS-REGISTER.md"), "review/FINDINGS-REGISTER.md")
+    if lat_ents:
+        # Row 1982 JM-BUILD-PREP: F15 rewritten in place; F32-F38 after the last SIGNIFICANT entry (F31), in the summary
+        # table and as entries; the counts are counted from the merged register, not typed
+        rowmd = lambda r: (f"| [{r['id']}](#{r['id'].lower()}) | {r['severity']} | {r['title']} | {r['storey']} | "
+                           f"{r['grid']} | {r['sheets']} |")
+        new = [r for r in lat_rows if r["id"] not in v8rows]
+        for r in lat_rows:
+            if r["id"] in v8rows:
+                reg_md = splice(reg_md, rf"^\| \[{r['id']}\]\(#{r['id'].lower()}\) \|[^\n]*$", rowmd(r), f"{r['id']} row",
+                                regex=True)
+                reg_md = splice(reg_md, rf"^## {r['id']}\n.*?(?=^## )", f"## {r['id']}\n\n{lat_ents[r['id']]}\n\n",
+                                f"{r['id']} entry", regex=True)
+        f31 = re.search(r"^\| \[F31\]\(#f31\) \|.*$", reg_md, re.M)[0]
+        reg_md = splice(reg_md, f31 + "\n", f31 + "\n" + "".join(rowmd(r) + "\n" for r in new), "summary rows")
+        reg_md = splice(reg_md, "\n## F06\n", "\n" + "".join(f"## {r['id']}\n\n{lat_ents[r['id']]}\n\n" for r in new)
+                        + "## F06\n", "entries after F31")
+        reg_md = splice(reg_md, r"\*\*\d+ entries: \d+ CRITICAL, \d+ SIGNIFICANT, \d+ MINOR\.\*\* Ids run F01 to F\d\d",
+                        f"**{n_reg} entries: {sev_n['CRITICAL']} CRITICAL, {sev_n['SIGNIFICANT']} SIGNIFICANT, "
+                        f"{sev_n['MINOR']} MINOR.** Ids run F01 to {max(reg)}", "register count line", regex=True)
+        reg_md = splice(reg_md, r"every one of the \d+ entries", f"every one of the {n_reg} entries", "register intro count",
+                        regex=True)
+        reg_md = NUMS.fill(reg_md)
     sources01.append(strip_h1(reg_md))
     reg_html = pandoc(remap(strip_h1(reg_md)), "reg")
     soup = BeautifulSoup(reg_html, "html.parser")
@@ -1011,8 +1370,8 @@ def main() -> int:
           f"{len(want_pics)} pictures placed at their finding")
     reg_html = str(soup)
 
-    lp_md = read(src / "review/LOAD-PATH-SUMMARY.md")
-    tr_md = read(src / "review/TRANSFER-RESULTS.md")
+    lp_md = NUMS.source(read(src / "review/LOAD-PATH-SUMMARY.md"), "review/LOAD-PATH-SUMMARY.md")
+    tr_md = NUMS.source(read(src / "review/TRANSFER-RESULTS.md"), "review/TRANSFER-RESULTS.md")
     sources01 += [strip_h1(lp_md), strip_h1(tr_md)]
 
     def prep(h: str, min_cols: int = 8) -> str:
@@ -1029,15 +1388,31 @@ def main() -> int:
     d1.section("4", "Gravity load path, storey by storey", prep(pandoc(remap(strip_h1(lp_md)), "lp")), "s4", wide=True)
     d1.section("5", "Transfer slabs: what our SAFE runs give, and what they do not",
                prep(pandoc(remap(strip_h1(tr_md)), "tr")), "s5")
+    # Row 1982 JM-BUILD-PREP: Section 6, the lateral and seismic review; Section 7, what we corrected in our own model
+    if lat_sec:
+        s6 = NUMS.fill(section6(lat_sec))
+        sources01.append(s6)
+        d1.section("6", "Lateral and seismic", prep(pandoc(remap(s6), "lat")), "s6", wide=True)
+    if a.changes:
+        ch = NUMS.fill(strip_h1(read(a.changes)))
+        sources01.append(ch)
+        d1.section("7", f"Changes since our issue of {PREV}: what we corrected in our own model",
+                   prep(pandoc(remap(ch), "chg")), "s7")
+    banner = ""
+    if NUMS.stand_in:
+        banner = ('<div class="box box--warn"><p><strong>STAND-IN NUMBERS: NOT FOR ISSUE.</strong> Every number a rerun '
+                  'sets is a stand-in value of the numbers file.</p></div>')
     cov1 = cover(
         f"Structural peer review \u2013 {PROJECT}, Vancouver",
-        f"Kor Structural \u00b7 Project {JOB} \u00b7 First issue: gravity",
-        "Review letter, findings register, load path and transfer slab results. Peer review of WHM Structural's "
-        "drawings, <strong>Re-issued for Tender 2026-09-09</strong> (42 sheets, S001 to S811).",
+        f"Kor Structural \u00b7 Project {JOB} \u00b7 " + ("Gravity and lateral" if lat_sec else "Gravity"),
+        "Review letter, findings register, load path and transfer slab results"
+        + (", the lateral and seismic review, and the changes to our model since our issue of " + PREV if lat_sec else "")
+        + ". Peer review of WHM Structural's drawings, <strong>Re-issued for Tender 2026-09-09</strong> (42 sheets, "
+        "S001 to S811).",
         [("For", html.escape(for_who)), ("From", "Kor Structural"), ("Date", letter_date),
          ("Status", html.escape(status[:1].upper() + status[1:])), ("Confidential", "Another firm's design"),
          ("Start here", "Section 1, the review letter; then the findings register, Section 3. "
-                        "Open <code>02 3D model viewer.html</code> beside it: each finding is a pin.")])
+                        "Open <code>02 3D model viewer.html</code> beside it: each finding is a pin.")], banner)
     pdf1 = out / "01 Review letter and findings.pdf"
     build_pdf(f"Structural peer review - {PROJECT} ({JOB})", "01 Review letter and findings", cov1, d1, build,
               "01-letter", pdf1, "Review letter, findings register, load path, transfer slab results")
@@ -1311,7 +1686,7 @@ def main() -> int:
         "Reference material behind the review letter and findings register: the answer key, the early comments to "
         "WHM, the column hand check, the model basis and the SAFE notes.",
         [("Appendices", "<br>".join(f"<b>{k}</b>\u2002{html.escape(v)}" for k, v in APPX.items())),
-         ("Date", letter_date), ("Confidential", "Another firm's design")])
+         ("Date", letter_date), ("Confidential", "Another firm's design")], banner)
     pdf5 = out / "05 Appendices.pdf"
     build_pdf(f"Appendices - Structural peer review - {PROJECT} ({JOB})", "05 Appendices", cov5, d5, build,
               "05-appendices", pdf5, "Appendices A-H to the structural peer review")
@@ -1349,8 +1724,14 @@ def main() -> int:
     for pdf in (pdf1, pdf5):
         d = fitz.open(pdf)
         thin = []
+        # Row 1982 JM-BUILD-PREP: the contents ends where it ends - its last page (the last of the run of pages from
+        # page 2 that each carry 5 or more links to a page of the PDF) is exempt, as the cover and the last page are
+        k = 1
+        while k + 1 < d.page_count and sum(1 for ln in d[k + 1].get_links() if ln.get("page", -1) >= 0) >= 5:
+            k += 1
+        toc_last = k if sum(1 for ln in d[1].get_links() if ln.get("page", -1) >= 0) >= 5 else -1
         for i, pg in enumerate(d):
-            if i == 0 or i == d.page_count - 1:
+            if i == 0 or i == d.page_count - 1 or i == toc_last:
                 continue
             top, bot = 18 * 72 / 25.4, pg.rect.height - 15 * 72 / 25.4
             low = top
@@ -1364,8 +1745,9 @@ def main() -> int:
             fill = (low - top) / (bot - top)
             if fill < 0.40:
                 thin.append(f"p{i + 1} {fill:.0%}")
-        print(f"PAGE FILL {pdf.name}: {d.page_count - 2 - len(thin)} of {d.page_count - 2} pages (not the cover, not the "
-              f"last) filled to 40% or more; near-empty: {', '.join(thin) or 'none'}")
+        nck = d.page_count - 2 - (toc_last > 0)
+        print(f"PAGE FILL {pdf.name}: {nck - len(thin)} of {nck} pages (not the cover, the last page, or the contents' "
+              f"last page p{toc_last + 1}) filled to 40% or more; near-empty: {', '.join(thin) or 'none'}")
         faults += [f"{pdf.name}: near-empty page {t}" for t in thin]
     d = fitz.open(pdf1)
     placements = sum(len(p.get_images(full=True)) for p in d)
@@ -1392,6 +1774,24 @@ def main() -> int:
     print(f"PHASE 2: {len(hits)} occurrence(s) of 'phase 2' / 'phase two' / 'outside the scope' / 'outside this review' in {len(texts)} shipped texts (2 PDFs + "
           f"{len(texts) - 2} .html/.csv/.txt files)")
     faults += [f"{n}: '{w}' (phase 2 offer, or lateral framed as excluded)" for n, w in hits]
+    # Row 1982 JM-BUILD-PREP: the complete review (no first/next issue framing), and no unfilled number. The '{' check of
+    # the PDFs above also stops an unfilled {{KEY}}; this one names the keys and covers the viewer and shipped text files.
+    hits = [(n, m[0]) for n, t in texts for m in re.finditer(SCOPE_FAULT_RE, t)]
+    print(f"SCOPE: {len(hits)} occurrence(s) of first/next issue, to follow, gravity only, lateral not reviewed "
+          f"in {len(texts)} shipped texts")
+    faults += [f"{n}: '{w}' (this issue is the complete review)" for n, w in hits]
+    ph = sorted({(n, m[1]) for n, t in texts for m in PH_RE.finditer(t)})
+    print(f"PLACEHOLDERS: {len(ph)} unfilled {{{{KEY}}}} in the shipped texts; numbers file "
+          f"{NUMS.path.name if NUMS.path else '(none)'}: {len(NUMS.used)} key(s) filled"
+          + (" (STAND-IN values)" if NUMS.stand_in else "") + f", {len(NUMS.from_pkg)} read off the package's run outputs by rule, gravity sites {dict(NUMS.site_log)}"
+          + (f"; keys with no value: {', '.join(sorted(NUMS.unfilled))}" if NUMS.unfilled else ""))
+    faults += [f"{n}: unfilled {{{{{k}}}}}" for n, k in ph]
+    # every lateral file a PDF names is in the package. COVERS: names on one line of the PDF text. DOES NOT: a name the
+    # PDF breaks across lines (same-class fault it would miss: '04 Results/ETABS lateral/' at a line end).
+    for pdf in (pdf1, pdf5):
+        for m in set(re.findall(r"04 Results/(?:ETABS lateral|Lateral checks)/[\w.-]+\.csv", pdf_text(pdf))):
+            if not (out / m).is_file():
+                faults.append(f"{pdf.name}: names {m}, not in the package")
     shipped = sorted(str(p.relative_to(out)) for p in out.rglob("*") if p.is_file())
     if any(s.lower().endswith(".md") for s in shipped):
         faults.append("a .md file shipped")
