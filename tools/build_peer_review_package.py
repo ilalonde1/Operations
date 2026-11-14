@@ -130,8 +130,6 @@ REMAP_EXACT = [
     ("the package's `safe/` folder (", "the package's SAFE models and results ("),
     ("from the model in `etabs/`.", "from the model in `03 Models/ETABS/`."),
     ("the model file in `etabs/`", "the model file in `03 Models/ETABS/`"),
-    ("`P2-overview.png`, `P2-KW61.png`", "Appendix H, Figures H1 and H2"),
-    ("`P3-overview.png`, `P3-KW6.png`", "Appendix H, Figures H3 and H4"),
     ("Pictures in `safe/pictures/beyond-300mm/` show", "Pictures in Appendix H show"),
     ("pictures in `safe/pictures/beyond-300mm/`", "pictures in Appendix H"),
     ("(each listed in safe-loads.csv with why)", "(each listed in Appendix F.5 with why)"),
@@ -537,6 +535,9 @@ def remap(text: str, doc: str = "01") -> str:
         text = text.replace(old, new)
     for pat, new in REMAP_RE:
         text = re.sub(pat, new, text)
+    # JM-V9-BUILDER: a picture named in backticks (`P3-KW6.png`) is its Appendix H figure, numbered from the package
+    # (v8 typed 'Figures H1 and H2' / 'H3 and H4' for P2 / P3's four pictures)
+    text = re.sub(r"`([\w.-]+\.png)`", lambda m: f"Appendix H, Figure {H_FIGS[m[1]]}" if m[1] in H_FIGS else m[0], text)
     return text.replace(" of OF_LETTER", "" if doc == "01" else " of 01 Review letter and findings")
 
 
@@ -565,7 +566,8 @@ VIEWER_REMAP = [
 ]
 
 
-H_FIGS = {"P2-overview.png": "H1", "P2-KW61.png": "H2", "P3-overview.png": "H3", "P3-KW6.png": "H4"}
+H_FIGS: dict[str, str] = {}   # picture file -> figure code; filled in main from the package (JM-V9-BUILDER)
+FIGS_H: list[tuple[str, str, str]] = []   # (code, picture file, caption), Appendix H in that order
 
 
 def viewer_ref(s: str, transfer: set) -> str:
@@ -1160,6 +1162,28 @@ def main() -> int:
         ", so on the line 'LOADS FROM ABOVE ON NO SLAB' of " + " and ".join(f"`{n}`" for n, _ in nos) + ", "
         + " and ".join(f"'DEAD {v} kN'" for _, v in nos) + (" is a load" if len(nos) == 1 else " are loads")
         + " of " + " and ".join(v[1:] for _, v in nos) + " kN downward, not uplift")
+    # Row 1982 JM-V9-BUILDER (14 Nov): Appendix H is the package's own beyond-300mm pictures, per storey its overview then its
+    # members - v8 typed P2/P3's four (H1-H4, KW61 / KW6), and r40 draws L3 and P3 (L3-KW482, P3-KC25): the layout died on
+    # 'L3-KW482.png' (KeyError). COVERS: every picture in the folder gets a figure number and a caption from its file
+    # name. DOES NOT: the caption's words beyond storey and member (same-class fault it would miss: a member picture
+    # whose member is not 'of the storey above').
+    bdir = src / "safe/pictures/beyond-300mm"
+    pics = sorted(p.name for p in bdir.iterdir()) if bdir.is_dir() else []
+    disp = lambda k: k.replace("_", " ").replace("P1 GF", "P1/GF")
+    FIGS_H.clear()
+    for ov in (p for p in pics if p.endswith("-overview.png")):
+        k = ov[:-len("-overview.png")]
+        FIGS_H.append((f"H{len(FIGS_H) + 1}", ov, f"{disp(k)}: overview of the SAFE input"))
+        for p in pics:
+            if p.startswith(k + "-") and p != ov:
+                FIGS_H.append((f"H{len(FIGS_H) + 1}", p, f"{disp(k)}: {p[len(k) + 1:-4]} of the storey above, where part of "
+                                                          f"it stands on no {disp(k)} slab"))
+    if sorted(n for _, n, _ in FIGS_H) != pics:
+        raise SystemExit(f"beyond-300mm pictures with no storey overview: {sorted(set(pics) - {n for _, n, _ in FIGS_H})}")
+    H_FIGS.clear()
+    H_FIGS.update({n: c for c, n, _ in FIGS_H})
+    h_st = [disp(n[:-len("-overview.png")]) for _, n, _ in FIGS_H if n.endswith("-overview.png")]
+    APPX["H"] = ("SAFE plans: the loads not applied at " + " and ".join(h_st)) if h_st else "SAFE plans: none (every load applied)"
     if a.write_filled:
         jobdir = Path(NUMS.d["job_dir"]) if "job_dir" in NUMS.d else a.numbers.resolve().parents[1]  # jobs/<job>/review/x.json
         a.write_filled.mkdir(parents=True, exist_ok=True)
@@ -1377,8 +1401,8 @@ def main() -> int:
         "| `04 Results/SAFE/<storey>/` | SAFE's deflection, reaction and punching tables of each transfer storey. |\n"
         "| `05 Appendices.pdf` | A: answer key. B: early comment list to WHM. C: tower column gravity hand check "
         "(preliminary). D: the design at a glance. E: model basis, ETABS and SAFE results, and the assumptions "
-        "you must confirm. F: SAFE storey notes. G: the P1/GF supports with no reaction. H: SAFE plans of the "
-        "loads not applied at P2 and P3. |\n"
+        "you must confirm. F: SAFE storey notes. G: the P1/GF supports with no reaction. H: "
+        f"{APPX['H']}. |\n"
         f"| `05 Appendix A - answer key.csv` | Every value the set states, {n_key:,} rows, each with its sheet and page "
         "and whether it was read off the page, inferred by a stated rule, or is missing from the set. |\n"
         f"| `{GRAVCSV}` | The tower column hand check of Appendix C, {n_grav:,} rows, one per column per level "
@@ -1775,10 +1799,7 @@ def main() -> int:
     legend = next((p for p in rs["ETABS and SAFE results"].split("\n\n") if p.startswith("Forces below are in kN")), None)
     if legend is None:
         raise SystemExit("picture legend paragraph moved in the README")
-    figs_h = [("H1", "P2-overview.png", "P2: overview of the SAFE input"),
-              ("H2", "P2-KW61.png", "P2: wall KW61 of P1/GF, east of grid 9, where no P2 slab is"),
-              ("H3", "P3-overview.png", "P3: overview of the SAFE input"),
-              ("H4", "P3-KW6.png", "P3: wall KW6 of P2, east of the slab edge")]
+    figs_h = FIGS_H   # JM-V9-BUILDER: the package's own pictures (worked out in main from safe/pictures/beyond-300mm/)
     h_html = pandoc(remap(legend, "05").replace("Pictures in Appendix H show", "These pictures show"), "h")
     for code, name, cap in figs_h:
         p = src / "safe/pictures/beyond-300mm" / name
