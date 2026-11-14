@@ -294,7 +294,8 @@ class Numbers:
     def rule(self, r: dict, k: str) -> str:
         """A key's value read off the package's own run outputs. Kinds: 'line' (the n-th number on the one line of the
         file whose text, spaces folded, starts with 'start'), 'after' (the first number after a literal), 'csv' (a
-        column of the row matching 'row'), 'rows' (data rows of a csv), 'distinct' (distinct values of 'cols').
+        column of the row matching 'row'), 'rows' (data rows of a csv), 'distinct' (distinct values of 'cols'), 'sum' (a
+        column summed over matching rows), 'list' (names a table gives, joined or counted; see below), 'sha'.
         'fmt': {'dp': decimals, 'comma': thousands separator, 'abs': drop the sign, 'neg': negate}."""
         fp = r["file"]
         f = (self.path.parent / self.d.get("lateral_run_dir", "") / fp[5:]) if fp.startswith("@run/") else self.pkg / fp
@@ -326,6 +327,30 @@ class Numbers:
             v = str(len(rows) if kind == "rows" else len({tuple(col(x, c) for c in r["cols"]) for x in rows}))
         elif kind == "sha":
             v = sha(f)[:r.get("n", 16)]
+        elif kind == "sum":
+            # JM-V9-BUILDER: a column summed over the csv rows that match 'where' (equal), 'in' (one of) and 'prefix'
+            # (starts with); refuses when no row matches (6-readme.sh's P2_COLS: the 13 P2 pinned columns at station 0)
+            rows = [x for x in csv.DictReader(open(f, encoding="utf-8"))
+                    if all(x[c] == w for c, w in r.get("where", {}).items())
+                    and all(x[c] in ws for c, ws in r.get("in", {}).items())
+                    and all(x[c].startswith(p) for c, p in r.get("prefix", {}).items())]
+            if not rows:
+                raise SystemExit(f"{k}: no row of {r['file']} matches the sum rule")
+            v = str(sum(float(x[r["col"]]) for x in rows))
+        elif kind == "list":
+            # Row 1982 JM-V9-BUILDER (14 Nov): the names a run's own table gives (the README's proven list and not-proven
+            # bullets, counted off SAFE-RESULTS.txt, never typed). 'pattern': a regex whose group 1 is the name, matched
+            # line by line; 'count': the number of names; else each name through 'item' ({name}, {key} = the name with
+            # '/' and ' ' as '_'; '{{' / '}}' for a literal brace) joined by 'sep'. An 'item' may name a {{KEY}} per name:
+            # fill() fills it in a second pass, and a key with no value stays for the build to refuse. No match refuses
+            # (a pattern that matches nothing is a fault) unless 'empty_ok' (a run with no not-proven storey).
+            names = [m[1] for m in re.finditer(r["pattern"], read(f), re.M)]
+            if not names and not r.get("count") and not r.get("empty_ok"):
+                raise SystemExit(f"{k}: no line of {r['file']} matches {r['pattern']}")
+            item = r.get("item", "{name}")
+            v = str(len(names)) if r.get("count") else r.get("sep", ", ").join(
+                item.format(name=n, key=n.replace("/", "_").replace(" ", "_")) for n in names)
+            return v
         else:
             raise SystemExit(f"{k}: rule kind {kind}?")
         fm = r.get("fmt", {})
@@ -362,7 +387,13 @@ class Numbers:
         return text
 
     def fill(self, text: str) -> str:
-        return PH_RE.sub(lambda m: self.value(m[1]) if self.value(m[1]) is not None else m[0], text)
+        # a value may itself name keys (a 'list' rule's item, a TEXT key quoting a G: number): fill until nothing changes
+        for _ in range(4):
+            new = PH_RE.sub(lambda m: self.value(m[1]) if self.value(m[1]) is not None else m[0], text)
+            if new == text:
+                break
+            text = new
+        return text
 
     def source(self, text: str, rel: str) -> str:
         return self.fill(self.sites(text, rel))
@@ -1261,6 +1292,19 @@ def main() -> int:
               "Assumptions you must confirm", "What this package does not do"):
         if k not in rs:
             raise SystemExit(f"README section missing: {k}")
+    # Row 1982 JM-V9-BUILDER (14 Nov): the sign example is the package's own - the DEAD of the 'LOADS FROM ABOVE ON NO SLAB'
+    # line of each storey's assumptions file that has one and is downward (v8 typed 'DEAD -75.1 kN' / 'DEAD -408.7 kN',
+    # gone since r38). COVERS: which files have the line, and the value printed. DOES NOT: a storey whose line holds
+    # uplift only (no example is drawn from it); same-class fault it would miss: the README's own copy of the sentence.
+    nos = []
+    for f in sorted((src / "safe" / "models").glob("*.assumptions.txt")):
+        m = re.search(r"LOADS FROM ABOVE ON NO SLAB:[^\n]*?of the totals above: DEAD (-[\d.]+) kN", read(f))
+        if m:
+            nos.append((f.name, m[1]))
+    sign_eg = ("" if not nos else
+               ", so on the line 'LOADS FROM ABOVE ON NO SLAB' of " + " and ".join(f"`{n}`" for n, _ in nos) + ", "
+               + " and ".join(f"'DEAD {v} kN'" for _, v in nos) + (" is a load" if len(nos) == 1 else " are loads")
+               + " of " + " and ".join(v[1:] for _, v in nos) + " kN downward, not uplift")
     pkg_md = (
         "## What is in this package\n\n"
         "| File | What it is |\n|---|---|\n"
@@ -1276,16 +1320,15 @@ def main() -> int:
         f"| `{VIEWER_PICS}/` | The register's pictures, as files, for the viewer's picture links (the same pictures are in "
         "Section 3). |\n"
         "| `03 Models/ETABS/` | Two ETABS files. `01819-01 Renfrew - ETABS model.e2k` is ETABS's save of the model it "
-        "analysed (1,956 members): the file to rerun, which reproduces the ETABS results. "
-        f"`{E2K_WRITTEN}` is the model as we wrote it, the file ETABS was given (1,957 members, with every one of them "
+        "analysed ({{G:ETABS.members_analysed}} members): the file to rerun, which reproduces the ETABS results. "
+        f"`{E2K_WRITTEN}` is the model as we wrote it, the file ETABS was given ({{{{G:ETABS.members_written}}}} members, with every one of them "
         "in the save): it is enclosed only as the source of the quantities of Appendix D. Every member's "
         "f'c is from the set (Appendix E, \"Materials\"). |\n"
         f"| `03 Models/SAFE/` | The SAFE models: one for each of the {n_tr} transfer storeys (`<storey>.f2k`, SAFE's text "
         f"file, which SAFE 22 imports to open the model). The other {n_other} storey layouts, which carry no load from above "
         "of that kind, are in `Storeys with no transfer/`. Which storeys each model stands for: Appendix F.2. |\n"
         f"| `{SAFE_NOTES}/` | Each model's assumptions (`<storey>.assumptions.txt`: its loads carry SAFE's sign, z up, "
-        "negative = down, so on the line 'LOADS FROM ABOVE ON NO SLAB' of `P3.assumptions.txt` and `P2.assumptions.txt`, "
-        "'DEAD -75.1 kN' and 'DEAD -408.7 kN' are loads of 75.1 and 408.7 kN downward, not uplift) and the source of every "
+        f"negative = down{sign_eg}) and the source of every "
         "slab use and load (`<storey>.provenance.csv`; thicknesses, f'c and geometry are not in it: they are the ETABS "
         "model's, from WHM's sheets, Appendix E, \"Materials\"); the tables of Appendix F.2 to F.5 as files: "
         f"{', '.join(f'`{n}`' for n in ('safe-set.txt',) + F_CSVS)}. |\n"
