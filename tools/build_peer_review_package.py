@@ -69,6 +69,7 @@ from __future__ import annotations
 import argparse
 import collections
 import csv
+import gc
 import hashlib
 import html
 import json
@@ -77,6 +78,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import fitz  # PyMuPDF
@@ -255,6 +257,8 @@ class Numbers:
         self.site_log = collections.Counter()
         self.pkg: Path | None = None        # the package being laid out: rules read its run outputs
         self.from_pkg: set[str] = set()
+        self.checked: set[str] = set()      # typed values checked against their rule (JM-V9-PREP)
+        self.disagree: list[str] = []
 
     @property
     def stand_in(self) -> bool:
@@ -272,6 +276,18 @@ class Numbers:
         if e is None or e.get("value") in (None, ""):
             self.unfilled.add(k)
             return None
+        # Row 1982 JM-V9-PREP (13 Nov 20:0x): a key with a rule AND a typed value is checked against the rule read off
+        # THIS package; a typed value the package does not carry is refused. Found on the r29 rehearsal: 289 transfer
+        # members typed (v8's), 294 in r29's own ETABS-loads csv. Skipped for '@run/' rules when no lateral run is there.
+        if e.get("rule") and self.pkg is not None and k not in self.checked:
+            self.checked.add(k)
+            r = e["rule"]
+            f = (self.path.parent / self.d.get("lateral_run_dir", "") / r["file"][5:]) if r["file"].startswith("@run/") \
+                else self.pkg / r["file"]
+            if f.is_file():
+                got = self.rule(r, k)
+                if got != str(e["value"]):
+                    self.disagree.append(f"{k}: typed {e['value']}, the package's {r['file']} gives {got}")
         self.used.add(k)
         return str(e["value"])
 
@@ -305,7 +321,9 @@ class Numbers:
         elif kind in ("rows", "distinct"):
             rows = [x for x in csv.DictReader(open(f, encoding="utf-8"))
                     if all(x[c] == w for c, w in r.get("where", {}).items())]
-            v = str(len(rows) if kind == "rows" else len({tuple(x[c] for c in r["cols"]) for x in rows}))
+            # a col 'a|b' is the first non-empty of a, b (JM-V9-PREP: 'pier|member' counts a pier once, as the texts do)
+            col = lambda x, c: next((x[p] for p in c.split("|") if x[p]), "")
+            v = str(len(rows) if kind == "rows" else len({tuple(col(x, c) for c in r["cols"]) for x in rows}))
         elif kind == "sha":
             v = sha(f)[:r.get("n", 16)]
         else:
@@ -329,6 +347,9 @@ class Numbers:
                 i = text.index(anchor) + len(s["before"])
                 edits.append((i, i + len(s["v8"]), "{{" + s["key"] + "}}"))
                 self.site_log["templated"] += 1
+                continue
+            if n == 0 and text.count(s["before"] + "{{" + s["key"] + "}}" + s["after"]) == 1:
+                self.site_log["already a key"] += 1   # the source names the key itself (JM-V9-PREP: a run-set value)
                 continue
             v = self.value(s["key"])
             if n == 0 and v is not None and text.count(s["before"] + v + s["after"]) == 1:
@@ -1074,6 +1095,12 @@ def main() -> int:
             left = sorted(set(PH_RE.findall(t)))
             print(f"FILLED {rel} -> {a.write_filled / Path(rel).name}: {len(left)} key(s) without a value"
                   + (f": {', '.join(left)}" if left else ""))
+        print(f"TYPED vs RULE: {len(NUMS.checked) - len(NUMS.disagree)} of {len(NUMS.checked)} typed values with a rule "
+              f"equal {src}'s run outputs" + "".join(f"\n   {x}" for x in NUMS.disagree))
+        if NUMS.disagree:
+            print("REFUSED: typed numbers the package does not carry (--src must be the package assembled from the run; "
+                  "clear 'value' to let the rule fill it, or correct it)")
+            return 1
         return 0
     build = a.build or out.parent / "_build"
     if out.exists():
@@ -1791,6 +1818,9 @@ def main() -> int:
           + (" (STAND-IN values)" if NUMS.stand_in else "") + f", {len(NUMS.from_pkg)} read off the package's run outputs by rule, gravity sites {dict(NUMS.site_log)}"
           + (f"; keys with no value: {', '.join(sorted(NUMS.unfilled))}" if NUMS.unfilled else ""))
     faults += [f"{n}: unfilled {{{{{k}}}}}" for n, k in ph]
+    print(f"TYPED vs RULE: {len(NUMS.checked) - len(NUMS.disagree)} of {len(NUMS.checked)} typed values with a rule equal "
+          f"the package's own run outputs" + "".join(f"\n   {x}" for x in NUMS.disagree))
+    faults += [f"numbers: {x}" for x in NUMS.disagree]
     # every lateral file a PDF names is in the package. COVERS: names on one line of the PDF text. DOES NOT: a name the
     # PDF breaks across lines (same-class fault it would miss: '04 Results/ETABS lateral/' at a line end).
     for pdf in (pdf1, pdf5):
@@ -1805,6 +1835,7 @@ def main() -> int:
     print(f"SHIPPED {len(shipped)} files")
     if faults:
         print("FAULTS:\n  " + "\n  ".join(faults))
+    d = pg = None   # JM-V9-PREP: main's last fitz document and page kept a PDF in --out open, so a refusal could not rename it
     return handoff_gate(out, build, a.job or job_of(out, src), faults, NUMS.stand_in)
 
 
@@ -1861,7 +1892,23 @@ def handoff_gate(out: Path, build: Path, job: str, faults: list, stand_in: bool)
         dest = out.with_name(out.name + "_REFUSED")
         if dest.exists():
             shutil.rmtree(dest)      # an earlier refused build of the same --out: a work product
-        out.rename(dest)
+        # Row 1982 JM-V9-PREP (13 Nov 20:0x): on the v9 rehearsal the rename right after the gate failed with WinError 5
+        # (main still held a fitz document of a PDF inside --out; released before this call now) and the build died on a
+        # traceback with the folder NOT renamed. Retry; if it still cannot move, mark the folder itself and refuse.
+        gc.collect()        # the PDFs this script opened with fitz.open() and never closed hold handles inside --out
+        for i in range(20):
+            try:
+                out.rename(dest)
+                break
+            except PermissionError as e:
+                err = e
+                time.sleep(1.5)
+        else:
+            (out / "NOT FOR ISSUE - REFUSED.txt").write_text(
+                f"The hand-off gate refused this package; it could not be renamed to {dest.name} ({err}).\n", encoding="utf-8")
+            print(f"NOT FOR ISSUE: the package is refused; it could not be moved ({err}): marked in place with "
+                  f"'NOT FOR ISSUE - REFUSED.txt'")
+            return 1
         print(f"NOT FOR ISSUE: the package is refused and was moved to {dest}")
         return 1
     print("CHECKS PASSED")
