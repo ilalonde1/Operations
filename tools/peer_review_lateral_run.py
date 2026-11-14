@@ -10,7 +10,9 @@ WHY THIS EXISTS
 
 STEPS (--steps, default all; each prints what it read and refuses on a fault)
     build   takeoff e2k-lateral <reactions.e2k> basis.txt -> <review>/lateral/<prefix> vN.e2k (+ report). Refuses first
-            when the gravity e2k has no SDL load pattern (final22 itself had none).
+            when the gravity e2k has no SDL load pattern (final22 itself had none). Then REFUSES unless (JM-R37) `takeoff
+            lateral-diff` finds every difference from the gravity model under a named allowance AND `takeoff model-audit` on the
+            lateral copy has no unstated drawing mismatch (D1 doors on every storey, D2 no overlapping wall panels, ...).
     cross   the walls of the storey above the cut storey (L2 for a cut at L1) whose plan extent crosses split x: must be 0.
             Also prints the cut storey's own count (information: a P1/GF cut would need that one at 0).
     send    send-set.ps1 on KOR-210 - ONLY with --send (default: print the command, -DryRun only with --dry-send).
@@ -389,6 +391,25 @@ def main() -> int:
         if r.returncode != 0 or not e2k.is_file():
             die(f"e2k-lateral exit {r.returncode}")
         print(f"  {e2k.name} written ({e2k.stat().st_size:,} bytes); report {rep.name}")
+        # JM-R37 (14 Nov 2026, framework-ca): anything the build adds or changes is checked against WHM's drawings or allowed by
+        # name, before the copy goes anywhere. lateral v8 carried a copied header (KS201 @L10) over a solid wall and nothing saw it.
+        #   (1) takeoff lateral-diff: the lateral copy differs from the gravity model only by the named allowances, else exit 1;
+        #   (2) takeoff model-audit on the LATERAL copy: every drawing check (D1 doors on every storey, D2 no overlapping panels, ...)
+        #       with no unstated mismatch, else exit 1.
+        job = review.parent
+        diff_rep = lat / f"lateral-diff-{a.version}.txt"
+        r = subprocess.run([str(a.takeoff), "lateral-diff", str(a.reactions), str(e2k), "--basis", str(lat / "basis.txt"), "--report", str(diff_rep)],
+                           capture_output=True, text=True)
+        print(r.stdout[-1500:], r.stderr[-500:])
+        if r.returncode != 0:
+            die(f"lateral-diff exit {r.returncode}: the lateral copy changes something no allowance names ({diff_rep.name}) - REFUSED")
+        aud_rep = lat / f"model-audit-{a.version}.txt"
+        r = subprocess.run([str(a.takeoff), "model-audit", str(e2k), str(job / "answer-key.csv"), str(job / "model-audit"),
+                            "--uses", str(job / "model-audit" / "uses-final26.csv"), "--report", str(aud_rep)], capture_output=True, text=True)
+        tail = [l for l in aud_rep.read_text(encoding="utf-8", errors="replace").splitlines() if l.startswith("MISMATCHES")] if aud_rep.is_file() else []
+        print(f"  model-audit on {e2k.name}: exit {r.returncode}; {tail}")
+        if r.returncode != 0:
+            die(f"model-audit exit {r.returncode} on the lateral copy: an unstated drawing mismatch ({aud_rep.name}) - REFUSED")
 
     if "cross" in steps:
         step(f"cross: walls across x = {a.split_x:,.0f} at the cut")
