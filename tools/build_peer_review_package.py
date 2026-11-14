@@ -1184,6 +1184,14 @@ def main() -> int:
     H_FIGS.update({n: c for c, n, _ in FIGS_H})
     h_st = [disp(n[:-len("-overview.png")]) for _, n, _ in FIGS_H if n.endswith("-overview.png")]
     APPX["H"] = ("SAFE plans: the loads not applied at " + " and ".join(h_st)) if h_st else "SAFE plans: none (every load applied)"
+    # JM-V9-BUILDER: Appendix G's title counts P1/GF's restrained points with no reaction off the run (v8 typed '11'; r40: 0),
+    # from the SafeOpenCheck summary 6-readme.sh reads; refuses when the line is not there
+    soc = src / "_internal/assembly/soc-summary.txt"
+    m = re.search(r"^P1_GF \| .*?with no reaction force in any finished case: (\d+)", read(soc), re.M) if soc.is_file() else None
+    if m is None:
+        raise SystemExit(f"Appendix G: no P1_GF line in {soc}")
+    APPX["G"] = (f"P1/GF: the {m[1]} restrained points with no reaction" if m[1] != "0"
+                 else "P1/GF: restrained points with no reaction (none in this run)")
     if a.write_filled:
         jobdir = Path(NUMS.d["job_dir"]) if "job_dir" in NUMS.d else a.numbers.resolve().parents[1]  # jobs/<job>/review/x.json
         a.write_filled.mkdir(parents=True, exist_ok=True)
