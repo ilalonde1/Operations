@@ -60,6 +60,9 @@ THE COMPLETE REVIEW (row 1982 JM-BUILD-PREP, 13 Nov 2026: gravity + lateral in o
 USAGE
     python -I build_peer_review_package.py --src <frozen package dir> --out <new package dir>
         [--numbers v9-numbers.json --lateral <lateral draft dir> --changes CHANGES-SINCE-V8.md]
+        [--job 01819-01]
+    The last step is the hand-off gate (row 2135, handoff_gate below): `takeoff handoff-gate check --kind peer-review`.
+    Any fault or a refusal renames --out to <out>_REFUSED (NOT FOR ISSUE) and exits 1; CHECKS PASSED only when it passed.
 """
 from __future__ import annotations
 
@@ -69,6 +72,7 @@ import csv
 import hashlib
 import html
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -1036,6 +1040,7 @@ def main() -> int:
     ap.add_argument("--runall", type=Path, help="the assembly runner (default: RUN-ALL.sh beside the INPUTS.env)")
     ap.add_argument("--out", required=True, type=Path, help="the laid-out package folder")
     ap.add_argument("--replace", action="store_true", help="delete --out first if it exists (it is a work product)")
+    ap.add_argument("--job", help="the job number for the hand-off gate (default: NNNNN-NN at the start of --out's or --src's name)")
     ap.add_argument("--build", type=Path, help="working folder for the HTML (default: <out>/../_build)")
     # Row 1982 JM-BUILD-PREP: the complete review (gravity + lateral), its numbers by data
     ap.add_argument("--numbers", type=Path, help="the numbers file (v9-numbers.json): every value a rerun sets, by key")
@@ -1800,6 +1805,64 @@ def main() -> int:
     print(f"SHIPPED {len(shipped)} files")
     if faults:
         print("FAULTS:\n  " + "\n  ".join(faults))
+    return handoff_gate(out, build, a.job or job_of(out, src), faults, NUMS.stand_in)
+
+
+# ---------------------------------------------------------------- Row 2135 HANDOFF-GATE (Ian 13 Nov #133633, #133634)
+# THE LAST STEP: `takeoff handoff-gate check --kind peer-review` on the laid-out folder. It refuses unless every shipped file
+# has a look record in KorStandards oversight.SetLook by a session other than this one (CLAUDE_CODE_SESSION_ID), every page of
+# every PDF; a docs/codex CODEX-<job>-*-RESPONSE.md names the folder's manifest sha256 with no open WRONG; this run's gates
+# (written to <build>/handoff-gates.json: the layout checks above, and the numbers not being STAND-IN) all passed; and the
+# PDFs pass the peer-review leak list and a 40% width fill per page. A REFUSAL (or a fault above) renames --out to
+# <out>_REFUSED - NOT FOR ISSUE - and exits 1; "CHECKS PASSED" is printed only when the gate passed.
+# COVERS: closes ship-exits rows 40 (a faulted build left complete and unmarked), 41 (STAND-IN numbers exit 0) and 43 (no
+# look gate). DOES NOT: row 42 (the image placement count is still printed, not checked); a gate that cannot run (no pin, a
+# crash) is a refusal. SAME-CLASS MISS: a send made from the folder BEFORE this step finishes (the folder is complete from
+# the copies onward; only the rename marks it).
+HANDOFF_TAKEOFF = Path(__file__).resolve().parents[2] / "KOR.Drafter" / "work" / "_tools" / "takeoff" / "45beed64" / "takeoff.exe"   # KOR.Drafter 45beed64
+
+
+def job_of(out: Path, src: Path) -> str:
+    for p in (out, src, *src.parents):
+        m = re.match(r"(\d{5}-\d{2})\b", p.name)
+        if m:
+            return m.group(1)
+    return ""
+
+
+def handoff_gate(out: Path, build: Path, job: str, faults: list, stand_in: bool) -> int:
+    gates = {"gates": [
+        {"gate": "peer-review layout checks (build_peer_review_package.py)", "passed": not faults,
+         "detail": f"{len(faults)} fault(s)" + (": " + "; ".join(faults[:20]) if faults else "")},
+        {"gate": "the numbers are the run's, not STAND-IN", "passed": not stand_in,
+         "detail": "STAND-IN numbers: the covers carry NOT FOR ISSUE" if stand_in else "numbers file values"},
+    ]}
+    record = build / "handoff-gates.json"
+    record.write_text(json.dumps(gates, indent=1), encoding="utf-8")
+    takeoff = Path(os.environ.get("KOR_HANDOFF_TAKEOFF") or HANDOFF_TAKEOFF)
+    refused = bool(faults) or stand_in
+    if not job:
+        print("HANDOFF GATE: no job number in --job, --out or --src")
+        refused = True
+    elif not takeoff.is_file():
+        print(f"HANDOFF GATE: no takeoff at {takeoff} (set KOR_HANDOFF_TAKEOFF): the gate cannot run, so the package is refused")
+        refused = True
+    else:
+        cmd = [str(takeoff), "handoff-gate", "check", "--job", job, "--dir", str(out), "--kind", "peer-review",
+               "--run-record", str(record)]
+        print("HANDOFF GATE: " + " ".join(f'"{c}"' if " " in c else c for c in cmd), flush=True)
+        try:
+            rc = subprocess.run(cmd, timeout=1800).returncode
+        except (OSError, subprocess.TimeoutExpired) as e:
+            print(f"HANDOFF GATE could not run: {e}")
+            rc = 1
+        refused = refused or rc != 0
+    if refused:
+        dest = out.with_name(out.name + "_REFUSED")
+        if dest.exists():
+            shutil.rmtree(dest)      # an earlier refused build of the same --out: a work product
+        out.rename(dest)
+        print(f"NOT FOR ISSUE: the package is refused and was moved to {dest}")
         return 1
     print("CHECKS PASSED")
     return 0
