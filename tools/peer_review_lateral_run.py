@@ -18,24 +18,32 @@ STEPS (--steps, default all; each prints what it read and refuses on a fault)
     copy    work/_runner/results/<tag>/out/etabs/out/*.csv + console.log, lateral.LOG, summary.txt, done.txt
             -> <review>/lateral/<run>  (as run-r27)
     weights rigid-diaphragm masses from the run's reactions.OUT (--out-file, default the fetched one) -> W per building
-            (diaphragms above the cut storey split at x; the shared L1 plate (DPOD) shared out by --l1-share-a, default
-            the yardsticks' L1 share read off the r27 run - printed, an ASSUMPTION for the engineer)
+            (diaphragms above the cut storey split at x; the shared L1 plate (DPOD) shared out by --l1-share-a, REQUIRED:
+            Building A's share of the L1 plate area, lateral/independent/LATERAL-PREP-r32.md item 5 - JM-LAT-PREP 14 Nov; the old default,
+            the yardsticks' share read off r27, was our model against itself, REF-AUDIT item 10). Each building's W is then
+            held to 5 % of the INDEPENDENT hand weight (--hand-weight, independent/hand-weight.csv: drawing areas, WHM's
+            walls and columns, S111 loads, VBBL 4.1.8.2), not the yardsticks' model W (REF-AUDIT items 6 and 10)
     check   takeoff lateral-check twice: pass 1 with V scaled to this W, reads Building A's modal T; pass 2 with
             V_A at min(T_A, 2Ta) (S(T)Mv interpolated as the yardsticks do; self-tested against them). The run's basis
             is written to <run>/check-basis.txt; the job's check.txt is never edited.
     fill    v9-numbers.json lateral keys from <run>/check (dry unless --write).
 
 WHAT IT CHECKS / DOES NOT
-    checks:  SDL pattern present; 0 walls across the split above the cut; W per building > 0 and the total within 5 % of
-             the yardsticks' W (else REFUSED - the mass source changed); the V(T) interpolation reproduces the yardsticks'
-             V/W at Ta and 2Ta to 0.5 %; every v9 key the fill sets exists.
-    does NOT check: that the cut plane is right for final23 beyond the wall crossing (columns and beams are not tested -
+    checks:  SDL pattern present; 0 walls across the split above the cut; W per building > 0 and EACH building's W and
+             the total within 5 % of the independent hand weight (else REFUSED - read the mass source before any V is set);
+             the V(T) interpolation reproduces the yardsticks' V/W at Ta and 2Ta to 0.5 %; every v9 key the fill sets
+             exists (W and V per building are set only where v9-numbers.json has the key, else printed to type by hand).
+             V itself = the yardsticks' code V/W (VBBL 4.1.8.11, INDEPENDENT: code formulas) x this run's W.
+    does NOT check: that the hand weight itself is right (it is the independent side: its own method and limits are in
+             lateral/independent/HAND-WEIGHT.md); a mass error inside 5 % of W (e.g. 0.5 kPa on a roof where 25 % snow
+             belongs); that the cut plane is right for final26 beyond the wall crossing (columns and beams are not tested -
              same-class fault it would miss: a transfer beam spanning x = 61,000 at L2); Building B's V when its modal T
              is under 2Ta (REFUSED: done by hand); drift V (vdrift_*) is the yardsticks' scaled by W only.
 
 USAGE (from anywhere; paths absolute or relative to KOR.Drafter)
     python -I peer_review_lateral_run.py --reactions <r31 reactions.e2k> --version v6 --tag r32-lateral-v6-final23
-        --set <r31 gravity set name> --run run-r32 --date "14 Nov 2026" [--send] [--write]
+        --set <r31 gravity set name> --run run-r32 --date "14 Nov 2026" --l1-share-a <LATERAL-PREP-r32.md item 5> [--send] [--write]
+    the exact r32 command: scratchpad latprep/RUN.md of JM-LAT-PREP (14 Nov), copied to lateral/independent/RUN-r32.md
     offline test on r29/r30/r27 files: see the commit that added this file.
 """
 from __future__ import annotations
@@ -160,6 +168,23 @@ def yard(review: Path):
     return y
 
 
+def hand_weight(path: Path, storeys_top_down: list, cut: str) -> dict:
+    """Independent hand W per building (A, B) for the cut storey and every storey above it, from hand-weight.csv
+    (columns storey, building, W_kN). Refuses on a storey the e2k does not have, or no row at or above the cut."""
+    if not path.is_file():
+        die(f"no independent hand weight {path} (JM-LAT-PREP: drawing areas, WHM's walls/columns, S111 loads)")
+    above = set(storeys_top_down[:storeys_top_down.index(cut) + 1])
+    w, n = {"A": 0.0, "B": 0.0}, 0
+    for r in csv.DictReader(ln for ln in open(path, encoding="utf-8-sig") if not ln.startswith("#")):
+        if r["storey"] not in storeys_top_down:
+            die(f"{path.name}: storey '{r['storey']}' is not in the e2k")
+        if r["storey"] in above and r["building"] in w:
+            w[r["building"]] += float(r["W_kN"]); n += 1
+    if n == 0 or min(w.values()) <= 0:
+        die(f"{path.name}: no W rows at or above {cut} for both buildings")
+    return w
+
+
 def basis(path: Path) -> dict:
     d = {}
     for ln in open(path, encoding="utf-8"):
@@ -220,7 +245,7 @@ def fill(review: Path, run: str, run_date: str, e2k_name: str, write: bool) -> N
         if b == "A":
             put("R23:V_A", f"{float(r['V_kN']):,.0f}")
         if b == "B":
-            put("R23:tower_scale_fraction", r["fraction"])
+            put("R23:tower_scale_fraction", f"{float(r['fraction']):.1f}")   # "1.0 V" / "0.8 V" in the text
     txt = (ck / "lateral-check.txt").read_text(encoding="utf-8")
     ta = [float(t) for t in re.findall(r"^A [XY]: the mode .* T = ([\d.]+) s", txt, re.M)]
     put("R23:T_A_s", f"{max(ta):.2f}")
@@ -263,6 +288,21 @@ def fill(review: Path, run: str, run_date: str, e2k_name: str, write: bool) -> N
     pads = rows(ck / "core-pad-bearing.csv")
     put("R23:pad_q_short_kPa", f"{max(float(r['q_max_kPa']) for r in pads if r['pad'] == 'PAD-A'):,.0f}")
     put("R23:pad_q_long_kPa", f"{max(float(r['q_max_kPa']) for r in pads if r['pad'] == 'PAD-B'):,.0f}")
+    # W and V per building (JM-LAT-PREP 14 Nov): section 6 printed the yardsticks' model W and V at 2Ta as fixed text;
+    # set here only where v9-numbers.json has the key, else printed for the hand fill (REFILL-KEYS.md)
+    cb_ = (rd / "check-basis.txt").read_text(encoding="utf-8")
+    mw = re.search(r"^# W_kN A = (\d+), B = (\d+)", cb_, re.M)
+    vv = dict(re.findall(r"^(v_[ew]_[xy])\s*=\s*([\d.]+)", cb_, re.M))
+    soft = {"R23:W_A": mw and f"{int(mw[1]):,}", "R23:W_B": mw and f"{int(mw[2]):,}"}
+    for k, b, x in (("v_e_x", "B", "X"), ("v_e_y", "B", "Y"), ("v_w_x", "A", "X"), ("v_w_y", "A", "Y")):
+        soft[f"R23:V_{b}_{x}"] = f"{float(vv[k]):,.0f}" if k in vv else None
+    for k, v in soft.items():
+        if v is None:
+            print(f"  {k}: no value in check-basis.txt")
+        elif k in K:
+            put(k, v)
+        else:
+            print(f"  {k} = {v}  (NOT A KEY of v9-numbers.json: type it by hand where REFILL-KEYS.md says)")
     put("R23:run_date", run_date)
     put("R23:modal_type", "Ritz")
     put("R23:base_condition", "pinned at P3; every joint of P2 and P1/GF held UX UY; base of the structure P1/GF")
@@ -278,7 +318,8 @@ def fill(review: Path, run: str, run_date: str, e2k_name: str, write: bool) -> N
         K[k]["value"] = v
     d["lateral_run_dir"] = f"lateral/{run}"
     ship = d["lateral_ship"]
-    ship["03 Models/ETABS"] = [f"lateral/{e2k_name}"]
+    sv = rd / "ETABS lateral save.e2k"
+    ship["03 Models/ETABS"] = [f"lateral/{run}/{sv.name}" if sv.is_file() else f"lateral/{e2k_name}"]
     ship["04 Results/ETABS lateral"] = [re.sub(r"lateral/run-[^/]+/", f"lateral/{run}/", p) for p in ship["04 Results/ETABS lateral"]]
     K["ISSUE:lateral_e2k_name"]["value"] = e2k_name
     d["status"] = f"LATERAL FILLED from {run} ({run_date}); still TO FILL: hand keys left null and ISSUE / AUDIT-after values"
@@ -303,8 +344,9 @@ def main() -> int:
     ap.add_argument("--split-x", type=float, default=61000)
     ap.add_argument("--cut-storey", default="L1")
     ap.add_argument("--out-file", type=Path, help="reactions.OUT with the rigid-diaphragm masses (default the fetched run's)")
-    ap.add_argument("--l1-share-a", type=float, help="Building A's share of the cut storey's shared plate (default: the yardsticks' share on r27)")
-    ap.add_argument("--r27-out", type=Path, default=KD / "work/_runner/results/r27-lateral-v4-cuts-l1/out/etabs/out/reactions.OUT")
+    ap.add_argument("--l1-share-a", type=float, help="Building A's share of the cut storey's shared plate: REQUIRED for weights "
+                    "(the L1 plate area west of split x over the whole, lateral/independent/LATERAL-PREP-r32.md item 5)")
+    ap.add_argument("--hand-weight", type=Path, help="independent hand W per storey and building (default <review>/lateral/independent/hand-weight.csv)")
     ap.add_argument("--takeoff", type=Path, default=KD / "Kor.Operations.EngineeringTools.TakeoffCli/bin/Debug/net8.0/takeoff.exe")
     ap.add_argument("--send", action="store_true", help="really send to KOR-210 and fetch (default: print the command)")
     ap.add_argument("--dry-send", action="store_true", help="send-set.ps1 -DryRun only (stages locally, sends nothing)")
@@ -400,6 +442,12 @@ def main() -> int:
             else:
                 print(f"  NOTE: {f} not there")
         print(f"  {n} files copied")
+        save = src / "reactions.$et"          # ETABS's own save of the analysed lateral model (the package ships it, 1.6)
+        if save.is_file():
+            shutil.copy2(save, run_dir / "ETABS lateral save.e2k")
+            print(f"  ETABS's save {save.name} -> {run_dir.name}/ETABS lateral save.e2k")
+        else:
+            print(f"  NOTE: no ETABS save {save}")
 
     W = None
     if "weights" in steps or "check" in steps:
@@ -414,19 +462,24 @@ def main() -> int:
               f"A (x < {a.split_x:,.0f}) {A:,.0f} kN, B {B:,.0f} kN; at {a.cut_storey}: "
               + ", ".join(f"{nm} {w:,.0f} kN at x {x / 1000:.1f} m" for nm, w, x, *_ in at) + f"; below: {below:,.0f} kN")
         share = a.l1_share_a
-        if share is None:
-            A7, B7, at7, *_ = weights(a.r27_out, z_cut, a.split_x)
-            wa, wb = y[("A", "X")]["W (seismic weight above P1/GF)"], y[("B", "X")]["W (seismic weight above P1/GF)"]
-            share = (wa - A7) / ((wa - A7) + (wb - B7))
-            print(f"  ASSUMPTION (for the engineer): Building A takes {share:.3f} of the {a.cut_storey} plate - the yardsticks' "
-                  f"share on r27: A W {wa:,.0f} - above-{a.cut_storey} {A7:,.0f} vs B W {wb:,.0f} - {B7:,.0f}")
+        if share is None or not 0 < share < 1:
+            die(f"--l1-share-a is required (0..1): Building A's share of the {a.cut_storey} plate area "
+                "(lateral/independent/LATERAL-PREP-r32.md item 5); the r27 model share is no longer a default (REF-AUDIT item 10)")
+        print(f"  ASSUMPTION (for the engineer): Building A takes {share:.3f} of the {a.cut_storey} plate's mass "
+              f"(as given: lateral/independent/LATERAL-PREP-r32.md item 5)")
         pl = sum(w for _, w, *_ in at)
         W = {"A": A + share * pl, "B": B + (1 - share) * pl}
-        yt = y[("A", "X")]["W (seismic weight above P1/GF)"] + y[("B", "X")]["W (seismic weight above P1/GF)"]
-        print(f"  W: A {W['A']:,.0f} kN, B {W['B']:,.0f} kN, total {sum(W.values()):,.0f} vs yardsticks {yt:,.0f} "
-              f"({(sum(W.values()) / yt - 1) * 100:+.1f} %)")
-        if min(W.values()) <= 0 or abs(sum(W.values()) / yt - 1) > 0.05:
-            die("W off the yardsticks by more than 5 %: the mass source changed - read it before any V is set")
+        hw = hand_weight(a.hand_weight or lat / "independent/hand-weight.csv", e2k_walls(e2k)[3], a.cut_storey)
+        bad = []
+        for b in ("A", "B"):
+            d = W[b] / hw[b] - 1
+            print(f"  W {b}: run {W[b]:,.0f} kN vs independent hand weight {hw[b]:,.0f} kN ({d * 100:+.1f} %)")
+            bad += [b] if abs(d) > 0.05 else []
+        dt = sum(W.values()) / sum(hw.values()) - 1
+        print(f"  W total: run {sum(W.values()):,.0f} kN vs hand {sum(hw.values()):,.0f} kN ({dt * 100:+.1f} %)")
+        if min(W.values()) <= 0 or bad or abs(dt) > 0.05:
+            die(f"W off the independent hand weight by more than 5 % ({', '.join(bad) or 'total'}): read the mass source "
+                "and the hand weight before any V is set")
 
     if "check" in steps:
         step("check: takeoff lateral-check (V on this W; Building A at its own period below 2Ta)")
@@ -452,7 +505,8 @@ def main() -> int:
         def write_basis(vals: dict, note: str) -> Path:
             p = run_dir / "check-basis.txt"
             src = (lat / "check.txt").read_text(encoding="utf-8").splitlines()
-            out = [f"# {run_dir.name}: written by peer_review_lateral_run.py from ../check.txt - {note}"]
+            out = [f"# {run_dir.name}: written by peer_review_lateral_run.py from ../check.txt - {note}",
+                   f"# W_kN A = {W['A']:.0f}, B = {W['B']:.0f} (this run's rigid-diaphragm masses; L1 share A {share:.3f})"]
             for ln in src:
                 key = ln.split("=", 1)[0].strip()
                 out.append(f"{key} = {vals[key]:.0f}" if key in vals and not ln.lstrip().startswith("#") else ln)
