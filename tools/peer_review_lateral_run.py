@@ -259,9 +259,24 @@ def fill(review: Path, run: str, run_date: str, e2k_name: str, write: bool) -> N
         put(f"R23:drift_{b}_{x}_storey", r["story"])
         put(f"R23:drift_{b}_{x}_ratio", f"{float(r['realistic_drift']) / float(r['limit']):.2f}")
     cb_all = rows(ck / "coupling-beams-dc.csv")
-    cb = [r for r in cb_all if r["Vf_over_Vr"]]
-    print(f"  coupling-beam rows with a ratio: {len(cb)} of {len(cb_all)}")
     cap = rows(review / "lateral/capacity/1b-coupling-beams-by-storey.csv")
+    # JM-R34 (row 1982, 14 Nov): an ETABS storey's header is the capacity row whose header_under_level is that storey (ETABS
+    # names a storey by its top; the capacity table by the opening's floor): P1/GF <-> 'GF/P1' (opening P2), P2 <-> 'P2/FDN'.
+    # The old lookup matched opening_storey == storey: one storey off (r32c: H1_CSW4 at P1/GF found no row; elsewhere it
+    # took the header ABOVE's Vp). A header deeper than 2.0 lu (h_le_2lu EXCEEDS: CSW1 H3 and CSW4 H1 over the 3'-4 doors under
+    # GF/P1, F35) is a deep beam, not a coupling beam of cl. 21.5.8.2: its diagonal-cage Vr does not apply, so it is left out
+    # of the worst / count / table keys and printed (the text says so).
+    lvl = {"GF/P1": "P1/GF", "P2/FDN": "P2"}
+    def cap_rows(wall, h, storey):
+        return [c for c in cap if c["wall"] == wall and c["header"] == h and lvl.get(c["header_under_level"], c["header_under_level"]) == storey]
+    def deep(r):
+        wall, h = r["wall_header"].split("/")
+        return any(c["h_le_2lu (cl.21.5.8.2.1a)"].startswith("EXCEEDS") for c in cap_rows(wall, h, r["storey"]))
+    cb = [r for r in cb_all if r["Vf_over_Vr"] and not deep(r)]
+    for r in cb_all:
+        if r["Vf_over_Vr"] and deep(r):
+            print(f"  left out (deeper than 2.0 lu, F35): {r['wall_header']} {r['storey']} {r['case']} Vf {r['Vf_kN']} / Vr {r['Vr_kN']} = {r['Vf_over_Vr']}")
+    print(f"  coupling-beam rows with a ratio, deep headers left out: {len(cb)} of {len(cb_all)}")
     w = max(cb, key=lambda r: float(r["Vf_over_Vr"]))
     put("R23:CB_worst_header", w["wall_header"]); put("R23:CB_worst_storey", w["storey"])
     put("R23:CB_worst_Vf_kN", f"{float(w['Vf_kN']):,.0f}"); put("R23:CB_worst_Vr_kN", f"{float(w['Vr_kN']):,.0f}")
@@ -276,7 +291,7 @@ def fill(review: Path, run: str, run_date: str, e2k_name: str, write: bool) -> N
         k = f"R23:{h}_{wall}"
         put(k + "_Vf", f"{float(m['Vf_kN']):,.0f}"); put(k + "_Vr", f"{float(m['Vr_kN']):,.0f}")
         put(k + "_ratio", f"{float(m['Vf_over_Vr']):.2f}"); put(k + "_storey", m["storey"])
-        c = [r for r in cap if r["wall"] == wall and r["header"] == h and r["opening_storey"] == m["storey"]]
+        c = cap_rows(wall, h, m["storey"])
         if len(c) == 1 and c[0]["Vp_kN"]:
             put(k + "_Vp", f"{float(c[0]['Vp_kN']):,.0f}"); put(k + "_bars", c[0]["bars_each_cage"])
         else:
