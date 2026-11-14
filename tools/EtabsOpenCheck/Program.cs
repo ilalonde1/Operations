@@ -445,10 +445,12 @@ internal static class Program
         var Ic = CultureInfo.InvariantCulture;
         Say($"7. REACTIONS (uses {usesCsv}, SHA-256 {Sha(usesCsv)}; transfers {transfersCsv}, SHA-256 {Sha(transfersCsv)})");
         // both files are read as CSV with quoted fields, the way reactions.csv is written (review row 1254)
-        var uses = File.ReadAllLines(usesCsv).Skip(1).Where(l => l.Trim().Length > 0).Select(CsvFields)
-            .ToDictionary(p => p[0].Trim(), p => (Use: p[1].Trim(), Sdl: double.Parse(p[2], Ic), Live: double.Parse(p[3], Ic)), StringComparer.OrdinalIgnoreCase);
-        var negative = uses.Where(kv => !double.IsFinite(kv.Value.Sdl) || kv.Value.Sdl < 0 || !double.IsFinite(kv.Value.Live) || kv.Value.Live < 0).Select(kv => kv.Key).ToList();
-        if (negative.Count > 0) { Say($"REFUSED: uses.csv gives a kPa that is not a finite number of 0 or more for storey(s) {string.Join(", ", negative)} - nothing loaded or run"); return 1; }
+        // a row per storey and (row 1982 JM-MODEL-24) a row per floor keyed "<storey>|<floor label>": UsesByFloor (a tested copy)
+        IReadOnlyDictionary<string, UsesByFloor.Use> usesAll;
+        try { usesAll = UsesByFloor.Parse(File.ReadAllLines(usesCsv).Skip(1).Where(l => l.Trim().Length > 0).Select(CsvFields)); }
+        catch (FormatException e) { Say($"REFUSED: uses.csv: {e.Message} - nothing loaded or run"); return 1; }
+        var uses = usesAll.Where(kv => !kv.Key.Contains('|')).ToDictionary(kv => kv.Key, kv => (Use: kv.Value.Name, Sdl: kv.Value.SdlKpa, Live: kv.Value.LiveKpa), StringComparer.OrdinalIgnoreCase);
+        var floorRowsUsed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var members = File.ReadAllLines(transfersCsv).Skip(1).Where(l => l.Trim().Length > 0).Select(CsvFields)
             .Select(p => (Storey: p[0].Trim(), Above: p[1].Trim(), Kind: p[2].Trim(), Label: p[3].Trim())).ToList();
         Say($"   uses: {uses.Count} storey row(s); transfer members: {members.Count} on {members.Select(m => m.Storey).Distinct().Count()} storey(s)");
@@ -495,7 +497,10 @@ internal static class Program
             eAreaDesignOrientation o = default; model.AreaObj.GetDesignOrientation(a, ref o);
             if (o != eAreaDesignOrientation.Floor) continue;
             floors++;
-            if (!uses.TryGetValue(story, out var u)) { unnamed[story] = unnamed.GetValueOrDefault(story) + 1; continue; }
+            var fu = UsesByFloor.For(usesAll, story, label);
+            if (fu is null) { unnamed[story] = unnamed.GetValueOrDefault(story) + 1; continue; }
+            if (usesAll.ContainsKey(story + "|" + label)) floorRowsUsed.Add(story + "|" + label);
+            var u = (Use: fu.Name, Sdl: fu.SdlKpa, Live: fu.LiveKpa);
             if (u.Sdl == 0 && u.Live == 0) { statedNone[story] = statedNone.GetValueOrDefault(story) + 1; continue; }   // a row that says: no use, no load
             // Dir 10 = the gravity direction (a positive value acts down). NOT 6: 6 is global +Z, and run 2 (10 Nov 14:24) pushed
             // SDL and LIVE UP - base FZ -43,212.6 kN against the self-weight's +404,048.6 kN; the equilibrium gate caught it.
@@ -505,9 +510,11 @@ internal static class Program
             else Say($"   SetLoadUniform {a} ({label} on {story}): SDL {r1}, LIVE {r2}");
         }
         foreach (var kv in unnamed) Say($"   no use row for storey {kv.Key}: {kv.Value} floor area(s) carry no SDL or LIVE");
+        var floorKeys = UsesByFloor.FloorKeys(usesAll).ToList();
+        if (floorKeys.Count > 0) Say($"   floor rows of uses.csv: {floorRowsUsed.Count} of {floorKeys.Count} used" + (floorRowsUsed.Count < floorKeys.Count ? $" - NOT used (no floor of that label on that storey): {string.Join(", ", floorKeys.Where(k => !floorRowsUsed.Contains(k)))}" : ""));
         foreach (var kv in statedNone) Say($"   storey {kv.Key}: {kv.Value} floor area(s) carry no SDL or LIVE - its row in uses.csv says no use ({uses[kv.Key].Use})");
         int none = statedNone.Values.Sum();
-        bool loadsOk = floors > 0 && loaded + none == floors;
+        bool loadsOk = floors > 0 && loaded + none == floors && floorRowsUsed.Count == floorKeys.Count;
         Say($"GATE floor areas loaded: {loaded} of {floors} loaded, {none} unloaded as uses.csv states, {floors - loaded - none} neither: {(loadsOk ? "PASS" : "FAIL")}");
         if (!loadsOk) bad++;
         Say($"   applied (floor plan area x kPa, less the openings' on a named storey): SDL {appliedSdl - openSdl:N1} kN ({appliedSdl:N1} - {openSdl:N1}), LIVE {appliedLive - openLive:N1} kN ({appliedLive:N1} - {openLive:N1})");
