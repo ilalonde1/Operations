@@ -337,6 +337,24 @@ class Numbers:
             v = str(len(rows) if kind == "rows" else len({tuple(col(x, c) for c in r["cols"]) for x in rows}))
         elif kind == "sha":
             v = sha(f)[:r.get("n", 16)]
+        elif kind == "regex":
+            # JM-V9-BUILDER: the groups of the one match of 'pattern' (multiline) in the file, each through 'fmt', joined by
+            # 'join' (' / '); 'default' when nothing matches (a TRANSFER-RESULTS 'none'), else refuses. Reads what
+            # 6-readme.sh's TRANSFER-RESULTS check reads (soc-summary.txt, <storey>.assumptions.txt), so the two agree.
+            ms = list(re.finditer(r["pattern"], read(f), re.M))
+            if not ms and "default" in r:
+                return r["default"]
+            if len(ms) != 1:
+                raise SystemExit(f"{k}: {len(ms)} matches of {r['pattern']} in {r['file']}, not 1")
+            fm = r.get("fmt", {})
+            def one(g):
+                if not fm:
+                    return g
+                x = float(g.replace(",", ""))
+                x = (abs(x) if fm.get("abs") else (-x if fm.get("neg") else x)) * fm.get("mul", 1)
+                return f"{x:{',' if fm.get('comma') else ''}.{fm.get('dp', 0)}f}"
+            vals = [one(g) for g in ms[0].groups()]
+            return r["template"].format(*vals) if "template" in r else r.get("join", " / ").join(vals)
         elif kind == "sum":
             # JM-V9-BUILDER: a column summed over the csv rows that match 'where' (equal), 'in' (one of) and 'prefix'
             # (starts with); refuses when no row matches (6-readme.sh's P2_COLS: the 13 P2 pinned columns at station 0)
