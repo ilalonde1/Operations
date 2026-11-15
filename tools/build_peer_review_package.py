@@ -315,6 +315,12 @@ class Numbers:
             dp = r.get("dp", 2)
             t, d = ("within", 0.0) if a_ <= x <= b_ else (("above", x - b_) if x > b_ else ("below", a_ - x))
             return r[t].format(v=v, lo=lo, hi=hi, d=f"{d:.{dp}f}")
+        if r["kind"] == "ratio":
+            # Row 1982 JM-V9-FIX (Codex V9-16): 'num' / 'den', each read by its own rule, through 'fmt' (6.3's V/W = the
+            # run's V over the run's W). Never typed.
+            x = float(self.rule(r["num"], k).replace(",", "")) / float(self.rule(r["den"], k).replace(",", ""))
+            fm = r.get("fmt", {})
+            return f"{x:{',' if fm.get('comma') else ''}.{fm.get('dp', 4)}f}"
         fp = r["file"]
         f = (self.path.parent / self.d.get("lateral_run_dir", "") / fp[5:]) if fp.startswith("@run/") else self.pkg / fp
         if not f.is_file():
@@ -983,6 +989,9 @@ tbody tr:nth-child(even) td{background:#F8F7F5}
 td.num,th.num,td[style*="right"],th[style*="right"]{text-align:right;font-variant-numeric:tabular-nums}
 .wide{page:wide}
 .wide figure.single img{max-height:125mm}
+@page tall{size:Letter;margin:20mm 17mm 17mm}
+.wide .tall{page:tall}
+.wide .tall figure.single img{max-height:205mm}
 .wide table{font-size:7.5pt}
 .wide th{font-size:7.5pt}
 table.data{font-size:7.5pt}
@@ -1253,7 +1262,10 @@ def main() -> int:
                                      f"storey ({st}) named in it: {h['pin']}")
                 x, y = m[1].replace(",", ""), m[2].replace(",", "")
             lat_rows.append({**{k: scope(v) for k, v in h.items()}, "id": fid, "x_mm": x, "y_mm": y, "pin_storey": st,
-                             "source": remap(h["source"], "05"), "title": scope(h["title"])})
+                             "source": remap(h["source"], "05"),
+                             # JM-V9-FIX (Codex V9-14): a lateral title may carry a run key (F32's f1); filled here so the
+                             # summary row, the entry heading and the viewer pin read the same words
+                             "title": NUMS.fill(scope(h["title"]))})
         print(f"LATERAL: {len(lat_ents)} register entries from LATERAL-FINDINGS.md ({', '.join(lat_ents)}); "
               f"{len(lat_sec)} pieces of LATERAL-SECTION.md")
 
@@ -1459,6 +1471,21 @@ def main() -> int:
                         f"{sev_n['MINOR']} MINOR.** Ids run F01 to {max(reg)}", "register count line", regex=True)
         reg_md = splice(reg_md, r"every one of the \d+ entries", f"every one of the {n_reg} entries", "register intro count",
                         regex=True)
+        # Row 1982 JM-V9-FIX: the register is "ranked most severe first", ids in order within a severity. A rewritten
+        # entry whose severity changed (v9: F15 MINOR -> SIGNIFICANT) moves to its rank, in the summary table and in the
+        # entries; v9 b6a1ea82 left F15 SIGNIFICANT among the MINOR rows (JM-V9-BUILDER-2's look)
+        rank = {"CRITICAL": 0, "SIGNIFICANT": 1, "MINOR": 2}
+        order = lambda fid: (rank[reg[fid]["severity"]], fid)
+        rows_ = list(re.finditer(r"^\| \[(F\d\d)\]\(#f\d\d\) \|[^\n]*\n", reg_md, re.M))
+        a0, a1 = rows_[0].start(), rows_[-1].end()
+        if reg_md[a0:a1] != "".join(m[0] for m in rows_) or len(rows_) != n_reg:
+            raise SystemExit(f"register summary: {len(rows_)} rows, not one block of {n_reg}")
+        reg_md = reg_md[:a0] + "".join(m[0] for m in sorted(rows_, key=lambda m: order(m[1]))) + reg_md[a1:]
+        e0 = reg_md.index("\n## F") + 1
+        ents = [e.strip() for e in re.split(r"(?=^## F\d\d\n)", reg_md[e0:], flags=re.M) if e.strip()]
+        if len(ents) != n_reg or any(not re.match(r"## F\d\d\n", e) for e in ents):
+            raise SystemExit(f"register entries: {len(ents)} '## Fnn' sections after the table, not {n_reg}")
+        reg_md = reg_md[:e0] + "\n\n".join(sorted(ents, key=lambda e: order(e[3:6]))) + "\n"
         reg_md = NUMS.fill(reg_md)
     sources01.append(strip_h1(reg_md))
     reg_html = pandoc(remap(strip_h1(reg_md)), "reg")
@@ -1719,7 +1746,11 @@ def main() -> int:
         if kind == "pre":
             sources05.append(txt)
             # fixed-width text keeps its columns only if its lines fit: a landscape page holds them
-            f_parts.append(f'<div class="wide">{head}{pre_block(remap(txt, "05"), prose_from=170)}</div>')
+            # Row 1982 JM-V9-FIX: F.1 stays ONE fixed-width block. Its table rows (P2, L2, L9 reasons) and a wrapped
+            # sentence run past 170 characters, and set as prose they tore the table apart across 05 p43-45 (v9
+            # b6a1ea82); in the block they wrap in place (pre-wrap), in order, in their row
+            pf = 0 if code == "F1" else 170
+            f_parts.append(f'<div class="wide">{head}{pre_block(remap(txt, "05"), prose_from=pf)}</div>')
             continue
         if code == "F5":
             rows5 = list(csv.DictReader(open(path, encoding="utf-8", newline="")))
@@ -1828,8 +1859,12 @@ def main() -> int:
     h_html = pandoc(remap(legend, "05").replace("Pictures in Appendix H show", "These pictures show"), "h")
     for code, name, cap in figs_h:
         p = src / "safe/pictures/beyond-300mm" / name
-        h_html += (f'<figure class="single"><img src="{p.as_uri()}" alt="{html.escape(cap)}"><figcaption>'
-                   f'<b>Figure {code}.</b> {html.escape(cap)}</figcaption></figure>')
+        # Row 1982 JM-V9-FIX: a picture taller than wide (v9: H2, H4) gets a portrait page; on the landscape page its
+        # 125 mm height left its own text at about 4 pt (05 p58, p60 of b6a1ea82)
+        w_, h_ = int.from_bytes(p.read_bytes()[16:20], "big"), int.from_bytes(p.read_bytes()[20:24], "big")
+        fig = (f'<figure class="single"><img src="{p.as_uri()}" alt="{html.escape(cap)}"><figcaption>'
+               f'<b>Figure {code}.</b> {html.escape(cap)}</figcaption></figure>')
+        h_html += f'<div class="tall">{fig}</div>' if h_ > w_ else fig
     if sorted(n for _, n, _ in figs_h) != sorted(p.name for p in (src / "safe/pictures/beyond-300mm").iterdir()):
         raise SystemExit("beyond-300mm pictures changed")
     d5.section("H", APPX["H"], h_html, "aH", kicker="Appendix H", number_h2=False, wide=True)
