@@ -64,7 +64,10 @@ ax[0].legend(frameon=False, loc='upper right', fontsize=8)
 
 ax[1].plot(f('wall_pct_floor'), y, '-o', color='#ea6a3a', ms=3.5, lw=1.2, label='Walls')
 ax[1].plot(f('column_pct_floor'), y, '-s', color='#1aab7a', ms=3.5, lw=1.2, label='Columns')
-ax[1].set_xlim(0, 14); ax[1].set_xticks(range(0, 15, 2))
+# JM-V9-BUILDER-2 (14 Nov): the axis reaches the largest value plotted, so no storey runs off the panel (r41: the
+# mechanical level's walls, 23.17 %, and the elevator penthouse's, 14.25 %, ran past a fixed 14)
+xmax1 = max(14, 2 * (int(max(f('wall_pct_floor') + f('column_pct_floor'))) // 2 + 1))
+ax[1].set_xlim(0, xmax1); ax[1].set_xticks(range(0, xmax1 + 1, 2 if xmax1 <= 14 else 4))
 ax[1].set_xlabel("Plan area as % of\nthe storey's slab area"); ax[1].set_title('Wall and column density', loc='left', fontsize=11)
 ax[1].legend(frameon=False, loc='lower right', fontsize=8)
 

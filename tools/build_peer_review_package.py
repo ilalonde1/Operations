@@ -305,6 +305,16 @@ class Numbers:
         column of the row matching 'row'), 'rows' (data rows of a csv), 'distinct' (distinct values of 'cols'), 'sum' (a
         column summed over matching rows), 'list' (names a table gives, joined or counted; see below), 'sha'.
         'fmt': {'dp': decimals, 'comma': thousands separator, 'abs': drop the sign, 'neg': negate}."""
+        if r["kind"] == "compare":
+            # Row 1982 JM-V9-BUILDER-2 (framework-75 decision 2): a run's value against a bound, both read by their own
+            # rules ('value', 'lo', 'hi'); the sentence is 'within' when lo <= value <= hi, else 'above' / 'below', each a
+            # template of {v}, {lo}, {hi} and {d} (the difference to the bound passed, at 'dp' decimals). Never typed.
+            v = self.rule(r["value"], k)
+            lo, hi = self.rule(r["lo"], k), self.rule(r["hi"], k)
+            x, a_, b_ = (float(s.replace(",", "")) for s in (v, lo, hi))
+            dp = r.get("dp", 2)
+            t, d = ("within", 0.0) if a_ <= x <= b_ else (("above", x - b_) if x > b_ else ("below", a_ - x))
+            return r[t].format(v=v, lo=lo, hi=hi, d=f"{d:.{dp}f}")
         fp = r["file"]
         f = (self.path.parent / self.d.get("lateral_run_dir", "") / fp[5:]) if fp.startswith("@run/") else self.pkg / fp
         if not f.is_file():
@@ -963,6 +973,9 @@ hr{border:0;border-top:1px solid var(--line);margin:4mm 0}
 table{border-collapse:collapse;width:100%;margin:2mm 0 4mm;font-size:8pt;line-height:1.32}
 thead{display:table-header-group}
 tr,figure{break-inside:avoid}
+table.reasons tr{break-inside:auto}
+#s4{line-height:1.34}
+#s4 table{line-height:1.22}
 li{break-inside:auto}
 th{background:var(--slate);color:#fff;text-align:left;font-weight:600;font-size:7.4pt;padding:1.4mm 1.6mm;vertical-align:bottom}
 td{padding:1.2mm 1.6mm;border-bottom:1px solid var(--line);vertical-align:top}
@@ -1331,7 +1344,10 @@ def main() -> int:
     if lat_sec:
         letter_md = NUMS.fill(lateral_letter(letter_md, lat_sec, sev_n))
     meta_line = letter_md.splitlines()[2]
-    PREV = NUMS.value("ISSUE:first_issue_date") or "{{ISSUE:first_issue_date}}"   # the issue JM has (v8)
+    # Row 1982 JM-V9-BUILDER-2 (framework-75 decision 1, #133798, office rule #117984): a first issue narrates no revision
+    # history. The 'since our issue of' clauses and Section 7 exist only when --changes names an earlier issue JM has.
+    PREV = (NUMS.value("ISSUE:first_issue_date") or "{{ISSUE:first_issue_date}}") if a.changes else None
+    CHG_TXT = (" and what we corrected in our own model since our issue of " + PREV + " (Section 7)") if a.changes else ""
     mm = re.fullmatch(r"\*\*For:\*\* (.+?) \| \*\*From:\*\* KOR Structural \| \*\*Date:\*\* (\d{4}-\d\d-\d\d|\{\{[^{}]+\}\}) \| "
                       r"\*\*Status:\*\* (.+?) \| Confidential: another firm's design", meta_line)
     if not mm:
@@ -1344,8 +1360,8 @@ def main() -> int:
         "## Enclosed\n\n"
         "- **This document:** the findings register (Section 3; each finding with sheet, grid, source, viewer pin and "
         "pictures), the gravity load path storey by storey (Section 4) and the transfer slab results (Section 5)"
-        + ("; the lateral and seismic review (Section 6); and what we corrected in our own model since our issue of " + PREV + " "
-           "(Section 7).\n" if lat_sec else ".\n") +
+        + ("; the lateral and seismic review (Section 6)" + CHG_TXT.replace(" and what", "; and what", 1) + ".\n"
+           if lat_sec else ".\n") +
         f"- **`02 3D model viewer.html`:** every one of the {len(reg)} findings is a pin at its storey and location; a set-wide "
         "finding stands at a representative location, named in its register entry.\n"
         "- **`03 Models` and `04 Results`:** our ETABS and SAFE models and their result files"
@@ -1376,8 +1392,7 @@ def main() -> int:
         "| `01 Review letter and findings.pdf` | This document: the review letter, this introduction, the findings "
         f"register ({len(reg)} entries, ranked, each with its sheets, grid, viewer pin and pictures), the gravity load path "
         "storey by storey, and the transfer slab results"
-        + ("; the lateral and seismic review (Section 6) and what we corrected in our own model since our issue of " + PREV + " "
-           "(Section 7). |\n" if lat_sec else ". |\n") +
+        + ("; the lateral and seismic review (Section 6)" + CHG_TXT + ". |\n" if lat_sec else ". |\n") +
         "| `02 3D model viewer.html` | One offline page (open it in a browser): the ETABS model of WHM's set as drawn, "
         f"storey by storey and in 3D, with its 20 grid lines, the {len(reg)} findings and the assumptions of Appendix E as "
         "numbered pins (click one to read it and where it is stated; a finding's pictures open from "
@@ -1546,7 +1561,8 @@ def main() -> int:
         f"Structural peer review \u2013 {PROJECT}, Vancouver",
         f"Kor Structural \u00b7 Project {JOB} \u00b7 " + ("Gravity and lateral" if lat_sec else "Gravity"),
         "Review letter, findings register, load path and transfer slab results"
-        + (", the lateral and seismic review, and the changes to our model since our issue of " + PREV if lat_sec else "")
+        + (", and the lateral and seismic review" if lat_sec else "")
+        + (", and the changes to our model since our issue of " + PREV if a.changes else "")
         + ". Peer review of WHM Structural's drawings, <strong>Re-issued for Tender 2026-09-09</strong> (42 sheets, "
         "S001 to S811).",
         [("For", html.escape(for_who)), ("From", "Kor Structural"), ("Date", letter_date),
@@ -1718,7 +1734,8 @@ def main() -> int:
             # row) stays in the file; the PDF table keeps what was read, where, and what was done with it
             cols5 = [c for c in rows5[0] if c not in ("section", "read_as", "note") and any(r[c].strip() for r in rows5)]
             body = (csv_table(path, cols5, rename={"why": "reason"}, extra={"why": lambda r: wno[r["why"]]})
-                    + "<table class=\"data\"><thead><tr><th>Reason</th><th>Text</th></tr></thead><tbody>"
+                    # JM-V9-BUILDER-2 (framework-75 decision 3): a long reason may break across pages (05 p53 was 38%)
+                    + "<table class=\"data reasons\"><thead><tr><th>Reason</th><th>Text</th></tr></thead><tbody>"
                     + "".join(f"<tr><td>{wno[w]}</td><td>{html.escape(w)}</td></tr>" for w in whys) + "</tbody></table>")
             sources05.append("\n".join(" ".join(r[c] for c in cols5 if c != "why") for r in rows5) + "\n" + "\n".join(whys))
             f_parts.append(f'<div class="wide">{head}{body}</div>')
