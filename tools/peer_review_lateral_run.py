@@ -41,6 +41,10 @@ WHAT IT CHECKS / DOES NOT
              belongs); that the cut plane is right for final26 beyond the wall crossing (columns and beams are not tested -
              same-class fault it would miss: a transfer beam spanning x = 61,000 at L2); Building B's V when its modal T
              is under 2Ta (REFUSED: done by hand); drift V (vdrift_*) is the yardsticks' scaled by W only.
+    JM-V9-3B (16 Nov 2026, V9-09 / V9-13): beside that published drift V the check step writes a SECOND reading, V for
+             deflection at each building's own modal period (not above 4.0 s), as vdrift_own_* / period_own_* / period_drift_*
+             in check-basis.txt; lateral-check writes it and the pad bearing with the gravity moment to their own files, and
+             the published files stay byte for byte as before (proved on r41: 8 of 8). Which reading governs is JM's question.
 
 USAGE (from anywhere; paths absolute or relative to KOR.Drafter)
     python -I peer_review_lateral_run.py --reactions <r31 reactions.e2k> --version v6 --tag r32-lateral-v6-final23
@@ -224,6 +228,21 @@ def a_ratio(T: float, ya: dict, sa: dict, rdro: float, ie: float) -> tuple[float
 TA_A = None   # set from the yardsticks (Ta of Building A)
 
 
+def tower_ratio(T: float, sa: dict, mv2: float, mv5: float, rdro: float, ie: float, lo: float, hi: float) -> float:
+    """The tower's V/W at period T (2.0 <= T <= 5.0 s): S(T)Mv linear between (2.0, S(2.0) Mv(2.0)) and (5.0, S(5.0) Mv(5.0)),
+    Table 4.1.8.11 Note (2) as the yardsticks apply it (Mv(2.0), Mv(5.0) at S(0.2)/S(5.0) = 10.6: LATERAL-BASIS.md section on Mv),
+    bounded by the yardsticks' lower and upper limits. JM-V9-3B (16 Nov 2026, V9-09): for the second drift reading only; the
+    check step self-tests it against the yardsticks' V/W at 2Ta and their lower limit (= V/W at 4.0 s) before using it."""
+    if not 2.0 <= T <= 5.0:
+        die(f"tower S(T)Mv asked at T = {T:.3f} s, outside 2.0-5.0 s: compute it by hand")
+    p0, p1 = sa["sa2.0"] * mv2, sa["sa5.0"] * mv5
+    v = (p0 + (T - 2.0) / 3.0 * (p1 - p0)) * ie / rdro
+    return min(max(v, lo), hi)
+
+
+DRIFT_T_CAP = 4.0   # s: VBBL 4.1.8.11.(3)(d)(v) - the computed period used for deflections, not above 4.0 s (walls); yardsticks.csv row 7
+
+
 # ---------------------------------------------------------------- the v9 fill (fill_v9.py, its e2k name an argument)
 def fill(review: Path, run: str, run_date: str, e2k_name: str, write: bool) -> None:
     rd = review / "lateral" / run
@@ -320,6 +339,38 @@ def fill(review: Path, run: str, run_date: str, e2k_name: str, write: bool) -> N
             put(k, v)
         else:
             print(f"  {k} = {v}  (NOT A KEY of v9-numbers.json: type it by hand where REFILL-KEYS.md says)")
+    # JM-V9-3B (row 1982, 16 Nov 2026; V9-09, V9-13): the SECOND readings beside the published ones - set only where
+    # v9-numbers.json has the key (the text owner adds them), else printed. Published keys above are unchanged.
+    for r in (rows(ck / "rsa-scaling-own-period.csv") if (ck / "rsa-scaling-own-period.csv").is_file() else []):
+        b, x = bmap[r["building"]], r["direction"]
+        soft[f"R23:T_own_{b}_{x}_s"] = f"{float(r['T_own_s']):.2f}"; soft[f"R23:T_drift_{b}_{x}_s"] = f"{float(r['T_used_s']):.2f}"
+        soft[f"R23:V_drift_own_{b}_{x}"] = f"{float(r['V_drift_own_kN']):,.0f}"; soft[f"R23:scale_drifts_own_{b}_{x}"] = f"{float(r['scale_drifts_own']):.3f}"
+        soft[f"R23:V_drift_{b}_{x}"] = f"{float(r['V_drift_published_kN']):,.0f}"; soft[f"R23:scale_drifts_{b}_{x}"] = f"{float(r['scale_drifts_published']):.3f}"
+    best_o = {}
+    for r in (rows(ck / "drifts-scaled-own-period.csv") if (ck / "drifts-scaled-own-period.csv").is_file() else []):
+        k_ = (bmap[r["building"]], r["direction"])
+        if k_ not in best_o or float(r["realistic_drift"]) > float(best_o[k_]["realistic_drift"]):
+            best_o[k_] = r
+    for (b, x), r in best_o.items():
+        soft[f"R23:drift_own_{b}_{x}"] = f"{float(r['realistic_drift']) * 100:.2f}"
+        soft[f"R23:drift_own_{b}_{x}_storey"] = r["story"]
+        soft[f"R23:drift_own_{b}_{x}_ratio"] = f"{float(r['realistic_drift']) / float(r['limit']):.2f}"
+    gmp = ck / "core-pad-bearing-gravity-moment.csv"
+    for pad, nm in (("PAD-A", "short"), ("PAD-B", "long")):
+        sel = [r for r in (rows(gmp) if gmp.is_file() else []) if r["pad"] == pad]
+        if sel:
+            w_ = max(sel, key=lambda r: float(r["q_max_kPa"]) if r["q_max_kPa"] else float("inf"))
+            soft[f"R23:pad_q_{nm}_gm_kPa"] = f"{float(w_['q_max_kPa']):,.0f}" if w_["q_max_kPa"] else "no bearing solution (e >= L/2)"
+            soft[f"R23:pad_M_gravity_{nm}_kNm"] = f"{float(w_['M_gravity_kNm']):,.0f}"
+            soft[f"R23:pad_e_{nm}_gm_m"] = f"{float(w_['e_m']):.2f}"
+            soft[f"R23:pad_dir_{nm}_gm"] = w_["direction"]
+    for k, v in soft.items():
+        if k in set_ or v is None:
+            continue
+        if k in K:
+            put(k, v)
+        elif k.startswith(("R23:T_own", "R23:T_drift", "R23:V_drift", "R23:scale_drifts", "R23:drift_own", "R23:pad_")):
+            print(f"  {k} = {v}  (second reading; NOT A KEY of v9-numbers.json yet)")
     put("R23:run_date", run_date)
     put("R23:modal_type", "Ritz")
     put("R23:base_condition", "pinned at P3; every joint of P2 and P1/GF held UX UY; base of the structure P1/GF")
@@ -538,7 +589,7 @@ def main() -> int:
         k = {b: W[b] / wy[b] for b in ("A", "B")}
         base = {kk: float(bas[kk]) for kk in ("v_e_x", "v_e_y", "v_w_x", "v_w_y", "vdrift_e_x", "vdrift_e_y", "vdrift_w_x", "vdrift_w_y")}
 
-        def write_basis(vals: dict, note: str) -> Path:
+        def write_basis(vals: dict, note: str, extra: list | None = None) -> Path:
             p = run_dir / "check-basis.txt"
             src = (lat / "check.txt").read_text(encoding="utf-8").splitlines()
             out = [f"# {run_dir.name}: written by peer_review_lateral_run.py from ../check.txt - {note}",
@@ -546,7 +597,7 @@ def main() -> int:
             for ln in src:
                 key = ln.split("=", 1)[0].strip()
                 out.append(f"{key} = {vals[key]:.0f}" if key in vals and not ln.lstrip().startswith("#") else ln)
-            p.write_text("\n".join(out) + "\n", encoding="utf-8")
+            p.write_text("\n".join(out + (extra or [])) + "\n", encoding="utf-8")
             return p
 
         def run_check(p: Path):
@@ -575,10 +626,44 @@ def main() -> int:
             v2[f"v_w_{d}"] = r_ * W["A"]
             print(f"  A {d.upper()}: T {ta[d.upper()]:.2f} s -> V at {T:.2f} s = {r_:.5f} W = {v2[f'v_w_{d}']:,.0f} kN "
                   f"(Mv(2.0) {mv2:.4f} back-solved from the yardsticks; V at 2Ta on this W would be {v1[f'v_w_{d}']:,.0f})")
-        txt = run_check(write_basis(v2, "pass 2: Building A's V at its own modal period (below 2Ta)"))
+        # JM-V9-3B (row 1982, 16 Nov 2026, Codex V9-09; Ian #133818): the SECOND drift reading, beside the published one (which
+        # stays vdrift_* above, the yardsticks' V at the 4.0 s floor scaled by W - not changed here). Reading (b) is the rule the
+        # letter states: V for deflection at each building's OWN modal period (pass 1's), that period not above 4.0 s
+        # (DRIFT_T_CAP). Building A by a_ratio (as pass 2), the tower by tower_ratio (self-tested below). lateral-check writes it to
+        # rsa-scaling-own-period.csv, drifts-scaled-own-period.csv and lateral-check-second-readings.txt.
+        tbd = {d: float(t) for d, t in re.findall(r"^B \(tower\) ([XY]): the mode .* T = ([\d.]+) s", txt, re.M)}
+        if len(tbd) != 2 or len(ta) != 2:
+            die(f"pass 1 named the modes of A {sorted(ta)} and the tower {sorted(tbd)}: both directions of each are needed for the second drift reading")
+        for d in ("x", "y"):
+            yd = y[("B", d.upper())]
+            for T, ref in ((2 * float(yd["Ta empirical"]), yd["V/W at 2Ta"]), (DRIFT_T_CAP, yd["V/W lower limit (walls)"])):
+                v = tower_ratio(T, sa | {"sa5.0": float(bas["sa5.0"])}, float(bas[f"mv_tower_2s_{d}"]), float(bas[f"mv_tower_5s_{d}"]),
+                                float(bas[f"rdro_e_{d}"]), ie, 0.0, 9.0)
+                ok = abs(v / ref - 1) < 0.005
+                print(f"  self-test tower {d.upper()} V/W at {T:.2f} s: {v:.5f} vs yardsticks {ref:.5f} {'ok' if ok else 'FAIL'}")
+                if not ok:
+                    die("the tower's S(T)Mv interpolation does not reproduce the yardsticks")
+        extra = ["# JM-V9-3B (V9-09): SECOND drift reading - V for deflection at the building's own modal period (pass 1), not above "
+                 f"{DRIFT_T_CAP} s (VBBL 4.1.8.11.(3)(d)(v)); the published reading stays vdrift_* above"]
+        for b, side, tmap in (("A", "w", ta), ("B", "e", tbd)):
+            for d in ("x", "y"):
+                T = tmap[d.upper()]; Tu = min(T, DRIFT_T_CAP); yd = y[(b, d.upper())]
+                if b == "A":
+                    r_, _ = a_ratio(Tu, yd, sa, float(bas[f"rdro_w_{d}"]), ie)
+                else:
+                    r_ = tower_ratio(Tu, sa | {"sa5.0": float(bas["sa5.0"])}, float(bas[f"mv_tower_2s_{d}"]), float(bas[f"mv_tower_5s_{d}"]),
+                                     float(bas[f"rdro_e_{d}"]), ie, yd["V/W lower limit (walls)"], yd.get("V/W upper limit", 9))
+                vo = r_ * W[b]
+                extra += [f"period_own_{side}_{d} = {T:.2f}", f"period_drift_{side}_{d} = {Tu:.2f}", f"vdrift_own_{side}_{d} = {vo:.0f}"]
+                print(f"  second drift reading {b} {d.upper()}: T {T:.2f} s -> used {Tu:.2f} s: V/W {r_:.5f} x W {W[b]:,.0f} = {vo:,.0f} kN "
+                      f"(published V for deflection {v2[f'vdrift_{side}_{d}']:,.0f})")
+        txt = run_check(write_basis(v2, "pass 2: Building A's V at its own modal period (below 2Ta)", extra))
         for ln in txt.splitlines():
             if ln.startswith(("GATE", "A ", "B (tower) ", "drift")):
                 print("  " + ln[:200])
+        sec = run_dir / "check" / "lateral-check-second-readings.txt"
+        for ln in (sec.read_text(encoding="utf-8").splitlines() if sec.is_file() else ["NO second readings written"]):
+            print("  " + ln[:220])
 
     if "fill" in steps:
         step("fill: v9-numbers.json lateral keys")
