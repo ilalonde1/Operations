@@ -362,6 +362,8 @@ def fill(review: Path, run: str, run_date: str, e2k_name: str, write: bool) -> N
             w_ = max(sel, key=lambda r: float(r["q_max_kPa"]) if r["q_max_kPa"] else float("inf"))
             soft[f"R23:pad_q_{nm}_gm_kPa"] = f"{float(w_['q_max_kPa']):,.0f}" if w_["q_max_kPa"] else "no bearing solution (e >= L/2)"
             soft[f"R23:pad_M_gravity_{nm}_kNm"] = f"{float(w_['M_gravity_kNm']):,.0f}"
+            # JM-V9-4 (row 1982, 16 Nov): the letter's Q7 quotes the seismic moment beside the gravity one, from the same row.
+            soft[f"R23:pad_M_seismic_{nm}_kNm"] = f"{float(w_['M_seismic_kNm']):,.0f}"
             soft[f"R23:pad_e_{nm}_gm_m"] = f"{float(w_['e_m']):.2f}"
             soft[f"R23:pad_dir_{nm}_gm"] = w_["direction"]
     for k, v in soft.items():

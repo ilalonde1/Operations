@@ -419,7 +419,10 @@ class Numbers:
                 self.site_log["already a key"] += 1   # the source names the key itself (JM-V9-PREP: a run-set value)
                 continue
             v = self.value(s["key"])
-            if n == 0 and v is not None and text.count(s["before"] + v + s["after"]) == 1:
+            # JM-V9-4 (row 1982, 16 Nov): a site whose context names another key ('after' = ' | {{G:TR.P3.punch_over1}} |',
+            # V9-16) is matched in an already-filled source with that context filled too; unfilled, it never matched there.
+            if n == 0 and v is not None and (text.count(s["before"] + v + s["after"]) == 1
+                                             or text.count(self.fill(s["before"]) + v + self.fill(s["after"])) == 1):
                 self.site_log["already filled"] += 1   # the source already carries the new number (e.g. TR_SRC filled)
                 continue
             raise SystemExit(f"gravity site {s['key']} ({rel}:{s['line']}): '{anchor}' found {n} times, not once "
