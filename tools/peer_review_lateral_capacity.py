@@ -171,10 +171,12 @@ W = [  # wall, building, levels, t_in, t_src, fc, vert, horiz, extra_h_bars, len
  ('CSW5','B','L9-L20',32,'S801 A (L3)',50,'15M @ 8"','20M @ 4"',0,29.87,'as above','Z1, Z2, Z3'),
  ('CSW5','B','L21-ROOF',32,'S801 A (L3)',35,'15M @ 8"','15M @ 6"',0,29.87,'as above','Z1, Z2, Z3'),
 ]
-for wl, ln, src in (('CSW6',16.91,'S801 D scaled 152.1 pt (west wall, between CSW8 and CSW7); OPNG AT L2 TO L9 (not dimensioned)'),
-                    ('CSW7',10.35,'S801 D scaled 93.2 pt (south wall, outer)'),
-                    ('CSW8',9.35,'S801 D scaled 84.2 pt (north wall)'),
-                    ('CSW9',17.91,'S801 D scaled 161.1 pt (east wall)'),
+# Row 1982 JM-V9-3A (look L1B-01): the wall locations are by WHM's north arrow on S201 (to the sheet's left; S801's key
+# plans are drawn the same way round): v9 called the sheet's top north
+for wl, ln, src in (('CSW6',16.91,'S801 D scaled 152.1 pt (north wall, between CSW8 and CSW7); OPNG AT L2 TO L9 (not dimensioned)'),
+                    ('CSW7',10.35,'S801 D scaled 93.2 pt (west wall, outer)'),
+                    ('CSW8',9.35,'S801 D scaled 84.2 pt (east wall)'),
+                    ('CSW9',17.91,'S801 D scaled 161.1 pt (south wall)'),
                     ('CSW10',19.5,'S801 E scaled 175.5 pt (three fills 1049.0-1224.5 pt)'),
                     ('CSW11',10.32,'S801 F scaled 92.9 pt'),
                     ('CSW12',18.17,'S801 F scaled 163.6 pt'),
