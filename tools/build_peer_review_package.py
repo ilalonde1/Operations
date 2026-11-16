@@ -551,6 +551,12 @@ def remap(text: str, doc: str = "01") -> str:
         text = text.replace(old, new)
     for pat, new in REMAP_RE:
         text = re.sub(pat, new, text)
+    # Row 1982 JM-V9-3A (Codex V9-03): safe_results_fill.py writes each NOT PROVEN storey's pictures with the storey filled
+    # in ('pictures/beyond-300mm/P3-overview.png and P3-<member>.png'), which REMAP_EXACT's '<storey>' form never matched,
+    # so v9's Appendix F cited two files the package does not carry; the storey's overview is its Appendix H figure
+    text = re.sub(r"Pictures: pictures/beyond-300mm/([\w]+)-overview\.png and \1-<member>\.png\.",
+                  lambda m: (f"Pictures: Appendix H, Figure {H_FIGS[m[1] + '-overview.png']} and the figures after it."
+                             if m[1] + "-overview.png" in H_FIGS else "Pictures: Appendix H."), text)
     # JM-V9-BUILDER: a picture named in backticks (`P3-KW6.png`) is its Appendix H figure, numbered from the package
     # (v8 typed 'Figures H1 and H2' / 'H3 and H4' for P2 / P3's four pictures)
     text = re.sub(r"`([\w.-]+\.png)`", lambda m: f"Appendix H, Figure {H_FIGS[m[1]]}" if m[1] in H_FIGS else m[0], text)
@@ -666,6 +672,28 @@ def viewer_text(p: Path, transfer: set | None = None, extra_pins: list | None = 
 
 def sha(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+RUNNER_SAVE_DIR = re.compile(rb"[Cc]:\\Temp\\kor-runner\\sets\\[^\\\r\n]+\\out\\etabs\\out\\")
+
+
+def scrub_runner_paths(src: Path, dst: Path) -> str:
+    """Row 1982 JM-V9-3A (Codex V9-06): ETABS writes the runner's save folder (C:\\Temp\\kor-runner\\sets\\<set>\\out\\etabs\\
+    out\\) into line 1 and the 'File saved as' history lines of the lateral save; v9 shipped 11 such lines. The shipped copy
+    has ONLY that folder prefix removed (file names kept), as jmfix24-assembly/2-etabs.sh does for the gravity save. Refuses
+    if a 'C:\\' is left, or if any line differs other than by that prefix. Checks the bytes it writes, read back."""
+    raw = src.read_bytes()
+    lines = raw.split(b"\n")
+    out = [RUNNER_SAVE_DIR.sub(b"", ln) for ln in lines]
+    changed = sum(a != b for a, b in zip(lines, out))
+    data = b"\n".join(out)
+    if b"C:\\" in data or b"c:\\" in data:
+        raise SystemExit(f"{src.name}: a C:\\ path is left after removing the runner's save folder")
+    dst.write_bytes(data)
+    back = dst.read_bytes().split(b"\n")
+    if len(back) != len(lines) or any(RUNNER_SAVE_DIR.sub(b"", a) != b for a, b in zip(lines, back)):
+        raise SystemExit(f"{dst.name}: differs from its source other than by the runner's save folder")
+    return f"COPIED {src.name}: {changed} of {len(lines)} lines had the runner's save folder removed; every other byte equal"
 
 
 def read(p: Path) -> str:
@@ -1304,22 +1332,29 @@ def main() -> int:
     # Row 1982 JM-BUILD-PREP: the lateral model and its results, as the numbers file names them (paths relative to it)
     lat_ship = NUMS.d.get("lateral_ship", {}) if a.lateral else {}
     lat_files: dict[str, list[str]] = {}
+    lat_src: set[Path] = set()
     for folder, files in lat_ship.items():
         for f in files:
             p = (NUMS.path.parent / f).resolve()
             if not p.is_file():
                 raise SystemExit(f"lateral_ship: {p} not found")
             copies.append((p, out / folder / p.name))
+            lat_src.add(p)
             lat_files.setdefault(folder, []).append(p.name)
     for s, d in copies:
         d.parent.mkdir(parents=True, exist_ok=True)
         if s == viewer:
             d.write_text(viewer_text(viewer, set(TRANSFER_STOREYS), lat_rows), encoding="utf-8", newline="")
             continue
+        if s.suffix.lower() == ".e2k" and s in lat_src:
+            print(scrub_runner_paths(s, d))   # Row 1982 JM-V9-3A (Codex V9-06)
+            continue
         shutil.copy2(s, d)
         if sha(s) != sha(d):
             raise SystemExit(f"copy differs: {d}")
-    print(f"COPIED {len(copies)} files: {len(copies) - 1} each SHA-256 equal to its source; the viewer with its file names mapped")
+    n_scrub = sum(1 for s, _ in copies if s.suffix.lower() == ".e2k" and s in lat_src)
+    print(f"COPIED {len(copies)} files: {len(copies) - 1 - n_scrub} each SHA-256 equal to its source; the viewer with its "
+          f"file names mapped" + (f"; {n_scrub} lateral e2k with the runner's save folder removed" if n_scrub else ""))
     n_tr = len(TRANSFER_STOREYS)
     n_other = len(list((src / "safe/models").glob("*.f2k"))) - n_tr
     for st in TRANSFER_STOREYS:
