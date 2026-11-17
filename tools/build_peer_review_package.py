@@ -1612,7 +1612,10 @@ def main() -> int:
     if lat_sec:
         s6 = NUMS.fill(section6(lat_sec))
         sources01.append(s6)
-        d1.section("6", "Lateral and seismic", prep(pandoc(remap(s6), "lat")), "s6", wide=True)
+        # Row 1982 JM-V9-6PRE: portrait, as Section 5 - only its tables of 8 or more columns go on a landscape page
+        # (prep's widen_tables). Laid out whole on landscape pages, its last prose ran onto a landscape page of its own
+        # before portrait Section 7 (a page-size change always breaks the page): 01 p57 at 22 % (v9 p56 at 22 %).
+        d1.section("6", "Lateral and seismic", prep(pandoc(remap(s6), "lat")), "s6")
     if a.changes:
         ch = NUMS.fill(strip_h1(read(a.changes)))
         sources01.append(ch)
