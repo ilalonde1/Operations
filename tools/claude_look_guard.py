@@ -630,6 +630,187 @@ def verdict(text, calls, rules, surfaces=None):
     return reason_for(missing, m.group(0), surfaces) if missing else None
 
 
+# --- row 2132: the UNDERSTAND gate (see the header section "Framework row 2132"). Raw strings throughout (repo rule 7).
+READ_LINE = re.compile(r"^[ \t>*_\-]*\**[ \t]*Read[ \t]*\**[ \t]*:[ \t]*\**(.*)$", re.I | re.M)
+# a quoted span is a MENTION (Ian's words relayed, a phrase named): blanked before the ORDER and MECHANISM tests
+QUOTED = re.compile(r"\"[^\"\n]{0,600}\"|“[^”\n]{0,600}”")
+PROPOSE = re.compile(
+    r"\bI\s+(?:propose|recommend|suggest)\b|\b(?:my\s+)?(?:proposal|recommendation)\s*:|\byour\s+call\b"
+    r"|\b(?:say|reply|type)\s+[\"“'][^\"”'\n]{1,60}[\"”']\s+and\s+(?:I'?ll|I\s+will|it|we|they)\b"
+    r"|\bthe\s+fix\s+is\b|\bwhat\s+fixes\s+it\b|\bwe\s+should\b|\bshould\s+we\b"
+    r"|\bI'?d\s+(?:cut|change|lower|raise|turn|stop|add|remove|switch|drop|move|kill)\b", re.I)
+# an order (SendMessage door only) of an action that CHANGES something, at the start of the message, a line, a sentence
+# or after "You:" (not "Reply FOR IAN ...": a report request changes nothing). In a reply to Ian an imperative is a
+# heading ("Cut now: 6 sessions"), so a reply is an order only when it says it SENT one (SENT_ORDER).
+ORDER = re.compile(
+    r"(?:^|[\n.;!?]|\byou\s*[:,]|\s-\s)[ \t*>\-\d.)]*(?:please\s+|now\s+)?"
+    r"(?:stop|cancel|kill|launch|relaunch|restart|revert|undo|disable|enable|turn\s+(?:it\s+|them\s+|all\s+|everything\s+)?"
+    r"(?:off|on)|delete|lower|raise|cut|deploy|uninstall|do\s+now|make\s+the\s+\w+\s+a)\b", re.I)
+SENT_ORDER = re.compile(r"\b(?:ordered\s+now|I(?:'ve|\s+have)\s+sent\s+(?:the\s+)?(?:stop|order)|sent\s+STOP\s+to)\b", re.I)
+# record #133478 (12 Nov 15:54): an order to stop or undo EVERYTHING is read back to Ian in one line before it is sent.
+# Matched on the raw text, quotes included ("STOP NOW - Ian's order: \"turn it all off\"" names 'all' only in the quote).
+STOP_ALL = re.compile(r"\b(?:stop|turn\s+(?:it\s+|them\s+)?(?:all\s+)?off|cancel|kill|shut\s+down|undo|revert)\b[^.\n]{0,40}?"
+                      r"\b(?:all|every|everything|everyone)\b|\b(?:all|every|everything)\b[^.\n]{0,20}?\b(?:off|stop)\b", re.I)
+CANCEL_STOP = re.compile(r"\bcancel\w*\s+(?:the\s+|my\s+|that\s+|your\s+)?(?:[\dx:]+\s+)?stop\b", re.I)
+# Ian's own typed words, named by the clock: "Ian 15:54", "Ian (15:5x)", "Ian's 16:2x"
+SRC_IAN = re.compile(r"\bIan(?:'s)?\b[^\n\d]{0,25}?\b(\d{1,2}):(\d)(\d|x)\b", re.I)
+# a statement of how a mechanism, rule or record WORKS
+MECHANISM = re.compile(
+    r"\b(?:rule|hook|guard|gate|mechanism|limit|cutoff|ceiling|G\d{1,2})s?\b[^.\n]{0,50}?"
+    r"\b(?:only\s+(?:warns|advises)|warns|refuses|denies|never\s+fired|is\s+installed|is\s+live|is\s+off"
+    r"|doesn'?t\s+work|didn'?t\s+fail|never\s+(?:refuses|blocks|stops))\b"
+    r"|\b(?:warns|stops|refuses|blocks|fires)\s+(?:\w+\s+){0,3}at\s+\d+\s*k\b"
+    r"|\b(?:record|#\d{4,})\b[^.\n]{0,30}\b(?:says|said|states)\b", re.I)
+# the sources a Read: line can name, each checked against this session's OWN tool calls
+SRC_ID = re.compile(r"(?:#|\b(?:record|row|event|LaneState|refusal)\s+#?)(\d{3,})\b", re.I)
+SRC_CMD = re.compile(r"`([^`\n]{4,})`")
+SRC_PATH = re.compile(r"[\w.:~$%\\/-]*[\\/][\w.$%\\/-]*\w|\b[\w-]+\.(?:py|cs|json|jsonl|md|ps1|sql|txt|csv|ya?ml|xml"
+                      r"|config|html|pdf|toml|ini|sh|csproj|props|targets)\b", re.I)
+
+
+def _local_hm(ts):
+    """A transcript timestamp (UTC ISO) as this PC's local 'HH:MM', the clock Ian and the sessions write."""
+    try:
+        import datetime
+        return datetime.datetime.fromisoformat(str(ts).replace("Z", "+00:00")).astimezone().strftime("%H:%M")
+    except ValueError:
+        return ""
+
+
+def session_view(path, upto=None):
+    """(calls, ians) from THIS session's transcript, up to line `upto` (a replay) or its end.
+    calls: its OWN tool calls, (name, command or path) - no tool output (a recall hook, a session-start page and a peer's
+    message arrive as text, never as a call) and no helper's Reads (row 1936 credits a LOOK; this gate asks what THIS
+    session read). ians: each message Ian TYPED (origin kind 'human'; a peer's message, a hook's feedback and a lane
+    brief are not), as (local HH:MM, its text, the reply this session gave just before it)."""
+    calls, ians, last_reply = [], [], ""
+    with open(path, encoding="utf-8") as f:
+        for ln, line in enumerate(f):
+            if upto is not None and ln >= upto:
+                break
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue
+            if entry.get("type") == "user":
+                content = entry.get("message", {}).get("content")
+                origin = entry.get("origin")
+                if isinstance(content, str) and isinstance(origin, dict) and origin.get("kind") == "human":
+                    ians.append((_local_hm(entry.get("timestamp")), content, last_reply))
+                continue
+            if entry.get("type") != "assistant":
+                continue
+            for c in entry.get("message", {}).get("content", []) or []:
+                if not isinstance(c, dict):
+                    continue
+                if c.get("type") == "text" and c.get("text", "").strip():
+                    last_reply = c["text"]
+                elif c.get("type") == "tool_use":
+                    inp = c.get("input") or {}
+                    calls.append((c.get("name") or "", str(inp.get("command") or inp.get("file_path") or inp.get("path")
+                                                           or inp.get("pattern") or "")))
+    return calls, ians
+
+
+def understand_trigger(text, door="reply"):
+    """What the text does that needs a source (propose / order / how-it-works), with the words, or None. The Read: lines,
+    code spans and fences are not read; ORDER and MECHANISM also skip quoted spans (a relay of Ian's words, a phrase
+    named). door 'send' (SendMessage) reads an imperative as an order; a reply is an order only when it says it sent one."""
+    body = READ_LINE.sub("", text or "")
+    body = "".join(" " if in_code(body, i) else ch for i, ch in enumerate(body)) if "`" in body else body
+    m = PROPOSE.search(body)
+    if m:
+        return "proposes", m.group(0).strip()
+    plain = QUOTED.sub(lambda q: " " * len(q.group(0)), body)
+    for kind, pat in (("orders", ORDER if door == "send" else SENT_ORDER), ("states how it works", MECHANISM)):
+        m = pat.search(plain)
+        if m:
+            return kind, m.group(0).strip(" \t\n-*>.;:!?")
+    return None
+
+
+def _norm(s):
+    return re.sub(r"\s+", " ", s.replace("\\", "/")).strip().lower()
+
+
+def unread_sources(read_lines, calls, ians=(), stop_all=False):
+    """(sources named, the ones NOT read). An id is read when one of this session's own calls holds it as a whole number;
+    a command when a Bash/PowerShell command holds it (whitespace and slashes normalised); a path when a call holds its
+    file name; a tool when that tool was called; 'Ian HH:MM' when Ian TYPED a message at that minute (x = any digit). For
+    an order to stop or undo everything (stop_all, record #133478) Ian's message counts only if it ANSWERS a read-back: the
+    reply just before it asked him (a '?') about stopping."""
+    texts = [_norm(t) for _, t in calls]
+    cmds = [_norm(t) for n, t in calls if n in ("Bash", "PowerShell")]
+    tools = {n for n, _ in calls}
+    named, unread = [], []
+    for line in read_lines:
+        rest = line
+        for m in SRC_IAN.finditer(line):
+            named.append(m.group(0))
+            hh, m1, m2 = m.group(1).zfill(2), m.group(2), m.group(3)
+            said = [(hm, reply) for hm, _, reply in ians
+                    if hm[:4] == f"{hh}:{m1}" and (m2.lower() == "x" or hm[4:] == m2)]
+            if not said:
+                unread.append(m.group(0) + " (Ian typed nothing at that minute in this session)")
+            elif stop_all and not any("?" in r and re.search(r"\b(?:stop|off|cancel|kill|shut)\b", r, re.I) for _, r in said):
+                unread.append(m.group(0) + " (an order to stop everything: read it back to Ian in one line and send on his "
+                              "answer, record #133478 - his words alone may be irony)")
+            rest = rest.replace(m.group(0), " ")
+        for m in SRC_CMD.finditer(rest):
+            c = m.group(1).strip()
+            if SRC_PATH.fullmatch(c):
+                continue   # a path in backticks is a path, below
+            named.append(f"`{c}`")
+            if not any(_norm(c) in t for t in cmds):
+                unread.append(f"`{c}`")
+            rest = rest.replace(m.group(0), " ")
+        for m in SRC_ID.finditer(rest):
+            named.append(m.group(0))
+            if not any(re.search(r"(?<!\d)" + m.group(1) + r"(?!\d)", t) for t in texts):
+                unread.append(m.group(0))
+        for m in SRC_PATH.finditer(rest.replace("`", " ")):
+            p = m.group(0).rstrip("/\\.,;:")
+            base = re.split(r"[\\/]", p)[-1].lower()
+            if not base or base.isdigit():
+                continue
+            named.append(p)
+            if not any(base in t for t in texts):
+                unread.append(p)
+        for w in re.findall(r"\b[A-Z]\w+\b", rest):
+            if w in tools and w not in ("Read", "Bash", "PowerShell"):
+                named.append(w)
+    return named, unread
+
+
+def understand_verdict(text, calls, ians=(), door="reply"):
+    """The refusal reason, or None. Row 2132: text that proposes, orders, or states how a mechanism/rule/record works
+    carries a 'Read:' line, and every source it names was read in this session (unread_sources)."""
+    trig = understand_trigger(text, door)
+    if not trig:
+        return None
+    kind, words = trig
+    # cancelling a stop is not itself a stop ("CANCEL the 15:54 STOP ... \"Turn it all off\" was NOT an order")
+    stop_all = (kind == "orders" and bool(STOP_ALL.search(text or ""))
+                and not CANCEL_STOP.search(text or ""))
+    lines = [m.group(1) for m in READ_LINE.finditer(text or "")]
+    head = (f"UNDERSTAND GATE (row 2132, Ian 12 Nov: \"Make a guard or gate ... makes YOU UNDERSTAND\"): this text "
+            f"{kind} (\"{words[:80]}\")")
+    if not lines:
+        return (head + " and carries no 'Read:' line. Add one line 'Read: <each source this is from>' - a path, a record "
+                "#id, a board row, a `command`, or 'Ian HH:MM' for his own typed words - each one READ IN THIS SESSION (a "
+                "Read of the file, a command naming it, a kor/brain show of the id). A recall title, a session-start line "
+                "or a peer's message is not a read: go and read the body. If you have read nothing for it, say 'not "
+                "checked' and do not propose, order or state it.")
+    named, unread = unread_sources(lines, calls, ians, stop_all)
+    if not named:
+        return (head + f". Its Read: line names nothing that can be checked (\"{lines[0][:80]}\"): name a path, a record "
+                "#id, a board row, a `command` you ran this session, or 'Ian HH:MM'.")
+    if unread:
+        return (head + ". Named in Read: but NOT read in this session (no Read, command or show of it in your own tool "
+                "calls): " + ", ".join(unread[:8]) + ". Read each one now (the body, not its title), then send again.")
+    return None
+
+
 def log_refusal(text, why, payload):
     """F11 (Framework row 1159): every refusal is a row - Rule = the unlooked kinds, Matched = the claim in its sentence.
     Logging can never change what this guard does."""
@@ -663,6 +844,8 @@ def main():
         why = verdict(msg if isinstance(msg, str) else json.dumps(msg), calls, rules, surfaces)
         if why:
             log_refusal(msg if isinstance(msg, str) else json.dumps(msg), why, payload)
+            if ADVISORY:
+                return
             json.dump({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
                                               "permissionDecisionReason": why}}, sys.stdout)
         return
@@ -675,8 +858,15 @@ def main():
         return
     if why:
         log_refusal(text, why, payload)
+        if ADVISORY:
+            return
         json.dump({"decision": "block", "reason": why}, sys.stdout)
 
+
+# Ian 17 Nov 2026 22:3x typed "Yes" to: switch the look and absence guards to warnings (log only, never block)
+# until they are rebuilt to check artifacts, not words. Measured: right 3 of 17 judged (record #133474); on
+# 17 Nov it blocked ~10 replies on one stale Omar commit and caught nothing. Set False to block again.
+ADVISORY = os.environ.get("KOR_GUARD_BLOCK") != "1"   # tests run with KOR_GUARD_BLOCK=1 to prove the block path
 
 if __name__ == "__main__":
     main()

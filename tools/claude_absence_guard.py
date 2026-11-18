@@ -155,6 +155,10 @@ def main(env=None):
             guard_log.record("absence", phrase, text[max(0, m.start() - 150):m.end() + 150], None, payload=payload)
         except Exception:
             pass
+        # Ian 17 Nov 2026 22:3x typed "Yes": warnings only (logged, never block) until rebuilt to check
+        # artifacts, not words. Measured right 3 of 18 judged (record #133474). KOR_GUARD_BLOCK=1 blocks (tests).
+        if env.get("KOR_GUARD_BLOCK") != "1":
+            return
         print(json.dumps({"decision": "block", "reason":
             f"The reply claims an absence (\"{phrase}\") without its proof. Rule 3b: never conclude absence from a "
             "search whose scope you chose. Either run the check that proves it and add a line 'Checked: <the command "
