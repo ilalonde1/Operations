@@ -924,11 +924,25 @@ internal static class Program
             int r = model.Results.JointDrifts(ref n, ref story, ref label, ref name, ref lc, ref st, ref sn, ref dx, ref dy, ref drx, ref dry);
             var xOf = new Dictionary<string, double>(StringComparer.Ordinal);
             var max = new Dictionary<(string Story, string Case, string Step, string Side), (double X, string Px, double Y, string Py)>();
+            // Review 2093 (d53f25a6, BLOCKING): a drift row whose point has no object name (a mesh joint) or whose coordinate call
+            // fails used to keep x = 0 and land on side W with no message. JointDrifts returns no point ELEMENT name to place it
+            // by, so such a row is left out of the per-side maxima and counted; the GATE below fails if any were left out.
+            int unplaced = 0;
             for (int i = 0; i < n; i++)
             {
-                string pn = name[i] ?? "";   // never a null key (run r21: JointReact gave a null object name)
-                if (!xOf.TryGetValue(pn, out double px)) { double yy = 0, zz = 0; px = 0; model.PointObj.GetCoordCartesian(pn, ref px, ref yy, ref zz, "Global"); xOf[pn] = px; }
-                string side = double.IsNaN(splitMm) ? "ALL" : px * 1000 <= splitMm ? "W" : "E";
+                string pn = name[i] ?? "";
+                string side = "ALL";
+                if (!double.IsNaN(splitMm))
+                {
+                    if (!xOf.TryGetValue(pn, out double px))
+                    {
+                        double xx = 0, yy = 0, zz = 0;
+                        px = pn.Length > 0 && model.PointObj.GetCoordCartesian(pn, ref xx, ref yy, ref zz, "Global") == 0 ? xx : double.NaN;
+                        xOf[pn] = px;
+                    }
+                    if (double.IsNaN(px)) { unplaced++; continue; }
+                    side = px * 1000 <= splitMm ? "W" : "E";
+                }
                 var k = (story[i], lc[i], st[i], side);
                 var cur = max.TryGetValue(k, out var c) ? c : (0.0, "", 0.0, "");
                 if (Math.Abs(drx[i]) > cur.Item1) cur = (Math.Abs(drx[i]), label[i], cur.Item3, cur.Item4);
@@ -938,7 +952,9 @@ internal static class Program
             var lines = new List<string> { "story,case,step_type,side,max_drift_x,point_x,max_drift_y,point_y" };
             foreach (var kv in max.OrderBy(k => k.Key.Case, StringComparer.Ordinal).ThenBy(k => k.Key.Side).ThenBy(k => k.Key.Story, StringComparer.Ordinal))
                 lines.Add(string.Join(",", Q(kv.Key.Story), kv.Key.Case, kv.Key.Step, kv.Key.Side, F(kv.Value.X), Q(kv.Value.Px), F(kv.Value.Y), Q(kv.Value.Py)));
-            Say($"   JointDrifts: {r}, {n} row(s), {xOf.Count} point(s) placed, {sw.Elapsed.TotalSeconds:F0} s");
+            Say($"   JointDrifts: {r}, {n} row(s), {xOf.Count} point(s) looked up, {sw.Elapsed.TotalSeconds:F0} s");
+            if (!double.IsNaN(splitMm))
+                Say($"GATE drift rows placed by side: {n - unplaced} of {n} ({unplaced} with no point object or no coordinates, left out of building-drifts.csv): {(unplaced == 0 ? "PASS" : "FAIL")}");
             Written("building-drifts.csv", lines, "drifts by building side");
             foreach (var g in max.GroupBy(k => (k.Key.Case, k.Key.Side)).OrderBy(g => g.Key.Case, StringComparer.Ordinal))
             {
