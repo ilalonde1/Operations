@@ -954,7 +954,10 @@ internal static class Program
                 lines.Add(string.Join(",", Q(kv.Key.Story), kv.Key.Case, kv.Key.Step, kv.Key.Side, F(kv.Value.X), Q(kv.Value.Px), F(kv.Value.Y), Q(kv.Value.Py)));
             Say($"   JointDrifts: {r}, {n} row(s), {xOf.Count} point(s) looked up, {sw.Elapsed.TotalSeconds:F0} s");
             if (!double.IsNaN(splitMm))
+            {
                 Say($"GATE drift rows placed by side: {n - unplaced} of {n} ({unplaced} with no point object or no coordinates, left out of building-drifts.csv): {(unplaced == 0 ? "PASS" : "FAIL")}");
+                if (unplaced > 0) bad++;
+            }
             Written("building-drifts.csv", lines, "drifts by building side");
             foreach (var g in max.GroupBy(k => (k.Key.Case, k.Key.Side)).OrderBy(g => g.Key.Case, StringComparer.Ordinal))
             {
