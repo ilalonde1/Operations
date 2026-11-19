@@ -9,6 +9,9 @@ import subprocess
 import sys
 
 GUARD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "claude_bash_guard.py")
+NO_PROCS = os.path.join(__import__("tempfile").mkdtemp(prefix="guard-noprocs-"), "none.json")
+with open(NO_PROCS, "w", encoding="utf-8") as _f:
+    _f.write("[]")
 
 
 def verdict(command, session_id=None, timeout=None, description=None, env=None, cwd=None):
@@ -19,8 +22,11 @@ def verdict(command, session_id=None, timeout=None, description=None, env=None, 
         tool_input["description"] = description
     payload = json.dumps({"tool_name": "Bash", "session_id": session_id or f"guard-test-{os.getpid()}",
                           "tool_input": tool_input, **({"cwd": cwd} if cwd else {})})
+    # hermetic (19 Nov): no live process list and no slot file unless a case gives one - a real test run in this tree
+    # made 20 unrelated cases deny while the W8 rule was being proved
     out = subprocess.run([sys.executable, GUARD], input=payload, capture_output=True, text=True, timeout=30,
-                         env={**os.environ, **(env or {})}).stdout
+                         env={**os.environ, "KOR_GUARD_PROCS": NO_PROCS, "KOR_GUARD_SLOT": NO_PROCS + ".absent",
+                              **(env or {})}).stdout
     if not out.strip():
         return "allow"
     h = json.loads(out)["hookSpecificOutput"]
@@ -222,13 +228,17 @@ def busy_tree_cases():
     os.makedirs(wt)
     with open(os.path.join(wt, ".git"), "w") as f:   # a worktree: .git is a FILE
         f.write("gitdir: elsewhere\n")
+    for proj in (os.path.join(wt, "Kor.Operations.EngineeringTools.PdfToSafe.Tests"), os.path.join(a, "X.Tests")):
+        os.makedirs(proj)   # the tree's OWN project folders: a .csproj in the first folder under the root
+        open(os.path.join(proj, "p.csproj"), "w").close()
+    os.makedirs(os.path.join(drafter, "work", "_suite", "abc", "Core.Tests", "bin"))   # a suite COPY inside the tree
     procs = os.path.join(t, "procs.json")
-    w = lambda p: p.replace("\\", "\\\\")
     with open(procs, "w", encoding="utf-8") as f:
         json.dump([
             ["13784", "testhost.exe", f"\"{wt}\\Kor.Operations.EngineeringTools.PdfToSafe.Tests\\bin\\Debug\\net8.0-windows\\testhost.exe\" --runtimeconfig x"],
             ["11508", "dotnet.exe", f"\"C:\\Program Files\\dotnet\\dotnet.exe\" test {a}\\X.Tests --no-build"],
             ["532", "dotnet.exe", "\"C:\\Program Files\\dotnet\\dotnet.exe\" \"C:\\Program Files\\dotnet\\sdk\\10.0.403\\MSBuild.dll\" /nodemode:1 /nodeReuse:true"],
+            ["9001", "testhost.exe", f"\"{drafter}\\work\\_suite\\abc\\Core.Tests\\bin\\testhost.exe\" --runtimeconfig x"],
         ], f)
     empty = os.path.join(t, "none.json")
     with open(empty, "w", encoding="utf-8") as f:
@@ -250,6 +260,8 @@ def busy_tree_cases():
         ("a mention of dotnet build in a commit message is not a build", 'git commit -m "dotnet build fixed"', a, P, "allow"),
         ("KOR.Drafter's slot file held", "dotnet build", drafter, {"KOR_GUARD_PROCS": empty, "KOR_GUARD_SLOT": slot}, "deny"),
         ("the slot file means nothing to another tree", "dotnet build", b, {"KOR_GUARD_PROCS": empty, "KOR_GUARD_SLOT": slot}, "allow"),
+        ("review 2305: a suite COPY's testhost inside the tree (work\\_suite) holds none of its locks", "dotnet build", drafter, P, "allow"),
+        ("a PowerShell Set-Location into the busy tree", f'Set-Location "{a}"; dotnet build', b, P, "deny"),
     ]
     out = [(label, exp, verdict(cmd, env=env, cwd=cwd)) for label, cmd, cwd, env, exp in cases]
     # the REAL process reader (bypassed by KOR_GUARD_PROCS above): its first version never split a row and allowed every
@@ -261,6 +273,8 @@ def busy_tree_cases():
     out.append(("parse_procs: a lone object (one process)", "[('7', 'testhost.exe', 'C:\\\\x\\\\testhost.exe')]", repr(one)))
     out.append(("parse_procs: an array, a null command line", "[('7', 'testhost.exe', 'a'), ('8', 'dotnet.exe', '')]", repr(many)))
     out.append(("parse_procs: nothing / not JSON", "[] []", f"{g.parse_procs('')} {g.parse_procs('oops')}"))
+    import shutil
+    shutil.rmtree(t, ignore_errors=True)   # review 2305: no w8-* folder left behind
     return out
 
 

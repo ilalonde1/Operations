@@ -358,7 +358,7 @@ def missing_slow_inputs():
 # SAME-CLASS MISS: a second session EDITING files in a tree where a first one builds - nothing here sees it.
 BUSY_NAMES = ("testhost.exe", "dotnet.exe")
 BUSY_DOTNET = re.compile(r"(?i)\b(?:test|build|publish|vstest\.console\.dll)\b")
-LEADING_CD = re.compile(r"""^\s*cd\s+(?:"([^"]+)"|'([^']+)'|(\S+))\s*(?:&&|;)""")
+LEADING_CD = re.compile(r"""(?i)^\s*(?:cd|Set-Location|sl|pushd)\s+(?:-Path\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&]+))\s*(?:&&|;)""")
 BUILD_PATH = re.compile(r"""(?i)dotnet(?:\.exe)?\s+(?:build|test|publish)\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|-][^\s;&|]*))""")
 DRAFTER_SLOT = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Temp", "kor-drafter-testslot.txt")
 
@@ -440,6 +440,17 @@ def busy_in(root):
         text = (line or "").lower().replace("/", "\\")
         if name.lower() not in BUSY_NAMES or (root + "\\") not in text:
             continue
+        # only the tree's OWN project folders hold its locks: the first folder under the root must hold a .csproj
+        # (review 2305: a KOR.Drafter\work\_suite\<sha> copy's testhost is inside the tree and holds none of them -
+        # record #132034, an hour of false refusals the old one-folder check had already fixed once)
+        seg = re.match(r'[^\\"\s]+', text.split(root + "\\", 1)[1])   # the folder name ends at \ or a quote or a blank
+        first = seg.group(0) if seg else ""
+        try:
+            own = any(f.lower().endswith(".csproj") for f in os.listdir(os.path.join(root, first)))
+        except OSError:
+            own = False
+        if not own:
+            continue
         if name.lower() == "dotnet.exe" and ("/nodemode" in text or not BUSY_DOTNET.search(text)):
             continue
         why.append(f"pid {pid} {name}: {line[:160]}")
@@ -503,11 +514,10 @@ def _rest(cmd):
         if pattern.search(cmd):
             deny(reason)
 
-    # CLAUDE.md: "Do not start one and then keep editing" -- it holds the build output
-    # lock. This fired for real on 2026-08-25 and cost a ten-minute wait.
-    # Only for a build OF THIS REPO: a command that names another repo's checkout ("cd .../JoeBrain && dotnet build")
-    # touches none of our output, and on 2026-09-19 this held the JoeBrain session for twenty minutes while the
-    # drawing pipeline's suite ran - the lock it feared was not the one the command would take.
+    # CLAUDE.md: "Do not start one and then keep editing" -- it holds the build output lock (fired 2026-08-25, a
+    # ten-minute wait). W8, 19 Nov: only the tree the build is FOR, and only a run from that tree's OWN project folders
+    # (busy_in): a build of another repo (2026-09-19, JoeBrain held 20 min) or a suite copy inside the tree
+    # (10 Nov, KOR.Drafter\work\_suite, an hour) takes none of these locks.
     if DOTNET_BUILD_AT_COMMAND.search(blank_quotes(cmd)):
         root = build_root(cmd, PAYLOAD.get("cwd"))
         why = busy_in(root)
