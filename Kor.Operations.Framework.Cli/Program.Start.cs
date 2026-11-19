@@ -91,7 +91,11 @@ public static partial class Program
         if (part is "record" or "all")
         {
             var start = new ModuleState.Start(session, source, transcript);
-            if (source == "compact" && session is not null) StartGate.Rearm(cacheDir, session);   // a compaction loses the bodies
+            if (source == "compact" && session is not null)
+            {
+                StartGate.Rearm(cacheDir, session);   // a compaction loses the bodies
+                StartDocs.Rearm(cacheDir, session);   // ... and the start docs (W1/W6)
+            }
             (string, IReadOnlyList<string>) Show(ModuleState s)
             {
                 // the hook's record part is split (board row 1198): STATE NOW and LEGACY MEMORY are their own parts
@@ -214,6 +218,68 @@ public static partial class Program
             : BrainDb.Read(KorStandardsConnection.Login.Brain, d => ModuleState.ReadBodies(d, module));
         var exe = (Environment.ProcessPath ?? "kor").Replace('\\', '/');
         output.WriteLine(BodyRead.Read(rows, subject, module, exe, page, o.Get("--all") is not null));
+        return 0;
+    }
+
+    /// <summary>
+    /// W1/W6: <c>kor start-docs --doc P [--doc P ...] --hook</c> on PreToolUse, every tool. The rules, what it reads and what it
+    /// does not are <see cref="StartDocs"/>'s header. Relative --doc paths resolve against the hook's cwd. Bad input, a subagent,
+    /// no transcript, KOR_START_GATE=off, a reading tool: allow. Exit 0 always in hook mode; never reads the database.
+    /// </summary>
+    private static int StartDocsVerb(Options o, Func<string?> stdin, TextWriter output, bool hook)
+    {
+        void Say(string text) { if (!hook) output.WriteLine(text); }
+        var docArgs = o.All("--doc");
+        if (docArgs.Count == 0) throw new ArgumentException("start-docs needs --doc <path> (one or more)");
+        if (StartGate.Lifted(Environment.GetEnvironmentVariable)) { Say("allow: KOR_START_GATE=off"); return 0; }
+        var raw = stdin();
+        if (string.IsNullOrWhiteSpace(raw)) { Say("allow: no hook input"); return 0; }
+        string? tool, session, transcript, agent, cwd;
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) { Say("allow: the input is not a JSON object"); return 0; }
+            tool = Str(root, "tool_name");
+            session = Str(root, "session_id");
+            transcript = Str(root, "transcript_path");
+            agent = Str(root, "agent_id");
+            cwd = Str(root, "cwd");
+        }
+        catch (JsonException) { Say("allow: the input is not JSON"); return 0; }
+        if (tool is null || session is null || agent is not null || transcript is null || !File.Exists(transcript)) { Say("allow: no session transcript, or a subagent"); return 0; }
+        if (StartDocs.ReadingTools.Contains(tool)) { Say($"allow: {tool} only reads"); return 0; }
+        var cacheDir = o.Get("--cache-dir") ?? StartCache.DefaultDir;
+        var open = StartDocs.OpenMarker(cacheDir, session);
+        if (File.Exists(open)) { Say("allow: this session's start docs are read"); return 0; }
+        var docs = docArgs.Select(a => StartDocs.ParseDoc(a, cwd)).ToList();
+        var d = StartDocs.Decide(docs, StartDocs.Scan(StartGate.ReadLines(transcript), docs), p => File.Exists(p) ? File.ReadAllLines(p) : null);
+        var deniedPath = StartDocs.DeniedMarker(cacheDir, session);
+        void Mark(string path, string text)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, text);
+        }
+        if (d.Allow)
+        {
+            Mark(open, d.Reason);
+            Say("allow: " + d.Reason);
+            return 0;
+        }
+        var denied = File.Exists(deniedPath) && int.TryParse(File.ReadAllText(deniedPath), out var n) ? n : 0;
+        if (denied >= StartGate.MaxDenials)
+        {
+            Mark(open, "gave up: " + d.Reason);
+            var text = $"START DOCS GATE OPENED after {denied} refusals WITHOUT the read it asks for: {d.Reason} What those docs hold is NOT read: answer it 'not checked'.";
+            output.WriteLine(hook ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", additionalContext = text } }) : "allow: " + text);
+            return 0;
+        }
+        var lastAt = File.Exists(deniedPath) ? File.GetLastWriteTime(deniedPath) : (DateTime?)null;
+        var next = StartGate.NextDenied(denied, lastAt, DateTime.Now);
+        if (next != denied || lastAt is null) Mark(deniedPath, next.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        output.WriteLine(hook
+            ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", permissionDecision = "deny", permissionDecisionReason = d.Reason } })
+            : "deny: " + d.Reason);
         return 0;
     }
 
