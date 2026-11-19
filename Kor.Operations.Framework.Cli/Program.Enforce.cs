@@ -48,6 +48,7 @@ public static partial class Program
         }
         void Log(Exception e) => LogHookError(hookErrorLog, o, e);
         if (DrafterPythonRefusal(o, tool, input, cwd, session, scratch, output, hook, board, Log)) return 0;
+        if (SqlWriteCutRefusal(tool, input, cwd, session, output, hook, board, Log)) return 0;
         IReadOnlyList<LiveCheck>? checks;
         string source;
         if (db is not null) { checks = CheckStore.Live(db).Select(s => s.Check).ToList(); source = "db (caller's)"; }
@@ -116,6 +117,31 @@ public static partial class Program
             logged = board is not null
                 ? Stall.StallStore.LogGuardRefusal(board, DrafterPythonGuard.GuardName, DrafterPythonGuard.RuleName, session, repo, $"{tool}: {r.How}: {r.Path}")
                 : BrainDb.Use3s(KorStandardsConnection.Login.Board, b => Stall.StallStore.LogGuardRefusal(b, DrafterPythonGuard.GuardName, DrafterPythonGuard.RuleName, session, repo, $"{tool}: {r.How}: {r.Path}"));
+        }
+        catch (Exception e) { log(e); }   // the refusal stands whether or not it was logged
+        output.WriteLine(hook
+            ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", permissionDecision = "deny", permissionDecisionReason = reason } })
+            : $"deny{(logged is null ? " (not logged)" : $" (oversight.GuardRefusal #{logged})")}: {reason}");
+        return true;
+    }
+
+    /// <summary>Board row 1212, <see cref="SqlWriteCutGuard"/>: true when it answered (deny, and one GuardRefusal row). It reads
+    /// no database to decide; any fault in it is logged and allows.</summary>
+    private static bool SqlWriteCutRefusal(string tool, string input, string? cwd, string? session, TextWriter output, bool hook, BrainDb? board, Action<Exception> log)
+    {
+        SqlWriteCutGuard.Refusal? r;
+        try { r = SqlWriteCutGuard.Decide(tool, input); if (r is null) return false; }
+        catch (Exception e) { log(e); return false; }
+        var reason = SqlWriteCutGuard.Says(r);
+        int? logged = null;
+        try
+        {
+            var dir = cwd is not null && Directory.Exists(cwd) ? cwd : null;
+            var repo = dir is null ? null : Git.TopLevelFast(dir) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+            var what = $"{tool}: {Clip(r.Write, 150)} | {Clip(r.Cut, 40)}";
+            logged = board is not null
+                ? Stall.StallStore.LogGuardRefusal(board, SqlWriteCutGuard.GuardName, SqlWriteCutGuard.RuleName, session, repo, what)
+                : BrainDb.Use3s(KorStandardsConnection.Login.Board, b => Stall.StallStore.LogGuardRefusal(b, SqlWriteCutGuard.GuardName, SqlWriteCutGuard.RuleName, session, repo, what));
         }
         catch (Exception e) { log(e); }   // the refusal stands whether or not it was logged
         output.WriteLine(hook
