@@ -574,7 +574,7 @@ public static partial class Program
         error.WriteLine("       kor recall --module M \"task\" [--budget tokens (12600)]   (row 1893 pilot: ranked whole sections by SQL Full-Text, with terms found nowhere; read-only)");
         error.WriteLine("       kor recall --job NNNNN   (row 2031: the job's fix list - the open rows on every board that quote Ian for that job; the recall hook adds it once per session when a moment names a job)");
         error.WriteLine("       kor testdiff <base.trx> <new.trx> [--base-sequence <Sequence.xml>] [--new-sequence <Sequence.xml>]   (W2: compares two test runs by name; INCOMPLETE on an abort or an unfinished case; exit 0 only for NO NEW FAILURES)");
-        error.WriteLine("       kor start-gate --module M --hook  (row 1569, PreToolUse every tool: refused until every memory page is held and the subject's bodies are read; KOR_START_GATE=off lifts it)");
+        error.WriteLine("       kor start-gate --module M --hook   (row 1569, PreToolUse every tool: refused until every memory page is held and the subject's bodies are read; KOR_START_GATE=off lifts it)");
         error.WriteLine("       kor start-proof --module M --dir D [--control] [--baseline] [--wiring] [--model M] [--wire N] [--claude path] [--out F] [--temp-dir D]   (row 1569: one no-tools cold test, graded from its own transcript; --wiring prints the settings lines)");
         error.WriteLine("       kor stall --hook   (PreToolUse JSON on stdin; Bash|PowerShell|WebFetch|mcp__.*: G1 stall guard, board row 1308)");
         error.WriteLine("       kor stall --replay <transcript.jsonl|list.txt> [--since ISO-UTC] [--window-hours H] [--never-records]   (row 1308 dry run: every judged call through G1; reads only)");

@@ -12,10 +12,14 @@ namespace Kor.Operations.Framework.Proof;
 ///                     not finish is outside the comparison, and the counts say how much. A skipped test is counted, not this.
 ///   NEW FAILURES    - a test failed in the new run that did not fail in the base, or a base test is missing from the new run.
 ///   NO NEW FAILURES - both runs complete, every base test present in the new run, and the failing set is a subset of the base's.
-/// Exit 0 only for NO NEW FAILURES. COMPARES: test names and outcomes (trx UnitTestResult), the trx counters, the run's abort
-/// text (RunInfos), started-but-unfinished cases from a blame Sequence file when given. DOES NOT COMPARE: what a test asserts,
-/// timings, output text, a test filtered out of both runs (a filter hides it from both sides alike). Same-class fault it would
-/// miss: a test that silently returns early (passes, asserts nothing) on one side.
+/// INCOMPLETE also when a side holds no result at all, or its ResultSummary/Counters total disagrees with its results.
+/// Exit 0 only for NO NEW FAILURES; exit 1 for every other verdict AND for a usage error (a script reading the exit code alone
+/// cannot tell those apart - only 0 means anything). COMPARES: test names and outcomes (trx UnitTestResult), the trx Counters
+/// total against the results, the run's abort text (RunInfos), started-but-unfinished cases from a blame Sequence file when
+/// given. DOES NOT COMPARE: what a test asserts, timings, output text, a test filtered out of both runs (a filter hides it from
+/// both sides alike); an abort worded otherwise than vstest's English 'aborted' / 'crashed' / 'inactivity time' (RunInfo
+/// outcome="Error" alone is not read: test output errors carry it too). Same-class fault it would miss: a test that silently
+/// returns early (passes, asserts nothing) on one side.
 /// </summary>
 public static class TestDiff
 {
@@ -24,8 +28,19 @@ public static class TestDiff
         IReadOnlyList<(string Name, string Outcome)> All, // every UnitTestResult, in order; one name can repeat (theory rows with equal display names)
         int Defined,                                    // TestDefinitions/UnitTest count
         IReadOnlyList<string> Aborts,                   // RunInfos text naming an abort or a crash
-        IReadOnlyList<string>? Unfinished)              // from the blame sequence; null = not measured
+        IReadOnlyList<string>? Unfinished,              // from the blame sequence; null = not measured
+        int? CountersTotal = null)                      // ResultSummary/Counters total, as the trx states it; null = absent
     {
+        /// <summary>Why this run cannot stand as complete beyond an abort or an unfinished case (review row 2267): no result at all
+        /// (a filter that matched nothing reads as '0 of 0 failing'), or the trx's own counters disagreeing with its results.</summary>
+        public IEnumerable<string> Gaps
+        {
+            get
+            {
+                if (Results == 0) yield return "NO RESULTS: the run holds no test result (a filter that matched nothing, or a build that ran none)";
+                if (CountersTotal is { } t && t != Results) yield return $"COUNTERS: the trx says total={t} but holds {Results} results";
+            }
+        }
         private static bool IsFail(string o) => o is "Failed" or "Error" or "Timeout" or "Aborted";
         private static bool IsNotRun(string o) => o is "NotExecuted" or "Pending" or "InProgress" or "Disconnected";
         private static int Rank(string o) => IsFail(o) ? 3 : IsNotRun(o) ? 2 : o == "Passed" ? 0 : 1;
@@ -43,7 +58,7 @@ public static class TestDiff
         public int NotRunResults => All.Count(r => IsNotRun(r.Outcome));
         public int OtherResults => Results - PassedResults - FailedResults - NotRunResults;
         /// <summary>A skipped test (NotExecuted) is a decision, not an unfinished run: only an abort or a started, unfinished case is.</summary>
-        public bool Complete => Aborts.Count == 0 && (Unfinished is null || Unfinished.Count == 0);
+        public bool Complete => Aborts.Count == 0 && (Unfinished is null || Unfinished.Count == 0) && !Gaps.Any();
     }
 
     public sealed record Result(string Verdict, int Exit, IReadOnlyList<string> Lines);
@@ -62,7 +77,9 @@ public static class TestDiff
                      || t.Contains("inactivity time", StringComparison.OrdinalIgnoreCase))
             .Select(t => t.ReplaceLineEndings(" ").Trim())
             .Distinct().ToList();
-        return new Run(trxPath, all, defined, aborts, sequencePath is null ? null : ReadUnfinished(sequencePath));
+        var counters = doc.Descendants(Ns + "Counters").FirstOrDefault();
+        int? total = int.TryParse((string?)counters?.Attribute("total"), out var t) ? t : null;
+        return new Run(trxPath, all, defined, aborts, sequencePath is null ? null : ReadUnfinished(sequencePath), total);
     }
 
     /// <summary>A blame collector's Sequence_*.xml: every test it saw start, in order; Completed="False" = started, never finished.</summary>
@@ -84,6 +101,7 @@ public static class TestDiff
                 ? "  started-but-unfinished: NOT MEASURED (no blame sequence given; a hung case is invisible to the trx counts)"
                 : $"  started-but-unfinished: {r.Unfinished.Count}" + string.Concat(r.Unfinished.Select(u => "\n    " + u)));
             foreach (var a in r.Aborts) lines.Add("  RUN ABORTED: " + a);
+            foreach (var g in r.Gaps) lines.Add("  " + g);
         }
         Side("base", b);
         Side("new ", n);
@@ -105,7 +123,8 @@ public static class TestDiff
         string verdict;
         if (!b.Complete || !n.Complete)
             verdict = "INCOMPLETE - " + string.Join("; ", new[] { ("base", b), ("new", n) }.Where(x => !x.Item2.Complete).Select(x =>
-                $"{x.Item1}: {x.Item2.Aborts.Count} abort message(s), {x.Item2.Unfinished?.Count ?? 0} started and unfinished"))
+                $"{x.Item1}: {x.Item2.Aborts.Count} abort message(s), {x.Item2.Unfinished?.Count ?? 0} started and unfinished"
+                + string.Concat(x.Item2.Gaps.Select(g => ", " + g.Split(':')[0]))))
                 + ". What did not finish is NOT compared; do not call these runs the same.";
         else if (newFail.Count > 0 || vanished.Count > 0)
             verdict = $"NEW FAILURES - {newFail.Count} failing only in new, {vanished.Count} base tests missing from new";

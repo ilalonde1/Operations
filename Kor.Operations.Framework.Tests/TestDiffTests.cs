@@ -98,6 +98,25 @@ public class TestDiffTests : IDisposable
     }
 
     [Fact]
+    public void TwoEmptyRuns_AreIncomplete_NeverNoNewFailures()   // review 2267: '0 of 0' is the green proxy this tool exists to stop
+    {
+        var r = TestDiff.Compare(TestDiff.ReadTrx(Trx("b.trx", Array.Empty<(string, string)>())), TestDiff.ReadTrx(Trx("n.trx", Array.Empty<(string, string)>())));
+        Assert.Equal(1, r.Exit);
+        Assert.StartsWith("INCOMPLETE", r.Verdict);
+        Assert.Contains("NO RESULTS", r.Verdict);
+    }
+
+    [Fact]
+    public void CountersDisagreeingWithResults_AreIncomplete()
+    {
+        var path = Trx("n.trx", Base);
+        File.WriteAllText(path, File.ReadAllText(path).Replace("<ResultSummary outcome=\"Failed\">", "<ResultSummary outcome=\"Failed\"><Counters total=\"5\" />"));
+        var r = TestDiff.Compare(TestDiff.ReadTrx(Trx("b.trx", Base)), TestDiff.ReadTrx(path));
+        Assert.Equal(1, r.Exit);
+        Assert.Contains(r.Lines, l => l.Contains("COUNTERS: the trx says total=5 but holds 3 results"));
+    }
+
+    [Fact]
     public void ASkippedTest_IsCounted_NotIncomplete()
     {
         var withSkip = Base.Append(("S", "NotExecuted")).ToArray();
