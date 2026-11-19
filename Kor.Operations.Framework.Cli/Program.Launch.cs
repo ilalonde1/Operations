@@ -38,12 +38,16 @@ public static partial class Program
         var pick = o.Int("--pick");
         var once = o.Get("--list") is not null || pick is not null;
         input ??= Console.In;
+        List<LaunchEntry>? entries = null;
         while (true)
         {
-            var entries = LaunchEntries(root, board);
-            output.WriteLine($"Board read {DateTime.Now:yyyy-MM-dd HH:mm}");
-            foreach (var l in LaunchMenu.Render(entries)) output.WriteLine(l);
-            if (o.Get("--list") is not null) return 0;
+            if (entries is null)   // read on start and after claude exits; a bad pick only asks again
+            {
+                entries = LaunchEntries(root, board);
+                output.WriteLine($"Board read {DateTime.Now:yyyy-MM-dd HH:mm}");
+                foreach (var l in LaunchMenu.Render(entries)) output.WriteLine(l);
+                if (o.Get("--list") is not null) return 0;
+            }
 
             int n;
             if (pick is not null) n = pick.Value;
@@ -78,12 +82,14 @@ public static partial class Program
             output.WriteLine($"Starting claude in {chosen.Path} ({chosen.Lead}) - {claude}");
             if (o.Get("--dry-run") is not null) return 0;
 
-            var psi = new ProcessStartInfo("cmd.exe") { WorkingDirectory = chosen.Path, UseShellExecute = false };
-            psi.ArgumentList.Add("/c");
-            psi.ArgumentList.Add(claude);
+            // claude.exe starts directly; npm's claude.cmd needs cmd.exe (a .cmd is not an executable image)
+            var isExe = claude.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
+            var psi = new ProcessStartInfo(isExe ? claude : "cmd.exe") { WorkingDirectory = chosen.Path, UseShellExecute = false };
+            if (!isExe) { psi.ArgumentList.Add("/c"); psi.ArgumentList.Add(claude); }
             using (var p = Process.Start(psi)!) p.WaitForExit();
             output.WriteLine($"claude in {chosen.Folder} ended. Reading the board again.");
             if (once) return 0;
+            entries = null;
         }
     }
 

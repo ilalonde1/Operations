@@ -11,8 +11,11 @@ namespace Kor.Operations.Framework.Tests;
 /// .claude/settings.json (owners as their session start reads them, RevitTools by tag only); quoted owners; no board hook ->
 /// null; the menu names no owner for a tagged board and says NOT READ instead of dropping a repo; finding claude on PATH vs npm;
 /// an elevated window is REFUSED (exit 3) before anything is read or started; --pick --dry-run starts nothing.
+/// The live board read is covered only through PickDryRunStartsNothingAndNamesTheFolder (live KorStandards, rolled back),
+/// which needs the sibling checkouts, the board login and claude installed - as on the dev PC and a kor-claude window.
 /// DOES NOT COVER: the interactive loop and a real claude start (proven by hand in a kor-claude window, row 2188 Evidence);
-/// the live board read (LaunchListReadsTheLiveBoard runs it against KorStandards, rolled back).
+/// that Render never prints an owner is true by construction (it never prints BoardRow.Owner), so the wall half of the
+/// tagged-board test cannot fail today - it guards a future change that adds owners to the menu.
 /// Same-class fault it would miss: a repo whose settings.json wires the board hook under a matcher that never fires.
 /// </summary>
 public class LaunchMenuTests
@@ -34,7 +37,7 @@ public class LaunchMenuTests
     public void TheBoardIsReadFromEachRealReposOwnSettings(string folder, string? owner, string? tag)
     {
         var settings = Path.Combine(Root, folder, ".claude", "settings.json");
-        if (!File.Exists(settings)) return;   // a PC without that repo checked out
+        Assert.True(File.Exists(settings), $"no {settings}: the menu reads repos as siblings of this one");
         var b = LaunchMenu.BoardOf(File.ReadAllText(settings));
         Assert.NotNull(b);
         Assert.Equal(tag, b!.Tag);
