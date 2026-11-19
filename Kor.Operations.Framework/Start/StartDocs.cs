@@ -16,7 +16,7 @@ namespace Kor.Operations.Framework.Start;
 /// COVERS: a doc never opened; a doc read in part (offset/limit, or cut by the tool); a read lost to a compaction.
 /// DOES NOT COVER: understanding (a doc read is not a doc applied); a doc changed after it was read; a Bash cat / sed of the
 /// doc (counts as UNREAD - Read is the one route, and the refusal says so); a doc the routine names but the settings line
-/// omits. Same-class miss: a session that reads the doc, then acts against it. A doc that does not exist passes, named.
+/// omits. Same-class miss: a session that reads the doc, then acts against it. A doc not found is REFUSED, named (a broken line must not pass).
 /// Lifted by KOR_START_GATE=off (reviewer and judge sessions, which have no start). A subagent passes (no start of its own).
 /// Never wedges: after <see cref="StartGate.MaxDenials"/> refusals it opens and says what is unread.
 /// </summary>
@@ -111,15 +111,16 @@ public static class StartDocs
         return seen;
     }
 
-    /// <summary>Allow, or the refusal naming each unread doc and its unread lines. A doc missing on disk passes, named; a named
-    /// section not found in the doc is refused (a renamed heading must not silently pass).</summary>
+    /// <summary>Allow, or the refusal naming each unread doc and its unread lines. A doc not found, or a named section not found
+    /// in it, is refused (a broken settings line or a renamed heading must never silently pass).</summary>
     public static StartGate.Decision Decide(IReadOnlyCollection<Doc> docs, Dictionary<string, Coverage> seen, Func<string, string[]?> read)
     {
         var owed = new List<string>();
-        var absent = new List<string>();
         foreach (var d in docs)
         {
-            if (read(d.Path) is not { } text) { absent.Add(d.Arg); continue; }
+            // a doc not found is a broken settings line or a wrong root - REFUSED, named (live probe 19 Nov: with no
+            // CLAUDE_PROJECT_DIR and a subfolder cwd every doc read 'not on disk' and the gate opened with nothing read)
+            if (read(d.Path) is not { } text) { owed.Add($"{d.Arg} (NOT FOUND at {d.Path} - fix the settings line or the project root)"); continue; }
             var (from, to) = Required(d, text);
             if (from == 0) { owed.Add($"{d.Arg} (no heading '{d.Section}' in it - fix the settings line)"); continue; }
             var what = d.Section is null ? "" : $" section '{d.Section}', lines {from}-{to}";
@@ -127,13 +128,12 @@ public static class StartDocs
             var gaps = c.MissingIn(from, to);
             if (gaps.Count > 0) owed.Add($"{d.Arg}{what} (lines {string.Join(", ", gaps.Select(g => g.From == g.To ? $"{g.From}" : $"{g.From}-{g.To}"))} unread)");
         }
-        var note = absent.Count > 0 ? $" Named but not on disk (passed): {string.Join(", ", absent)}." : "";
-        if (owed.Count == 0) return new StartGate.Decision(true, "start docs read: " + string.Join(", ", docs.Select(x => x.Arg).Except(absent)) + "." + note);
+        if (owed.Count == 0) return new StartGate.Decision(true, "start docs read: " + string.Join(", ", docs.Select(x => x.Arg)) + ".");
         return new StartGate.Decision(false,
             "START DOCS UNREAD (W1/W6, Framework lanes/2026-11-19/PLAN-W1-W9-CHECKS.md check 1): this repo's start routine names "
             + "these and your transcript shows them not wholly read: " + string.Join("; ", owed) + ". Read each with the Read tool "
             + "(a Bash cat, sed or Get-Content does NOT count); until then every tool but Read, Grep, Glob, ToolSearch, "
-            + "AskUserQuestion, TaskStop and ListAgents is refused - Bash and kor included." + note);
+            + "AskUserQuestion, TaskStop and ListAgents is refused - Bash and kor included.");
     }
 
     /// <summary>A compaction loses the docs: the record part (kor start, source compact) re-arms this gate as it does StartGate.</summary>

@@ -7,7 +7,7 @@ namespace Kor.Operations.Framework.Tests;
 /// <summary>
 /// W1/W6, kor start-docs (StartDocs). COVERS: a doc never read is refused; a part-read names the unread lines; two part-reads
 /// together count; a compaction after the read loses it; a #Section needs only its own lines; a section heading not in the
-/// doc is refused; a doc not on disk passes, named; a Bash cat (a tool result with no toolUseResult.file) does not count; a
+/// doc is refused; a doc not on disk is REFUSED, named; a Bash cat (a tool result with no toolUseResult.file) does not count; a
 /// Read of ANOTHER file of the same name does not count.
 /// DOES NOT COVER: the hook verb's stdin, markers and MaxDenials (StartGateVerb's tested pattern; replayed by hand 19 Nov on
 /// session a0ed29c9's real transcript: cut before its BUILD-PLAN Read -> deny naming both docs, a Read allowed, whole
@@ -93,11 +93,12 @@ public class StartDocsTests : IDisposable
     }
 
     [Fact]
-    public void ADocNotOnDisk_Passes_Named()
+    public void ADocNotOnDisk_IsRefused_Named()   // live probe 19 Nov: a wrong root made every doc 'not on disk' and the gate opened
     {
         var d = Decide(new[] { ReadResult(Plan, 1, 20, 20) }, "docs/BUILD-PLAN.md", "docs/GONE.md");
-        Assert.True(d.Allow);
-        Assert.Contains("Named but not on disk (passed): docs/GONE.md", d.Reason);
+        Assert.False(d.Allow);
+        Assert.Contains("docs/GONE.md (NOT FOUND at", d.Reason);
+        Assert.DoesNotContain("BUILD-PLAN.md (", d.Reason);   // the read doc is not named as owed
     }
 
     [Fact]
