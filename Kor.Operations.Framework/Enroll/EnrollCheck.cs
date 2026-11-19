@@ -128,6 +128,10 @@ public static class EnrollCheck
         // G5, the context cliff (board row 1474): WARN and STOP on every tool, the same on each prompt, and the Stop block
         // that asks for the handover - all three, or a session can reach the cliff with no warning
         new Hook("PreToolUse (*) kor context (G5 context cliff, row 1474)", "PreToolUse", ContextTools, "context", _ => true),
+        // W1/W6 (Framework lanes/2026-11-19/PLAN-W1-W9-CHECKS.md check 1): no work tool until the start routine's docs are
+        // read with the Read tool; every tool, so the same matcher as kor context; at least one --doc
+        new Hook("PreToolUse (*) kor start-docs --doc ... (W1/W6, the start routine's docs read first)", "PreToolUse", ContextTools, "start-docs",
+                 c => c.Opt("--doc") is not null),
         new Hook("UserPromptSubmit kor context (G5 context cliff, row 1474)", "UserPromptSubmit", Array.Empty<string>(), "context", _ => true),
         new Hook("Stop kor context (G5 context cliff, row 1474)", "Stop", Array.Empty<string>(), "context", _ => true),
     };
