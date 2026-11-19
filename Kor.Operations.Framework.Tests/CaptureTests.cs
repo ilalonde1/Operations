@@ -524,7 +524,7 @@ public class CaptureTests
     private static string RepoDir()
     {
         var d = new DirectoryInfo(AppContext.BaseDirectory);
-        while (d is not null && !Directory.Exists(Path.Combine(d.FullName, ".git"))) d = d.Parent;
+        while (d is not null && !Path.Exists(Path.Combine(d.FullName, ".git"))) d = d.Parent;
         return d?.FullName ?? throw new InvalidOperationException("the test is not running inside the Operations checkout");
     }
 

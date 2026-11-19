@@ -20,7 +20,7 @@ public class MigrationLintTests
     private static string DrafterDb()
     {
         var d = new DirectoryInfo(AppContext.BaseDirectory);
-        while (d is not null && !Directory.Exists(Path.Combine(d.FullName, ".git"))) d = d.Parent;
+        while (d is not null && !Path.Exists(Path.Combine(d.FullName, ".git"))) d = d.Parent;
         var drafter = RepoLocator.Find("KOR.Drafter", d!.FullName);
         Assert.NotNull(drafter);
         return Path.Combine(drafter!, "db");
