@@ -396,12 +396,20 @@ def main():
     if not cmd:
         return
 
+    # Rule 7 since 19 Nov (Ian "Go", Framework plan step 3): the line is FILLED, not refused - 14 days to 19 Nov it refused
+    # ~880 commands (judged wrong 4) and each cost a retry. The description gets "up to N min: " (the timeout, a ceiling,
+    # not a guess) after every other rule has had its say; a deny below still wins.
     timeout = tool_input.get("timeout") or 0
+    fill = None
     if isinstance(timeout, (int, float)) and timeout > LONG_TIMEOUT_MS \
             and not DURATION_FIRST.search(tool_input.get("description") or ""):
-        deny(f"A command with a {int(timeout) // 60000}-minute timeout and no duration in its description. "
-             "The description is the one line Ian sees; it must open with the expected duration, "
-             "e.g. \"~3 min: run the App suite\". Promised 2026-10-13 and broken the same day, so it is a hook.")
+        fill = dict(tool_input, description=f"up to {-(-int(timeout) // 60000)} min: {tool_input.get('description') or 'command'}")
+    _rest(cmd)   # every other rule; a deny there exits before the fill is written
+    if fill:   # updatedInput replaces the WHOLE input, so every field is carried; no permissionDecision: normal flow
+        json.dump({"hookSpecificOutput": {"hookEventName": "PreToolUse", "updatedInput": fill}}, sys.stdout)
+
+
+def _rest(cmd):
 
     for pattern, reason in RULES:
         if pattern.search(cmd):

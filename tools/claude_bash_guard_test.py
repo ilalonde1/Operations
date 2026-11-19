@@ -23,7 +23,12 @@ def verdict(command, session_id=None, timeout=None, description=None, env=None):
                          env={**os.environ, **(env or {})}).stdout
     if not out.strip():
         return "allow"
-    return json.loads(out)["hookSpecificOutput"]["permissionDecision"]
+    h = json.loads(out)["hookSpecificOutput"]
+    if "updatedInput" in h and "permissionDecision" not in h:   # rule 7 fills the description (19 Nov)
+        u = h["updatedInput"]
+        return "fill" if {k: v for k, v in u.items() if k != "description"} == {k: v for k, v in tool_input.items() if k != "description"} \
+            and u["description"].startswith("up to ") else f"BAD FILL {u!r}"
+    return h["permissionDecision"]
 
 
 def sql_rate_cases():
@@ -45,18 +50,22 @@ def sql_rate_cases():
 
 
 def duration_cases():
-    """Rule 7: a long timeout must come with a duration-first description; short commands are untouched."""
+    """Rule 7: a long timeout without a duration-first description gets "up to N min: " written in (19 Nov: filled, not
+    refused); every other field is carried; short commands are untouched; another rule's deny still wins."""
     probes = [
-        ("long, no description",         600000, None,                              "deny"),
-        ("long, duration not first",     600000, "Run the App suite (~3 min)",     "deny"),
+        ("long, no description",         600000, None,                              "fill"),
+        ("long, duration not first",     600000, "Run the App suite (~3 min)",     "fill"),
         ("long, duration first",         600000, "~3 min: run the App suite",      "allow"),
         ("long, duration range first (6696, 12 Nov)", 600000, "~1-2 min: run the viewer check", "allow"),
-        ("long, range with no unit",     600000, "~1-2: run the viewer check",     "deny"),
+        ("long, range with no unit",     600000, "~1-2: run the viewer check",     "fill"),
         ("long, seconds first",          180000, "90 s: build and test",           "allow"),
         ("short, no description",        60000,  None,                              "allow"),
         ("default timeout",              None,   "Run the Data suite",             "allow"),
     ]
-    return [(label, e, verdict("dotnet build -c Release", timeout=t, description=d)) for label, t, d, e in probes]
+    got = [(label, e, verdict("dotnet build -c Release", timeout=t, description=d)) for label, t, d, e in probes]
+    got.append(("long, no duration, AND a denied command: the deny wins", "deny",
+                verdict("sqlcmd -S KOR-APP01 -i x.sql", timeout=600000, description="query")))
+    return got
 
 
 CASES = [

@@ -84,9 +84,11 @@ def run_guard(name, payload, env):
 
 for name, event, base in CASES:
     base = dict(base, session_id=f"zz-guardlogging-{RUN}-{name}")
-    fixture = run_guard(name, base, dict(os.environ))
-    live_bad = run_guard(name, dict(base, hook_event_name=event), dict(os.environ, **BAD))
-    live_raise = run_guard(name, dict(base, hook_event_name=event), dict(os.environ, PYTHONPATH=tmp))
+    # KOR_GUARD_BLOCK=1: look is retired and absence log-only since 17/19 Nov; their block path is still what is tested
+    env0 = dict(os.environ, KOR_GUARD_BLOCK="1")
+    fixture = run_guard(name, base, env0)
+    live_bad = run_guard(name, dict(base, hook_event_name=event), dict(env0, **BAD))
+    live_raise = run_guard(name, dict(base, hook_event_name=event), dict(env0, PYTHONPATH=tmp))
     try:
         out = json.loads(fixture[1])
         decision = (out.get("hookSpecificOutput") or {}).get("permissionDecision") or out.get("decision")
