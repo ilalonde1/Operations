@@ -865,14 +865,14 @@ def main():
 
 # Ian 17 Nov 2026 22:3x typed "Yes" to: switch the look and absence guards to warnings (log only, never block)
 # until they are rebuilt to check artifacts, not words. Measured: right 3 of 17 judged (record #133474); on
-# 17 Nov it blocked ~10 replies on one stale Omar commit and caught nothing. Set False to block again.
+# 17 Nov it blocked ~10 replies on one stale Omar commit and caught nothing. Retired 19 Nov (below).
 ADVISORY = os.environ.get("KOR_GUARD_BLOCK") != "1"   # tests run with KOR_GUARD_BLOCK=1 to prove the block path
 
 # RETIRED 19 Nov 2026 (Ian "Go", Framework plan step 3; record of the numbers: 14 days to 19 Nov, 505 refusals, 4 judged
 # right, 28 wrong - drawing 281, build 116, push 37, db-write 22). A completion WORD in a reply is not the fault; the
-# artifact is. Its parts move to checks on the action: a db-write whose result is not read back is refused on the command
-# itself (kor, C#), a C# commit is built by the pre-push review, a push is gated by that review, a drawing deliverable by
-# KOR.Drafter's own look gate. Wired in 23 settings.json files, so it is retired HERE (one place): the hook does nothing.
+# artifact is. Its parts are OWED as checks on the action (not built at retirement): a db-write whose result is not read
+# back refused on the command itself (kor, C#; row 1212), a C# commit built by the pre-push review (row 1193); a push is
+# already gated by that review, a drawing deliverable by KOR.Drafter's own look gate. Wired in 23 settings.json files, so it is retired HERE (one place): the hook does nothing.
 # Tests still drive main() with KOR_GUARD_BLOCK=1. To restore: call main() unconditionally below.
 if __name__ == "__main__":
     if os.environ.get("KOR_GUARD_BLOCK") == "1":

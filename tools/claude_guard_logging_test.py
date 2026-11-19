@@ -85,7 +85,7 @@ def run_guard(name, payload, env):
 for name, event, base in CASES:
     base = dict(base, session_id=f"zz-guardlogging-{RUN}-{name}")
     # KOR_GUARD_BLOCK=1: look is retired and absence log-only since 17/19 Nov; their block path is still what is tested
-    env0 = dict(os.environ, KOR_GUARD_BLOCK="1")
+    env0 = dict(os.environ, KOR_GUARD_BLOCK="1") if name in ("look", "absence") else dict(os.environ)
     fixture = run_guard(name, base, env0)
     live_bad = run_guard(name, dict(base, hook_event_name=event), dict(env0, **BAD))
     live_raise = run_guard(name, dict(base, hook_event_name=event), dict(env0, PYTHONPATH=tmp))

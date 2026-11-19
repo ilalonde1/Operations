@@ -152,7 +152,7 @@ def main(env=None):
         try:   # F11 (Framework row 1159): every refusal is a row; logging can never change what this guard does
             sys.path.append("C:/VIsual Studio Projects/Framework/tools"); import guard_log  # noqa: E702
             m = first_claim(text)
-            # "absence-log" (19 Nov, Ian "Go", plan step 3): a log, not a guard - out of the guards' weekly refusal count.
+            # "absence-log" (19 Nov, Ian "Go", plan step 3): a log, not a guard; guard_log week shows it as its own row.
             guard_log.record("absence-log", phrase, text[max(0, m.start() - 150):m.end() + 150], None, payload=payload)
         except Exception:
             pass
