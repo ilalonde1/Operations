@@ -11,14 +11,14 @@ import sys
 GUARD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "claude_bash_guard.py")
 
 
-def verdict(command, session_id=None, timeout=None, description=None, env=None):
+def verdict(command, session_id=None, timeout=None, description=None, env=None, cwd=None):
     tool_input = {"command": command}
     if timeout is not None:
         tool_input["timeout"] = timeout
     if description is not None:
         tool_input["description"] = description
     payload = json.dumps({"tool_name": "Bash", "session_id": session_id or f"guard-test-{os.getpid()}",
-                          "tool_input": tool_input})
+                          "tool_input": tool_input, **({"cwd": cwd} if cwd else {})})
     out = subprocess.run([sys.executable, GUARD], input=payload, capture_output=True, text=True, timeout=30,
                          env={**os.environ, **(env or {})}).stdout
     if not out.strip():
@@ -209,23 +209,59 @@ CASES = [
 ]
 
 
-def other_repo_cases():
-    """The build-lock rule is only for a build OF THIS REPO (2026-09-19): the pattern that says a command
-    targets another checkout, proved on both sides without a live testhost."""
+def busy_tree_cases():
+    """W8 (19 Nov): a build is refused while a testhost or dotnet build/test from the SAME git tree runs - any repo, any
+    worktree (a .git FILE), the KOR.Drafter slot file; a build of another tree is not. Real temp trees, a fake process
+    list (KOR_GUARD_PROCS), so no live testhost is needed. The 19 Nov instance is replayed: the previous coordinator's
+    PdfToSafe testhost in KOR.Drafter-portmerge (a worktree), a build there refused."""
+    import tempfile
+    t = tempfile.mkdtemp(prefix="w8-")
+    a, wt, b, drafter = (os.path.join(t, n) for n in ("Ops", "KOR.Drafter-portmerge", "Other", "KOR.Drafter"))
+    for d in (a, b, drafter):
+        os.makedirs(os.path.join(d, ".git"))
+    os.makedirs(wt)
+    with open(os.path.join(wt, ".git"), "w") as f:   # a worktree: .git is a FILE
+        f.write("gitdir: elsewhere\n")
+    procs = os.path.join(t, "procs.json")
+    w = lambda p: p.replace("\\", "\\\\")
+    with open(procs, "w", encoding="utf-8") as f:
+        json.dump([
+            ["13784", "testhost.exe", f"\"{wt}\\Kor.Operations.EngineeringTools.PdfToSafe.Tests\\bin\\Debug\\net8.0-windows\\testhost.exe\" --runtimeconfig x"],
+            ["11508", "dotnet.exe", f"\"C:\\Program Files\\dotnet\\dotnet.exe\" test {a}\\X.Tests --no-build"],
+            ["532", "dotnet.exe", "\"C:\\Program Files\\dotnet\\dotnet.exe\" \"C:\\Program Files\\dotnet\\sdk\\10.0.403\\MSBuild.dll\" /nodemode:1 /nodeReuse:true"],
+        ], f)
+    empty = os.path.join(t, "none.json")
+    with open(empty, "w", encoding="utf-8") as f:
+        json.dump([], f)
+    slot = os.path.join(t, "slot.txt")
+    with open(slot, "w", encoding="utf-8") as f:
+        f.write("held by lane X since 12:00")
+    nonslot = os.path.join(t, "no-slot.txt")
+    P, E = {"KOR_GUARD_PROCS": procs, "KOR_GUARD_SLOT": nonslot}, {"KOR_GUARD_PROCS": empty, "KOR_GUARD_SLOT": nonslot}
+    cases = [
+        ("RED 19 Nov: a build in the worktree whose testhost still runs", "dotnet build KOR.Drafter.sln", wt, P, "deny"),
+        ("a dotnet test in the same tree as a running dotnet test", "dotnet test X.Tests --filter A", a, P, "deny"),
+        ("a build of ANOTHER tree is not held", "dotnet build", b, P, "allow"),
+        ("cd into the busy tree from elsewhere", f'cd "{a}" && dotnet build', b, P, "deny"),
+        ("a project path inside the busy tree, cwd elsewhere", f'dotnet build "{a}\\X.csproj"', b, P, "deny"),
+        ("the worktree's main repo is another tree (Ops vs KOR.Drafter-portmerge)", "dotnet build", drafter, P, "allow"),
+        ("an MSBuild reuse node names no tree: nothing busy", "dotnet build", b, E, "allow"),
+        ("no process at all", "dotnet build", a, E, "allow"),
+        ("a mention of dotnet build in a commit message is not a build", 'git commit -m "dotnet build fixed"', a, P, "allow"),
+        ("KOR.Drafter's slot file held", "dotnet build", drafter, {"KOR_GUARD_PROCS": empty, "KOR_GUARD_SLOT": slot}, "deny"),
+        ("the slot file means nothing to another tree", "dotnet build", b, {"KOR_GUARD_PROCS": empty, "KOR_GUARD_SLOT": slot}, "allow"),
+    ]
+    out = [(label, exp, verdict(cmd, env=env, cwd=cwd)) for label, cmd, cwd, env, exp in cases]
+    # the REAL process reader (bypassed by KOR_GUARD_PROCS above): its first version never split a row and allowed every
+    # build - found by the live probe, not by these cases. Its parser, on the two shapes PowerShell writes:
     sys.path.insert(0, os.path.dirname(GUARD))
     import claude_bash_guard as g
-    yes = [
-        'cd "/c/VIsual Studio Projects/JoeBrain" && dotnet build -c Release',
-        'Set-Location "C:\\VIsual Studio Projects\\JoeBrain-trader"; dotnet test tests/JoeBrain.Tests',
-        'dotnet build "C:\\VIsual Studio Projects\\KOR.Drafter\\KOR.Drafter.sln"',
-    ]
-    no = [
-        'cd "/c/VIsual Studio Projects/Operations" && dotnet test --filter "Speed!=Slow"',
-        'dotnet build -c Release',
-        'dotnet test "C:\\VIsual Studio Projects\\Operations\\Kor.Operations.sln"',
-    ]
-    return [(c, "other") for c in yes if g.OTHER_REPO.search(c)] + [(c, "FAIL other") for c in yes if not g.OTHER_REPO.search(c)] \
-         + [(c, "ours") for c in no if not g.OTHER_REPO.search(c)] + [(c, "FAIL ours") for c in no if g.OTHER_REPO.search(c)]
+    one = g.parse_procs('{"ProcessId":7,"Name":"testhost.exe","CommandLine":"C:\\\\x\\\\testhost.exe"}')
+    many = g.parse_procs('[{"ProcessId":7,"Name":"testhost.exe","CommandLine":"a"},{"ProcessId":8,"Name":"dotnet.exe","CommandLine":null}]')
+    out.append(("parse_procs: a lone object (one process)", "[('7', 'testhost.exe', 'C:\\\\x\\\\testhost.exe')]", repr(one)))
+    out.append(("parse_procs: an array, a null command line", "[('7', 'testhost.exe', 'a'), ('8', 'dotnet.exe', '')]", repr(many)))
+    out.append(("parse_procs: nothing / not JSON", "[] []", f"{g.parse_procs('')} {g.parse_procs('oops')}"))
+    return out
 
 
 def preflight_cases():
@@ -274,17 +310,13 @@ def preflight_cases():
 
 def main():
     failed = 0
-    for command, expected in other_repo_cases():
-        if expected.startswith("FAIL"):
-            failed += 1
-        print(f"{'FAIL' if expected.startswith('FAIL') else 'ok  '} {expected:5} | {command[:90]}")
     for command, expected in CASES:
         got = verdict(command)
         mark = "ok  " if got == expected else "FAIL"
         if got != expected:
             failed += 1
         print(f"{mark} {expected:5} {got:5} | {command[:90]}")
-    rate = sql_rate_cases() + duration_cases() + preflight_cases()
+    rate = sql_rate_cases() + duration_cases() + preflight_cases() + busy_tree_cases()
     for label, expected, got in rate:
         mark = "ok  " if got == expected else "FAIL"
         if got != expected:

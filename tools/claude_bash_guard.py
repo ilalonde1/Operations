@@ -245,10 +245,6 @@ RULES = [
      "$out. Or run it unpiped."),
 ]
 
-BUILD = re.compile(r"dotnet\s+(?:test|build)")
-# a command whose path names a checkout other than Operations under "VIsual Studio Projects" (JoeBrain, KOR.Drafter, ...)
-OTHER_REPO = re.compile(r"(?i)VIsual Studio Projects[\\/](?!Operations(?:[\\/\"' ]|$))[A-Za-z0-9_.-]+")
-
 # 5. THE FULL APP SUITE FOR A ONE-AREA CHANGE. 3.5 minutes and the build lock per run. On
 #    2026-10-13 it ran twice, 7 minutes, for a change confined to BdReports whose own classes
 #    run in 30 s -- with feedback_run_the_targeted_tests_not_the_suite sitting in memory.
@@ -349,23 +345,115 @@ def missing_slow_inputs():
 
 
 
-def testhost_running():
-    """A test run OF THIS REPO holds the build output lock; a second one fails with MSB3027.
+# W8 (Operations docs/codex/CODEX-CLAUDE-WEAKNESSES-RESPONSE.md:172; Framework lanes/2026-11-19/PLAN-W1-W9-CHECKS.md
+# check 2), 19 Nov: a fresh coordinator started in C:\VIsual Studio Projects\KOR.Drafter-portmerge while the previous
+# coordinator's PdfToSafe test (pid 11508, testhost 13784) still ran there; that afternoon's rebuild had already failed on
+# a DLL lock. The old check knew ONE folder (the Operations main checkout, by a hard-coded path), so a host in any other
+# repo or any git worktree was invisible. Now: the folder the build is FOR (the project path it names, else a leading
+# cd "X", else the hook's cwd) is walked up to its git root (a .git folder, or a .git FILE - a worktree), and the build is
+# refused while a testhost.exe, or a dotnet build/test/publish, whose command line names that root is alive - any repo,
+# any worktree, this session's own run included (it holds the same lock). Also KOR.Drafter's test slot file.
+# CHECKS: process command lines (Win32_Process), the slot file. DOES NOT CHECK: an MSBuild node-reuse server (no path on
+# its command line); a build run by path through a variable; edits by another session in the same tree (no lock to see).
+# SAME-CLASS MISS: a second session EDITING files in a tree where a first one builds - nothing here sees it.
+BUSY_NAMES = ("testhost.exe", "dotnet.exe")
+BUSY_DOTNET = re.compile(r"(?i)\b(?:test|build|publish|vstest\.console\.dll)\b")
+LEADING_CD = re.compile(r"""^\s*cd\s+(?:"([^"]+)"|'([^']+)'|(\S+))\s*(?:&&|;)""")
+BUILD_PATH = re.compile(r"""(?i)dotnet(?:\.exe)?\s+(?:build|test|publish)\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|-][^\s;&|]*))""")
+DRAFTER_SLOT = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Temp", "kor-drafter-testslot.txt")
 
-    By command line, not by name: other Claude sessions run other repos' suites on this box
-    (JoeBrain's, FileSync's), and their hosts hold none of our locks (2026-09-19)."""
+
+def _win(p):
+    """A Git Bash /c/x path as C:/x; anything else as given."""
+    m = re.match(r"^/([a-zA-Z])/(.*)$", p)
+    return f"{m.group(1).upper()}:/{m.group(2)}" if m else p
+
+
+def git_root(path):
+    """The git root above path (a .git folder, or the .git FILE of a worktree), lower-case with backslashes; None if none."""
+    try:
+        d = os.path.abspath(_win(path))
+    except Exception:
+        return None
+    if os.path.isfile(d):
+        d = os.path.dirname(d)
+    while True:
+        if os.path.exists(os.path.join(d, ".git")):
+            return d.lower().replace("/", "\\").rstrip("\\")
+        up = os.path.dirname(d)
+        if up == d:
+            return None
+        d = up
+
+
+def build_root(cmd, cwd):
+    """The git root of the tree this build is FOR: the project path it names, else a leading cd, else cwd."""
+    base = cwd or os.getcwd()
+    cd = LEADING_CD.match(cmd)
+    if cd:
+        base = os.path.join(base, _win(next(g for g in cd.groups() if g)))
+    m = BUILD_PATH.search(cmd)
+    if m:
+        p = _win(next(g for g in m.groups() if g))
+        return git_root(p if os.path.isabs(p) else os.path.join(base, p)) or git_root(base)
+    return git_root(base)
+
+
+def processes():
+    """[(pid, name, command line)] of testhost.exe and dotnet.exe. KOR_GUARD_PROCS names a JSON file of the same shape
+    (tests); otherwise Win32_Process by CIM - by command line, never by name alone."""
+    fake = os.environ.get("KOR_GUARD_PROCS")
+    if fake:
+        with open(fake, encoding="utf-8") as f:
+            return [tuple(x) for x in json.load(f)]
+    # JSON, not a tab-joined line: the first version used '{0}`t{1}' in SINGLE quotes, where PowerShell never expands `t,
+    # so no row ever split and the guard allowed every build - its fake-process tests passed, the live probe caught it
     try:
         out = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command",
-             "Get-CimInstance Win32_Process -Filter \"Name='testhost.exe'\" | Select-Object -ExpandProperty CommandLine"],
-            capture_output=True, text=True, timeout=15).stdout
+             "@(Get-CimInstance Win32_Process -Filter \"Name='testhost.exe' OR Name='dotnet.exe'\" | "
+             "Select-Object ProcessId,Name,CommandLine) | ConvertTo-Json -Compress -Depth 2"],
+            capture_output=True, text=True, timeout=15).stdout.strip()
     except Exception:
-        return False
-    # Only a host running from THIS checkout holds its lock. 10 Nov 13:24: a KOR.Drafter suite copy
-    # (KOR.Drafter\work\_suite\<sha>\Kor.Operations.EngineeringTools.Core.Tests) held no Operations output and still
-    # refused every Operations build for over an hour.
-    return any("\\visual studio projects\\operations\\" in line.lower().replace("/", "\\")
-               for line in out.splitlines() if "kor.operations" in line.lower())
+        return []
+    return parse_procs(out)
+
+
+def parse_procs(out):
+    """[(pid, name, command line)] from Get-CimInstance ... | ConvertTo-Json: an array, or (one process) a lone object."""
+    try:
+        data = json.loads(out) if out else []
+    except ValueError:
+        return []
+    if isinstance(data, dict):   # ConvertTo-Json writes a lone object, not a one-item array, on Windows PowerShell 5.1
+        data = [data]
+    return [(str(p.get("ProcessId")), p.get("Name") or "", p.get("CommandLine") or "") for p in data if isinstance(p, dict)]
+
+
+def busy_in(root):
+    """Why the tree at root is busy (a list of lines), or [] - a testhost or a dotnet build/test naming root, or the
+    KOR.Drafter slot file for a KOR.Drafter tree."""
+    if not root:
+        return []
+    why = []
+    for pid, name, line in processes():
+        text = (line or "").lower().replace("/", "\\")
+        if name.lower() not in BUSY_NAMES or (root + "\\") not in text:
+            continue
+        if name.lower() == "dotnet.exe" and ("/nodemode" in text or not BUSY_DOTNET.search(text)):
+            continue
+        why.append(f"pid {pid} {name}: {line[:160]}")
+    slot = os.environ.get("KOR_GUARD_SLOT") or DRAFTER_SLOT
+    if os.path.basename(root) == "kor.drafter" and os.path.isfile(slot):
+        try:
+            why.append("KOR.Drafter test slot held: " + open(slot, encoding="utf-8", errors="replace").read().strip()[:160])
+        except OSError:
+            pass
+    return why
+
+
+DOTNET_BUILD_AT_COMMAND = re.compile(r"(?is)(?:^|[;&|(\n])\s*(?:(?:timeout(?:\s+-\S+)*\s+\S+|time|env|nice|command|[A-Za-z_]\w*=\S*)\s+)*"
+                                     r"(?:\S*[/\\])?dotnet(?:\.exe)?\s+(?:build|test|publish)\b")
 
 
 PAYLOAD = {}
@@ -420,9 +508,13 @@ def _rest(cmd):
     # Only for a build OF THIS REPO: a command that names another repo's checkout ("cd .../JoeBrain && dotnet build")
     # touches none of our output, and on 2026-09-19 this held the JoeBrain session for twenty minutes while the
     # drawing pipeline's suite ran - the lock it feared was not the one the command would take.
-    if BUILD.search(cmd) and not OTHER_REPO.search(cmd) and testhost_running():
-        deny("A testhost is already running and holds the build output lock -- this will "
-             "fail with MSB3027. Wait for it to finish first.")
+    if DOTNET_BUILD_AT_COMMAND.search(blank_quotes(cmd)):
+        root = build_root(cmd, PAYLOAD.get("cwd"))
+        why = busy_in(root)
+        if why:
+            deny(f"W8: the tree you are building ({root}) is busy - a build or test from it is still running and holds its "
+                 "output lock (this would fail with MSB3027, or test the wrong binaries). It may be ANOTHER session's: do not "
+                 "kill it; ask that session (ListAgents / SendMessage) or wait. " + " | ".join(why))
 
     if APP_SUITE.search(cmd) and not FILTERED.search(cmd) and not DELIBERATE_FULL.search(cmd):
         deny("The full App suite without --filter: 3.5 minutes and the build lock, for a change that "
