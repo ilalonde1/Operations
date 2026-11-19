@@ -31,7 +31,7 @@ public static class StartDocs
         /// <summary>The unread runs of lines within [from, to] (the whole file when to is 0).</summary>
         public IReadOnlyList<(int From, int To)> MissingIn(int from, int to)
         {
-            var end = to > 0 ? Math.Min(to, Total) : Total;
+            var end = to; // the CURRENT file decides (review 2291): a line past what the read delivered (a doc that grew) is unread, never skipped
             var gaps = new List<(int, int)>();
             int? start = null;
             for (var i = from; i <= end + 1; i++)
@@ -64,7 +64,9 @@ public static class StartDocs
         {
             var t = text[i].TrimStart();
             var level = t.TakeWhile(c => c == '#').Count();
-            if (level == 0 || !t[level..].TrimStart().StartsWith(d.Section, StringComparison.OrdinalIgnoreCase)) continue;
+            var head = level == 0 ? "" : t[level..].TrimStart();
+            if (level == 0 || !head.StartsWith(d.Section, StringComparison.OrdinalIgnoreCase)
+                || (head.Length > d.Section.Length && char.IsLetterOrDigit(head[d.Section.Length]))) continue;   // "#STATE" is not "STATEMENT"
             var end = text.Length;
             for (var j = i + 1; j < text.Length; j++)
             {

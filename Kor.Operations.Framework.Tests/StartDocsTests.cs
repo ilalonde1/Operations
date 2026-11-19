@@ -108,12 +108,28 @@ public class StartDocsTests : IDisposable
     }
 
     [Fact]
-    public void ReadingTools_AreTheOnlyOnesAllowedBeforeTheRead()
+    public void ReadingTools_AreExactlyTheReadingOnes()   // review 2291: an added write-capable tool must turn this red
     {
-        Assert.Contains("Read", StartDocs.ReadingTools);
-        Assert.DoesNotContain("Bash", StartDocs.ReadingTools);
-        Assert.DoesNotContain("Edit", StartDocs.ReadingTools);
-        Assert.DoesNotContain("Write", StartDocs.ReadingTools);
-        Assert.DoesNotContain("Agent", StartDocs.ReadingTools);
+        Assert.Equal(new[] { "AskUserQuestion", "Glob", "Grep", "ListAgents", "Read", "TaskStop", "ToolSearch" },
+                     StartDocs.ReadingTools.OrderBy(t => t, StringComparer.Ordinal).ToArray());
+    }
+
+    [Fact]
+    public void ADocThatGrewAfterTheRead_NeedsItsNewLines()   // review 2291: the current file decides, not the read's total
+    {
+        var read = ReadResult(Plan, 1, 20, 20);
+        Assert.True(Decide(new[] { read }, "docs/BUILD-PLAN.md").Allow);
+        File.AppendAllLines(Plan, new[] { "plan line 21", "plan line 22" });
+        var d = Decide(new[] { read }, "docs/BUILD-PLAN.md");
+        Assert.False(d.Allow);
+        Assert.Contains("lines 21-22 unread", d.Reason);
+    }
+
+    [Fact]
+    public void AHeadingIsMatchedAsAWord()   // review 2291: '#STATE' must not take a 'STATEMENT' heading
+    {
+        File.WriteAllLines(Handover, new[] { "# H", "## STATEMENT of work", "x", "## STATE NOW", "now", "## Other", "y" });
+        var d = Decide(new[] { ReadResult(Handover, 4, 2, 7) }, "docs/HANDOVER.md#STATE");
+        Assert.True(d.Allow, d.Reason);
     }
 }

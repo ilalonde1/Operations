@@ -252,7 +252,10 @@ public static partial class Program
         var cacheDir = o.Get("--cache-dir") ?? StartCache.DefaultDir;
         var open = StartDocs.OpenMarker(cacheDir, session);
         if (File.Exists(open)) { Say("allow: this session's start docs are read"); return 0; }
-        var docs = docArgs.Select(a => StartDocs.ParseDoc(a, cwd)).ToList();
+        // relative docs belong to the PROJECT, not wherever the session has cd'd to (review 2291: a session in a subfolder
+        // would find the doc 'not on disk' and pass without the read); Claude Code sets CLAUDE_PROJECT_DIR for hooks
+        var projectRoot = Environment.GetEnvironmentVariable("CLAUDE_PROJECT_DIR") is { Length: > 0 } pd ? pd : cwd;
+        var docs = docArgs.Select(a => StartDocs.ParseDoc(a, projectRoot)).ToList();
         var d = StartDocs.Decide(docs, StartDocs.Scan(StartGate.ReadLines(transcript), docs), p => File.Exists(p) ? File.ReadAllLines(p) : null);
         var deniedPath = StartDocs.DeniedMarker(cacheDir, session);
         void Mark(string path, string text)
