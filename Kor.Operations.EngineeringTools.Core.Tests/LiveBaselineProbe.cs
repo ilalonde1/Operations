@@ -23,6 +23,7 @@ public sealed class LiveBaselineProbe
         (string drawings, string reference) = job switch
         {
             "31138" => ("_DXF-plans-for-rebuild", "31138-reference-from-Andrea-gravity.e2k"),
+            "31168" => ("_DXF-plans-for-rebuild", "31168-reference.e2k"),
             _ => throw new ArgumentException($"no live baseline named {job}"),
         };
         string dir = Path.Combine(AppContext.BaseDirectory, "TestResults", "live-baseline", job);
