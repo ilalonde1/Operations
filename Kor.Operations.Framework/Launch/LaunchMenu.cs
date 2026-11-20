@@ -181,6 +181,33 @@ public static class LaunchMenu
         catch (Exception e) { return $"`python` cannot be started ({Cut(e.Message, 120)})"; }
     }
 
+    /// <summary>Framework tools/guard_locks.py: derives the files a kor-claude session must not change from the hooks and
+    /// checks their ACLs (row 2195, 19 Nov: the 18 Nov hand lock had worn from 73 to 42 files).</summary>
+    public const string GuardLocksScript = @"C:\VIsual Studio Projects\Framework\tools\guard_locks.py";
+
+    /// <summary>
+    /// Null when guard_locks.py check passes (every guard, settings file, git shim and the review gate is locked against
+    /// kor-claude); else its verdict line. A missing script, a python failure or a timeout is a problem too (fails closed).
+    /// </summary>
+    public static string? GuardLockProblem()
+    {
+        if (!File.Exists(GuardLocksScript)) return $"{GuardLocksScript} is missing";
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo("python") { UseShellExecute = false, RedirectStandardOutput = true,
+                                                                         RedirectStandardError = true, CreateNoWindow = true };
+            foreach (var a in new[] { "-I", GuardLocksScript, "check" }) psi.ArgumentList.Add(a);
+            using var p = System.Diagnostics.Process.Start(psi)!;
+            var stdout = p.StandardOutput.ReadToEndAsync();
+            var stderr = p.StandardError.ReadToEndAsync();
+            if (!p.WaitForExit(120_000)) { try { p.Kill(); } catch { } return "guard_locks.py check did not finish in 120 s"; }
+            if (p.ExitCode == 0) return null;
+            var lines = (stdout.Result + stderr.Result).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return lines.Length == 0 ? $"guard_locks.py check exited {p.ExitCode}" : Cut(lines[^1], 300);
+        }
+        catch (Exception e) { return $"guard_locks.py check could not run ({Cut(e.Message, 120)})"; }
+    }
+
     /// <summary>
     /// The claude to start: claude.exe or claude.cmd on PATH, else npm's global folder under %APPDATA%. Null if none - the
     /// launcher says so rather than starting something else.

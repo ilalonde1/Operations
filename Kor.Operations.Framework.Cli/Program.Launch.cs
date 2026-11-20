@@ -15,7 +15,8 @@ namespace Kor.Operations.Framework.Cli;
 public static partial class Program
 {
     internal static int LaunchVerb(Options o, TextWriter output, TextWriter error, BrainDb? board, string hookErrorLog,
-                                  Func<bool>? elevated = null, TextReader? input = null, Func<string?>? pythonProblem = null)
+                                  Func<bool>? elevated = null, TextReader? input = null, Func<string?>? pythonProblem = null,
+                                  Func<string?>? lockProblem = null)
     {
         var who = LaunchMenu.WhoAmI();
         if ((elevated ?? LaunchMenu.IsElevated)())
@@ -93,6 +94,22 @@ public static partial class Program
                 }
                 catch (Exception e) { LogHookError(hookErrorLog, o, e); }
                 return 5;
+            }
+            // Row 2195 (Ian #134886): a session must not be able to change its own guards. A lock is an ACL a file loses when
+            // git or an editor replaces it, so it is checked here, before every session, not once.
+            var locks = (lockProblem ?? LaunchMenu.GuardLockProblem)();
+            if (locks is not null)
+            {
+                error.WriteLine($"kor launch: REFUSED - the guard files are not all locked: {locks}. A session could change its " +
+                                "own guards. Ask Ian (or the Framework lead in an administrator window) to run: " +
+                                $"python -I \"{LaunchMenu.GuardLocksScript}\" apply");
+                try
+                {
+                    if (board is not null) StallStore.LogGuardRefusal(board, "kor launch", "guards unlocked", null, null, $"{who}: {locks}");
+                    else BrainDb.Use3s(KorStandardsConnection.Login.Board, b => StallStore.LogGuardRefusal(b, "kor launch", "guards unlocked", null, null, $"{who}: {locks}"));
+                }
+                catch (Exception e) { LogHookError(hookErrorLog, o, e); }
+                return 6;
             }
             output.WriteLine($"Starting claude in {chosen.Path} ({chosen.Lead}) - {claude}");
             if (o.Get("--dry-run") is not null) return 0;

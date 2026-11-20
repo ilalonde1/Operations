@@ -113,6 +113,27 @@ public class LaunchMenuTests
     }
 
     [Fact]
+    public void UnlockedGuardsAreRefusedBeforeClaudeStarts()
+    {
+        var out_ = new StringWriter();
+        var err = new StringWriter();
+        var log = Path.Combine(Path.GetTempPath(), $"kor-launch-test-{Guid.NewGuid():N}.log");
+        using var board = BrainDb.OpenRolledBack(KorStandardsConnection.Login.Board);
+        var exit = Program.LaunchVerb(Program.Options.Parse(new[] { "launch", "--root", Root, "--pick", "1", "--dry-run" }),
+                                      out_, err, board, log, elevated: () => false, pythonProblem: () => null,
+                                      lockProblem: () => "guard locks: 88 of 90 locked - 2 UNLOCKED (test)");
+        if (out_.ToString().Contains("claude was not found")) { Assert.Equal(4, exit); return; }
+        Assert.Equal(6, exit);
+        Assert.Contains("not all locked", err.ToString());
+        Assert.Contains("guard_locks.py", err.ToString());
+        Assert.DoesNotContain("Starting claude", out_.ToString());
+    }
+
+    [Fact]
+    public void TheRealGuardFilesAreLocked() =>   // 19 Nov 20:10 as kor-claude: 90 of 90 (row 2195); fails the day a lock wears
+        Assert.Null(LaunchMenu.GuardLockProblem());
+
+    [Fact]
     public void PythonRunsForThisAccount() =>   // the dev PC and a kor-claude window both have one (row 2188, 19 Nov 18:25)
         Assert.Null(LaunchMenu.PythonProblem());
 
