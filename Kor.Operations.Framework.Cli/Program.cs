@@ -72,7 +72,7 @@ public static partial class Program
                 "secret-scan" => SecretScan(o, stdin, output, db),
                 "state" => State(o, output, db),
                 "migration-lint" => MigrationLintVerb(o, stdin, output),
-                "enroll-check" => EnrollCheckVerb(o, output, hook, db),
+                "enroll-check" => EnrollCheckVerb(o, output, hook, db, hookErrorLog),
                 "read" => ReadVerb(o, output, db),
                 "recall" => RecallVerb(o, stdin, output, hook, db, board),
                 "repeat" => RepeatVerb(o, stdin, output, hook, db, board, hookErrorLog),

@@ -13,8 +13,26 @@ public static class Git
 
     public static string? Run(string dir, params string[] args) => Run(dir, DefaultTimeout, args);
 
-    public static string? Run(string dir, TimeSpan timeout, params string[] args)
+    /// <summary>One git run as <see cref="Exec"/> saw it. <paramref name="ExitCode"/> null = it never reached an exit
+    /// (could not start, threw, or ran out of time); <paramref name="Expired"/> = its time ran out, process or output.</summary>
+    public sealed record Result(int? ExitCode, string? Stdout, bool Expired)
     {
+        public bool Ok => ExitCode == 0 && !Expired && Stdout is not null;
+    }
+
+    public static string? Run(string dir, TimeSpan timeout, params string[] args) =>
+        Exec(dir, timeout, args) is { Ok: true } r ? r.Stdout : null;
+
+    /// <summary>
+    /// The one git runner (<see cref="Run"/> calls it): git's exit code, its stdout and whether the time ran out, so a
+    /// verb that answers with its exit code (<c>merge-base --is-ancestor</c>: 1 = no) is told apart from a failure and from an
+    /// overrun. The whole call - process AND its two output streams - is held to <paramref name="timeout"/> (board row 2206:
+    /// the streams were read unbounded once the process exited, so a child holding the pipe open could hang a hook); the
+    /// streams get at least <see cref="StreamGrace"/> once the process has exited inside its time.
+    /// </summary>
+    public static Result Exec(string dir, TimeSpan timeout, params string[] args)
+    {
+        var sw = Stopwatch.StartNew();
         var psi = new ProcessStartInfo("git")
         {
             WorkingDirectory = dir,
@@ -27,27 +45,63 @@ public static class Git
             StandardErrorEncoding = Encoding.UTF8,
         };
         foreach (var a in args) psi.ArgumentList.Add(a);
+        Process? p = null;
         try
         {
-            using var p = Process.Start(psi);
-            if (p is null) return null;
+            p = Process.Start(psi);
+            if (p is null) return new Result(null, null, false);
             p.StandardInput.Close();
             var stdout = p.StandardOutput.ReadToEndAsync();
             var stderr = p.StandardError.ReadToEndAsync();
-            if (!p.WaitForExit((int)timeout.TotalMilliseconds))
+            // the time runs from git's start, as it always has for Run's callers (the capture hooks): starting git took 0.03-0.12 s
+            // idle and more when loaded, and counting it would have tightened every existing timeout
+            sw.Restart();
+            if (!p.WaitForExit(Ms(timeout)))
             {
-                try { p.Kill(entireProcessTree: true); } catch { /* already gone */ }
-                return null;
+                KillAside(p);
+                p = null;
+                return new Result(null, null, true);
             }
-            p.WaitForExit();
-            _ = stderr.Result;
-            return p.ExitCode == 0 ? stdout.Result : null;
+            var left = timeout - sw.Elapsed;
+            if (!Task.WaitAll(new Task[] { stdout, stderr }, Ms(left < StreamGrace ? StreamGrace : left)))
+                return new Result(null, null, true);
+            return new Result(p.ExitCode, stdout.Result, false);
         }
         catch
         {
-            return null;
+            return new Result(null, null, false);
+        }
+        finally
+        {
+            p?.Dispose();
         }
     }
+
+    /// <summary>
+    /// Kills an overrun git and its tree off the caller's thread, waiting at most <see cref="KillGrace"/> for it: the tree
+    /// kill (`git` is a wrapper that starts the real git.exe) walks every process: kill alone measured 0.09-0.11 s idle, and an
+    /// expired call with the kill inline came back up to 2.7 s late on a loaded machine (row 2206, 19 Nov: a 270 ms slice
+    /// returned after 2956 ms; kill and dispose were not timed apart), which broke the caller's deadline.
+    /// If the calling process exits first, the kill is not finished and the overrun git runs on to its own end.
+    /// </summary>
+    private static void KillAside(Process p)
+    {
+        var kill = Task.Run(() =>
+        {
+            try { p.Kill(entireProcessTree: true); } catch { /* already gone */ }
+            finally { p.Dispose(); }
+        });
+        kill.Wait(KillGrace);
+    }
+
+    /// <summary>The longest an overrun call waits for its git to be killed before returning.</summary>
+    public static readonly TimeSpan KillGrace = TimeSpan.FromMilliseconds(150);
+
+    /// <summary>The least time the output streams are given once git has exited inside its time.</summary>
+    public static readonly TimeSpan StreamGrace = TimeSpan.FromMilliseconds(250);
+
+    // a negative TimeSpan would be -1 ms = wait forever to WaitForExit; clamp it, and cap at int.MaxValue
+    private static int Ms(TimeSpan t) => t <= TimeSpan.Zero ? 0 : (int)Math.Min(t.TotalMilliseconds, int.MaxValue);
 
     /// <summary>The repo's top-level folder, or null when dir is not inside a git work tree.</summary>
     public static string? TopLevel(string dir)
