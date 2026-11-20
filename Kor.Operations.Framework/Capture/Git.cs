@@ -97,8 +97,10 @@ public static class Git
     /// <summary>The longest an overrun call waits for its git to be killed before returning.</summary>
     public static readonly TimeSpan KillGrace = TimeSpan.FromMilliseconds(150);
 
-    /// <summary>The least time the output streams are given once git has exited inside its time.</summary>
-    public static readonly TimeSpan StreamGrace = TimeSpan.FromMilliseconds(250);
+    /// <summary>The least time the output streams are given once git has exited inside its time. Generous on purpose: the bound
+    /// is there for a pipe that never closes, not to hurry a loaded machine. At 250 ms, three git-reading tests went red in a
+    /// loaded full-suite run (row 2206, 20 Nov 00:0x); a slow stream read was the suspected cause, not proven.</summary>
+    public static readonly TimeSpan StreamGrace = TimeSpan.FromSeconds(5);
 
     // a negative TimeSpan would be -1 ms = wait forever to WaitForExit; clamp it, and cap at int.MaxValue
     private static int Ms(TimeSpan t) => t <= TimeSpan.Zero ? 0 : (int)Math.Min(t.TotalMilliseconds, int.MaxValue);
