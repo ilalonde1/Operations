@@ -14,9 +14,11 @@ Allowed through:
   - a push from outside a Claude session (CLAUDE_CODE_BRIDGE_SESSION_ID unset): Ian at a terminal. This ownership check
     is unchanged; the review guard (Framework tools/git_hooks/pre_push_review.py) checks every push whoever runs it.
   - commits listed in EXCEPTIONS_FILE (C:\KOR-Operations\push-exceptions.txt, one full or 7+ hex sha per line, '#' starts
-    a comment): the owners' OK in hand, e.g. the lead's one push of a stack every owner approved. The file is Ian's
-    (locked: Administrators and kor\ilalonde write, kor\kor-claude reads); a missing or unreadable file means none. The
-    same file the review guard reads. There is no "carry everything" switch, and no environment variable carries a sha:
+    a comment): the owners' OK in hand, e.g. the lead's one push of a stack every owner approved. Sessions WRITE the
+    file (Ian 19 Nov #134752, Framework row 2188), so a listed sha carries past THIS ownership check on the writer's word
+    alone; what still holds it is the review guard, which refuses every carried commit without an independent 'approve'
+    (a listed one only after `kor_review.py confirm-exceptions` has checked its evidence). A missing or unreadable file
+    means none. There is no "carry everything" switch, and no environment variable carries a sha:
     KOR_PUSH_CARRY_OK was removed 18 Nov (gap 1 phase 2) because the session that wanted the carry could set it itself.
 
 What it does NOT catch (stated, so nobody reads more into it):
@@ -24,8 +26,8 @@ What it does NOT catch (stated, so nobody reads more into it):
     of them), so Ian must list it in the exceptions file - it cannot tell Ian's commit from a session that forgot
     its trailer.
   - a forged or copied trailer.
-  - a loosened exceptions file: the hook does not check the file's ACL, and a MISSING file can be created by any
-    Authenticated User (Modify on C:\KOR-Operations, inherited). The same-class fault this would miss: a session able
+  - a session carrying another session's APPROVED commit by listing it: the file is session-writable by design, and
+    the review guard passes an approved commit whoever pushes it. The same-class fault this would miss: a session able
     to write any file this hook trusts (the hook itself, the shim in .git/hooks), or one running as kor\ilalonde.
   - pushes from any other clone, or `--no-verify`.
 Exit 1 refuses the push; the message names every foreign commit and its session.
@@ -33,7 +35,7 @@ Exit 1 refuses the push; the message names every foreign commit and its session.
 import os, re, subprocess, sys
 
 ZERO = "0" * 40
-# Ian's exceptions, shared with the review guard. Not overridable from the environment.
+# The push exceptions (session-written, Ian 19 Nov #134752), shared with the review guard. Not overridable from the environment.
 EXCEPTIONS_FILE = r"C:\KOR-Operations\push-exceptions.txt"
 
 def exceptions(path):
