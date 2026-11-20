@@ -23,8 +23,8 @@ Allowed through:
 
 What it does NOT catch (stated, so nobody reads more into it):
   - a commit with NO trailer is refused for a session (its owner cannot be known; authorship is "Ian Lalonde" on all
-    of them), so Ian must list it in the exceptions file - it cannot tell Ian's commit from a session that forgot
-    its trailer.
+    of them), so it must be listed in the exceptions file (a session writes the line) - it cannot tell Ian's commit
+    from a session that forgot its trailer.
   - a forged or copied trailer.
   - a session carrying another session's APPROVED commit by listing it: the file is session-writable by design, and
     the review guard passes an approved commit whoever pushes it. The same-class fault this would miss: a session able
@@ -87,7 +87,8 @@ def main(stdin=sys.stdin, env=os.environ, exceptions_file=EXCEPTIONS_FILE):
     if not foreign: return 0
     print("PUSH REFUSED - this push carries commits that are not this session's:", file=sys.stderr)
     for sha, who, subj, rref in foreign: print(f"  {sha}  {who}  -> {rref}  {subj}", file=sys.stderr)
-    print(f"Push only your own commits, or get each owner's OK and ask Ian to list the shas in {exceptions_file}.",
+    print(f"Push only your own commits, or get each owner's OK and list the shas, each with its evidence, in {exceptions_file}; "
+          "the review guard still needs each one approved (kor_review.py confirm-exceptions checks a listed one).",
           file=sys.stderr)
     return 1
 
