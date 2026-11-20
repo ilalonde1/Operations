@@ -87,7 +87,7 @@ def main(stdin=sys.stdin, env=os.environ, exceptions_file=EXCEPTIONS_FILE):
     if not foreign: return 0
     print("PUSH REFUSED - this push carries commits that are not this session's:", file=sys.stderr)
     for sha, who, subj, rref in foreign: print(f"  {sha}  {who}  -> {rref}  {subj}", file=sys.stderr)
-    print(f"Push only your own commits, or get each owner's OK and list the shas, each with its evidence, in {exceptions_file}; "
+    print(f"Push only your own commits, or get each owner's OK and list the shas in {exceptions_file}, each with its evidence in a '# ...' comment on its line or just above it; "
           "the review guard still needs each one approved (kor_review.py confirm-exceptions checks a listed one).",
           file=sys.stderr)
     return 1
