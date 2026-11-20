@@ -56,7 +56,8 @@ public static partial class Program
         catch (Exception e) when (copiesRun is not null)
         {
             // the enrolment's own failure is said exactly as before (the hook's COULD NOT CHECK line, or the error and exit 1),
-            // and the copies line follows it instead of being lost with it
+            // and the copies line is not lost with it: in --hook it follows the COULD NOT CHECK line; without --hook the copies
+            // lines go to output BEFORE the rethrown error reaches stderr (review 2411 MINOR 2)
             if (!hook) { foreach (var l in copiesRun.Result) output.WriteLine(l); throw; }
             HookFailure(o, e, output, hookErrorLog);
             output.WriteLine(copiesRun.Result[0]);

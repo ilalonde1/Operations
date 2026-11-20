@@ -71,7 +71,9 @@ public static class CopiesCheck
     public static readonly TimeSpan DefaultDeadline = TimeSpan.FromSeconds(12);
 
     /// <summary>The most one git read may take inside the deadline. Each read's time runs from git's start (<see cref="Git.Exec"/>),
-    /// so the rule can end past the deadline by one git start plus <see cref="Git.KillGrace"/>.</summary>
+    /// so the rule can end past the deadline by one git start plus <see cref="Git.KillGrace"/> - or, when git exits inside its
+    /// time but its output is still being read, by up to <see cref="Git.StreamGrace"/> (5 s): 12 + 5 s, still inside the hook's 30 s
+    /// (review 2411 MINOR 1).</summary>
     public static readonly TimeSpan PerCall = TimeSpan.FromSeconds(6);
 
     /// <summary>A git read is not started with less time than this left (it could not finish; starting it only adds a kill).</summary>
