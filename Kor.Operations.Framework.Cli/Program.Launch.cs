@@ -79,7 +79,7 @@ public static partial class Program
                 output.WriteLine("claude was not found on PATH or in %APPDATA%\\npm - install Claude Code for this account first.");
                 return 4;
             }
-            // 19 Nov 18:0x: Python was per-user for ilalonde only, so every guard hook in a kor-claude session failed
+            // 19 Nov (row 2188 Evidence, 18:0x-18:26): Python was per-user for ilalonde only, so every guard hook in a kor-claude session failed
             // ("python: command not found") and a failed hook blocks nothing - the session ran unguarded (row 2188, #134757).
             var py = (pythonProblem ?? LaunchMenu.PythonProblem)();
             if (py is not null)
@@ -88,8 +88,8 @@ public static partial class Program
                                 "NO guards. Put a Python 3 on this account's PATH first (row 2188).");
                 try
                 {
-                    if (board is not null) StallStore.LogGuardRefusal(board, "kor launch", "python missing", null, null, who);
-                    else BrainDb.Use3s(KorStandardsConnection.Login.Board, b => StallStore.LogGuardRefusal(b, "kor launch", "python missing", null, null, who));
+                    if (board is not null) StallStore.LogGuardRefusal(board, "kor launch", "python missing", null, null, $"{who}: {py}");
+                    else BrainDb.Use3s(KorStandardsConnection.Login.Board, b => StallStore.LogGuardRefusal(b, "kor launch", "python missing", null, null, $"{who}: {py}"));
                 }
                 catch (Exception e) { LogHookError(hookErrorLog, o, e); }
                 return 5;
