@@ -25,17 +25,20 @@ public class RecallTests
         return (code, o.ToString(), e.ToString());
     }
 
-    // a real committed record: the lesson the brief cites for a grader
+    // a real committed record: the lesson the brief cites for a grader. Found by NAME, which survives a supersede: the id the
+    // test first held (#114267) was superseded by #132324 (brain.Memory SupersededBy, read 19 Nov 21:2x, row 2196) and recall
+    // rightly shows only the live one
     private const string Lane = "Framework";
     private const string KnownTask = "a grader must fail a known bad run";
-    private const int KnownId = 114267;
+    private const string KnownName = "a-grader-must-fail-a-known-bad-run";
 
     [Fact]
     public void ARecallFindsAKnownRecordAndNamesItsIdScoreSourceAndAsOf()
     {
         var (code, text, err) = Run("recall", "--module", Lane, KnownTask);
         Assert.True(code == 0, err);
-        var line = text.Split('\n').FirstOrDefault(l => l.StartsWith($"=== record #{KnownId} ", StringComparison.Ordinal));
+        var line = text.Split('\n').FirstOrDefault(l => l.StartsWith("=== record #", StringComparison.Ordinal) &&
+                                                        l.Contains($"] {KnownName} - score ", StringComparison.Ordinal));
         Assert.True(line is not null, text.Length > 3000 ? text[..3000] : text);
         Assert.Matches(@" - score \d+ - ", line!);
         Assert.Matches(@" - source .+ - ", line!);
