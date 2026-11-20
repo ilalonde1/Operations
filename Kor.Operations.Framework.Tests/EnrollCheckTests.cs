@@ -46,6 +46,9 @@ public class EnrollCheckTests
                 {
                     var cmd = hs[h]!["command"]?.GetValue<string>() ?? "";
                     if (!cmd.Contains("kor.exe")) continue;
+                    // a verb wired here but not yet required of every repo (each names its rollout row) is not asked of enroll-check
+                    var verb = EnrollCheck.SplitArgs(cmd[(cmd.IndexOf("kor.exe") + 8)..]).FirstOrDefault() ?? "";
+                    if (EnrollCheck.NotYetRequired.ContainsKey(verb)) continue;
                     var copy = JsonNode.Parse(root.ToJsonString())!;
                     copy["hooks"]![ev]![g]!["hooks"]!.AsArray().RemoveAt(h);
                     yield return new object[] { $"{ev}: {cmd[(cmd.IndexOf("kor.exe") + 8)..]}", copy.ToJsonString() };
@@ -127,6 +130,10 @@ public class EnrollCheckTests
         // make the theory below pass by testing nothing
         Assert.True(EachKorHookRemoved().Count() >= 20, $"only {EachKorHookRemoved().Count()} kor hooks found");
     }
+
+    [Fact]
+    public void EveryNotYetRequiredVerbNamesItsRolloutRow() =>
+        Assert.All(EnrollCheck.NotYetRequired, kv => Assert.Matches(@"^row \d+$", kv.Value));
 
     [Theory]
     [MemberData(nameof(EachKorHookRemoved))]

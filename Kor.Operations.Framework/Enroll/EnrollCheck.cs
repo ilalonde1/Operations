@@ -79,6 +79,15 @@ public static class EnrollCheck
 
     private static readonly string[] Shell = { "Bash", "PowerShell" };
     private static readonly string[] EnforceTools = { "Bash", "PowerShell", "Write", "Edit", "MultiEdit", "NotebookEdit" };
+    private static readonly string[] RecallTools = { "Bash", "PowerShell", "Write", "Agent", "SendMessage" };
+
+    /// <summary>kor verbs wired in some repos but not yet required of every one, each with the row that rolls it out. The
+    /// enroll-check theory (EnrollCheckTests.RemovingAnyOneKorHookFailsNamingIt) skips exactly these.</summary>
+    public static readonly IReadOnlyDictionary<string, string> NotYetRequired = new Dictionary<string, string>
+    {
+        // kor repeat --hook (row 1998, RESET-7): Framework and Operations only on 19 Nov; KOR.Drafter's is row 2037
+        ["repeat"] = "row 2037",
+    };
 
     // declared before Required: static fields initialise in text order (Required reads this)
     private static readonly string[] StallTools = { "Bash", "PowerShell", "WebFetch", "mcp__networkops__networkops_run" };
@@ -103,7 +112,7 @@ public static class EnrollCheck
     {
         new Hook("SessionStart kor start --part record", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "record"),
         new Hook("SessionStart kor start --part state", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "state"),
-        new Hook("SessionStart kor start --part memory", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "memory"),
+        new Hook("SessionStart kor start --part memory --page 1", "SessionStart", Array.Empty<string>(), "start", c => c.Opt("--part") == "memory"),
         // the RECORDS pages (the lead, 3 Nov) are checked after this list: all RecordsPages of them, unless the repo runs the SMALL
         // START (row 1893, RESET step 1, framework-84's ruling 10 Nov): kor recall --hook on UserPromptSubmit brings the records that
         // match at the moment of acting instead of 4 pages at every start
@@ -133,6 +142,12 @@ public static class EnrollCheck
         new Hook("PreToolUse (*) kor start-docs --doc ... (W1/W6, the start routine's docs read first)", "PreToolUse", ContextTools, "start-docs",
                  c => c.Opt("--doc") is not null),
         new Hook("UserPromptSubmit kor context (G5 context cliff, row 1474)", "UserPromptSubmit", Array.Empty<string>(), "context", _ => true),
+        // row 1893 (the brain): the records nearest the act, before it - wired in 7 of 7 repos 19 Nov (Framework row 2196 found
+        // a repo could drop them unnoticed: enroll-check did not ask for them)
+        new Hook("PreToolUse (Bash|PowerShell|Write|Agent|SendMessage) kor recall (row 1893)", "PreToolUse", RecallTools, "recall",
+                 c => !c.Has("--push-back")),
+        new Hook("Stop kor recall --push-back (row 1893, push back on Ian's decisions)", "Stop", Array.Empty<string>(), "recall",
+                 c => c.Has("--push-back")),
         new Hook("Stop kor context (G5 context cliff, row 1474)", "Stop", Array.Empty<string>(), "context", _ => true),
     };
 

@@ -70,7 +70,7 @@ public static class SqlWriteCutGuard
     public static string Says(Refusal r) =>
         $"A SQL write read through a cut (board row 1212, lesson #132591): `{Clip(r.Write)}` piped into `{Clip(r.Cut)}`. A cut hides " +
         "the error or the 0-row count that says the write failed (mistake 53). Run it with its output whole, or read back what it " +
-        "wrote (OUTPUT inserted.* / @@ROWCOUNT) uncut. `tail -n +N` (drops a header only) passes.";
+        "wrote (@@ROWCOUNT, or a SELECT of the row) uncut. `tail -n +N` (drops a header only) passes.";
 
     private static string Clip(string s) => s.Length <= 120 ? s : s[..117] + "...";
 }
