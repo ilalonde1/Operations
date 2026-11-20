@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Kor.Operations.Framework.Capture;
+using Kor.Operations.Framework.Stall;
 using Kor.Operations.Framework.Start;
 
 namespace Kor.Operations.Framework.Cli;
@@ -224,9 +225,11 @@ public static partial class Program
     /// <summary>
     /// W1/W6: <c>kor start-docs --doc P [--doc P ...] --hook</c> on PreToolUse, every tool. The rules, what it reads and what it
     /// does not are <see cref="StartDocs"/>'s header. Relative --doc paths resolve against the hook's cwd. Bad input, a subagent,
-    /// no transcript, KOR_START_GATE=off, a reading tool: allow. Exit 0 always in hook mode; never reads the database.
+    /// no transcript, KOR_START_GATE=off, a reading tool: allow. Exit 0 always in hook mode; never reads the database, and a
+    /// refusal writes one oversight.GuardRefusal row (<see cref="LogStartRefusal"/>, 3 s cap, a failure never changes the decision).
     /// </summary>
-    private static int StartDocsVerb(Options o, Func<string?> stdin, TextWriter output, bool hook)
+    private static int StartDocsVerb(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? board = null,
+                                     string? hookErrorLog = null)
     {
         void Say(string text) { if (!hook) output.WriteLine(text); }
         var docArgs = o.All("--doc");
@@ -283,15 +286,35 @@ public static partial class Program
         output.WriteLine(hook
             ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", permissionDecision = "deny", permissionDecisionReason = d.Reason } })
             : "deny: " + d.Reason);
+        if (hook) LogStartRefusal(board, hookErrorLog, o, "kor start-docs", "start docs unread", session, cwd, d.Reason);
         return 0;
+    }
+
+    /// <summary>
+    /// W7 (Framework handover 19 Nov): a start gate's refusal is one oversight.GuardRefusal row, so a guard row can close citing a
+    /// live refusal. Hook mode only (a by-hand run is a test, not a refusal). The decision stands whether or not it is logged:
+    /// any failure goes to the hook error log. Pattern: Program.Context.cs LogRefusal.
+    /// </summary>
+    private static void LogStartRefusal(BrainDb? board, string? hookErrorLog, Options o, string guard, string rule, string? session,
+                                        string? cwd, string reason)
+    {
+        try
+        {
+            var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+            if (board is not null) StallStore.LogGuardRefusal(board, guard, rule, session, repo, reason);
+            else BrainDb.Use3s(KorStandardsConnection.Login.Board, b => StallStore.LogGuardRefusal(b, guard, rule, session, repo, reason));
+        }
+        catch (Exception e) { if (hookErrorLog is not null) LogHookError(hookErrorLog, o, e); }
     }
 
     /// <summary>
     /// Row 1569: <c>kor start-gate --module M --hook</c> on PreToolUse, every tool. Allow at once when this session's gate is open
     /// (a marker file, no transcript read). Else: <see cref="StartGate"/> on the session's own transcript. Bad input, a subagent, no
-    /// transcript, KOR_START_GATE=off: allow, nothing printed. Exit 0 always in hook mode; never reads the database.
+    /// transcript, KOR_START_GATE=off: allow, nothing printed. Exit 0 always in hook mode; never reads the database, and a
+    /// refusal writes one oversight.GuardRefusal row (<see cref="LogStartRefusal"/>).
     /// </summary>
-    private static int StartGateVerb(Options o, Func<string?> stdin, TextWriter output, bool hook)
+    private static int StartGateVerb(Options o, Func<string?> stdin, TextWriter output, bool hook, BrainDb? board = null,
+                                     string? hookErrorLog = null)
     {
         void Say(string text) { if (!hook) output.WriteLine(text); }
         var module = o.Get("--module") ?? throw new ArgumentException("start-gate needs --module <lane>");
@@ -345,6 +368,7 @@ public static partial class Program
         output.WriteLine(hook
             ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", permissionDecision = "deny", permissionDecisionReason = d.Reason } })
             : "deny: " + d.Reason);
+        if (hook) LogStartRefusal(board, hookErrorLog, o, "kor start-gate", "start pages unread", session, null, d.Reason);
         return 0;
     }
 }

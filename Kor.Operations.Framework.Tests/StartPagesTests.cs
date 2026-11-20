@@ -208,11 +208,12 @@ public class StartPagesTests
         {
             var transcript = Path.Combine(dir, "t.jsonl");
             File.WriteAllLines(transcript, new[] { Attachment(Page(1, 1)) });
+            using var board = BrainDb.OpenRolledBack(KorStandardsConnection.Login.Board);   // its refusal rows are not kept
             string Gate(string command)
             {
                 var o = new StringWriter();
                 Assert.Equal(0, Program.Run(new[] { "start-gate", "--module", "zz", "--cache-dir", dir, "--hook" }, () => GateInput(transcript, "Bash", command), o,
-                                            new StringWriter(), Path.Combine(dir, "log.txt")));
+                                            new StringWriter(), Path.Combine(dir, "log.txt"), board: board));
                 return o.ToString();
             }
             var self = Environment.ProcessPath!.Replace('\\', '/');
@@ -366,6 +367,39 @@ public class StartPagesTests
         System.Text.Json.JsonSerializer.Serialize(new { session_id = "gate-test", transcript_path = transcript, tool_name = tool, tool_input = new { command } });
 
     [Fact]
+    public void AStartDocsRefusalIsOneGuardRefusalRow()   // W7 (Framework handover 19 Nov): live refusals can be cited
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "kor-docs-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var transcript = Path.Combine(dir, "t.jsonl");
+            File.WriteAllLines(transcript, new[] { "nothing read yet" });
+            var handover = Path.Combine(dir, "HANDOVER.md");
+            File.WriteAllLines(handover, new[] { "# H", "", "## STATE NOW", "one", "two" });
+            using var board = BrainDb.OpenRolledBack(KorStandardsConnection.Login.Board);
+            int Logged()
+            {
+                using var c = board.Command("SELECT COUNT(*) FROM oversight.GuardRefusal WHERE Guard = N'kor start-docs' AND [Rule] = N'start docs unread' AND [Session] = N'gate-test'");
+                return Convert.ToInt32(c.ExecuteScalar());
+            }
+            string Docs(string tool)
+            {
+                var o = new StringWriter();
+                Assert.Equal(0, Program.Run(new[] { "start-docs", "--doc", handover + "#STATE NOW", "--cache-dir", dir, "--hook" },
+                                            () => GateInput(transcript, tool, "git status"), o, new StringWriter(), Path.Combine(dir, "log.txt"), board: board));
+                return o.ToString();
+            }
+            var before = Logged();
+            Assert.Contains("\"permissionDecision\":\"deny\"", Docs("Bash"));
+            Assert.Equal(before + 1, Logged());
+            Assert.DoesNotContain("deny", Docs("Read"));   // a reading tool is never refused, so never logged
+            Assert.Equal(before + 1, Logged());
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void TheVerbRefusesThenOpensThenStaysOpenAndGivesUpAfterTheLimit()
     {
         var dir = Path.Combine(Path.GetTempPath(), "kor-gate-" + Guid.NewGuid().ToString("N"));
@@ -374,14 +408,22 @@ public class StartPagesTests
         {
             var transcript = Path.Combine(dir, "t.jsonl");
             File.WriteAllLines(transcript, new[] { Attachment(Page(1, 1)) });
+            using var board = BrainDb.OpenRolledBack(KorStandardsConnection.Login.Board);   // its refusal rows are not kept
             string Gate(string tool, string command, string? cache = null)
             {
                 var o = new StringWriter();
                 Assert.Equal(0, Program.Run(new[] { "start-gate", "--module", "zz", "--cache-dir", cache ?? dir, "--hook" }, () => GateInput(transcript, tool, command), o,
-                                            new StringWriter(), Path.Combine(dir, "log.txt")));
+                                            new StringWriter(), Path.Combine(dir, "log.txt"), board: board));
                 return o.ToString();
             }
+            int Logged()
+            {
+                using var c = board.Command("SELECT COUNT(*) FROM oversight.GuardRefusal WHERE Guard = N'kor start-gate' AND [Rule] = N'start pages unread' AND [Session] = N'gate-test'");
+                return Convert.ToInt32(c.ExecuteScalar());
+            }
+            var before = Logged();
             Assert.Contains("\"permissionDecision\":\"deny\"", Gate("Bash", "git status"));
+            Assert.Equal(before + 1, Logged());   // W7: each refusal is one GuardRefusal row
             Assert.Equal("", Gate("Bash", $"\"{Environment.ProcessPath!.Replace('\\', '/')}\" read --module zz --subject x"));   // the read the refusal asks for passes
             File.AppendAllLines(transcript, new[] { ToolResult(Bodies("x", 1, 1)) });
             Assert.Contains("\"permissionDecision\":\"deny\"", Gate("Bash", "git status"));   // read, not yet said
