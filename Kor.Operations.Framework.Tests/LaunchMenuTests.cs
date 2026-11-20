@@ -10,7 +10,8 @@ namespace Kor.Operations.Framework.Tests;
 /// Row 2188, kor launch. COVERS: every enrolled repo has a description; the board source read from each of the 7 REAL repos'
 /// .claude/settings.json (owners as their session start reads them, RevitTools by tag only); quoted owners; no board hook ->
 /// null; the menu names no owner for a tagged board and says NOT READ instead of dropping a repo; finding claude on PATH vs npm;
-/// an elevated window is REFUSED (exit 3) before anything is read or started; --pick --dry-run starts nothing.
+/// an elevated window is REFUSED (exit 3) before anything is read or started; --pick --dry-run starts nothing; no working
+/// `python` is REFUSED (exit 5) before claude starts (19 Nov: every hook failed in a kor-claude window), and python runs here.
 /// The live board read is covered only through PickDryRunStartsNothingAndNamesTheFolder (live KorStandards, rolled back),
 /// which needs the sibling checkouts, the board login and claude installed - as on the dev PC and a kor-claude window.
 /// DOES NOT COVER: the interactive loop and a real claude start (proven by hand in a kor-claude window, row 2188 Evidence);
@@ -94,6 +95,26 @@ public class LaunchMenuTests
         Assert.Contains("REFUSED", err.ToString());
         Assert.DoesNotContain("Starting claude", out_.ToString());
     }
+
+    [Fact]
+    public void NoWorkingPythonIsRefusedBeforeClaudeStarts()
+    {
+        var out_ = new StringWriter();
+        var err = new StringWriter();
+        var log = Path.Combine(Path.GetTempPath(), $"kor-launch-test-{Guid.NewGuid():N}.log");
+        using var board = BrainDb.OpenRolledBack(KorStandardsConnection.Login.Board);
+        var exit = Program.LaunchVerb(Program.Options.Parse(new[] { "launch", "--root", Root, "--pick", "1", "--dry-run" }),
+                                      out_, err, board, log, elevated: () => false, pythonProblem: () => "`python` cannot be started (test)");
+        if (out_.ToString().Contains("claude was not found")) { Assert.Equal(4, exit); return; }
+        Assert.Equal(5, exit);
+        Assert.Contains("REFUSED", err.ToString());
+        Assert.Contains("NO guards", err.ToString());
+        Assert.DoesNotContain("Starting claude", out_.ToString());
+    }
+
+    [Fact]
+    public void PythonRunsForThisAccount() =>   // the dev PC and a kor-claude window both have one (row 2188, 19 Nov 18:25)
+        Assert.Null(LaunchMenu.PythonProblem());
 
     [Fact]
     public void PickDryRunStartsNothingAndNamesTheFolder()

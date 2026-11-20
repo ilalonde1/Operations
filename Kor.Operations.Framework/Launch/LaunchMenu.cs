@@ -160,6 +160,28 @@ public static class LaunchMenu
     }
 
     /// <summary>
+    /// Null when `python` RUNS for this account (the guard hooks' command, started the way a hook starts it, from PATH);
+    /// else why not. Running it is the proof: a python.exe that is only the Store alias, or one in another user's profile
+    /// this account cannot read, is on PATH and still fails. Does NOT check the hooks' own imports (stdlib only, 19 Nov).
+    /// </summary>
+    public static string? PythonProblem()
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo("python", "-I -c \"import sys; print(sys.version_info[0])\"")
+            { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+            using var p = System.Diagnostics.Process.Start(psi)!;
+            var stdout = p.StandardOutput.ReadToEndAsync();
+            var stderr = p.StandardError.ReadToEndAsync();
+            if (!p.WaitForExit(15_000)) { try { p.Kill(); } catch { } return "`python` did not answer in 15 s"; }
+            return p.ExitCode == 0 && stdout.Result.Trim() == "3"
+                ? null
+                : $"`python` exited {p.ExitCode}: {Cut(stdout.Result + stderr.Result, 160)}";
+        }
+        catch (Exception e) { return $"`python` cannot be started ({Cut(e.Message, 120)})"; }
+    }
+
+    /// <summary>
     /// The claude to start: claude.exe or claude.cmd on PATH, else npm's global folder under %APPDATA%. Null if none - the
     /// launcher says so rather than starting something else.
     /// </summary>
