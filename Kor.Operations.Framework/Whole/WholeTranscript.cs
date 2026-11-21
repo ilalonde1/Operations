@@ -15,7 +15,7 @@ public enum WholeKind { Prompt, Text, Call }
 public sealed record WholeEv(int Line, WholeKind Kind, string Tool, string Input, string? Output, string? FilePath, bool Partial, string? Cwd = null)
 {
     public bool Answered => Output is not null;
-    /// <summary>The command reads stored prose through a SQL script successfully written earlier in this transcript.
+    /// <summary>The command reads stored prose through a SQL or transcript-reader script written earlier in this transcript.
     /// This says where its output came from; it does not assert that the prose is true or complete.</summary>
     public bool ReadsStoredText { get; init; }
 }
@@ -142,7 +142,7 @@ public static class WholeTranscript
                         var cwd = S(d, "cwd");
                         evs.Add(new WholeEv(no, WholeKind.Call, name, text, null, FileOf(input), partial, cwd)
                         {
-                            ReadsStoredText = WholeGate.ReadsStoredText(name, text, p => written.GetValueOrDefault(PathKey(p, cwd))),
+                            ReadsStoredText = WholeGate.ReadsStoredText(name, text, cwd, p => written.GetValueOrDefault(p)),
                         });
                         if (name is "Edit" or "MultiEdit" && input.ValueKind == JsonValueKind.Object) edits[id] = input.Clone();
                     }
@@ -155,6 +155,19 @@ public static class WholeTranscript
                         var call = evs[k];
                         var failed = b.TryGetProperty("is_error", out var err) && err.ValueKind == JsonValueKind.True;
                         failed |= result.StartsWith("PreToolUse:", StringComparison.Ordinal) || result.StartsWith("PostToolUse:", StringComparison.Ordinal);
+                        if (call.Tool is "Bash" or "PowerShell")
+                        {
+                            foreach (var (path, body) in WholeGate.WrittenHeredocs(call.Input, call.Cwd))
+                            {
+                                if (failed) written.Remove(path);
+                                else written[path] = body;
+                            }
+                            foreach (var (path, sql) in WholeGate.PrintedSql(call.Input, call.Cwd))
+                            {
+                                if (failed || sql is null) written.Remove(path);
+                                else written[path] = sql;
+                            }
+                        }
                         if (call.FilePath is not null && call.Tool is "Write" or "Edit" or "MultiEdit")
                         {
                             var key = PathKey(call.FilePath, call.Cwd);
@@ -175,10 +188,23 @@ public static class WholeTranscript
         return evs;
     }
 
-    private static string PathKey(string path, string? cwd)
+    internal static string PathKey(string path, string? cwd)
     {
         var p = path.Replace('\\', '/');
-        return cwd is null || Path.IsPathRooted(p) ? p : Path.Combine(cwd, p).Replace('\\', '/');
+        // Git Bash's /c/... and PowerShell's C:\... name the same local file. Resolve . and .. lexically;
+        // never consult the filesystem or the replay process's cwd for historical source identity.
+        if (p.Length >= 3 && p[0] == '/' && char.IsAsciiLetter(p[1]) && p[2] == '/') p = p[1] + ":" + p[2..];
+        if (!Path.IsPathRooted(p) && cwd is not null) p = cwd.Replace('\\', '/') + "/" + p;
+        var rooted = p.StartsWith('/');
+        var unc = p.StartsWith("//", StringComparison.Ordinal);
+        var parts = new List<string>();
+        foreach (var part in p.Split('/'))
+        {
+            if (part.Length == 0 || part == ".") continue;
+            if (part == ".." && parts.Count > 0 && parts[^1] != ".." && !parts[^1].EndsWith(':')) parts.RemoveAt(parts.Count - 1);
+            else if (part != ".." || !rooted) parts.Add(part);
+        }
+        return (unc ? "//" : rooted ? "/" : "") + string.Join('/', parts);
     }
 
     private static string? ApplyEdits(string previous, JsonElement input, bool multi)

@@ -25,8 +25,8 @@ namespace Kor.Operations.Framework.Whole;
 ///          failure count, all are also in base, and none is new. This applies only to failures tied to the same TRX sources.
 ///   ACCOUNTED - discharged, or a line "NOT OPENED: &lt;key&gt;" (a flag) / "NOT CHECKED: &lt;one of its words&gt;" (a hole).
 ///          Casing is immaterial. Naming an excluded source as out of scope also accounts for it, but does not open it.
-///          A ratio stating the same population and deficit also accounts for the flag (including a test summary's
-///          arithmetically verified Total). This is disclosure only; W2 and W3 still require opening or a clean rerun.
+///          A ratio stating the same population, deficit and distinctive subject also accounts for the flag (including
+///          a test summary's arithmetically verified Total). This is disclosure only; W2/W3 still require opening or rerunning.
 ///
 /// THE DOORS - where a conclusion leaves the session (<see cref="DoorOf"/>): Stop (the turn's assistant text; blocks once - the
 /// stop_hook_active retry is allowed, so it never loops); SendMessage; a Write of a .md/.txt/.csv; a Bash/PowerShell board write
@@ -41,7 +41,8 @@ namespace Kor.Operations.Framework.Whole;
 ///   NOT A CHECK - a reader's output; another hook's refusal; an output carrying this gate's own refusal; a line quoting a session
 ///                 by id and transcript line (dry-run and transcript-search output); a command naming --replay or a .jsonl.
 ///                 Also a bounded Python source-docstring read, or stored prose read through a known SQL script successfully
-///                 written earlier in this transcript. A review's quoted claim being assessed is not its own measurement.
+///                 written earlier in this transcript. Bounded literal printf SQL and quoted heredoc reader scripts also
+///                 carry provenance; a review's explicitly attributed document quote is not its own measurement.
 ///   W2 DISMISS  - a door sentence holding artifact/artefact, noise, expected, spurious, false positive, harmless, cosmetic, benign,
 ///                 rounding, measuring error, not real, ignorable, flaky or transient AND a flag's number or label word, while that
 ///                 flag (from the last <see cref="Window"/> calls) is not discharged. NOT OPENED does not lift it. Case 1 L6469.
@@ -61,9 +62,12 @@ namespace Kor.Operations.Framework.Whole;
 /// file holds no flag for it); a flag of an earlier turn under W1 (W2 and W3 still see the last <see cref="Window"/> calls); work
 /// in another session. Provenance remains bounded: an unknown reader or an unrecognised quotation can still be treated as a check.
 /// A quoted claim is suppressed only in the recognised assessment form; an Agent/Task review's current findings still count.
-/// The SQL text cache knows only successful Write/Edit/MultiEdit calls in the parsed transcript; unknown scripts remain runs.
-/// Baseline listings establish opening, not correctness of the baseline or a reason to ship a failing build. Source matching uses
-/// basenames, and accounting still relies on the session's words. SAME-CLASS FAULT IT WOULD MISS: case 1 again if the first
+/// The text cache knows successful Write/Edit/MultiEdit, bounded printf SQL and quoted cat heredocs in the parsed transcript.
+/// Unknown scripts remain runs. Shell/Python recognition is bounded, not an interpreter or a proof of a script's semantics.
+/// Existing command-wide record/replay exemptions remain: a mixed command mentioning --replay can still hide a real check.
+/// Baseline listings establish opening, not correctness of the baseline or a reason to ship a failing build. TRX paths are
+/// resolved lexically using that command's variables/cwd; W4 still uses basenames. Symlinks, external overwrites and content
+/// identity are not established. Accounting still relies on words. SAME-CLASS FAULT IT WOULD MISS: case 1 again if the first
 /// check had printed "4 pads irregular" - no number with a polarity word, no flag, nothing to account for.
 /// For a whole FOLDER or package, the file ledger is Framework tools/blind_look_check.py --package (one row per file, X of Y).
 ///
@@ -155,7 +159,7 @@ public static class WholeGate
     private static int N(string s) => int.TryParse(s.Replace(",", ""), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : -1;
 
     /// <summary>Every reading in a check's output, line by line; a line's cells are split at | ; and tabs.</summary>
-    public static List<Reading> Readings(string output)
+    public static List<Reading> Readings(string output, bool documentReview = false)
     {
         var list = new List<Reading>();
         foreach (var rawLine in output.Split('\n'))
@@ -163,7 +167,10 @@ public static class WholeGate
             // a long line (a JSON row, a CSV line) is read to 20,000 characters: at 2,000 a result past that point was never seen
             var line = rawLine.Length > 20_000 ? rawLine[..20_000] : rawLine;
             if (QuoteLine.IsMatch(line) || RefusalRow.IsMatch(line)) continue;
-            line = AssessedQuote.Replace(line, m => new string(' ', m.Length));
+            // Assessment wording alone can be the checker's own summary. Require a review and an explicitly
+            // attributed document before treating its quoted claim as historical (B2 L3808).
+            if (documentReview && Regex.IsMatch(line, @"\b[\w/.-]+\.(?:md|txt|cs|py)\b.*?\s-\s+", Ci))
+                line = AssessedQuote.Replace(line, m => new string(' ', m.Length));
             var totals = TestTotals.Match(line);
             var ratioFlagged = new HashSet<int>();
             foreach (var cell in line.Split('|', ';', '\t'))
@@ -256,15 +263,14 @@ public static class WholeGate
     {
         "cat", "type", "head", "tail", "grep", "egrep", "fgrep", "rg", "findstr", "select-string", "sls", "sed", "ls", "dir", "get-childitem",
         "gci", "get-content", "gc", "git", "echo", "printf", "write-host", "write-output", "wc", "find", "sort", "uniq", "cut", "tr", "stat",
-        "date", "pwd", "which", "where", "where-object", "select-object", "foreach-object", "format-table", "format-list", "measure-object",
+        "date", "pwd", "which", "where", "where-object", "select-object", "foreach-object", "format-table", "format-list", "measure-object", "tasklist",
         "cd", "set-location", "mkdir", "new-item", "cp", "copy-item", "mv", "rm", "touch", "tee", "jq", "file", "du", "df", "basename",
         "dirname", "realpath", "get-item", "test-path", "resolve-path", "true", "false", "sleep", "awk", "xargs", "column", "nl", "less", "more",
-        "export", "set", "unset", "local", "for", "do", "done", "if", "then", "fi", "else", "while",
+        "export", "set", "unset", "local", "for", "do", "done", "if", "then", "fi", "else", "while", "out-file",
     };
     // a dry run or a transcript search prints OTHER sessions' results: the row-2139 close itself was refused on 141 such flags
     // (kor whole --replay listings, .jsonl searches) - any lead who replays a guard would block itself the same way
     private static readonly Regex RecordReader = new(@"\bkor(?:\.exe)?""?\s+(?:recall|memory|start|read|events|checks|start-docs)\b|kor_brain\.py\s+(?:show|render)|guard_log\.py|board_render\.py|brain\.(?:Memory|Event|LaneState)|oversight\.(?:Commitment|GuardRefusal|vw_Board|Review)|--replay\b|\.jsonl\b", Ci);
-    private static readonly Regex Segment = new(@"&&|\|\||\||;|\n", Ci);
     // A bounded source-documentation read observed at b6568d08 L715. Match the complete Python expression, not
     // a marker anywhere in an arbitrary program. Every remaining shell stage must still be a reader.
     private static readonly Regex PythonDocstring = new(@"\bpython(?:\.exe)?\s+(?:-I\s+)?-c\s+""\s*import ast\s*;\s*print\(\s*ast\.get_docstring\(\s*ast\.parse\(\s*open\('[^'\r\n]+',\s*encoding='utf-8'\)\.read\(\)\s*\)\s*\)\s*\)\s*""", Ci);
@@ -273,19 +279,116 @@ public static class WholeGate
     /// search: its output quotes what was already there - no check ran.</summary>
     public static bool IsReader(string command)
     {
-        if (RecordReader.IsMatch(command)) return true;
-        foreach (var seg in Segment.Split(Blank(PythonDocstring.Replace(command, "cat source-documentation"))))
+        // Retain the pre-existing record/replay operation exemptions. Their command-wide nature is a known
+        // limitation, separate from shell reader stages. A plain cat of a .jsonl does not exempt a later check.
+        if (RecordReader.Matches(command).Any(m => m.Value != ".jsonl") ||
+            command.Contains("<<", StringComparison.Ordinal) && RecordReader.IsMatch(command)) return true;
+        var stages = ResolvedStages(Blank(PythonDocstring.Replace(command, "cat source-documentation")), null);
+        return stages is not null && stages.All(s => ReaderStage(s.Text) ||
+            command.Contains(".jsonl", StringComparison.OrdinalIgnoreCase) && PythonProjection(s.Text));
+    }
+
+    private static bool ReaderStage(string stage)
+    {
+        if (Regex.Match(stage, @"^[A-Za-z_]\w*=\$\((?<read>[\s\S]*)\)$") is { Success: true } assignment)
+            return IsReader(assignment.Groups["read"].Value);
+        // A substitution or a PowerShell assignment can execute a check even when the visible command is echo.
+        // Quoted awk/Python source is data; only expansion in the shell's own quote context matters here.
+        if (HasEvaluation(stage)) return false;
+        if (RecordReader.IsMatch(stage)) return true;
+        // A bounded PowerShell property read, as used at W L1047. Do not unwrap arbitrary script blocks.
+        stage = Regex.Replace(stage, @"^\((Get-Content\s+[^\r\n]+)\)\.Count$", "$1", Ci);
+        var args = ShellSplit(stage, words: true);
+        if (args is null || args.Count == 0) return false;
+        var first = args[0].Trim('"', '\'');
+        var name = Path.GetFileName(first.Replace('\\', '/'));
+        return ReaderWords.Contains(name);
+    }
+
+    // A deliberately bounded lexer, not a shell interpreter. Separators inside quotes and parentheses are data.
+    // Unbalanced syntax and evaluation stay unknown. No command is executed to discover a variable or a path.
+    private static List<string>? ShellSplit(string text, bool words = false)
+    {
+        var parts = new List<string>();
+        int start = 0, depth = 0;
+        char quote = '\0';
+        for (var i = 0; i < text.Length; i++)
         {
-            var s = seg.Trim().TrimStart('(', '{', '!', ' ').Trim();
-            if (s.Length == 0) continue;
-            while (Regex.IsMatch(s, @"^[A-Za-z_][A-Za-z0-9_]*=\S*\s+")) s = Regex.Replace(s, @"^[A-Za-z_][A-Za-z0-9_]*=\S*\s+", "");
-            var first = s.Split(' ', '\t')[0].Trim('"', '\'', '&', ' ');
-            if (Regex.IsMatch(first, @"^[A-Za-z_][A-Za-z0-9_]*=")) continue;   // an assignment alone
-            if (first.StartsWith('$') && s.Contains('=')) continue;             // $x = ... (PowerShell)
-            var name = Path.GetFileName(first.Replace('\\', '/'));
-            if (!ReaderWords.Contains(name)) return false;
+            var c = text[i];
+            if (quote != '\'' && i + 1 < text.Length &&
+                (c == '`' || c == '\\' && text[i + 1] is '"' or '\'' or '\\' or '$')) { i++; continue; }
+            if (quote != '\0') { if (c == quote) quote = '\0'; continue; }
+            if (c is '\'' or '"') { quote = c; continue; }
+            if (c == '(') { depth++; continue; }
+            if (c == ')') { if (--depth < 0) return null; continue; }
+            if (depth != 0) continue;
+            var separator = words ? char.IsWhiteSpace(c) : c is ';' or '\n' or '|' || c == '&' &&
+                (i + 1 < text.Length && text[i + 1] == '&');
+            if (!separator) continue;
+            if (text[start..i].Trim() is { Length: > 0 } part) parts.Add(part);
+            if (!words && i + 1 < text.Length && text[i + 1] == c && c is '|' or '&') i++;
+            start = i + 1;
         }
-        return true;
+        if (quote != '\0' || depth != 0) return null;
+        if (text[start..].Trim() is { Length: > 0 } last) parts.Add(last);
+        return parts;
+    }
+
+    private static bool HasEvaluation(string text)
+    {
+        char quote = '\0';
+        for (var i = 0; i < text.Length; i++)
+        {
+            var c = text[i];
+            if (quote == '\'') { if (c == '\'') quote = '\0'; continue; }
+            if (c == '\'' && quote == '\0') { quote = c; continue; }
+            if (c == '"') { quote = quote == '"' ? '\0' : '"'; continue; }
+            if (c == '`' || c == '$' && i + 1 < text.Length && text[i + 1] == '(') return true;
+        }
+        return false;
+    }
+
+    private static readonly Regex Assignment = new(@"^\$?(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<value>""[^""]*""|'[^']*'|[^\s]+)(?<rest>\s+.*)?$", Ci | RegexOptions.Singleline);
+    private static readonly Regex Variable = new(@"\$(?:\{(?<name>[A-Za-z_][A-Za-z0-9_]*)\}|(?<name>[A-Za-z_][A-Za-z0-9_]*))", RegexOptions.CultureInvariant);
+
+    private static string Expand(string text, Dictionary<string, string> vars)
+    {
+        // Single-quoted arguments are literal in both shells. Preserve unknown variables so path identity cannot guess.
+        return Regex.Replace(text, "'[^']*'|[^']+", m => m.Value.StartsWith('\'') ? m.Value :
+            Variable.Replace(m.Value, v => vars.GetValueOrDefault(v.Groups["name"].Value) ?? v.Value));
+    }
+
+    private static List<(string Text, string? Cwd)>? ResolvedStages(string command, string? cwd)
+    {
+        var parts = ShellSplit(command);
+        if (parts is null) return null;
+        var result = new List<(string, string?)>();
+        var vars = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var part in parts)
+        {
+            var stage = part;
+            var assignment = Assignment.Match(stage);
+            if (assignment.Success)
+            {
+                var value = assignment.Groups["value"].Value;
+                var rest = assignment.Groups["rest"].Value.Trim();
+                var literal = !HasEvaluation(value) && (!stage.StartsWith('$') || rest.Length == 0 &&
+                    (value.StartsWith('"') || value.StartsWith('\'') || Regex.IsMatch(value, @"^\d+$")));
+                var expanded = Expand(value, vars).Trim('"', '\'');
+                if (literal && !expanded.Contains('$')) vars[assignment.Groups["name"].Value] = expanded;
+                else vars.Remove(assignment.Groups["name"].Value);
+                if (literal && rest.Length == 0) continue;
+                if (literal) stage = rest; // Bash NAME=value command.
+            }
+            stage = Expand(stage, vars);
+            var args = ShellSplit(stage, words: true);
+            if (args is { Count: 2 } && args[0].ToLowerInvariant() is "cd" or "set-location")
+            {
+                cwd = WholeTranscript.PathKey(args[1].Trim('"', '\''), cwd);
+            }
+            result.Add((stage, cwd));
+        }
+        return result;
     }
 
     public static bool IsRun(WholeEv e) =>
@@ -295,24 +398,101 @@ public static class WholeGate
     private static readonly Regex SqlLiteralOrComment = new(@"N?'(?:''|[^'])*'|--[^\r\n]*|/\*[\s\S]*?\*/", Ci);
     private static readonly Regex SqlMutationOrAggregate = new(@"\b(?:INSERT|UPDATE|DELETE|MERGE|EXEC|EXECUTE|DROP|ALTER|CREATE|INTO)\b|\b(?:COUNT|SUM|AVG|MIN|MAX)\s*\(", Ci);
 
-    /// <summary>A known SQL file reading stored prose, written successfully earlier in this transcript. Unknown files and
+    /// <summary>A known SQL file or Python transcript reader, written successfully earlier in this transcript. Unknown files and
     /// mixed commands remain runs. No filesystem or database access: replay must use the script as it was at this call.</summary>
-    internal static bool ReadsStoredText(string tool, string command, Func<string, string?> writtenFile)
+    internal static bool ReadsStoredText(string tool, string command, string? cwd, Func<string, string?> writtenFile)
     {
         if (tool is not ("Bash" or "PowerShell")) return false;
+        var stages = ResolvedStages(command, cwd);
+        if (stages is null) return false;
         var replaced = false;
-        var readers = SqlReaderCall.Replace(command, m =>
+        foreach (var (stage, at) in stages)
         {
-            var arg = SqlFileArg.Match(m.Value);
-            if (!arg.Success || Regex.IsMatch(m.Value, @"\s-q\b", Ci) || writtenFile(arg.Groups[1].Value.Trim('"', '\'')) is not { } sql) return m.Value;
-            var code = SqlLiteralOrComment.Replace(sql, " ");
-            if (SqlMutationOrAggregate.IsMatch(code) || !Regex.IsMatch(code, @"\bSELECT\b", Ci) ||
-                !Regex.IsMatch(code, @"\b(?:ResumeBlock|Evidence|Description|Matched|Note|Body|Says)\b", Ci) ||
-                !Regex.IsMatch(code, @"\b(?:FROM|JOIN)\s+(?:KorStandards\.)?(?:brain\.(?:LaneState|Memory|Event)|oversight\.(?:Commitment|GuardRefusal|Review))\b", Ci)) return m.Value;
-            replaced = true;
-            return "cat stored-record-text";
-        });
-        return replaced && IsReader(readers);
+            var readers = SqlReaderCall.Replace(stage, m =>
+            {
+                var arg = SqlFileArg.Match(m.Value);
+                var path = arg.Success ? WholeTranscript.PathKey(arg.Groups[1].Value.Trim('"', '\''), at) : null;
+                if (path is null || Regex.IsMatch(m.Value, @"\s-q\b", Ci) || writtenFile(path) is not { } sql || !StoredTextSql(sql)) return m.Value;
+                replaced = true;
+                return "cat stored-record-text";
+            });
+            // An on-disk transcript reader has the same provenance as its visible Python source. Only successful
+            // writes in this transcript supply it; a later real program in the command must still be a reader.
+            readers = Regex.Replace(readers, @"^python(?:\.exe)?\s+(?:-I\s+)?(?<file>""[^""]+\.py""|'[^']+\.py'|[^\s]+\.py)(?=\s|$)", m =>
+            {
+                var path = WholeTranscript.PathKey(m.Groups["file"].Value.Trim('"', '\''), at);
+                if (writtenFile(path) is not { } source || !TranscriptReaderSource(source)) return m.Value;
+                replaced = true;
+                return "cat transcript-record-text";
+            }, Ci);
+            if (!IsReader(readers)) return false;
+        }
+        return replaced;
+    }
+
+    private static bool TranscriptReaderSource(string source) =>
+        source.Contains(".jsonl", StringComparison.Ordinal) && source.Contains("json.loads(", StringComparison.Ordinal) &&
+        source.Contains("open(", StringComparison.Ordinal) && Regex.IsMatch(source, @"['""]message['""]") &&
+        // This is the existing transcript-search convention, not a Python verifier. Reject execution and writes
+        // explicitly; computed/dynamic Python and semantic honesty remain outside what the gate can establish.
+        !Regex.IsMatch(source, @"\b(?:subprocess|exec|eval|compile|__import__)\b|\bos\.(?:system|popen|spawn\w*)\b|\.write\s*\(|open\([^\r\n]*,\s*['""][wax][bt+]*['""]", Ci);
+
+    private static bool PythonProjection(string stage) =>
+        Regex.IsMatch(stage, @"^python(?:\.exe)?\s+(?:-I\s+)?-c\s+", Ci) &&
+        (stage.Contains("sys.stdin", StringComparison.Ordinal) || stage.Contains("json.loads(", StringComparison.Ordinal)) &&
+        stage.Contains("print(", StringComparison.Ordinal) &&
+        !Regex.IsMatch(stage, @"\b(?:subprocess|exec|eval|compile|__import__)\b|\bos\.(?:system|popen|spawn\w*)\b|\.write\s*\(", Ci);
+
+    private static readonly Regex QuotedHeredoc = new(@"(?:^|[;\n]\s*)cat\s*>\s*(?<path>[^\r\n]+?)\s*<<'(?<end>[A-Za-z_]\w*)'\s*\r?\n(?<body>[\s\S]*?)\r?\n\k<end>(?=\r?\n|$)", RegexOptions.CultureInvariant);
+
+    internal static IEnumerable<(string Path, string Body)> WrittenHeredocs(string command, string? cwd) =>
+        QuotedHeredoc.Matches(command).Select(m => (WholeTranscript.PathKey(m.Groups["path"].Value.Trim('"', '\''), cwd), m.Groups["body"].Value));
+
+    private static bool StoredTextSql(string sql)
+    {
+        var code = SqlLiteralOrComment.Replace(sql, " ");
+        return !SqlMutationOrAggregate.IsMatch(code) && Regex.IsMatch(code, @"\bSELECT\b", Ci) &&
+            Regex.IsMatch(code, @"\b(?:ResumeBlock|Evidence|Description|Matched|Note|Body|Says)\b", Ci) &&
+            Regex.IsMatch(code, @"\b(?:FROM|JOIN)\s+(?:KorStandards\.)?(?:brain\.(?:LaneState|Memory|Event)|oversight\.(?:Commitment|GuardRefusal|Review))\b", Ci);
+    }
+
+    /// <summary>Successful literal printf SQL writes, including W1031's numeric-only ID list. Unknown interpolation
+    /// invalidates provenance. This stores a classification template, never fabricated query results or executed SQL.</summary>
+    internal static IEnumerable<(string Path, string? Sql)> PrintedSql(string command, string? cwd)
+    {
+        var stages = ResolvedStages(command, cwd);
+        if (stages is null) yield break;
+        // Only this bounded pipeline establishes a numeric CSV: grep extracts digits after '#', tr removes '#',
+        // sort reorders them, paste joins with commas. The source before grep need not be trusted.
+        var numeric = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (stage, at) in stages)
+        {
+            var assigned = Regex.Match(stage, @"^(?<name>[A-Za-z_]\w*)=");
+            if (assigned.Success)
+            {
+                var name = assigned.Groups["name"].Value;
+                numeric.Remove(name);
+                if (Regex.IsMatch(stage, @"^[A-Za-z_]\w*=\$\([^\r\n]*\|\s*grep -oE [""']#\[0-9\]\{\d+\}[""']\s*\|\s*tr -d '#'\s*\|\s*sort -u\s*\|\s*paste -sd,\s*\)$")) numeric.Add(name);
+            }
+            var args = ShellSplit(stage, words: true);
+            if (args is null || args.Count < 4 || args[0] != "printf") continue;
+            var redirect = args.IndexOf(">");
+            if (redirect < 2 || redirect + 2 != args.Count) continue;
+            var path = WholeTranscript.PathKey(args[^1].Trim('"', '\''), at);
+            if (!path.EndsWith(".sql", StringComparison.OrdinalIgnoreCase)) continue;
+            var format = args[1];
+            string? sql = null;
+            if (format.Length >= 2 && format[0] is '\'' or '"' && format[^1] == format[0] && !HasEvaluation(format) && !format.Contains('$'))
+            {
+                format = format[1..^1].Replace("\\n", "\n");
+                if (redirect == 2 && !format.Contains('%')) sql = format;
+                else if (redirect == 3 && Regex.Matches(format, "%").Count == 1 &&
+                    Regex.IsMatch(format, @"\bWHERE\s+Id\s+IN\s*\(%s\)", Ci) &&
+                    Regex.Match(args[2], @"^""?\$(?<name>[A-Za-z_]\w*)""?$") is { Success: true } variable &&
+                    numeric.Contains(variable.Groups["name"].Value)) sql = format.Replace("%s", "0");
+            }
+            yield return (path, sql is not null && StoredTextSql(sql) ? sql : null);
+        }
     }
 
     // claude_bash_sample_guard.py's cut list (repo rule 7: raw patterns), ported; tail -n +N keeps every line after N, so it is no cut
@@ -364,6 +544,26 @@ public static class WholeGate
     {
         var text = e.Tool is "Read" or "Grep" ? e.Input : e.Tool is "Bash" or "PowerShell" ? e.Input : "";
         return SourceFile.Matches(text.Replace('\\', '/')).Select(m => m.Value.ToLowerInvariant()).ToHashSet(StringComparer.Ordinal);
+    }
+
+    internal static HashSet<string> TrxSourcesOf(WholeEv e)
+    {
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var stages = ResolvedStages(e.Input, e.Cwd);
+        if (stages is null) return paths;
+        foreach (var (stage, cwd) in stages)
+        {
+            var args = ShellSplit(stage, words: true);
+            if (args is null) return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var arg in args)
+            {
+                var p = arg.Trim('"', '\'');
+                if (!p.EndsWith(".trx", StringComparison.OrdinalIgnoreCase)) continue;
+                if (p.IndexOfAny(new[] { '$', '`', '\n', '\r' }) >= 0) return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                paths.Add(WholeTranscript.PathKey(p, cwd));
+            }
+        }
+        return paths;
     }
 
     // ---- where a conclusion leaves the session ----
@@ -430,6 +630,7 @@ public sealed class WholeLedger
         public required int CallNo { get; init; }
         public required WholeGate.Reading R { get; init; }
         public HashSet<string> Sources { get; init; } = new(StringComparer.Ordinal);
+        public HashSet<string> TrxSources { get; init; } = new(StringComparer.OrdinalIgnoreCase);
         public bool Brief { get; init; }   // a hole this session WROTE into its own brief: it holds for the whole session under W1
         public bool Accounted, Opened, Superseded;
         public bool Forgiven;  // replay only: the session is taken to have complied after its first refusal (see Comply)
@@ -493,19 +694,20 @@ public sealed class WholeLedger
         if (WholeGate.IsRun(e))
         {
             var sources = WholeGate.SourcesOf(e);
-            foreach (var r in WholeGate.Readings(e.Output))
+            var trxSources = WholeGate.TrxSourcesOf(e);
+            var review = e.Tool is "Agent" or "Task" || Regex.IsMatch(e.Input, @"\bkor_review\.py[""']?\s+review\b", RegexOptions.IgnoreCase);
+            foreach (var r in WholeGate.Readings(e.Output, review))
             {
-                if (r.Flagged > 0) { _flags.Add(new Flag { Line = e.Line, CallNo = _calls, R = r, Sources = sources }); continue; }
+                if (r.Flagged > 0) { _flags.Add(new Flag { Line = e.Line, CallNo = _calls, R = r, Sources = sources, TrxSources = trxSources }); continue; }
                 foreach (var f in _flags)
                     if (!f.Superseded && !f.R.Hole && f.R.Label == r.Label && f.R.Of == r.Of) f.Superseded = true;
             }
             // An uncut differential listing has already opened each failure. A summary alone, a partial list, a
             // NEW failure, or unrelated source cannot provide this evidence. Count the distinct identities, not filler lines.
-            var trxSources = sources.Where(s => s.EndsWith(".trx", StringComparison.Ordinal)).ToHashSet(StringComparer.Ordinal);
             if (!cut && trxSources.Count > 0 && ListedBaselineFailures(e.Output) is { } count)
                 foreach (var f in _flags)
                     if (!f.R.Hole && f.R.Flagged == count && FailureLabel.IsMatch(f.R.Label) &&
-                        trxSources.SetEquals(f.Sources.Where(s => s.EndsWith(".trx", StringComparison.Ordinal))))
+                        trxSources.SetEquals(f.TrxSources))
                     { f.Accounted = true; f.Opened = true; }
         }
         if (e.Tool is "Bash" or "PowerShell" or "Read" or "Grep")
@@ -552,7 +754,8 @@ public sealed class WholeLedger
             var opened = OpenedLine.Match(l);
             var openedHole = !notOpened && Regex.IsMatch(l, @"(?<!NOT )\bOPENED\b", AccountOptions);
             var counts = l.Contains(" of ", StringComparison.OrdinalIgnoreCase)
-                ? WholeGate.Readings(l).Where(r => !r.Hole && r.Of > 0 && r.Flagged > 0).ToList() : new List<WholeGate.Reading>();
+                ? Regex.Split(l.Replace("**", "", StringComparison.Ordinal), @"(?<=[.!?])\s+").SelectMany(s => WholeGate.Readings(s))
+                    .Where(r => !r.Hole && r.Of > 0 && r.Flagged > 0).ToList() : new List<WholeGate.Reading>();
             if (!notOpened && !notChecked && !opened.Success && !openedHole && counts.Count == 0) continue;
             foreach (var f in _flags)
             {
@@ -561,7 +764,7 @@ public sealed class WholeLedger
                 // to mere disclosure when the opening proof is absent.
                 var population = f.R.Of > 0 ? f.R.Of : f.R.Population;
                 if (!openedHole && !opened.Success && !f.R.Hole && population > 0 &&
-                    counts.Any(r => r.Of == population && r.Flagged == f.R.Flagged)) f.Accounted = true;
+                    counts.Any(r => r.Of == population && r.Flagged == f.R.Flagged && SameSubject(f.R, r))) f.Accounted = true;
                 if (f.R.Hole)
                 {
                     var words = HoleWords(f.R.Key);
@@ -581,6 +784,30 @@ public sealed class WholeLedger
                 }
             }
         }
+    }
+
+    private static bool SameSubject(WholeGate.Reading flag, WholeGate.Reading disclosure)
+    {
+        // Numeric coincidence is not disclosure. Keep distinctive words on both sides; the runner's unlabeled
+        // Failed/Passed/Total summary can still be stated as "817 of 819 green" (A2's real correction).
+        HashSet<string> Subject(WholeGate.Reading reading)
+        {
+            var label = reading.Label;
+            var ratio = Regex.Match(reading.Key, @"\d[\d,]*\s+of\s+\d[\d,]*", AccountOptions);
+            if (ratio.Success)
+            {
+                var after = reading.Key[(ratio.Index + ratio.Length)..];
+                var polarity = Regex.Matches(after, @"[A-Za-z][A-Za-z0-9_-]*")
+                    .FirstOrDefault(m => WholeGate.Pass.Contains(m.Value) || WholeGate.Fail.Contains(m.Value));
+                if (polarity is not null) after = after[..(polarity.Index + polarity.Length)];
+                label = reading.Key[..ratio.Index] + " " + after;
+            }
+            return Regex.Matches(label, @"[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*")
+            .Select(m => m.Value).Where(w => !WholeGate.Pass.Contains(w) && !WholeGate.Fail.Contains(w) &&
+                !Common.Contains(w) && !Regex.IsMatch(w, @"^(?:of|in|new|base|test|tests|names|cases|coverage|check|checks|verdict|no|\d+)$", AccountOptions))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        return Subject(flag).SetEquals(Subject(disclosure));
     }
 
     private static int Int(string s) => int.TryParse(s.Replace(",", ""), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : -1;
