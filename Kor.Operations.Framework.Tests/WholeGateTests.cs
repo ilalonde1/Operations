@@ -1060,4 +1060,54 @@ public class WholeGateTests
         var l = Ledger();
         Assert.Contains("W1", l.Decide(Reply(l)).Rules);
     }
+
+    [Theory]
+    [InlineData("kor whole --replay sessions.txt > C:/run/history.txt; python summarize.py C:/run/history.txt > C:/run/flags.txt")]
+    [InlineData("python export.py session.JSONL > C:/run/flags.txt")]
+    public void Narrow3_ReplayExportsStayQuotesWhenReadLater(string writer)
+    {
+        // B1 L1190/1239/1266/1278: a replay and its flag export are stored historical evidence.
+        Bash(writer, "ok");
+        Bash("cat C:/run/flags.txt", "294 refused\n24 REFUSED\n4 FAIL");
+        Assert.Empty(Ledger().Flags);
+    }
+
+    [Fact]
+    public void Narrow3_KnownTranscriptReaderExportStaysAQuote()
+    {
+        Bash("cat > C:/run/reader.py <<'EOF'\nimport json\nfor line in open('history.jsonl'):\n    e=json.loads(line)\n    print(e.get('message'))\nEOF", "ok");
+        Bash("python C:/run/reader.py > C:/run/history.txt", "ok");
+        Bash("cat C:/run/history.txt", "Failed: 3");
+        Assert.Empty(Ledger().Flags);
+    }
+
+    [Theory]
+    [InlineData("echo \"$(cat C:/run/result.log)\"")]
+    [InlineData("dotnet test tests.csproj > C:/run/result.log; tail -5 C:/run/result.log")]
+    [InlineData("dotnet test tests.csproj | cut -c1-200 | tee C:/run/result.log; cat C:/run/result.log")]
+    public void Narrow3_OwnResultsKeepProvenanceInsideTheSameCallAndSubstitution(string reader)
+    {
+        Bash("dotnet test tests.csproj > C:/run/result.log", "exit 1");
+        Bash(reader, "Failed: 3");
+        var l = Ledger();
+        Assert.Contains("W1", l.Decide(Reply(l)).Rules);
+    }
+
+    [Fact]
+    public void Narrow3_ReaderOverwriteInvalidatesResultButAppendDoesNotEraseIt()
+    {
+        Bash("dotnet test tests.csproj > C:/run/result.log", "exit 1");
+        Bash("echo note >> C:/run/result.log", "ok");
+        Bash("cat C:/run/result.log", "Failed: 3\nnote");
+        Assert.Contains("W1", Ledger().Decide(Reply(Ledger())).Rules);
+    }
+
+    [Fact]
+    public void Narrow3_ReaderReplacementIsStoredText()
+    {
+        Bash("dotnet test tests.csproj > C:/run/result.log", "exit 1");
+        Bash("cat old-note.txt > C:/run/result.log", "ok");
+        Bash("cat C:/run/result.log", "Failed: 3");
+        Assert.Empty(Ledger().Flags);
+    }
 }
