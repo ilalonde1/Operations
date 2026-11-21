@@ -1134,4 +1134,17 @@ public class WholeGateTests
         var l = Ledger();
         Assert.Equal(check, l.Decide(Reply(l)).Refuse);
     }
+
+    [Theory]
+    [InlineData("pattern = re.compile('W4')", false)]
+    [InlineData("pattern = compile('check()', 'code', 'exec')", true)]
+    public void Narrow3_RegexCompilationInAHistoryReaderIsNotCodeExecution(string compile, bool refuse)
+    {
+        // B1 L1137 w4cases.py compiles a regex. The source recognizer formerly rejected that as exec.
+        Call("Write", new { file_path = "C:/run/reader.py", content = "import json,re,sys\n" + compile + "\nfor line in open(sys.argv[1]):\n    d=json.loads(line)\n    for b in d['message']['content']:\n        if b.get('type') == 'tool_result': print(b.get('content'))" }, "ok");
+        Bash("python C:/run/reader.py history-list.txt > C:/run/history.log", "ok");
+        Bash("cat C:/run/history.log", "294 refused\n31 refused");
+        var l = Ledger();
+        Assert.Equal(refuse, l.Decide(Reply(l)).Refuse);
+    }
 }
