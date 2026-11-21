@@ -899,6 +899,7 @@ public class WholeGateTests
     [Theory]
     [InlineData("Live rulings 82. 821 of 823 green.")]
     [InlineData("Zero anywhere else. 821 of 823 tests green.")]
+    [InlineData("**Zero anywhere else.** 821 of 823 tests green.")]
     public void Narrow2_PreviousSentenceDoesNotRenameTheDisclosedTestPopulation(string disclosure)
     {
         // A2 L12103 and L12176: full replay caught the label window including words from the preceding sentence.
