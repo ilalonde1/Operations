@@ -34,6 +34,7 @@ public static partial class Program
         string? ev, tool, session, transcript, agent, cwd, scratch;
         string text = "";
         ReadCall? readCall = null;
+        JsonElement toolInput = default;   // row 2139: the whole-source gate judges the call's input after the context rules
         bool stopActive;
         try
         {
@@ -52,6 +53,7 @@ public static partial class Program
             {
                 text = ContextGuard.TextOf(tool, ti);
                 if (tool == "Read") readCall = ReadGuard.Parse(ti);
+                toolInput = ti.Clone();
             }
         }
         catch (JsonException) { if (!hook) output.WriteLine("allow: the input is not JSON"); return 0; }
@@ -119,6 +121,12 @@ public static partial class Program
                         : $"{head}\ndeny{(rowId is null ? " (not logged)" : $" (oversight.GuardRefusal #{rowId})")}: {why}");
                     return 0;
                 }
+                // row 2139: the whole-source ledger gate, after the context rules (a STOP refusal above wins); any fault allows
+                if (WholeRefusal(o, "PreToolUse", tool, toolInput, path, cwd, false, session, board, hookErrorLog) is { } whole)
+                {
+                    output.WriteLine(hook ? WholeJson("PreToolUse", whole) : $"{head}\ndeny (kor whole): {whole}");
+                    return 0;
+                }
                 var callSay = JoinSay(JoinSay(d.Say, sub ? null : OutputWarningOf(path)), hook ? SpendLineForHook(o, session, prompt: false, hookErrorLog) : null);
                 if (callSay is not null)
                     output.WriteLine(hook
@@ -150,6 +158,9 @@ public static partial class Program
                     var logged = LogRefusal(" Stop block", "Stop: the turn ended at STOP before the handover was written");
                     output.WriteLine(hook ? JsonSerializer.Serialize(new { decision = "block", reason = d.Say }) : $"{head}\nblock{(logged is null ? " (not logged)" : $" (oversight.GuardRefusal #{logged})")}: {d.Say}");
                 }
+                // row 2139: the turn's reply through the whole-source ledger gate (blocks once: a retry has stop_hook_active)
+                else if (!sub && WholeRefusal(o, "Stop", null, default, path, cwd, stopActive, session, board, hookErrorLog) is { } whole)
+                    output.WriteLine(hook ? WholeJson("Stop", whole) : $"{head}\nblock (kor whole): {whole}");
                 else if (!hook) output.WriteLine($"{head}\nlet it stop: {d.Why}");
                 return 0;
             }

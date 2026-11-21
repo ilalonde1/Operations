@@ -83,6 +83,7 @@ public static partial class Program
                 "start-proof" => StartProofVerb(o, output, db),
                 "stall" => StallVerb(o, stdin, output, hook, db, board, hookErrorLog),
                 "context" => ContextVerb(o, stdin, output, hook, board, hookErrorLog),
+                "whole" => WholeVerb(o, stdin, output, hook, board, hookErrorLog),
                 "spend" => SpendVerb(o, output, db),
                 "statusline" => StatusLineVerb(o, stdin, output, db, hookErrorLog),
                 _ => hook ? UnknownInHook(o, output) : Usage(error),
@@ -582,6 +583,7 @@ public static partial class Program
         error.WriteLine("       kor start-proof --module M --dir D [--control] [--baseline] [--wiring] [--model M] [--wire N] [--claude path] [--out F] [--temp-dir D]   (row 1569: one no-tools cold test, graded from its own transcript; --wiring prints the settings lines)");
         error.WriteLine("       kor stall --hook   (PreToolUse JSON on stdin; Bash|PowerShell|WebFetch|mcp__.*: G1 stall guard, board row 1308)");
         error.WriteLine("       kor stall --replay <transcript.jsonl|list.txt> [--since ISO-UTC] [--window-hours H] [--never-records]   (row 1308 dry run: every judged call through G1; reads only)");
+        error.WriteLine("       kor whole --hook | kor whole --replay <transcript.jsonl|list.txt> [--until LINE] [--quiet]   (row 2139, the whole-source ledger gate - also run inside kor context --hook; the replay reads only)");
         error.WriteLine($"       kor context --module M --hook   (PreToolUse every tool, UserPromptSubmit, Stop: G5 context line, board row 1474 - WARN {Context.ContextGuard.N(Context.ContextGuard.WarnTokens)} and every {Context.ContextGuard.N(Context.ContextGuard.WarnStepTokens)} after, STOP {Context.ContextGuard.N(Context.ContextGuard.StopTokens)})");
         error.WriteLine("       kor context --replay <transcript.jsonl|list.txt> [--since ISO-UTC] [--auto-compact-window N [--auto-compact-model M]]   (row 1474 dry run; reads only)");
         error.WriteLine("       kor statusline --hook   (row 1892: Claude Code's status line command; JSON on stdin; stores the real weekly percent at most once per 5 minutes)");
