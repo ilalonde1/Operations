@@ -918,4 +918,15 @@ public class WholeGateTests
         var l = Ledger();
         Assert.Equal(refuse, l.Decide(Reply(l)).Refuse);
     }
+
+    [Theory]
+    [InlineData("NO NEW FAILURES, 42 of 1190 failing on base too", false)]
+    [InlineData("windows 42 of 1190 failing", true)]
+    public void Narrow2_TestdiffDisclosureKeepsItsSubjectDespiteSummaryVocabulary(string disclosure, bool refuse)
+    {
+        // B1 L5544/5548 -> L5658: the real handover discloses these names, with different summary scaffolding.
+        Bash("kor testdiff base.trx new.trx", "VERDICT: NO NEW FAILURES - 42 of 1190 test names failing in new, every one also failing in base");
+        var l = Ledger();
+        Assert.Equal(refuse, l.Decide(Reply(l, disclosure)).Refuse);
+    }
 }
