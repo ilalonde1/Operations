@@ -12,15 +12,21 @@ namespace Kor.Operations.Framework.Whole;
 /// THE LEDGER is read from the session's own transcript (<see cref="WholeTranscript"/>), off what checks PRINTED, not off the wording
 /// of a reply (the W1-W9 plan's rule):
 ///   FLAG - in the result of a call that RAN something (a Bash/PowerShell command that is not only a reader, see <see cref="IsReader"/>;
-///          an Agent/Task helper's report), a non-pass result: "label X of Y" / "X of Y label" / "X/Y label" with X &lt; Y and a pass
+///          an Agent/Task helper's report), a non-pass result: "label X of Y" / "X of Y label" with X &lt; Y and a pass
 ///          word in its cell (pass, ok, match, equal, N-sided ... -> Y-X flagged) or a fail word (-> X flagged); or "N failed" /
 ///          "FAILED: N" / "2 WRONG" with N &gt;= 1 (<see cref="Readings"/>).
 ///   HOLE - "OUT OF SCOPE", "NOT CHECKED", "not graded", "not looked at", "not opened", "UNPROVEN" in such a result, or in this
 ///          session's own Write/Edit of a brief, prompt or plan file (a look scoped to part of its source).
+///          Cited historical examples and lists defining the hole vocabulary are not that brief's own exclusions.
 ///   DISCHARGED - OPENED: a later line "OPENED n of N" (n = N flagged) holding the flag's key, after an UNCUT look (Bash/PowerShell/
 ///          Read whose output was not cut) of at least N non-empty lines; or SUPERSEDED: a later run printing the same label with no
 ///          deficit (X of X, or 0). A hole is OPENED by a line "OPENED" naming one of its words after any uncut look.
+///          An uncut TRX differential listing also opens failures when its distinct BOTH identities equal the declared
+///          failure count, all are also in base, and none is new. This applies only to failures tied to the same TRX sources.
 ///   ACCOUNTED - discharged, or a line "NOT OPENED: &lt;key&gt;" (a flag) / "NOT CHECKED: &lt;one of its words&gt;" (a hole).
+///          Casing is immaterial. Naming an excluded source as out of scope also accounts for it, but does not open it.
+///          A ratio stating the same population and deficit also accounts for the flag (including a test summary's
+///          arithmetically verified Total). This is disclosure only; W2 and W3 still require opening or a clean rerun.
 ///
 /// THE DOORS - where a conclusion leaves the session (<see cref="DoorOf"/>): Stop (the turn's assistant text; blocks once - the
 /// stop_hook_active retry is allowed, so it never loops); SendMessage; a Write of a .md/.txt/.csv; a Bash/PowerShell board write
@@ -34,6 +40,8 @@ namespace Kor.Operations.Framework.Whole;
 ///                 accounted for. Hiding a flag is refused; saying it plainly (NOT OPENED) is not. Case 1 L6490, case 3 L2763.
 ///   NOT A CHECK - a reader's output; another hook's refusal; an output carrying this gate's own refusal; a line quoting a session
 ///                 by id and transcript line (dry-run and transcript-search output); a command naming --replay or a .jsonl.
+///                 Also a bounded Python source-docstring read, or stored prose read through a known SQL script successfully
+///                 written earlier in this transcript. A review's quoted claim being assessed is not its own measurement.
 ///   W2 DISMISS  - a door sentence holding artifact/artefact, noise, expected, spurious, false positive, harmless, cosmetic, benign,
 ///                 rounding, measuring error, not real, ignorable, flaky or transient AND a flag's number or label word, while that
 ///                 flag (from the last <see cref="Window"/> calls) is not discharged. NOT OPENED does not lift it. Case 1 L6469.
@@ -51,8 +59,11 @@ namespace Kor.Operations.Framework.Whole;
 /// printed in a form the patterns miss ("4 pads irregular"); a look of N lines that are not the flagged items (it proves a big
 /// enough uncut look ran after the flag, not that it showed THEM); a check's result only ever read by a reader (cat of a report
 /// file holds no flag for it); a flag of an earlier turn under W1 (W2 and W3 still see the last <see cref="Window"/> calls); work
-/// in another session. Errs toward refusing: a run that PRINTS quoted history (a transcript or record search that is not a listed
-/// reader) reads as a check, and its quoted "4 of 180 ... not" is a flag. SAME-CLASS FAULT IT WOULD MISS: case 1 again if the first
+/// in another session. Provenance remains bounded: an unknown reader or an unrecognised quotation can still be treated as a check.
+/// A quoted claim is suppressed only in the recognised assessment form; an Agent/Task review's current findings still count.
+/// The SQL text cache knows only successful Write/Edit/MultiEdit calls in the parsed transcript; unknown scripts remain runs.
+/// Baseline listings establish opening, not correctness of the baseline or a reason to ship a failing build. Source matching uses
+/// basenames, and accounting still relies on the session's words. SAME-CLASS FAULT IT WOULD MISS: case 1 again if the first
 /// check had printed "4 pads irregular" - no number with a polarity word, no flag, nothing to account for.
 /// For a whole FOLDER or package, the file ledger is Framework tools/blind_look_check.py --package (one row per file, X of Y).
 ///
@@ -121,9 +132,25 @@ public static class WholeGate
     private static readonly Regex BriefHole = new(@"\b(?:out of scope|not in scope|excluded from (?:the )?(?:look|check|review|scope|audit))\b", Ci);
     private static readonly Regex BriefFile = new(@"brief|prompt|plan", Ci);
     private static readonly Regex Words = new(@"[A-Za-z][A-Za-z0-9'_-]*|\d+-sided", Ci);
+    // A review assessing a quoted claim is not issuing that claim as its own measurement. Blank only the quote,
+    // retaining any current findings elsewhere on the same line (and never treating a quoted clean result as a rerun).
+    private static readonly Regex AssessedQuote = new(@"(?<quote>'[^'\r\n]+'|""[^""\r\n]+""|`[^`\r\n]+`)(?=\s+(?:is|was)\s+(?:a|the)\s+(?:judg(?:e)?ment|claim|quote|statement|summary)\b)", Ci);
+    // GuardRefusal export: id | session UUID | repo | timestamp | rule/door | matched historical text.
+    // Keep this at the line level: a command may print these records and a new check result together.
+    private static readonly Regex RefusalRow = new(@"^\s*\d+\|[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\|[^|\r\n]*\|\d{4}-\d{2}-\d{2}T[^|\r\n]+\|row \d+ W[1-4](?:\+W[1-4])* at (?:Board|Message|Reply|Record|Report|Commit|Step)\|L\d+\b", Ci);
+    private static readonly Regex StashRow = new(@"^\s*\d+\s+[0-9a-f]{7,40}\s+\d{4}-\d{2}-\d{2}\s+covered\b", Ci);
+    private static readonly Regex StashTitle = new(@"\s+(?:WIP\s+)?On\s+\S+:.*$", Ci);
+    private static readonly Regex HistoricalParagraph = new(@"^\s*(?:\d+\.\s*)?(?:[A-Za-z.]+\s+)?[0-9a-f]{8}(?:-[0-9a-f-]+)?\b.*\bL\d+[: ]", Ci);
+    private static readonly Regex HoleVocabulary = new(@"\bout of scope\s*/\s*(?:not checked|not in scope)\b", Ci);
+    private static readonly Regex TestTotals = new(@"\bFailed:\s*(?<failed>\d+),\s*Passed:\s*(?<passed>\d+),\s*Skipped:\s*(?<skipped>\d+),\s*Total:\s*(?<total>\d+)\b", Ci);
 
     /// <summary>One result a check printed: Flagged items not passing (0 = a clean reading of that label), out of Of (0 = a count).</summary>
-    public sealed record Reading(string Key, int Flagged, int Of, string Label, bool Hole);
+    public sealed record Reading(string Key, int Flagged, int Of, string Label, bool Hole)
+    {
+        // A test runner's Total is disclosure metadata, not part of the count-form check's identity. A later
+        // clean rerun must still supersede "Failed: n" when its number of tests has changed.
+        public int Population { get; init; }
+    }
 
     private static int N(string s) => int.TryParse(s.Replace(",", ""), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : -1;
 
@@ -135,7 +162,9 @@ public static class WholeGate
         {
             // a long line (a JSON row, a CSV line) is read to 20,000 characters: at 2,000 a result past that point was never seen
             var line = rawLine.Length > 20_000 ? rawLine[..20_000] : rawLine;
-            if (QuoteLine.IsMatch(line)) continue;
+            if (QuoteLine.IsMatch(line) || RefusalRow.IsMatch(line)) continue;
+            line = AssessedQuote.Replace(line, m => new string(' ', m.Length));
+            var totals = TestTotals.Match(line);
             var ratioFlagged = new HashSet<int>();
             foreach (var cell in line.Split('|', ';', '\t'))
             {
@@ -161,6 +190,9 @@ public static class WholeGate
                     if (fail is null) continue;
                     var flagged = fail.Value ? x : y - x;
                     var label = Squash(Regex.Replace(cell[lo..hi], @"\d[\d,]*\s+of\s+\d[\d,]*", " ")).ToLowerInvariant();
+                    // The coverage count is live; the stash's old commit title is quoted metadata. "PARKED" in that
+                    // title must not tie a later sentence about parked work and noisy guards to this coverage check.
+                    if (StashRow.IsMatch(line)) label = StashTitle.Replace(label, "");
                     // the KEY is the window around the ratio, never the whole cell: a refusal shows it whole and a session copies it
                     // into its NOT OPENED / OPENED line (review 2583: a 2,000-character cell clipped to 140 could not be accounted for)
                     list.Add(new Reading(Squash(cell[lo..hi].Trim()), flagged, y, Clip(label, 60), false));
@@ -173,7 +205,12 @@ public static class WholeGate
                 if (n < 0 || ratioFlagged.Contains(n)) continue;
                 if (m.Groups["n"].Index < m.Groups["w"].Index && Ordinal.IsMatch(line[..m.Index])) continue;
                 var w = m.Groups["w"].Value.ToLowerInvariant();
-                list.Add(new Reading(Squash(m.Value.Trim()), n, 0, w, false));
+                // Keep a test summary's population only when its arithmetic checks out. That lets "817 of 819
+                // green" disclose these two failures in plain words, without claiming they were opened or fixed.
+                var population = totals.Success && w == "failed" && n == N(totals.Groups["failed"].Value) &&
+                         (long)n + N(totals.Groups["passed"].Value) + N(totals.Groups["skipped"].Value) == N(totals.Groups["total"].Value)
+                    ? N(totals.Groups["total"].Value) : 0;
+                list.Add(new Reading(Squash(m.Value.Trim()), n, 0, w, false) { Population = population });
             }
             foreach (Match h in HolePhrase.Matches(line))
             {
@@ -198,9 +235,18 @@ public static class WholeGate
         var list = new List<Reading>();
         if (e.Kind != WholeKind.Call || e.Tool is not ("Write" or "Edit" or "MultiEdit") || e.FilePath is null) return list;
         if (!BriefFile.IsMatch(Path.GetFileName(e.FilePath))) return list;
+        var history = false;
         foreach (var line in e.Input.Split('\n'))
+        {
+            // Each cited list item starts its own historical passage; a heading or previous numbered item need
+            // not be separated from it by a blank line. Only indented continuations inherit that provenance.
+            if (HistoricalParagraph.IsMatch(line)) { history = true; continue; }
+            if (history && line.Trim().Length > 0 && char.IsWhiteSpace(line[0])) continue;
+            history = false;
+            if (QuoteLine.IsMatch(line) || HoleVocabulary.IsMatch(line)) continue;
             if (BriefHole.Match(line) is { Success: true } h)
                 list.Add(new Reading(Squash(Clip(line.Trim(), 160)), 1, 0, h.Value.ToLowerInvariant(), true));
+        }
         return list;
     }
 
@@ -219,13 +265,16 @@ public static class WholeGate
     // (kor whole --replay listings, .jsonl searches) - any lead who replays a guard would block itself the same way
     private static readonly Regex RecordReader = new(@"\bkor(?:\.exe)?""?\s+(?:recall|memory|start|read|events|checks|start-docs)\b|kor_brain\.py\s+(?:show|render)|guard_log\.py|board_render\.py|brain\.(?:Memory|Event|LaneState)|oversight\.(?:Commitment|GuardRefusal|vw_Board|Review)|--replay\b|\.jsonl\b", Ci);
     private static readonly Regex Segment = new(@"&&|\|\||\||;|\n", Ci);
+    // A bounded source-documentation read observed at b6568d08 L715. Match the complete Python expression, not
+    // a marker anywhere in an arbitrary program. Every remaining shell stage must still be a reader.
+    private static readonly Regex PythonDocstring = new(@"\bpython(?:\.exe)?\s+(?:-I\s+)?-c\s+""\s*import ast\s*;\s*print\(\s*ast\.get_docstring\(\s*ast\.parse\(\s*open\('[^'\r\n]+',\s*encoding='utf-8'\)\.read\(\)\s*\)\s*\)\s*\)\s*""", Ci);
 
     /// <summary>A command whose every stage is a reader (cat, grep, git, ls, sed, ...), or that reads records, the board or a transcript
     /// search: its output quotes what was already there - no check ran.</summary>
     public static bool IsReader(string command)
     {
         if (RecordReader.IsMatch(command)) return true;
-        foreach (var seg in Segment.Split(Blank(command)))
+        foreach (var seg in Segment.Split(Blank(PythonDocstring.Replace(command, "cat source-documentation"))))
         {
             var s = seg.Trim().TrimStart('(', '{', '!', ' ').Trim();
             if (s.Length == 0) continue;
@@ -240,7 +289,31 @@ public static class WholeGate
     }
 
     public static bool IsRun(WholeEv e) =>
-        e.Kind == WholeKind.Call && (e.Tool is "Agent" or "Task" || (e.Tool is "Bash" or "PowerShell" && !IsReader(e.Input)));
+        e.Kind == WholeKind.Call && (e.Tool is "Agent" or "Task" || (e.Tool is "Bash" or "PowerShell" && !e.ReadsStoredText && !IsReader(e.Input)));
+
+    private static readonly Regex SqlReaderCall = new(@"\bpython(?:\.exe)?\s+(?:-I\s+)?(?:tools[/\\]SqlQuery[/\\])?oq(?:wide)?\.py\s+[^;|&\r\n]+", Ci);
+    private static readonly Regex SqlLiteralOrComment = new(@"N?'(?:''|[^'])*'|--[^\r\n]*|/\*[\s\S]*?\*/", Ci);
+    private static readonly Regex SqlMutationOrAggregate = new(@"\b(?:INSERT|UPDATE|DELETE|MERGE|EXEC|EXECUTE|DROP|ALTER|CREATE|INTO)\b|\b(?:COUNT|SUM|AVG|MIN|MAX)\s*\(", Ci);
+
+    /// <summary>A known SQL file reading stored prose, written successfully earlier in this transcript. Unknown files and
+    /// mixed commands remain runs. No filesystem or database access: replay must use the script as it was at this call.</summary>
+    internal static bool ReadsStoredText(string tool, string command, Func<string, string?> writtenFile)
+    {
+        if (tool is not ("Bash" or "PowerShell")) return false;
+        var replaced = false;
+        var readers = SqlReaderCall.Replace(command, m =>
+        {
+            var arg = SqlFileArg.Match(m.Value);
+            if (!arg.Success || Regex.IsMatch(m.Value, @"\s-q\b", Ci) || writtenFile(arg.Groups[1].Value.Trim('"', '\'')) is not { } sql) return m.Value;
+            var code = SqlLiteralOrComment.Replace(sql, " ");
+            if (SqlMutationOrAggregate.IsMatch(code) || !Regex.IsMatch(code, @"\bSELECT\b", Ci) ||
+                !Regex.IsMatch(code, @"\b(?:ResumeBlock|Evidence|Description|Matched|Note|Body|Says)\b", Ci) ||
+                !Regex.IsMatch(code, @"\b(?:FROM|JOIN)\s+(?:KorStandards\.)?(?:brain\.(?:LaneState|Memory|Event)|oversight\.(?:Commitment|GuardRefusal|Review))\b", Ci)) return m.Value;
+            replaced = true;
+            return "cat stored-record-text";
+        });
+        return replaced && IsReader(readers);
+    }
 
     // claude_bash_sample_guard.py's cut list (repo rule 7: raw patterns), ported; tail -n +N keeps every line after N, so it is no cut
     private static readonly (Regex Re, string How)[] Cuts =
@@ -356,6 +429,7 @@ public sealed class WholeLedger
         public required int Line { get; init; }
         public required int CallNo { get; init; }
         public required WholeGate.Reading R { get; init; }
+        public HashSet<string> Sources { get; init; } = new(StringComparer.Ordinal);
         public bool Brief { get; init; }   // a hole this session WROTE into its own brief: it holds for the whole session under W1
         public bool Accounted, Opened, Superseded;
         public bool Forgiven;  // replay only: the session is taken to have complied after its first refusal (see Comply)
@@ -418,18 +492,47 @@ public sealed class WholeLedger
         }
         if (WholeGate.IsRun(e))
         {
+            var sources = WholeGate.SourcesOf(e);
             foreach (var r in WholeGate.Readings(e.Output))
             {
-                if (r.Flagged > 0) { _flags.Add(new Flag { Line = e.Line, CallNo = _calls, R = r }); continue; }
+                if (r.Flagged > 0) { _flags.Add(new Flag { Line = e.Line, CallNo = _calls, R = r, Sources = sources }); continue; }
                 foreach (var f in _flags)
                     if (!f.Superseded && !f.R.Hole && f.R.Label == r.Label && f.R.Of == r.Of) f.Superseded = true;
             }
+            // An uncut differential listing has already opened each failure. A summary alone, a partial list, a
+            // NEW failure, or unrelated source cannot provide this evidence. Count the distinct identities, not filler lines.
+            var trxSources = sources.Where(s => s.EndsWith(".trx", StringComparison.Ordinal)).ToHashSet(StringComparer.Ordinal);
+            if (!cut && trxSources.Count > 0 && ListedBaselineFailures(e.Output) is { } count)
+                foreach (var f in _flags)
+                    if (!f.R.Hole && f.R.Flagged == count && FailureLabel.IsMatch(f.R.Label) &&
+                        trxSources.SetEquals(f.Sources.Where(s => s.EndsWith(".trx", StringComparison.Ordinal))))
+                    { f.Accounted = true; f.Opened = true; }
         }
         if (e.Tool is "Bash" or "PowerShell" or "Read" or "Grep")
             _seen.Add((e.Line, e.Output, cut, WholeGate.SourcesOf(e)));
     }
 
-    private static readonly Regex OpenedLine = new(@"(?<!NOT )\bOPENED\s+(?<n>\d[\d,]*)\s+of\s+(?<m>\d[\d,]*)", RegexOptions.CultureInvariant);
+    private const RegexOptions AccountOptions = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
+    private static readonly Regex OpenedLine = new(@"(?<!NOT )\bOPENED\s+(?<n>\d[\d,]*)\s+of\s+(?<m>\d[\d,]*)", AccountOptions);
+    private static readonly Regex ScopeDisclosure = new(@"\b(?:not checked|not opened|not looked at|not graded|out of scope|not in scope)\b", AccountOptions);
+    private static readonly Regex BaselineSummary = new(@"^\s*(?<n>\d+) failing (?:names|cases) in new;\s*(?<b>\d+) also failing in base;\s*0 only in new\s*$", AccountOptions | RegexOptions.Multiline);
+    private static readonly Regex FailureLabel = new(@"\b(?:fail|failed|failing|failures)\b", AccountOptions);
+
+    private static int? ListedBaselineFailures(string output)
+    {
+        var summary = BaselineSummary.Match(output);
+        if (!summary.Success) return null;
+        var n = Int(summary.Groups["n"].Value);
+        if (n <= 0 || n != Int(summary.Groups["b"].Value)) return null;
+        var identities = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var raw in output.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.StartsWith("NEW ", StringComparison.Ordinal)) return null;
+            if (line.StartsWith("BOTH ", StringComparison.Ordinal)) identities.Add(line[5..].Trim());
+        }
+        return identities.Count == n && !identities.Contains("") ? n : null;
+    }
     private static readonly HashSet<string> Common = new(StringComparer.OrdinalIgnoreCase)
     {
         "the", "and", "for", "with", "that", "this", "them", "they", "from", "into", "only", "once", "list", "text", "cover", "covers",
@@ -439,18 +542,26 @@ public sealed class WholeLedger
     /// <summary>Every accounting line in a text marks the flags it names (OPENED / NOT OPENED / NOT CHECKED).</summary>
     private void Account(string text, int line)
     {
-        if (text.Length == 0 || (!text.Contains("OPENED", StringComparison.Ordinal) && !text.Contains("NOT CHECKED", StringComparison.Ordinal))) return;
+        if (text.Length == 0 || (!text.Contains("OPENED", StringComparison.OrdinalIgnoreCase) && !ScopeDisclosure.IsMatch(text) &&
+                                !text.Contains(" of ", StringComparison.OrdinalIgnoreCase))) return;
         foreach (var raw in text.Split('\n'))
         {
             var l = WholeGate.Squash(raw);
-            var notOpened = l.Contains("NOT OPENED", StringComparison.Ordinal);
-            var notChecked = l.Contains("NOT CHECKED", StringComparison.Ordinal);
+            var notOpened = l.Contains("NOT OPENED", StringComparison.OrdinalIgnoreCase);
+            var notChecked = ScopeDisclosure.IsMatch(l);
             var opened = OpenedLine.Match(l);
-            var openedHole = !notOpened && Regex.IsMatch(l, @"(?<!NOT )\bOPENED\b", RegexOptions.CultureInvariant);
-            if (!notOpened && !notChecked && !opened.Success && !openedHole) continue;
+            var openedHole = !notOpened && Regex.IsMatch(l, @"(?<!NOT )\bOPENED\b", AccountOptions);
+            var counts = l.Contains(" of ", StringComparison.OrdinalIgnoreCase)
+                ? WholeGate.Readings(l).Where(r => !r.Hole && r.Of > 0 && r.Flagged > 0).ToList() : new List<WholeGate.Reading>();
+            if (!notOpened && !notChecked && !opened.Success && !openedHole && counts.Count == 0) continue;
             foreach (var f in _flags)
             {
                 if (f.Line >= line || f.Discharged) continue;
+                // An asserted OPENED still needs its look; its copied deficit key cannot downgrade that assertion
+                // to mere disclosure when the opening proof is absent.
+                var population = f.R.Of > 0 ? f.R.Of : f.R.Population;
+                if (!openedHole && !opened.Success && !f.R.Hole && population > 0 &&
+                    counts.Any(r => r.Of == population && r.Flagged == f.R.Flagged)) f.Accounted = true;
                 if (f.R.Hole)
                 {
                     var words = HoleWords(f.R.Key);

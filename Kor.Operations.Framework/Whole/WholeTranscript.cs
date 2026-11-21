@@ -15,6 +15,9 @@ public enum WholeKind { Prompt, Text, Call }
 public sealed record WholeEv(int Line, WholeKind Kind, string Tool, string Input, string? Output, string? FilePath, bool Partial, string? Cwd = null)
 {
     public bool Answered => Output is not null;
+    /// <summary>The command reads stored prose through a SQL script successfully written earlier in this transcript.
+    /// This says where its output came from; it does not assert that the prose is true or complete.</summary>
+    public bool ReadsStoredText { get; init; }
 }
 
 /// <summary>
@@ -81,6 +84,8 @@ public static class WholeTranscript
     {
         var evs = new List<WholeEv>();
         var index = new Dictionary<string, int>(StringComparer.Ordinal);
+        var written = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var edits = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         bool? sidechainMode = null;
         for (var i = 0; i < lines.Count; i++)
         {
@@ -133,18 +138,65 @@ public static class WholeTranscript
                         var input = b.TryGetProperty("input", out var inp) && inp.ValueKind == JsonValueKind.Object ? inp : default;
                         index[id] = evs.Count;
                         var partial = name == "Read" && input.ValueKind == JsonValueKind.Object && (input.TryGetProperty("offset", out _) || input.TryGetProperty("limit", out _));
-                        evs.Add(new WholeEv(no, WholeKind.Call, name, InputOf(name, input), null, FileOf(input), partial, S(d, "cwd")));
+                        var text = InputOf(name, input);
+                        var cwd = S(d, "cwd");
+                        evs.Add(new WholeEv(no, WholeKind.Call, name, text, null, FileOf(input), partial, cwd)
+                        {
+                            ReadsStoredText = WholeGate.ReadsStoredText(name, text, p => written.GetValueOrDefault(PathKey(p, cwd))),
+                        });
+                        if (name is "Edit" or "MultiEdit" && input.ValueKind == JsonValueKind.Object) edits[id] = input.Clone();
                     }
                     else if (type == "user" && bt == "tool_result")
                     {
                         var id = S(b, "tool_use_id") ?? "";
                         if (!index.TryGetValue(id, out var k) || evs[k].Answered) continue;
-                        evs[k] = evs[k] with { Output = ResultText(b.TryGetProperty("content", out var c) ? c : default) };
+                        var result = ResultText(b.TryGetProperty("content", out var c) ? c : default);
+                        evs[k] = evs[k] with { Output = result };
+                        var call = evs[k];
+                        var failed = b.TryGetProperty("is_error", out var err) && err.ValueKind == JsonValueKind.True;
+                        failed |= result.StartsWith("PreToolUse:", StringComparison.Ordinal) || result.StartsWith("PostToolUse:", StringComparison.Ordinal);
+                        if (call.FilePath is not null && call.Tool is "Write" or "Edit" or "MultiEdit")
+                        {
+                            var key = PathKey(call.FilePath, call.Cwd);
+                            if (failed) written.Remove(key); // do not infer the contents after an unsuccessful mutation
+                            else if (call.Tool == "Write") written[key] = call.Input;
+                            else if (edits.TryGetValue(id, out var edit) && written.TryGetValue(key, out var previous))
+                            {
+                                var next = ApplyEdits(previous, edit, call.Tool == "MultiEdit");
+                                if (next is null) written.Remove(key);
+                                else written[key] = next;
+                            }
+                        }
+                        edits.Remove(id);
                     }
                 }
             }
         }
         return evs;
+    }
+
+    private static string PathKey(string path, string? cwd)
+    {
+        var p = path.Replace('\\', '/');
+        return cwd is null || Path.IsPathRooted(p) ? p : Path.Combine(cwd, p).Replace('\\', '/');
+    }
+
+    private static string? ApplyEdits(string previous, JsonElement input, bool multi)
+    {
+        var changes = multi && input.TryGetProperty("edits", out var list) && list.ValueKind == JsonValueKind.Array
+            ? list.EnumerateArray().ToArray() : new[] { input };
+        foreach (var change in changes)
+        {
+            var old = S(change, "old_string");
+            var next = S(change, "new_string");
+            if (string.IsNullOrEmpty(old) || next is null) return null;
+            var at = previous.IndexOf(old, StringComparison.Ordinal);
+            if (at < 0) return null;
+            var all = change.TryGetProperty("replace_all", out var replace) && replace.ValueKind == JsonValueKind.True;
+            if (!all && previous.IndexOf(old, at + old.Length, StringComparison.Ordinal) >= 0) return null;
+            previous = all ? previous.Replace(old, next, StringComparison.Ordinal) : previous[..at] + next + previous[(at + old.Length)..];
+        }
+        return previous;
     }
 
     /// <summary>What a call SAYS (see <see cref="WholeEv.Input"/>).</summary>
