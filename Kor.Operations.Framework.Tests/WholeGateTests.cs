@@ -855,4 +855,44 @@ public class WholeGateTests
         var l = Ledger();
         Assert.Contains("W1", l.Decide(Reply(l)).Rules);
     }
+
+    [Theory]
+    [InlineData("around.py", "42 failing", false)]
+    [InlineData("ctx.py", "19 failures", false)]
+    [InlineData("around.py", "4-sided 176 of 180", true)]
+    public void Narrow2_StoredTranscriptReadersKeepTheirProvenance(string script, string output, bool check)
+    {
+        // Extra context from W L221/431 and L481/669, absent from the brief: successful quoted heredocs created
+        // Python readers which load transcript messages. A later invocation has no .jsonl in its command line.
+        Bash("cat > /c/scratch/" + script + " <<'EOF'\nimport json,glob\nfs=glob.glob('C:/transcripts/*.jsonl')\nfor line in open(fs[0],encoding='utf-8'):\n    e=json.loads(line)\n    print(e.get('message'))\nEOF", "ok");
+        Bash("cd /c/scratch && python -I " + script + " session-id 2026-11-21T02:58:31 | grep failing" + (check ? "; python check.py" : ""), output);
+        var l = Ledger();
+        Assert.Equal(check, l.Decide(Reply(l)).Refuse);
+    }
+
+    [Theory]
+    [InlineData("unknown")]
+    [InlineData("denied")]
+    [InlineData("executes")]
+    [InlineData("changed")]
+    public void Narrow2_TranscriptScriptProvenanceIsNotJustItsFilename(string how)
+    {
+        if (how != "unknown")
+            Bash("cat > /c/scratch/around.py <<'EOF'\nimport json,glob\nfs=glob.glob('C:/transcripts/*.jsonl')\nfor line in open(fs[0]):\n    e=json.loads(line)\n    print(e.get('message'))\n" +
+                (how == "executes" ? "import subprocess\nsubprocess.run(['python','check.py'])\n" : "") + "EOF",
+                how == "denied" ? "PreToolUse:Bash hook error: denied" : "ok");
+        if (how == "changed") Call("Write", new { file_path = "C:/scratch/around.py", content = "print('4-sided 176 of 180')" }, "ok");
+        Bash("cd /c/scratch && python -I around.py", "4-sided 176 of 180");
+        var l = Ledger();
+        Assert.Contains("W1", l.Decide(Reply(l)).Rules);
+    }
+
+    [Fact]
+    public void Narrow2_NumericSqlInterpolationMustStillBeNumericAtTheWrite()
+    {
+        Bash(WPrepare.Replace("echo \"$ids\"", "ids=$(python arbitrary.py); echo \"$ids\""), "ok");
+        Call("PowerShell", new { command = WRead }, "4-sided 176 of 180");
+        var l = Ledger();
+        Assert.Contains("W1", l.Decide(Reply(l)).Rules);
+    }
 }
