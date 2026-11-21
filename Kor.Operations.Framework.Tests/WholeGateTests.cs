@@ -929,4 +929,135 @@ public class WholeGateTests
         var l = Ledger();
         Assert.Equal(refuse, l.Decide(Reply(l, disclosure)).Refuse);
     }
+
+    // Round 3 / rule 11: output transport must preserve the distinction between a session's result
+    // and stored prose. Covers known log/TRX producers, shell substitutions and case variants.
+    // Does not prove arbitrary scripts' I/O, cross-session ownership, or filesystem content identity.
+    // Same-class miss: a script silently writes a report whose path never appears in the transcript.
+    private const string D7First = "ls /c/kor-suite/port-harness/; for d in /c/kor-suite/port-harness/*/; do echo \"$d: $(ls $d | tr '\\n' ' ' | cut -c1-150)\"; done 2>/dev/null | head -12; cd \"C:/VIsual Studio Projects/KOR.Drafter-etabs\" && git log --oneline -1 | cut -c1-80; git merge-base HEAD 450cb229 | cut -c1-8; git ls-remote fs01 refs/heads/port-g4; git status --short | grep -v TestResults | wc -l";
+    private const string D7Second = "cd \"C:/VIsual Studio Projects/KOR.Drafter-portmerge\" && git fetch fs01 port-g7-2 -q && git merge --no-edit FETCH_HEAD 2>&1 | tail -1; echo \"u1: $(git diff --name-only --diff-filter=U | tr '\\n' ' ')\"; git fetch fs01 port-drift -q && git merge --no-edit FETCH_HEAD 2>&1 | tail -1; echo \"u2: $(git diff --name-only --diff-filter=U | tr '\\n' ' ')\"; git log --oneline -3 | cut -c1-70";
+
+    [Theory]
+    [InlineData(D7First, "7fa5e7d4 port g4: handover - 12 of 12 rows in C#, what is not done and why (row ")]
+    [InlineData(D7Second, "Automatic merge failed; fix conflicts and then commit the result.\nu1: PortProofViewerVerb.cs\nfatal: Exiting because of an unresolved conflict.\nu2: PortProofViewerVerb.cs\n414ed1e9 Merge branch 'port-g6-8'\n8ff8bd41 Merge branch 'port-proofcrash'\n47b33ec0 port-g6-8 handover (row 2202): session 2's unproven paths and")]
+    public void Narrow3_D7_CommitSubjectsAreQuotesAtBothRecordMoments(string command, string output)
+    {
+        // D7 L1740/1743 -> L1786, and L2798/2802 -> L2854. Exact command syntax; output extract.
+        Bash(command, output);
+        var l = Ledger();
+        Assert.Empty(l.Flags);
+        Assert.False(l.Decide(Pre(l, "Bash", "\"C:/KOR-Operations/kor/kor.exe\" state --module KOR.Drafter --file state.md")).Refuse);
+    }
+
+    [Fact]
+    public void Narrow3_AC3783_TheCitedRunWasStartedInD7_NotInAC()
+    {
+        // AC L3035/3135 used fullsuite-g4/tip.log, not lead-d0/g4-full-7fa5e7d4.log.
+        // The latter producer is D7 L2912. AC L3783 is record --help, not a close.
+        Call("PowerShell", new { command = "Start-Process -FilePath dotnet -ArgumentList 'test tests.csproj' -RedirectStandardOutput C:/kor-suite/fullsuite-g4/tip.log" }, "started");
+        Bash("ls -la /c/kor-suite/lead-d0/ | grep -i g4-full; tail -5 /c/kor-suite/lead-d0/g4-full-7fa5e7d4.log 2>&1; tasklist 2>/dev/null | grep -ci \"testhost\\|claude.exe\"",
+            "Failed! - Failed: 63, Passed: 2808, Skipped: 1, Total: 2872");
+        var l = Ledger();
+        Assert.Empty(l.Flags);
+        Assert.False(l.Decide(Pre(l, "Bash", "\"/c/KOR-Operations/kor/kor.exe\" record --help 2>&1 | head -20")).Refuse);
+    }
+
+    [Theory]
+    [InlineData("Bash", "dotnet test tests.csproj > C:/run/result.log 2>&1", "tail -5 /c/run/result.log", false)]
+    [InlineData("Bash", "dotnet test tests.csproj > C:/run/result.log 2>&1", "cat C:/run/result.log", true)]
+    [InlineData("PowerShell", "dotnet test tests.csproj *> C:/run/result.log", "Get-Content C:/run/result.log -Tail 5", false)]
+    [InlineData("PowerShell", "dotnet test tests.csproj | Tee-Object -FilePath C:/run/result.log", "Select-String -Path C:/run/result.log -Pattern Failed", false)]
+    [InlineData("Bash", "cd C:/run && dotnet test tests.csproj > ./result.log", "cd /c/run && cat sub/../result.log", false)]
+    [InlineData("Bash", "dotnet test tests.csproj 2>&1 | tee C:/run/result.log", "cat C:/run/result.log", false)]
+    [InlineData("PowerShell", "$p = Start-Process -WindowStyle Hidden -FilePath dotnet -ArgumentList 'test tests.csproj' -RedirectStandardOutput C:/run/result.log", "Get-Content C:/run/result.log -Tail 5", false)]
+    [InlineData("Bash", "dotnet test tests.csproj > C:/run/result.log", "Read", true)]
+    public void Narrow3_OwnRunLogStillRefusesThroughReaders(string tool, string writer, string reader, bool background)
+    {
+        // Generalizations of AC's read, paired with an actual same-session producer (unlike AC).
+        Call(tool, new { command = writer, run_in_background = background }, background ? "Running in background" : "exit 1");
+        if (reader == "Read") Call("Read", new { file_path = "C:/run/result.log", limit = 5 }, "Failed: 3\nSkipped: 1");
+        else Call(tool, new { command = reader }, "Failed: 3\nSkipped: 1");
+        var l = Ledger();
+        Assert.Contains(l.Flags, f => f.R.Flagged == 3);
+        Assert.Contains(l.Flags, f => f.R.Flagged == 1);
+        Assert.Contains("W1", l.Decide(Reply(l)).Rules);
+        Assert.Contains("W3", l.Decide(Pre(l, "Bash", "kor_task.py accept 2139")).Rules);
+    }
+
+    [Theory]
+    [InlineData("dotnet test tests.csproj --logger \"trx;LogFileName=C:/run/result.trx\"", "cat C:/run/result.trx")]
+    [InlineData("dotnet test tests.csproj --logger 'trx;LogFileName=result.trx' --results-directory C:/run", "Select-String -Path C:/run/result.trx -Pattern Counters")]
+    public void Narrow3_OwnTrxCountersAreResults(string writer, string reader)
+    {
+        Bash(writer, "exit 1");
+        Bash(reader, "<ResultSummary outcome=\"Failed\"><Counters total=\"20\" executed=\"19\" passed=\"16\" failed=\"3\" notExecuted=\"1\" /></ResultSummary>");
+        var l = Ledger();
+        Assert.Contains(l.Flags, f => f.R.Flagged == 3);
+        Assert.Contains("W1", l.Decide(Reply(l)).Rules);
+    }
+
+    [Theory]
+    [InlineData("absent")]
+    [InlineData("denied")]
+    [InlineData("different-directory")]
+    [InlineData("overwritten")]
+    public void Narrow3_OldTextDoesNotBecomeOwnResultByItsBasename(string how)
+    {
+        if (how != "absent") Bash("dotnet test tests.csproj > C:/run/result.log", how == "denied" ? "PreToolUse:Bash hook error: denied" : "exit 1");
+        if (how == "overwritten") Call("Write", new { file_path = "C:/run/result.log", content = "Failed: 3" }, "ok");
+        Bash("cat C:/" + (how == "different-directory" ? "other" : "run") + "/result.log", "Failed: 3");
+        Assert.Empty(Ledger().Flags);
+    }
+
+    [Theory]
+    [InlineData("git log --oneline -1")]
+    [InlineData("git log --oneline -1 | cut -c1-80")]
+    [InlineData("cd C:/repo && git show -s --format=%s")]
+    [InlineData("git show -s --format=%s | cut -c1-80")]
+    [InlineData("git merge --no-edit feature")]
+    [InlineData("git merge --no-edit feature | cut -c1-80")]
+    [InlineData("echo \"$(git log --oneline -1)\"")]
+    [InlineData("echo \"$(git show -s --format=%s | cut -c1-80)\"")]
+    public void Narrow3_GitSubjectsCutOrWholeAreStoredProse(string command)
+    {
+        Bash(command, "abcdef12 handover: 12 of 12 failed, not done; unproven paths");
+        var l = Ledger();
+        Assert.Empty(l.Flags);
+        Assert.False(l.Decide(Reply(l)).Refuse);
+    }
+
+    [Theory]
+    [InlineData("dotnet test tests.csproj | cut -c1-200")]
+    [InlineData("dotnet test tests.csproj | git diff --no-index -- /dev/null -")]
+    [InlineData("git log --oneline -1; dotnet test tests.csproj | cut -c1-200")]
+    [InlineData("echo \"$(dotnet test tests.csproj | cut -c1-200)\"; git log -1")]
+    [InlineData("echo \"$(git log -1; python check.py)\"")]
+    [InlineData("echo \"$(echo $(python check.py))\"; git log -1")]
+    public void Narrow3_GitOrCutCannotHideAnActualCheck(string command)
+    {
+        Bash(command, "Failed: 3");
+        var l = Ledger();
+        Assert.Contains("W1", l.Decide(Reply(l)).Rules);
+    }
+
+    [Theory]
+    [InlineData("cat X.JSONL; dotnet test tests.csproj")]
+    [InlineData("cat X.JsonL | python check.py")]
+    [InlineData("cat X.jsonl; dotnet test tests.csproj")]
+    public void Narrow3_JsonlCaseCannotExemptALaterCheck(string command)
+    {
+        // Review row 2603: IgnoreCase regex, case-sensitive .jsonl comparison.
+        Bash(command, "Failed: 3");
+        Assert.Contains("W1", Ledger().Decide(Reply(Ledger())).Rules);
+    }
+
+    [Fact]
+    public void Narrow3_QuotedCleanCommitCannotDischargeAnOwnLogFailure()
+    {
+        Bash("dotnet test tests.csproj > C:/run/result.log", "exit 1");
+        Bash("tail -5 C:/run/result.log", "Failed: 3");
+        Bash("echo \"$(git show -s --format=%s)\"", "Failed: 0");
+        var l = Ledger();
+        Assert.Contains("W1", l.Decide(Reply(l)).Rules);
+    }
 }
