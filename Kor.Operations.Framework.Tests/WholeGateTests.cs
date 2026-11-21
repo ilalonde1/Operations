@@ -215,9 +215,18 @@ public class WholeGateTests
         Case2();
         Bash("A=\"//fs01/x\"; grep -oE \"implied thickness [0-9.]+ in\" \"$A/31168-FROM-DRAWINGS-report.txt\" | sort | uniq -c | sort -rn",
              "12 implied thickness 3.1 in\n8 implied thickness 3.4 in\n6 implied thickness 3.2 in\n5 implied thickness 4.3 in\n4 implied thickness 2.1 in\n2 implied thickness 2.7 in");
-        Say("Counted on the landed file, all 37: 2.1-4.3 in, five of them at 4.3 in.");
+        Say("Counted on the landed file, all 37 lie between 3.1-3.4 in or below, five at 4.3 in.");   // the SAME range ends as the sample
         var l = Ledger();
         Assert.DoesNotContain("W4", l.Decide(Reply(l)).Rules);
+    }
+
+    [Fact]
+    public void Case2_TheSameClaimWithoutTheRecountIsStillRefused()
+    {
+        Case2();                                                                                   // review 2584: the pair proves the lift
+        Say("Counted on the landed file, all 37 lie between 3.1-3.4 in or below, five at 4.3 in.");
+        var l = Ledger();
+        Assert.Contains("W4", l.Decide(Reply(l)).Rules);
     }
 
     [Fact]

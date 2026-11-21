@@ -545,8 +545,8 @@ public sealed class WholeLedger
         // W1: every flag of this turn and every hole of the session accounted for
         if (door.Account)
         {
-            // this turn's flags; when the turn's prompt lies before the tail read (no prompt seen), the last Window calls stand for it
-            // (review 2583), and holes of the whole tail as before
+            // this turn's flags (when the turn's prompt lies before the tail read, the last Window calls stand for it - review 2583);
+            // a hole this session wrote into its own brief, for the whole session; a hole a check printed, over the last Window calls
             var hidden = _flags.Where(f => !f.Accounted && !f.Discharged &&
                                            (f.Brief || (f.R.Hole && f.CallNo > _calls - WholeGate.Window) ||
                                             (_promptLine == int.MinValue ? f.CallNo > _calls - WholeGate.Window : f.Line > _promptLine))).ToList();
@@ -587,20 +587,24 @@ public sealed class WholeLedger
         return Regex.IsMatch(sentence, $@"(?<![\d.,]){f.R.Flagged}(?![\d.,]\d|\d)") && FlagTalk.IsMatch(sentence);
     }
 
-    /// <summary>W4: the latest output holding <paramref name="y"/>, when it was cut and no later uncut call read the same file; else null.</summary>
-    /// <summary>A numeric value range: "3.1-3.4", "3.1 to 3.4", "between 2.1 and 4.3" - decimals or a unit, so labels ("L03-L05") and
-    /// clock times ("07:35-07:5x") are not ranges.</summary>
-    private static readonly Regex NumericRange = new(@"(?<![\w:.])(?<a>\d+\.\d+|\d+(?=\s*(?:in|mm|ft|kPa|psf|MPa|%)\b))\s*(?:in|mm|ft)?\s*(?:-|–|—|to|and)\s*(?<b>\d+(?:\.\d+)?)(?![\w:])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    /// <summary>A numeric value range: "3.1-3.4", "3.1 to 3.4", "between 2.1 and 4.3", "5% - 10%", "3 kPa - 4 kPa" - a decimal or a
+    /// unit on its first end, so labels ("L03-L05") and clock times ("07:35-07:5x") are not ranges.</summary>
+    private static readonly Regex NumericRange = new(@"(?<![\w:.])(?<a>\d+\.\d+|\d+(?=\s*(?:in|mm|ft|kPa|psf|MPa|%)(?![A-Za-z])))\s*(?:in|mm|ft|kPa|psf|MPa|%)?\s*(?:-|–|—|to|and)\s*(?<b>\d+(?:\.\d+)?)(?![\w:])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
+    /// <summary>W4: the cut output (its index in the seen list) holding <paramref name="y"/> as a bare count AND both range ends
+    /// <paramref name="a"/>, <paramref name="b"/> among its values, with no later uncut call over the same file; else null. Looked up by
+    /// index, not by transcript line: two calls of one message can share a line (review 2584).</summary>
     private (int Line, bool Cut)? SampledOnly(string y, string a, string b)
     {
-        if (SampledOnly(y) is not { } at) return null;
-        var shown = _seen.First(s => s.Line == at.Line).Output;
+        if (SampledIndex(y) is not { } i) return null;
+        var shown = _seen[i].Output;
         bool Has(string v) => Regex.IsMatch(shown, $@"(?<![\d.]){Regex.Escape(v)}(?![\d])");
-        return Has(a) && Has(b) ? at : null;
+        return Has(a) && Has(b) ? (_seen[i].Line, true) : null;
     }
 
-    private (int Line, bool Cut)? SampledOnly(string y)
+    /// <summary>The index of the latest output holding <paramref name="y"/> as a bare count, when it was cut and no later uncut call read
+    /// the same file; else null.</summary>
+    private int? SampledIndex(string y)
     {
         // Y as a BARE COUNT of the population (case 2: grep -c printed "37" on its own line; "37 total", "count: 37", "37 rows"), never a
         // check's own "Y of Y" or "X of Y" - a tail -1 of a check's summary line reports the whole the check counted (first dry run:
@@ -617,7 +621,7 @@ public sealed class WholeLedger
             var src = _seen[i].Sources;
             for (var j = i + 1; j < _seen.Count; j++)
                 if (!_seen[j].Cut && _seen[j].Sources.Overlaps(src)) return null;
-            return (_seen[i].Line, true);
+            return i;
         }
         return null;
     }

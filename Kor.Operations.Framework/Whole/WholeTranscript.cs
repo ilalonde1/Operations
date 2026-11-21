@@ -26,6 +26,7 @@ public sealed record WholeEv(int Line, WholeKind Kind, string Tool, string Input
 public static class WholeTranscript
 {
     public const long TailBytes = Stall.StallTranscript.TailBytes;
+    public const long MostCountedBytes = 200L << 20;
 
     public static List<WholeEv> ReadTail(string? path, long bytes = TailBytes)
     {
@@ -39,12 +40,15 @@ public static class WholeTranscript
         fs.ReadExactly(buf, 0, (int)take);
         // review 2583: number the tail's lines as the FILE numbers them (a refusal citing "line -523" cannot be found), counting the
         // newlines before the tail - a byte scan, no JSON parse
-        var before = whole ? 0 : NewlinesBefore(fs, len - take);
+        // measured 20 Nov: 290-552 ms for a whole Stop judgement on a 15.6 MB transcript; transcripts reach 789 MB (#122190), so past
+        // MostCountedBytes the count is skipped and lines are numbered back from the end (-1 = the last), as StallTranscript does
+        var counted = whole || len - take <= MostCountedBytes;
+        var before = whole ? 0 : counted ? NewlinesBefore(fs, len - take) : 0;
         var lines = Encoding.UTF8.GetString(buf).Split('\n').ToList();
         var first = before + 1;
         if (!whole && lines.Count > 0) { lines.RemoveAt(0); first++; }
         if (lines.Count > 0 && lines[^1].Trim().Length == 0) lines.RemoveAt(lines.Count - 1);
-        return Parse(lines, first);
+        return Parse(lines, counted ? first : -1);
     }
 
     private static int NewlinesBefore(FileStream fs, long end)
