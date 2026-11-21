@@ -690,4 +690,169 @@ public class WholeGateTests
         var l = Ledger();
         Assert.Contains("W3", l.Decide(Pre(l, "PowerShell", "UPDATE oversight.Commitment SET State=N'done' WHERE Id=2139")).Rules);
     }
+
+    // Round 2: command syntax is not evidence provenance. W=b49d2807, physical transcript lines.
+    // Covers quoted shell separators, bounded variable/path/SQL provenance, and unrelated disclosure/listings.
+    // Does not interpret arbitrary shell programs or prove that a checker printed every item it should have.
+    private const string WList = "cd /c/scratch && tail -n +3 all.txt | awk -F'|' '$2==\"kor-whole\"{print $1, substr($3,6,14), substr($4,1,40), $5, \"::\", substr($7,1,60), \"::\", substr($8,1,130)}'";
+    private const string WRecords = "124976|hotel-run29-package-47-of-47|Hotel run 29: gates 47 of 47 (7 named not applicable); Halifax's next run fails the new bearing gate at 23 of 34.\n" +
+        "134033|row-2142-done-run-and-release-gates-18-nov|model-audit --deliver hand-off (50 of 50 frozen bundles refused).";
+    private const string WSql = "SET NOCOUNT ON; SELECT Id, Name, LEFT(REPLACE(REPLACE(Description,CHAR(10),' '),CHAR(13),' '),230) AS D FROM KorStandards.brain.Memory WHERE Id IN (%s) ORDER BY Id;\\n";
+    private const string WPrepare = "S=/c/scratch; cd \"$S\"; ids=$(tail -n +3 all.txt | awk -F'|' '$2==\"kor-repeat\"{print $8}' | grep -oE \"#[0-9]{6}\" | tr -d '#' | sort -u | paste -sd,); " +
+        "echo \"$ids\" | tr ',' '\\n' | wc -l; printf \"" + WSql + "\" \"$ids\" > recs.sql; cat recs.sql | head -c 300";
+    private const string WRead = "$S=\"C:\\scratch\"; python -I tools/SqlQuery/oq.py -i \"$S\\recs.sql\" -w 400 | Out-File -Encoding utf8 \"$S\\recs.txt\"; (Get-Content \"$S\\recs.txt\").Count; Get-Content \"$S\\recs.txt\"";
+
+    [Fact]
+    public void Narrow2_W806_ReadingRefusalRowsDoesNotCreateFreshFlags()
+    {
+        // W L281/282 -> L806. Keep the actual awk and output shape; only the scratch path is shortened.
+        Bash(WList, "9010 11-21T02:37:05 proof-2139-c1-L6470-write-after-artifact Framework :: row 2139 W2 at Report :: L4601 4 FAIL / L6434 4-sided 176 of 180\n" +
+            "9195 11-21T02:58:35 b6568d08-9e05-4227-9081-c24680ae497d Framework :: row 2139 W3+W1 at Board :: L2754 17 failing / L2769 42 failing");
+        var l = Ledger();
+        Assert.Empty(l.Flags);
+        Assert.False(l.Decide(Pre(l, "Bash", "\"C:/KOR-Operations/kor/kor.exe\" state --module Operations --file C:/scratch/state.md 2>&1 | tail -2")).Refuse);
+    }
+
+    [Fact]
+    public void Narrow2_W1158_TheEarlierPrintfSuppliesTheSqlProvenance()
+    {
+        // W L1031/1039 generated recs.sql with a numeric-only ID pipeline; L1047/1048 read it; L1158 sent the table.
+        Bash(WPrepare, "44\nSET NOCOUNT ON; SELECT Id, Name, LEFT(REPLACE(REPLACE(Description,CHAR(10),' '),CHAR(13),' '),230) AS D FROM KorStandards.brain.Memory WHERE Id IN (116452,120549");
+        Call("PowerShell", new { command = WRead }, WRecords);
+        var l = Ledger();
+        Assert.Empty(l.Flags);
+        Assert.False(l.Decide(Pre(l, "SendMessage", "Step 3 is done: 193 of 201 live guard refusals judged on transcripts (52 right, 141 wrong). 8 are not checked because the transcript did not settle them.")).Refuse);
+    }
+
+    [Theory]
+    [InlineData("cd 'C:/scratch; notes' && cat report.txt")]
+    [InlineData("S='C:/scratch; notes'; cat \"$S/report.txt\"")]
+    [InlineData("$S='C:/scratch; notes'; Get-Content \"$S/report.txt\"")]
+    [InlineData("cat report.txt; printf '%s;|%s' old report; Get-Content report.txt")]
+    [InlineData("tail -n +3 all.txt | awk -F'|' '$2==\"kor-whole\"{print $1; print $8}' | sort -u")]
+    public void Narrow2_ReaderStagesKeepQuotedSeparators(string command)
+    {
+        Bash(command, "4-sided 176 of 180\n13 of 15 failed");
+        var l = Ledger();
+        Assert.Empty(l.Flags);
+        Assert.False(l.Decide(Reply(l)).Refuse);
+    }
+
+    [Theory]
+    [InlineData("cd 'C:/scratch; notes' && dotnet test tests.csproj")]
+    [InlineData("S='C:/scratch; notes'; python check.py")]
+    [InlineData("$S='C:/scratch; notes'; python check.py")]
+    [InlineData("cat report.txt; python check.py; Get-Content report.txt")]
+    [InlineData("cat report.txt | python check.py | sort")]
+    [InlineData("cat history.jsonl; python check.py")]
+    [InlineData("echo \"$(python check.py)\"")]
+    [InlineData("$S = python check.py")]
+    [InlineData("S=$(python check.py); cat report.txt")]
+    public void Narrow2_RealChecksBehindTheSameSyntaxStillRefuse(string command)
+    {
+        Bash(command, "4-sided 176 of 180");
+        var l = Ledger();
+        Assert.Contains("W1", l.Decide(Reply(l)).Rules);
+        Assert.Contains("W3", l.Decide(Pre(l, "Bash", "kor_task.py accept 2139")).Rules);
+    }
+
+    [Theory]
+    [InlineData("printf", "PreToolUse:Bash hook error: denied")]
+    [InlineData("unknown-ids", "ok")]
+    [InlineData("mutation", "ok")]
+    [InlineData("overwrite", "ok")]
+    public void Narrow2_UnprovenOrChangedPrintfSqlRemainsACheck(string how, string result)
+    {
+        // Counterexamples to W1031: do not trust a failed write, arbitrary expansion, mutation, or later unknown overwrite.
+        var prepare = how == "unknown-ids" ? WPrepare.Replace("grep -oE \"#[0-9]{6}\"", "cat")
+            : how == "mutation" ? WPrepare.Replace("ORDER BY Id;", "ORDER BY Id; DELETE FROM brain.Memory;") : WPrepare;
+        Bash(prepare, result);
+        if (how == "overwrite") Call("Write", new { file_path = "C:/scratch/recs.sql", content = "EXEC check_geometry" }, "ok");
+        Call("PowerShell", new { command = WRead }, "4-sided 176 of 180");
+        var l = Ledger();
+        Assert.Contains("W1", l.Decide(Reply(l)).Rules);
+    }
+
+    [Theory]
+    [InlineData("C:/scratch/recs.sql", "$S='C:/scratch'; python -I tools/SqlQuery/oq.py -i \"$S/recs.sql\"")]
+    [InlineData("C:/scratch/recs.sql", "S='C:/scratch'; cd \"$S\" && python -I tools/SqlQuery/oq.py -i ./recs.sql")]
+    [InlineData("C:/scratch/./recs.sql", "python -I tools/SqlQuery/oq.py -i C:/scratch/sub/../recs.sql")]
+    [InlineData("C:/scratch/recs.sql", "python -I tools/SqlQuery/oq.py -i /c/scratch/recs.sql")]
+    public void Narrow2_KnownSqlUsesResolvedPaths(string written, string command)
+    {
+        Call("Write", new { file_path = written, content = "SELECT Description FROM KorStandards.brain.Memory" }, "ok");
+        Call("PowerShell", new { command }, WRecords);
+        var l = Ledger();
+        Assert.Empty(l.Flags);
+        Assert.False(l.Decide(Reply(l)).Refuse);
+    }
+
+    [Theory]
+    [InlineData("$S='C:/scratch'; python check.py")]
+    [InlineData("$S='C:/scratch'; python -I tools/SqlQuery/oq.py -i \"$S/recs.sql\"; python check.py")]
+    [InlineData("$S='C:/elsewhere'; python -I tools/SqlQuery/oq.py -i \"$S/recs.sql\"")]
+    public void Narrow2_SqlProvenanceDoesNotExcuseOtherChecks(string command)
+    {
+        Call("Write", new { file_path = "C:/scratch/recs.sql", content = "SELECT Description FROM KorStandards.brain.Memory" }, "ok");
+        Call("PowerShell", new { command }, "4-sided 176 of 180");
+        var l = Ledger();
+        Assert.Contains("W1", l.Decide(Reply(l)).Rules);
+    }
+
+    [Theory]
+    [InlineData("sprockets 2 of 15 pass", true)]
+    [InlineData("2 of 15 pass", true)]
+    [InlineData("widgets 2 of 15 pass", false)]
+    [InlineData("widgets 13 of 15 failed", false)]
+    public void Narrow2_RatioDisclosureNeedsTheSameSubject(string disclosure, bool refuse)
+    {
+        // Review note 1: equal numbers do not identify the population.
+        Bash("python check.py", "widgets 13 of 15 failed");
+        var l = Ledger();
+        Assert.Equal(refuse, l.Decide(Reply(l, disclosure)).Refuse);
+        Assert.Contains("W3", l.Decide(Pre(l, "Bash", "kor_task.py accept 2139")).Rules);
+    }
+
+    [Fact]
+    public void Narrow2_UnrelatedRatioCannotAccountForATestTotal()
+    {
+        Bash("dotnet test tests.csproj", "Failed! - Failed: 2, Passed: 817, Skipped: 0, Total: 819");
+        var l = Ledger();
+        Assert.Contains("W1", l.Decide(Reply(l, "Windows: 817 of 819 green")).Rules);
+    }
+
+    [Theory]
+    [InlineData("C:/different/base.trx C:/different/new.trx", true)]
+    [InlineData("C:/same/base.trx C:/same/new.trx", false)]
+    [InlineData("C:/same/./base.trx C:/same/sub/../new.trx", false)]
+    public void Narrow2_BaselineListingMustNameTheSameTrxPaths(string pair, bool refuse)
+    {
+        // Review note 2, derived from B1 L2457/2769. Generic basenames collide across two unrelated pairs.
+        Bash("kor testdiff C:/same/base.trx C:/same/new.trx", "VERDICT: NO NEW FAILURES - 42 of 1155 test names failing in new, every one also failing in base (42 of 1133)");
+        Bash("python compare.py " + pair, BaselineCases);
+        var l = Ledger();
+        Assert.Equal(refuse, l.Decide(Pre(l, "PowerShell", "UPDATE oversight.Commitment SET State=N'done'")).Refuse);
+    }
+
+    [Fact]
+    public void Narrow2_RealSummaryThenPartialListCannotOpenAllFailures()
+    {
+        // Review note 5: the previous test had ONLY the list's count summary, not the original testdiff summary first.
+        Bash("kor testdiff base.trx new.trx", "VERDICT: NO NEW FAILURES - 42 of 1155 test names failing in new, every one also failing in base (42 of 1133)");
+        Bash("python compare.py base.trx new.trx", string.Join("\n", BaselineCases.Split('\n').Skip(1)));
+        var l = Ledger();
+        Assert.Contains("W3", l.Decide(Pre(l, "PowerShell", "UPDATE oversight.Commitment SET State=N'done'")).Rules);
+    }
+
+    [Theory]
+    [InlineData("python check.py", "'covered 0 of 15' is a summary of this check.")]
+    [InlineData("python check.py", ReviewQuote)]
+    [InlineData("python tools/kor_review.py review", "'covered 0 of 15' is a summary of this check.")]
+    public void Narrow2_ACheckersAssessedQuoteIsStillItsOwnResult(string command, string output)
+    {
+        // Review note 3: assessment wording alone is not provenance. A real document review is covered in round 1.
+        Bash(command, output);
+        var l = Ledger();
+        Assert.Contains("W1", l.Decide(Reply(l)).Rules);
+    }
 }
