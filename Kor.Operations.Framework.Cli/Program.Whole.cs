@@ -144,7 +144,7 @@ public static partial class Program
                 if (e.Kind == WholeKind.Text) turnHasText = true;
                 if (e.Kind == WholeKind.Call)
                 {
-                    var door = WholeGate.DoorOf(e.Tool, e.Input, e.FilePath, p => ReadSqlFile(p, null));
+                    var door = WholeGate.DoorOf(e.Tool, e.Input, e.FilePath, p => ReadSqlFile(p, e.Cwd));
                     if (door.Kind != WholeGate.DoorKind.None) Judge(door with { Text = ledger.Narration + "\n" + door.Text }, e.Line, e.Tool);
                 }
                 ledger.Add(e);

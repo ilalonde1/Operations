@@ -108,10 +108,28 @@ def output_lines(payload):
     return len(str(text).splitlines())   # every line, blank ones too: a blank line the cut kept is a line it kept
 
 
+PIPELINE_END = re.compile(r";|&&|\|\||\n")
+
+
+def pipeline_at(cmd, pos):
+    """The pipeline (between ; && || and line breaks) that holds position pos."""
+    start = 0
+    for m in PIPELINE_END.finditer(cmd):
+        if m.start() >= pos:
+            return cmd[start:m.start()]
+        start = m.end()
+    return cmd[start:]
+
+
 def first_cut(cmd, out_lines):
-    """The name of the first cut that may have dropped something, or None (row 2010: proven-whole cuts are skipped)."""
+    """The name of the first cut that may have dropped something, or None (row 2010: proven-whole cuts are skipped).
+    Row 2139 (20 Nov 2026): a cut is excused by a count only in its OWN pipeline. Rule 12's own case was
+    `grep ... | head -5; echo ---; grep -c ...` - the grep -c counted the 37, the head -5 still cut the values the
+    claim was written from, and the old whole-command COUNTS test kept this guard silent on exactly that command."""
     for pattern, how in TRUNCATES:
         for m in pattern.finditer(cmd):
+            if COUNTS.search(pipeline_at(cmd, m.start())):
+                continue
             if out_lines is None or not kept_whole(cmd, m.start(), out_lines):
                 return how
     return None
@@ -124,7 +142,7 @@ def main():
         return
 
     cmd = (payload.get("tool_input") or {}).get("command") or ""
-    if not cmd or COUNTS.search(cmd):
+    if not cmd:
         return
 
     how = first_cut(cmd, output_lines(payload))

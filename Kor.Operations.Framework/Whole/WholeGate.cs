@@ -36,7 +36,10 @@ namespace Kor.Operations.Framework.Whole;
 ///                 flag (from the last <see cref="Window"/> calls) is not discharged. NOT OPENED does not lift it. Case 1 L6469.
 ///   W3 STEP     - the expensive step or a board close (State done/dropped, kor_task accept) while a flag or hole from the last
 ///                 <see cref="Window"/> calls is not discharged. Case 1 L6516.
-///   W4 SAMPLED  - a door text claiming the whole of Y ("all Y", "every one of the Y", "each of the Y", "Y of Y", Y &gt;= 3) when the
+///   W4 SAMPLED  - a door SENTENCE claiming the whole of Y ("all Y", "none of the Y", "every one of the Y", "each of the Y", "Y of Y",
+///                 Y &gt;= 5) AND stating a range over it ("3.1-3.4 in", "consistently", "between a and b", "under 4") - rule 12's
+///                 "a range/distribution from it"; Y must appear in that cut output as a BARE COUNT (a line "37", "37 rows", "count:
+///                 37"), never as the check's own "Y of Y" - when the
 ///                 latest output holding Y was CUT (claude_bash_sample_guard.py's cut list, WITHOUT its COUNTS escape - case 2's
 ///                 `| head -5; grep -c` printed 37 and five values; a Grep result paginated; a partial Read) and no later uncut call
 ///                 names the same source file. Case 2 L10567; its correction L10873 (sort | uniq -c over the same file) passes.
@@ -49,13 +52,25 @@ namespace Kor.Operations.Framework.Whole;
 /// reader) reads as a check, and its quoted "4 of 180 ... not" is a flag. SAME-CLASS FAULT IT WOULD MISS: case 1 again if the first
 /// check had printed "4 pads irregular" - no number with a polarity word, no flag, nothing to account for.
 /// For a whole FOLDER or package, the file ledger is Framework tools/blind_look_check.py --package (one row per file, X of Y).
+///
+/// MEASURED (20 Nov 2026, kor whole --replay over the 173 main transcripts written 16-20 Nov in Framework, KOR.Drafter and
+/// Operations; a session is taken to comply after its first refusal): 2,452 door moments, 229 refused - W1 141, W2 14, W3 86, W4 0.
+/// The 563 distinct flags of dry run 2 were read whole; the misfire classes found were fixed (X/Y ids, far polarity words, grep -n
+/// and diff lines, "not checked: 0", quoted mentions, ids and a ratio's Y as counts, how-to-read brief text), and what is left is
+/// predominantly real non-pass results the sessions never accounted for (NOT ACCEPTED 6 of 14, FAIL n, NOT GRADED, NOT RUN/FETCHED,
+/// LOOK 235 of 239, "not looked at"). The 50 distinct W4 cases of dry run 4 were read whole: 0 were the sampled-range fault, so W4
+/// now needs both ends of its numeric range among the values the cut output showed (it still refuses case 2). Known residual
+/// misfires: PAGE FILL page counts; "(c) expected FAIL states printed PASS: 0 of 215" (an inverted sense); a brief's own text
+/// "or NOT CHECKED with why"; a gate's proof "50 of 50 DELIVER REFUSED".
+/// HOLES: one this session wrote into its own brief holds for the session; one a check printed is judged over the last Window
+/// calls, as flags are (a hole printed hours earlier blocked every message in the case-3 proof).
 /// Fails OPEN on any fault (the hook logs it). KOR_WHOLE_GATE=off lifts it (reviewer and judge sessions).
 /// </summary>
 public static class WholeGate
 {
     public const string GuardName = "kor-whole";
     public const int Window = 200;
-    public const int MostNamed = 8;
+    public const int MostNamed = 30;   // a session must see every key it is asked to account for (8 hid 5 of 13 in the case-3 proof)
 
     private const RegexOptions Ci = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
 
@@ -112,7 +127,8 @@ public static class WholeGate
         var list = new List<Reading>();
         foreach (var rawLine in output.Split('\n'))
         {
-            var line = rawLine.Length > 2000 ? rawLine[..2000] : rawLine;
+            // a long line (a JSON row, a CSV line) is read to 20,000 characters: at 2,000 a result past that point was never seen
+            var line = rawLine.Length > 20_000 ? rawLine[..20_000] : rawLine;
             if (QuoteLine.IsMatch(line)) continue;
             var ratioFlagged = new HashSet<int>();
             foreach (var cell in line.Split('|', ';', '\t'))
@@ -124,6 +140,8 @@ public static class WholeGate
                     // the polarity word NEAREST the ratio, within Near characters either side (first dry run: a long line's far
                     // words made 'cut at 300,000 of 3,366,086 characters ... I saw all' a flag)
                     int lo = Math.Max(0, m.Index - Near), hi = Math.Min(cell.Length, m.Index + m.Length + Near);
+                    while (lo > 0 && !char.IsWhiteSpace(cell[lo - 1]) && m.Index - lo < Near + 20) lo--;            // whole words in the key
+                    while (hi < cell.Length && !char.IsWhiteSpace(cell[hi]) && hi - m.Index - m.Length < Near + 20) hi++;
                     bool? fail = null;
                     var best = int.MaxValue;
                     foreach (Match w in Words.Matches(cell[lo..hi]))
@@ -137,7 +155,9 @@ public static class WholeGate
                     if (fail is null) continue;
                     var flagged = fail.Value ? x : y - x;
                     var label = Squash(Regex.Replace(cell[lo..hi], @"\d[\d,]*\s+of\s+\d[\d,]*", " ")).ToLowerInvariant();
-                    list.Add(new Reading(Squash(cell.Trim()), flagged, y, Clip(label, 60), false));
+                    // the KEY is the window around the ratio, never the whole cell: a refusal shows it whole and a session copies it
+                    // into its NOT OPENED / OPENED line (review 2583: a 2,000-character cell clipped to 140 could not be accounted for)
+                    list.Add(new Reading(Squash(cell[lo..hi].Trim()), flagged, y, Clip(label, 60), false));
                     if (flagged > 0) ratioFlagged.Add(flagged);
                 }
             }
@@ -154,7 +174,12 @@ public static class WholeGate
                 if (ZeroHole.IsMatch(line[(h.Index + h.Length)..])) continue;
                 // a quoted mention ("not checked" in a brief's rules or a reply's instructions) is not a hole
                 if (h.Index > 0 && line[h.Index - 1] is '"' or '\'' or '`') continue;
-                list.Add(new Reading(Squash(Clip(line.Trim(), 160)), 1, 0, h.Value.ToLowerInvariant(), true));
+                // a hole's key: the phrase and what follows it (accounting needs only one of its words, see WholeLedger.HoleWords)
+                // the words BEFORE the phrase name what was not checked ("the .rvt (not opened)") - the proof on 4f85ab91 had
+                // keys "not opened)" and "Not checked" that no line could name, so the key spans 60 characters either side
+                int a = Math.Max(0, h.Index - 60), z = Math.Min(line.Length, h.Index + h.Length + 60);
+                while (a > 0 && !char.IsWhiteSpace(line[a - 1]) && h.Index - a < 80) a--;
+                list.Add(new Reading(Squash(line[a..z].Trim()), 1, 0, h.Value.ToLowerInvariant(), true));
                 break;
             }
         }
@@ -323,6 +348,7 @@ public sealed class WholeLedger
         public required int Line { get; init; }
         public required int CallNo { get; init; }
         public required WholeGate.Reading R { get; init; }
+        public bool Brief { get; init; }   // a hole this session WROTE into its own brief: it holds for the whole session under W1
         public bool Accounted, Opened, Superseded;
         public bool Forgiven;  // replay only: the session is taken to have complied after its first refusal (see Comply)
         public int MostLook;   // the most non-empty lines of an uncut look since the flag
@@ -370,7 +396,7 @@ public sealed class WholeLedger
         _calls++;
         Account(e.Input, e.Line);
         _narration.Clear();
-        foreach (var h in WholeGate.BriefHoles(e)) _flags.Add(new Flag { Line = e.Line, CallNo = _calls, R = h });
+        foreach (var h in WholeGate.BriefHoles(e)) _flags.Add(new Flag { Line = e.Line, CallNo = _calls, R = h, Brief = true });
         if (e.Output is null) return;
         // a call another hook refused never ran: its result is that hook's text (records it named, rules it quoted), not a check's
         if (e.Output.StartsWith("PreToolUse:", StringComparison.Ordinal) || e.Output.StartsWith("PostToolUse:", StringComparison.Ordinal)) return;
@@ -418,7 +444,9 @@ public sealed class WholeLedger
                 if (f.R.Hole)
                 {
                     var words = HoleWords(f.R.Key);
-                    if (!words.Any(w => l.Contains(w, StringComparison.OrdinalIgnoreCase))) continue;
+                    // a key with no distinctive word is accounted by naming the key itself
+                    if (words.Count == 0 ? !l.Contains(f.R.Key, StringComparison.OrdinalIgnoreCase)
+                                         : !words.Any(w => l.Contains(w, StringComparison.OrdinalIgnoreCase))) continue;
                     if (notChecked || notOpened) f.Accounted = true;
                     else if (openedHole && f.MostLook > 0) { f.Accounted = true; f.Opened = true; }
                     continue;
@@ -448,7 +476,18 @@ public sealed class WholeLedger
     public Verdict Decide(WholeGate.Door door)
     {
         if (door.Kind == WholeGate.DoorKind.None) return Verdict.Allow;
+        // review 2583: the door's own accounting lines count for THIS verdict, but are kept only if the door is allowed - a refused
+        // call never ran and a blocked reply was not sent, so their OPENED / NOT OPENED lines did not reach anyone
+        var before = _flags.Select(f => (f.Accounted, f.Opened)).ToList();
         Account(door.Text, int.MaxValue);
+        var v = Judge(door);
+        if (v.Refuse)
+            for (var i = 0; i < before.Count; i++) { _flags[i].Accounted = before[i].Accounted; _flags[i].Opened = before[i].Opened; }
+        return v;
+    }
+
+    private Verdict Judge(WholeGate.Door door)
+    {
         var recent = _flags.Where(f => f.CallNo > _calls - WholeGate.Window).ToList();
         var rules = new List<string>();
         var named = new List<WholeLedger.Flag>();
@@ -479,8 +518,11 @@ public sealed class WholeLedger
         {
             var y = m.Groups["y"].Success ? m.Groups["y"].Value : m.Groups["a"].Value == m.Groups["b"].Value ? m.Groups["a"].Value : null;
             if (y is null || Int(y) < 3 || rules.Contains("W4")) continue;
-            if (!RangeOver.IsMatch(sentence)) continue;
-            if (SampledOnly(y) is not { } at) continue;
+            // the RANGE must be numeric and both its ends must be among the values the cut output SHOWED (case 2: 3.1 and 3.4 were
+            // in the five lines head -5 kept). Dry run 4 (20 Nov 19:4x): 50 of 50 distinct claims refused on any range phrase -
+            // "L03-L05", "07:35-07:5x", "within 0.05" - rested on a count the check printed, none on the values of a sample
+            if (NumericRange.Match(sentence) is not { Success: true } rg) continue;
+            if (SampledOnly(y, rg.Groups["a"].Value, rg.Groups["b"].Value) is not { } at) continue;
             rules.Add("W4");
             sb.Append($"W4 - \"{WholeGate.Squash(m.Value)}\" claims the whole of {y}, but the latest output that holds {y} (transcript line {at.Line}) was CUT (head / tail / grep -m / a paginated Grep / a partial Read) and no later uncut call read the same file. Operations CLAUDE.md rule 12: a truncated command cannot support a claim about the whole. Count it whole (| sort | uniq -c over every line, no cut) and state X of Y.\n");
             break;
@@ -503,7 +545,11 @@ public sealed class WholeLedger
         // W1: every flag of this turn and every hole of the session accounted for
         if (door.Account)
         {
-            var hidden = _flags.Where(f => !f.Accounted && !f.Discharged && (f.R.Hole || f.Line > _promptLine)).ToList();
+            // this turn's flags; when the turn's prompt lies before the tail read (no prompt seen), the last Window calls stand for it
+            // (review 2583), and holes of the whole tail as before
+            var hidden = _flags.Where(f => !f.Accounted && !f.Discharged &&
+                                           (f.Brief || (f.R.Hole && f.CallNo > _calls - WholeGate.Window) ||
+                                            (_promptLine == int.MinValue ? f.CallNo > _calls - WholeGate.Window : f.Line > _promptLine))).ToList();
             if (hidden.Count > 0)
             {
                 rules.Add("W1");
@@ -542,6 +588,18 @@ public sealed class WholeLedger
     }
 
     /// <summary>W4: the latest output holding <paramref name="y"/>, when it was cut and no later uncut call read the same file; else null.</summary>
+    /// <summary>A numeric value range: "3.1-3.4", "3.1 to 3.4", "between 2.1 and 4.3" - decimals or a unit, so labels ("L03-L05") and
+    /// clock times ("07:35-07:5x") are not ranges.</summary>
+    private static readonly Regex NumericRange = new(@"(?<![\w:.])(?<a>\d+\.\d+|\d+(?=\s*(?:in|mm|ft|kPa|psf|MPa|%)\b))\s*(?:in|mm|ft)?\s*(?:-|–|—|to|and)\s*(?<b>\d+(?:\.\d+)?)(?![\w:])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private (int Line, bool Cut)? SampledOnly(string y, string a, string b)
+    {
+        if (SampledOnly(y) is not { } at) return null;
+        var shown = _seen.First(s => s.Line == at.Line).Output;
+        bool Has(string v) => Regex.IsMatch(shown, $@"(?<![\d.]){Regex.Escape(v)}(?![\d])");
+        return Has(a) && Has(b) ? at : null;
+    }
+
     private (int Line, bool Cut)? SampledOnly(string y)
     {
         // Y as a BARE COUNT of the population (case 2: grep -c printed "37" on its own line; "37 total", "count: 37", "37 rows"), never a

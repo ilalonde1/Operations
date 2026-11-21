@@ -12,7 +12,7 @@ public enum WholeKind { Prompt, Text, Call }
 /// <param name="Input">what the call SAYS: Bash/PowerShell command; Write content; Edit/MultiEdit new text; SendMessage message; Agent
 /// prompt; Read/Grep path and pattern; else the input JSON. For a Text, the text.</param>
 /// <param name="Partial">a Read with offset or limit (part of the file was read).</param>
-public sealed record WholeEv(int Line, WholeKind Kind, string Tool, string Input, string? Output, string? FilePath, bool Partial)
+public sealed record WholeEv(int Line, WholeKind Kind, string Tool, string Input, string? Output, string? FilePath, bool Partial, string? Cwd = null)
 {
     public bool Answered => Output is not null;
 }
@@ -37,10 +37,30 @@ public static class WholeTranscript
         fs.Seek(len - take, SeekOrigin.Begin);
         var buf = new byte[take];
         fs.ReadExactly(buf, 0, (int)take);
+        // review 2583: number the tail's lines as the FILE numbers them (a refusal citing "line -523" cannot be found), counting the
+        // newlines before the tail - a byte scan, no JSON parse
+        var before = whole ? 0 : NewlinesBefore(fs, len - take);
         var lines = Encoding.UTF8.GetString(buf).Split('\n').ToList();
-        if (!whole && lines.Count > 0) lines.RemoveAt(0);
+        var first = before + 1;
+        if (!whole && lines.Count > 0) { lines.RemoveAt(0); first++; }
         if (lines.Count > 0 && lines[^1].Trim().Length == 0) lines.RemoveAt(lines.Count - 1);
-        return Parse(lines, whole ? 1 : -1);
+        return Parse(lines, first);
+    }
+
+    private static int NewlinesBefore(FileStream fs, long end)
+    {
+        fs.Seek(0, SeekOrigin.Begin);
+        var buf = new byte[1 << 20];
+        long read = 0;
+        var n = 0;
+        while (read < end)
+        {
+            var got = fs.Read(buf, 0, (int)Math.Min(buf.Length, end - read));
+            if (got <= 0) break;
+            n += buf.AsSpan(0, got).Count((byte)'\n');
+            read += got;
+        }
+        return n;
     }
 
     public static List<WholeEv> ReadAll(string path)
@@ -109,7 +129,7 @@ public static class WholeTranscript
                         var input = b.TryGetProperty("input", out var inp) && inp.ValueKind == JsonValueKind.Object ? inp : default;
                         index[id] = evs.Count;
                         var partial = name == "Read" && input.ValueKind == JsonValueKind.Object && (input.TryGetProperty("offset", out _) || input.TryGetProperty("limit", out _));
-                        evs.Add(new WholeEv(no, WholeKind.Call, name, InputOf(name, input), null, FileOf(input), partial));
+                        evs.Add(new WholeEv(no, WholeKind.Call, name, InputOf(name, input), null, FileOf(input), partial, S(d, "cwd")));
                     }
                     else if (type == "user" && bt == "tool_result")
                     {

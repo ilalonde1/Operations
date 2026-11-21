@@ -32,6 +32,11 @@ NOTICE = [
     ("n=`ls | head -5`; echo $n", lines(1)),
     ("git log --oneline | head -5 >&2", lines(0)),
     ("git log --oneline | head -5 &> f.txt", lines(0)),
+    # row 2139: the rule-12 command exactly as it ran (Operations 6b3b880f L10557) - the grep -c is in ANOTHER pipeline,
+    # so it does not excuse the head -5 that cut the values
+    ('grep -oE "JBP_V-WALL[^:]*: outline" "$SP/r.txt" | head -5; echo "--- count ---"; grep -c "could not be resolved" "$SP/r.txt"',
+     lines(5) + "\n--- count ---\n37"),
+    ("ls | head -3 && ls | wc -l", lines(4)),
 ]
 SILENT = [
     # row 2010: the cut kept more lines than were printed, so it dropped nothing
