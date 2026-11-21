@@ -1110,4 +1110,28 @@ public class WholeGateTests
         Bash("cat C:/run/result.log", "Failed: 3");
         Assert.Empty(Ledger().Flags);
     }
+
+    [Fact]
+    public void Narrow3_TranscriptHelperWithoutALiteralJsonlSuffixStillExportsHistory()
+    {
+        // B1 L1137/1149 w4cases.py reads paths from a list, then message/tool_result JSON.
+        Call("Write", new { file_path = "C:/run/reader.py", content = "import json,sys\nfor line in open(sys.argv[1]):\n    d=json.loads(line)\n    for b in d['message']['content']:\n        if b.get('type') == 'tool_result': print(b.get('content'))" }, "ok");
+        Bash("python C:/run/reader.py history-list.txt > C:/run/history.log", "ok");
+        Bash("cat C:/run/history.log", "294 refused\n31 refused");
+        Assert.Empty(Ledger().Flags);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Narrow3_ProjectionOfAReplayExportKeepsHistoryButARealCheckerDoesNot(bool check)
+    {
+        // B1 L1114 -> L1224 -> L1239: quoted history survives an intervening export/projection.
+        Bash("kor whole --replay sessions.txt > C:/run/history.log", "ok");
+        Bash("grep REFUSE C:/run/history.log | python -c \"import sys; print(sys.stdin.read())\" > C:/run/flags.log" +
+            (check ? "; python check.py > C:/run/flags.log" : ""), "ok");
+        Bash("cat C:/run/flags.log", "24 REFUSED");
+        var l = Ledger();
+        Assert.Equal(check, l.Decide(Reply(l)).Refuse);
+    }
 }
