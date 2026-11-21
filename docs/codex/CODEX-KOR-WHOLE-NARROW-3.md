@@ -53,6 +53,11 @@ The author's claim about 2 and 3: commit subjects printed by `git log` or `git m
 wrote earlier, not a check result. Round 2's cut (`cut -c1-80`, `cut -c1-70`) may be what turns them into W4 or W1
 flags. Check whether the cause is the cut, the `cd` prefix, or the quote, and whether it is one cause or two.
 
+**4. From the independent review of round 2 (kor_review row 2603, MINOR; a claim).** WholeGate.cs ~L284:
+RecordReader matches case-insensitively, but `m.Value != ".jsonl"` compares case-sensitively. So a command naming
+`X.JSONL` still gets the old command-wide reader exemption, and a real check later in the same command is hidden.
+That is a false pass. Add a MUST REFUSE case and fix it, or show the claim is wrong.
+
 **Known, not in scope unless it is the same cause:** your round-2 disclosure, A1 L2008 (a conservative false refusal
 from lexical subject matching). If your fix for 2-3 also fixes it, say so. Don't widen the change to reach it.
 
