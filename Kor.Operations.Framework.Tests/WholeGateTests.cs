@@ -895,4 +895,26 @@ public class WholeGateTests
         var l = Ledger();
         Assert.Contains("W1", l.Decide(Reply(l)).Rules);
     }
+
+    [Theory]
+    [InlineData("Live rulings 82. 821 of 823 green.")]
+    [InlineData("Zero anywhere else. 821 of 823 tests green.")]
+    public void Narrow2_PreviousSentenceDoesNotRenameTheDisclosedTestPopulation(string disclosure)
+    {
+        // A2 L12103 and L12176: full replay caught the label window including words from the preceding sentence.
+        Bash("dotnet test tests.csproj", "Failed! - Failed: 2, Passed: 821, Skipped: 0, Total: 823");
+        var l = Ledger();
+        Assert.False(l.Decide(Reply(l, disclosure)).Refuse);
+    }
+
+    [Theory]
+    [InlineData("python -I \"C:/tools/kor_review.py\" review", false)]
+    [InlineData("python check.py", true)]
+    public void Narrow2_AttributedCodeReviewExampleIsNotACheckerSummary(string command, bool refuse)
+    {
+        // B1 L5533/5537, the actual review note 3, with a quoted executable path.
+        Bash(command, "- MINOR: Kor.Operations.Framework/Whole/WholeGate.cs AssessedQuote (L137) - A checker that prints \"'4 of 180 not 4-sided' is the summary\" would lose its flag.");
+        var l = Ledger();
+        Assert.Equal(refuse, l.Decide(Reply(l)).Refuse);
+    }
 }
