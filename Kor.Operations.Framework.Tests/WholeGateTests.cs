@@ -105,6 +105,20 @@ public class WholeGateTests
     }
 
     [Fact]
+    public void ADryRunOrThisGatesOwnTextIsNoCheckOutput()
+    {
+        // the row-2139 close was refused on what this session's dry runs and proofs PRINTED about other sessions
+        Assert.True(WholeGate.IsReader("C:/KOR-Operations/kor/kor.exe whole --replay C:/t/dry.txt"));
+        Assert.True(WholeGate.IsReader("python -I locate.py C:/u/.claude/projects/x/e7287342.jsonl \"4 of 180\""));
+        Assert.Empty(WholeGate.Readings("c1-L6516-run-on-210  DENY kor whole (board row 2139, the whole-source ledger gate): refused - W3."));
+        Assert.Empty(WholeGate.Readings("  - transcript line 4601: 4 flagged - key `4 FAIL`"));
+        Assert.Empty(WholeGate.Readings("W3 - a board close while 6 flagged item(s) are not opened"));
+        Assert.Empty(WholeGate.Readings("139b7ae2 L116 LOOK 235 of 239 shipped file(s) looked at"));
+        Assert.Empty(WholeGate.Readings("REFUSE e7287342-6067-4ac2-818a-e923a9744797.jsonl L6470 Report (Write) W2: L6434 `4-sided 176 of 180`"));
+        Assert.NotEmpty(WholeGate.Readings("B1_L02 pads 100 -> 180 | 4-sided 176 of 180"));   // a check's own line still reads
+    }
+
+    [Fact]
     public void AnotherHooksRefusalIsNoCheckOutput()
     {
         Bash("python -I run.py", "PreToolUse:Bash hook error: kor recall ... record #135770 4 of 180 merged pads were not 4-sided");

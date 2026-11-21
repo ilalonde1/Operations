@@ -29,8 +29,11 @@ namespace Kor.Operations.Framework.Whole;
 /// PreToolUse door is part of its text.
 ///
 /// THE RULES (<see cref="WholeLedger.Decide"/>), every one naming the flag, its transcript line and the exact line that lifts it:
-///   W1 ACCOUNT  - at Stop, SendMessage, a board write and kor record/state: every flag of this turn and every hole of the session is
+///   W1 ACCOUNT  - at Stop, SendMessage, a board write and kor record/state: every flag of this turn, every hole a check printed in the
+///                 last <see cref="Window"/> calls, and every hole this session wrote into its own brief (for the whole session) is
 ///                 accounted for. Hiding a flag is refused; saying it plainly (NOT OPENED) is not. Case 1 L6490, case 3 L2763.
+///   NOT A CHECK - a reader's output; another hook's refusal; an output carrying this gate's own refusal; a line quoting a session
+///                 by id and transcript line (dry-run and transcript-search output); a command naming --replay or a .jsonl.
 ///   W2 DISMISS  - a door sentence holding artifact/artefact, noise, expected, spurious, false positive, harmless, cosmetic, benign,
 ///                 rounding, measuring error, not real, ignorable, flaky or transient AND a flag's number or label word, while that
 ///                 flag (from the last <see cref="Window"/> calls) is not discharged. NOT OPENED does not lift it. Case 1 L6469.
@@ -101,7 +104,10 @@ public static class WholeGate
     /// <summary>A line that QUOTES history rather than reporting a check: a record line (recall, a refusal naming records), a grep -n hit.</summary>
     // (dry run 2, 563 distinct flags read 20 Nov 19:2x: grep -n / grep -rn hits '93:2. Walls', 'letter.txt:585:', diff and word-diff
     // lines '< ...', '{+...' quote files, not results)
-    private static readonly Regex QuoteLine = new(@"\brecord #\d+|\[(?:finding|lesson|decision|dead-end|reference|feedback|project)[,\]]|\bboard row \d+ \[|^\s*\d+:(?!\d\d\b)|^\S+\.\w{1,5}:\d+[:-]|^[<>] |^\{[+-]", Ci);
+    // ... and this gate's own refusal text (its listed keys, echoed by a proof run) is never a check's result
+    // a line citing a SESSION and a transcript line quotes that session ("REFUSE e7287342-....jsonl L6490 ...", "== 17bc90f5 Y=8 ...",
+    // "139b7ae2 L116 LOOK 235 of 239") - the row-2139 close was refused on 60 such lines its own analysis printed
+    private static readonly Regex QuoteLine = new(@"^\s*(?:REFUSE |== )?[0-9a-f]{8}(?:-[0-9a-f]{4}){0,4}(?:-[0-9a-f]{12})?(?:\.jsonl)?\s+(?:L\d+|Y=)|kor whole \(board row 2139|^\s*- transcript line -?\d+: |\bW[1-4] - |\brecord #\d+|\[(?:finding|lesson|decision|dead-end|reference|feedback|project)[,\]]|\bboard row \d+ \[|^\s*\d+:(?!\d\d\b)|^\S+\.\w{1,5}:\d+[:-]|^[<>] |^\{[+-]", Ci);
     /// <summary>A number used as an ordinal, an id or a name ("pass 3 rejected", "row 12 failed", "GuardRefusal 9119 refused") is not a
     /// count; nor is the Y of a ratio read again ("45 of 2714 failing" is 45 flagged, not 2714).</summary>
     private static readonly Regex Ordinal = new(@"(?:\b(?:pass|round|step|run|row|rows|item|line|page|version|review|reviews|phase|part|stage|attempt|try|fix|v|id|ids|refusal|refusals|guardrefusal|record|records|commit|of)|#)\s*$", Ci);
@@ -209,7 +215,9 @@ public static class WholeGate
         "dirname", "realpath", "get-item", "test-path", "resolve-path", "true", "false", "sleep", "awk", "xargs", "column", "nl", "less", "more",
         "export", "set", "unset", "local", "for", "do", "done", "if", "then", "fi", "else", "while",
     };
-    private static readonly Regex RecordReader = new(@"\bkor(?:\.exe)?""?\s+(?:recall|memory|start|read|events|checks|start-docs)\b|kor_brain\.py\s+(?:show|render)|guard_log\.py|board_render\.py|brain\.(?:Memory|Event|LaneState)|oversight\.(?:Commitment|GuardRefusal|vw_Board|Review)", Ci);
+    // a dry run or a transcript search prints OTHER sessions' results: the row-2139 close itself was refused on 141 such flags
+    // (kor whole --replay listings, .jsonl searches) - any lead who replays a guard would block itself the same way
+    private static readonly Regex RecordReader = new(@"\bkor(?:\.exe)?""?\s+(?:recall|memory|start|read|events|checks|start-docs)\b|kor_brain\.py\s+(?:show|render)|guard_log\.py|board_render\.py|brain\.(?:Memory|Event|LaneState)|oversight\.(?:Commitment|GuardRefusal|vw_Board|Review)|--replay\b|\.jsonl\b", Ci);
     private static readonly Regex Segment = new(@"&&|\|\||\||;|\n", Ci);
 
     /// <summary>A command whose every stage is a reader (cat, grep, git, ls, sed, ...), or that reads records, the board or a transcript
@@ -400,6 +408,8 @@ public sealed class WholeLedger
         if (e.Output is null) return;
         // a call another hook refused never ran: its result is that hook's text (records it named, rules it quoted), not a check's
         if (e.Output.StartsWith("PreToolUse:", StringComparison.Ordinal) || e.Output.StartsWith("PostToolUse:", StringComparison.Ordinal)) return;
+        // an output that carries this gate's own refusal (a proof run, a dry run, a self-check) quotes ledgers, it reports no check
+        if (e.Output.Contains("kor whole (board row 2139", StringComparison.Ordinal)) return;
         var cut = WholeGate.IsCut(e);
         if (!cut && e.Tool is "Bash" or "PowerShell" or "Read")
         {
