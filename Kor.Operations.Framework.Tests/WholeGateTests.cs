@@ -1147,4 +1147,17 @@ public class WholeGateTests
         var l = Ledger();
         Assert.Equal(refuse, l.Decide(Reply(l)).Refuse);
     }
+
+    [Theory]
+    [InlineData("dotnet test tests.csproj", true)]
+    [InlineData("git log --oneline -1", false)]
+    public void Narrow3_BackgroundToolOutputPathKeepsItsProducersKind(string command, bool refuse)
+    {
+        // A2 L13676 -> L13732/L13754: the tool supplies the output path, not shell redirection.
+        Call("Bash", new { command, run_in_background = true },
+            "Command running in background with ID: job. Output is being written to: C:\\run\\job.output. You will be notified when it completes.");
+        Bash("F='C:/run/job.output'; echo \"lines: $(wc -l < \"$F\")\"; cat \"$F\"", "Failed: 2");
+        var l = Ledger();
+        Assert.Equal(refuse, l.Decide(Reply(l)).Refuse);
+    }
 }
