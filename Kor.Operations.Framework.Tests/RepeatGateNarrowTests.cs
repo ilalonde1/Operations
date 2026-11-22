@@ -173,7 +173,8 @@ public class RepeatGateNarrowTests
     public void RelevantLiftSurvivesAnUnrelatedRerank()
     {
         var intent = "Measure slab thickness on job 31097 B1 L02";
-        var ix = Index(Thickness,
+        var ix = Index((Thickness.Item1, Thickness.Item2, Thickness.Item3,
+                string.Join(" ", Enumerable.Repeat("gardening roses sunshine", 20))),
             (20, "31097-b1-l02", "31097 B1 L02 window count 18", "31097 B1 L02"),
             (21, "31097-b1-l02", "31097 B1 L02 beam length 20", "31097 B1 L02"),
             (22, "31097-b1-l02", "31097 B1 L02 column count 10", "31097 B1 L02"));
