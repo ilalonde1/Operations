@@ -275,6 +275,29 @@ public class K7Tests
     }
 
     // 13
+    // Cache authority: a healthy database must supersede a cached retirement or replacement immediately.
+    // Does not prove outage freshness; an unavailable DB can still leave a retired check in the fallback.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AHealthyDatabaseSupersedesEvenASecondsOldCheckCache(bool replacement)
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"kor-k7-retired-{Guid.NewGuid():N}");
+        var now = DateTimeOffset.UtcNow;
+        var old = new LiveCheck(1, 2, "lesson", "x", "Office", "Bash", "command", "old", new[] { "old" }, new[] { "ls" }, "s");
+        var current = replacement ? new[] { old with { Id = 3, Pattern = "new", MustRefuse = new[] { "new" } } } : Array.Empty<LiveCheck>();
+        try
+        {
+            CheckCache.Save(dir, new CheckCache.Snapshot(now, new List<LiveCheck> { old }));
+            var got = CheckCache.Get(dir, () => current, now.AddSeconds(4), _ => { }, out var source);
+            Assert.Equal(current.Select(c => c.Id), got!.Select(c => c.Id));
+            Assert.Equal("db", source);
+            Assert.Equal(current.Select(c => c.Id), CheckCache.Load(dir)!.Checks.Select(c => c.Id));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    // 13
     [Fact]
     public void Live13_AWritePathRule()
     {
