@@ -97,6 +97,15 @@ public class RepeatGateNarrowTests
     }
 
     [Theory]
+    [InlineData("Analysis of slab thickness on job 31097 B1 L02")]
+    [InlineData("Measurement of slab thickness on job 31097 B1 L02")]
+    [InlineData("Slab thickness measurement on job 31097 B1 L02")]
+    public void NounFormsOfTheSameMeasurementStillRefuse(string intent)
+    {
+        Assert.True(RepeatGate.Decide(intent, intent, Index(Thickness)).Refuse);
+    }
+
+    [Theory]
     [InlineData("Measure slab deflection on job 31097 B1 L02")]
     [InlineData("Measure concrete strength for the slab on 31097 B1 L02")]
     [InlineData("Characterise overlapping pad groups on 31097 B1 L02")]
@@ -198,6 +207,14 @@ public class RepeatGateNarrowTests
     public void AuditOfTheSameModelBundleWithAnAuditOutcomeStillRefuses()
     {
         var intent = "Audit the 41027 model bundle";
+        var ix = Index((10, "41027-model-bundle-audit", "Model bundle audit for 41027: 14 checks passed.", ""));
+        Assert.True(RepeatGate.Decide(intent, intent, ix).Refuse);
+    }
+
+    [Fact]
+    public void InflectedAuditStillRefusesTheSameAuditOutcome()
+    {
+        var intent = "Auditing the 41027 model bundle";
         var ix = Index((10, "41027-model-bundle-audit", "Model bundle audit for 41027: 14 checks passed.", ""));
         Assert.True(RepeatGate.Decide(intent, intent, ix).Refuse);
     }
