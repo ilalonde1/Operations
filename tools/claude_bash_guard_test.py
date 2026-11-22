@@ -1230,6 +1230,21 @@ B''', "allow"),
 ]
 
 
+# Review of real 8929 found that 2>&1 was being split as a command separator. It did
+# not change that git-message verdict, but would hide a Python consumer before '-'.
+HEREDOC_BOUNDARIES += [
+    ("Descriptor duplication before Python stdin marker", r'''python 2>&1 - <<'PY'
+s = '@"\bLEVEL\b"'
+PY''', "deny"),
+    ("Descriptor duplication on wrapped Python", r'''env FLAG=1 python -I 2>&1 - <<'PY'
+p = 'C:\Users\x'
+PY''', "deny"),
+    ("Descriptor duplication does not make cat Python", r'''cat 2>&1 <<'EOF'
+C:\Users\x
+EOF''', "allow"),
+]
+
+
 def heredoc_cases():
     return [(label, expected, verdict(command)) for label, command, expected in HEREDOC_REAL + HEREDOC_BOUNDARIES]
 
