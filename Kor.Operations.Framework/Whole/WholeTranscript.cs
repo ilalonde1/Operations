@@ -18,6 +18,8 @@ public sealed record WholeEv(int Line, WholeKind Kind, string Tool, string Input
     /// <summary>The command reads stored prose through a SQL or transcript-reader script written earlier in this transcript.
     /// This says where its output came from; it does not assert that the prose is true or complete.</summary>
     public bool ReadsStoredText { get; init; }
+    /// <summary>Reads an output file produced by an earlier run visible in this same transcript.</summary>
+    public bool ReadsOwnResult { get; init; }
 }
 
 /// <summary>
@@ -85,6 +87,8 @@ public static class WholeTranscript
         var evs = new List<WholeEv>();
         var index = new Dictionary<string, int>(StringComparer.Ordinal);
         var written = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var results = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var storedResults = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var edits = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         bool? sidechainMode = null;
         for (var i = 0; i < lines.Count; i++)
@@ -140,10 +144,12 @@ public static class WholeTranscript
                         var partial = name == "Read" && input.ValueKind == JsonValueKind.Object && (input.TryGetProperty("offset", out _) || input.TryGetProperty("limit", out _));
                         var text = InputOf(name, input);
                         var cwd = S(d, "cwd");
-                        evs.Add(new WholeEv(no, WholeKind.Call, name, text, null, FileOf(input), partial, cwd)
+                        var call = new WholeEv(no, WholeKind.Call, name, text, null, FileOf(input), partial, cwd)
                         {
-                            ReadsStoredText = WholeGate.ReadsStoredText(name, text, cwd, p => written.GetValueOrDefault(p)),
-                        });
+                            ReadsStoredText = WholeGate.ReadsStoredText(name, text, cwd, p => written.GetValueOrDefault(p)) ||
+                                WholeGate.ReadsStoredResult(name, text, cwd, storedResults),
+                        };
+                        evs.Add(call with { ReadsOwnResult = WholeGate.ReadsOwnResult(call, results) });
                         if (name is "Edit" or "MultiEdit" && input.ValueKind == JsonValueKind.Object) edits[id] = input.Clone();
                     }
                     else if (type == "user" && bt == "tool_result")
@@ -157,6 +163,13 @@ public static class WholeTranscript
                         failed |= result.StartsWith("PreToolUse:", StringComparison.Ordinal) || result.StartsWith("PostToolUse:", StringComparison.Ordinal);
                         if (call.Tool is "Bash" or "PowerShell")
                         {
+                            // Nonzero exit is still a run (tests commonly fail). A hook denial is not.
+                            if (!result.StartsWith("PreToolUse:", StringComparison.Ordinal) && !result.StartsWith("PostToolUse:", StringComparison.Ordinal))
+                                foreach (var (path, run, append) in WholeGate.ResultWrites(call))
+                                {
+                                    if (run) { results.Add(path); storedResults.Remove(path); }
+                                    else if (!append) { results.Remove(path); storedResults.Add(path); }
+                                }
                             foreach (var (path, body) in WholeGate.WrittenHeredocs(call.Input, call.Cwd))
                             {
                                 if (failed) written.Remove(path);
@@ -171,6 +184,8 @@ public static class WholeTranscript
                         if (call.FilePath is not null && call.Tool is "Write" or "Edit" or "MultiEdit")
                         {
                             var key = PathKey(call.FilePath, call.Cwd);
+                            results.Remove(key);
+                            storedResults.Remove(key);
                             if (failed) written.Remove(key); // do not infer the contents after an unsuccessful mutation
                             else if (call.Tool == "Write") written[key] = call.Input;
                             else if (edits.TryGetValue(id, out var edit) && written.TryGetValue(key, out var previous))

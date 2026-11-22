@@ -58,12 +58,15 @@ namespace Kor.Operations.Framework.Whole;
 ///
 /// WHAT IT DOES NOT COVER, stated (CLAUDE.md rule 11): a population claim with no number ("all the pads are four-sided"); a flag
 /// printed in a form the patterns miss ("4 pads irregular"); a look of N lines that are not the flagged items (it proves a big
-/// enough uncut look ran after the flag, not that it showed THEM); a check's result only ever read by a reader (cat of a report
-/// file holds no flag for it); a flag of an earlier turn under W1 (W2 and W3 still see the last <see cref="Window"/> calls); work
+/// enough uncut look ran after the flag, not that it showed THEM); a result file whose producer/path was not visible in this
+/// transcript; a flag of an earlier turn under W1 (W2 and W3 still see the last <see cref="Window"/> calls); work
 /// in another session. Provenance remains bounded: an unknown reader or an unrecognised quotation can still be treated as a check.
 /// A quoted claim is suppressed only in the recognised assessment form; an Agent/Task review's current findings still count.
 /// The text cache knows successful Write/Edit/MultiEdit, bounded printf SQL and quoted cat heredocs in the parsed transcript.
 /// Unknown scripts remain runs. Shell/Python recognition is bounded, not an interpreter or a proof of a script's semantics.
+/// A known run's redirected/tee log or explicitly located TRX remains a result when read later (including background runs).
+/// Successful Write/Edit replaces that provenance. Hidden script writes, external overwrites and cross-session producers
+/// are not inferred. A shell substitution is a reader only when every enclosed stage is itself a reader.
 /// Existing command-wide record/replay exemptions remain: a mixed command mentioning --replay can still hide a real check.
 /// Baseline listings establish opening, not correctness of the baseline or a reason to ship a failing build. TRX paths are
 /// resolved lexically using that command's variables/cwd; W4 still uses basenames. Symlinks, external overwrites and content
@@ -281,7 +284,7 @@ public static class WholeGate
     {
         // Retain the pre-existing record/replay operation exemptions. Their command-wide nature is a known
         // limitation, separate from shell reader stages. A plain cat of a .jsonl does not exempt a later check.
-        if (RecordReader.Matches(command).Any(m => m.Value != ".jsonl") ||
+        if (RecordReader.Matches(command).Any(m => !m.Value.Equals(".jsonl", StringComparison.OrdinalIgnoreCase)) ||
             command.Contains("<<", StringComparison.Ordinal) && RecordReader.IsMatch(command)) return true;
         var stages = ResolvedStages(Blank(PythonDocstring.Replace(command, "cat source-documentation")), null);
         return stages is not null && stages.All(s => ReaderStage(s.Text) ||
@@ -294,7 +297,8 @@ public static class WholeGate
             return IsReader(assignment.Groups["read"].Value);
         // A substitution or a PowerShell assignment can execute a check even when the visible command is echo.
         // Quoted awk/Python source is data; only expansion in the shell's own quote context matters here.
-        if (HasEvaluation(stage)) return false;
+        if (ReaderSubstitutions(stage) is not { } expanded) return false;
+        stage = expanded;
         if (RecordReader.IsMatch(stage)) return true;
         // A bounded PowerShell property read, as used at W L1047. Do not unwrap arbitrary script blocks.
         stage = Regex.Replace(stage, @"^\((Get-Content\s+[^\r\n]+)\)\.Count$", "$1", Ci);
@@ -303,6 +307,40 @@ public static class WholeGate
         var first = args[0].Trim('"', '\'');
         var name = Path.GetFileName(first.Replace('\\', '/'));
         return ReaderWords.Contains(name);
+    }
+
+    // Only $(reader) is substituted, never arbitrary evaluation. This retains the provenance of git
+    // subjects in D7's echo/loop commands without exempting a check inside the same substitution.
+    private static string? ReaderSubstitutions(string text, Action<string>? inspect = null)
+    {
+        char quote = '\0';
+        for (var i = 0; i < text.Length; i++)
+        {
+            var c = text[i];
+            if (quote == '\'') { if (c == '\'') quote = '\0'; continue; }
+            if (c == '\'' && quote == '\0') { quote = c; continue; }
+            if (c == '"') { quote = quote == '"' ? '\0' : '"'; continue; }
+            if (c == '`') return null;
+            if (c != '$' || i + 1 >= text.Length || text[i + 1] != '(') continue;
+            var end = i + 2;
+            var depth = 1;
+            char innerQuote = '\0';
+            for (; end < text.Length; end++)
+            {
+                var x = text[end];
+                if (innerQuote != '\0') { if (x == innerQuote) innerQuote = '\0'; continue; }
+                if (x is '\'' or '"') { innerQuote = x; continue; }
+                if (x == '(') depth++;
+                if (x == ')' && --depth == 0) break;
+            }
+            if (end == text.Length) return null;
+            var inner = text[(i + 2)..end];
+            inspect?.Invoke(inner);
+            if (!IsReader(inner)) return null;
+            text = text[..i] + "reader-output" + text[(end + 1)..];
+            i += "reader-output".Length - 1;
+        }
+        return text;
     }
 
     // A deliberately bounded lexer, not a shell interpreter. Separators inside quotes and parentheses are data.
@@ -392,7 +430,115 @@ public static class WholeGate
     }
 
     public static bool IsRun(WholeEv e) =>
-        e.Kind == WholeKind.Call && (e.Tool is "Agent" or "Task" || (e.Tool is "Bash" or "PowerShell" && !e.ReadsStoredText && !IsReader(e.Input)));
+        e.Kind == WholeKind.Call && (e.ReadsOwnResult || e.Tool is "Agent" or "Task" || (e.Tool is "Bash" or "PowerShell" && !e.ReadsStoredText && !IsReader(e.Input)));
+
+    private static readonly Regex ResultFile = new(@"\.(?:log|trx|out|output|txt|xml)$", Ci);
+
+    private static string? ResultPath(string value, string? cwd)
+    {
+        var path = value.Trim('"', '\'');
+        return ResultFile.IsMatch(path) && path.IndexOfAny(new[] { '$', '`', '*', '?', '\r', '\n' }) < 0
+            ? WholeTranscript.PathKey(path, cwd) : null;
+    }
+
+    /// <summary>Visible output destinations, with whether their producer ran a check. Reader overwrites
+    /// invalidate provenance. This is lexical: no execution, filesystem reads, or guessed script outputs.</summary>
+    internal static IEnumerable<(string Path, bool Run, bool Append)> ResultWrites(WholeEv e)
+    {
+        if (e.Tool is not ("Bash" or "PowerShell")) yield break;
+        // The tool runner also assigns an output file when it backgrounds a command, even without >.
+        // Bind that result to this call's classification, never to an arbitrary later filename mention.
+        var background = Regex.Match(e.Output ?? "", @"(?:Command running in background with ID:|Command did not complete within)[\s\S]*?Output is being written to:\s*(?<p>[^\r\n]+?\.output)(?=\.\s|\r?\n|$)", Ci);
+        if (background.Success && ResultPath(background.Groups["p"].Value, e.Cwd) is { } outputPath)
+            yield return (outputPath, IsRun(e), false);
+        var stages = ResolvedStages(e.Input, e.Cwd);
+        if (stages is null) yield break;
+        // Preserve the existing record/replay and known-script classification on the producer too:
+        // a flag export is historical prose even though a Python helper writes its destination.
+        var commandRun = IsRun(e);
+        var previousRun = false;
+        foreach (var (stage, cwd) in stages)
+        {
+            var args = ShellSplit(stage, words: true);
+            if (args is null || args.Count == 0) continue;
+            var tee = args[0].Equals("tee", StringComparison.OrdinalIgnoreCase) || args[0].Equals("Tee-Object", StringComparison.OrdinalIgnoreCase);
+            var run = commandRun && (tee ? previousRun : !ReaderStage(stage));
+            previousRun = run;
+            for (var i = 0; i < args.Count; i++)
+            {
+                var arg = args[i];
+                string? target = null;
+                var append = tee && args.Any(a => a.Equals("-a", StringComparison.OrdinalIgnoreCase) || a.Equals("-Append", StringComparison.OrdinalIgnoreCase));
+                if (Regex.Match(arg, @"^(?:[12*])?>>?(?<path>.*)$") is { Success: true } redirect)
+                {
+                    target = redirect.Groups["path"].Value is { Length: > 0 } attached ? attached : i + 1 < args.Count ? args[++i] : null;
+                    append = arg.Contains(">>", StringComparison.Ordinal);
+                }
+                else if (arg.Equals("-RedirectStandardOutput", StringComparison.OrdinalIgnoreCase) || arg.Equals("-RedirectStandardError", StringComparison.OrdinalIgnoreCase))
+                    target = i + 1 < args.Count ? args[++i] : null;
+                else if (tee && i > 0 && !arg.StartsWith('-')) target = arg;
+                if (target is not null && ResultPath(target, cwd) is { } path) yield return (path, run, append);
+            }
+            // A TRX basename is meaningful only with an explicit results directory; an absolute logger
+            // destination needs none. Do not guess the project's default TestResults folder.
+            var directory = Regex.Match(stage, @"--results-directory\s+(?<p>""[^""]+""|'[^']+'|[^\s]+)", Ci);
+            foreach (Match trx in Regex.Matches(stage, @"\bLogFileName=(?<p>[^""';\r\n]+\.trx)\b", Ci))
+            {
+                var value = trx.Groups["p"].Value;
+                var at = directory.Success ? WholeTranscript.PathKey(directory.Groups["p"].Value.Trim('"', '\''), cwd) : cwd;
+                if ((Path.IsPathRooted(value) || directory.Success) && ResultPath(value, at) is { } path) yield return (path, run, false);
+            }
+        }
+    }
+
+    internal static bool ReadsOwnResult(WholeEv e, HashSet<string> results)
+    {
+        if (e.Tool == "Read") return results.Contains(WholeTranscript.PathKey(e.FilePath ?? e.Input, e.Cwd));
+        if (e.Tool is not ("Bash" or "PowerShell")) return false;
+        var stages = ResolvedStages(e.Input, e.Cwd);
+        if (stages is null) return false;
+        foreach (var (stage, cwd) in stages)
+        {
+            var nestedResult = false;
+            ReaderSubstitutions(stage, inner => nestedResult |= ReadsOwnResult(e with { Input = inner, Cwd = cwd }, results));
+            if (nestedResult) return true;
+            var args = ShellSplit(stage, words: true);
+            if (args is null || args.Count < 2 || !Regex.IsMatch(args[0], @"^(?:cat|type|head|tail|grep|rg|select-string|sls|get-content|gc)$", Ci)) continue;
+            if (args.Skip(1).Any(a => ResultPath(a, cwd) is { } path && results.Contains(path))) return true;
+        }
+        return false;
+    }
+
+    internal static bool ReadsStoredResult(string tool, string command, string? cwd, HashSet<string> stored)
+    {
+        if (tool is not ("Bash" or "PowerShell")) return false;
+        var stages = ResolvedStages(command, cwd);
+        if (stages is null) return false;
+        var source = false;
+        foreach (var (stage, at) in stages)
+        {
+            var args = ShellSplit(stage, words: true);
+            // Only an actual file-reader stage establishes the input, never the projection's destination.
+            if (args is { Count: > 1 } && Regex.IsMatch(args[0], @"^(?:cat|type|head|tail|grep|rg|get-content|gc)$", Ci))
+                source |= args.Skip(1).TakeWhile(a => !a.Contains('>')).Any(a => ResultPath(a, at) is { } p && stored.Contains(p));
+            if (!ReaderStage(stage) && !(source && PythonProjection(stage))) return false;
+        }
+        return source;
+    }
+
+    internal static string ResultText(WholeEv e)
+    {
+        var output = e.Output ?? "";
+        if (!e.ReadsOwnResult) return output;
+        // TRX counters read from our own result file, not an XML example quoted in old documentation.
+        return Regex.Replace(output, @"<Counters\b[^>]*>", m =>
+        {
+            var failed = Regex.Match(m.Value, @"\bfailed=""(?<n>\d+)""", Ci);
+            var skipped = Regex.Match(m.Value, @"\bnotExecuted=""(?<n>\d+)""", Ci);
+            return (failed.Success ? "\nFailed: " + failed.Groups["n"].Value : "") +
+                (skipped.Success ? "\nSkipped: " + skipped.Groups["n"].Value : "") + "\n";
+        }, Ci);
+    }
 
     private static readonly Regex SqlReaderCall = new(@"\bpython(?:\.exe)?\s+(?:-I\s+)?(?:tools[/\\]SqlQuery[/\\])?oq(?:wide)?\.py\s+[^;|&\r\n]+", Ci);
     private static readonly Regex SqlLiteralOrComment = new(@"N?'(?:''|[^'])*'|--[^\r\n]*|/\*[\s\S]*?\*/", Ci);
@@ -431,11 +577,11 @@ public static class WholeGate
     }
 
     private static bool TranscriptReaderSource(string source) =>
-        source.Contains(".jsonl", StringComparison.Ordinal) && source.Contains("json.loads(", StringComparison.Ordinal) &&
+        (source.Contains(".jsonl", StringComparison.Ordinal) || Regex.IsMatch(source, @"['""]tool_result['""]")) && source.Contains("json.loads(", StringComparison.Ordinal) &&
         source.Contains("open(", StringComparison.Ordinal) && Regex.IsMatch(source, @"['""]message['""]") &&
         // This is the existing transcript-search convention, not a Python verifier. Reject execution and writes
         // explicitly; computed/dynamic Python and semantic honesty remain outside what the gate can establish.
-        !Regex.IsMatch(source, @"\b(?:subprocess|exec|eval|compile|__import__)\b|\bos\.(?:system|popen|spawn\w*)\b|\.write\s*\(|open\([^\r\n]*,\s*['""][wax][bt+]*['""]", Ci);
+        !Regex.IsMatch(source, @"\b(?:subprocess|exec|eval|__import__)\b|(?<!re\.)\bcompile\b|\bos\.(?:system|popen|spawn\w*)\b|\.write\s*\(|open\([^\r\n]*,\s*['""][wax][bt+]*['""]", Ci);
 
     private static bool PythonProjection(string stage) =>
         Regex.IsMatch(stage, @"^python(?:\.exe)?\s+(?:-I\s+)?-c\s+", Ci) &&
@@ -506,6 +652,7 @@ public static class WholeGate
         (new Regex(@"sed\s+-n\s+['""]?\d+\s*,\s*\d+p", Ci), "sed -n range"),
         (new Regex(@"Select-Object\s+-First\b", Ci), "Select-Object -First"),
         (new Regex(@"\bcut\s+-c", Ci), "cut -c"),
+        (new Regex(@"\b(?:Get-Content|gc)\b[^;|\r\n]*\s-(?:Tail|TotalCount)\b", Ci), "Get-Content limit"),
     };
     private static readonly Regex HeadLimit = new(@"\G\|\s*(?:head|tail)(?:\s+-n)?\s*(?:-(\d+)|(\d+))?(?=\s*(?:$|[|;&)\n]))", Ci);
 
@@ -696,7 +843,7 @@ public sealed class WholeLedger
             var sources = WholeGate.SourcesOf(e);
             var trxSources = WholeGate.TrxSourcesOf(e);
             var review = e.Tool is "Agent" or "Task" || Regex.IsMatch(e.Input, @"\bkor_review\.py[""']?\s+review\b", RegexOptions.IgnoreCase);
-            foreach (var r in WholeGate.Readings(e.Output, review))
+            foreach (var r in WholeGate.Readings(WholeGate.ResultText(e), review))
             {
                 if (r.Flagged > 0) { _flags.Add(new Flag { Line = e.Line, CallNo = _calls, R = r, Sources = sources, TrxSources = trxSources }); continue; }
                 foreach (var f in _flags)
