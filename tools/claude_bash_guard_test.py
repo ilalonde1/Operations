@@ -1269,6 +1269,26 @@ def heredoc_cases():
     return [(label, expected, verdict(command)) for label, command, expected in HEREDOC_REAL + HEREDOC_BOUNDARIES]
 
 
+# Step 3: text mentioning a protection is not protection of the compiler's status.
+CASES += [
+    ("dotnet build X | tail; echo '${PIPESTATUS[0]}'", "deny"),
+    (r'dotnet build X | tail; echo \$PIPESTATUS', "deny"),
+    ('dotnet build X | tail; echo ${PIPESTATUS[1]}', "deny"),
+    ('printf x | dotnet build X | tail; echo ${PIPESTATUS[0]}', "deny"),
+    ('dotnet build X | tail; # echo ${PIPESTATUS[0]}', "deny"),
+    ('dotnet build X | tail; echo "$(true; echo ${PIPESTATUS[0]})"', "deny"),
+    ('echo pipefail; dotnet build X | tail', "deny"),
+    ('set +o pipefail; dotnet build X | tail', "deny"),
+    ('dotnet build X | tail; set -o pipefail', "deny"),
+    ('(set -o pipefail); dotnet build X | tail', "deny"),
+    ('set -o pipefail; set +o pipefail; dotnet build X | tail', "deny"),
+    ('dotnet build X | tail # pipefail', "deny"),
+    ('echo "$(dotnet build X | tail)"', "deny"),
+    ('dotnet build X & ls | head', "allow"),
+    ('dotnet build --help | head -2', "allow"),
+]
+
+
 # Step 3 independent review: executable shell contexts must keep their Python
 # consumer. These all allowed on 8d654575; the neighbouring raw/data cases above stay.
 HEREDOC_BOUNDARIES += [
