@@ -14,6 +14,8 @@ namespace Kor.Operations.Framework.Start;
 /// whole file, or for "path#Heading" that heading's section as the file stands now (Required) - the Framework routine names
 /// "docs/HANDOVER.md (STATE NOW)", not the whole 481-line handover. A section heading not found in the doc is refused.
 /// COVERS: a doc never opened; a doc read in part (offset/limit, or cut by the tool); a read lost to a compaction.
+/// CHECKS the parsed compaction flag regardless of JSON spacing. ALLOWS completed coverage after that boundary;
+/// malformed numeric Read metadata earns no coverage instead of throwing out of the gate.
 /// DOES NOT COVER: understanding (a doc read is not a doc applied); a doc changed after it was read; a Bash cat / sed of the
 /// doc (counts as UNREAD - Read is the one route, and the refusal says so); a doc the routine names but the settings line
 /// omits. Same-class miss: a session that reads the doc, then acts against it. A doc not found is REFUSED, named (a broken line must not pass).
@@ -88,17 +90,20 @@ public static class StartDocs
         var seen = new Dictionary<string, Coverage>(StringComparer.Ordinal);
         foreach (var line in lines)
         {
-            if (line.Contains("\"isCompactSummary\":true", StringComparison.Ordinal)) { seen.Clear(); continue; }
-            if (!line.Contains("\"toolUseResult\"", StringComparison.Ordinal) || !line.Contains("\"filePath\"", StringComparison.Ordinal)) continue;
+            if (!line.Contains("\"isCompactSummary\"", StringComparison.Ordinal)
+                && (!line.Contains("\"toolUseResult\"", StringComparison.Ordinal) || !line.Contains("\"filePath\"", StringComparison.Ordinal))) continue;
             try
             {
                 using var doc = JsonDocument.Parse(line);
+                if (doc.RootElement.ValueKind != JsonValueKind.Object) continue;
+                if (doc.RootElement.TryGetProperty("isCompactSummary", out var compact) && compact.ValueKind == JsonValueKind.True)
+                { seen.Clear(); continue; }
                 if (!doc.RootElement.TryGetProperty("toolUseResult", out var tur) || tur.ValueKind != JsonValueKind.Object) continue;
                 if (!tur.TryGetProperty("file", out var f) || f.ValueKind != JsonValueKind.Object) continue;
                 if (!f.TryGetProperty("filePath", out var fp) || fp.ValueKind != JsonValueKind.String) continue;
                 var path = Norm(fp.GetString()!);
                 if (!want.Contains(path)) continue;
-                int Int(string name) => f.TryGetProperty(name, out var v) && v.TryGetInt32(out var n) ? n : 0;
+                int Int(string name) => f.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var n) ? n : 0;
                 var start = Math.Max(1, Int("startLine"));
                 var num = Int("numLines");
                 var total = Int("totalLines");
