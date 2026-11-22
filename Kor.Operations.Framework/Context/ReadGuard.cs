@@ -17,6 +17,8 @@ public sealed record ReadCall(string Path, int? Offset, int? Limit, string? Page
 /// <see cref="MaxFileBytes"/> with no line range, or with a range over <see cref="MaxRangeLines"/> lines; a PDF over that size with
 /// no pages, or more than <see cref="MaxPdfPages"/> pages. The refusal names the routes: a helper that returns what it found; a
 /// line range; a command that prints a summary; a smaller crop.
+/// CHECKS page ranges with positive page numbers and an overflow-safe total; invalid ranges do not earn an allowance.
+/// ALLOWS one or two explicitly named pages. DOES NOT CATCH a compressed image's decoded size or cumulative small reads.
 /// WARNED, once per crossing: a Bash or PowerShell output over <see cref="OutputWarnChars"/> characters, read off the transcript tail
 /// at the next tool call or prompt, since it cannot be refused before it runs.
 /// PASSES: a subagent's read (agent_id, as G5 tells them); an image or file under the size; a line range under the size; every
@@ -103,15 +105,17 @@ public static class ReadGuard
     private static int? PageCount(string? pages)
     {
         if (string.IsNullOrWhiteSpace(pages)) return null;
-        var total = 0;
+        long total = 0;
         foreach (var term in pages.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
         {
             var ends = term.Split('-');
             if (ends.Length > 2 || !ends.All(e => int.TryParse(e, NumberStyles.None, CultureInfo.InvariantCulture, out _))) return null;
+            if (ends.Any(e => int.Parse(e, CultureInfo.InvariantCulture) <= 0)) return null;
             if (ends.Length == 2 && int.Parse(ends[1], CultureInfo.InvariantCulture) < int.Parse(ends[0], CultureInfo.InvariantCulture)) return null;
             total += ends.Length == 1 ? 1 : int.Parse(ends[1], CultureInfo.InvariantCulture) - int.Parse(ends[0], CultureInfo.InvariantCulture) + 1;
+            if (total > MaxPdfPages) return MaxPdfPages + 1;
         }
-        return total > 0 ? total : null;
+        return total > 0 ? (int)total : null;
     }
 
     public static string Says(ReadCall c, string kind, long size)
