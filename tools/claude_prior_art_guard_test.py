@@ -340,6 +340,19 @@ def main():
     verdict, _ = write(NEW_BRIEF, s)
     r.append(check("18k: without --content-search the third check is off", verdict, "allow"))
 
+    # Step 3: ripgrep's filename enumeration and help/version modes read no contents.
+    # All five previously satisfied the strict content gate after the ordinary look/read.
+    ARGS = ["--content-search"]
+    for command in ("rg --files docs/codex", "rg --files -g '*ingestion*' docs/codex",
+                    "rg --type-list docs/codex", "rg --help docs/codex", "rg --version docs/codex"):
+        s = "t-" + uuid.uuid4().hex
+        bash("ls docs/codex/", s)
+        read(SIBLING_BRIEF, s)
+        bash(command, s)
+        verdict, reason = write(NEW_BRIEF, s)
+        r.append(check("review: " + command + " is not a content search",
+                       (verdict, "NO CONTENT SEARCH" in reason), ("deny", True)))
+
     print("\n%d/%d passed" % (sum(r), len(r)))
     sys.exit(0 if all(r) else 1)
 
