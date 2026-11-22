@@ -187,6 +187,31 @@ class QuotesBlanked:
         return self.pattern.search(self.QUOTED.sub('""', cmd))
 
 
+class PipedBuild:
+    """Rule 8's matcher (narrowed 21 Nov, see the rule): .search(cmd) is truthy when a dotnet build/test/publish in
+    command position is piped, the command does not say pipefail, and the command right after that pipeline does not
+    read PIPESTATUS. Quoted strings are blanked first (same length, so a position in the blanked text is a position in
+    cmd); PIPESTATUS is looked for in cmd itself, because it is usually inside a quoted echo."""
+    CALL = re.compile(r"(?i)(?:^|[;&|(\n])\s*"
+                      r"(?:(?:timeout(?:\s+-\S+)*\s+\S+|time|env|nice|command|[A-Za-z_]\w*=\S*)\s+)*"
+                      r"(?:\S*[/\\])?dotnet(?:\.exe)?\s+(?:build|test|publish)\b(?:[^|;&\n]|&(?!&))*\|(?!\|)")
+    # where a pipeline ends: ; && || a newline, or a background & (not the & of 2>&1, &> or |&)
+    END = re.compile(r";|&&|\|\||\n|(?<![>&|])&(?![>&])")
+
+    def search(self, cmd):
+        text = blank_quotes(cmd)
+        if re.search(r"(?i)pipefail", text):
+            return None
+        for m in self.CALL.finditer(text):
+            end = self.END.search(text, m.end())
+            if end:
+                nxt = self.END.search(text, end.end())
+                if "PIPESTATUS" in cmd[end.end():nxt.start() if nxt else len(cmd)]:
+                    continue
+            return m
+        return None
+
+
 def blank_quotes(cmd, keep=None):
     """cmd with the inside of every quoted string replaced by spaces - same length, so a position in the result is a
     position in cmd. A quoted string whose inside matches keep (e.g. a quoted path to an executable) is left as it is."""
@@ -346,12 +371,20 @@ RULES = [
     #    12 Nov (review row 1988 minor): a wrapper in front of dotnet - timeout N, time, env, nice, command, VAR=x - is
     #    still command position (`timeout 600 dotnet test X | tail` refused again). DOES NOT CATCH either: a build
     #    inside a quoted string run by bash -c / pwsh -Command (the quotes are emptied first).
-    (QuotesBlanked(re.compile(r"(?is)^(?!.*pipefail).*?(?:^|[;&|(\n])\s*"
-                              r"(?:(?:timeout(?:\s+-\S+)*\s+\S+|time|env|nice|command|[A-Za-z_]\w*=\S*)\s+)*"
-                              r"(?:\S*[/\\])?dotnet(?:\.exe)?\s+(?:build|test|publish)\b[^|;\n]*\|(?!\|)")),
+    #    NARROWED 21 Nov (plan step 3, PipedBuild): judged since 12 Nov 13 right / 10 wrong. 9 of the 10 read the exit
+    #    code with ${PIPESTATUS[0]} in the very next command (8594: `dotnet build | grep ...; echo rc=${PIPESTATUS[0]}`),
+    #    which office rule 13 itself names as a fix; 1 (8275) was a pipe in a LATER command after && (`dotnet build ... >
+    #    log && P=$(ls | head -1)`) read as the build's. CHECKS: a dotnet build/test/publish in command position whose
+    #    own pipeline (it stops at ; && || a newline or a background &) has a '|', unless the command says pipefail or
+    #    the NEXT command reads PIPESTATUS. ALLOWS: `...| tail; echo ${PIPESTATUS[0]}`, `...| head && echo
+    #    "rc=${PIPESTATUS[0]}"`, `rc=${PIPESTATUS[0]}`. DOES NOT CATCH, added: a PIPESTATUS that is read but never
+    #    acted on (echoed, then the build is called green anyway); a PIPESTATUS inside a nested $( ... ; ... ) of the
+    #    next command; ${PIPESTATUS[1]} (the tail's status, not the build's) - any index counts.
+    (PipedBuild(),
      "A dotnet build/test/publish piped without pipefail: the pipe's exit code replaces the build's "
      "(2026-10-14: four CS0104 errors reported as a green build; tests and PNGs then ran on stale "
-     "binaries). Prefix the command with `set -o pipefail &&`, or do not pipe it."),
+     "binaries). Prefix the command with `set -o pipefail &&`, read ${PIPESTATUS[0]} in the very next command, "
+     "or do not pipe it."),
 
     # 9. THE SAME FAULT, THROUGH THE WRAPPER SCRIPT. Rule 8 matches the literal `dotnet` command, and
     #    nothing in this shop runs the compiler directly: every deploy is a .ps1 that wraps it
