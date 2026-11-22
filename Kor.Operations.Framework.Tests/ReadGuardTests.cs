@@ -53,6 +53,15 @@ public sealed class ReadGuardTests : IDisposable
         return p.Replace('\\', '/');
     }
 
+    // A page cap must reject invalid/overflowed counts as well as ordinary large ranges.
+    // This does not measure tokens; a low-byte, very high-resolution image still passes.
+    [Theory]
+    [InlineData("0")]
+    [InlineData("0-1")]
+    [InlineData("1-2147483647,1-2147483647,1-3")]
+    public void PdfPageCountsMustBePositiveAndCannotWrap(string pages) =>
+        Assert.Equal("pdf", ReadGuard.Refuses(new ReadCall("large.pdf", null, null, pages), 100_000, null));
+
     [Theory]
     [InlineData("a.png", ReadGuard.MaxImageBytes + 1, null, null, null, true)]
     [InlineData("a.JPG", ReadGuard.MaxImageBytes + 1, null, null, null, true)]
