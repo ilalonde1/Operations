@@ -33,7 +33,7 @@ class HeredocEscape:
     PYTHON = re.compile(r"(?i)^(?:python(?:\d+(?:\.\d+)*)?|py)(?:\.exe)?$")
     PREFIX = re.compile(r"(?i)^([rubf]*)(?:'''|\"\"\"|'|\")")
     # Hand-doubled C# verbatim regexes are still against rule 7 (real refusal 4970).
-    CSHARP_REGEX = re.compile(r'@"[^"\n]*\\[bBdDsSwWAZzG.?*+()\[\]{}|^$]')
+    CSHARP_REGEX = re.compile(r'@"[^"\n]*\\[abfnrtvBdDsSwWAZzG.?*+()\[\]{}|^$]')
     ESCAPE = re.compile(r"\\(?:x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|N\{[^}\n]+\}|[0-7]{1,3}|[\s\S])")
 
     @classmethod
@@ -56,6 +56,17 @@ class HeredocEscape:
                 i += 1
             elif word == 'timeout' and i + 1 < len(words):
                 i += 2
+            elif word in ('sudo', 'nice') or (word == 'uv' and words[i:i + 2] == ['uv', 'run']):
+                wrapper = word
+                i += 2 if wrapper == 'uv' else 1
+                takes_value = {'sudo': {'-u', '-g', '-h', '-p', '-C', '-T'},
+                               'nice': {'-n', '--adjustment'},
+                               'uv': {'--project', '--directory', '--python', '--with', '--with-editable'}}[wrapper]
+                while i < len(words) and words[i].startswith('-'):
+                    option = words[i]
+                    i += 2 if option in takes_value else 1
+                    if option == '--':
+                        break
             else:
                 break
         if i == len(words) or not cls.PYTHON.fullmatch(words[i].replace('\\', '/').rsplit('/', 1)[-1]):
@@ -81,50 +92,130 @@ class HeredocEscape:
     def bodies(cls, cmd):
         """Read shell headers and their queued bodies once; never find new headers inside a body.
 
-        Each pending redirect retains its own command's word list. Quotes/backslashes in a delimiter
-        suppress Bash expansion; <<- strips tabs only. Quoted shell arguments remain opaque.
+        Each pending redirect retains its command and pipeline. Command substitutions are executable
+        even inside double quotes; arithmetic shifts and literal quoted text are not redirects.
+        Quotes/backslashes in a delimiter suppress Bash expansion; <<- strips tabs only.
         """
         import shlex
-        pos, words, pending = 0, [], []
-        while pos < len(cmd):
-            token = cls.SHELL_TOKEN.match(cmd, pos)
-            if token is None:
+        found = []
+
+        def arithmetic(pos):
+            depth = 0
+            while pos < len(cmd):
+                if cmd[pos] == '(':
+                    depth += 1
+                elif cmd[pos] == ')':
+                    depth -= 1
+                    if depth == 0:
+                        return pos + 1
                 pos += 1
-                continue
-            pos = token.end()
-            kind, spelling = token.lastgroup, token.group()
-            if kind in ('space', 'comment'):
-                continue
-            if kind == 'newline':
-                for delim, quoted, tabs, consumer in pending:
-                    end = re.search(r"(?m)^" + (r"\t*" if tabs else '') + re.escape(delim) + r"\r?$", cmd[pos:])
-                    stop = pos + end.start() if end else len(cmd)
-                    yield quoted, consumer, cmd[pos:stop]
-                    pos = pos + end.end() if end else len(cmd)
-                    if pos < len(cmd) and cmd[pos] == '\n':
-                        pos += 1
-                words, pending = [], []
-            elif kind == 'op' and spelling in ('<<', '<<-'):
-                head = cls.SHELL_TOKEN.match(cmd, pos)
-                if head and head.lastgroup == 'space':
-                    head = cls.SHELL_TOKEN.match(cmd, head.end())
-                if head and head.lastgroup == 'word':
-                    raw = head.group()
-                    try:
-                        delim = shlex.split(raw)[0]
-                    except (ValueError, IndexError):
-                        continue
-                    pending.append((delim, any(c in raw for c in "'\"\\"), spelling == '<<-', words))
-                    pos = head.end()
-            elif kind == 'op' and spelling in (';', '&', '|', '(', ')'):
-                words = []
-            elif kind == 'word':
-                try:
-                    words.append(shlex.split(spelling)[0])
-                except (ValueError, IndexError):
-                    words.append(spelling)
-            else:
-                words.append(spelling)
+            return pos
+
+        def word(pos, delimiter=False):
+            start, quote = pos, None
+            while pos < len(cmd):
+                c = cmd[pos]
+                if c == '\\' and quote != "'":
+                    pos += 2
+                    continue
+                if quote == "'":
+                    if c == quote:
+                        quote = None
+                elif not delimiter and cmd.startswith('$((', pos):
+                    pos = arithmetic(pos + 1)
+                    continue
+                elif not delimiter and cmd.startswith('$(', pos):
+                    pos = shell(pos + 2, substitution=True)
+                    continue
+                elif c == quote:
+                    quote = None
+                elif quote is None:
+                    if c in "'\"":
+                        quote = c
+                    elif c.isspace() or c in ';&|()<>':
+                        break
+                pos += 1
+            return cmd[start:pos], pos
+
+        def unquote(raw):
+            try:
+                return shlex.split(raw)[0]
+            except (ValueError, IndexError):
+                return raw
+
+        def forwarded(consumer, pipeline):
+            # Only byte-preserving producers; a file argument to cat replaces stdin.
+            plain, i = [], 0
+            while i < len(consumer):
+                if consumer[i] in ('<', '>', '>>', '>&', '<&', '&>'):
+                    if plain and plain[-1].isdigit():
+                        plain.pop()
+                    i += 2
+                else:
+                    plain.append(consumer[i]); i += 1
+            passthrough = plain and (plain[0] == 'tee' or
+                                      (plain[0] == 'cat' and all(w in ('-', '--') for w in plain[1:])))
+            index = next(i for i, part in enumerate(pipeline) if part is consumer)
+            return pipeline[index + 1] if passthrough and index + 1 < len(pipeline) else consumer
+
+        def shell(pos, substitution=False):
+            words, pending, depth = [], [], 0
+            pipeline = [words]
+            while pos < len(cmd):
+                c = cmd[pos]
+                if c in ' \t\r':
+                    pos += 1
+                    continue
+                if c == '#':
+                    end = cmd.find('\n', pos)
+                    pos = len(cmd) if end < 0 else end
+                    continue
+                if c == '\n':
+                    pos += 1
+                    for delim, quoted, tabs, consumer, chain in pending:
+                        end = re.search(r'(?m)^' + (r'\t*' if tabs else '') + re.escape(delim) + r'\r?$', cmd[pos:])
+                        stop = pos + end.start() if end else len(cmd)
+                        found.append((quoted, forwarded(consumer, chain), cmd[pos:stop]))
+                        pos = pos + end.end() if end else len(cmd)
+                        if pos < len(cmd) and cmd[pos] == '\n':
+                            pos += 1
+                    words, pending = [], []
+                    pipeline = [words]
+                    continue
+                if cmd.startswith('((', pos):
+                    pos = arithmetic(pos)
+                    continue
+                op = cls.SHELL_TOKEN.match(cmd, pos) if c in ';&|()<>' else None
+                if op and op.lastgroup == 'op':
+                    spelling = op.group(); pos = op.end()
+                    if spelling in ('<<', '<<-'):
+                        while pos < len(cmd) and cmd[pos] in ' \t':
+                            pos += 1
+                        raw, pos = word(pos, delimiter=True)
+                        if raw:
+                            pending.append((unquote(raw), any(q in raw for q in "'\"\\"),
+                                            spelling == '<<-', words, pipeline))
+                    elif spelling in (';', '&', '|', '(', ')'):
+                        if spelling == ')' and substitution and depth == 0:
+                            return pos
+                        depth += (spelling == '(') - (spelling == ')')
+                        words = []
+                        if spelling == '|' and not cmd.startswith('|', pos):
+                            pipeline.append(words)
+                        else:
+                            pipeline = [words]
+                    else:
+                        words.append(spelling)
+                    continue
+                raw, end = word(pos)
+                if end == pos:
+                    pos += 1
+                else:
+                    words.append(unquote(raw)); pos = end
+            return pos
+
+        shell(0)
+        yield from found
 
     @classmethod
     def unsafe_literal(cls, text):
@@ -338,12 +429,13 @@ RULES = [
     #    CHECKS (HeredocEscape): an UNQUOTED delimiter whose body holds '\\' (Bash collapses it, any consumer);
     #      for python/py reading source from stdin, non-raw string/f-string text with \b, octal, unknown/incomplete
     #      escapes, or a drive path containing an active escape; C# @"..." regexes even when doubled by hand (4970).
-    #      Headers/bodies are consumed once, including queued same-line heredocs; shifts inside a body are not headers.
+    #      Headers/bodies are consumed once, including queued same-line heredocs and nested $(...) in double quotes;
+    #      arithmetic shifts are not headers. Also follows uv run/sudo/nice and direct cat/tee pipes to Python stdin.
     #    ALLOWS: quoted cat/tee/git messages and source-file writes (even when run later); other non-Python consumers;
-    #      Python comments, raw/rf/fr/br/rb literals, deliberate \n/\r/\t/\a/\f/\v and complete \x/\u/\U/\N escapes;
+    #      Python comments, raw/rf/fr/br/rb literals, deliberate \n/\r/\t/\a/\f/\v (outside C# @"...") and complete \x/\u/\U/\N escapes;
     #      ordinary doubled slashes/escaped quotes; stdin data to Python script/-c/-m; unquoted cat's single \P.
     #    DOES NOT CATCH: source passed through a pipeline/wrapper/alias this bounded reader cannot recognize;
-    #      heredocs inside quoted command substitutions; later evaluation of files or strings (exec); an unsafe
+    #      backtick substitutions or substitutions inside arithmetic; later evaluation of files or strings (exec); an unsafe
     #      f-string expression hidden by a raw string on Python <3.12; malformed source after tokenization stops;
     #      relative paths made solely of otherwise allowed escapes (e.g. 'work\new'); C# ordinary-string regexes
     #      doubled by hand without the @" marker. Does not prove author intent: \b/octal deliberately used as
