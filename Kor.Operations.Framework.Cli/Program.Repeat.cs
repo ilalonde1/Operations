@@ -7,7 +7,7 @@ namespace Kor.Operations.Framework.Cli;
 
 /// <summary>
 /// Board row 1998, <see cref="RepeatGate"/>: <c>kor repeat --hook</c> on PreToolUse (Bash, PowerShell, Write, Agent) refuses the start of a
-/// measurement, analysis or audit whose topic already has a recorded result, until the call says "inputs changed since #N: ..." for a named
+/// measurement, analysis or audit whose subject already has a recorded result, until the call says "inputs changed since #N: ..." for a relevant
 /// record. It reads the same local index as <c>kor recall --hook</c> (<see cref="HookIndex"/>), and only when the call's intent carries a
 /// work word: any other call costs the JSON parse and nothing else. Every refusal, and every "inputs changed" that lifts one, is a row in
 /// oversight.GuardRefusal (guards <see cref="RepeatGate.GuardName"/> / <see cref="RepeatGate.ReasonGuardName"/>; judge them with
@@ -29,11 +29,12 @@ public static partial class Program
         if (string.IsNullOrWhiteSpace(text)) throw new ArgumentException("repeat needs the intent: kor repeat \"<a description, or a new file's name and first line>\" [--as-of ISO-UTC]");
         DateTime? asOf = o.Get("--as-of") is { } a ? DateTime.Parse(a, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal) : null;
         var ix = WithStores((b, w) => BrainRecall.Build(b, w, asOf), db, board, 15);
-        var rank = o.Get("--command") is { } cmd ? RepeatGate.RankText("Bash", text, text + "\n" + cmd) : text;
-        var v = RepeatGate.Decide(text, rank, ix, rank);
+        var moment = o.Get("--command") is { } cmd ? text + "\n" + cmd : text;
+        var rank = RepeatGate.RankText("Bash", text, moment);
+        var v = RepeatGate.Decide(text, moment, ix, rank);
         output.WriteLine(v.Refuse ? "REFUSE " + v.Reason
                          : v.AllowedFor is { } id ? $"ALLOW: inputs changed since #{id}: {v.AllowedBecause}"
-                         : $"ALLOW: no result record holds a work word of the intent and {RepeatGate.TopicWordsHit} more of its words at score >= {RepeatGate.Floor}" +
+                         : $"ALLOW: no result names the requested subject and shares {RepeatGate.TopicWordsHit} intent words at score >= {RepeatGate.Floor}" +
                            (RepeatGate.HasWork(text) ? "" : " (the intent carries no work word: the hook would not look)"));
         return 0;
     }
