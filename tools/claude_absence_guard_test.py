@@ -41,6 +41,14 @@ PROVEN = [
     "This PC has no direct NetworkOps database connection. Checked: KOR_NETWORKOPS_DB and _WATCHDB in Process, User "
     "and Machine scopes; it reaches NetworkOps through the service API (NetworkOpsClient).",
 ]
+# Step 3: 8942/8944 are an idiom; 8988/8998 admit an unresolved investigation.
+# Neither says a resource is absent. All four misfire before the narrowing.
+MISFIRES += [
+    "Step 2 is nowhere near a clear board.",
+    "The analysis is nowhere near complete.",
+    "**Cause not found:** moving two pad edges produced seven duplicates instead of two.",
+    "The check is built, cause not found yet, more runs allowed.",
+]
 # Ordinary replies with no absence claim: allowed.
 CLEAN = ["The rehearsal recorded six of the nine readings.", "Deploy verified: 5 of 5 assemblies."]
 
