@@ -105,6 +105,14 @@ public class RepeatGateNarrowTests
         Assert.False(RepeatGate.Decide(intent, intent, Index(Thickness)).Refuse);
     }
 
+    [Theory]
+    [InlineData("Measure slab thickness on job 41027 B1 L02")]
+    [InlineData("Measure slab thickness on job 31097 B1 L03")]
+    public void SameQuantityOnAnExplicitlyDifferentInputMustPass(string intent)
+    {
+        Assert.False(RepeatGate.Decide(intent, intent, Index(Thickness)).Refuse);
+    }
+
     [Fact]
     public void BodyMentionsAreNotAnAnswerToFileSizes()
     {
