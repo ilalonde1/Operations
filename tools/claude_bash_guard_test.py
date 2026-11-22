@@ -1269,6 +1269,47 @@ def heredoc_cases():
     return [(label, expected, verdict(command)) for label, command, expected in HEREDOC_REAL + HEREDOC_BOUNDARIES]
 
 
+# Step 3 independent review: executable shell contexts must keep their Python
+# consumer. These all allowed on 8d654575; the neighbouring raw/data cases above stay.
+HEREDOC_BOUNDARIES += [
+    ("review: quoted command substitution", r'''value="$(python - <<'PY'
+s = '\bLEVEL\b'
+PY
+)"''', "deny"),
+    ("review: nested quoted substitution", r'''echo "$(echo $(python - <<'PY'
+s = '\bLEVEL\b'
+PY
+))"''', "deny"),
+    ("review: arithmetic shift before Python", r'''echo $((1<<2)); python - <<'PY'
+s = '\bLEVEL\b'
+PY''', "deny"),
+    ("review: arithmetic command before Python", r'''((n=1<<2)); python - <<'PY'
+s = '\bLEVEL\b'
+PY''', "deny"),
+    ("review: uv run Python", r'''uv run python - <<'PY'
+s = '\bLEVEL\b'
+PY''', "deny"),
+    ("review: sudo Python", r'''sudo -u worker python - <<'PY'
+s = '\bLEVEL\b'
+PY''', "deny"),
+    ("review: nice Python", r'''nice -n 5 python - <<'PY'
+s = '\bLEVEL\b'
+PY''', "deny"),
+    ("review: cat pipes source to Python", r'''cat <<'PY' | python -
+s = '\bLEVEL\b'
+PY''', "deny"),
+    ("review: tee pipes source to Python", r'''tee copy.py <<'PY' | python -
+s = '\bLEVEL\b'
+PY''', "deny"),
+    ("review: newline in C# verbatim regex", r'''python - <<'PY'
+s = '@"\n"'
+PY''', "deny"),
+    ("review: carriage return in C# verbatim regex", r'''python - <<'PY'
+s = '@"\r"'
+PY''', "deny"),
+]
+
+
 def busy_tree_cases():
     """W8 (19 Nov): a build is refused while a testhost or dotnet build/test from the SAME git tree runs - any repo, any
     worktree (a .git FILE), the KOR.Drafter slot file; a build of another tree is not. Real temp trees, a fake process
