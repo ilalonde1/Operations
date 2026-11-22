@@ -34,7 +34,8 @@ claude_board_guard|kor-enforce|CheckStore|StallGuard|kor-stall" docs/codex/` ove
 Refusals are in KorStandards `oversight.GuardRefusal` by `Guard` name. `RefusedAtUtc` carries an explicit -07:00
 offset. `Matched` is cut at about 400 characters; full actions come from the transcripts under
 `C:\Users\ilalonde\.claude\projects\` and `C:\Users\kor-claude\.claude\projects\` (main and `subagents\agent-*.jsonl`).
-Counts are all rows as read 22 Nov 11:4x local; the worker who judged some of them on 21 Nov judged by transcript.
+Counts are all rows as read 22 Nov (`date` 11:43:51 for the population counts below); the worker who judged some of them
+on 21 Nov judged by transcript.
 
 | Guard (Guard column) | Code | Rows | Worker judged right / wrong / not |
 |---|---|---|---|
@@ -64,16 +65,20 @@ The worker's classes, to check:
 
 ## Population and the held-back check
 
-Judge every refusal with `RefusedAtUtc < '2026-11-21T00:00:00-07:00'` for these six guards (for kor-context-read and
-kor-enforce, if recovering and judging every row is not bounded, judge all rows since `2026-11-12T00:00:00-07:00` plus a
-stated random sample of the earlier ones, and say so). **Do not open, query or judge any row at or after 21 Nov 00:00
--07:00 for these guards: those are the author's held-back check.** Replay your judged population before and after each
-change; report X of Y recovered and every verdict that changes.
+The population is every refusal with `RefusedAtUtc < '2026-11-21T00:00:00-07:00'` (read at `date` 22 Nov 11:43:51:
+board 26, kor start-docs 10, kor-context-read 240, kor-enforce 117, kor-stall 7, plan_review 29 - 429 in all).
+**Bound (Office #131433, a brief is bounded):** judge EVERY row of board, kor start-docs, kor-stall and plan_review (72);
+for kor-context-read and kor-enforce judge the rows the worker already judged (22 and 8) plus 30 others each, drawn at
+random with a stated seed from the rest of that guard's population (about 162 rows in all). Say the seed and the ids.
+If a misfire class you find needs more rows to settle, say so and stop there rather than widen the read.
+**Do not open, query or judge any row at or after 21 Nov 00:00 -07:00 for these guards** (there are 6, all kor
+start-docs): they and cases the author writes after you finish are the held-back check. Replay your judged rows before
+and after each change; report X of Y recovered and every verdict that changes.
 
 ## What you may and must not touch
 
-- Two worktrees, branch `step3-narrow6` in each: `C:\VIsual Studio Projects\Operations-step3-narrow6` (at develop
-  a2784d88; the C# guards and this brief) and `C:\VIsual Studio Projects\Framework-step3-narrow6` (at Framework main
+- Two worktrees, branch `step3-narrow6` in each: `C:\VIsual Studio Projects\Operations-step3-narrow6` (based on develop
+  a2784d88, with this brief's commits on top; the C# guards) and `C:\VIsual Studio Projects\Framework-step3-narrow6` (at Framework main
   7a3b0a8; plan_review and board). Edit only these six guards and their tests.
 - READ-ONLY database access, SELECTs only, through `python -I tools/SqlQuery/oq.py -q "SELECT ..."` (Operations), on
   `KorStandards.oversight.GuardRefusal` and, for kor-enforce, `KorStandards.brain.Check` (read sys.columns first).
