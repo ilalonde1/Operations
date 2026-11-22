@@ -1,0 +1,332 @@
+[
+  {
+    "id": 8236,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\a0ed29c9-a893-4264-b14d-14cca0d980b5.jsonl",
+    "sourceSha256": "2fe2421735275e6d09ccc8e2677ec4838d31e667aedb66dbeacad7c62d3cb184",
+    "line": 201,
+    "timestamp": "2026-11-19T19:39:56.088Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"/c/VIsual Studio Projects/KOR.Drafter-portmerge\" && git diff --shortstat 713e79b0..HEAD; git diff 713e79b0..HEAD | wc -c; for m in b97a247c 65594dec da2b8d82 450cb229; do echo \"$m $(git diff $m^1 $m | wc -c) bytes vs first parent; $(git diff --shortstat $m^1 $m)\"; done; sed -n 588,640p \"/c/VIsual Studio Projects/Framework/tools/kor_review.py\"",
+      "description": "Measure the merge diff sizes and read the --piece docs"
+    }
+  },
+  {
+    "id": 8237,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\a0ed29c9-a893-4264-b14d-14cca0d980b5.jsonl",
+    "sourceSha256": "2fe2421735275e6d09ccc8e2677ec4838d31e667aedb66dbeacad7c62d3cb184",
+    "line": 214,
+    "timestamp": "2026-11-19T19:40:02.957Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"/c/VIsual Studio Projects/KOR.Drafter-portmerge\" && git diff --shortstat 713e79b0..HEAD; git diff 713e79b0..HEAD | wc -c; for m in b97a247c 65594dec da2b8d82 450cb229; do echo \"$m $(git diff $m^1 $m | wc -c) bytes vs first parent; $(git diff --shortstat $m^1 $m)\"; done; sed -n 588,640p \"/c/VIsual Studio Projects/Framework/tools/kor_review.py\"",
+      "description": "inputs changed since #133797: unrelated record (JM 01819 drift); measuring port-merge-19nov redo merge diff sizes for review"
+    }
+  },
+  {
+    "id": 8240,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\a0ed29c9-a893-4264-b14d-14cca0d980b5.jsonl",
+    "sourceSha256": "2fe2421735275e6d09ccc8e2677ec4838d31e667aedb66dbeacad7c62d3cb184",
+    "line": 960,
+    "timestamp": "2026-11-19T20:22:22.671Z",
+    "tool": "Bash",
+    "input": {
+      "command": "S=\"C:/Users/ilalonde/AppData/Local/Temp/claude/5102428d3890278f/a0ed29c9-a893-4264-b14d-14cca0d980b5/scratchpad\"; F=\"FullyQualifiedName~PageContentVsAnnotationsMeasurement.WhatThePageHoldsThatTheAnnotationsOnlyFilterThrowsAway|FullyQualifiedName~WhereTheMarkupLandedMeasurement.NoMarkupLandsOutsideTheDrawing\"; run(){ cd \"/c/VIsual Studio Projects/$1\" && dotnet test Kor.Operations.EngineeringTools.PdfToSafe.Tests --no-build --filter \"$F\" --blame-hang --blame-hang-timeout 90m --blame-hang-dump-type none --results-directory \"$S/$2/pdf2-results\" --logger \"trx;LogFileName=$S/$2/PdfLong.trx\" > \"$S/$2/PdfLong.log\" 2>&1; echo \"$2 exit $? $(date +%T)\"; }; date +%T; run KOR.Drafter-step5 base & run KOR.Drafter-portmerge merge & wait",
+      "description": "Run the two never-finishing PdfToSafe measurement cases alone on both trees, 90-min limit",
+      "run_in_background": true
+    }
+  },
+  {
+    "id": 8243,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\a0ed29c9-a893-4264-b14d-14cca0d980b5.jsonl",
+    "sourceSha256": "2fe2421735275e6d09ccc8e2677ec4838d31e667aedb66dbeacad7c62d3cb184",
+    "line": 1824,
+    "timestamp": "2026-11-19T21:04:48.573Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cat \"C:/Users/ilalonde/AppData/Local/Temp/claude/5102428d3890278f/a0ed29c9-a893-4264-b14d-14cca0d980b5/tasks/b132dbkcc.output\"; cd \"/c/VIsual Studio Projects/Operations-checks\" && E=$(ls Kor.Operations.Framework.Cli/bin/Debug/*/kor.exe | head -1); S=\"C:/Users/ilalonde/AppData/Local/Temp/claude/5102428d3890278f/a0ed29c9-a893-4264-b14d-14cca0d980b5/scratchpad\"; seq(){ find \"$1\" -name 'Sequence_*.xml' 2>/dev/null | while read f; do [ -f \"$f\" ] && echo \"$f\"; done | head -1; }; B=$(seq $S/base/pdf2-results); N=$(seq $S/merge/pdf2-results); args=(); [ -n \"$B\" ] && args+=(--base-sequence \"$B\"); [ -n \"$N\" ] && args+=(--new-sequence \"$N\"); \"$E\" testdiff \"$S/base/PdfLong.trx\" \"$S/merge/PdfLong.trx\" \"${args[@]}\" > /tmp/long.txt; echo \"testdiff exit $?\"; cut -c1-260 /tmp/long.txt | grep -v \"scratchpad\"; grep -E \"Duration|Total tests|Passed|Failed\" $S/merge/PdfLong.log | head -4",
+      "description": "Compare the long measurement-case runs with testdiff"
+    }
+  },
+  {
+    "id": 8540,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\c5eddf43-6013-474a-8392-6c886f21fb51.jsonl",
+    "sourceSha256": "7e8a0c05065ea99a852ec3a5d177535e708bcc3c6b2bb96ac9bac3e7d0713b69",
+    "line": 2534,
+    "timestamp": "2026-11-20T03:05:11.594Z",
+    "tool": "PowerShell",
+    "input": {
+      "command": "Set-Location \"C:\\VIsual Studio Projects\\Framework\"; icacls tools\\plan_review_guard.py; \"--- tools folder ACL:\"; icacls tools | Select-Object -First 6; \"--- files in tools (recursive, .py) where kor-claude or Authenticated Users can write:\"; $all = Get-ChildItem tools -Recurse -File -Filter *.py; $w = $all | Where-Object { (icacls $_.FullName) -match 'kor-claude:\\(.*M|Authenticated Users:\\(.*M' }; \"$(@($w).Count) of $(@($all).Count) writable\"; \"--- locked ones:\"; $all | Where-Object { $_.FullName -notin $w.FullName } | Select-Object -Expand Name",
+      "description": "Survey which Framework tool files kor-claude can write",
+      "timeout": 180000
+    }
+  },
+  {
+    "id": 8541,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\c5eddf43-6013-474a-8392-6c886f21fb51.jsonl",
+    "sourceSha256": "7e8a0c05065ea99a852ec3a5d177535e708bcc3c6b2bb96ac9bac3e7d0713b69",
+    "line": 2543,
+    "timestamp": "2026-11-20T03:05:16.829Z",
+    "tool": "PowerShell",
+    "input": {
+      "command": "Set-Location \"C:\\VIsual Studio Projects\\Framework\"; icacls tools\\plan_review_guard.py; \"--- tools folder ACL:\"; icacls tools | Select-Object -First 6; $all = Get-ChildItem tools -Recurse -File -Filter *.py; $w = $all | Where-Object { (icacls $_.FullName) -match 'kor-claude:\\(.*M|Authenticated Users:\\(.*M' }; \"$(@($w).Count) of $(@($all).Count) .py under tools writable by kor-claude or Authenticated Users\"; \"--- not writable:\"; $all | Where-Object { $_.FullName -notin $w.FullName } | Select-Object -Expand Name",
+      "description": "inputs changed since #134026: all gate files, not one - survey writability",
+      "timeout": 180000
+    }
+  },
+  {
+    "id": 8962,
+    "refuse": false,
+    "source": "C:\\Users\\kor-claude\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\ee8754e5-8d40-4410-94b9-004d09152ab6.jsonl",
+    "sourceSha256": "b33813035b6c0b016577fa629b98dc6d738e23690848bc8f99af9bb320c4b2eb",
+    "line": 1115,
+    "timestamp": "2026-11-20T18:35:33.863Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"/c/VIsual Studio Projects/Framework/docs/board-triage-2026-11-20\" && wc -c * | sort -n",
+      "description": "Measure file sizes in the triage folder"
+    }
+  },
+  {
+    "id": 8958,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 336,
+    "timestamp": "2026-11-20T18:17:10.483Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"/c/VIsual Studio Projects/KOR.Drafter/work/_acceptance/2143\" && python -B -I evidence-pass3/support_on_floor.py bundle/B1_L02.f2k bundle/source.e2k evidence-pass3/C-support-on-floor-L02.csv",
+      "description": "Measure every column top against the slab outlines in model and source"
+    }
+  },
+  {
+    "id": 8960,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 462,
+    "timestamp": "2026-11-20T18:18:41.849Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"/c/VIsual Studio Projects/KOR.Drafter/work/_acceptance/2143\" && python -B -I evidence-pass3/cad_edge_at_columns.py bundle/B1_L02.f2k evidence-pass3/C-cad-edge-C14-C19.png evidence-pass3/C-cad-edge-C14-C19.txt && ls -la evidence-pass3/C-cad-edge-C14-C19.png",
+      "description": "Measure the CAD slab edge at C14-C19 and draw the crop"
+    }
+  },
+  {
+    "id": 8964,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 1851,
+    "timestamp": "2026-11-20T18:53:04.785Z",
+    "tool": "Write",
+    "input": {
+      "file_path": "C:\\VIsual Studio Projects\\KOR.Drafter\\work\\_acceptance\\2143\\bundle\\README.md",
+      "content": "# 31097-01 Building 1 L02 - SAFE analysis model (acceptance proof, board row 2143)\n\nDRAFT - open items to be filled from the checker's report.\n"
+    }
+  },
+  {
+    "id": 8966,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 1874,
+    "timestamp": "2026-11-20T18:53:28.296Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"/c/VIsual Studio Projects/KOR.Drafter/work/_acceptance/2143\" && \"/c/VIsual Studio Projects/KOR.Drafter-step5/Kor.Operations.EngineeringTools.TakeoffCli/bin/Release/net8.0/takeoff.exe\" model-audit bundle --report \"$TMP/audit-draft.txt\" > /dev/null 2>&1; echo \"exit $?\"; cat \"$TMP/audit-draft.txt\" | cut -c1-400",
+      "description": "Run model-audit on the new bundle (draft README)",
+      "timeout": 300000
+    }
+  },
+  {
+    "id": 8970,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 2118,
+    "timestamp": "2026-11-20T19:04:58.227Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"/c/VIsual Studio Projects/KOR.Drafter/work/_acceptance/2143\" && cp review-disposition.json bundle/review-disposition.json && python -I -c \"\nimport json\np='bundle/roles.json'; d=json.load(open(p)); d['review-disposition']=['review-disposition.json']\nopen(p,'w',newline='\\n').write(json.dumps(d,indent=1)+'\\n')\n\" && \"/c/VIsual Studio Projects/KOR.Drafter-step5/Kor.Operations.EngineeringTools.TakeoffCli/bin/Release/net8.0/takeoff.exe\" model-audit bundle --report model-audit-after-codex3.txt > /dev/null 2>&1; echo \"exit $?\"; cut -c1-260 model-audit-after-codex3.txt | grep -E \"^ACCEPTANCE (0|3|3a|4|5|8|9|R|RESULT) \"",
+      "description": "Bind Codex's disposition into the bundle and re-run model-audit",
+      "timeout": 300000
+    }
+  },
+  {
+    "id": 8974,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 2565,
+    "timestamp": "2026-11-20T19:40:18.855Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"/c/VIsual Studio Projects/KOR.Drafter-step5\" && rg -l \"class AnalysisModelAcceptanceFixture|Deliver|--deliver\" --glob \"*Tests*.cs\" | grep -v \"/bin/\\|/obj/\"; dotnet test Kor.Operations.EngineeringTools.Core.Tests --filter \"FullyQualifiedName~AnalysisModelAcceptance|FullyQualifiedName~ModelAudit\" -nologo -v q > \"$TMP/t2.txt\" 2>&1; echo \"test exit $?\"; grep -E \"Passed!|Failed!|Failed \" \"$TMP/t2.txt\" | head -10",
+      "description": "Run fixture and model-audit tests against the change",
+      "timeout": 600000
+    }
+  },
+  {
+    "id": 8975,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 2881,
+    "timestamp": "2026-11-20T19:56:25.644Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"/c/VIsual Studio Projects/KOR.Drafter/work/_acceptance/2143\" && \"/c/VIsual Studio Projects/KOR.Drafter-step5/Kor.Operations.EngineeringTools.TakeoffCli/bin/Release/net8.0/takeoff.exe\" model-audit bundle --report model-audit.txt > /dev/null 2>&1; echo \"exit $?\"; cut -c1-150 model-audit.txt | grep -E \"^ACCEPTANCE (bundle|9|RESULT)\"",
+      "description": "inputs changed since #134035: bundle for pass 4 - run model-audit",
+      "timeout": 300000
+    }
+  },
+  {
+    "id": 8976,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 2898,
+    "timestamp": "2026-11-20T19:56:30.909Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"/c/VIsual Studio Projects/KOR.Drafter/work/_acceptance/2143\" && \"/c/VIsual Studio Projects/KOR.Drafter-step5/Kor.Operations.EngineeringTools.TakeoffCli/bin/Release/net8.0/takeoff.exe\" model-audit bundle --report model-audit.txt > /dev/null 2>&1; echo \"exit $?\"; cut -c1-150 model-audit.txt | grep -E \"^ACCEPTANCE (bundle|9|RESULT)\"",
+      "description": "inputs changed since #135743: rulings 187, fixed README, registration evidence - model-audit for pass 4",
+      "timeout": 300000
+    }
+  },
+  {
+    "id": 8984,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 4593,
+    "timestamp": "2026-11-20T22:46:15.866Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"C:/VIsual Studio Projects/KOR.Drafter-step5\" && dotnet build Kor.Operations.EngineeringTools.TakeoffCli -c Release -v q -nologo > \"C:/Users/ilalonde/AppData/Local/Temp/claude/5102428d3890278f/e7287342-6067-4ac2-818a-e923a9744797/scratchpad/2249/build.txt\" 2>&1; echo \"build exit $?\"; cd \"C:/VIsual Studio Projects/KOR.Drafter/work/_acceptance/2143\" && \"/c/VIsual Studio Projects/KOR.Drafter-step5/Kor.Operations.EngineeringTools.TakeoffCli/bin/Release/net8.0/takeoff.exe\" model-audit bundle --report \"C:/Users/ilalonde/AppData/Local/Temp/claude/5102428d3890278f/e7287342-6067-4ac2-818a-e923a9744797/scratchpad/2249/audit.txt\"; echo \"audit exit $?\"; grep -E \"^ *3a|NOT ACCEPTED|ACCEPTED|PASS [0-9]\" \"C:/Users/ilalonde/AppData/Local/Temp/claude/5102428d3890278f/e7287342-6067-4ac2-818a-e923a9744797/scratchpad/2249/audit.txt\" | head",
+      "description": "Build takeoff and audit the 2143 bundle",
+      "timeout": 600000
+    }
+  },
+  {
+    "id": 8986,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 5032,
+    "timestamp": "2026-11-20T23:01:28.673Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"C:/VIsual Studio Projects/KOR.Drafter-step5\" && dotnet build Kor.Operations.EngineeringTools.TakeoffCli -c Release -v q -nologo > /dev/null 2>&1; echo \"build exit $?\"; cd \"C:/VIsual Studio Projects/KOR.Drafter/work/_acceptance/2143\" && \"/c/VIsual Studio Projects/KOR.Drafter-step5/Kor.Operations.EngineeringTools.TakeoffCli/bin/Release/net8.0/takeoff.exe\" model-audit bundle --report \"C:/Users/ilalonde/AppData/Local/Temp/claude/5102428d3890278f/e7287342-6067-4ac2-818a-e923a9744797/scratchpad/2249/audit2.txt\" > /dev/null; echo \"audit exit $?\"; grep -E \"ACCEPTANCE (3a|RESULT)\" \"C:/Users/ilalonde/AppData/Local/Temp/claude/5102428d3890278f/e7287342-6067-4ac2-818a-e923a9744797/scratchpad/2249/audit2.txt\"",
+      "description": "inputs changed since #134049: 3a header fix - re-audit 2143 bundle",
+      "timeout": 600000
+    }
+  },
+  {
+    "id": 8993,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 5930,
+    "timestamp": "2026-11-20T23:59:13.456Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"C:/VIsual Studio Projects/KOR.Drafter-step5\" && dotnet build Kor.Operations.EngineeringTools.TakeoffCli -c Release -v q -nologo > /dev/null 2>&1; echo \"build exit $?\"; cd \"C:/VIsual Studio Projects/KOR.Drafter/work/_acceptance/2143\" && \"/c/VIsual Studio Projects/KOR.Drafter-step5/Kor.Operations.EngineeringTools.TakeoffCli/bin/Release/net8.0/takeoff.exe\" model-audit bundle --report \"C:/Users/ilalonde/AppData/Local/Temp/claude/5102428d3890278f/e7287342-6067-4ac2-818a-e923a9744797/scratchpad/2249/audit3.txt\" > /dev/null; echo \"audit exit $?\"; grep -E \"ACCEPTANCE 3a\" \"C:/Users/ilalonde/AppData/Local/Temp/claude/5102428d3890278f/e7287342-6067-4ac2-818a-e923a9744797/scratchpad/2249/audit3.txt\"",
+      "description": "inputs changed since #135744: 3a overlap check + ruling 189 - re-audit 2143",
+      "timeout": 600000
+    }
+  },
+  {
+    "id": 8995,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 6109,
+    "timestamp": "2026-11-21T00:08:43.138Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"C:/VIsual Studio Projects/KOR.Drafter-step5/work/31097-01-heather-lands/safe-2026-11-17/cmpall\" && ls \"C:/VIsual Studio Projects/KOR.Drafter/work/_acceptance/2143/gen/out/\"*.f2k | wc -l; python -I -c \"\nimport sys,glob,os,itertools; sys.path.insert(0,'.'); import cadcmp_all as K\nfrom shapely.geometry import Polygon, LineString, Point\nfrom shapely.ops import unary_union\nfor f in sorted(glob.glob(r'C:\\VIsual Studio Projects\\KOR.Drafter\\work\\_acceptance\\2143\\gen\\out\\*.f2k')):\n  M=K.f2k(f)\n  pads=[(n,Polygon(p).buffer(0)) for n,p,s in M['floors'] if s in('Col_Stiff','Stiff1')]\n  slab=unary_union([Polygon(p).buffer(0) for n,p,s in M['floors'] if s not in('Col_Stiff','Stiff1')])\n  ov=sum(1 for (a,A),(b,B) in itertools.combinations(pads,2) if A.intersection(B).area>0.5)\n  wl=sum(1 for w in M['walls'] for n,P in pads if LineString([w['a'],w['b']]).intersection(P.buffer(-0.5)).length>1)\n  off=sum(1 for n,P in pads if not slab.buffer(0.5).contains(P))\n  print(os.path.basename(f), 'floors',len(M['floors']),'pads',len(pads),'pad-pad overlaps',ov,'wall lines through a pad interior',wl,'pads off the slab',off,'cols',len(M['cols']),'walls',len(M['walls']))\n\"",
+      "description": "Census of pad overlaps and walls in pads per storey",
+      "timeout": 300000
+    }
+  },
+  {
+    "id": 8996,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 6123,
+    "timestamp": "2026-11-21T00:08:49.775Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"C:/VIsual Studio Projects/KOR.Drafter-step5/work/31097-01-heather-lands/safe-2026-11-17/cmpall\" && python -I -c \"\nimport sys,glob,os,itertools; sys.path.insert(0,'.'); import cadcmp_all as K\nfrom shapely.geometry import Polygon, LineString\nfrom shapely.ops import unary_union\nfor f in sorted(glob.glob(r'C:\\VIsual Studio Projects\\KOR.Drafter\\work\\_acceptance\\2143\\gen\\out\\*.f2k')):\n  M=K.f2k(f)\n  pads=[(n,Polygon(p).buffer(0)) for n,p,s in M['floors'] if s in('Col_Stiff','Stiff1')]\n  slab=unary_union([Polygon(p).buffer(0) for n,p,s in M['floors'] if s not in('Col_Stiff','Stiff1')])\n  ov=sum(1 for (a,A),(b,B) in itertools.combinations(pads,2) if A.intersection(B).area>0.5)\n  wl=sum(1 for w in M['walls'] for n,P in pads if LineString([w['a'],w['b']]).intersection(P.buffer(-0.5)).length>1)\n  off=sum(1 for n,P in pads if not slab.buffer(0.5).contains(P))\n  print(os.path.basename(f),'floors',len(M['floors']),'pads',len(pads),'pad-pad overlaps',ov,'wall lines in a pad',wl,'pads off slab',off,'walls',len(M['walls']))\n\"",
+      "description": "inputs changed since #124976: different job (31097 gen) - pad census per storey",
+      "timeout": 300000
+    }
+  },
+  {
+    "id": 9001,
+    "refuse": false,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\e7287342-6067-4ac2-818a-e923a9744797.jsonl",
+    "sourceSha256": "18b8a2a00cce7924bd88d3990ee4b394893d69071ae3edf1c9e7062f80f027ba",
+    "line": 6332,
+    "timestamp": "2026-11-21T00:16:38.784Z",
+    "tool": "Bash",
+    "input": {
+      "command": "cd \"C:/VIsual Studio Projects/KOR.Drafter-step5/work/31097-01-heather-lands/safe-2026-11-17/cmpall\" && head -3 \"C:/VIsual Studio Projects/KOR.Drafter/work/_acceptance/2143/gen/out/B1_L02.provenance.csv\"; python -I -c \"\nimport sys,csv,itertools,math; sys.path.insert(0,'.'); import cadcmp_all as K\nfrom shapely.geometry import Polygon\nfrom shapely.ops import unary_union\ng=r'C:\\VIsual Studio Projects\\KOR.Drafter\\work\\_acceptance\\2143\\gen\\out'\nM=K.f2k(g+r'\\B1_L02.f2k')\nprov={r[0]:r for r in csv.reader(open(g+r'\\B1_L02.provenance.csv',encoding='utf-8'))}\npads={n:Polygon(p).buffer(0) for n,p,s in M['floors'] if s=='Col_Stiff'}\nadj={n:set() for n in pads}\nfor (a,A),(b,B) in itertools.combinations(pads.items(),2):\n  if A.intersection(B).area>0.5: adj[a].add(b); adj[b].add(a)\nseen=set(); groups=[]\nfor n in pads:\n  if n in seen or not adj[n]: continue\n  st=[n]; comp=set()\n  while st:\n    x=st.pop()\n    if x in comp: continue\n    comp.add(x); st+=list(adj[x])\n  seen|=comp; groups.append(sorted(comp))\ndef axis(P):\n  c=list(P.exterior.coords)[:-1]\n  return all(abs(c[i][0]-c[i-1][0])<1e-6 or abs(c[i][1]-c[i-1][1])<1e-6 for i in range(len(c)))\nfor G in groups:\n  U=unary_union([pads[n] for n in G])\n  print(len(G),'pads', [(n,prov.get(n,['','',''])[2][:22]) for n in G],'all axis-aligned' if all(axis(pads[n]) for n in G) else 'NOT all axis-aligned','union verts',len(U.exterior.coords)-1 if U.geom_type=='Polygon' else U.geom_type)\n\"",
+      "description": "Characterise each overlapping pad group on B1 L02",
+      "timeout": 300000
+    }
+  },
+  {
+    "id": 5565,
+    "refuse": true,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\7e017d71-e1bf-4e24-9265-585a0e21d5ce.jsonl",
+    "sourceSha256": "793b11d9164668f72b1420d5a5ae93fd8392f0f055a6be1b295647817000e197",
+    "line": 1166,
+    "timestamp": "2026-11-11T06:31:53.962Z",
+    "tool": "Bash",
+    "input": {
+      "command": "S=\"C:/Users/ilalonde/AppData/Local/Temp/claude/5102428d3890278f/cde1e168-f8b2-4abf-9302-f0bd7ca70aef/scratchpad\"; cd \"$S\"; sed -i 's/^proj_raw = collections.Counter()$/proj_raw = collections.Counter(); model_raw = collections.Counter(); model_new = collections.Counter()/; s/^            rows.append((ctx, raw, new))$/            rows.append((ctx, raw, new)); model_raw[m.get(\"model\",\"?\")] += raw; model_new[m.get(\"model\",\"?\")] += new/' where_week.py; printf '%s\\n' 'print(\"\\nBY MODEL: raw M, share, new M\")' 'for k, v in model_raw.most_common():' '    print(f\"  {k:30} {v/1e6:8,.0f}M {100*v/tot:5.1f}%  new {model_new[k]/1e6:7,.1f}M\")' >> where_week.py; grep -c model_raw where_week.py; python -I where_week.py 2>&1",
+      "description": "~2 min: break this week's tokens down by session, kind and model",
+      "timeout": 300000
+    },
+    "provenance": "Outer CLI invocation timestamp; payload extracted from cde1e168 at 2026-11-10T19:25:41.525Z, as reconstructed at 7e017d71 L1128. Guard row timestamp not available without forbidden query."
+  },
+  {
+    "id": 5572,
+    "refuse": true,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\7e017d71-e1bf-4e24-9265-585a0e21d5ce.jsonl",
+    "sourceSha256": "793b11d9164668f72b1420d5a5ae93fd8392f0f055a6be1b295647817000e197",
+    "line": 1240,
+    "timestamp": "2026-11-11T06:34:51.719Z",
+    "tool": "Bash",
+    "input": {
+      "command": "S=\"C:/Users/ilalonde/AppData/Local/Temp/claude/5102428d3890278f/cde1e168-f8b2-4abf-9302-f0bd7ca70aef/scratchpad\"; cd \"$S\"; sed -i 's/^proj_raw = collections.Counter()$/proj_raw = collections.Counter(); model_raw = collections.Counter(); model_new = collections.Counter()/; s/^            rows.append((ctx, raw, new))$/            rows.append((ctx, raw, new)); model_raw[m.get(\"model\",\"?\")] += raw; model_new[m.get(\"model\",\"?\")] += new/' where_week.py; printf '%s\\n' 'print(\"\\nBY MODEL: raw M, share, new M\")' 'for k, v in model_raw.most_common():' '    print(f\"  {k:30} {v/1e6:8,.0f}M {100*v/tot:5.1f}%  new {model_new[k]/1e6:7,.1f}M\")' >> where_week.py; grep -c model_raw where_week.py; python -I where_week.py 2>&1",
+      "description": "~2 min: break this week's tokens down by session, kind and model",
+      "timeout": 300000
+    },
+    "provenance": "Outer CLI invocation timestamp; payload extracted from cde1e168 at 2026-11-10T19:25:41.525Z, as reconstructed at 7e017d71 L1128. Guard row timestamp not available without forbidden query."
+  },
+  {
+    "id": 5573,
+    "refuse": true,
+    "source": "C:\\Users\\ilalonde\\.claude\\projects\\C--VIsual-Studio-Projects-Framework\\7e017d71-e1bf-4e24-9265-585a0e21d5ce.jsonl",
+    "sourceSha256": "793b11d9164668f72b1420d5a5ae93fd8392f0f055a6be1b295647817000e197",
+    "line": 1290,
+    "timestamp": "2026-11-11T06:36:03.791Z",
+    "tool": "Bash",
+    "input": {
+      "command": "true",
+      "description": "~2 min: break this week's tokens down by session, kind and model (raw and new per transcript)"
+    }
+  }
+]
