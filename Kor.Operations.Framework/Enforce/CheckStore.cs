@@ -121,18 +121,21 @@ public static class CheckStore
 }
 
 /// <summary>
-/// CHECKS: the live checks on each healthy database read. ALLOWS: a retirement or replacement to take effect on the
-/// next call, without a five-minute stale refusal window. The last read at %LOCALAPPDATA%\KOR\kor-checks-cache.json
-/// is an outage fallback only. After a failed read the database is not tried again for 60 s (a hook must not wait 3 s on
+/// CHECKS: the live checks once the last successful read is 30 s old. ALLOWS: fresh cache hits without a DB round trip;
+/// a retirement or replacement takes effect on the first call at/after expiry. Hits never extend that deadline.
+/// The last read at %LOCALAPPDATA%\KOR\kor-checks-cache.json also supplies outage fallback.
+/// After a failed read the database is not tried again for 60 s (a hook must not wait 3 s on
 /// every tool call while the server is down). No database and no cache: nothing is enforced (fails open, said in the
-/// hook error log). Cost: one read per call while healthy. DOES NOT CATCH changes during an outage: a retired check
+/// hook error log). DOES NOT CATCH changes within the freshness window or during an outage: a retired check
 /// can still refuse from the fallback until a successful refresh. The cache is not proof of current authority.
+/// Concurrent processes at expiry can each refresh; the file cache does not serialize database reads.
 /// </summary>
 public static class CheckCache
 {
     public static readonly string DefaultDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KOR");
 
     public static readonly TimeSpan DownBackoff = TimeSpan.FromSeconds(60);
+    public static readonly TimeSpan FreshFor = TimeSpan.FromSeconds(30);
 
     public sealed record Snapshot(DateTimeOffset ReadAtUtc, List<LiveCheck> Checks, DateTimeOffset? DownUntilUtc = null);
 
@@ -161,7 +164,7 @@ public static class CheckCache
     }
 
     /// <summary>
-    /// The checks to enforce: <paramref name="read"/>, saved, except while the DB is held down;
+    /// The checks to enforce: the fresh cache, otherwise <paramref name="read"/>, saved, except while the DB is held down;
     /// when the read fails, the cache at any age; null = no DB and no cache. <paramref name="source"/> says which.
     /// </summary>
     public static IReadOnlyList<LiveCheck>? Get(string dir, Func<IReadOnlyList<LiveCheck>> read, DateTimeOffset now, Action<Exception> log,
@@ -172,6 +175,12 @@ public static class CheckCache
         {
             // the outage marker alone (never read): still no DB and no cache
             if (cached.ReadAtUtc == DateTimeOffset.MinValue) { source = "none"; return null; }
+            source = "cache";
+            return cached.Checks;
+        }
+        if (cached is not null && cached.ReadAtUtc != DateTimeOffset.MinValue
+            && now >= cached.ReadAtUtc && now - cached.ReadAtUtc < FreshFor)
+        {
             source = "cache";
             return cached.Checks;
         }
