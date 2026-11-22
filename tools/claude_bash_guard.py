@@ -569,9 +569,8 @@ RULES = [
     #    NARROWED 21 Nov (plan step 3, PipedBuild): judged since 12 Nov 13 right / 10 wrong. 9 of the 10 read the exit
     #    code with ${PIPESTATUS[0]} in the very next command (8594: `dotnet build | grep ...; echo rc=${PIPESTATUS[0]}`),
     #    which office rule 13 itself names as a fix; 1 (8275) was a pipe in a LATER command after && (`dotnet build ... >
-    #    log && P=$(ls | head -1)`) read as the build's. CHECKS: a dotnet build/test/publish in command position whose
-    #    own pipeline (it stops at ; && || or a newline) has a '|', unless the command says pipefail or the NEXT
-    #    command reads its compiler element of PIPESTATUS (or the whole array). Step-3 independent review:
+    #    log && P=$(ls | head -1)`) read as the build's. That change accepted the next command's PIPESTATUS read.
+    #    Step-3 independent review tightens what counts as protection of a piped dotnet build/test/publish:
     #    CHECKS: literal `set -o pipefail` BEFORE the build in its shell scope, respecting `set +o pipefail`;
     #      actual variable expansions in the immediately following command, including double quotes. Comments,
     #      single quotes, escaped dollars and heredoc data cannot supply protection. $(...) remains executable.

@@ -120,6 +120,10 @@ did it - the guard passed because the Schema folder had been LISTED.
   content search, including rg -l/--files-with-matches; rg --files, --type-list, help and version
   modes do not satisfy (4). DOES NOT CATCH a search that failed or whose results were never read:
   this PreToolUse hook sees requests, not their results. Wrong-scope searches remain a same-class miss.
+  Remaining misfires: topic words come from the basename, so relevant searches using the enclosing task's
+  name can be missed (4964/4965, 8622/8623); a different-prefix test can establish the right convention
+  without satisfying the sibling check (4996/5010). A sibling authored in this session is not a recorded
+  Read (7843). The first lookup check also requires the target directory, not just its parent (4213).
 
   WHAT IT DOES NOT CATCH (same class): a content search with the wrong words over the right
   place, read and misjudged; a search of the right words over too narrow a path that still
