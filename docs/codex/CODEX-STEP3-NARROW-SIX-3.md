@@ -33,6 +33,12 @@ committed alone and shown failing on f1aa076 (at least: `env ...`, `timeout 60 p
 change; CHECKS / ALLOWS / DOES NOT CATCH updated. Then: the guard's own suite (state its count; case 22 fails on base too),
 and the 29 historical plan_review rows replayed before/after as in rounds 1 and 2.
 
+Also in the same parser (review rows 3664-3670): a bare `cd` or `cd -` leaves the tracked directory unchanged, so a later
+relative `-i` path is resolved in the wrong folder, the open fails and the file is silently skipped - a false allow. Fail
+closed: when the directory can no longer be known, or the `-i` file cannot be opened, refuse rather than skip (say what
+the refusal tells the session). And, only if free: `**VERDICT: CHANGE** - reason` (bold closed before the dash) reads as
+no verdict (fail-safe false refusal).
+
 Same limits as rounds 1-2: no push or install, only this guard and its tests, commits with `git -c core.hooksPath=<empty
 folder> commit`, nothing written to the database, payloads without `hook_event_name`, TEMP/TMP normal. The author holds
 back more cases.
