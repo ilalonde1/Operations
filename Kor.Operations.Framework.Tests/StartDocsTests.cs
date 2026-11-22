@@ -37,6 +37,7 @@ public class StartDocsTests : IDisposable
     });
 
     private const string Compaction = "{\"type\":\"user\",\"isCompactSummary\":true,\"message\":{\"content\":\"summary\"}}";
+    private const string BashCat = "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t2\",\"content\":\"plan line 1\"}]},\"toolUseResult\":{\"stdout\":\"plan line 1\"}}";
 
     // JSON spacing must not preserve pre-compaction coverage. Malformed result metadata earns no coverage.
     // Does not prove comprehension or content identity after a same-length file edit.
@@ -55,7 +56,6 @@ public class StartDocsTests : IDisposable
         var bad = ReadResult(Plan, 1, 20, 20).Replace("\"numLines\":20", "\"numLines\":\"twenty\"");
         Assert.False(Decide(new[] { bad }, "docs/BUILD-PLAN.md").Allow);
     }
-    private const string BashCat = "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t2\",\"content\":\"plan line 1\"}]},\"toolUseResult\":{\"stdout\":\"plan line 1\"}}";
 
     private StartGate.Decision Decide(IEnumerable<string> lines, params string[] args)
     {
