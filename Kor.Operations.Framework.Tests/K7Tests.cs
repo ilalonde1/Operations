@@ -280,7 +280,7 @@ public class K7Tests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AHealthyDatabaseSupersedesTheCheckCacheAtThirtySeconds(bool replacement)
+    public void AHealthyDatabaseSupersedesEvenASecondsOldCheckCache(bool replacement)
     {
         var dir = Path.Combine(Path.GetTempPath(), $"kor-k7-retired-{Guid.NewGuid():N}");
         var now = DateTimeOffset.UtcNow;
