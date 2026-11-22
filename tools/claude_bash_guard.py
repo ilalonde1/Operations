@@ -192,11 +192,14 @@ class PipedBuild:
     command position is piped, the command does not say pipefail, and the command right after that pipeline does not
     read PIPESTATUS. Quoted strings are blanked first (same length, so a position in the blanked text is a position in
     cmd); PIPESTATUS is looked for in cmd itself, because it is usually inside a quoted echo."""
-    CALL = re.compile(r"(?i)(?:^|[;&|(\n])\s*"
+    CALL = re.compile(r"(?i)(?:^|[;&|({\n])\s*"   # '{' too (21 Nov): `{ dotnet build X | tail; }` was never matched
                       r"(?:(?:timeout(?:\s+-\S+)*\s+\S+|time|env|nice|command|[A-Za-z_]\w*=\S*)\s+)*"
                       r"(?:\S*[/\\])?dotnet(?:\.exe)?\s+(?:build|test|publish)\b(?:[^|;&\n]|&(?!&))*\|(?!\|)")
-    # where a pipeline ends: ; && || a newline, or a background & (not the & of 2>&1, &> or |&)
+    # where a pipeline ends: ; && || a newline, or a background & (not the & of 2>&1, &> or |&). CALL itself reads past a
+    # background & (review 2636), so `dotnet build X & ls | head` is still refused - a false refusal, not a false allow.
     END = re.compile(r";|&&|\|\||\n|(?<![>&|])&(?![>&])")
+    # a READ of the variable, not the word: $PIPESTATUS or ${PIPESTATUS[...]} (review 2636: "echo PIPESTATUS" passed)
+    READ = re.compile(r"\$\{?PIPESTATUS\b")
 
     def search(self, cmd):
         text = blank_quotes(cmd)
@@ -205,8 +208,11 @@ class PipedBuild:
         for m in self.CALL.finditer(text):
             end = self.END.search(text, m.end())
             if end:
+                rest = text[m.end():end.start()]
+                # review 2636: inside ( ... ) or { ...; } the next command's PIPESTATUS is the group's, i.e. the tail's
+                in_group = rest.count(")") > rest.count("(") or rest.count("}") > rest.count("{")
                 nxt = self.END.search(text, end.end())
-                if "PIPESTATUS" in cmd[end.end():nxt.start() if nxt else len(cmd)]:
+                if not in_group and self.READ.search(cmd, end.end(), nxt.start() if nxt else len(cmd)):
                     continue
             return m
         return None
@@ -375,8 +381,10 @@ RULES = [
     #    code with ${PIPESTATUS[0]} in the very next command (8594: `dotnet build | grep ...; echo rc=${PIPESTATUS[0]}`),
     #    which office rule 13 itself names as a fix; 1 (8275) was a pipe in a LATER command after && (`dotnet build ... >
     #    log && P=$(ls | head -1)`) read as the build's. CHECKS: a dotnet build/test/publish in command position whose
-    #    own pipeline (it stops at ; && || a newline or a background &) has a '|', unless the command says pipefail or
-    #    the NEXT command reads PIPESTATUS. ALLOWS: `...| tail; echo ${PIPESTATUS[0]}`, `...| head && echo
+    #    own pipeline (it stops at ; && || or a newline) has a '|', unless the command says pipefail or the NEXT
+    #    command reads $PIPESTATUS / ${PIPESTATUS[..]} and the pipeline is not inside a ( ) or { } group (there the
+    #    variable holds the group's status, i.e. the tail's - review 2636). A background & does NOT end it for this
+    #    check, so `dotnet build X & ls | head` is still refused (a false refusal). ALLOWS: `...| tail; echo ${PIPESTATUS[0]}`, `...| head && echo
     #    "rc=${PIPESTATUS[0]}"`, `rc=${PIPESTATUS[0]}`. DOES NOT CATCH, added: a PIPESTATUS that is read but never
     #    acted on (echoed, then the build is called green anyway); a PIPESTATUS inside a nested $( ... ; ... ) of the
     #    next command; ${PIPESTATUS[1]} (the tail's status, not the build's) - any index counts.

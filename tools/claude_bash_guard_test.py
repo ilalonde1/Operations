@@ -118,6 +118,12 @@ CASES = [
     ('dotnet build X > a.log 2>&1 && dotnet test Y | tail -3', "deny"),
     ('dotnet build X 2>&1 | grep -E "error" | sort | head', "deny"),
     ('dotnet test X |& tail -3', "deny"),
+    # review 2636: the word is not a read, and inside a group the next PIPESTATUS is the group's (the tail's)
+    ('dotnet build X 2>&1 | tail -3; echo "PIPESTATUS skipped"', "deny"),
+    ('dotnet build X 2>&1 | tail -3; echo $PIPESTATUS_X', "deny"),
+    ('( dotnet build X 2>&1 | tail -3 ); echo ${PIPESTATUS[0]}', "deny"),
+    ('{ dotnet build X 2>&1 | tail -3; }; echo ${PIPESTATUS[0]}', "deny"),
+    ('dotnet build X 2>&1 | tail -3; echo $PIPESTATUS', "allow"),
     # rule 3b narrowed 12 Nov: judged wrong 5120-like ('\r\n' and '\n' in a quoted heredoc), right 4970-like (a C# \b
     # through a non-raw Python string), and the UNC collapse an unquoted delimiter does
     ("python - <<'EOF'\nnl = '\\r\\n' if '\\r\\n' in t else '\\n'\nprint('a\\tb')\nEOF", "allow"),
