@@ -22,6 +22,23 @@ namespace Kor.Operations.Framework.Tests;
 [Collection(LiveDb.Name)]
 public class StallTests
 {
+    // A bare drive in sqlcmd's input-file error is not a refusal on every resource the command mentions.
+    // Covers corrected file arguments, inline queries and a diagnosis plus that query; not arbitrary client errors.
+    // Same-class miss: a different client's malformed path still falls back to the command's resources.
+    [Theory]
+    [InlineData("python -I tools/SqlQuery/oq.py -q \"SELECT 1\"")]
+    [InlineData("python -I tools/SqlQuery/oq.py -i one.sql")]
+    [InlineData("kor record --module Operations --kind finding --says fixed; python -I tools/SqlQuery/oq.py -q \"SELECT 1\"")]
+    public void SqlcmdBareDriveInputFailureDoesNotStallACorrectedCommand(string retry)
+    {
+        const string cd = "cd \"C:/work/Operations\" && ";
+        const string failed = cd + "python -I tools/SqlQuery/oq.py -i \"C:/tmp/one.sql\"";
+        const string error = "Sqlcmd: Error: Error occurred while opening or operating on file C: (Reason: Access is denied).";
+        var history = new[] { Call("Bash", failed, error, 0), Call("Bash", failed, error, 1) };
+        Assert.False(StallGuard.Decide(Call("Bash", cd + retry, null, 2), history, NoDiagnosis, T0.AddMinutes(2)).Refuse);
+        Assert.True(StallGuard.Decide(Call("Bash", failed, null, 2), history, NoDiagnosis, T0.AddMinutes(2)).Refuse);
+    }
+
     private static readonly DateTimeOffset T0 = new(2026, 11, 3, 19, 25, 0, TimeSpan.Zero);
     private int _line;
 
