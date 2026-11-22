@@ -274,13 +274,13 @@ public class K7Tests
         Assert.Equal("none", s5);
     }
 
-    // 13
-    // Cache authority: a healthy database must supersede a cached retirement or replacement immediately.
-    // Does not prove outage freshness; an unavailable DB can still leave a retired check in the fallback.
+    // 12b: bounded cache authority, with an injected clock and reader. Covers retirement, replacement,
+    // read count, the exact expiry boundary and persisted timestamps across calls. Does not measure CLI
+    // latency or concurrent processes; an unavailable DB can still leave a retired check in the fallback.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AHealthyDatabaseSupersedesEvenASecondsOldCheckCache(bool replacement)
+    public void AHealthyDatabaseSupersedesTheCheckCacheAtThirtySeconds(bool replacement)
     {
         var dir = Path.Combine(Path.GetTempPath(), $"kor-k7-retired-{Guid.NewGuid():N}");
         var now = DateTimeOffset.UtcNow;
@@ -289,10 +289,62 @@ public class K7Tests
         try
         {
             CheckCache.Save(dir, new CheckCache.Snapshot(now, new List<LiveCheck> { old }));
-            var got = CheckCache.Get(dir, () => current, now.AddSeconds(4), _ => { }, out var source);
+            var reads = 0;
+            IReadOnlyList<LiveCheck> Read() { reads++; return current; }
+            foreach (var age in new[] { 0d, 4d, 15d, 29.999d })
+            {
+                var fresh = CheckCache.Get(dir, Read, now.AddSeconds(age), _ => { }, out var freshSource);
+                Assert.Equal(new[] { old.Id }, fresh!.Select(c => c.Id));
+                Assert.Equal("cache", freshSource);
+                Assert.Equal(0, reads);
+                Assert.Equal(now, CheckCache.Load(dir)!.ReadAtUtc); // hits cannot slide the expiry
+            }
+            var got = CheckCache.Get(dir, Read, now.AddSeconds(30), _ => { }, out var source);
             Assert.Equal(current.Select(c => c.Id), got!.Select(c => c.Id));
             Assert.Equal("db", source);
+            Assert.Equal(1, reads);
             Assert.Equal(current.Select(c => c.Id), CheckCache.Load(dir)!.Checks.Select(c => c.Id));
+            Assert.Equal(current.Select(c => c.Id), CheckCache.Get(dir, Read, now.AddSeconds(31), _ => { }, out source)!.Select(c => c.Id));
+            Assert.Equal("cache", source);
+            Assert.Equal(1, reads);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void AHealthyEmptyCheckCacheIsFreshToo()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"kor-k7-empty-{Guid.NewGuid():N}");
+        var now = DateTimeOffset.UtcNow;
+        var reads = 0;
+        IReadOnlyList<LiveCheck> Read() { reads++; return Array.Empty<LiveCheck>(); }
+        try
+        {
+            Assert.Empty(CheckCache.Get(dir, Read, now, _ => { }, out var source)!);
+            Assert.Equal("db", source);
+            Assert.Empty(CheckCache.Get(dir, Read, now.AddSeconds(29), _ => { }, out source)!);
+            Assert.Equal("cache", source);
+            Assert.Equal(1, reads);
+            Assert.Empty(CheckCache.Get(dir, Read, now.AddSeconds(30), _ => { }, out source)!);
+            Assert.Equal("db", source);
+            Assert.Equal(2, reads);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void AFutureCheckCacheTimestampCannotExtendTheWindow()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"kor-k7-clock-{Guid.NewGuid():N}");
+        var now = DateTimeOffset.UtcNow;
+        try
+        {
+            CheckCache.Save(dir, new CheckCache.Snapshot(now.AddHours(1), new List<LiveCheck>()));
+            var reads = 0;
+            CheckCache.Get(dir, () => { reads++; return Array.Empty<LiveCheck>(); }, now, _ => { }, out var source);
+            Assert.Equal("db", source);
+            Assert.Equal(1, reads);
+            Assert.Equal(now, CheckCache.Load(dir)!.ReadAtUtc);
         }
         finally { Directory.Delete(dir, true); }
     }
