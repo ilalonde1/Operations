@@ -279,31 +279,128 @@ class QuotesBlanked:
 
 
 class PipedBuild:
-    """Rule 8's matcher (narrowed 21 Nov, see the rule): .search(cmd) is truthy when a dotnet build/test/publish in
-    command position is piped, the command does not say pipefail, and the command right after that pipeline does not
-    read PIPESTATUS. Quoted strings are blanked first (same length, so a position in the blanked text is a position in
-    cmd); PIPESTATUS is looked for in cmd itself, because it is usually inside a quoted echo."""
+    """Rule 8: retain the compiler's status, with literal pipefail state or its immediate PIPESTATUS element.
+
+    Two same-length shell views separate syntax from expansions. Single-quoted/escaped variables, comments and
+    heredoc data are never reads; double-quoted command substitutions still contain executable commands.
+    This is a bounded lexical check, not control-flow or arbitrary shell evaluation (limits beside the rule).
+    """
     CALL = re.compile(r"(?i)(?:^|[;&|({\n])\s*"   # '{' too (21 Nov): `{ dotnet build X | tail; }` was never matched
                       r"(?:(?:timeout(?:\s+-\S+)*\s+\S+|time|env|nice|command|[A-Za-z_]\w*=\S*)\s+)*"
-                      r"(?:\S*[/\\])?dotnet(?:\.exe)?\s+(?:build|test|publish)\b(?:[^|;&\n]|&(?!&))*\|(?!\|)")
-    # where a pipeline ends: ; && || a newline, or a background & (not the & of 2>&1, &> or |&). CALL itself reads past a
-    # background & (review 2636), so `dotnet build X & ls | head` is still refused - a false refusal, not a false allow.
+                      r"(?:\S*[/\\])?dotnet(?:\.exe)?\s+(?:build|test|publish)\b(?:[^|;&\n]|(?<=>)&|&(?=>))*\|(?!\|)")
+    # Background & ends a pipeline; descriptor duplication and |& do not.
     END = re.compile(r";|&&|\|\||\n|(?<![>&|])&(?![>&])")
-    # a READ of the variable, not the word: $PIPESTATUS or ${PIPESTATUS[...]} (review 2636: "echo PIPESTATUS" passed)
-    READ = re.compile(r"\$\{?PIPESTATUS\b")
+    READ = re.compile(r"\$PIPESTATUS\b(?!\w)|\$\{PIPESTATUS(?:\[(\d+|[@*])\])?\}")
+    SET = re.compile(r"(?:^|[;({\n]|&&)\s*set\s+([+-])o\s+pipefail(?=\s|[;&)]|$)")
+
+    @staticmethod
+    def views(cmd):
+        import shlex
+        syntax, expansion = [' '] * len(cmd), [' '] * len(cmd)
+
+        def scan(pos, quote=None, stop=False):
+            pending, depth = [], 0
+            while pos < len(cmd):
+                c = cmd[pos]
+                if c == '\\':
+                    pos += 2
+                    continue
+                if quote == '"' and c == '"':
+                    return pos + 1
+                if c == "'" and quote is None:
+                    end = cmd.find("'", pos + 1)
+                    pos = len(cmd) if end < 0 else end + 1
+                    continue
+                if c == '"' and quote is None:
+                    pos = scan(pos + 1, quote='"')
+                    continue
+                if cmd.startswith('$(', pos):
+                    syntax[pos:pos + 2] = expansion[pos:pos + 2] = '$('
+                    pos = scan(pos + 2, stop=True)
+                    continue
+                if quote is not None:
+                    expansion[pos] = c
+                    pos += 1
+                    continue
+                if c == '#' and (pos == 0 or cmd[pos - 1].isspace() or cmd[pos - 1] in ';|&('):
+                    end = cmd.find('\n', pos)
+                    pos = len(cmd) if end < 0 else end
+                    continue
+                if cmd.startswith('<<', pos) and not cmd.startswith('<<<', pos):
+                    header = re.match(r"<<(-?)[ \t]*(\S+)", cmd[pos:])
+                    if header:
+                        try:
+                            delim = shlex.split(header[2])[0]
+                            pending.append((delim, bool(header[1])))
+                        except (ValueError, IndexError):
+                            pass
+                syntax[pos] = expansion[pos] = c
+                pos += 1
+                if c == '\n':
+                    for delim, tabs in pending:
+                        end = re.search(r'(?m)^' + (r'\t*' if tabs else '') + re.escape(delim) + r'\r?$', cmd[pos:])
+                        pos = pos + end.end() if end else len(cmd)
+                        if pos < len(cmd) and cmd[pos] == '\n':
+                            pos += 1
+                    pending = []
+                elif c == '(':
+                    depth += 1
+                elif c == ')':
+                    if stop and depth == 0:
+                        return pos
+                    depth -= 1
+            return pos
+
+        scan(0)
+        return ''.join(syntax), ''.join(expansion)
+
+    def pipefail(self, text, upto):
+        settings = {m.end() - 1: m[1] == '-' for m in self.SET.finditer(text, 0, upto)}
+        enabled, stack = False, []
+        for pos, c in enumerate(text[:upto]):
+            if pos in settings:
+                enabled = settings[pos]
+            if c == '(':
+                stack.append(enabled)
+            elif c == ')' and stack:
+                enabled = stack.pop()
+        return enabled
+
+    def reads_status(self, text, start, end, index):
+        segment = text[start:end]
+        # A nested substitution can execute commands that replace the inherited status.
+        # Conservatively require the read in this command's own expansions.
+        nested = segment.find('$(')
+        if nested >= 0:
+            segment = segment[:nested]
+        for m in self.READ.finditer(segment):
+            element = m[1]
+            if element in ('@', '*') or (int(element or '0') == index):
+                return True
+        return False
 
     def search(self, cmd):
-        text = blank_quotes(cmd)
-        if re.search(r"(?i)pipefail", text):
-            return None
+        text, expansion = self.views(cmd)
         for m in self.CALL.finditer(text):
+            if self.pipefail(text, m.start()):
+                continue
+            # Help does not invoke a compiler or tests (live probe 9586).
+            if re.search(r'(?:^|\s)(?:--help|-h|-\?)(?=\s|[|]|$)', text[m.start():m.end()]):
+                continue
             end = self.END.search(text, m.end())
             if end:
                 rest = text[m.end():end.start()]
-                # review 2636: inside ( ... ) or { ...; } the next command's PIPESTATUS is the group's, i.e. the tail's
+                # A subshell exports only its final status. The existing brace refusal is conservative:
+                # Bash actually preserves PIPESTATUS across a brace group, but its required deny stays.
                 in_group = rest.count(")") > rest.count("(") or rest.count("}") > rest.count("{")
                 nxt = self.END.search(text, end.end())
-                if not in_group and self.READ.search(cmd, end.end(), nxt.start() if nxt else len(cmd)):
+                prior = text[:m.start()]
+                boundary = max([b.end() for b in self.END.finditer(prior)] +
+                               [prior.rfind('(') + 1, prior.rfind('{') + 1, 0])
+                # CALL includes the preceding | when dotnet is not pipeline element zero.
+                prefix = text[boundary:m.start()] + '|' if m.group()[0] == '|' else ''
+                index = len(re.findall(r'\|(?!\|)', prefix))
+                if not in_group and self.reads_status(expansion, end.end(), nxt.start() if nxt else len(cmd), index):
                     continue
             return m
         return None
@@ -474,12 +571,18 @@ RULES = [
     #    which office rule 13 itself names as a fix; 1 (8275) was a pipe in a LATER command after && (`dotnet build ... >
     #    log && P=$(ls | head -1)`) read as the build's. CHECKS: a dotnet build/test/publish in command position whose
     #    own pipeline (it stops at ; && || or a newline) has a '|', unless the command says pipefail or the NEXT
-    #    command reads $PIPESTATUS / ${PIPESTATUS[..]} and the pipeline is not inside a ( ) or { } group (there the
-    #    variable holds the group's status, i.e. the tail's - review 2636). A background & does NOT end it for this
-    #    check, so `dotnet build X & ls | head` is still refused (a false refusal). ALLOWS: `...| tail; echo ${PIPESTATUS[0]}`, `...| head && echo
-    #    "rc=${PIPESTATUS[0]}"`, `rc=${PIPESTATUS[0]}`. DOES NOT CATCH, added: a PIPESTATUS that is read but never
-    #    acted on (echoed, then the build is called green anyway); a PIPESTATUS inside a nested $( ... ; ... ) of the
-    #    next command; ${PIPESTATUS[1]} (the tail's status, not the build's) - any index counts.
+    #    command reads its compiler element of PIPESTATUS (or the whole array). Step-3 independent review:
+    #    CHECKS: literal `set -o pipefail` BEFORE the build in its shell scope, respecting `set +o pipefail`;
+    #      actual variable expansions in the immediately following command, including double quotes. Comments,
+    #      single quotes, escaped dollars and heredoc data cannot supply protection. $(...) remains executable.
+    #      ; && || newline and background & end the pipeline. The element index starts afresh at each boundary.
+    #    ALLOWS: `...| tail; echo ${PIPESTATUS[0]}`, `...| head && echo "rc=${PIPESTATUS[0]}"`, array capture,
+    #      unpiped builds before a later pipe, and --help/-h/-? (9586 invokes no compiler).
+    #    DOES NOT CATCH: a status read but ignored, aliases/variables as the executable, arbitrary wrappers or
+    #      eval/bash -c/pwsh -Command strings; full shell control flow (`false && set -o pipefail; build | tail`
+    #      can appear protected), dynamic option changes, or functions changing pipefail at runtime.
+    #    Conservative limits: nested-substitution status reads are not credited; the existing brace-group deny
+    #      stays. Bash preserves PIPESTATUS across braces (unlike a subshell), so review 2636's explanation was wrong.
     (PipedBuild(),
      "A dotnet build/test/publish piped without pipefail: the pipe's exit code replaces the build's "
      "(2026-10-14: four CS0104 errors reported as a green build; tests and PNGs then ran on stale "
