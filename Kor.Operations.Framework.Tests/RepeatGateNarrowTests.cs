@@ -106,6 +106,17 @@ public class RepeatGateNarrowTests
     }
 
     [Theory]
+    [InlineData("Investigation of slab thickness on job 31097 B1 L02")]
+    [InlineData("Characterisation of slab thickness on job 31097 B1 L02")]
+    [InlineData("From the plans, read slab thickness off the sheets on job 31097 B1 L02")]
+    public void OtherExistingWorkFormsRetainTheSameQuestion(string intent)
+    {
+        var input = JsonSerializer.SerializeToElement(new { description = intent, command = "true" });
+        Assert.NotNull(RepeatGate.Intent("Bash", input, _ => false));
+        Assert.True(RepeatGate.Decide(intent, intent, Index(Thickness)).Refuse);
+    }
+
+    [Theory]
     [InlineData("Measure slab deflection on job 31097 B1 L02")]
     [InlineData("Measure concrete strength for the slab on 31097 B1 L02")]
     [InlineData("Characterise overlapping pad groups on 31097 B1 L02")]
