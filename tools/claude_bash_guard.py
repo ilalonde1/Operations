@@ -21,21 +21,156 @@ import tempfile
 import time
 
 class HeredocEscape:
-    """Rule 3b's matcher (narrowed 12 Nov, see the rule): .search(cmd) is truthy when a heredoc body holds an escape that
-    Python or bash will change."""
-    HEAD = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_][\w-]*)\1[^\n]*\n")
-    RAW = re.compile(r"(?<![\w])(?:[rR][bB]?|[bB][rR])(?:'''[\s\S]*?'''|\"\"\"[\s\S]*?\"\"\"|'[^'\n]*'|\"[^\"\n]*\")")
-    BAD = re.compile(r"\\[^nrt'\"$`\\\s]")
+    """Rule 3b: distinguish Bash expansion, Python source, and verbatim input (see CHECKS below).
+
+    This is a bounded shell reader, not an interpreter: it never runs a command or follows a written file.
+    Python's tokenizer identifies literals without evaluating their escapes or executing their contents.
+    """
+    SHELL_TOKEN = re.compile(
+        r"(?P<space>[ \t\r]+)|(?P<comment>\#[^\n]*)|(?P<newline>\n)"
+        r"|(?P<op><<<|<<-|<<|>>|[<>]&|&>|[;&|()<>])"
+        r"|(?P<word>(?:'[^']*'|\"(?:\\[\s\S]|[^\"\\])*\"|\\[\s\S]|[^\s'\"\\;&|()<>])+)")
+    PYTHON = re.compile(r"(?i)^(?:python(?:\d+(?:\.\d+)*)?|py)(?:\.exe)?$")
+    PREFIX = re.compile(r"(?i)^([rubf]*)(?:'''|\"\"\"|'|\")")
+    # Hand-doubled C# verbatim regexes are still against rule 7 (real refusal 4970).
+    CSHARP_REGEX = re.compile(r'@"[^"\n]*\\[bBdDsSwWAZzG.?*+()\[\]{}|^$]')
+    ESCAPE = re.compile(r"\\(?:x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|N\{[^}\n]+\}|[0-7]{1,3}|[\s\S])")
+
+    @classmethod
+    def python_stdin(cls, tokens):
+        """Recognize Python reading source from stdin, not a script/-c/-m reading data from stdin."""
+        words = []
+        i = 0
+        while i < len(tokens):
+            if tokens[i] in ('<', '>', '>>', '>&', '<&', '&>'):
+                if words and words[-1].isdigit():
+                    words.pop()  # file descriptor on a redirect
+                i += 2
+                continue
+            words.append(tokens[i])
+            i += 1
+        i = 0
+        while i < len(words):
+            word = words[i]
+            if re.match(r"^[A-Za-z_]\w*=", word) or word in ('env', 'command', 'time', 'exec', 'do', 'then'):
+                i += 1
+            elif word == 'timeout' and i + 1 < len(words):
+                i += 2
+            else:
+                break
+        if i == len(words) or not cls.PYTHON.fullmatch(words[i].replace('\\', '/').rsplit('/', 1)[-1]):
+            return False
+        i += 1
+        while i < len(words):
+            word = words[i]
+            if word == '-':
+                return True  # subsequent words are script arguments
+            if word == '--':
+                return i + 1 == len(words) or words[i + 1] == '-'
+            if word in ('-c', '-m') or word.startswith(('-c', '-m')):
+                return False
+            if word in ('-X', '-W'):
+                i += 2
+            elif word.startswith('-'):
+                i += 1
+            else:
+                return False  # script filename
+        return True
+
+    @classmethod
+    def bodies(cls, cmd):
+        """Read shell headers and their queued bodies once; never find new headers inside a body.
+
+        Each pending redirect retains its own command's word list. Quotes/backslashes in a delimiter
+        suppress Bash expansion; <<- strips tabs only. Quoted shell arguments remain opaque.
+        """
+        import shlex
+        pos, words, pending = 0, [], []
+        while pos < len(cmd):
+            token = cls.SHELL_TOKEN.match(cmd, pos)
+            if token is None:
+                pos += 1
+                continue
+            pos = token.end()
+            kind, spelling = token.lastgroup, token.group()
+            if kind in ('space', 'comment'):
+                continue
+            if kind == 'newline':
+                for delim, quoted, tabs, consumer in pending:
+                    end = re.search(r"(?m)^" + (r"\t*" if tabs else '') + re.escape(delim) + r"\r?$", cmd[pos:])
+                    stop = pos + end.start() if end else len(cmd)
+                    yield quoted, consumer, cmd[pos:stop]
+                    pos = pos + end.end() if end else len(cmd)
+                    if pos < len(cmd) and cmd[pos] == '\n':
+                        pos += 1
+                words, pending = [], []
+            elif kind == 'op' and spelling in ('<<', '<<-'):
+                head = cls.SHELL_TOKEN.match(cmd, pos)
+                if head and head.lastgroup == 'space':
+                    head = cls.SHELL_TOKEN.match(cmd, head.end())
+                if head and head.lastgroup == 'word':
+                    raw = head.group()
+                    try:
+                        delim = shlex.split(raw)[0]
+                    except (ValueError, IndexError):
+                        continue
+                    pending.append((delim, any(c in raw for c in "'\"\\"), spelling == '<<-', words))
+                    pos = head.end()
+            elif kind == 'op' and spelling in (';', '&', '|', '(', ')'):
+                words = []
+            elif kind == 'word':
+                try:
+                    words.append(shlex.split(spelling)[0])
+                except (ValueError, IndexError):
+                    words.append(spelling)
+            else:
+                words.append(spelling)
+
+    @classmethod
+    def unsafe_literal(cls, text):
+        if cls.CSHARP_REGEX.search(text):
+            return True
+        drive = bool(re.search(r"[A-Za-z]:\\", text))
+        for match in cls.ESCAPE.finditer(text):
+            escape = match.group()[1:]
+            if escape in ('\\', "'", '"'):
+                continue
+            if drive or escape[0] in 'b01234567':
+                return True
+            if escape in ('n', 'r', 't', 'a', 'f', 'v', '$', '`') or escape.isspace():
+                continue
+            if escape[0] in 'xuUN' and len(escape) > 1:
+                continue  # complete explicit character escapes, e.g. git separators / JSON test data
+            return True  # unknown or incomplete escape, e.g. \P, \d, \U in a Windows path
+        return False
+
+    @classmethod
+    def unsafe_python(cls, body):
+        import io
+        import tokenize
+        fstrings = []
+        try:
+            for token in tokenize.generate_tokens(io.StringIO(body).readline):
+                if token.type == tokenize.STRING:
+                    prefix = cls.PREFIX.match(token.string)
+                    if prefix and 'r' not in prefix.group(1).lower() and cls.unsafe_literal(token.string[prefix.end():]):
+                        return True
+                elif token.type == getattr(tokenize, 'FSTRING_START', -1):
+                    fstrings.append('r' in cls.PREFIX.match(token.string).group(1).lower())
+                elif token.type == getattr(tokenize, 'FSTRING_MIDDLE', -1):
+                    if fstrings and not fstrings[-1] and cls.unsafe_literal(token.string):
+                        return True
+                elif token.type == getattr(tokenize, 'FSTRING_END', -1):
+                    fstrings.pop()
+        except (tokenize.TokenError, IndentationError, SyntaxError):
+            pass  # incomplete source is not proof of this escape fault; completed tokens were checked
+        return False
 
     def search(self, cmd):
-        for m in self.HEAD.finditer(cmd):
-            quoted, delim = bool(m.group(1)), m.group(2)
-            end = re.search(rf"(?m)^[ \t]*{re.escape(delim)}[ \t]*$", cmd[m.end():])
-            body = cmd[m.end():m.end() + end.start()] if end else cmd[m.end():]
+        for quoted, consumer, body in self.bodies(cmd):
             if not quoted and "\\\\" in body:
                 return True
-            text = self.RAW.sub("''", body).replace("\\\\", "")
-            if self.BAD.search(text):
+            if self.python_stdin(consumer) and self.unsafe_python(body):
                 return True
         return None
 
@@ -168,12 +303,20 @@ RULES = [
     #    heredoc began. 587 refusals in the week to 12 Nov; judged on transcripts, 1 of 8 right (4970: a C# regex through a
     #    non-raw Python string) and 7 of 8 wrong - '\r\n' and '\n' in Python strings, regexes already in r'' literals, all
     #    in quoted heredocs where bash changes nothing (5120: nl='\r\n' if '\r\n' in t else '\n').
-    #    CHECKS (HeredocEscape): an UNQUOTED delimiter whose body holds '\\' (bash collapses it: the lost UNC prefix);
-    #      in any heredoc body, a backslash followed by anything but n r t, a quote, $, ` or another backslash, outside
-    #      r''/r"" literals (\b becomes a backspace, \0 octal, \U a SyntaxError, \P/\d kept only by luck).
-    #    ALLOWS: '\n', '\r\n', '\t', '\\' pairs, and anything inside a raw literal.
-    #    DOES NOT CATCH: a '\n' that was meant for C# and lands as a real newline; a non-Python body (PowerShell, SQL)
-    #      whose backslash is harmless is still refused; a path in a raw literal that ends in a backslash.
+    #    NARROWED 21 Nov: bind each body to its consumer; tokenize Python source, not prose or source written by cat.
+    #    CHECKS (HeredocEscape): an UNQUOTED delimiter whose body holds '\\' (Bash collapses it, any consumer);
+    #      for python/py reading source from stdin, non-raw string/f-string text with \b, octal, unknown/incomplete
+    #      escapes, or a drive path containing an active escape; C# @"..." regexes even when doubled by hand (4970).
+    #      Headers/bodies are consumed once, including queued same-line heredocs; shifts inside a body are not headers.
+    #    ALLOWS: quoted cat/tee/git messages and source-file writes (even when run later); other non-Python consumers;
+    #      Python comments, raw/rf/fr/br/rb literals, deliberate \n/\r/\t/\a/\f/\v and complete \x/\u/\U/\N escapes;
+    #      ordinary doubled slashes/escaped quotes; stdin data to Python script/-c/-m; unquoted cat's single \P.
+    #    DOES NOT CATCH: source passed through a pipeline/wrapper/alias this bounded reader cannot recognize;
+    #      heredocs inside quoted command substitutions; later evaluation of files or strings (exec); an unsafe
+    #      f-string expression hidden by a raw string on Python <3.12; malformed source after tokenization stops;
+    #      relative paths made solely of otherwise allowed escapes (e.g. 'work\new'); C# ordinary-string regexes
+    #      doubled by hand without the @" marker. Does not prove author intent: \b/octal deliberately used as
+    #      control data and deliberately doubled unquoted heredocs still refuse. No future compiler/file inspection.
     (HeredocEscape(), "A backslash escape inside a heredoc that Python (or bash, for an unquoted delimiter) will change. Repo rule 7: "
      "this is how \\P, \\03, a \\b backspace in a C# regex and a lost UNC prefix happened. Use a raw literal (r'...'), or "
      "the Write or Edit tool for a Windows path or regex."),
