@@ -160,4 +160,57 @@ public class RepeatGateNarrowTests
         Assert.True(RepeatGate.Decide(intent, BrainRecall.MomentText("Write", input)!, Index(Thickness),
             RepeatGate.RankText("Write", intent, null)).Refuse);
     }
+
+    [Fact]
+    public void AnUnrelatedLiftInTheDescriptionCannotReplaceTheQuestion()
+    {
+        var intent = "Measure slab thickness on job 31097 B1 L02; inputs changed since #11: the windows were replaced";
+        var ix = Index(Thickness, (11, "31097-b1-l02-window-count", "Window count on job 31097 B1 L02 is 18.", ""));
+        Assert.True(RepeatGate.Decide(intent, intent, ix).Refuse);
+    }
+
+    [Fact]
+    public void RelevantLiftSurvivesAnUnrelatedRerank()
+    {
+        var intent = "Measure slab thickness on job 31097 B1 L02";
+        var ix = Index(Thickness,
+            (20, "31097-b1-l02", "31097 B1 L02 window count 18", "31097 B1 L02"),
+            (21, "31097-b1-l02", "31097 B1 L02 beam length 20", "31097 B1 L02"),
+            (22, "31097-b1-l02", "31097 B1 L02 column count 10", "31097 B1 L02"));
+        // Make the command rank the unrelated findings above the referenced measurement, as the real retries did.
+        var rank = intent + "\nwindow count beam length column count 31097 B1 L02";
+        Assert.DoesNotContain(BrainRecall.Rank(rank, ix).Take(3), r => r.Doc.Id == 10);
+        var v = RepeatGate.Decide(intent, intent + "\ninputs changed since #10: revised slab schedule", ix, rank);
+        Assert.False(v.Refuse);
+        Assert.Equal(10, v.AllowedFor);
+    }
+
+    [Fact]
+    public void AuditOfTheSameModelBundleWithAnAuditOutcomeStillRefuses()
+    {
+        var intent = "Audit the 41027 model bundle";
+        var ix = Index((10, "41027-model-bundle-audit", "Model bundle audit for 41027: 14 checks passed.", ""));
+        Assert.True(RepeatGate.Decide(intent, intent, ix).Refuse);
+    }
+
+    [Fact]
+    public void BodyOnlyQuestionAboveTheScoreFloorStillIsNotAnAnswer()
+    {
+        var intent = "Measure file sizes in the triage folder";
+        var rank = intent + "\n" + intent;
+        var ix = Index((11, "file-folder", "File folder location.", "file sizes triage folder"));
+        Assert.True(BrainRecall.Rank(rank, ix).Single(r => r.Doc.Id == 11).Score >= RepeatGate.Floor);
+        Assert.False(RepeatGate.Decide(intent, intent, ix, rank).Refuse);
+    }
+
+    [Fact]
+    public void LiveDryRunReadsTheLiftAfterTheRankingCutoff()
+    {
+        var intent = "break this week's tokens down by session, kind and model (raw and new per transcript)";
+        var command = new string('x', RepeatGate.MostRankChars + 20) + "\ninputs changed since #129845: revised transcript period";
+        var output = new StringWriter();
+        var error = new StringWriter();
+        Assert.Equal(0, Program.Run(new[] { "repeat", intent, "--command", command, "--as-of", "2026-11-11T06:36:03.791Z" }, output, error));
+        Assert.StartsWith("ALLOW: inputs changed since #129845:", output.ToString());
+    }
 }
