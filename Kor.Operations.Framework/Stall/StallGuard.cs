@@ -32,6 +32,9 @@ public sealed record StallDecision(bool Refuse, string Reason, StallTarget? Targ
 /// host (the MCP server + the host its identity fields name - never its purpose text); a shell TIMEOUT or EXIT CODE
 /// belongs to the COMMAND (its family; only the same command again is a repeat - a script with the hanging step removed
 /// is a fix); an EMPTY result belongs to the exact query.
+/// CHECKS sqlcmd's specific input-file error naming only a bare drive ("file C:") as a command failure,
+/// not permission evidence against unrelated resources in its arguments. ALLOWS a corrected command; the identical
+/// third attempt still refuses. DOES NOT CATCH other clients' malformed-path diagnostics by this special case.
 ///
 /// THE TARGET IS THE RESOURCE, NOT THE COMMAND (seed NETOPS-FORBIDDEN-LOOP, NetworkOps 7b3e2b20): Graph read the
 /// jmarkulin/jdesroches mailboxes and got Forbidden at :306 (exit code 0 - the refusal is in the output) and :329, then
@@ -303,6 +306,10 @@ public static class StallGuard
     private static StallFailure Make(StallCall c, string cls, List<string> hits, string? sig)
     {
         var text = c.Text ?? "";
+        // sqlcmd can misparse an input filename as just "C:". The output names no repository, host or script
+        // resource; promoting every resource in the command made even a corrected -q query stall (4210/4211).
+        if (cls == "refused" && IsShell(c.Tool) && hits.All(h => SqlcmdBareDrive.IsMatch(h)) && FamilyOf(c) is { } family)
+            return new StallFailure(c, cls, new[] { FamilyTarget(family) }, Clip(hits[0], 200), sig);
         var lowHits = Norm(string.Join("\n", hits));
         var cmdRes = IsShell(c.Tool) ? Resources(text, paths: true) : InputResources(c);
         // the most specific thing refused: a PATH the failing lines name (a script's own target - "Access to the path
@@ -330,6 +337,7 @@ public static class StallGuard
     }
 
     // ---- targets ---------------------------------------------------------------------------------------------------------
+    private static readonly Regex SqlcmdBareDrive = new(@"^Sqlcmd: Error: Error occurred while opening or operating on file [a-z]: \(Reason: Access is denied\)\.?$", I);
     private static readonly Regex Email = new(@"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+", RegexOptions.CultureInvariant);
     private static readonly Regex Url = new(@"https?://[^\s""'<>|()\[\]{}`\\]+", I);
     private static readonly Regex Unc = new(@"(?:\\\\|(?<![:/\w])//)(?<host>[A-Za-z][\w.-]*)[\\/]+(?<share>[^\\/\s""'|;,)]+)", RegexOptions.CultureInvariant);
