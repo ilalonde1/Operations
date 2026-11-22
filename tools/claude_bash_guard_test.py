@@ -104,6 +104,20 @@ CASES = [
     ('echo "run dotnet publish next" | tee note.txt', "allow"),
     ('cd "/c/x" && dotnet test X.Tests --list-tests 2>&1 | grep -c Test', "deny"),
     ('dotnet test X.Tests --filter "A|B" 2>&1 | tail -5', "deny"),
+    # rule 8 narrowed 21 Nov (plan step 3, Ian "pipefail myself"): judged wrong 8594/8597/8805/8842/8894/8904/8905/8912/
+    # 8931 (the exit code read with ${PIPESTATUS[0]} in the very next command, which office rule 13 names as a fix) and
+    # 8275 (a pipe in a later command, after &&, matched as the build's); judged right 8592/8603/8691/... (a build piped
+    # with no exit capture) must still be denied, and so must a PIPESTATUS read after another command, or before the build
+    ('cd x && dotnet build X.csproj 2>&1 | grep -E "error|Warn" | head -20; echo exit ${PIPESTATUS[0]}', "allow"),
+    ('dotnet build X 2>&1 | tail -5; echo EXIT ${PIPESTATUS[0]}', "allow"),
+    ('dotnet test X | grep -c Passed; rc=${PIPESTATUS[0]}; echo $rc', "allow"),
+    ('dotnet build X | tail -3 && echo "rc=${PIPESTATUS[0]}"', "allow"),
+    ('dotnet build X > "$L" 2>&1 && P=$(ls bin/*.dll | head -1); echo "$P"', "allow"),
+    ('dotnet build X 2>&1 | grep error; ls; echo ${PIPESTATUS[0]}', "deny"),
+    ('echo ${PIPESTATUS[0]}; dotnet build X | tail -3', "deny"),
+    ('dotnet build X > a.log 2>&1 && dotnet test Y | tail -3', "deny"),
+    ('dotnet build X 2>&1 | grep -E "error" | sort | head', "deny"),
+    ('dotnet test X |& tail -3', "deny"),
     # rule 3b narrowed 12 Nov: judged wrong 5120-like ('\r\n' and '\n' in a quoted heredoc), right 4970-like (a C# \b
     # through a non-raw Python string), and the UNC collapse an unquoted delimiter does
     ("python - <<'EOF'\nnl = '\\r\\n' if '\\r\\n' in t else '\\n'\nprint('a\\tb')\nEOF", "allow"),
