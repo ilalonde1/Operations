@@ -116,6 +116,11 @@ did it - the guard passed because the Schema folder had been LISTED.
       of it) as its path. `ls`, `find`, `dir`, Glob and Get-ChildItem are filename listings
       and never count here.
 
+  Step-3 review: CHECKS the search mode as well as the executable name. ALLOWS an untruncated
+  content search, including rg -l/--files-with-matches; rg --files, --type-list, help and version
+  modes do not satisfy (4). DOES NOT CATCH a search that failed or whose results were never read:
+  this PreToolUse hook sees requests, not their results. Wrong-scope searches remain a same-class miss.
+
   WHAT IT DOES NOT CATCH (same class): a content search with the wrong words over the right
   place, read and misjudged; a search of the right words over too narrow a path that still
   shares a topic word with the filename; a truncation done some other way (a pager, `awk
@@ -271,6 +276,35 @@ def deny(reason):
     sys.exit(0)
 
 
+def content_search(command):
+    """Keep the existing search shapes, excluding literal filename/help/version modes."""
+    import shlex
+    if TRUNCATED.search(command):
+        return False
+    for match in CONTENT_VERB.finditer(command):
+        tail = command[match.start():].lstrip(' \t\r\n;&|(')
+        try:
+            lexer = shlex.shlex(tail, posix=True, punctuation_chars=';&|()')
+            lexer.whitespace_split = True
+            words = []
+            for word in lexer:
+                if word in (';', '&&', '||', '|', '&', '(', ')'):
+                    break
+                words.append(word)
+        except ValueError:
+            continue
+        if not words:
+            continue
+        options = words[1:words.index('--')] if '--' in words else words[1:]
+        if words[0].lower() in ('rg', 'ripgrep') and any(
+                w in ('--files', '--type-list', '--help', '-h', '--version', '-V') for w in options):
+            continue
+        if any(w in ('--help', '--version') for w in options):
+            continue
+        return True
+    return False
+
+
 def record(tool, inp, session):
     """Record a look and/or a read. Generous on purpose for looks: a false ALLOW costs one
     duplicated artefact, a false DENY blocks real work, and the second is worse."""
@@ -285,7 +319,7 @@ def record(tool, inp, session):
         command = str(inp.get("command") or "")
         if SEARCH_VERB.search(command):
             remember(session, command)
-        if CONTENT_VERB.search(command) and not TRUNCATED.search(command):
+        if content_search(command):
             remember(session, norm(command), kind=CONTENT_MARK)
         if READ_VERB.search(command):
             remember(session, norm(command), kind=READ_MARK)
