@@ -33,7 +33,8 @@ command's start and the timestamp.
   through a Python string, `'C:\Users\...'` in a Python string, `'\03'`, an unquoted `<<EOF` body holding `\\Kor-fs01`,
   `print('\P')` in an unquoted `<<PY`.
 
-**Wrong (MUST PASS)**, 21 refusals, with the worker's reason as logged in `Note`:
+**Wrong (MUST PASS)**, 21 of the 23 judged wrong (the other 2 are held back by the author for the check, so they are
+not named here), with the worker's reason as logged in `Note`:
 - 8264 a0ed29c9: quoted `<<'EOF'` python; backslashes only in `r"\bred\b"` (raw) and intended `"\x00"`/`"\x01"`
   git-format separators.
 - 8591 acc84549: quoted `<<'EOF'` to `cat` (rawdump.py, dump.csproj), bytes verbatim; only intended `\n` in Python.
