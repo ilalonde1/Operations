@@ -7,9 +7,15 @@ NetworkOps and reaches it through the service). The prose rule (feedback_profess
 loaded both times and did not hold, so it is a gate.
 
 How it decides: on Stop, read the last assistant message from the transcript. If it contains an absence
-phrase (ABSENCE below) and no proof marker -- a line or clause starting "Checked:" that names the command
-or the scope searched -- block the stop and say why, so the reply is rewritten with its proof or without
-the claim. stop_hook_active = true (already blocked once this turn) always allows, so it can never loop.
+phrase (ABSENCE below) and no proof marker -- a line or clause starting "Checked:" -- log an absence-log
+candidate and print nothing. Ian's 17 Nov ruling remains: no blocking until rebuilt around artifacts.
+KOR_GUARD_BLOCK=1 enables the old blocking branch for tests; stop_hook_active always allows.
+
+Step-3 review: CHECKS remain candidate English phrases, not artifact-backed findings. ALLOWS also the
+degree idiom "nowhere near" (8942/8944) and "cause not found" (8988/8998), an unresolved investigation.
+DOES NOT CATCH: a real absence of a stored item called "cause", phrased "cause not found". These exclusions
+apply per phrase; an independent claim later in the same reply is still checked. A log row is not a refusal
+or proof of a faulty absence claim; ordinary supporting evidence still does not substitute for Checked:.
 
 What it covers: English absence phrasings in my final reply text. What it does NOT cover: absence claims in
 tool-call descriptions, in files I write, or phrased in ways the list misses ("zero", "none found" are not
@@ -48,7 +54,7 @@ ABSENCE = re.compile(
     r"|\b(?:isn't|aren't|wasn't|weren't)\s+(?:set|there|available|configured|installed|present|reachable)\b"
     r"|\b(?:doesn't|does not|don't|do not|didn't|did not)\s+(?:have(?!\s+to\b)|exist|contain|carry)\b"
     r"|\b(?:can't|cannot|can not|couldn't|could not)\s+(?:reach|find|see|access|connect)\b"
-    r"|\bthere (?:is|are|was|were) no\b|\bno such\b|\b(?:is|are) missing\b|\bnowhere\b|\bnot found\b",
+    r"|\bthere (?:is|are|was|were) no\b|\bno such\b|\b(?:is|are) missing\b|\bnowhere\b(?!\s+near\b)|\bnot found\b",
     re.I)
 PROOF = re.compile(r"(?:^|[\s(*_])checked:\s*\S", re.I | re.M)
 # Row 2010: three shapes that are not a claim about what a look found. Each excuses ONE match; the next is still read.
@@ -72,6 +78,8 @@ ZERO_READ = re.compile(r"\b(?:shows?|showed|reads?|returned|returns|finds|found|
 def excused(text, m):
     """True when this absence phrase is a condition, a check's or code's reach, or a quoted mention (row 2010)."""
     before = text[max(0, m.start() - 120):m.start()]
+    if m.group().lower() == 'not found' and re.search(r'\bcause\s+$', before, re.I):
+        return True
     if CONDITION.search(before):
         return True
     # "exist" stays a claim whatever its subject: 'the SAFE tool doesn't exist' was wrong and corrected (refusal 4644)
