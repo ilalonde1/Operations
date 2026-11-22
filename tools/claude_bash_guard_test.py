@@ -1290,6 +1290,11 @@ CASES += [
 
 
 # Step 3 independent review: executable shell contexts must keep their Python
+# Replay 8912 exposed an unrelated earlier pipeline leaking into the element index.
+CASES += [('printf x | head; dotnet build X | tail; echo ${PIPESTATUS[0]}', 'allow')]
+
+
+# Step 3 independent review: executable shell contexts must keep their Python
 # consumer. These all allowed on 8d654575; the neighbouring raw/data cases above stay.
 HEREDOC_BOUNDARIES += [
     ("review: quoted command substitution", r'''value="$(python - <<'PY'
