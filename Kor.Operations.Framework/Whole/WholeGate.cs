@@ -308,7 +308,7 @@ public static class WholeGate
     // A bounded source-documentation read observed at b6568d08 L715. Match the complete Python expression, not
     // a marker anywhere in an arbitrary program. Every remaining shell stage must still be a reader.
     private static readonly Regex PythonDocstring = new(@"\bpython(?:\.exe)?\s+(?:-I\s+)?-c\s+""\s*import ast\s*;\s*print\(\s*ast\.get_docstring\(\s*ast\.parse\(\s*open\('[^'\r\n]+',\s*encoding='utf-8'\)\.read\(\)\s*\)\s*\)\s*\)\s*""", Ci);
-    private static readonly Regex PythonFileText = new(@"\bpython(?:\.exe)?\s+(?:-I\s+)?-c\s+""\s*print\(open\('[^'\r\n]+'(?:,\s*encoding='utf-8')?\)\.read\(\)\)\s*""", Ci);
+    private static readonly Regex PythonFileText = new(@"\bpython(?:\.exe)?\s+(?:-I\s+)?-c\s+""\s*print\(open\('(?<file>[^'\r\n]+)'(?:,\s*encoding='utf-8')?\)\.read\(\)\)\s*""", Ci);
 
     /// <summary>A command whose every stage is a reader (cat, grep, git, ls, sed, ...), or that reads records, the board or a transcript
     /// search: its output quotes what was already there - no check ran.</summary>
@@ -531,6 +531,7 @@ public static class WholeGate
         if (stages is null) return false;
         foreach (var (stage, cwd) in stages)
         {
+            if (PythonFileText.Matches(stage).Any(m => ResultPath(m.Groups["file"].Value, cwd) is { } p && results.Contains(p))) return true;
             var nestedResult = false;
             ReaderSubstitutions(stage, inner => nestedResult |= ReadsOwnResult(e with { Input = inner, Cwd = cwd }, results));
             if (nestedResult) return true;
@@ -804,13 +805,23 @@ public static class WholeGate
         stage = stage.Trim();
         if (stage.StartsWith("& ", StringComparison.Ordinal)) stage = stage[2..].TrimStart();
         if (ReaderSubstitutions(stage) is not { } expanded) return false;
+        expanded = PythonFileText.Replace(expanded, "cat file-text");
         var args = ShellSplit(expanded, words: true);
         if (args is null || args.Count == 0) return false;
         var program = Path.GetFileName(args[0].Trim('"', '\'').Replace('\\', '/'));
         if (program.Equals("kor", StringComparison.OrdinalIgnoreCase) || program.Equals("kor.exe", StringComparison.OrdinalIgnoreCase))
             return args.Count > 1 && Regex.IsMatch(args[1], @"^(?:record|state|recall|read|start|memory|events|checks|start-docs)$", Ci);
         if (program.Equals("git", StringComparison.OrdinalIgnoreCase))
-            return args.Count > 1 && Regex.IsMatch(args[1], @"^(?:status|log|show|diff|rev-parse|merge-base|ls-remote|ls-files|ls-tree|cat-file|grep)$", Ci);
+        {
+            var i = 1;
+            while (i < args.Count && args[i].StartsWith('-'))
+            {
+                if (args[i] is "-C" or "-c" or "--git-dir" or "--work-tree") i += 2;
+                else if (Regex.IsMatch(args[i], @"^(?:--(?:no-pager|paginate|literal-pathspecs)|--(?:git-dir|work-tree)=.+)$", Ci)) i++;
+                else return false;
+            }
+            return i < args.Count && Regex.IsMatch(args[i], @"^(?:status|log|show|diff|rev-parse|merge-base|ls-remote|ls-files|ls-tree|cat-file|grep)$", Ci);
+        }
         return Regex.IsMatch(program, @"^(?:cat|type|head|tail|grep|egrep|fgrep|rg|findstr|select-string|sls|sed|ls|dir|get-childitem|gci|get-content|gc|echo|printf|write-host|write-output|wc|sort|uniq|cut|tr|stat|date|pwd|which|where|where-object|select-object|foreach-object|format-table|format-list|measure-object|tasklist|cd|set-location|jq|file|du|df|basename|dirname|realpath|get-item|test-path|resolve-path|true|false|awk|column|nl|less|more)$", Ci);
     }
 
