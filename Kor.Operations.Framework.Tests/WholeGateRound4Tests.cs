@@ -32,6 +32,8 @@ public class WholeGateRound4Tests
     [InlineData("Bash", "cd 'C:/repo/docs/run-on-210' && ls; sed -n 1,25p send-set.ps1; cat holder.txt | tail -3")]
     [InlineData("PowerShell", "Get-Content '\\\\KOR-210\\results\\coverage.txt'")]
     [InlineData("Bash", "git show HEAD:docs/run-on-210/README.md")]
+    [InlineData("Bash", "git -C C:/repo/docs/run-on-210 --no-pager show HEAD:README.md")]
+    [InlineData("Bash", "python -I -c \"print(open('docs/run-on-210/README.md', encoding='utf-8').read())\"")]
     [InlineData("Bash", "kor record --help | head -30")]
     [InlineData("PowerShell", "& 'C:/kor/kor.exe' record --help | Select-Object -First 25")]
     [InlineData("Bash", "kor state --module Framework --file state.md")]
