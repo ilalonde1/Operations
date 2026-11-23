@@ -267,4 +267,12 @@ public class WholeGateRound4Tests
         Say("NOT LISTABLE: 3 missing - inspected mesh.csv: two named holes; the third has no stored identity.");
         Assert.False(Ledger().Decide(Pre("takeoff --deliver bundle")).Refuse);
     }
+
+    [Fact]
+    public void PythonTextReaderStillReportsThisSessionsOwnResult()
+    {
+        Call("dotnet test tests.csproj > C:/run/result.log", "exit 1");
+        Call("python -I -c \"print(open('C:/run/result.log', encoding='utf-8').read())\"", "Failed: 4");
+        Assert.Contains("W3", Ledger().Decide(Pre("takeoff --deliver bundle")).Rules);
+    }
 }
