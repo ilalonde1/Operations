@@ -53,7 +53,10 @@ Work in `C:\VIsual Studio Projects\Operations-kor-whole-narrow-4` on branch `kor
   count in the reply or tool call that carries them, mid-turn; (c) a count whose deficit is zero, or that a baseline comparison
   in the same output explains, is not a flag; (d) numbers inside text the session READ (a file, another session's message, a
   review) are not its flagged results; (e) an item that no tool can list one by one is discharged by `NOT LISTABLE: <key> -
-  <why>` naming what was looked at, and W3 accepts it. State, for each, the same-class fault it would still miss.
+  <why>` naming what was looked at, and W3 accepts it ONLY when the session's transcript holds, after the flag, a tool call
+  whose own output prints that population's total (the count) and its listable part; a bare NOT LISTABLE with no such look
+  is refused like NOT OPENED (write the case where it is used to skip a look). State, for each, the same-class fault it would
+  still miss.
 - Every existing test in the gate's test files unchanged and passing; no MUST REFUSE case turned to pass. Full Framework.Tests
   (the Kor.Operations.Framework tests) run ONCE at the end, alone (lesson #138092), and compared by test name with a run at
   2763a763 (testdiff). Do not run any suite that writes KorStandards; SELECT-only on oversight.GuardRefusal through
