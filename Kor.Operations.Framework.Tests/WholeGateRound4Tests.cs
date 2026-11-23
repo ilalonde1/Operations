@@ -223,4 +223,46 @@ public class WholeGateRound4Tests
         Say("NOT OPENED: 4-sided 176 of 180");
         Assert.Contains("W3", Ledger().Decide(Pre("pwsh run-on-210/send-set.ps1")).Rules);
     }
+
+    [Fact]
+    public void RealSelfTestReplyKeepsTheWholeSentence()
+    {
+        // The full-prefix comparison found that the short fixture omitted the trailing counts.
+        Call("python selftest.py", "45 of 46 checks passed; 22 claude -p sessions; $2.4586");
+        Assert.False(Ledger().Decide(Reply("The self-test passed 45 of 46 checks: 22 sessions, about $2.46. The one failure, `folder:IanBrain:memory` answering NOT IN CONTEXT, is the same one already open as board row 2189 from 2.1.329.")).Refuse);
+    }
+
+    [Fact]
+    public void CompletedLookCreditsAccountingCarriedByThatCall()
+    {
+        Flag();
+        Call("# OPENED 4 of 4: 4-sided 176 of 180 - pads.txt\ncat pads.txt", "pad A\npad B\npad C\npad D");
+        var l = Ledger();
+        Assert.False(l.Decide(Reply("Continuing work.")).Refuse);
+        Assert.False(l.Decide(Pre("takeoff --deliver bundle")).Refuse);
+    }
+
+    [Fact]
+    public void DeniedToolInputDoesNotAccountForAnything()
+    {
+        Flag();
+        Call("# NOT OPENED: 4-sided 176 of 180\npython helper.py", "PreToolUse:Bash hook error: denied");
+        Assert.Contains("W1", Ledger().Decide(Reply("Everything passed.")).Rules);
+    }
+
+    [Fact]
+    public void SavedStateThroughAnOutputFileCannotBeRefused()
+    {
+        Flag();
+        Assert.False(Ledger().Decide(Pre("kor state --file state.md | Out-File saved.txt", "PowerShell")).Refuse);
+    }
+
+    [Fact]
+    public void NotListableAlsoWorksForNumberedTextItems()
+    {
+        Call("python coverage.py", "3 missing");
+        Call("python inspect.py mesh.csv", "missing: count 3; listable: 2\n1: A1 hole at (2,3)\n2: A18 hole at (4,5)");
+        Say("NOT LISTABLE: 3 missing - inspected mesh.csv: two named holes; the third has no stored identity.");
+        Assert.False(Ledger().Decide(Pre("takeoff --deliver bundle")).Refuse);
+    }
 }
