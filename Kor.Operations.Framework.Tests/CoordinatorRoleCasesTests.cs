@@ -7,7 +7,7 @@ using Xunit;
 namespace Kor.Operations.Framework.Tests;
 
 /// <summary>
-/// Cases committed before the implementation. Reflection keeps this project buildable on 206615f3: absence of the
+/// Cases committed before the implementation. Reflection keeps this project buildable on 0fec30e4: absence of the
 /// policy is an assertion failure, not a compiler error. The real cases preserve the tool, operative input, cwd and session
 /// from the named JSONL line; file contents are deliberately not copied. No recorded command is ever executed.
 /// COVERS: literal file targets, shell directory state, allowed work, role/subagent boundaries, and the replay entry point.
@@ -120,7 +120,9 @@ public sealed class CoordinatorRoleCasesTests
     [Fact]
     public void ScratchOfAnotherSessionAndLookalikeAllowedPathsAreNotExceptions()
     {
-        foreach (var path in new[] { Scratch.Replace(Session, "other-session") + "/x.cs", Repo + "/docs/codex/CODEX-x.md.cs",
+        // Round 2 explicitly allows the whole TEMP tree, including another session's scratchpad.
+        Assert.False(Evaluate("Write", Scratch.Replace(Session, "other-session") + "/x.cs").GetProperty("Refuse").GetBoolean());
+        foreach (var path in new[] { Repo + "/docs/codex/CODEX-x.md.cs",
                                     Framework + "/lanes/../tools/x.cs", Repo + "/docs/HANDOVER.md" })
             Assert.True(Evaluate("Write", path).GetProperty("Refuse").GetBoolean());
     }
