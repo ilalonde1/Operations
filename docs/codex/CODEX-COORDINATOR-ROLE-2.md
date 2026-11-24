@@ -55,6 +55,17 @@ step5-2248-b1l04"; ...; rm -rf "$D"` (KOR.Drafter run data), every cc3b7be3 refu
    Setting ANOTHER session's role (the coordinator naming its worker) stays allowed and logged. `kor role set coordinator`
    for itself stays allowed.
 
+7. Independent review of round 1 (kor_review rows 3767-3770, all APPROVE with MINORs; read them with
+   `python -I "C:/VIsual Studio Projects/Framework/tools/kor_review.py" verdicts`). Fix, or say why not:
+   (a) `Program.Enforce.cs:58-77`: every main session now reads checks through a per-session cache (`CheckCache.GetSession`)
+       instead of the shared `kor-checks.json` snapshot - a session that STARTS during a DB outage has no snapshot. Fall
+       back to the shared snapshot for the checks; only the role is per session.
+   (b) `CheckCache.Role.cs:15`: one `kor-role-<session>.json` per session in `%LOCALAPPDATA%/KOR`, never deleted, and a new
+       session misses the shared 30 s cache on its first call. Bound or prune them; measure a first-call time.
+   (c) `Program.Role.cs:39-52`: while a lift is active, every call the guard would refuse rescans the whole transcript and
+       recorder and inserts a `role:lift` brain.Event - one DB write per call. Log a lift once per (session, approval).
+   (d) `CoordinatorRoleCasesTests.cs:10` names 206615f3 as the base; the branch started at 0fec30e4 - fix the comment.
+
 ## Proof
 - Cases first (`coordinator role D: round-2 cases (codex)`), red on de3e853b: every example above, each class in the table
   (at least 3 synthetic forms each: Bash and PowerShell, quoted/unquoted, `/c/` and `C:/`), the stay-refused list, item 6
