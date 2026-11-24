@@ -87,7 +87,7 @@ public static partial class CoordinatorRoleGuard
             if (words[0] is "&" or "." && words.Count > 1) words.RemoveAt(0);
             var program = Prog(words[0]);
             var rest = words.Skip(1).ToList();
-            var args = Arguments(rest, program == "sed");
+            var args = Arguments(rest, program);
             state.CheckOutputs(program, rest, dir);
             Decision? Target(string? word, string rule) => Write(word, dir, session, rule, state.Outputs);
             foreach (var target in redirects)
@@ -103,7 +103,10 @@ public static partial class CoordinatorRoleGuard
             {
                 var target = rest.Contains("-") ? "-" : Named(rest, "-path", "-literalpath") ?? args.FirstOrDefault();
                 if (program is "pushd" or "push-location") stack.Push(dir);
-                var next = target == "-" ? previous : Resolve(target, dir) ?? target;
+                // Preserve an unknown variable for the remedy text, never a raw relative cwd that ResolvePath could
+                // anchor to the hook process's directory on the next segment.
+                var next = target == "-" ? previous : Resolve(target, dir)
+                    ?? (target is not null && ShellState.HasVariable(target) ? target : null);
                 previous = dir;
                 dir = next; // unknown cd must NOT leave the old cwd in effect
                 continue;
@@ -204,11 +207,13 @@ public static partial class CoordinatorRoleGuard
         if (Regex.IsMatch(path, @"/Framework/(?:docs/HANDOVER\.md|lanes(?:/.+)?)\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)) return true;
         if (path.Equals("C:/KOR-Operations/push-exceptions.txt", StringComparison.OrdinalIgnoreCase)) return true;
         if (TempRoots().Any(t => Under(path, t))) return true;
-        var repo = RepositoryRoot(path);
-        return repo is not null && path.Length > repo.Length && path[(repo.Length + 1)..].Split('/').Any(p =>
+        return RepositoryRoot(path) is { } repo && BuildOutput(path, repo);
+    }
+
+    private static bool BuildOutput(string path, string repo) =>
+        path.Length > repo.Length && Under(path, repo) && path[(repo.Length + 1)..].Split('/').Any(p =>
             p.Equals("obj", StringComparison.OrdinalIgnoreCase) || p.Equals("bin", StringComparison.OrdinalIgnoreCase)
             || p.Equals("TestResults", StringComparison.OrdinalIgnoreCase));
-    }
 
     internal static string? Resolve(string? word, string? dir)
     {
@@ -217,19 +222,21 @@ public static partial class CoordinatorRoleGuard
         if (word.StartsWith("//?/", StringComparison.Ordinal)) word = word[4..];
         if (word == "/tmp" || word.StartsWith("/tmp/", StringComparison.Ordinal)) word = "C:" + word;
         if (ShellState.HasVariable(word) || dir is not null && ShellState.HasVariable(dir) && !Path.IsPathRooted(word)) return null;
-        if (dir is null && !Path.IsPathRooted(word) && !Regex.IsMatch(word, @"\A/[A-Za-z]/")) return null;
+        if (!Path.IsPathRooted(word) && (dir is null || !Path.IsPathRooted(dir))) return null;
         var full = CommandSegments.ResolvePath(word, dir ?? Environment.CurrentDirectory)?.Replace('\\', '/');
         return full is { Length: > 3 } ? full.TrimEnd('/') : full;
     }
 
-    private static List<string> Arguments(List<string> rest, bool sed)
+    private static List<string> Arguments(List<string> rest, string program)
     {
         var result = new List<string>();
+        var cmdStyle = program is "del" or "erase" or "copy" or "xcopy" or "move" or "rd" or "rmdir" or "robocopy" or "mkdir" or "md";
         for (var i = 0; i < rest.Count; i++)
         {
             var w = rest[i];
-            if (w.StartsWith('-')) { if (ValueFlags.Contains(w.ToLowerInvariant()) || sed && (w is "-e" or "-f")) i++; continue; }
-            if (new[] { "/y", "/s", "/e", "/q", "/i", "/h", "/r" }.Contains(w, StringComparer.OrdinalIgnoreCase)) continue;
+            if (w.StartsWith('-')) { if (ValueFlags.Contains(w.ToLowerInvariant()) || program == "sed" && (w is "-e" or "-f")) i++; continue; }
+            if (cmdStyle && w.StartsWith('/') && w.IndexOf('/', 1) < 0
+                && Regex.IsMatch(w, @"\A/[A-Za-z]{1,8}(?::\S*)?\z", RegexOptions.CultureInvariant)) continue;
             result.Add(w);
         }
         return result;

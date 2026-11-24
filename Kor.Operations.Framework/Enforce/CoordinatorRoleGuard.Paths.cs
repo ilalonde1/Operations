@@ -71,13 +71,72 @@ public static partial class CoordinatorRoleGuard
     private static bool CleanupRoot(string path)
     {
         if (path.IndexOfAny(new[] { '*', '?' }) >= 0 || MainSibling(path) is not { } main) return false;
-        var listed = Git.Run(main, "worktree", "list", "--porcelain");
-        if (listed is null) return false; // no failed git command is evidence of absence
-        var live = listed.Split('\n').Where(l => l.StartsWith("worktree ", StringComparison.Ordinal))
-            .Any(l => string.Equals(Resolve(l[9..].TrimEnd('\r'), null), path, StringComparison.OrdinalIgnoreCase));
-        if (!live) return true;
-        var tracked = Git.Run(path, "ls-files", "-z");
-        return tracked is not null && tracked.Length == 0;
+        try
+        {
+            // Enumeration proves an existing folder is empty. A missing/inaccessible folder proves nothing.
+            if (!Directory.EnumerateFileSystemEntries(path).Any()) return true;
+            var dotGit = Path.Combine(path, ".git");
+            if (Directory.Exists(dotGit) || !File.Exists(dotGit)) return false; // a separate clone is never cleanup
+            var pointer = File.ReadAllText(dotGit).Trim();
+            if (!pointer.StartsWith("gitdir: ", StringComparison.Ordinal)) return false;
+            var entry = Resolve(pointer[8..].Trim(), path);
+            var entries = Resolve(main + "/.git/worktrees", null);
+            if (entry is null || !string.Equals(Resolve(Path.GetDirectoryName(entry), null), entries, StringComparison.OrdinalIgnoreCase))
+                return false; // it must name a direct worktree entry belonging to this main sibling
+            if (!Path.Exists(entry)) return PrunedBuildOutput(path, main);
+
+            // Override configs that could hide untracked files or dirty submodules. Every failed query refuses.
+            var status = Git.Run(path, "status", "--porcelain", "--untracked-files=all", "--ignore-submodules=none");
+            if (status is null || status.Length != 0) return false;
+            var head = Git.Run(path, "rev-parse", "--verify", "HEAD")?.Trim();
+            if (string.IsNullOrEmpty(head)) return false;
+            var remotes = Git.Run(main, "branch", "-r", "--contains", head);
+            return !string.IsNullOrWhiteSpace(remotes);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    private static bool PrunedBuildOutput(string path, string main)
+    {
+        // The pruned worktree cannot answer Git queries. Use the owning repo's ignore rules, independent of its index;
+        // ignored work/ bundles are still data. An ignored directory needs no per-build-file Git process.
+        if (Git.Run(main, "rev-parse", "--is-inside-work-tree")?.Trim() != "true") return false;
+        var pending = new Stack<string>();
+        pending.Push(path);
+        while (pending.TryPop(out var dir))
+        {
+            var children = Directory.GetFileSystemEntries(dir);
+            if (children.Length == 0 && dir != path) return false; // an empty unignored container is not build output
+            foreach (var child in children)
+            {
+                if (dir == path && Path.GetFileName(child) == ".git") continue;
+                var attrs = File.GetAttributes(child);
+                if ((attrs & FileAttributes.ReparsePoint) != 0) return false;
+                var directory = (attrs & FileAttributes.Directory) != 0;
+                var relative = Path.GetRelativePath(path, child).Replace('\\', '/') + (directory ? "/" : "");
+                if (BuildOutput(path + "/" + relative, path))
+                {
+                    var ignored = Git.Exec(main, Git.DefaultTimeout, "check-ignore", "--quiet", "--no-index", "--", relative);
+                    if (ignored.Ok) continue;
+                    if (ignored.Expired || ignored.ExitCode != 1) return false; // 1 means unignored; errors prove nothing
+                }
+                if (!directory) return false;
+                pending.Push(child);
+            }
+        }
+        return true;
+    }
+
+    private static bool OutputDirectory(string path)
+    {
+        var root = Resolve(Path.GetPathRoot(path), null);
+        var repo = RepositoryRoot(path);
+        if (string.Equals(path, root, StringComparison.OrdinalIgnoreCase) || string.Equals(path, repo, StringComparison.OrdinalIgnoreCase))
+            return false;
+        return TempRoots().Any(t => Under(path, t)) || repo is not null && BuildOutput(path, repo) || !Path.Exists(path);
     }
 
     /// <summary>Only literal assignments earlier in this command. No process environment except TEMP/TMP; no execution
@@ -227,7 +286,8 @@ public static partial class CoordinatorRoleGuard
                 var flag = args[i].Split('=', 2);
                 if (flag[0] is not ("--results-directory" or "-o" or "--output")) continue;
                 var value = flag.Length == 2 ? flag[1] : args.ElementAtOrDefault(++i);
-                if (Resolve(value, dir) is { } path) Outputs.Add(path);
+                // Invalid declarations confer no authority; later writes still get their ordinary path checks.
+                if (Resolve(value, dir) is { } path && OutputDirectory(path)) Outputs.Add(path);
             }
         }
     }
