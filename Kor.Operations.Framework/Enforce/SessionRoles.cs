@@ -69,4 +69,20 @@ public static class SessionRoles
         return BrainStore.Insert(new BrainEvent("Framework", "gate", null, null, "role:" + role, "set",
             JsonSerializer.Serialize(new { session, role, because }), "kor role", session), db);
     }
+
+    public static int LogLift(BrainDb db, string session, DateTimeOffset approval, CoordinatorRoleGuard.Decision decision)
+    {
+        // The caller's transaction holds the range lock through insertion/commit, including concurrent hook processes.
+        using var command = db.Command("""
+            SELECT TOP (1) Id FROM brain.Event WITH (UPDLOCK, HOLDLOCK)
+            WHERE Session=@s AND Ref=N'role:lift'
+              AND JSON_VALUE(CASE WHEN ISJSON(Detail)=1 THEN Detail ELSE N'{}' END, '$.approvedAtUtc')=@at
+            """);
+        command.Parameters.AddWithValue("@s", session);
+        command.Parameters.AddWithValue("@at", JsonSerializer.SerializeToElement(approval).GetString()!);
+        if (command.ExecuteScalar() is int id) return id;
+        return BrainStore.Insert(new BrainEvent("Framework", "gate", null, null, "role:lift", "lifted",
+            JsonSerializer.Serialize(new { session, approvedAtUtc = approval, expiresAtUtc = approval.AddHours(12), decision.Rule, decision.Target }),
+            "kor enforce coordinator-role", session), db);
+    }
 }

@@ -12,10 +12,10 @@ namespace Kor.Operations.Framework.Enforce;
 /// limits. Checks every segment, including after an allowed verb. The named install-kor.ps1 check is exempt from inspection.
 /// DOES NOT COVER: arbitrary program effects, variables/aliases/functions generated at runtime, symlinks/junctions, shell
 /// grammar beyond CommandSegments, or tools not enrolled in enforce. In particular dotnet test can rewrite fixtures, and
-/// python -c can write files. This holds ordinary work against momentum; it is not a sandbox. Role changes are audited,
-/// not restricted: a coordinator can explicitly set worker. Unresolved write targets refuse; unknown programs pass.
+/// python -c can write files. This holds ordinary work against momentum; it is not a sandbox. Self-demotion requires the
+/// same typed lift as project work. Unresolved write targets refuse; unknown programs pass.
 /// </summary>
-public static class CoordinatorRoleGuard
+public static partial class CoordinatorRoleGuard
 {
     public const string GuardName = "coordinator-role";
     public const string Approval = "IAN-APPROVED-COORDINATOR-WORK";
@@ -28,7 +28,7 @@ public static class CoordinatorRoleGuard
     private static readonly string[] Moves = { "mv", "move", "move-item", "mi", "ren", "rename", "rename-item" };
     private static readonly string[] ValueFlags = { "-value", "-inputobject", "-encoding", "-width", "-itemtype", "-type", "-filter", "-include", "-exclude", "-m" };
 
-    /// <summary>Pure hook decision. role is the latest stored role; startFolder is the persisted origin, never today's cd.</summary>
+    /// <summary>Read-only hook decision. role is the latest stored role; startFolder is the persisted origin, never today's cd.</summary>
     public static Decision Evaluate(string hookJson, string? role, string? startFolder)
     {
         using var doc = JsonDocument.Parse(hookJson);
@@ -53,6 +53,7 @@ public static class CoordinatorRoleGuard
 
     public static string Says(Decision d) =>
         $"Coordinator role refuses {d.Rule}: {d.Target}. Delegate this work to a worker. " +
+        (d.Rule.StartsWith("unresolved", StringComparison.Ordinal) ? "Unresolved target: assign it in the same command or use a literal path. " : "") +
         "You may write briefs and handovers, run git/kor, read files, and check a worker with dotnet build/test or install-kor.ps1. " +
         $"Only Ian's typed {Approval} in this session lifts this boundary for 12 hours; the lift is logged.";
 
@@ -61,36 +62,48 @@ public static class CoordinatorRoleGuard
         var dir = cwd;
         string? previous = null;
         var stack = new Stack<string?>();
+        var state = new ShellState(input, shell);
         // State is scoped by depth so a child cd cannot move its parent. The explicitly allowed install script's writes
         // are part of the check; its descendants are skipped, but later commands at the caller's depth are still judged.
-        var frames = new Dictionary<int, (string? Dir, string? Previous, Stack<string?> Stack)>();
+        var frames = new Dictionary<int, (string? Dir, string? Previous, Stack<string?> Stack, ShellState State)>();
         var depth = 0;
         int? skipBelow = null;
-        foreach (var seg in CommandSegments.Of(input, shell, cwd))
+        foreach (var seg in CommandSegments.Of(ShellState.ProtectAssignments(input, shell), shell, cwd))
         {
             if (skipBelow is { } skip && seg.Depth > skip) continue;
             skipBelow = null;
             if (seg.Depth > depth)
             {
-                frames[depth] = (dir, previous, new Stack<string?>(stack.Reverse()));
+                frames[depth] = (dir, previous, new Stack<string?>(stack.Reverse()), state);
                 stack = new Stack<string?>(stack.Reverse());
+                state = state.Copy();
             }
             else if (seg.Depth < depth && frames.TryGetValue(seg.Depth, out var frame))
-                (dir, previous, stack) = frame;
+                (dir, previous, stack, state) = frame;
             depth = seg.Depth;
-            var (words, redirects) = DrafterPythonGuard.Parse(seg.Text, seg.Shell);
-            foreach (var target in redirects)
-                if (Write(target, dir, session, "shell write") is { } refusal) return refusal;
+            if (state.Assign(seg.Text, seg.Shell)) continue;
+            var (words, redirects) = state.Parse(seg.Text, seg.Shell);
             if (words.Count == 0) continue;
             if (words[0] is "&" or "." && words.Count > 1) words.RemoveAt(0);
             var program = Prog(words[0]);
             var rest = words.Skip(1).ToList();
             var args = Arguments(rest, program == "sed");
+            state.CheckOutputs(program, rest, dir);
+            Decision? Target(string? word, string rule) => Write(word, dir, session, rule, state.Outputs);
+            foreach (var target in redirects)
+                if (Target(target, "shell write") is { } refusal) return refusal;
+            var roleArgs = program == "kor" ? rest : program == "dotnet" && rest.Count > 0 && Prog(rest[0]) == "kor" ? rest.Skip(1).ToList()
+                : program == "dotnet" && rest.Count > 1 && rest[0] == "exec" && Prog(rest[1]) == "kor" ? rest.Skip(2).ToList() : null;
+            if (roleArgs is not null && RoleArguments(roleArgs, out var targetSession).Take(3).SequenceEqual(new[] { "role", "set", "worker" }))
+            {
+                if (targetSession == session || targetSession is null || ShellState.HasVariable(targetSession))
+                    return new(true, "self-demotion", targetSession ?? session);
+            }
             if (ChangesDir.Contains(program))
             {
                 var target = rest.Contains("-") ? "-" : Named(rest, "-path", "-literalpath") ?? args.FirstOrDefault();
                 if (program is "pushd" or "push-location") stack.Push(dir);
-                var next = target == "-" ? previous : Resolve(target, dir);
+                var next = target == "-" ? previous : Resolve(target, dir) ?? target;
                 previous = dir;
                 dir = next; // unknown cd must NOT leave the old cwd in effect
                 continue;
@@ -108,7 +121,7 @@ public static class CoordinatorRoleGuard
             if (FirstTarget.Contains(program))
             {
                 var target = Named(rest, "-path", "-literalpath", "-filepath") ?? args.FirstOrDefault();
-                if (Write(target, dir, session, "shell write") is { } r) return r;
+                if (Target(target, "shell write") is { } r) return r;
             }
             else if (AllTargets.Contains(program))
             {
@@ -118,22 +131,25 @@ public static class CoordinatorRoleGuard
                 if (program is "new-item" or "ni" && name is not null)
                     targets = new List<string> { (named ?? args.FirstOrDefault(a => a != name) ?? ".") + "/" + name };
                 foreach (var target in targets)
-                    if (Write(target, dir, session, "shell write") is { } r) return r;
+                {
+                    if (IsRemoval(program) && Resolve(target, dir) is { } path && CleanupRoot(path)) continue;
+                    if (Target(target, "shell write") is { } r) return r;
+                }
             }
             else if (Copies.Contains(program) || Moves.Contains(program) || program == "robocopy")
             {
                 var dest = Named(rest, "-destination", "-dest", "-target-directory", "-t") ?? (program == "robocopy" ? args.ElementAtOrDefault(1) : args.LastOrDefault());
-                if (Write(dest, dir, session, "shell destination") is { } r) return r;
+                if (Target(dest, "shell destination") is { } r) return r;
                 // A move removes the source too, even when its destination is an allowed scratchpad.
                 if (Moves.Contains(program))
                     foreach (var source in args.Where(a => a != dest))
-                        if (Write(source, dir, session, "shell source removal") is { } moved) return moved;
+                        if (Target(source, "shell source removal") is { } moved) return moved;
             }
             else if (program == "sed" && rest.Any(w => w == "--in-place" || w.StartsWith("--in-place=", StringComparison.Ordinal) || w.StartsWith("-i", StringComparison.Ordinal)))
             {
                 // First positional word is the expression (unless -e/-f supplied it).
                 foreach (var target in args.Skip(rest.Contains("-e") || rest.Contains("-f") ? 0 : 1))
-                    if (Write(target, dir, session, "in-place edit") is { } r) return r;
+                    if (Target(target, "in-place edit") is { } r) return r;
             }
         }
         return new(false, "coordinator work or check", dir);
@@ -160,7 +176,8 @@ public static class CoordinatorRoleGuard
             if (script is null) return null;
             var path = Resolve(script, dir);
             if (Prog(script).StartsWith("build_bundle", StringComparison.Ordinal) && script.EndsWith(".py", StringComparison.OrdinalIgnoreCase)) return path ?? script;
-            if (path?.Contains("/work/", StringComparison.OrdinalIgnoreCase) == true && !AllowedPath(path, session)) return path;
+            // A build-output write exception does not turn execution of a work/ product script into a check.
+            if (path?.Contains("/work/", StringComparison.OrdinalIgnoreCase) == true && !TempRoots().Any(t => Under(path, t))) return path;
             return null;
         }
         script = CommandSegments.ScriptOf(string.Join(" ", words.Select(w => "\"" + w + "\"")));
@@ -170,13 +187,15 @@ public static class CoordinatorRoleGuard
                                || full.EndsWith("/docs/one-tool/run-on-210/start-on-210.ps1", StringComparison.OrdinalIgnoreCase)) ? full : null;
     }
 
-    private static Decision? Write(string? word, string? dir, string? session, string rule)
+    private static Decision? Write(string? word, string? dir, string? session, string rule, List<string>? outputs = null)
     {
         // Stream duplication and the null sink do not write a project file.
         if (word is "/dev/null" or "NUL" or "nul" || word is not null && Regex.IsMatch(word, @"\A&[0-9-]+\z")) return null;
         var target = Resolve(word, dir);
         if (target is not null && AllowedPath(target, session)) return null;
-        return new(true, target is null ? "unresolved " + rule : rule, target ?? word ?? "(missing target)");
+        if (target is not null && outputs?.Any(p => Under(target, p)) == true) return null;
+        return new(true, target is null ? "unresolved " + rule : rule,
+            target ?? (dir is not null && ShellState.HasVariable(dir) ? dir + "/" + word : word) ?? "(missing target)");
     }
 
     internal static bool AllowedPath(string path, string? session)
@@ -184,15 +203,20 @@ public static class CoordinatorRoleGuard
         if (Regex.IsMatch(path, @"/docs/codex/CODEX-[^/]+\.md\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)) return true;
         if (Regex.IsMatch(path, @"/Framework/(?:docs/HANDOVER\.md|lanes(?:/.+)?)\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)) return true;
         if (path.Equals("C:/KOR-Operations/push-exceptions.txt", StringComparison.OrdinalIgnoreCase)) return true;
-        var temp = Path.GetTempPath().Replace('\\', '/').TrimEnd('/') + "/claude/";
-        var own = "/" + session + "/scratchpad";
-        return SessionRoles.ValidSession(session) && path.StartsWith(temp, StringComparison.OrdinalIgnoreCase)
-            && (path[temp.Length..].Contains(own + "/", StringComparison.OrdinalIgnoreCase) || path.EndsWith(own, StringComparison.OrdinalIgnoreCase));
+        if (TempRoots().Any(t => Under(path, t))) return true;
+        var repo = RepositoryRoot(path);
+        return repo is not null && path.Length > repo.Length && path[(repo.Length + 1)..].Split('/').Any(p =>
+            p.Equals("obj", StringComparison.OrdinalIgnoreCase) || p.Equals("bin", StringComparison.OrdinalIgnoreCase)
+            || p.Equals("TestResults", StringComparison.OrdinalIgnoreCase));
     }
 
     internal static string? Resolve(string? word, string? dir)
     {
         if (string.IsNullOrWhiteSpace(word)) return null;
+        word = word.Replace('\\', '/');
+        if (word.StartsWith("//?/", StringComparison.Ordinal)) word = word[4..];
+        if (word == "/tmp" || word.StartsWith("/tmp/", StringComparison.Ordinal)) word = "C:" + word;
+        if (ShellState.HasVariable(word) || dir is not null && ShellState.HasVariable(dir) && !Path.IsPathRooted(word)) return null;
         if (dir is null && !Path.IsPathRooted(word) && !Regex.IsMatch(word, @"\A/[A-Za-z]/")) return null;
         var full = CommandSegments.ResolvePath(word, dir ?? Environment.CurrentDirectory)?.Replace('\\', '/');
         return full is { Length: > 3 } ? full.TrimEnd('/') : full;
@@ -205,7 +229,7 @@ public static class CoordinatorRoleGuard
         {
             var w = rest[i];
             if (w.StartsWith('-')) { if (ValueFlags.Contains(w.ToLowerInvariant()) || sed && (w is "-e" or "-f")) i++; continue; }
-            if (Regex.IsMatch(w, @"\A/[A-Za-z0-9?]+(?::\S*)?\z")) continue;
+            if (new[] { "/y", "/s", "/e", "/q", "/i", "/h", "/r" }.Contains(w, StringComparer.OrdinalIgnoreCase)) continue;
             result.Add(w);
         }
         return result;

@@ -36,16 +36,19 @@ public static partial class Program
         var decision = CoordinatorRoleGuard.Evaluate(raw, role, start);
         if (!decision.Refuse) return false;
         transcript ??= RoleTranscript(session, o.Get("--projects-dir"));
-        var lift = CoordinatorApproval.Find(session, o.Get("--prompts-dir"), transcript, DateTimeOffset.UtcNow);
+        var cache = o.Get("--cache-dir") ?? CheckCache.DefaultDir;
+        var lift = CoordinatorApproval.FindCached(session, o.Get("--prompts-dir"), transcript, DateTimeOffset.UtcNow, cache);
         if (lift is not null)
         {
             try
             {
-                var ev = new BrainEvent("Framework", "gate", null, null, "role:lift", "lifted",
-                    JsonSerializer.Serialize(new { session, approvedAtUtc = lift, expiresAtUtc = lift.Value.AddHours(12), decision.Rule, decision.Target }),
-                    "kor enforce coordinator-role", session);
-                if (db is not null) BrainStore.Insert(ev, db);
-                else BrainDb.Use3s(KorStandardsConnection.Login.Brain, d => BrainStore.Insert(ev, d));
+                var state = CheckCache.LoadRole(cache, session!);
+                if (db is not null) SessionRoles.LogLift(db, session!, lift.Value, decision);
+                else if (state?.LoggedApproval != lift)
+                {
+                    BrainDb.Use3s(KorStandardsConnection.Login.Brain, d => SessionRoles.LogLift(d, session!, lift.Value, decision));
+                    CheckCache.MarkLiftLogged(cache, session!, lift.Value);
+                }
                 if (!hook) output.WriteLine($"coordinator-role lift logged (expires {lift.Value.AddHours(12):O})");
                 return false;
             }

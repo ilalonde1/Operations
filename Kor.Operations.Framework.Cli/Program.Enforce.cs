@@ -70,7 +70,8 @@ public static partial class Program
             else
             {
                 var cached = CheckCache.GetSession(cacheDir, session!, start,
-                    () => BrainDb.Read3s(d => CheckStore.LiveForSession(d, session!)), DateTimeOffset.UtcNow, Log, out source);
+                    () => BrainDb.Read3s(d => CheckStore.LiveForSession(d, session!)), DateTimeOffset.UtcNow, Log, out source,
+                    () => BrainDb.Read3s(d => SessionRoles.Read(d, session!)));
                 checks = cached.Checks;
                 role = cached.Role;
                 start = cached.StartFolder;

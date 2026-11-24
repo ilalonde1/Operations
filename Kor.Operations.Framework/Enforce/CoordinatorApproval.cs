@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace Kor.Operations.Framework.Enforce;
@@ -10,6 +12,49 @@ namespace Kor.Operations.Framework.Enforce;
 /// outside this guard's boundary. Existing budget and Python guards are unchanged.</summary>
 public static class CoordinatorApproval
 {
+    public sealed record Scan(string Transcript, long Length, DateTime LastWriteUtc, string RecorderHash,
+        DateTimeOffset? ApprovedAtUtc);
+
+    /// <summary>Rechecks the small recorder every time, but reads only appended transcript bytes when it is unchanged.
+    /// Truncation, equal-size rewrites and recorder rotation reset the scan. Non-append replacements that grow, and
+    /// same-size/same-timestamp forged files are outside
+    /// this provenance boundary, as are forged transcript/recorder files generally. Expiry is checked on every call.</summary>
+    public static DateTimeOffset? FindCached(string? session, string? promptsDir, string? transcript, DateTimeOffset now, string cacheDir)
+    {
+        if (!SessionRoles.ValidSession(session) || transcript is null) return null;
+        try
+        {
+            var recorder = File.ReadAllText(Path.Combine(promptsDir ?? Path.Combine(Path.GetTempPath(), "claude-asked"), session + ".jsonl"));
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(recorder)));
+            var prompts = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var line in recorder.Split('\n').Where(l => !string.IsNullOrWhiteSpace(l)))
+            {
+                using var doc = JsonDocument.Parse(line);
+                if (CoordinatorRoleGuard.S(doc.RootElement, "prompt") is { } p && HasToken(p)) prompts.Add(p.Trim());
+            }
+            if (prompts.Count == 0) return null;
+            var state = CheckCache.LoadRole(cacheDir, session!) ?? new CheckCache.RoleSnapshot(DateTimeOffset.MinValue, null, null, null);
+            var info = new FileInfo(transcript);
+            var scan = state.ApprovalScan;
+            var reuse = scan is not null && scan.Transcript == transcript && scan.RecorderHash == hash && info.Length >= scan.Length
+                && (info.Length != scan.Length || info.LastWriteTimeUtc == scan.LastWriteUtc);
+            var latest = reuse ? scan!.ApprovedAtUtc : null;
+            using var stream = File.Open(transcript, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            if (reuse) stream.Seek(scan!.Length, SeekOrigin.Begin);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            while (reader.ReadLine() is { } line)
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                using var doc = JsonDocument.Parse(line);
+                if (TypedApproval(doc.RootElement, session!, now, out var at, out var prompt)
+                    && prompts.Contains(prompt.Trim()[..Math.Min(prompt.Trim().Length, 4000)]) && (latest is null || at > latest)) latest = at;
+            }
+            CheckCache.SaveRole(cacheDir, session!, state with { ApprovalScan = new(transcript, stream.Position, info.LastWriteTimeUtc, hash, latest) });
+            return latest <= now && now - latest < TimeSpan.FromHours(12) ? latest : null;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException) { return null; }
+    }
+
     public static DateTimeOffset? Find(string? session, string? promptsDir, string? transcript, DateTimeOffset now)
     {
         if (!SessionRoles.ValidSession(session) || transcript is null) return null;
