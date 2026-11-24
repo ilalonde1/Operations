@@ -18,7 +18,8 @@ nvarchar(400), required on new rows by CK_Commitment_Budget). Nothing reads it b
   16:42. KOR-210 sets with its number in the tag (KOR.Drafter `work\_runner\sets\`): step5-2248-storeys, -b1l04-r2, -diag-a,
   -diag-b, -diag-c (5; the two -refuse-* tags were dry refusals, nothing ran). Nothing stopped the 2nd. Ian stopped it by hand.
 - Row 2143, Budget "One SAFE run on KOR-210 for one building model plus one Codex review; sized before starting." Sets
-  step5-b1-l02* (several; count them yourself and say which ran).
+  step5-b1-l02* - 8 tags in the sets folder (-l02, -colstiff, -colstiff2, -delivered, -jr, -pass3, -pass3-dry, -r2;
+  listed by the author 23 Nov); which of them RAN (results\<tag>\done.txt) is not checked - establish it and say.
 Codex passes are NOT counted: Ian 23 Nov, "don't contrain the budget for codex. If you need it to do more - let it do it".
 
 ## Prior work - EXTEND these, do not build beside them (an inventory by a helper, 23 Nov; check each)
@@ -65,7 +66,9 @@ Work in `C:\VIsual Studio Projects\Operations-budget-stop` on branch `budget-sto
 - Tests never leave a row in KorStandards: DB writes only inside a transaction that is rolled back; report any row left.
 - Proofs ONE AT A TIME (lesson #138092: three suites at once pegged the PC): the targeted tests, then the full
   Kor.Operations.Framework tests ONCE at the end, alone, compared by name with a run at 0883c0ff (`kor testdiff`).
-- Keep TEMP/TMP normal. Commit with `git -c core.hooksPath=<an empty folder> commit ...`. Must not: push, install kor, edit
+- Keep TEMP/TMP normal. Commit locally with `git -c core.hooksPath=<an empty folder> commit ...` (the shared
+  post-commit hook writes the database); the coordinator reviews every commit through kor_review and the pre-push gate
+  before anything is pushed. Must not: push, install kor, edit
   outside this worktree, change any other guard or settings or git hook, write the live database, touch another machine.
   The author holds back further cases.
 
