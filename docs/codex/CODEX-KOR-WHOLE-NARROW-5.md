@@ -53,6 +53,9 @@ Worktree `C:\VIsual Studio Projects\Operations-kor-whole-narrow-5`, branch `kor-
   against a live run you make first at 7d759ec1. Report any test row left in the database.
 - Replay: kor-whole refusals Id 10840-10850 (and rounds 1-4's held populations), recovered from transcripts, old -> new.
   Do NOT read or replay any kor-whole refusal with Id > 10850: those are the author's held-back check.
+- READ BOUND: transcripts 905b4bf0 and cc3b7be3 only (same projects folder), and in them only the lines each refusal cites
+  plus their tool calls/results; rounds 1-4's populations only through their RESPONSE files and existing cases. No other
+  transcript, share or database beyond SELECTs on oversight.GuardRefusal / brain.Memory.
 - Keep TEMP/TMP normal. Commit locally with `git -c core.hooksPath=<an empty folder> commit ...` (the shared post-commit hook
   writes the database); the coordinator reviews every commit (kor_review) and pushes through the pre-push gate. Must not:
   push, install kor, edit outside this worktree, change any other guard/settings/hook, write the live database (SELECT only
