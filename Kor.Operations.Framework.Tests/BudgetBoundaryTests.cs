@@ -70,6 +70,7 @@ public sealed class BudgetDatabaseFactAttribute : FactAttribute
     }
 }
 
+[Collection(LiveDb.Name)]
 public sealed class BudgetConcurrencyTests
 {
     [BudgetDatabaseFact]

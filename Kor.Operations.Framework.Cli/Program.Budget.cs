@@ -33,15 +33,32 @@ public static partial class Program
         if (session.Length > 64 || session.Length == 0) throw new ArgumentException("budget session must be 1-64 characters");
         var reference = o.Get("--ref");
         if (reference?.Length > 400 || step.Length > 80) throw new ArgumentException("budget ref must be <=400 characters and step <=80");
-        BudgetDecision decision;
-        if (board is not null)
-            decision = BudgetStore.Check(board, row, step, reference, session, o.Get("--prompts-dir"), o.Get("--projects-dir"));
-        else
+        return RunBudgetCheck(row, () =>
         {
+            if (board is not null)
+                return BudgetStore.Check(board, row, step, reference, session, o.Get("--prompts-dir"), o.Get("--projects-dir"));
+            // Each attempt owns a NEW transaction, from the row lock through the ledger write and commit.
             // Print permission only AFTER the ledger and refusal transaction commits successfully.
             using var db = BrainDb.Open(KorStandardsConnection.Login.Board, 3);
-            decision = BudgetStore.Check(db, row, step, reference, session, o.Get("--prompts-dir"), o.Get("--projects-dir"));
+            var decision = BudgetStore.Check(db, row, step, reference, session, o.Get("--prompts-dir"), o.Get("--projects-dir"));
             db.Commit();
+            return decision;
+        }, output, retryDeadlock: board is null, Thread.Sleep);
+    }
+
+    // The attempt includes disposal/commit. Never retry the caller's transaction: 1205 also rolled back its setup.
+    internal static int RunBudgetCheck(int row, Func<BudgetDecision> attempt, TextWriter output, bool retryDeadlock, Action<TimeSpan> sleep)
+    {
+        BudgetDecision decision;
+        try
+        {
+            decision = retryDeadlock ? BrainDb.RetryOnceOnDeadlock(attempt, BrainDb.IsDeadlock, sleep) : attempt();
+        }
+        catch (Exception e) when (BrainDb.IsDeadlock(e))
+        {
+            output.WriteLine($"refused: row {row}, budget check deadlocked (SQL 1205) " +
+                (retryDeadlock ? "after one retry" : "in the caller's transaction; retry the whole transaction") + "; no spend recorded.");
+            return 1;
         }
         output.WriteLine(decision.Message);
         return decision.Allowed ? 0 : 1;

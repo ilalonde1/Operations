@@ -6,6 +6,7 @@ namespace Kor.Operations.Framework.Tests;
 
 // Every database command, including CLI writes, uses this one uncommittable transaction. Disposal rolls it all back.
 // The explicitly isolated full suite skips this case; run it separately with the DB. Other DB failures are not skipped.
+[Collection(LiveDb.Name)]
 public sealed class BudgetLedgerTests
 {
     [BudgetDatabaseFact]

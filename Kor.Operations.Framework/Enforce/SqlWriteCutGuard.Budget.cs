@@ -36,14 +36,19 @@ public static partial class SqlWriteCutGuard
                     continue;
                 }
                 var sqlClient = program is "sqlcmd" or "invoke-sqlcmd";
-                var oq = program is "python" or "python3" or "py" && words.Skip(1).Any(w => Path.GetFileName(w.Replace('\\', '/')).Equals("oq.py", StringComparison.OrdinalIgnoreCase));
+                var oqStart = program is "python" or "python3" or "py" ? OqArgumentsStart(words) : -1;
+                var oq = oqStart >= 0;
                 var script = program == "invoke-korsqlscript" || program is "powershell" or "pwsh" && words.Skip(1).Any(w => Path.GetFileNameWithoutExtension(w.Replace('\\', '/')).Equals("Invoke-KorSqlScript", StringComparison.OrdinalIgnoreCase));
                 if (!sqlClient && !oq && !script) continue;
-                for (var i = 1; i < words.Count; i++)
+                for (var i = oq ? oqStart : 1; i < words.Count; i++)
                 {
-                    var flag = words[i].ToLowerInvariant();
-                    var file = flag is "-i" or "-inputfile" || script && flag == "-path";
-                    if (!file && flag is not ("-q" or "-query")) continue;
+                    // sqlcmd (also oq.py's forwarded arguments) is case-sensitive: -I is a switch, -i is a file.
+                    // PowerShell parameter names remain case-insensitive.
+                    var sqlcmdFlags = program == "sqlcmd" || oq;
+                    var flag = sqlcmdFlags ? words[i] : words[i].ToLowerInvariant();
+                    var file = sqlcmdFlags ? flag == "-i" : flag is "-i" or "-inputfile" || script && flag == "-path";
+                    var query = sqlcmdFlags ? flag is "-q" or "-Q" : flag is "-q" or "-query";
+                    if (!file && !query) continue;
                     if (++i >= words.Count) return new(seg.Text, null, "SQL input is missing; cannot check Budget writes");
                     string sql;
                     if (file)
@@ -65,6 +70,23 @@ public static partial class SqlWriteCutGuard
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or RegexMatchTimeoutException or NotSupportedException)
         { return new("SQL input", null, "SQL inspection failed; cannot check Budget writes"); }
+    }
+
+    private static int OqArgumentsStart(IReadOnlyList<string> words)
+    {
+        var i = 1;
+        for (; i < words.Count; i++)
+        {
+            var arg = words[i];
+            if (arg == "--") { i++; break; }
+            // -c and -m execute code/modules, not a script named by a later argument.
+            if (arg is "-" or "-c" or "-m" || arg.StartsWith("-c", StringComparison.Ordinal) || arg.StartsWith("-m", StringComparison.Ordinal)) return -1;
+            if (arg is "-X" or "-W" or "--check-hash-based-pycs") { i++; continue; }
+            if (arg.StartsWith('-')) continue; // -I, -u, -Xutf8, py -3, etc.
+            break;
+        }
+        return i < words.Count && Path.GetFileName(words[i].Replace('\\', '/')).Equals("oq.py", StringComparison.OrdinalIgnoreCase)
+            ? i + 1 : -1;
     }
 
     private static BudgetRefusal? BudgetSql(string sql, Func<int, bool> approved)
