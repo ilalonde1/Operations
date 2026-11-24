@@ -41,8 +41,9 @@ public static partial class Program
     internal static int Run(string[] args, Func<string?> stdin, TextWriter output, TextWriter error, string hookErrorLog,
                             BrainDb? db = null, BrainDb? board = null)
     {
-        var hook = args.Contains("--hook");
         var o = Options.Parse(args.Where(a => a != "--hook").ToArray());
+        // A spending gate is never fail-open, even if a caller accidentally supplies --hook.
+        var hook = args.Contains("--hook") && o.Positional.FirstOrDefault() != "budget";
         try
         {
             return (o.Positional.FirstOrDefault() ?? "") switch
@@ -85,6 +86,7 @@ public static partial class Program
                 "context" => ContextVerb(o, stdin, output, hook, board, hookErrorLog),
                 "whole" => WholeVerb(o, stdin, output, hook, board, hookErrorLog),
                 "spend" => SpendVerb(o, output, db),
+                "budget" => BudgetVerb(o, output, board ?? db),
                 "statusline" => StatusLineVerb(o, stdin, output, db, hookErrorLog),
                 _ => hook ? UnknownInHook(o, output) : Usage(error),
             };
@@ -139,7 +141,7 @@ public static partial class Program
             "--tool", "--pattern", "--memory", "--hits", "--command", "--path", "--cwd", "--file", "--what", "--days", "--tag",
             "--replay", "--since", "--window-hours", "--auto-compact-window", "--auto-compact-model", "--ceiling", "--spend-root",
             "--pages-wired", "--subject", "--model", "--claude", "--wire", "--out", "--temp-dir", "--budget", "--top", "--as-of", "--floor", "--job",
-            "--base-sequence", "--new-sequence", "--root", "--pick",
+            "--base-sequence", "--new-sequence", "--root", "--pick", "--row", "--step", "--ref", "--projects-dir",
         };
 
         /// <summary>Options given more than once, every value kept in order (check-add's examples).</summary>
@@ -588,6 +590,8 @@ public static partial class Program
         error.WriteLine("       kor context --replay <transcript.jsonl|list.txt> [--since ISO-UTC] [--auto-compact-window N [--auto-compact-model M]]   (row 1474 dry run; reads only)");
         error.WriteLine("       kor statusline --hook   (row 1892: Claude Code's status line command; JSON on stdin; stores the real weekly percent at most once per 5 minutes)");
         error.WriteLine("       kor spend   (G6, board row 1559: the one spend line: the real weekly percent when one is stored, else an estimate; kor context's hooks carry it; warns only)");
+        error.WriteLine("       kor budget check --row N --step kor210-run [--ref tag] [--session id]   (records one spend or refusal; nonzero refuses)");
+        error.WriteLine("       kor budget show --row N   (Budget text, parsed limits, ledger and remainder)");
         error.WriteLine("       kor enroll-check [--all] [--dir D] [--days N (7)] [--hook]   (every framework hook in .claude/settings.json and .git/hooks, and a session-start in brain.Event where sessions ran; one verdict line, exit 1 on a finding - 0 with --hook)");
         error.WriteLine("       kor start --module M [--owner O]... [--no-helpers] [--part record|state|memory|records|pages|board|all] [--pages-wired W (record)] [--tag T (board: only rows tagged [T] or [was T]; with no --owner, any owner's, no owner named)] [--page N --pages M (memory, records)] [--hook | --text] [--dir D] [--session S] [--start-source S]   (SessionStart JSON on stdin with --hook)");
         return 2;

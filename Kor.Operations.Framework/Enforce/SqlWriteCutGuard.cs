@@ -17,7 +17,7 @@ namespace Kor.Operations.Framework.Enforce;
 /// read (a SELECT piped to head passes).
 /// SAME-CLASS FAULT IT WOULD MISS: `python -I tools/oq.py -i -q "UPDATE ..." | tail -1` - the write is inside oq.py's text.
 /// </summary>
-public static class SqlWriteCutGuard
+public static partial class SqlWriteCutGuard
 {
     public const string GuardName = "kor-sql-write-cut";
     public const string RuleName = "a SQL write's result is read whole (board row 1212, lesson #132591)";

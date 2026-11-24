@@ -5,10 +5,10 @@ using Xunit;
 namespace Kor.Operations.Framework.Tests;
 
 // Every database command, including CLI writes, uses this one uncommittable transaction. Disposal rolls it all back.
-// Full offline suites report this case as a DB-disabled failure, never a fake pass; run it separately with the DB.
+// The explicitly isolated full suite skips this case; run it separately with the DB. Other DB failures are not skipped.
 public sealed class BudgetLedgerTests
 {
-    [Fact]
+    [BudgetDatabaseFact]
     public void CheckAndShowUseOneLedgerAndRefusalLogThenRollbackEverything()
     {
         // Fail on the absent verb before opening a transaction in the cases-only revision.

@@ -48,6 +48,7 @@ public static partial class Program
         }
         void Log(Exception e) => LogHookError(hookErrorLog, o, e);
         if (DrafterPythonRefusal(o, tool, input, cwd, session, scratch, output, hook, board, Log)) return 0;
+        if (SqlBudgetRefusal(o, tool, input, cwd, session, output, hook, board, Log)) return 0;
         if (SqlWriteCutRefusal(tool, input, cwd, session, output, hook, board, Log)) return 0;
         IReadOnlyList<LiveCheck>? checks;
         string source;
@@ -147,6 +148,24 @@ public static partial class Program
         output.WriteLine(hook
             ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", permissionDecision = "deny", permissionDecisionReason = reason } })
             : $"deny{(logged is null ? " (not logged)" : $" (oversight.GuardRefusal #{logged})")}: {reason}");
+        return true;
+    }
+
+    private static bool SqlBudgetRefusal(Options o, string tool, string input, string? cwd, string? session, TextWriter output, bool hook, BrainDb? board, Action<Exception> log)
+    {
+        var r = SqlWriteCutGuard.DecideBudget(tool, input, cwd, row =>
+            Budget.BudgetApproval.Find(row, "IAN-APPROVED-BUDGET", session, o.Get("--prompts-dir"), o.Get("--projects-dir"), DateTimeOffset.UtcNow) is not null);
+        if (r is null) return false;
+        var reason = SqlWriteCutGuard.SaysBudget(r);
+        try
+        {
+            if (board is not null) Stall.StallStore.LogGuardRefusal(board, "budget", "existing row Budget write", session, null, reason);
+            else BrainDb.Use3s(KorStandardsConnection.Login.Board, b => Stall.StallStore.LogGuardRefusal(b, "budget", "existing row Budget write", session, null, reason));
+        }
+        catch (Exception e) { log(e); } // denial stands even if the log is unavailable
+        output.WriteLine(hook
+            ? JsonSerializer.Serialize(new { hookSpecificOutput = new { hookEventName = "PreToolUse", permissionDecision = "deny", permissionDecisionReason = reason } })
+            : "deny: " + reason);
         return true;
     }
 
