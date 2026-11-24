@@ -30,6 +30,11 @@ public sealed class CoordinatorRoleRound2Tests
     [Theory, MemberData(nameof(RealCases))]
     public void NamedReplayCall(string id, string tool, string input, string cwd, string session, bool refuse)
     {
+        // Recreate this historical empty-root cleanup inside the sandbox. The real folder is now absent, which the
+        // stricter round-3 rule refuses; complete transcript replay still evaluates the untouched original input.
+        using var cleanup = id == "b6568d08 L6533" ? new CoordinatorRoleRound3Sandbox() : null;
+        if (cleanup is not null)
+            input = input.Replace(@"C:\VIsual Studio Projects\Operations-kor-whole-narrow", cleanup.Empty.Replace('/', '\\'));
         var d = Decide(tool, input, cwd, session);
         Assert.True(d.Refuse == refuse, $"{id}: {d}");
         // L1234 fixes the cwd but its later loop-generated p$id.txt is still unresolved (brief item 5).
@@ -67,6 +72,13 @@ public sealed class CoordinatorRoleRound2Tests
     [InlineData("Bash", "D='C:/VIsual Studio Projects/Operations-round2-absent'; rm -rf \"$D\"")]
     public void ScratchTempCheckOutputAndCleanupPass(string tool, string input)
     {
+        // Round 3 requires an actually empty folder. Retain these three cases' syntax, but stop relying on an absent
+        // real sibling being disposable; every created/removed folder belongs to the test sandbox.
+        using var cleanup = input.Contains("Operations-round2-absent", StringComparison.Ordinal) ? new CoordinatorRoleRound3Sandbox() : null;
+        if (cleanup is not null)
+            input = input.Replace(@"\\?\C:\VIsual Studio Projects\Operations-round2-absent", @"\\?\" + cleanup.Empty.Replace('/', '\\'))
+                .Replace("/c/VIsual Studio Projects/Operations-round2-absent", CoordinatorRoleRound3Sandbox.Msys(cleanup.Empty))
+                .Replace("C:/VIsual Studio Projects/Operations-round2-absent", cleanup.Empty);
         var d = Decide(tool, input);
         Assert.False(d.Refuse, d.ToString());
     }
