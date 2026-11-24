@@ -50,4 +50,27 @@ public class WholeGateRound5EvidenceTests
         Run(l, 3, "python other.py", "2 failed");
         Assert.Contains("W3", l.Decide(Step()).Rules);
     }
+
+    [Fact]
+    public void SameOutputTestdiffCannotExplainAnotherRunsTrx()
+    {
+        const string verdict = "failures in both: 2; only in new: 0; failing in base, passing in new: 0\nVERDICT: NO NEW FAILURES - 2 of 20 test names failing in new, every one also failing in base (2 of 20)";
+        foreach (var same in new[] { true, false })
+        {
+            var l = new WholeLedger();
+            Run(l, 1, "dotnet test tests.csproj --logger 'trx;LogFileName=C:/" + (same ? "run" : "other") +
+                "/new.trx'; kor testdiff C:/run/base.trx C:/run/new.trx", "Failed: 2\n" + verdict);
+            Assert.Equal(!same, l.Decide(Step()).Refuse);
+        }
+    }
+
+    [Fact]
+    public void AnAttributedReviewKeepsItsOwnQuotedCurrentResult()
+    {
+        var l = new WholeLedger();
+        Run(l, 1, "python tools/kor_review.py review",
+            "- MINOR: docs/RESPONSE.md - The text says 9 of 10 cases passed, but my check reports '3 failed'.");
+        Assert.Equal(3, Assert.Single(l.Flags).R.Flagged);
+        Assert.Contains("W3", l.Decide(Step()).Rules);
+    }
 }
