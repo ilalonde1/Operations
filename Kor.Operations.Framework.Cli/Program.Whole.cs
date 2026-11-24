@@ -92,7 +92,7 @@ public static partial class Program
     {
         try
         {
-            var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+            var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Git.ModuleOf(top) : null;
             var rule = $"row 2139 {v.Verdict.Rules} at {v.Door.Kind}";
             var matched = BrainStore.Clip(string.Join(" | ", v.Verdict.Named.Select(f => $"L{f.Line} {f.R.Key}")) is { Length: > 0 } n ? n : WholeGate.Clip(WholeGate.Squash(v.Door.Text), 400), 400) ?? "";
             return board is not null

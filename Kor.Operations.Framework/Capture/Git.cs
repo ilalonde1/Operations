@@ -114,22 +114,65 @@ public static class Git
 
     /// <summary>
     /// The repo's top-level folder without starting git (~120 ms a process on this machine, 3 Nov - K6's start budget): the
-    /// nearest folder at or above <paramref name="dir"/> holding a <c>.git</c> DIRECTORY, with forward slashes as git
-    /// prints it. A <c>.git</c> FILE (a worktree or submodule) or no <c>.git</c> at all asks git (<see cref="TopLevel"/>).
+    /// nearest folder at or above <paramref name="dir"/> holding a <c>.git</c> directory or valid gitdir file,
+    /// with forward slashes as git prints it. Keeps the WORKTREE location, including when git would refuse ownership.
+    /// Unreadable or unsupported layouts still ask git (<see cref="TopLevel"/>).
     /// </summary>
     public static string? TopLevelFast(string dir)
     {
+        return RepositoryFiles(dir)?.Top ?? TopLevel(dir);
+    }
+
+    /// <summary>
+    /// The module/lane identity: a linked worktree belongs to its main checkout. Read gitdir and commondir (relative
+    /// paths are relative to their containing directory), then apply Framework kor_review.py's common-dir naming rule:
+    /// the parent of .git, otherwise the common directory's leaf. Ordinary checkouts/submodules keep their own top.
+    /// No git process: used by capture/end and refusal logging, including worktrees owned by another Windows account.
+    /// Not a repo or unreadable metadata: retain the caller's old leaf fallback. This is NOT a source-repo resolver;
+    /// GitSource, event Repo and freshness must retain the worktree and its HEAD.
+    /// </summary>
+    public static string? ModuleOf(string? dir)
+    {
+        if (string.IsNullOrWhiteSpace(dir)) return null;
+        var repo = RepositoryFiles(dir);
+        if (repo is null) return Leaf(dir);
         try
         {
-            for (var d = new DirectoryInfo(Path.GetFullPath(dir)); d is not null; d = d.Parent)
+            var link = Path.Combine(repo.Value.GitDir, "commondir");
+            if (File.Exists(link))
             {
-                var git = Path.Combine(d.FullName, ".git");
-                if (Directory.Exists(git)) return d.FullName.TrimEnd('\\', '/').Replace('\\', '/');
-                if (File.Exists(git)) break;
+                var value = File.ReadAllText(link).Trim();
+                if (value.Length > 0)
+                {
+                    var common = Path.GetFullPath(value, repo.Value.GitDir).TrimEnd('/', '\\');
+                    if (Directory.Exists(common))
+                        return Leaf(string.Equals(Leaf(common), ".git", StringComparison.OrdinalIgnoreCase)
+                            ? Path.GetDirectoryName(common) : common);
+                }
             }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { }
-        return TopLevel(dir);
+        return Leaf(repo.Value.Top);
+    }
+
+    private static (string Top, string GitDir)? RepositoryFiles(string dir)
+    {
+        try
+        {
+            if (!Directory.Exists(dir)) return null;
+            for (var d = new DirectoryInfo(Path.GetFullPath(dir)); d is not null; d = d.Parent)
+            {
+                var marker = Path.Combine(d.FullName, ".git");
+                if (Directory.Exists(marker)) return (d.FullName.Replace('\\', '/'), marker);
+                if (!File.Exists(marker)) continue;
+                var text = File.ReadAllText(marker).Trim();
+                if (!text.StartsWith("gitdir: ", StringComparison.Ordinal)) return null;
+                var target = Path.GetFullPath(text[8..].Trim(), d.FullName);
+                return Directory.Exists(target) ? (d.FullName.Replace('\\', '/'), target) : null;
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { }
+        return null;
     }
 
     /// <summary>

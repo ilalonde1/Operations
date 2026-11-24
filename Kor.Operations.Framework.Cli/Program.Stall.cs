@@ -75,7 +75,7 @@ public static partial class Program
         try
         {
             var dir = cwd is not null && Directory.Exists(cwd) ? cwd : null;
-            var repo = dir is null ? null : Git.TopLevelFast(dir) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+            var repo = dir is null ? null : Git.TopLevelFast(dir) is { } top ? Git.ModuleOf(top) : null;
             logged = board is not null
                 ? StallStore.LogRefusal(board, d, session, repo, text)
                 : BrainDb.Use3s(KorStandardsConnection.Login.Board, b => StallStore.LogRefusal(b, d, session, repo, text));

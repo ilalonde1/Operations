@@ -9,7 +9,7 @@ namespace Kor.Operations.Framework.Capture;
 /// common fields session_id, transcript_path, cwd, hook_event_name; PostToolUse adds tool_name, tool_input,
 /// tool_response; PostToolUseFailure adds error ("Exit code N\n..." for a Bash command that exited non-zero - a failing
 /// test run arrives HERE, not in PostToolUse); PostCompact adds trigger, compact_summary; SessionEnd adds reason.
-/// Module (lane) = the session's start folder: CLAUDE_PROJECT_DIR, else the input's cwd, by leaf name.
+/// Module (lane) = the main checkout of CLAUDE_PROJECT_DIR, else the input's cwd (non-repos keep their leaf).
 /// </summary>
 public static class ClaudeCapture
 {
@@ -56,8 +56,8 @@ public static class ClaudeCapture
 
     public static string ModuleOf(HookInput h, string? moduleOverride) =>
         moduleOverride
-        ?? Git.Leaf(Environment.GetEnvironmentVariable("CLAUDE_PROJECT_DIR"))
-        ?? Git.Leaf(h.Cwd)
+        ?? Git.ModuleOf(Environment.GetEnvironmentVariable("CLAUDE_PROJECT_DIR"))
+        ?? Git.ModuleOf(h.Cwd)
         ?? "unknown";
 
     public static string ActorOf(HookInput h)
@@ -87,17 +87,23 @@ public static class ClaudeCapture
         if (t is null) return null;
         var shell = string.Equals(h.ToolName, "PowerShell", StringComparison.OrdinalIgnoreCase) ? "powershell" : "bash";
         var source = SourceResolver.Resolve(h.Command!, shell, h.Cwd, t, probe ?? SourceResolver.Probe.Real);
-        string? repo = null, commit = null, why = source.Why;
+        string? repo = null, commit = null, sourceModule = null, why = source.Why;
         if (source.Path is not null)
         {
             var dir = File.Exists(source.Path) ? Path.GetDirectoryName(source.Path)! : source.Path;
             // One git call: the repo holding what the tool ran on, and its HEAD.
             var lines = Git.Run(dir, TimeSpan.FromSeconds(3), "rev-parse", "--show-toplevel", "HEAD")?.Split('\n');
-            if (lines is { Length: >= 2 }) { repo = Git.Leaf(lines[0].Trim()); commit = lines[1].Trim(); }
+            if (lines is { Length: >= 2 })
+            {
+                var top = lines[0].Trim();
+                repo = Git.Leaf(top);
+                sourceModule = Git.ModuleOf(top);
+                commit = lines[1].Trim();
+            }
             else why += " - but it is not inside a git work tree";
         }
         var (module, from) = moduleOverride is not null ? (moduleOverride, "--module")
-                           : repo is not null ? (repo, "the repo it ran on")
+                           : sourceModule is not null ? (sourceModule, "the repo it ran on")
                            : (ModuleOf(h, null), "the session's lane (the source is unknown)");
         var detail = JsonNode.Parse(t.Detail)!.AsObject();
         detail["source"] = source.Path;

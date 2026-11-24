@@ -108,7 +108,7 @@ public static partial class Program
             : $"{tool}: inputs changed since #{verdict.AllowedFor}: {verdict.AllowedBecause} ({BrainRecall.FirstSentence(intent, 120)})", 400) ?? "";
         try
         {
-            var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+            var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Git.ModuleOf(top) : null;
             var guard = verdict.Refuse ? RepeatGate.GuardName : RepeatGate.ReasonGuardName;
             var rule = verdict.Refuse ? $"row 1998: repeat of #{verdict.Named[0].Doc.Id}" : $"row 1998: inputs changed since #{verdict.AllowedFor}";
             if (board is not null) Stall.StallStore.LogGuardRefusal(board, guard, rule, session, repo, matched);

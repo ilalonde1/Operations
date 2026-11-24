@@ -300,7 +300,7 @@ public static partial class Program
     {
         try
         {
-            var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+            var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Git.ModuleOf(top) : null;
             if (board is not null) StallStore.LogGuardRefusal(board, guard, rule, session, repo, reason);
             else BrainDb.Use3s(KorStandardsConnection.Login.Board, b => StallStore.LogGuardRefusal(b, guard, rule, session, repo, reason));
         }

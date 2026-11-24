@@ -364,14 +364,15 @@ public class CaptureTests
         using var db = BrainDb.OpenRolledBack();
         var repo = RepoDir();
         var leaf = Git.Leaf(Git.TopLevel(repo))!;          // the checkout's own name (review row 100), never a literal
+        var module = Git.ModuleOf(repo)!;                // module identity is shared; source identity stays local
         var build = RealPowerShell("powershell-posttooluse-real.json",
             $"Set-Location '{repo.Replace('\\', '/')}'; dotnet build Kor.Operations.Framework", BuildPassOut.Replace("\n", "\r\n"), null);
-        var b = ReadBack(db, RunOk(db, new[] { "capture-tool" }, build), leaf, "build");
+        var b = ReadBack(db, RunOk(db, new[] { "capture-tool" }, build), module, "build");
         Assert.Equal(("pass", leaf), (b.Outcome, b.Repo));
         Assert.Contains("\"shell\":\"powershell\"", b.Detail);
         var test = RealPowerShell("powershell-posttoolusefailure-real.json",
             $"Set-Location '{repo.Replace('\\', '/')}'; dotnet test Kor.Operations.Framework.Tests", null, "Exit code 1\r\n" + TestFailOut);
-        var f = ReadBack(db, RunOk(db, new[] { "capture-tool" }, test), leaf, "test");
+        var f = ReadBack(db, RunOk(db, new[] { "capture-tool" }, test), module, "test");
         Assert.Equal(("fail", leaf), (f.Outcome, f.Repo));
     }
 
@@ -391,9 +392,10 @@ public class CaptureTests
                 tool_input = new { command = $"cd \"{repo.Replace('\\', '/')}\" && dotnet build Kor.Operations.Framework" },
                 tool_response = new { stdout = BuildPassOut, stderr = "" },
             });
-            var leaf = Git.Leaf(Git.TopLevel(repo))!;      // the checkout's own name (review row 100), never a literal
-            var row = ReadBack(db, RunOk(db, new[] { "capture-tool" }, json), leaf, "build");
-            Assert.Equal(leaf, row.Module);
+            var module = Git.ModuleOf(repo)!;
+            var row = ReadBack(db, RunOk(db, new[] { "capture-tool" }, json), module, "build");
+            Assert.Equal(module, row.Module);
+            Assert.Equal(Git.Leaf(Git.TopLevel(repo)), row.Repo);
             Assert.Equal(Git.Run(repo, "rev-parse", "HEAD")!.Trim(), row.Commit);
             Assert.Contains("\"module_from\":\"the repo it ran on\"", row.Detail);
             Assert.Contains(Path.Combine(repo, "Kor.Operations.Framework").Replace("\\", "\\\\"), row.Detail);   // the project, proved

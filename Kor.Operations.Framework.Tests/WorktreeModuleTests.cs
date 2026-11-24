@@ -210,11 +210,11 @@ public sealed class WorktreeModuleTests : IClassFixture<WorktreeModuleRepos>
         using (var board = BrainDb.OpenRolledBack(KorStandardsConnection.Login.Board))
         {
             var raw = JsonSerializer.Serialize(new { session_id = session, cwd = repos.PathOf("KOR.Drafter-etabs"),
-                tool_name = "Bash", tool_input = new { command = "sqlcmd -i example.sql | tail -1" } });
+                tool_name = "Bash", tool_input = new { command = "sqlcmd -S h -Q \"UPDATE example SET flag=1\" | tail -1" } });
             var output = new StringWriter();
-            Program.Run(new[] { "enforce", "--module", "KOR.Drafter", "--hook" }, () => raw,
+            Program.Run(new[] { "enforce", "--module", "KOR.Drafter", "--hook", "--cache-dir", repos.Root, "--prompts-dir", repos.Root }, () => raw,
                 output, new StringWriter(), Path.Combine(repos.Root, "errors.log"), board: board);
-            Assert.Contains("deny", output.ToString());
+            Assert.Contains("A SQL write read through a cut", output.ToString());
             using var q = board.Command("SELECT Repo FROM oversight.GuardRefusal WHERE Session=@s");
             q.Parameters.AddWithValue("@s", session);
             Assert.Equal("KOR.Drafter", q.ExecuteScalar());
@@ -255,7 +255,7 @@ public sealed class WorktreeModuleTests : IClassFixture<WorktreeModuleRepos>
 
 public sealed class WorktreeModuleRepos : IDisposable
 {
-    public string Root { get; } = Path.Combine(AppContext.BaseDirectory, "worktree-module-" + Guid.NewGuid().ToString("N"));
+    public string Root { get; } = Path.Combine(AppContext.BaseDirectory, "wt-" + Guid.NewGuid().ToString("N")[..12]);
     public string Main => PathOf("KOR.Drafter");
     public string PathOf(string name) => Path.Combine(Root, name);
 
@@ -266,6 +266,7 @@ public sealed class WorktreeModuleRepos : IDisposable
         {
             var dir = Directory.CreateDirectory(PathOf(name)).FullName;
             Run(dir, "init", "-q");
+            Run(dir, "config", "core.longpaths", "true");
             Run(dir, "config", "user.name", "worktree module test");
             Run(dir, "config", "user.email", "worktree-module@example.invalid");
             Run(dir, "config", "core.hooksPath", Directory.CreateDirectory(Path.Combine(dir, "empty-hooks")).FullName);

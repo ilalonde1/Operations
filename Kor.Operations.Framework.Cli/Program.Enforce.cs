@@ -106,7 +106,7 @@ public static partial class Program
             int? logged = null;
             try
             {
-                var repo = dir is null ? null : Git.TopLevelFast(dir) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+                var repo = dir is null ? null : Git.TopLevelFast(dir) is { } top ? Git.ModuleOf(top) : null;
                 logged = board is not null
                     ? CheckStore.LogRefusal(board, c.Id, session, repo, m.Text)
                     : BrainDb.Use3s(KorStandardsConnection.Login.Board, b => CheckStore.LogRefusal(b, c.Id, session, repo, m.Text));
@@ -140,7 +140,7 @@ public static partial class Program
         try
         {
             var dir = cwd is not null && Directory.Exists(cwd) ? cwd : null;
-            var repo = dir is null ? null : Git.TopLevelFast(dir) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+            var repo = dir is null ? null : Git.TopLevelFast(dir) is { } top ? Git.ModuleOf(top) : null;
             logged = board is not null
                 ? Stall.StallStore.LogGuardRefusal(board, DrafterPythonGuard.GuardName, DrafterPythonGuard.RuleName, session, repo, $"{tool}: {r.How}: {r.Path}")
                 : BrainDb.Use3s(KorStandardsConnection.Login.Board, b => Stall.StallStore.LogGuardRefusal(b, DrafterPythonGuard.GuardName, DrafterPythonGuard.RuleName, session, repo, $"{tool}: {r.How}: {r.Path}"));
@@ -164,7 +164,7 @@ public static partial class Program
         try
         {
             var dir = cwd is not null && Directory.Exists(cwd) ? cwd : null;
-            var repo = dir is null ? null : Git.TopLevelFast(dir) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+            var repo = dir is null ? null : Git.TopLevelFast(dir) is { } top ? Git.ModuleOf(top) : null;
             var what = $"{tool}: {Clip(r.Write, 150)} | {Clip(r.Cut, 40)}";
             logged = board is not null
                 ? Stall.StallStore.LogGuardRefusal(board, SqlWriteCutGuard.GuardName, SqlWriteCutGuard.RuleName, session, repo, what)

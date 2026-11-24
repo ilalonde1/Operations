@@ -58,6 +58,29 @@ public static class EnrollCheck
         new KorRepo("KOR Website", new[] { ReviewGuard }),   // split from Operations 9 Nov 2026 (board row 1980)
     };
 
+    /// <summary>
+    /// A record's explicit module may not split an enrolled module into worktree lanes. Exact enrollment wins;
+    /// the enrolled-name-plus-dash convention also catches deleted worktrees. Other sibling names require actual
+    /// git metadata, resolved by Git.ModuleOf, rather than guessing from arbitrary dashes.
+    /// </summary>
+    public static string? WorktreeModule(string module, string fromDir)
+    {
+        if (Repos.Any(r => string.Equals(r.Module, module, StringComparison.OrdinalIgnoreCase))) return null;
+        var prefix = Repos.OrderByDescending(r => r.Module.Length)
+            .FirstOrDefault(r => module.Length > r.Module.Length + 1 && module.StartsWith(r.Module + "-", StringComparison.OrdinalIgnoreCase));
+        if (prefix is not null) return prefix.Module;
+        // --module is a name, never a path to traverse when inspecting a sibling.
+        if (module is "." or ".." || module != Git.Leaf(module) || module.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) return null;
+        var top = Git.TopLevelFast(fromDir);
+        var parent = top is null ? null : Path.GetDirectoryName(top);
+        if (parent is null) return null;
+        var sibling = Path.Combine(parent, module);
+        if (!File.Exists(Path.Combine(sibling, ".git"))) return null;
+        var main = Git.ModuleOf(sibling);
+        return string.Equals(main, module, StringComparison.OrdinalIgnoreCase) ? null
+            : Repos.FirstOrDefault(r => string.Equals(r.Module, main, StringComparison.OrdinalIgnoreCase))?.Module;
+    }
+
     public static readonly string[] GitCaptureHooks = { "post-commit", "post-merge", "post-checkout" };
 
     /// <summary>One framework hook: the settings event, the tools its matcher must cover (none = no matcher needed), the

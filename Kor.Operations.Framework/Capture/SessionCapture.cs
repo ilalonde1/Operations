@@ -41,6 +41,7 @@ public static class SessionCapture
     public static BrainEvent Start(ClaudeCapture.HookInput h, string? moduleOverride)
     {
         var module = ClaudeCapture.ModuleOf(h, moduleOverride);
+        // The module is shared with the main checkout; Repo/Commit below identify this worktree's source.
         string? repo = null, commit = null;
         if (!string.IsNullOrWhiteSpace(h.Cwd) && Directory.Exists(h.Cwd))
         {

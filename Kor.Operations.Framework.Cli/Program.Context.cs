@@ -80,7 +80,7 @@ public static partial class Program
         {
             try
             {
-                var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+                var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Git.ModuleOf(top) : null;
                 var rule = $"G5 STOP {ContextGuard.N(r.Tokens)}/{ContextGuard.N(ceiling)}{ruleSuffix}";
                 return board is not null
                     ? StallStore.LogGuardRefusal(board, ContextGuardName, rule, session, repo, matched)
@@ -108,7 +108,7 @@ public static partial class Program
                     int? rowId = null;
                     try
                     {
-                        var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Path.GetFileName(top.TrimEnd('/', '\\')) : null;
+                        var repo = cwd is not null && Directory.Exists(cwd) && Git.TopLevelFast(cwd) is { } top ? Git.ModuleOf(top) : null;
                         var rule = $"read of {refused.Kind} over the size (board row 1936)";
                         rowId = board is not null
                             ? StallStore.LogGuardRefusal(board, ReadGuard.GuardName, rule, session, repo, $"Read: {readCall.Path} ({refused.Size} bytes)")

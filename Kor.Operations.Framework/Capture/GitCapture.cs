@@ -5,7 +5,7 @@ namespace Kor.Operations.Framework.Capture;
 
 /// <summary>
 /// K3 (Framework docs/KNOWLEDGE-IDE-PLAN.md): what a git hook saw, as a brain.Event - post-commit, post-merge,
-/// post-checkout, pre-push. Module = the repo's top-level folder name. Actor = git user.name, plus the Claude session
+/// post-checkout, pre-push. Module = the main checkout's name; Repo keeps the worktree. Actor = git user.name, plus the Claude session
 /// (CLAUDE_CODE_BRIDGE_SESSION_ID) when one made the change. Git runs in <c>dir</c> (the hook's working directory, which
 /// git sets to the work tree's top level).
 /// </summary>
@@ -29,7 +29,7 @@ public static class GitCapture
     /// <param name="hookArgs">git's arguments to the hook.</param>
     /// <param name="stdin">pre-push only: the ref lines git writes to the hook's stdin.</param>
     /// <param name="guardExit">pre-push only: the review guard's exit code, when the shim ran it first.</param>
-    /// <param name="module">override (tests); otherwise the top-level folder name.</param>
+    /// <param name="module">override (tests); otherwise the main checkout's module.</param>
     /// <param name="session">override (tests); otherwise CLAUDE_CODE_SESSION_ID, which a git hook run from a Claude
     /// session's shell inherits (<see cref="BrainStore.CurrentSession"/>) - null for a human's commit.</param>
     public static BrainEvent Build(string hook, IReadOnlyList<string> hookArgs, string dir, string? stdin, int? guardExit,
@@ -38,7 +38,7 @@ public static class GitCapture
         var top = Git.TopLevel(dir) ?? throw new InvalidOperationException($"{dir} is not inside a git work tree");
         var repo = Git.Leaf(top)!;
         var actor = Actor(top);
-        module ??= repo;
+        module ??= Git.ModuleOf(top)!;
         return Event(hook, hookArgs, stdin, guardExit, top, repo, module, actor) with { Session = session ?? BrainStore.CurrentSession() };
     }
 
@@ -68,7 +68,7 @@ public static class GitCapture
     {
         var top = Git.TopLevel(dir) ?? throw new InvalidOperationException($"{dir} is not inside a git work tree");
         var repo = Git.Leaf(top)!;
-        return Commit(top, repo, module ?? repo, Actor(top), rev);
+        return Commit(top, repo, module ?? Git.ModuleOf(top)!, Actor(top), rev);
     }
 
     private static BrainEvent Commit(string top, string repo, string module, string actor, string rev = "HEAD")

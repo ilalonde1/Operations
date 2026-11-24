@@ -57,7 +57,7 @@ public static partial class Program
                 "events" => Events(o, output, db),
                 "fresh" => Fresh(o, stdin, output, hook, db),
                 "recheck" => Recheck(o, output, db),
-                "record" => Record(o, output, db, board),
+                "record" => Record(o, output, error, db, board),
                 "memory" => Memory(o, output, db),
                 "capture-start" => CaptureStart(o, stdin, output, hook, db),
                 "capture-check" => CaptureCheck(o, stdin, output, hook, db),

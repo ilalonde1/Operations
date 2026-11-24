@@ -128,9 +128,15 @@ public static partial class Program
     /// | query:[brain:|board:]SELECT ... [--session S] [--body-file F] [--dir D]. The same live name is superseded. Writes a
     /// 'record' event (the K4 marker) in the same unit of work. Issues and resolutions are refused: they need a check.
     /// </summary>
-    private static int Record(Options o, TextWriter output, BrainDb? db, BrainDb? board)
+    private static int Record(Options o, TextWriter output, TextWriter error, BrainDb? db, BrainDb? board)
     {
         var lane = o.Get("--module") ?? throw new ArgumentException("record needs --module <lane>");
+        var where = o.Get("--dir") ?? Environment.CurrentDirectory;
+        if (Enroll.EnrollCheck.WorktreeModule(lane, where) is { } main)
+        {
+            error.WriteLine($"--module {lane} is a worktree of {main}: use --module \"{main}\"");
+            return 1;
+        }
         var kind = o.Get("--kind") ?? throw new ArgumentException("record needs --kind finding|decision|dead-end|lesson|reference");
         if (kind is "issue" or "resolution")
             throw new RecordRefusedException($"kind '{kind}' is not written by kor record: an issue is written by `kor issue` " +
@@ -142,7 +148,6 @@ public static partial class Program
         var src = o.Get("--source") ?? throw new ArgumentException("record needs --source git:path[@rev] | run:<event id> | query:SELECT ...");
         var session = o.Get("--session") ?? BrainStore.CurrentSession();
         var by = Who(session);
-        var where = o.Get("--dir") ?? Environment.CurrentDirectory;
         if (kind == "lesson")
         {
             // row 1997, Office #131857: the check is named and proven to exist BEFORE anything is written; it lands on the record
