@@ -26,7 +26,7 @@ public static partial class Program
         var module = o.Get("--module") ?? throw new ArgumentException("enforce needs --module <lane>");
         var raw = stdin();
         if (string.IsNullOrWhiteSpace(raw)) { if (!hook) output.WriteLine("allow: no hook input"); return 0; }
-        string? tool, input, cwd, session, scratch;
+        string? tool, input, cwd, session, scratch, agent, transcript;
         try
         {
             using var doc = JsonDocument.Parse(raw);
@@ -36,6 +36,8 @@ public static partial class Program
             cwd = Str(root, "cwd");
             session = Str(root, "session_id");
             scratch = Str(root, "scratchpad_dir");
+            agent = Str(root, "agent_id");
+            transcript = Str(root, "transcript_path");
             input = null;
             if (tool is not null && root.TryGetProperty("tool_input", out var ti) && ti.ValueKind == JsonValueKind.Object)
                 input = Str(ti, Rules.InputFieldOf(tool));
@@ -52,7 +54,30 @@ public static partial class Program
         if (SqlWriteCutRefusal(tool, input, cwd, session, output, hook, board, Log)) return 0;
         IReadOnlyList<LiveCheck>? checks;
         string source;
-        if (db is not null) { checks = CheckStore.Live(db).Select(s => s.Check).ToList(); source = "db (caller's)"; }
+        var mainSession = string.IsNullOrEmpty(agent) && transcript?.Replace('\\', '/').Contains("/subagents/", StringComparison.OrdinalIgnoreCase) != true;
+        if (mainSession && SessionRoles.ValidSession(session))
+        {
+            var cacheDir = o.Get("--cache-dir") ?? CheckCache.DefaultDir;
+            var start = CheckCache.LoadRole(cacheDir, session!)?.StartFolder
+                ?? Environment.GetEnvironmentVariable("CLAUDE_PROJECT_DIR") ?? RoleOrigin(transcript) ?? cwd;
+            SessionRoles.Role? role;
+            if (db is not null)
+            {
+                var combined = CheckStore.LiveForSession(db, session!);
+                (checks, role) = combined;
+                source = "db (caller's, checks and role)";
+            }
+            else
+            {
+                var cached = CheckCache.GetSession(cacheDir, session!, start,
+                    () => BrainDb.Read3s(d => CheckStore.LiveForSession(d, session!)), DateTimeOffset.UtcNow, Log, out source);
+                checks = cached.Checks;
+                role = cached.Role;
+                start = cached.StartFolder;
+            }
+            if (CoordinatorRoleRefusal(o, raw, role?.Name, start, cwd, session, transcript, output, hook, db, board, Log)) return 0;
+        }
+        else if (db is not null) { checks = CheckStore.Live(db).Select(s => s.Check).ToList(); source = "db (caller's)"; }
         else
             checks = CheckCache.Get(o.Get("--cache-dir") ?? CheckCache.DefaultDir,
                 () => BrainDb.Read3s(d => CheckStore.Live(d).Select(s => s.Check).ToList()), DateTimeOffset.UtcNow, Log, out source);

@@ -66,6 +66,7 @@ public static partial class Program
                 "resolve" => Resolve(o, output, db),
                 "start" => StartVerb(o, stdin, output, hook, db, hookErrorLog),
                 "enforce" => EnforceVerb(o, stdin, output, hook, db, board, hookErrorLog),
+                "role" => RoleVerb(o, output, db),
                 "check-add" => CheckAdd(o, output, db),
                 "check-retire" => CheckRetire(o, output, db),
                 "check-test" => CheckTest(o, output, db),
@@ -569,6 +570,7 @@ public static partial class Program
         error.WriteLine("       kor check --module M [--issue N] [--resolved] [--kinds test,gate,query] [--timeout S] | kor check --commit-hook [--dir D]");
         error.WriteLine("       kor resolve --issue N --because \"...\"   (a source-checked issue whose file changed)");
         error.WriteLine("       kor enforce --module M --hook   (PreToolUse JSON on stdin; Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit)");
+        error.WriteLine("       kor role set worker|coordinator --session ID [--because TEXT] | role show --session ID | role replay <transcript.jsonl>   (role history, origin and read-only replay)");
         error.WriteLine("       kor check-add --memory ID --module M|Office --tool Bash[,PowerShell] --pattern P --refuse E [--refuse E2]... --allow A [--allow A2]... --says S");
         error.WriteLine("       kor check-retire <id> --because \"...\" | kor check-test [--module M] [--tool T --command C|--path P [--cwd D]] | kor checks [--module M] [--hits N]");
         error.WriteLine("       kor secret-scan [--explain] [--offsets]   (read-only: ids and counts of brain rows holding a credential value; --offsets adds offset, length and the 40 characters BEFORE each value)");

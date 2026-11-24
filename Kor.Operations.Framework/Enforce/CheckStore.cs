@@ -1,5 +1,6 @@
 using System.Data;
 using System.Text.Json;
+using Microsoft.Data.SqlClient;
 using Kor.Operations.Framework.Capture;
 using Kor.Operations.Framework.Records;
 
@@ -27,6 +28,22 @@ public static class CheckStore
     {
         using var c = db.Command($"SELECT {LiveColumns} FROM brain.vw_LiveCheck ORDER BY Id", 5);
         using var r = c.ExecuteReader();
+        return ReadLive(r);
+    }
+
+    /// <summary>One SQL round trip for both the existing checks and this session's latest role, once per cache refresh.</summary>
+    public static (List<LiveCheck> Checks, SessionRoles.Role? Role) LiveForSession(BrainDb db, string session)
+    {
+        using var c = db.Command($"SELECT {LiveColumns} FROM brain.vw_LiveCheck ORDER BY Id; " + SessionRoles.SelectSql, 5);
+        c.Parameters.Add("@roleSession", SqlDbType.NVarChar, 64).Value = session;
+        using var r = c.ExecuteReader();
+        var checks = ReadLive(r).Select(s => s.Check).ToList();
+        r.NextResult();
+        return (checks, SessionRoles.ReadRow(r));
+    }
+
+    private static IReadOnlyList<StoredCheck> ReadLive(SqlDataReader r)
+    {
         var rows = new List<StoredCheck>();
         while (r.Read())
             rows.Add(new StoredCheck(new LiveCheck(r.GetInt32(0), r.GetInt32(1), r.GetString(2), r.GetString(3), r.GetString(4), r.GetString(5),
@@ -130,7 +147,7 @@ public static class CheckStore
 /// can still refuse from the fallback until a successful refresh. The cache is not proof of current authority.
 /// Concurrent processes at expiry can each refresh; the file cache does not serialize database reads.
 /// </summary>
-public static class CheckCache
+public static partial class CheckCache
 {
     public static readonly string DefaultDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KOR");
 
