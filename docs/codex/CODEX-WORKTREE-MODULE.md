@@ -56,7 +56,9 @@ modules go wrong.
    It must work for worktree folders that no longer exist (7 of the 14 are gone: -integration, -plan, -quantities, -wt-*).
 5. The existing 86: do NOT write the live database. Put in the response a reviewed SQL script, transactional: a SELECT
    listing the ids it will move (expect 86), `UPDATE brain.Memory SET Lane = 'KOR.Drafter' WHERE Lane LIKE 'KOR.Drafter-%'`
-   restricted to those ids, changing Lane ONLY (not SourceRepo, not Name, not bodies), and a read-back count. Check and
+   restricted to those ids, changing Lane ONLY (not SourceRepo, not Name, not bodies), and a read-back count. The id list
+   is captured into a table variable BEFORE the UPDATE; the UPDATE joins on it, and the transaction ROLLS BACK unless
+   @@ROWCOUNT equals the captured count (and that count equals the number the coordinator states when running it). Check and
    state: no Name collision with lane KOR.Drafter (coordinator read 0 on 24 Nov), whether anything else keys on Lane
    (vw_ModuleState, LaneState, Check, Freshness, supersede-by-name) and what the move does to each. Ian decided all 86
    go to KOR.Drafter (#139795), including the 25 in KOR.Drafter-step5 written by Framework sessions. The coordinator
