@@ -43,7 +43,7 @@ prompt record (and one with a prompt record but no corroborating transcript line
 ## Known gap, NOT to fix now (state it in the response)
 An unexpected parser exception in the enforce hook (Program.Enforce.cs:154-170) falls to the hook-failure path, which
 allows. Kept deliberately: a guard that refuses everything on its own crash is the deadlock class Ian has already paid
-for. Log it as a GuardRefusal-style row? No - just state it.
+for. Do not change it and do not add logging for it; state it in the response's rule 11.
 
 ## How (as round 1)
 Cases first, committed alone (`budget stop round 2 A: cases (codex)`), each failing on cbb8d063; then the change
