@@ -238,7 +238,7 @@ public class K7Tests
         Assert.DoesNotContain("Zx9vQ2mT", rd.GetString(0));
         Assert.StartsWith("zzk7tool --danger", rd.GetString(0));
         Assert.Equal("zz-k7-session", rd.GetString(1));
-        Assert.Equal(Git.Leaf(Git.TopLevel(RepoDir())), rd.GetString(2));   // the checkout's own folder name (review row 227)
+        Assert.Equal(Git.ModuleOf(RepoDir()), rd.GetString(2));   // refusals are judged per main repo, across its worktrees
         rd.Close();
         // kor checks --hits reads it
         var (code, o, e) = Run(db, board, null, "checks", "--module", Module, "--hits", "1");
