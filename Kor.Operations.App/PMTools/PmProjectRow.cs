@@ -19,6 +19,20 @@ namespace Kor.Operations.PMTools
         public string ConstructionType { get; private set; } = "";
         public string ProjectCategory { get; private set; } = "";
         public string DraftingType { get; private set; } = "";
+
+        /// <summary>Spec R7 (Jim 13 Mar 17:45, 9 Nov 0:03:16): CAD or Revit, from Deltek
+        /// CustDraftingType, which holds "CAD", "RV" or nothing (read 26 Nov: 22 / 23 / 16 of 61
+        /// active hot-list projects). Blank when Deltek has no value.</summary>
+        public string DraftingSoftware => DraftingSoftwareLabel(DraftingType);
+
+        internal static string DraftingSoftwareLabel(string? draftingType)
+        {
+            var t = (draftingType ?? "").Trim();
+            if (t.Equals("RV", StringComparison.OrdinalIgnoreCase) || t.Equals("Revit", StringComparison.OrdinalIgnoreCase)) return "Revit";
+            if (t.Equals("CAD", StringComparison.OrdinalIgnoreCase)) return "CAD";
+            return t;
+        }
+
         public double Gfa { get; private set; }
         public double Fee { get; private set; }
         public double FeeBilled { get; private set; }

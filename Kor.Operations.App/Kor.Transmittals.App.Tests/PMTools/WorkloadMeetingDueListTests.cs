@@ -90,6 +90,15 @@ public sealed class WorkloadMeetingDueListTests
         Assert.Equal(new[] { "Y", "Z", "X" }, due.Select(r => r.Wbs1));
     }
 
+    [Theory]
+    [InlineData("RV", "Revit")]
+    [InlineData(" rv ", "Revit")]
+    [InlineData("CAD", "CAD")]
+    [InlineData("", "")]
+    [InlineData(null, "")]
+    public void DraftingSoftware_ReadsDeltekCodes(string? deltek, string shown)
+        => Assert.Equal(shown, Kor.Operations.PMTools.PmProjectRow.DraftingSoftwareLabel(deltek));
+
     [Fact]
     public void NextDeadlineWhat_JoinsIssueAndRemarks()
     {

@@ -996,6 +996,8 @@
                                                     <DataGridTextColumn Header="Project #" Binding="{Binding Wbs1}" Width="100" IsReadOnly="True"/>
                                                     <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="260" IsReadOnly="True"/>
                                                     <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="60" IsReadOnly="True"/>
+                                                    <!-- Spec R7: CAD or Revit, shown in Meeting Mode too -->
+                                                    <DataGridTextColumn Header="CAD/Revit" Binding="{Binding DraftingSoftware, Mode=OneWay}" Width="75" IsReadOnly="True"/>
                                                     <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat={}{0:$#,##0}}" Width="90" IsReadOnly="True"
                                                                         Visibility="{Binding Data.IsMeetingMode, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
                                                         <DataGridTextColumn.HeaderStyle>
@@ -1038,8 +1040,8 @@
                                                             </DataTemplate>
                                                         </DataGridTemplateColumn.CellTemplate>
                                                     </DataGridTemplateColumn>
-                                                    <DataGridTextColumn Header="Drafting Mgr" Binding="{Binding DraftingManager}" Width="150" IsReadOnly="True"
-                                                                        Visibility="{Binding Data.IsMeetingMode, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
+                                                    <!-- Spec R8: visible in Meeting Mode too (was hidden there) -->
+                                                    <DataGridTextColumn Header="Drafting Mgr" Binding="{Binding DraftingManager}" Width="150" IsReadOnly="True">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftingMgr}"/>

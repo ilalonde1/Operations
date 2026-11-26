@@ -564,9 +564,34 @@ namespace Kor.Operations.PMTools
             // VM's CurrentProjects (the canonical source) before awaiting.
             // (This fix lived in PmCapacityWindow's handler and was dropped when
             // Round 48b moved the meeting board here — restored verbatim.)
-            var previousPriority = _meetingPanel.CurrentProjects
-                .FirstOrDefault(p => string.Equals(p.Wbs1, row.Wbs1, StringComparison.OrdinalIgnoreCase))?.Priority ?? 0;
+            var previous = _meetingPanel.CurrentProjects
+                .FirstOrDefault(p => string.Equals(p.Wbs1, row.Wbs1, StringComparison.OrdinalIgnoreCase));
+            var previousPriority = previous?.Priority ?? 0;
             var attemptedPriority = priority;
+
+            // Spec R16 fault: a job's meeting note is stored on its priority row, and the
+            // table only holds P1-P5 (CHECK Priority BETWEEN 1 AND 5), so clearing the
+            // priority deletes the row and the note with it. Ask before that happens.
+            if (priority == 0 && previousPriority > 0 && !string.IsNullOrWhiteSpace(previous?.Notes))
+            {
+                var answer = MessageBox.Show(this,
+                    $"{row.Wbs1} has a meeting note:\n\n\"{previous!.Notes!.Trim()}\"\n\n" +
+                    "Clearing its priority removes the job from this meeting and deletes the note. Clear it?",
+                    "Clear priority and delete the note?",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+                if (answer != MessageBoxResult.Yes)
+                {
+                    // Revert after this SelectionChanged unwinds: setting the bound source
+                    // while the ComboBox is still pushing its own value would be overwritten.
+                    _ = Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        _isSyncingMeetingPriorities = true;
+                        try { row.MeetingPriority = previousPriority; }
+                        finally { _isSyncingMeetingPriorities = false; }
+                    }), System.Windows.Threading.DispatcherPriority.Background);
+                    return;
+                }
+            }
 
             var ok = await _meetingPanel.UpsertPriorityFromUiAsync(row.Wbs1, priority);
             if (!ok)
