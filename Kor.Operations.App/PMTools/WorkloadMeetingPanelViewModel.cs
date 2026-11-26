@@ -163,13 +163,130 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         foreach (var existing in PriorityProjects)
             existing.NotesChanged -= OnProjectNotesChanged;
 
+        // Callers pass lazy Selects that build new rows on every enumeration: materialise once
+        // so the deadline lands on the same instances that are added.
+        var list = rows.ToList();
         PriorityProjects.Clear();
 
-        foreach (var row in ApplySortOrder(rows))
+        foreach (var row in list)
+        {
+            row.NextDeadline = _deadlines.TryGetValue(row.Wbs1, out var d) ? d : null;
+        }
+
+        foreach (var row in ApplySortOrder(list))
         {
             row.NotesChanged += OnProjectNotesChanged;
             PriorityProjects.Add(row);
         }
+        RebuildDueLists();
+    }
+
+    // ── Spec R1-R5 (docs/KOR-PMTools-Redesign-Spec-2026-11-26.md): the top list ──
+    // Every prioritised (P1-P5) project of the meeting, split by its next Deltek deadline:
+    // due inside the look-ahead window (date order), or with no future deadline at all.
+    // Projects whose next deadline is beyond the window are counted, not listed.
+    // DueProjects and NoDeadlineProjects hold the SAME row instances as PriorityProjects,
+    // so notes typed in either list save through the existing NotesChanged path.
+
+    private System.Collections.Generic.IReadOnlyDictionary<string, Kor.Operations.Financials.ProjectDeadline> _deadlines
+        = new System.Collections.Generic.Dictionary<string, Kor.Operations.Financials.ProjectDeadline>(StringComparer.OrdinalIgnoreCase);
+    private int _lookAheadWeeks = 2;
+    private int _laterThanWindowCount;
+    private string? _deadlinesError;
+
+    /// <summary>The window choices offered (spec D3).</summary>
+    public int[] LookAheadChoices { get; } = { 2, 3, 4, 6 };
+
+    /// <summary>Look-ahead window in weeks; default two (spec D3).</summary>
+    public int LookAheadWeeks
+    {
+        get => _lookAheadWeeks;
+        set
+        {
+            if (value <= 0 || _lookAheadWeeks == value) return;
+            _lookAheadWeeks = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(DueListTitle));
+            RebuildDueLists();
+        }
+    }
+
+    public string DueListTitle => $"Due in the next {LookAheadWeeks} weeks";
+
+    public ObservableCollection<WorkloadMeetingProjectRow> DueProjects { get; } = new();
+
+    public ObservableCollection<WorkloadMeetingProjectRow> NoDeadlineProjects { get; } = new();
+
+    public bool HasDueProjects => DueProjects.Count > 0;
+
+    public bool HasNoDeadlineProjects => NoDeadlineProjects.Count > 0;
+
+    public string NoDeadlineTitle => $"No deadline in Deltek ({NoDeadlineProjects.Count})";
+
+    public int LaterThanWindowCount => _laterThanWindowCount;
+
+    public string LaterThanWindowText => _laterThanWindowCount == 0
+        ? ""
+        : $"{_laterThanWindowCount} prioritised project{(_laterThanWindowCount == 1 ? "" : "s")} due later than {LookAheadWeeks} weeks";
+
+    /// <summary>Set when the Deltek deadline read failed; the list then shows every prioritised
+    /// project as having no deadline, so the message says why.</summary>
+    public string? DeadlinesError
+    {
+        get => _deadlinesError;
+        private set { _deadlinesError = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasDeadlinesError)); }
+    }
+
+    public bool HasDeadlinesError => !string.IsNullOrEmpty(_deadlinesError);
+
+    /// <summary>Install the next-deadline lookup (WBS1 -> deadline) read from Deltek, and
+    /// re-split the current rows. Call on the UI thread.</summary>
+    public void SetDeadlines(System.Collections.Generic.IReadOnlyDictionary<string, Kor.Operations.Financials.ProjectDeadline>? deadlines, string? error = null)
+    {
+        _deadlines = deadlines
+            ?? new System.Collections.Generic.Dictionary<string, Kor.Operations.Financials.ProjectDeadline>(StringComparer.OrdinalIgnoreCase);
+        DeadlinesError = error;
+        SetPriorityProjectRows(PriorityProjects.ToList());
+    }
+
+    private void RebuildDueLists()
+    {
+        var split = SplitByDeadline(PriorityProjects, DateTime.Today, LookAheadWeeks);
+        DueProjects.Clear();
+        foreach (var r in split.Due) DueProjects.Add(r);
+        NoDeadlineProjects.Clear();
+        foreach (var r in split.NoDeadline) NoDeadlineProjects.Add(r);
+        _laterThanWindowCount = split.LaterCount;
+        OnPropertyChanged(nameof(HasDueProjects));
+        OnPropertyChanged(nameof(HasNoDeadlineProjects));
+        OnPropertyChanged(nameof(NoDeadlineTitle));
+        OnPropertyChanged(nameof(LaterThanWindowCount));
+        OnPropertyChanged(nameof(LaterThanWindowText));
+    }
+
+    /// <summary>The split behind the top list, kept pure for tests. Only P1-P5 rows count.
+    /// Due: next deadline on or before today + weeks*7 days, ordered by date, then priority,
+    /// then name. No deadline: no future deadline, ordered by priority then name.</summary>
+    internal static (System.Collections.Generic.List<WorkloadMeetingProjectRow> Due,
+                     System.Collections.Generic.List<WorkloadMeetingProjectRow> NoDeadline,
+                     int LaterCount)
+        SplitByDeadline(System.Collections.Generic.IEnumerable<WorkloadMeetingProjectRow> rows, DateTime today, int weeks)
+    {
+        var end = today.Date.AddDays(weeks * 7);
+        var prioritised = rows.Where(r => r.Priority >= 1 && r.Priority <= 5).ToList();
+        var due = prioritised
+            .Where(r => r.NextDeadline is not null && r.NextDeadline.Date.Date <= end)
+            .OrderBy(r => r.NextDeadline!.Date)
+            .ThenBy(r => r.Priority)
+            .ThenBy(r => r.ProjectName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var none = prioritised
+            .Where(r => r.NextDeadline is null)
+            .OrderBy(r => r.Priority)
+            .ThenBy(r => r.ProjectName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var later = prioritised.Count(r => r.NextDeadline is not null && r.NextDeadline.Date.Date > end);
+        return (due, none, later);
     }
 
     /// <summary>

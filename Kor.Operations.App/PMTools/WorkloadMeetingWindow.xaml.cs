@@ -119,6 +119,7 @@ namespace Kor.Operations.PMTools
 
             await _meetingPanel.LoadAsync();
             SyncMeetingPrioritiesToRows();
+            await LoadDeadlinesAsync();
 
             // Round 52i: open in the simple meeting view with every PM expanded.
             // The PmGroups.CollectionChanged handler covers the fresh-load path;
@@ -149,6 +150,27 @@ namespace Kor.Operations.PMTools
             _cts = new CancellationTokenSource();
             await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
             SyncMeetingPrioritiesToRows();
+            await LoadDeadlinesAsync();
+        }
+
+        // Spec R2/R4: next deadline per project from Deltek Projects_Deadlines, for the top list.
+        // A failed read leaves every prioritised project under "No deadline in Deltek" and says why.
+        private async Task LoadDeadlinesAsync()
+        {
+            try
+            {
+                var svc = Kor.Operations.Services.AppServices.Get<FinancialsService>();
+                var deadlines = await svc.GetNextDeadlinesAsync(_cts?.Token ?? CancellationToken.None);
+                _meetingPanel.SetDeadlines(deadlines);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Workload Meeting: Deltek deadline read failed.");
+                _meetingPanel.SetDeadlines(null, "Could not read deadlines from Deltek: " + ex.Message);
+            }
         }
 
         private async void DeleteMeetingBtn_Click(object sender, RoutedEventArgs e)
@@ -580,12 +602,21 @@ namespace Kor.Operations.PMTools
         {
             if (sender is not Button { DataContext: Kor.Operations.App.PMTools.WorkloadMeetingPriorityChip chip }) return;
 
-            var target = _meetingPanel.PriorityProjects.FirstOrDefault(p => p.Priority == chip.Priority);
+            // Spec R1: the top list is now split into "due in the window" and "no deadline";
+            // a project due later than the window is in neither, so jump to the first
+            // listed one at this priority, due list first.
+            var target = _meetingPanel.DueProjects.FirstOrDefault(p => p.Priority == chip.Priority);
+            var list = PriorityListItems;
+            if (target == null)
+            {
+                target = _meetingPanel.NoDeadlineProjects.FirstOrDefault(p => p.Priority == chip.Priority);
+                list = NoDeadlineListItems;
+            }
             if (target == null) return;
 
-            // The priority list ItemsControl is not virtualized, so its
-            // containers are realized — bring the row into view directly.
-            if (PriorityListItems.ItemContainerGenerator.ContainerFromItem(target) is FrameworkElement fe)
+            // The ItemsControls are not virtualized, so their containers are
+            // realized — bring the row into view directly.
+            if (list.ItemContainerGenerator.ContainerFromItem(target) is FrameworkElement fe)
                 fe.BringIntoView();
         }
 

@@ -111,6 +111,67 @@ namespace Kor.Operations.Financials
             return await Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// PM Tools spec R2/R4 (docs/KOR-PMTools-Redesign-Spec-2026-11-26.md): each project's
+        /// next deadline, read from Deltek's Projects_Deadlines grid (the same table the Monday
+        /// "Weekly Project Deadlines" email reads). Next = the earliest row dated today or later
+        /// that is not marked completed, across all of the project's WBS2/WBS3 rows. Keyed on WBS1.
+        /// </summary>
+        public async Task<IReadOnlyDictionary<string, ProjectDeadline>> GetNextDeadlinesAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
+            var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
+                              () => new Dictionary<string, string>());
+
+            return await Task.Run(() => LoadNextDeadlinesSync(factory, catalog, DateTime.Today, ct), ct).ConfigureAwait(false);
+        }
+
+        private static IReadOnlyDictionary<string, ProjectDeadline> LoadNextDeadlinesSync(
+            VpOdbcDsnFactory factory, string catalog, DateTime today, CancellationToken ct)
+        {
+            var rows = new List<ProjectDeadline>();
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (deadlines).", ex); }
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT d.WBS1, d.CustDateExpected, d.CustIssue, d.CustRemarks
+FROM [{catalog}].dbo.Projects_Deadlines d
+WHERE d.CustDateExpected >= ?
+  AND d.CustDateCompleted IS NULL";
+            var p = cmd.CreateParameter();
+            p.Value = today.Date;
+            cmd.Parameters.Add(p);
+
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                if (r.IsDBNull(0) || r.IsDBNull(1)) continue;
+                rows.Add(new ProjectDeadline(
+                    r.GetString(0).Trim(),
+                    r.GetDateTime(1),
+                    r.IsDBNull(2) ? "" : r.GetString(2).Trim(),
+                    r.IsDBNull(3) ? "" : r.GetString(3).Trim()));
+            }
+            return PickNextDeadlines(rows);
+        }
+
+        /// <summary>Earliest deadline per WBS1 (ties: first by issue name, so the pick is stable).</summary>
+        internal static IReadOnlyDictionary<string, ProjectDeadline> PickNextDeadlines(IEnumerable<ProjectDeadline> rows)
+            => rows
+                .Where(d => !string.IsNullOrWhiteSpace(d.Wbs1))
+                .GroupBy(d => d.Wbs1, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderBy(d => d.Date).ThenBy(d => d.Issue, StringComparer.OrdinalIgnoreCase).First(),
+                    StringComparer.OrdinalIgnoreCase);
+
         private async Task<FinancialsSnapshot> LoadSnapshotAsync(CancellationToken ct, bool watchlistOnly = true)
         {
             var refreshedAt = DateTimeOffset.Now;

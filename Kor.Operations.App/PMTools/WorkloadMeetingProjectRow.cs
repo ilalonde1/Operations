@@ -16,6 +16,28 @@ public sealed class WorkloadMeetingProjectRow : INotifyPropertyChanged
     public string ProjectName { get; set; } = string.Empty;
     public string PmName { get; set; } = string.Empty;
 
+    /// <summary>Spec R2/R4: the project's next deadline from Deltek Projects_Deadlines, or null
+    /// when none is dated today or later. Set by WorkloadMeetingPanelViewModel.</summary>
+    public Kor.Operations.Financials.ProjectDeadline? NextDeadline { get; set; }
+
+    public bool HasNextDeadline => NextDeadline is not null;
+
+    public string NextDeadlineDateText => NextDeadline?.Date.ToString("ddd d MMM") ?? "";
+
+    /// <summary>"Progress - 60% Progress": the issue type and the PM's remark, whichever exist.</summary>
+    public string NextDeadlineWhat
+    {
+        get
+        {
+            if (NextDeadline is null) return "";
+            var issue = NextDeadline.Issue;
+            var remarks = NextDeadline.Remarks;
+            if (issue.Length == 0) return remarks;
+            if (remarks.Length == 0) return issue;
+            return issue + " - " + remarks;
+        }
+    }
+
     public string Notes
     {
         get => _notes;

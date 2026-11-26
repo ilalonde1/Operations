@@ -384,127 +384,183 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Title + priority-count chips -->
+                    <!-- Spec R1-R5 (docs/KOR-PMTools-Redesign-Spec-2026-11-26.md, Jim 9 Nov):
+                         replaces "This Meeting's Priorities". Every prioritised (P1-P5)
+                         project, ordered by its next deadline in Deltek Projects_Deadlines
+                         inside the chosen window; prioritised projects with no future
+                         deadline are listed underneath so the gap shows in the room.
+                         Filter-independent, like the block it replaces. -->
                     <Grid Grid.Row="0" Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="This Meeting's Priorities" FontWeight="SemiBold" FontSize="14"
+                        <TextBlock Grid.Column="0" Text="Due in the next" FontWeight="SemiBold" FontSize="14"
                                    VerticalAlignment="Center"/>
-                        <ItemsControl Grid.Column="1" ItemsSource="{Binding PriorityChips}"
-                                      VerticalAlignment="Center" HorizontalAlignment="Left" Margin="14,0,0,0">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Button Click="PriorityChip_Click" Margin="0,0,6,0" Cursor="Hand"
-                                            ToolTip="Jump to the first project at this priority in the list below">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{Binding ColorHex, Converter={StaticResource StringToBrush}}"
-                                                        CornerRadius="4" Padding="8,3">
-                                                    <TextBlock Text="{Binding Label}" Foreground="White"
-                                                               FontWeight="Bold" FontSize="11"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <ComboBox Grid.Column="1" Margin="6,0,6,0" MinWidth="60" VerticalAlignment="Center"
+                                  ItemsSource="{Binding LookAheadChoices}"
+                                  SelectedItem="{Binding LookAheadWeeks, Mode=TwoWay}"
+                                  ToolTip="How far ahead to look for deadlines"/>
+                        <TextBlock Grid.Column="2" Text="weeks" FontWeight="SemiBold" FontSize="14"
+                                   VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
+                            <ItemsControl ItemsSource="{Binding PriorityChips}" VerticalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Click="PriorityChip_Click" Margin="0,0,6,0" Cursor="Hand"
+                                                ToolTip="Jump to the first project at this priority in the list below">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{Binding ColorHex, Converter={StaticResource StringToBrush}}"
+                                                            CornerRadius="4" Padding="8,3">
+                                                        <TextBlock Text="{Binding Label}" Foreground="White"
+                                                                   FontWeight="Bold" FontSize="11"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding LaterThanWindowText}" Margin="8,0,0,0" FontSize="12"
+                                       Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
+                        </StackPanel>
                     </Grid>
 
-                    <!-- Empty state -->
-                    <TextBlock Grid.Row="1"
-                               Text="No priorities set yet. Use the Priority dropdown on any project in the list below to assign P1&#x2013;P5 — it appears here."
-                               Foreground="{StaticResource Text.Secondary}" FontSize="12" FontStyle="Italic"
-                               TextWrapping="Wrap">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding HasPriorityProjects}" Value="False">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                    <!-- Messages: Deltek read failed, or nothing prioritised yet -->
+                    <StackPanel Grid.Row="1">
+                        <TextBlock Text="{Binding DeadlinesError}" Foreground="#B91C1C" FontSize="12" TextWrapping="Wrap"
+                                   Margin="0,0,0,4"
+                                   Visibility="{Binding HasDeadlinesError, Converter={StaticResource BoolToVisibility}}"/>
+                        <TextBlock Text="No priorities set yet. Use the Priority dropdown on any project in the list below to assign P1&#x2013;P5; it appears here, by its next Deltek deadline."
+                                   Foreground="{StaticResource Text.Secondary}" FontSize="12" FontStyle="Italic"
+                                   TextWrapping="Wrap">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasPriorityProjects}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
 
-                    <!-- Column headers -->
-                    <Grid Grid.Row="1" Margin="0,0,0,4"
-                          Visibility="{Binding HasPriorityProjects, Converter={StaticResource BoolToVisibility}}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="52"/>
-                            <ColumnDefinition Width="240"/>
-                            <ColumnDefinition Width="160"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Priority" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
-                        <TextBlock Grid.Column="1" Text="Project" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
-                        <TextBlock Grid.Column="2" Text="PM" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
-                        <TextBlock Grid.Column="3" Text="Notes" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
-                    </Grid>
-
-                    <!-- Prioritized projects, filter-independent. Fills the top
-                         pane and scrolls; the splitter controls how tall it is. -->
                     <ScrollViewer Grid.Row="2"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   Visibility="{Binding HasPriorityProjects, Converter={StaticResource BoolToVisibility}}">
-                        <ItemsControl x:Name="PriorityListItems" ItemsSource="{Binding PriorityProjects}"
-                                      HorizontalContentAlignment="Stretch">
-                            <ItemsControl.ItemContainerStyle>
-                                <Style TargetType="ContentPresenter">
-                                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
-                                </Style>
-                            </ItemsControl.ItemContainerStyle>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
+                        <StackPanel>
+                            <StackPanel.Resources>
+                                <DataTemplate x:Key="DueRowTemplate">
                                     <Border BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="0,7">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="92"/>
                                                 <ColumnDefinition Width="52"/>
-                                                <ColumnDefinition Width="240"/>
-                                                <ColumnDefinition Width="160"/>
+                                                <ColumnDefinition Width="230"/>
+                                                <ColumnDefinition Width="140"/>
+                                                <ColumnDefinition Width="210"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <Border Grid.Column="0" Background="{Binding PriorityBrush}"
+                                            <TextBlock Grid.Column="0" Text="{Binding NextDeadlineDateText}" FontWeight="SemiBold"
+                                                       FontSize="12" VerticalAlignment="Center"/>
+
+                                            <Border Grid.Column="1" Background="{Binding PriorityBrush}"
                                                     CornerRadius="4" Padding="8,3"
                                                     HorizontalAlignment="Left" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding PriorityLabel}" Foreground="White"
                                                            FontWeight="Bold" FontSize="13"/>
                                             </Border>
 
-                                            <StackPanel Grid.Column="1" Margin="8,0,8,0" VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="2" Margin="8,0,8,0" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Wbs1}" FontWeight="SemiBold" FontSize="12"/>
                                                 <TextBlock Text="{Binding ProjectName}" FontSize="11"
                                                            Foreground="#374151" TextTrimming="CharacterEllipsis"/>
                                             </StackPanel>
 
-                                            <TextBlock Grid.Column="2" Text="{Binding PmName}" FontSize="12"
+                                            <TextBlock Grid.Column="3" Text="{Binding PmName}" FontSize="12"
                                                        Foreground="#374151" VerticalAlignment="Center"
                                                        Margin="0,0,8,0" TextTrimming="CharacterEllipsis"/>
 
-                                            <TextBox Grid.Column="3"
+                                            <TextBlock Grid.Column="4" Text="{Binding NextDeadlineWhat}" FontSize="12"
+                                                       Foreground="#374151" VerticalAlignment="Center"
+                                                       Margin="0,0,8,0" TextWrapping="Wrap"/>
+
+                                            <TextBox Grid.Column="5"
                                                      Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
                                                      FontSize="12" MinHeight="56"
                                                      TextWrapping="Wrap" AcceptsReturn="True"
                                                      VerticalContentAlignment="Top"
                                                      VerticalScrollBarVisibility="Auto"
                                                      HorizontalAlignment="Stretch"
-                                                     IsEnabled="{Binding DataContext.IsCurrentMeeting, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                     ToolTip="Notes for this project — saved automatically"/>
+                                                     IsEnabled="{Binding DataContext.IsCurrentMeeting, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"
+                                                     ToolTip="Notes for this project, saved automatically"/>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </StackPanel.Resources>
+
+                            <!-- Column headers -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="92"/>
+                                    <ColumnDefinition Width="52"/>
+                                    <ColumnDefinition Width="230"/>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="210"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Due" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Grid.Column="1" Text="Priority" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Grid.Column="2" Text="Project" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="8,0,0,0"/>
+                                <TextBlock Grid.Column="3" Text="PM" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Grid.Column="4" Text="Deliverable (Deltek)" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Grid.Column="5" Text="Notes" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                            </Grid>
+
+                            <TextBlock Text="No prioritised project has a Deltek deadline in this window."
+                                       Foreground="{StaticResource Text.Secondary}" FontSize="12" FontStyle="Italic"
+                                       Margin="0,4,0,8">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasDueProjects}" Value="False">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <ItemsControl x:Name="PriorityListItems" ItemsSource="{Binding DueProjects}"
+                                          ItemTemplate="{StaticResource DueRowTemplate}"
+                                          HorizontalContentAlignment="Stretch"/>
+
+                            <!-- Prioritised, but nothing dated today or later in Deltek -->
+                            <StackPanel Margin="0,14,0,0"
+                                        Visibility="{Binding HasNoDeadlineProjects, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="{Binding NoDeadlineTitle}" FontWeight="SemiBold" FontSize="13"
+                                           Foreground="#B45309"/>
+                                <TextBlock Text="Prioritised, but no deadline dated today or later in Deltek. Enter the next deadline in the project's Deadlines grid in Deltek to place the job above."
+                                           FontSize="11" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"
+                                           Margin="0,2,0,4"/>
+                                <ItemsControl x:Name="NoDeadlineListItems" ItemsSource="{Binding NoDeadlineProjects}"
+                                              ItemTemplate="{StaticResource DueRowTemplate}"
+                                              HorizontalContentAlignment="Stretch"/>
+                            </StackPanel>
+                        </StackPanel>
                     </ScrollViewer>
                 </Grid>
             </Border>
