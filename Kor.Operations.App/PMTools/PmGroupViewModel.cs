@@ -74,6 +74,31 @@ namespace Kor.Operations.PMTools
             TotalDraftBudget      = draftBudget;
             AtRiskOrCriticalCount = atRiskCount;
             Projects = projectList;
+            RecomputePrioritised();
+        }
+
+        // ── Spec R9 (Jim 9 Nov 0:05:21-0:06:31): totals over prioritised (P1-P5) jobs only,
+        // "because I don't want all the noise people are putting on here". Recomputed in place
+        // when meeting priorities change (WorkloadMeetingWindow.SyncMeetingPrioritiesToRows),
+        // so the group need not be rebuilt and the list does not jump during the meeting.
+        public int PrioritisedCount { get; private set; }
+        public double PrioritisedFee { get; private set; }
+        public double PrioritisedUnbilled { get; private set; }
+
+        public string PrioritisedSummary => PrioritisedCount == 0
+            ? "No prioritised jobs"
+            : $"Prioritised: {PrioritisedCount} · Fee {PrioritisedFee:C0} · Unbilled {PrioritisedUnbilled:C0}";
+
+        public void RecomputePrioritised()
+        {
+            var prioritised = Projects.Where(p => p.MeetingPriority >= 1 && p.MeetingPriority <= 5).ToList();
+            PrioritisedCount = prioritised.Count;
+            PrioritisedFee = prioritised.Sum(p => p.Fee);
+            PrioritisedUnbilled = prioritised.Sum(p => p.FeeRemaining);
+            OnPropertyChanged(nameof(PrioritisedCount));
+            OnPropertyChanged(nameof(PrioritisedFee));
+            OnPropertyChanged(nameof(PrioritisedUnbilled));
+            OnPropertyChanged(nameof(PrioritisedSummary));
         }
 
         private static int GetPhaseOrder(string? phase)

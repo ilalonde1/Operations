@@ -616,6 +616,11 @@
                           </StackPanel>
                           <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                               <TextBlock Text="Sort:" Foreground="{StaticResource Text.Secondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                              <!-- Spec R10: by unbilled fee of prioritised jobs (default); click again to re-sort -->
+                              <Button Content="Priority $" Click="SortByPrioritisedUnbilled_Click"
+                                      ToolTip="Unbilled fee of the prioritised (P1-P5) jobs, highest first. Click again to re-sort after setting priorities.">
+                                  <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsSortPrioritisedUnbilled}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                              </Button>
                               <Button Content="Fee" Click="SortByFee_Click">
                                   <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsSortFee}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
                               </Button>
@@ -686,6 +691,16 @@
                           <TextBox Width="320" MinHeight="30" Padding="10,0" VerticalContentAlignment="Center"
                                    Text="{Binding ProjectSearchText, UpdateSourceTrigger=PropertyChanged}"
                                    ToolTip="Filter the project listings by project name, number, or PM"/>
+                          <!-- Spec R14: the drafters' pass - group the same lists by drafting manager.
+                               On the Search line because the filter row above is full at normal widths. -->
+                          <TextBlock Text="Group:" Foreground="{StaticResource Text.Secondary}" FontSize="12" VerticalAlignment="Center" Margin="24,0,8,0"/>
+                          <Button Content="PMs" Click="GroupByPm_Click" ToolTip="One list per project manager">
+                              <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsGroupByPm}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                          </Button>
+                          <Button Content="Drafting Mgrs" Click="GroupByDraftingManager_Click"
+                                  ToolTip="The drafters' pass: one list per drafting manager">
+                              <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding GroupByDraftingManager}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                          </Button>
                       </StackPanel>
                     <ItemsControl Grid.Row="2" x:Name="PmGroupsList" ItemsSource="{Binding PmGroups}">
                             <ItemsControl.ItemTemplate>
@@ -724,6 +739,11 @@
                                                     <TextBlock Text="{Binding PmName}" FontWeight="SemiBold" FontSize="15"/>
                                                     <TextBlock Text="{Binding ProjectCount, StringFormat={}{0} projects}"
                                                                Foreground="{StaticResource Text.Secondary}"
+                                                               FontSize="11"
+                                                               Margin="0,2,0,0"/>
+                                                    <!-- Spec R9 (Jim 9 Nov 0:05:21): fee and unbilled over prioritised jobs only -->
+                                                    <TextBlock Text="{Binding PrioritisedSummary}"
+                                                               Foreground="#B45309" FontWeight="SemiBold"
                                                                FontSize="11"
                                                                Margin="0,2,0,0"/>
                                                 </StackPanel>

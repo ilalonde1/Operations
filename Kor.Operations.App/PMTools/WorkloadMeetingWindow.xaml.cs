@@ -119,6 +119,9 @@ namespace Kor.Operations.PMTools
 
             await _meetingPanel.LoadAsync();
             SyncMeetingPrioritiesToRows();
+            // Spec R10: the groups were built before the meeting's priorities reached the rows;
+            // sort them again now that "prioritised unbilled" can be read.
+            _vm.RebuildPmGroups();
             await LoadDeadlinesAsync();
 
             // Round 52i: open in the simple meeting view with every PM expanded.
@@ -150,6 +153,7 @@ namespace Kor.Operations.PMTools
             _cts = new CancellationTokenSource();
             await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
             SyncMeetingPrioritiesToRows();
+            _vm.RebuildPmGroups();
             await LoadDeadlinesAsync();
         }
 
@@ -227,6 +231,18 @@ namespace Kor.Operations.PMTools
         private void SortByUnbilled_Click(object sender, RoutedEventArgs e) => _vm.PmGroupSortMode = 3;
         private void SortByName_Click(object sender, RoutedEventArgs e) => _vm.PmGroupSortMode = 1;
         private void SortByAtRisk_Click(object sender, RoutedEventArgs e) => _vm.PmGroupSortMode = 2;
+
+        // Spec R10: clicking it again re-sorts, picking up priorities set since the last sort
+        // (priority edits deliberately do not re-sort, so the list does not jump mid-meeting).
+        private void SortByPrioritisedUnbilled_Click(object sender, RoutedEventArgs e)
+        {
+            if (_vm.IsSortPrioritisedUnbilled) _vm.RebuildPmGroups();
+            else _vm.PmGroupSortMode = 4;
+        }
+
+        // Spec R14: the drafters' pass - the same lists, grouped by drafting manager.
+        private void GroupByPm_Click(object sender, RoutedEventArgs e) => _vm.GroupByDraftingManager = false;
+        private void GroupByDraftingManager_Click(object sender, RoutedEventArgs e) => _vm.GroupByDraftingManager = true;
 
         private void ProjectGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
@@ -441,6 +457,10 @@ namespace Kor.Operations.PMTools
                     .ThenBy(r => r.ProjectName);
 
                 _meetingPanel.SetPriorityProjectRows(enrichedRows);
+
+                // Spec R9: refresh each group's prioritised totals in place (no rebuild, no jump).
+                foreach (var group in _vm.PmGroups)
+                    group.RecomputePrioritised();
             }
             finally
             {

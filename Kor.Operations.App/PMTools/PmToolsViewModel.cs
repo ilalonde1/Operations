@@ -37,7 +37,8 @@ namespace Kor.Operations.PMTools
         private string _selectedUtilizationRisk = "All";
         private string _utilizationSearchText = "";
         private int _capacityRiskViewIndex;
-        private int _pmGroupSortMode = 0;
+        private int _pmGroupSortMode = 4;
+        private bool _groupByDraftingManager;
         private double _engRate = 474;
         private double _draftRate = 655;
         private double _targetBilling = 185;
@@ -287,7 +288,7 @@ namespace Kor.Operations.PMTools
             get => _pmGroupSortMode;
             set
             {
-                var v = Math.Clamp(value, 0, 3);
+                var v = Math.Clamp(value, 0, 4);
                 if (_pmGroupSortMode == v) return;
                 _pmGroupSortMode = v;
                 OnPropertyChanged();
@@ -295,6 +296,7 @@ namespace Kor.Operations.PMTools
                 OnPropertyChanged(nameof(IsSortUnbilled));
                 OnPropertyChanged(nameof(IsSortName));
                 OnPropertyChanged(nameof(IsSortAtRisk));
+                OnPropertyChanged(nameof(IsSortPrioritisedUnbilled));
                 BuildPmGroups();
             }
         }
@@ -302,6 +304,40 @@ namespace Kor.Operations.PMTools
         public bool IsSortUnbilled => _pmGroupSortMode == 3;
         public bool IsSortName => _pmGroupSortMode == 1;
         public bool IsSortAtRisk => _pmGroupSortMode == 2;
+        /// <summary>Spec R10 / D4 (Jim 9 Nov 0:06:05): PMs ordered by the unbilled fee of their
+        /// prioritised jobs. The default.</summary>
+        public bool IsSortPrioritisedUnbilled => _pmGroupSortMode == 4;
+
+        /// <summary>Spec R14 / D5 (Jim 9 Nov 0:03:28, asked for by JM and Griffin): the drafters'
+        /// pass - the same lists grouped by drafting manager instead of PM.</summary>
+        public bool GroupByDraftingManager
+        {
+            get => _groupByDraftingManager;
+            set
+            {
+                if (_groupByDraftingManager == value) return;
+                _groupByDraftingManager = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsGroupByPm));
+                BuildPmGroups();
+            }
+        }
+        public bool IsGroupByPm => !_groupByDraftingManager;
+
+        /// <summary>Re-sort the groups on demand (e.g. once meeting priorities are known after a
+        /// load). Not called on every priority edit, so the list does not jump mid-meeting.</summary>
+        internal void RebuildPmGroups() => BuildPmGroups();
+
+        internal const string NoDraftingManagerLabel = "(No drafting manager)";
+
+        internal static string GroupKey(PmProjectRow r, bool byDraftingManager)
+        {
+            if (!byDraftingManager) return (r.Pm ?? string.Empty).Trim();
+            var dm = (r.DraftingManager ?? string.Empty).Trim();
+            return dm.Length == 0 ? NoDraftingManagerLabel : dm;
+        }
+
+        internal static bool IsPrioritised(PmProjectRow r) => r.MeetingPriority >= 1 && r.MeetingPriority <= 5;
 
         public double EngRate { get => _engRate; set { if (SetField(ref _engRate, value)) OnPropertyChanged(nameof(CombinedRate)); } }
         public double DraftRate { get => _draftRate; set { if (SetField(ref _draftRate, value)) OnPropertyChanged(nameof(CombinedRate)); } }
@@ -530,11 +566,16 @@ namespace Kor.Operations.PMTools
 
         private void BuildPmGroups()
         {
+            var byDm = _groupByDraftingManager;
             var grouped = ProjectView.Cast<PmProjectRow>()
-                .GroupBy(r => (r.Pm ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase);
+                .GroupBy(r => GroupKey(r, byDm), StringComparer.OrdinalIgnoreCase);
 
             var ordered = _pmGroupSortMode switch
             {
+                4 => grouped
+                    .OrderByDescending(g => g.Where(IsPrioritised).Sum(r => r.FeeRemaining))
+                    .ThenByDescending(g => g.Sum(r => r.FeeRemaining))
+                    .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase),
                 1 => grouped.OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase),
                 2 => grouped
                     .OrderByDescending(g => g.Count(r => r.ConfidenceLevel == DeliveryConfidenceLevel.Critical || r.ConfidenceLevel == DeliveryConfidenceLevel.AtRisk))

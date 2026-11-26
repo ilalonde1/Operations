@@ -2,7 +2,8 @@
 
 **2026-11-26. Board row 2415.** Written by the Operations lead from Jim DesRoches's two calls with Ian. It was checked
 against the code at Operations `404f8d1a`. Built since, 26 Nov: section 6 items 1 and 2 (R1-R5, R7, R8) in `f9b8ba49` and
-`2974e27e`, plus the item 6 warning, each looked at on Ian's screen. Items 3-5 are not built. Where the two calls disagree, **the 9 Nov call wins**
+`2974e27e`, plus the item 6 warning; items 3 and 4 (R9, R10, R14) in the commit after `479f482b`. Each was looked at on
+Ian's screen. Item 5 (demos) is not built. Where the two calls disagree, **the 9 Nov call wins**
 because it is Jim's later word. Every such case is listed in section 7.
 
 ## 1. Sources
