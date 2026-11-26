@@ -1,15 +1,16 @@
 # PM Tools / Workload Meeting - Redesign Spec
 
 **2026-11-26. Board row 2415.** Written by the Operations lead from Jim DesRoches's two calls with Ian. It was checked
-against the code at Operations `404f8d1a`. Nothing here is built. Where the two calls disagree, **the 9 Nov call wins**
+against the code at Operations `404f8d1a`. Built since, 26 Nov: section 6 items 1 and 2 (R1-R5, R7, R8) in `f9b8ba49` and
+`2974e27e`, plus the item 6 warning, each looked at on Ian's screen. Items 3-5 are not built. Where the two calls disagree, **the 9 Nov call wins**
 because it is Jim's later word. Every such case is listed in section 7.
 
 ## 1. Sources
 
 | Ref | Call | Where | Read |
 |---|---|---|---|
-| **M** | "Project Management Workload Discussion", 13 Mar 2026, 1h15m. Teams transcript with speaker labels. | `Desktop\_archive\Old Desktop\Workload Discussion.docx`; extract in `Desktop\PM Tools\Jim-2026-03-13-Workload-Instructions.md` | 542 of 542 lines |
-| **N** | Call with Jim, 9 Nov 2026, 15m. Teams recording, transcribed 26 Nov with faster-whisper small.en, no speaker labels. | `Desktop\PM Tools\Transcripts\Call with Jim DesRoches-20261109_100814-Meeting Recording.txt`; extract in `Desktop\PM Tools\Jim-2026-11-09-Workload-Instructions.md` | 196 of 196 lines |
+| **M** | "Project Management Workload Discussion", 13 Mar 2026, 1h15m. Teams transcript with speaker labels. | `Desktop\_archive\Old Desktop\Workload Discussion.docx`; extract in `docs/KOR-PMTools-Redesign-Spec-2026-11-26-sources/`; transcript in Desktop/PM Tools/Transcripts (kept out of git: verbatim internal call) | 542 of 542 lines |
+| **N** | Call with Jim, 9 Nov 2026, 15m. Teams recording, transcribed 26 Nov with faster-whisper small.en, no speaker labels. | OneDrive `Recordings\Call with Jim DesRoches-20261109_100814-Meeting Recording.mp4`; extract in `docs/KOR-PMTools-Redesign-Spec-2026-11-26-sources/`; transcript in Desktop/PM Tools/Transcripts (kept out of git: verbatim internal call) (transcribed with `tools/transcribe_recordings.py`) | 196 of 196 lines |
 
 How references read:
 - `M 27:40` is the 13 Mar call at 27:40.
@@ -166,7 +167,9 @@ build is the five things Jim asked for on 9 Nov, plus one fix:
 4. **The drafters' pass (R14, R15).** A toggle switches the same screen to drafting managers: their prioritised jobs,
    with draft hours, draft budget and draft %.
 5. **Demos card (R20).** A third card in the PM Tools chooser that lists the recorded demos by topic.
-6. **Fix (R16).** Clearing a job's priority no longer deletes its note.
+6. **Fix (R16).** Clearing the priority of a job that has a note now asks first; "No" keeps both. A "Yes" still deletes
+   the note, because the table holds P1-P5 only (CHECK Priority BETWEEN 1 AND 5) and the note lives on that row. Keeping
+   notes past a cleared priority needs a schema change to the live database, which is Ian's call.
 
 Not in this build: the money columns (R21-R30), sending the report (R17) and the Monday sheet (R18). Jim did not raise
 them on 9 Nov, and he kept financials separate.
