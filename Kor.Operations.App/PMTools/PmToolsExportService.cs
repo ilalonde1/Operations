@@ -75,14 +75,17 @@ namespace Kor.Operations.PMTools
             wb.SaveAs(path);
         }
 
-        internal static void ExportPmGroups(string path, IReadOnlyList<PmGroupViewModel> groups)
+        internal static void ExportPmGroups(string path, IReadOnlyList<PmGroupViewModel> groups, bool byDraftingManager = false)
         {
             using var wb = new XLWorkbook();
-            var ws = wb.Worksheets.Add("PM Groups");
+            // Spec R14: when the screen is grouped by drafting manager, say so - the group name
+            // in column 1 is then a drafting manager, not a PM.
+            var groupLabel = byDraftingManager ? "Drafting Mgr Groups" : "PM Groups";
+            var ws = wb.Worksheets.Add(groupLabel);
 
-            WriteTitle(ws, $"PM Groups — {DateTime.Now:MMM d, yyyy}", 5);
+            WriteTitle(ws, $"{groupLabel} — {DateTime.Now:MMM d, yyyy}", 5);
 
-            string[] headers = { "PM", "Project #", "Project Name", "Phase", "Const Type", "Category", "Draft Type",
+            string[] headers = { byDraftingManager ? "Group (Drafting Mgr)" : "PM", "Project #", "Project Name", "Phase", "Const Type", "Category", "Draft Type",
                                   "Fee", "% Billed", "Unbilled",
                                   "Drafting Mgr", "Eng Budget", "Eng Hrs", "Eng %", "Eng Remaining",
                                   "Draft Budget", "Draft Hrs", "Draft %", "Draft Remaining",
@@ -99,6 +102,7 @@ namespace Kor.Operations.PMTools
                 sumRow.Style.Font.Bold = true;
                 ws.Cell(ri, 1).Value = group.PmName;
                 ws.Cell(ri, 2).Value = $"{group.ProjectCount} projects";
+                ws.Cell(ri, 3).Value = group.PrioritisedSummary;
                 ws.Cell(ri, 8).Value = group.TotalFee;         ws.Cell(ri, 8).Style.NumberFormat.Format = "$#,##0";
                 ws.Cell(ri, 10).Value = group.TotalUnbilled;   ws.Cell(ri, 10).Style.NumberFormat.Format = "$#,##0";
                 ws.Cell(ri, 12).Value = group.TotalEngBudget;  ws.Cell(ri, 12).Style.NumberFormat.Format = "0.0";

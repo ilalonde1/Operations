@@ -91,7 +91,7 @@ namespace Kor.Operations.PMTools
 
         public void RecomputePrioritised()
         {
-            var prioritised = Projects.Where(p => p.MeetingPriority >= 1 && p.MeetingPriority <= 5).ToList();
+            var prioritised = Projects.Where(PmToolsViewModel.IsPrioritised).ToList();
             PrioritisedCount = prioritised.Count;
             PrioritisedFee = prioritised.Sum(p => p.Fee);
             PrioritisedUnbilled = prioritised.Sum(p => p.FeeRemaining);

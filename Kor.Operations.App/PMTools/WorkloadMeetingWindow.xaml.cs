@@ -291,7 +291,8 @@ namespace Kor.Operations.PMTools
             {
                 var path = sfd.FileName;
                 var groups = _vm.PmGroups.ToList();
-                await Task.Run(() => PmToolsExportService.ExportPmGroups(path, groups)).ConfigureAwait(true);
+                var byDm = _vm.GroupByDraftingManager;
+                await Task.Run(() => PmToolsExportService.ExportPmGroups(path, groups, byDm)).ConfigureAwait(true);
                 MessageBox.Show(this, "Export completed.", "PM Tools — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
