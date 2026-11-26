@@ -38,14 +38,14 @@ public sealed class WorkloadMeetingDueListTests
         {
             new ProjectDeadline("31057-01", new DateTime(2026, 12, 9), "BP", ""),
             new ProjectDeadline("31057-01", new DateTime(2026, 11, 27), "Progress", "100% BP draft"),
-            new ProjectDeadline("31120-01", new DateTime(2026, 11, 27), "IFC", "Full IFC"),
+            new ProjectDeadline("zt120-01", new DateTime(2026, 11, 27), "IFC", "Full IFC"),
             new ProjectDeadline("  ", new DateTime(2026, 11, 27), "IFC", ""),
         });
 
         Assert.Equal(2, picked.Count);
         Assert.Equal(new DateTime(2026, 11, 27), picked["31057-01"].Date);
         Assert.Equal("Progress", picked["31057-01"].Issue);
-        Assert.True(picked.ContainsKey("31120-01".ToUpperInvariant()));
+        Assert.True(picked.ContainsKey("ZT120-01"), "lookup must ignore case");
     }
 
     [Fact]

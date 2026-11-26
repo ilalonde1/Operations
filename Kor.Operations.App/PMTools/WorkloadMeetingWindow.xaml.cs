@@ -572,10 +572,13 @@ namespace Kor.Operations.PMTools
             // Spec R16 fault: a job's meeting note is stored on its priority row, and the
             // table only holds P1-P5 (CHECK Priority BETWEEN 1 AND 5), so clearing the
             // priority deletes the row and the note with it. Ask before that happens.
-            if (priority == 0 && previousPriority > 0 && !string.IsNullOrWhiteSpace(previous?.Notes))
+            // Read the live row first: a note typed in the last moments may not have reached
+            // CurrentProjects yet (notes save on a debounce), and must still be protected.
+            var noteAtRisk = !string.IsNullOrWhiteSpace(row.MeetingNotes) ? row.MeetingNotes : previous?.Notes;
+            if (priority == 0 && previousPriority > 0 && !string.IsNullOrWhiteSpace(noteAtRisk))
             {
                 var answer = MessageBox.Show(this,
-                    $"{row.Wbs1} has a meeting note:\n\n\"{previous!.Notes!.Trim()}\"\n\n" +
+                    $"{row.Wbs1} has a meeting note:\n\n\"{noteAtRisk!.Trim()}\"\n\n" +
                     "Clearing its priority removes the job from this meeting and deletes the note. Clear it?",
                     "Clear priority and delete the note?",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
