@@ -48,6 +48,16 @@ What it costs not to have it (verify each):
    replayed moment: the bad moment must be REFUSED, the good one ALLOWED; the wiring check is run through IssueCheck and must
    pass. It writes one brain.Event (Kind 'proof') holding the row, the entry, both moments, both outcomes, the wiring result and
    the installed version. Nothing the session types becomes an outcome. More than one bad/good pair is allowed and encouraged.
+   - brain.Event's kinds are fixed by CK_Event_Kind (KOR.Drafter db/171, ~lines 211-214): 'proof' is not allowed today - the
+     migration extends it (or use an allowed kind and say why).
+   - THE WIRING CHECK MUST FAIL WHEN THE MECHANISM IS REMOVED (your 16 Nov words): kor prove runs it twice - once as installed
+     (must pass) and once with the mechanism's hook line removed / its code path disabled in a temp copy (must FAIL). A check
+     that passes both ways proves nothing and the proof fails. Record both results.
+   - FORGERY: raw SQL is a route a session uses. A proof event must be impossible to fake by inserting a row: e.g. only the login
+     kor runs as may insert Kind 'proof' (the others get no INSERT on it), or the trigger re-checks the proof's own evidence ids
+     (the GuardRefusal / replay event it cites) - your call; say what a determined session could still do.
+   - DROPPING with IAN-APPROVED-DROP must be enforceable on every route too (a trigger cannot read a prompt): say how - e.g. kor
+     records Ian's typed approval as an event the trigger checks, by the same anti-forgery rule.
 2. CLOSING NEEDS A PASSING PROOF, enforced IN THE DATABASE so every route is covered (lane_row, kor_task, raw SQL): a row in
    scope cannot reach State='done' - NOR 'dropped' (CK_Commitment_State, db/137 :37, also allows dropped, which would be the
    way around it; dropping an in-scope row needs Ian's typed IAN-APPROVED-DROP <row> or a passing proof) - unless it references
