@@ -24,14 +24,14 @@ judgement.
 
 ## Prior work - EXTEND, do not build beside (the coordinator read each of these 27 Nov; check them)
 - `Kor.Operations.Framework/Recall/PushBack.cs` - the Stop check on the reply (wired in every repo as
-  `kor recall --hook --push-back`, `Cli/Program.Recall.cs:183`). RULE 1 DECIDED, RULE 2 SEEN ("you saw" with no evidence).
+  `kor recall --hook --push-back`, `Kor.Operations.Framework.Cli/Program.Recall.cs:183`). RULE 1 DECIDED, RULE 2 SEEN ("you saw" with no evidence).
   Its header says it does NOT look at tool calls. The new rule is RULE 3 here (same hook, same once-per-key, same stop-active
   rule, same `kor recall --replay`). No new hook line.
 - `Kor.Operations.Framework/Whole/WholeTranscript.cs:31` - `ReadAll`/`Parse` give the turn's moments in order: prompts, the
   reply text, every tool CALL with its input, output and `Partial` (a Read with offset/limit). Use it; do not write a parser.
 - Operations `tools/claude_look_guard.py` (879 lines, RETIRED 19 Nov: 505 refusals, 4 right, 28 wrong; record #133958) - the
-  nearest past attempt: completion WORDS needed a look of the right KIND after each change. Read its header (lines 1-158) for
-  what failed: it judged words like "done" and refused on kinds of change; most refusals were wrong. Rule 3 is narrower: it
+  nearest past attempt: completion WORDS needed a look of the right KIND after each change. Read its header (lines 1-158) and
+  its retirement note (lines 866-879, the 505/4/28 numbers) for what failed: it judged words like "done" and refused on kinds of change; most refusals were wrong. Rule 3 is narrower: it
   judges only a FIRST-PERSON statement of a specific action, against the specific call. Learn from its replay method and its
   quoted-text / negation / tense handling (and their listed misses); do not revive it.
 
@@ -40,7 +40,12 @@ judgement.
    checked, verified, confirmed, tested, looked at, saw, searched, counted, compared, opened the, clicked, installed,
    pushed, committed, built) + an object. Skip: quoted text, code spans/fences, questions, negations ("I haven't read"), future
    or conditional ("I'll read", "once I've run"), and claims that cite their evidence inline (a jsonl line, a command, a file
-   and line range). Write down every form you support and every form you deliberately do not.
+   and line range). PRESENT and HABITUAL forms count: the headline case is "even after I open that note as it asks" - "I open",
+   "I check", "after I run" stated as what happened are claims. Write down every form you support and every form you
+   deliberately do not.
+   Every verb you support needs a defined backing call; a verb you cannot define a backing call for is NOT supported (say so):
+   at least verified/confirmed/compared/counted -> a call whose OUTPUT shows the thing verified or counted; looked at ->
+   Read/print of it; installed -> the install command; built -> dotnet build/msbuild/the build script.
 2. For each claim, look for the matching tool call IN THE SAME TURN (since the last human prompt) - a call whose kind fits the
    verb (opened/read -> Read, or a Bash/PowerShell that prints the file: cat, sed -n, Get-Content; ran/tested -> Bash/
    PowerShell running it; pushed -> git push; committed -> git commit; searched -> Grep/rg/grep; clicked/saw on screen -> a Read
@@ -48,7 +53,14 @@ judgement.
    refuse once, naming the claim and saying what call would back it.
 3. WHOLE claims: a claim of reading "all", "every", "the whole", "the full" or "N of N" of X is refused when every matching call
    was Partial, cut (| head, | tail, Select-Object -First, grep -m, sed -n range, an output marked cut), or a sample.
-   Here a cut read never backs a whole claim (the class Ian named).
+   Here a cut read never backs a whole claim (the class Ian named) - EXCEPT consecutive partial reads that together cover the
+   whole (offset/limit chunks with no gap up to the file's end, which ReadGuard forces for big files): those back it; compute
+   the coverage, do not assume it.
+3b. EARLIER TURNS: a claim about an earlier turn ("I pushed it earlier", "the run I did this morning") is backed by a matching
+   call anywhere earlier in the transcript; only a claim of something done NOW / in this reply's work needs this turn's call.
+   Say how you tell the two apart and what you get wrong.
+3c. SHORT REPLIES: the Stop path skips replies under `PushBack.MinReplyChars` (60; `Kor.Operations.Framework.Cli/
+   Program.Recall.cs:183`, `PushBack.cs:98`). Rule 3 must run on short replies too ("I ran the tests; they pass.").
 4. A helper's report is not an action of this session: "I checked X" backed only by an Agent call is refused, asking for the
    wording "a helper reported X" (#138344 class: helper claims relayed as checked).
 5. Also, same file, same class: RULE 1 missed a real case today. This session's reply proposed lowering the context stop
