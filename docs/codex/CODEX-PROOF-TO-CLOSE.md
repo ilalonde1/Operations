@@ -49,7 +49,9 @@ What it costs not to have it (verify each):
    pass. It writes one brain.Event (Kind 'proof') holding the row, the entry, both moments, both outcomes, the wiring result and
    the installed version. Nothing the session types becomes an outcome. More than one bad/good pair is allowed and encouraged.
 2. CLOSING NEEDS A PASSING PROOF, enforced IN THE DATABASE so every route is covered (lane_row, kor_task, raw SQL): a row in
-   scope cannot reach State='done' unless it references a proof event whose outcomes are bad=refused, good=allowed, wiring=pass
+   scope cannot reach State='done' - NOR 'dropped' (CK_Commitment_State, db/137 :37, also allows dropped, which would be the
+   way around it; dropping an in-scope row needs Ian's typed IAN-APPROVED-DROP <row> or a passing proof) - unless it references
+   a proof event whose outcomes are bad=refused, good=allowed, wiring=pass
    and whose row is that row. Write it as an additive migration (a column for the proof event id + a trigger or constraint -
    your call, say why); DO NOT APPLY IT - the coordinator brings it to Ian, who applies it as sa. lane_row/kor_task then pass
    the proof id and print the refusal plainly.
@@ -73,8 +75,11 @@ What it costs not to have it (verify each):
   ALLOWED, the enroll wiring check passing - then that row closing.
 - Replay over the 38 rows closed since 20 Nov and every lesson recorded since 20 Nov: list each, would it be refused, and judge
   each one (a row that truly did not build a check and was wrongly scoped counts against the scope rule).
-- DB writes only in rolled-back transactions; the migration is written and REHEARSED rolled back (or on LocalDB if the house rule
-  allows - read it), never applied. Full Kor.Operations.Framework suite ONCE at the end; `kor testdiff` vs a run at 26fd271f.
+- DB writes only in rolled-back transactions; the migration is written and REHEARSED the way the house migrations are (read the
+  header of db/163 and record #133158: LocalDB is refused by check #322 and live rehearsals run rolled back), never applied.
+  DDL on the live board takes locks other sessions wait on: keep any rolled-back DDL rehearsal to one short transaction, say when
+  you ran it and for how long, and if the house rule does not allow DDL rehearsal live, write the rehearsal for the coordinator
+  to run instead. Full Kor.Operations.Framework suite ONCE at the end; `kor testdiff` vs a run at 26fd271f.
 - Worktree `C:\VIsual Studio Projects\Operations-framework-method-review`, branch `framework-method-review` at origin/develop
   26fd271f; if lane_row.py/kor_task.py need changing, make a Framework worktree from fs01 main and name it. No push, no install,
   no settings or hook change, no live DB write. The coordinator holds back further cases (rows and lessons not named here).
