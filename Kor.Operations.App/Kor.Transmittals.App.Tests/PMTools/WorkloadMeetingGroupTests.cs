@@ -130,6 +130,23 @@ public sealed class WorkloadMeetingGroupTests
         Assert.Equal(13_600, r.LaborCost, 6);
     }
 
+    [Fact]
+    public void Drafters_AJobUnderEveryRecentDrafter_MostHoursFirst_AndNoneLabelled()
+    {
+        var map = FinancialsService.GroupDrafters(new[]
+        {
+            ("31251-01", "Nelson Yu", 6.0), ("31251-01", "Jing Zheng", 20.0), ("31251-01", "Nelson Yu", 1.0),
+            ("31184-01", "Lindsay Finnigan", 4.0), ("90000-01", "Zero Hours", 0.0),
+        });
+        Assert.Equal(new[] { "Jing Zheng", "Nelson Yu" }, map["31251-01"]);
+        Assert.False(map.ContainsKey("90000-01"));   // no hours, no drafter
+
+        var shared = Row("31251-01", "Conor", "", 1, 0, 1);
+        var nobody = Row("40000-01", "Conor", "", 1, 0, 1);
+        Assert.Equal(new[] { "Jing Zheng", "Nelson Yu" }, PmToolsViewModel.DrafterKeys(shared, map).Select(k => k.Key));
+        Assert.Equal(new[] { PmToolsViewModel.NoRecentDrafterLabel }, PmToolsViewModel.DrafterKeys(nobody, map).Select(k => k.Key));
+    }
+
     [Theory]
     [InlineData(0, false)]
     [InlineData(1, true)]

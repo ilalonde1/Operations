@@ -90,6 +90,24 @@ internal static class WorkloadMeetingReport
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Name ("First Last") -> mailbox from the staff directory (KorOpportunitiesDb opportunities.BdStaff,
+    /// synced from Deltek EMMain every morning by BdStaffDirectorySyncJob). A local table, so the click
+    /// does not wait on Deltek (Ian 27 Nov: "we know those emails - no need to look up every time").
+    /// An active row wins over an inactive one for the same name.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string> EmailsByName(IEnumerable<Kor.Opportunities.Data.Crm.BdStaffRow> staff)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var s in staff.OrderByDescending(s => s.IsActive))
+        {
+            var name = (s.DisplayName ?? "").Trim();
+            var mail = (s.Mailbox ?? "").Trim();
+            if (name.Length > 0 && mail.Contains('@')) map.TryAdd(name, mail);
+        }
+        return map;
+    }
+
     /// <summary>The PMs and drafting managers of the prioritised jobs, as email addresses, in a
     /// stable order. Names with no address in Deltek are returned apart so the report can say so.</summary>
     internal static (IReadOnlyList<string> Emails, IReadOnlyList<string> Unmatched) Recipients(

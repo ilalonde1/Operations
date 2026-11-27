@@ -39,6 +39,7 @@ namespace Kor.Operations.PMTools
         private int _capacityRiskViewIndex;
         private int _pmGroupSortMode = 4;
         private bool _groupByDraftingManager;
+        private bool _groupByDrafter;
         private double _engRate = 474;
         private double _draftRate = 655;
         private double _targetBilling = 185;
@@ -317,12 +318,54 @@ namespace Kor.Operations.PMTools
             {
                 if (_groupByDraftingManager == value) return;
                 _groupByDraftingManager = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(IsGroupByPm));
-                BuildPmGroups();
+                if (value) _groupByDrafter = false;
+                OnGroupingChanged();
             }
         }
-        public bool IsGroupByPm => !_groupByDraftingManager;
+
+        /// <summary>Ian 27 Nov: the drafters' pass by PERSON - each drafter who booked drafting hours to a
+        /// job in the last <see cref="RecentDraftersDays"/> days, because the drafting manager is not always
+        /// in Deltek. A job two drafters work on is listed under both.</summary>
+        public bool GroupByDrafter
+        {
+            get => _groupByDrafter;
+            set
+            {
+                if (_groupByDrafter == value) return;
+                _groupByDrafter = value;
+                if (value) _groupByDraftingManager = false;
+                OnGroupingChanged();
+            }
+        }
+
+        private void OnGroupingChanged()
+        {
+            OnPropertyChanged(nameof(GroupByDraftingManager));
+            OnPropertyChanged(nameof(GroupByDrafter));
+            OnPropertyChanged(nameof(IsGroupByPm));
+            BuildPmGroups();
+        }
+
+        public bool IsGroupByPm => !_groupByDraftingManager && !_groupByDrafter;
+
+        internal const int RecentDraftersDays = 28;
+        internal const string NoRecentDrafterLabel = "(No drafting hours in 4 weeks)";
+
+        private IReadOnlyDictionary<string, IReadOnlyList<string>> _recentDrafters =
+            new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Install the WBS1 -> recent drafters map (read from Deltek timesheets) and regroup if shown.</summary>
+        internal void SetRecentDrafters(IReadOnlyDictionary<string, IReadOnlyList<string>> map)
+        {
+            _recentDrafters = map;
+            if (_groupByDrafter) BuildPmGroups();
+        }
+
+        internal static IEnumerable<(string Key, PmProjectRow Row)> DrafterKeys(
+            PmProjectRow r, IReadOnlyDictionary<string, IReadOnlyList<string>> map)
+            => map.TryGetValue(r.Wbs1, out var names) && names.Count > 0
+                ? names.Select(n => (n, r))
+                : new[] { (NoRecentDrafterLabel, r) };
 
         /// <summary>Re-sort the groups on demand (e.g. once meeting priorities are known after a
         /// load). Not called on every priority edit, so the list does not jump mid-meeting.</summary>
@@ -567,8 +610,11 @@ namespace Kor.Operations.PMTools
         private void BuildPmGroups()
         {
             var byDm = _groupByDraftingManager;
-            var grouped = ProjectView.Cast<PmProjectRow>()
-                .GroupBy(r => GroupKey(r, byDm), StringComparer.OrdinalIgnoreCase);
+            var visible = ProjectView.Cast<PmProjectRow>().ToList();
+            var grouped = _groupByDrafter
+                ? visible.SelectMany(r => DrafterKeys(r, _recentDrafters))
+                         .GroupBy(x => x.Key, x => x.Row, StringComparer.OrdinalIgnoreCase)
+                : visible.GroupBy(r => GroupKey(r, byDm), StringComparer.OrdinalIgnoreCase);
 
             var ordered = _pmGroupSortMode switch
             {

@@ -709,6 +709,10 @@
                                   ToolTip="The drafters' pass: one list per drafting manager">
                               <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding GroupByDraftingManager}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
                           </Button>
+                          <Button Content="Drafters" Click="GroupByDrafter_Click"
+                                  ToolTip="The drafters' pass by person: each drafter who booked drafting hours to a job in the last 4 weeks. A job two drafters work on is listed under both.">
+                              <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding GroupByDrafter}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                          </Button>
                       </StackPanel>
                     <ItemsControl Grid.Row="2" x:Name="PmGroupsList" ItemsSource="{Binding PmGroups}">
                             <ItemsControl.ItemTemplate>

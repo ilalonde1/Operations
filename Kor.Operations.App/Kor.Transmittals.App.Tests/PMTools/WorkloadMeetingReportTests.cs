@@ -54,6 +54,21 @@ public sealed class WorkloadMeetingReportTests
     }
 
     [Fact]
+    public void EmailsByName_FromStaffDirectory_ActiveRowWins()
+    {
+        // The shape read live 27 Nov: an inactive first-name row and an active EMMain row for the same person.
+        var staff = new[]
+        {
+            new Kor.Opportunities.Data.Crm.BdStaffRow(1, "Omar", "old@example.test", "Omar Alcazar Pastrana", false, "deltek:firstname-match"),
+            new Kor.Opportunities.Data.Crm.BdStaffRow(2, "omara@example.test", "omara@example.test", "Omar Alcazar Pastrana", true, "deltek:emmain"),
+            new Kor.Opportunities.Data.Crm.BdStaffRow(3, "x", null, "No Mailbox", true, "deltek:emmain"),
+        };
+        var map = WorkloadMeetingReport.EmailsByName(staff);
+        Assert.Equal("omara@example.test", map["omar alcazar pastrana"]);
+        Assert.False(map.ContainsKey("No Mailbox"));
+    }
+
+    [Fact]
     public void Recipients_ArePmsAndDraftingManagers_WithUnknownNamesApart()
     {
         var emails = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)

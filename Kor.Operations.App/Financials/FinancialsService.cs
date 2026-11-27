@@ -163,43 +163,61 @@ WHERE d.CustDateExpected >= ?
         }
 
         /// <summary>
-        /// PM Tools spec R17: email addresses for the end-of-meeting report, keyed on the display
-        /// name the app shows for PMs and drafting managers ("First Last", BuildPmDisplay).
-        /// Only employees with an email in Deltek EMMain; on a duplicate name an active employee
-        /// (Status 'A') wins over a former one (review row 3800), then the first row read.
+        /// PM Tools drafters' pass by person (Ian 27 Nov: "sometime the drafting manager isn't reflected
+        /// in Deltek and it's just one of the drafters"). Who booked drafting hours (labour code 20) to
+        /// each project in the last <paramref name="days"/> days, most hours first, as "First Last".
+        /// Read 27 Nov: 27 hot-list jobs, 7 drafters in 28 days; 8 of those jobs have no drafting manager.
         /// </summary>
-        public async Task<IReadOnlyDictionary<string, string>> GetEmployeeEmailsByNameAsync(CancellationToken ct)
+        public async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> GetRecentDraftersAsync(int days, CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
             var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
             var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
                               () => new Dictionary<string, string>());
+            var since = DateTime.Today.AddDays(-Math.Max(1, days));
 
-            return await Task.Run<IReadOnlyDictionary<string, string>>(() =>
+            return await Task.Run<IReadOnlyDictionary<string, IReadOnlyList<string>>>(() =>
             {
-                var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                var rows = new List<(string Wbs1, string Name, double Hrs)>();
                 using var cn = factory.Create();
                 try { cn.Open(); }
-                catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (employee emails).", ex); }
+                catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (recent drafters).", ex); }
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
-SELECT em.Employee, em.FirstName, em.LastName, em.EMail
-FROM [{catalog}].dbo.EMMain em
-WHERE em.EMail IS NOT NULL AND LTRIM(RTRIM(em.EMail)) <> ''
-ORDER BY CASE WHEN UPPER(LTRIM(RTRIM(ISNULL(em.Status, '')))) = 'A' THEN 0 ELSE 1 END";
+SELECT t.WBS1, t.Employee, em.FirstName, em.LastName,
+       SUM(COALESCE(t.RegHrs,0) + COALESCE(t.OvtHrs,0) + COALESCE(t.SpecialOvtHrs,0)) AS Hrs
+FROM [{catalog}].dbo.tkDetail t
+LEFT JOIN [{catalog}].dbo.EMMain em ON em.Employee = t.Employee
+WHERE t.LaborCode = {LaborCodes.Drafting}
+  AND t.TransDate >= ?
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
+GROUP BY t.WBS1, t.Employee, em.FirstName, em.LastName";
+                var p = cmd.CreateParameter();
+                p.Value = since;
+                cmd.Parameters.Add(p);
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
                     ct.ThrowIfCancellationRequested();
-                    var name = BuildPmDisplay(GetTrimmed(r, 0), GetTrimmed(r, 1), GetTrimmed(r, 2));
-                    var email = GetTrimmed(r, 3);
-                    if (name.Length > 0 && email.Length > 0) map.TryAdd(name, email);
+                    var wbs1 = GetTrimmed(r, 0);
+                    var name = BuildPmDisplay(GetTrimmed(r, 1), GetTrimmed(r, 2), GetTrimmed(r, 3));
+                    if (wbs1.Length > 0 && name.Length > 0) rows.Add((wbs1, name, GetDouble(r, 4)));
                 }
-                return map;
+                return GroupDrafters(rows);
             }, ct).ConfigureAwait(false);
         }
+
+        /// <summary>WBS1 -> drafters with hours, most hours first.</summary>
+        internal static IReadOnlyDictionary<string, IReadOnlyList<string>> GroupDrafters(IEnumerable<(string Wbs1, string Name, double Hrs)> rows)
+            => rows.Where(x => x.Hrs > 0)
+                   .GroupBy(x => x.Wbs1, StringComparer.OrdinalIgnoreCase)
+                   .ToDictionary(g => g.Key,
+                                 g => (IReadOnlyList<string>)g.GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                                                             .OrderByDescending(n => n.Sum(x => x.Hrs))
+                                                             .Select(n => n.Key).ToList(),
+                                 StringComparer.OrdinalIgnoreCase);
 
         /// <summary>Earliest deadline per WBS1 (ties: first by issue name, so the pick is stable).</summary>
         internal static IReadOnlyDictionary<string, ProjectDeadline> PickNextDeadlines(IEnumerable<ProjectDeadline> rows)

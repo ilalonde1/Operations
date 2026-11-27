@@ -111,7 +111,8 @@ namespace Kor.Operations.PMTools
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             _ = ApplyHeaderAsync();
-            _meetingPanel.ShowDraftingDetail = _vm.GroupByDraftingManager;   // both VMs outlive the window
+            _meetingPanel.ShowDraftingDetail = _vm.GroupByDraftingManager || _vm.GroupByDrafter;   // both VMs outlive the window
+            LoadRecentDraftersInBackground();
             if (!_vm.HasData || _vm.IsDataStale)
             {
                 _cts = new CancellationTokenSource();
@@ -248,6 +249,7 @@ namespace Kor.Operations.PMTools
         private void GroupByPm_Click(object sender, RoutedEventArgs e)
         {
             _vm.GroupByDraftingManager = false;
+            _vm.GroupByDrafter = false;
             _meetingPanel.ShowDraftingDetail = false;
         }
 
@@ -255,6 +257,26 @@ namespace Kor.Operations.PMTools
         {
             _vm.GroupByDraftingManager = true;
             _meetingPanel.ShowDraftingDetail = true;   // spec R15: draft budget / remaining visible for the drafters
+        }
+
+        // Ian 27 Nov: the drafters' pass by person, from who booked drafting hours in the last 4 weeks.
+        private async void GroupByDrafter_Click(object sender, RoutedEventArgs e)
+        {
+            _meetingPanel.ShowDraftingDetail = true;
+            if (_recentDraftersTask is null || _recentDraftersTask.IsFaulted) LoadRecentDraftersInBackground();
+            try { _vm.SetRecentDrafters(await _recentDraftersTask!); }
+            catch (Exception ex) { Serilog.Log.Warning(ex, "Workload Meeting: recent drafters read failed; every job shows under 'no drafting hours'."); }
+            _vm.GroupByDrafter = true;
+        }
+
+        private Task<System.Collections.Generic.IReadOnlyDictionary<string, System.Collections.Generic.IReadOnlyList<string>>>? _recentDraftersTask;
+
+        private void LoadRecentDraftersInBackground()
+        {
+            _recentDraftersTask = Kor.Operations.Services.AppServices.Get<FinancialsService>()
+                .GetRecentDraftersAsync(PmToolsViewModel.RecentDraftersDays, CancellationToken.None);
+            _ = _recentDraftersTask.ContinueWith(t => Serilog.Log.Warning(t.Exception, "Workload Meeting: background drafters read failed."),
+                                                 TaskContinuationOptions.OnlyOnFaulted);
         }
 
         private void ProjectGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -305,7 +327,8 @@ namespace Kor.Operations.PMTools
                 var path = sfd.FileName;
                 var groups = _vm.PmGroups.ToList();
                 var byDm = _vm.GroupByDraftingManager;
-                await Task.Run(() => PmToolsExportService.ExportPmGroups(path, groups, byDm)).ConfigureAwait(true);
+                var byDrafter = _vm.GroupByDrafter;
+                await Task.Run(() => PmToolsExportService.ExportPmGroups(path, groups, byDm, byDrafter)).ConfigureAwait(true);
                 MessageBox.Show(this, "Export completed.", "PM Tools — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -327,8 +350,15 @@ namespace Kor.Operations.PMTools
         private Task<System.Collections.Generic.IReadOnlyDictionary<string, string>>? _employeeEmailsTask;
 
         private Task<System.Collections.Generic.IReadOnlyDictionary<string, string>> EmployeeEmails()
-            => _employeeEmailsTask ??= Kor.Operations.Services.AppServices.Get<FinancialsService>()
-                   .GetEmployeeEmailsByNameAsync(CancellationToken.None);
+            => _employeeEmailsTask ??= LoadEmployeeEmailsAsync();
+
+        // Staff directory table (opportunities.BdStaff), not Deltek: a local read (Ian 27 Nov).
+        private static async Task<System.Collections.Generic.IReadOnlyDictionary<string, string>> LoadEmployeeEmailsAsync()
+        {
+            var staff = await Kor.Operations.Services.AppServices.Get<Kor.Opportunities.Data.Crm.IBdStaffDirectory>()
+                .GetAllAsync(CancellationToken.None).ConfigureAwait(false);
+            return WorkloadMeetingReport.EmailsByName(staff);
+        }
 
         private async void EmailReportBtn_Click(object sender, RoutedEventArgs e)
         {

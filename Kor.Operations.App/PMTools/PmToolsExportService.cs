@@ -75,17 +75,17 @@ namespace Kor.Operations.PMTools
             wb.SaveAs(path);
         }
 
-        internal static void ExportPmGroups(string path, IReadOnlyList<PmGroupViewModel> groups, bool byDraftingManager = false)
+        internal static void ExportPmGroups(string path, IReadOnlyList<PmGroupViewModel> groups, bool byDraftingManager = false, bool byDrafter = false)
         {
             using var wb = new XLWorkbook();
             // Spec R14: when the screen is grouped by drafting manager, say so - the group name
             // in column 1 is then a drafting manager, not a PM.
-            var groupLabel = byDraftingManager ? "Drafting Mgr Groups" : "PM Groups";
+            var groupLabel = byDrafter ? "Drafter Groups" : byDraftingManager ? "Drafting Mgr Groups" : "PM Groups";
             var ws = wb.Worksheets.Add(groupLabel);
 
             WriteTitle(ws, $"{groupLabel} — {DateTime.Now:MMM d, yyyy}", 5);
 
-            string[] headers = { byDraftingManager ? "Group (Drafting Mgr)" : "PM", "Project #", "Project Name", "Phase", "Const Type", "Category", "Draft Type",
+            string[] headers = { byDrafter ? "Group (Drafter, last 4 weeks)" : byDraftingManager ? "Group (Drafting Mgr)" : "PM", "Project #", "Project Name", "Phase", "Const Type", "Category", "Draft Type",
                                   "Fee", "% Billed", "Unbilled",
                                   "Drafting Mgr", "Eng Budget", "Eng Hrs", "Eng %", "Eng Remaining",
                                   "Draft Budget", "Draft Hrs", "Draft %", "Draft Remaining",
