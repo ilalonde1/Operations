@@ -71,6 +71,25 @@ namespace Kor.Operations.PMTools
             Close();
         }
 
+        /// <summary>Spec R20: the shared demos folder (one subfolder per topic). Created on first use.</summary>
+        internal const string DemosFolder = @"\\KOR-FS01\Library\11 IT\KOR Operations Demos";
+
+        private void OpenDemos_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.IO.Directory.CreateDirectory(DemosFolder);
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "\"" + DemosFolder + "\"") { UseShellExecute = true });
+                Close();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "PM Tools: could not open the demos folder {Folder}.", DemosFolder);
+                MessageBox.Show(this, "Could not open the demos folder:\n" + DemosFolder + "\n\n" + ex.Message, "Demos",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
     }
 }
