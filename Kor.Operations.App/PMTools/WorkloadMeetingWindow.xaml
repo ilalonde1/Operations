@@ -1065,7 +1065,7 @@
                                                         <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"><Setter Property="ToolTip" Value="Billed / cost. Below 1.00 the job is underwater: working for free."/></Style></DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
                                                     <!-- Spec R30 (Jim 13 Mar 58:50, "a little more subtly"): a quiet marker, shown in Meeting Mode too -->
-                                                    <DataGridTemplateColumn Header="Cost" Width="70" SortMemberPath="IsUnderwater" IsReadOnly="True">
+                                                    <DataGridTemplateColumn Header="Underwater" Width="80" SortMemberPath="IsUnderwater" IsReadOnly="True">
                                                         <DataGridTemplateColumn.CellTemplate>
                                                             <DataTemplate>
                                                                 <TextBlock Text="under" Foreground="#B45309" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"

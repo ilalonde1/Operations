@@ -111,6 +111,10 @@ public sealed class WorkloadMeetingGroupTests
         // Same job, nothing billed but cost past 10% of fee - now it is.
         var late = PmProjectRow.FromProject(new FinancialsProjectRow { Wbs1 = "31247-01", Fee = 390_000, EngLaborCost = 40_000 }, 1.36);
         Assert.True(late.IsUnderwater);
+
+        // A no-fee hourly job with cost and no invoice yet is not flagged (review row 3803).
+        var hourly = PmProjectRow.FromProject(new FinancialsProjectRow { Wbs1 = "60058-24", Fee = 0, EngLaborCost = 5_000 }, 1.36);
+        Assert.False(hourly.IsUnderwater);
     }
 
     [Fact]

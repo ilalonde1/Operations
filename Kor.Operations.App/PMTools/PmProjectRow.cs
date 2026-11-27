@@ -69,7 +69,8 @@ namespace Kor.Operations.PMTools
         /// before its first invoice, and flagging all of them was noise (Ian 26 Nov, 31247-01 at SD).</summary>
         public bool IsUnderwater => LaborCost > AnalyticsThresholds.RoundingDollarFloor
             && FeeBilledWithUnposted < LaborCost
-            && (FeeBilledWithUnposted > AnalyticsThresholds.RoundingDollarFloor || LaborCost > 0.10 * Fee);
+            && (FeeBilledWithUnposted > AnalyticsThresholds.RoundingDollarFloor
+                || (Fee > AnalyticsThresholds.RoundingDollarFloor && LaborCost > 0.10 * Fee));   // a no-fee (hourly) job waits for its first invoice
 
         public string BilledToEarnedText => BilledToEarned > 0 ? BilledToEarned.ToString("0.00") : "-";
         public string BilledToCostText => BilledToCost > 0 ? BilledToCost.ToString("0.00") : "-";
