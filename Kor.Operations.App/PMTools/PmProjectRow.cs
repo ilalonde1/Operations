@@ -38,6 +38,38 @@ namespace Kor.Operations.PMTools
         public double FeeBilled { get; private set; }
         public double UnpostedFeeBilled { get; private set; }
         public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
+
+        // ── Jim, 13 Mar (spec R21, R22, R25, R30; rule and data in
+        // docs/KOR-PMTools-Redesign-Spec-2026-11-26-sources/Deltek-Fee-Split-Findings-2026-11-26.md) ──
+
+        /// <summary>R21: fee under the template's "X" extra phases (incl. hourly extras). CAD.</summary>
+        public double ExtraFee { get; private set; }
+
+        /// <summary>R21: the contract fee without extras.</summary>
+        public double OriginalFee => Fee - ExtraFee;
+
+        /// <summary>R22: billed as a share of the ORIGINAL fee, so over 100% shows extras being billed
+        /// (Jim 19:53: "Maybe we do percent of original fee").</summary>
+        public double PercentBilledOfOriginal => Math.Abs(OriginalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / OriginalFee : 0;
+
+        /// <summary>R25: hours at each person's charge-out rate (Jim 24:52). CAD.</summary>
+        public double EarnedFee { get; private set; }
+
+        /// <summary>R25: hours at each person's salary rate - what the job cost KOR. CAD.</summary>
+        public double LaborCost { get; private set; }
+
+        /// <summary>R25: billed / earned. At or above 1, the job is making money (Jim 27:23).</summary>
+        public double BilledToEarned => EarnedFee > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / EarnedFee : 0;
+
+        /// <summary>R25: billed / cost. Below 1, "you're just working for free" (Jim 57:04).</summary>
+        public double BilledToCost => LaborCost > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / LaborCost : 0;
+
+        /// <summary>R30: underwater = the cost of the hours is above what has been billed.</summary>
+        public bool IsUnderwater => LaborCost > AnalyticsThresholds.RoundingDollarFloor && FeeBilledWithUnposted < LaborCost;
+
+        public string BilledToEarnedText => BilledToEarned > 0 ? BilledToEarned.ToString("0.00") : "-";
+        public string BilledToCostText => BilledToCost > 0 ? BilledToCost.ToString("0.00") : "-";
+        public string PercentBilledOfOriginalText => OriginalFee > AnalyticsThresholds.RoundingDollarFloor ? PercentBilledOfOriginal.ToString("0%") : "-";
         public double FeeRemaining => Fee - FeeBilledWithUnposted;
         public double PercentBilled => Math.Abs(Fee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilled / Fee : 0;
         public double PercentBilledWithUnposted => Math.Abs(Fee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / Fee : 0;
@@ -193,6 +225,10 @@ namespace Kor.Operations.PMTools
                 DraftingType = (p.DraftingType ?? "").Trim(),
                 Gfa = p.Gfa,
                 Fee = p.TotalFee * fx,
+                ExtraFee = p.ExtraFee * fx,
+                EarnedFee = p.EarnedFee * fx,
+                LaborCost = (p.EngLaborCost + p.DraftLaborCost + p.InspLaborCost + p.DocPrepLaborCost
+                             + p.GenLaborCost + p.AdminLaborCost + p.NonBillLaborCost) * fx,
                 FeeBilled = p.FeeBilled * fx,
                 UnpostedFeeBilled = p.UnpostedFeeBilled * fx,
                 EngBudget = p.EngBudget,

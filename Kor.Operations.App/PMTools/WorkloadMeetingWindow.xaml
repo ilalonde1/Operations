@@ -1035,6 +1035,55 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
+                                                    <!-- Spec R21, R22, R25 (Jim 13 Mar): money columns, under Show $ Detail like Fee -->
+                                                    <DataGridTextColumn Header="Original Fee" Binding="{Binding OriginalFee, Mode=OneWay, StringFormat={}{0:$#,##0}}" Width="95" IsReadOnly="True"
+                                                                        Visibility="{Binding Data.IsMeetingMode, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
+                                                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"><Setter Property="ToolTip" Value="Fee without extras (Deltek phases 1.PD-5.CA). Jim 13 Mar: show original and extra fee separately."/></Style></DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Extra Fee" Binding="{Binding ExtraFee, Mode=OneWay, StringFormat={}{0:$#,##0}}" Width="85" IsReadOnly="True"
+                                                                        Visibility="{Binding Data.IsMeetingMode, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
+                                                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"><Setter Property="ToolTip" Value="Fee under the template's X (Extra) phases, plus hourly billing on extra elements."/></Style></DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Earned" Binding="{Binding EarnedFee, Mode=OneWay, StringFormat={}{0:$#,##0}}" Width="90" IsReadOnly="True"
+                                                                        Visibility="{Binding Data.IsMeetingMode, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
+                                                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"><Setter Property="ToolTip" Value="Hours at each person's charge-out rate (Deltek timesheet billing extension)."/></Style></DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Cost" Binding="{Binding LaborCost, Mode=OneWay, StringFormat={}{0:$#,##0}}" Width="90" IsReadOnly="True"
+                                                                        Visibility="{Binding Data.IsMeetingMode, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
+                                                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"><Setter Property="ToolTip" Value="Hours at each person's salary rate: what the job has cost KOR."/></Style></DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="% of Orig" Binding="{Binding PercentBilledOfOriginalText, Mode=OneWay}" Width="85" IsReadOnly="True"
+                                                                        Visibility="{Binding Data.IsMeetingMode, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
+                                                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"><Setter Property="ToolTip" Value="Billed (incl. unposted) as a share of the ORIGINAL fee; over 100% means extras are being billed."/></Style></DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Billed/Earned" Binding="{Binding BilledToEarnedText, Mode=OneWay}" Width="85" IsReadOnly="True"
+                                                                        Visibility="{Binding Data.IsMeetingMode, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
+                                                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"><Setter Property="ToolTip" Value="Billed / earned. 1.00 or more: the job is making money (Jim's Glotman indicator)."/></Style></DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Billed/Cost" Binding="{Binding BilledToCostText, Mode=OneWay}" Width="85" IsReadOnly="True"
+                                                                        Visibility="{Binding Data.IsMeetingMode, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
+                                                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"><Setter Property="ToolTip" Value="Billed / cost. Below 1.00 the job is underwater: working for free."/></Style></DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <!-- Spec R30 (Jim 13 Mar 58:50, "a little more subtly"): a quiet marker, shown in Meeting Mode too -->
+                                                    <DataGridTemplateColumn Header="Cost" Width="70" SortMemberPath="IsUnderwater" IsReadOnly="True">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="under" Foreground="#B45309" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                                           ToolTip="Underwater: the cost of the hours is above what has been billed.">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsUnderwater}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
                                                     <DataGridTemplateColumn Header="% Billed" Width="80" SortMemberPath="PercentBilledWithUnposted" IsReadOnly="True">
                                                         <DataGridTemplateColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
@@ -1164,7 +1213,7 @@
                                                         </DataGridTemplateColumn.CellTemplate>
                                                     </DataGridTemplateColumn>
                                                     <DataGridTextColumn Header="Draft Hrs" Binding="{Binding DraftHrs, StringFormat={}{0:N1}}" Width="80" IsReadOnly="True"
-                                                                        Visibility="{Binding Data.IsMeetingMode, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
+                                                                        Visibility="{Binding Data.HideDraftDetail, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftHrs}"/>
@@ -1173,7 +1222,7 @@
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
                                                     <DataGridTemplateColumn Header="Draft Budget" Width="95" SortMemberPath="DraftBudget" IsReadOnly="True"
-                                                                            Visibility="{Binding Data.IsMeetingMode, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
+                                                                            Visibility="{Binding Data.HideDraftDetail, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
                                                         <DataGridTemplateColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftBudget}"/>
@@ -1222,7 +1271,7 @@
                                                         </DataGridTemplateColumn.CellTemplate>
                                                     </DataGridTemplateColumn>
                                                     <DataGridTemplateColumn Header="Draft Remaining" Width="110" SortMemberPath="RemainingDraftHours" IsReadOnly="True"
-                                                                            Visibility="{Binding Data.IsMeetingMode, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
+                                                                            Visibility="{Binding Data.HideDraftDetail, Source={StaticResource MeetingPanelProxy}, Converter={StaticResource BoolToCollapsed}}">
                                                         <DataGridTemplateColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftRemaining}"/>

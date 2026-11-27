@@ -111,6 +111,7 @@ namespace Kor.Operations.PMTools
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             _ = ApplyHeaderAsync();
+            _meetingPanel.ShowDraftingDetail = _vm.GroupByDraftingManager;   // both VMs outlive the window
             if (!_vm.HasData || _vm.IsDataStale)
             {
                 _cts = new CancellationTokenSource();
@@ -244,8 +245,17 @@ namespace Kor.Operations.PMTools
         }
 
         // Spec R14: the drafters' pass - the same lists, grouped by drafting manager.
-        private void GroupByPm_Click(object sender, RoutedEventArgs e) => _vm.GroupByDraftingManager = false;
-        private void GroupByDraftingManager_Click(object sender, RoutedEventArgs e) => _vm.GroupByDraftingManager = true;
+        private void GroupByPm_Click(object sender, RoutedEventArgs e)
+        {
+            _vm.GroupByDraftingManager = false;
+            _meetingPanel.ShowDraftingDetail = false;
+        }
+
+        private void GroupByDraftingManager_Click(object sender, RoutedEventArgs e)
+        {
+            _vm.GroupByDraftingManager = true;
+            _meetingPanel.ShowDraftingDetail = true;   // spec R15: draft budget / remaining visible for the drafters
+        }
 
         private void ProjectGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {

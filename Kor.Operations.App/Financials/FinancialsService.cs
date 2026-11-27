@@ -165,7 +165,8 @@ WHERE d.CustDateExpected >= ?
         /// <summary>
         /// PM Tools spec R17: email addresses for the end-of-meeting report, keyed on the display
         /// name the app shows for PMs and drafting managers ("First Last", BuildPmDisplay).
-        /// Only employees with an email in Deltek EMMain; first one wins on a duplicate name.
+        /// Only employees with an email in Deltek EMMain; on a duplicate name an active employee
+        /// (Status 'A') wins over a former one (review row 3800), then the first row read.
         /// </summary>
         public async Task<IReadOnlyDictionary<string, string>> GetEmployeeEmailsByNameAsync(CancellationToken ct)
         {
@@ -186,7 +187,8 @@ WHERE d.CustDateExpected >= ?
                 cmd.CommandText = $@"
 SELECT em.Employee, em.FirstName, em.LastName, em.EMail
 FROM [{catalog}].dbo.EMMain em
-WHERE em.EMail IS NOT NULL AND LTRIM(RTRIM(em.EMail)) <> ''";
+WHERE em.EMail IS NOT NULL AND LTRIM(RTRIM(em.EMail)) <> ''
+ORDER BY CASE WHEN UPPER(LTRIM(RTRIM(ISNULL(em.Status, '')))) = 'A' THEN 0 ELSE 1 END";
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -299,6 +301,7 @@ WHERE em.EMail IS NOT NULL AND LTRIM(RTRIM(em.EMail)) <> ''";
             var t2  = Task.Run(() => LoadFeeBilledSync(factory, catalog, wbs1List, ct), ct);
             var t2c = Task.Run(() => LoadUnpostedFeeBilledSync(factory, catalog, wbs1List, ct), ct);
             var t2b = Task.Run(() => LoadHourlyRevenueSync(factory, catalog, wbs1List, ct), ct);
+            var t2d = Task.Run(() => LoadFeeSplitSync(factory, catalog, wbs1List, ct), ct);
             var t3  = Task.Run(() => LoadHoursByLaborSync(factory, catalog, wbs1List, ct), ct);
             var t3b = Task.Run(() => LoadCostByLaborSync(factory, catalog, wbs1List, ct), ct);
             var t5  = Task.Run(() => LoadApSync(factory, catalog, wbs1List, ct), ct);
@@ -313,11 +316,12 @@ WHERE em.EMail IS NOT NULL AND LTRIM(RTRIM(em.EMail)) <> ''";
             var t9  = Task.Run(() => LoadRevenueHistorySync(factory, catalog, UsdToCadRate, ct), ct);
             var t10 = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
 
-            await Task.WhenAll(t2, t2c, t2b, t3, t3b, t5, t6, t7, t8, t9, t10).ConfigureAwait(false);
+            await Task.WhenAll(t2, t2c, t2b, t2d, t3, t3b, t5, t6, t7, t8, t9, t10).ConfigureAwait(false);
 
             var feeBilledByWbs1    = t2.Result;
             var unpostedFeeBilledByWbs1 = t2c.Result;
             var hourlyRevByWbs1    = t2b.Result;
+            var feeSplitByWbs1     = t2d.Result;
             var hrsByWbs1AndLabor  = t3.Result;
             var costByWbs1AndLabor = t3b.Result;
             var apByWbs1           = t5.Result;
@@ -413,6 +417,8 @@ WHERE em.EMail IS NOT NULL AND LTRIM(RTRIM(em.EMail)) <> ''";
                     Gfa              = p.Gfa,
                     Fee              = p.Fee,
                     HourlyRevenue    = hourlyRev,
+                    ExtraFee         = feeSplitByWbs1.TryGetValue(p.Wbs1, out var fs) ? fs.ExtraFee : 0.0,
+                    EarnedFee        = feeSplitByWbs1.TryGetValue(p.Wbs1, out var fe) ? fe.Earned : 0.0,
                     FeeBilled        = feeBilled,
                     UnpostedFeeBilled = unpostedFeeBilledByWbs1.TryGetValue(p.Wbs1, out var ufb) ? ufb : 0.0,
                     SubconsultantCost = apByWbs1.TryGetValue(p.Wbs1, out var ap) ? ap : 0.0,
@@ -678,6 +684,82 @@ HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenu
                     var wbs1 = GetTrimmed(r, 0);
                     if (!string.IsNullOrWhiteSpace(wbs1))
                         result[wbs1] = GetDouble(r, 1);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// PM Tools R21/R25 (Jim 13 Mar; rule in docs/KOR-PMTools-Redesign-Spec-2026-11-26-sources/
+        /// Deltek-Fee-Split-Findings-2026-11-26.md). KOR's project template puts extras under WBS2
+        /// phases starting "X" ("X.1".."X.5", "Extra - phase"), one WBS3 element per extra.
+        /// ExtraFee = Fee on the X phase rows + hourly billing on X elements that carry no fee.
+        /// Earned = SUM(tkDetail.BillExt), the hours at each person's charge-out rate.
+        /// All amounts are in the project's own currency, like Fee.
+        /// </summary>
+        private static Dictionary<string, (double ExtraFee, double Earned)> LoadFeeSplitSync(
+            VpOdbcDsnFactory factory, string catalog, List<string> wbs1List, CancellationToken ct)
+        {
+            var result = new Dictionary<string, (double ExtraFee, double Earned)>(StringComparer.OrdinalIgnoreCase);
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (fee split).", ex); }
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
+            {
+                var inList = MakeInListPlaceholders(chunk.Count);
+                using (var cmd = cn.CreateCommand())
+                {
+                    cmd.CommandTimeout = SqlTimeouts.Batch;
+                    cmd.CommandText = $@"
+SELECT x.WBS1, SUM(x.Amt) FROM (
+    SELECT pr.WBS1, COALESCE(pr.Fee, 0) AS Amt
+    FROM [{catalog}].dbo.PR pr
+    WHERE pr.WBS1 IN ({inList})
+      AND LTRIM(pr.WBS2) LIKE 'X%'
+      AND (pr.WBS3 IS NULL OR LTRIM(RTRIM(pr.WBS3)) = '')
+    UNION ALL
+    SELECT sm.WBS1, CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END
+    FROM [{catalog}].dbo.PRSummaryMain sm
+    INNER JOIN [{catalog}].dbo.PR pr ON pr.WBS1 = sm.WBS1 AND pr.WBS2 = sm.WBS2 AND pr.WBS3 = sm.WBS3
+    WHERE sm.WBS1 IN ({inList})
+      AND pr.Fee = 0
+      AND LTRIM(pr.WBS2) LIKE 'X%'
+      AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''
+) x
+GROUP BY x.WBS1;";
+                    AddInListParameters(cmd, chunk);
+                    AddInListParameters(cmd, chunk);
+                    using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel */ } });
+                    using var r = cmd.ExecuteReader();
+                    while (r.Read())
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        var wbs1 = GetTrimmed(r, 0);
+                        if (string.IsNullOrWhiteSpace(wbs1)) continue;
+                        var cur = result.TryGetValue(wbs1, out var c) ? c : (0.0, 0.0);
+                        result[wbs1] = (GetDouble(r, 1), cur.Item2);
+                    }
+                }
+                using (var cmd = cn.CreateCommand())
+                {
+                    cmd.CommandTimeout = SqlTimeouts.Batch;
+                    cmd.CommandText = $@"
+SELECT WBS1, SUM(COALESCE(BillExt, 0))
+FROM [{catalog}].dbo.tkDetail
+WHERE WBS1 IN ({inList})
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
+GROUP BY WBS1;";
+                    AddInListParameters(cmd, chunk);
+                    using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel */ } });
+                    using var r = cmd.ExecuteReader();
+                    while (r.Read())
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        var wbs1 = GetTrimmed(r, 0);
+                        if (string.IsNullOrWhiteSpace(wbs1)) continue;
+                        var cur = result.TryGetValue(wbs1, out var c) ? c : (0.0, 0.0);
+                        result[wbs1] = (cur.Item1, GetDouble(r, 1));
+                    }
                 }
             }
             return result;
@@ -1760,6 +1842,10 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double Gfa { get; set; }
         public double Fee { get; set; }
         public double HourlyRevenue { get; set; }
+        /// <summary>PM Tools R21: fee under the template's "X" extra phases plus hourly billing on X elements (LoadFeeSplitSync).</summary>
+        public double ExtraFee { get; set; }
+        /// <summary>PM Tools R25: hours at each person's charge-out rate, SUM(tkDetail.BillExt).</summary>
+        public double EarnedFee { get; set; }
         public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; set; }
         public double UnpostedFeeBilled { get; set; }

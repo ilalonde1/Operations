@@ -419,8 +419,28 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             _isMeetingMode = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(MeetingModeToggleLabel));
+            OnPropertyChanged(nameof(HideDraftDetail));
         }
     }
+
+    // Spec R15 (Jim 13 Mar 30:04): in the drafters' pass the room needs "the drafting budget
+    // hours, and are we on track" - so the draft-hours columns stay visible in Meeting Mode
+    // while the lists are grouped by drafting manager. Set by the window from the Group switch.
+    private bool _showDraftingDetail;
+
+    public bool ShowDraftingDetail
+    {
+        get => _showDraftingDetail;
+        set
+        {
+            if (_showDraftingDetail == value) return;
+            _showDraftingDetail = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HideDraftDetail));
+        }
+    }
+
+    public bool HideDraftDetail => _isMeetingMode && !_showDraftingDetail;
 
     // In Meeting Mode (the simple default) the button offers the escape to
     // financials; out of it, the button offers the way back to the simple view.

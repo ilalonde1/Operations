@@ -84,7 +84,7 @@ internal static class WorkloadMeetingReport
         if (!string.IsNullOrWhiteSpace(overallNotes))
         {
             Heading(sb, "Meeting notes");
-            sb.Append($"<p style=\"margin:0;white-space:pre-wrap;\">{E(overallNotes.Trim()).Replace("\n", "<br>")}</p>");
+            sb.Append($"<p style=\"margin:0;white-space:pre-wrap;\">{E(overallNotes.Trim()).Replace("\r\n", "\n").Replace("\n", "<br>")}</p>");
         }
         sb.Append("</div>");
         return sb.ToString();

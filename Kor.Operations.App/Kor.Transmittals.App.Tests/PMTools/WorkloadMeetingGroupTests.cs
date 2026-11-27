@@ -72,6 +72,48 @@ public sealed class WorkloadMeetingGroupTests
         Assert.Equal(PmToolsViewModel.NoDraftingManagerLabel, PmToolsViewModel.GroupKey(noDm, byDraftingManager: true));
     }
 
+    [Fact]
+    public void FeeSplit_EarnedAndCost_GiveJimsRatios()
+    {
+        // 31170-01 shape from the Deltek findings: original 111k, billed 127k = 114% of original.
+        var r = PmProjectRow.FromProject(new FinancialsProjectRow
+        {
+            Wbs1 = "31170-01", Fee = 131_000, ExtraFee = 20_000, FeeBilled = 126_540,
+            EarnedFee = 140_000, EngLaborCost = 30_000, DraftLaborCost = 14_000,
+        }, 1.36);
+
+        Assert.Equal(111_000, r.OriginalFee);
+        Assert.Equal("114%", r.PercentBilledOfOriginalText);
+        Assert.Equal(44_000, r.LaborCost);
+        Assert.Equal(126_540 / 140_000.0, r.BilledToEarned, 6);
+        Assert.Equal(126_540 / 44_000.0, r.BilledToCost, 6);
+        Assert.False(r.IsUnderwater);
+    }
+
+    [Fact]
+    public void Underwater_WhenCostIsAboveBilled()
+    {
+        var r = PmProjectRow.FromProject(new FinancialsProjectRow
+        {
+            Wbs1 = "X1", Fee = 50_000, FeeBilled = 10_000, EngLaborCost = 12_000,
+        }, 1.36);
+        Assert.True(r.IsUnderwater);
+        Assert.Equal("-", r.BilledToEarnedText);   // no earned recorded
+    }
+
+    [Fact]
+    public void UsaProject_MoneyIsConvertedLikeFee()
+    {
+        var r = PmProjectRow.FromProject(new FinancialsProjectRow
+        {
+            Wbs1 = "31195-01", Org = "USA", Fee = 100_000, ExtraFee = 10_000, EarnedFee = 20_000, EngLaborCost = 10_000,
+        }, 1.36);
+        Assert.Equal(136_000, r.Fee, 6);
+        Assert.Equal(13_600, r.ExtraFee, 6);
+        Assert.Equal(27_200, r.EarnedFee, 6);
+        Assert.Equal(13_600, r.LaborCost, 6);
+    }
+
     [Theory]
     [InlineData(0, false)]
     [InlineData(1, true)]
