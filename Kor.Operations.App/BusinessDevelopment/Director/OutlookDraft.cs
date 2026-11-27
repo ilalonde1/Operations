@@ -84,6 +84,55 @@ internal static class OutlookDraft
         finally { File.Delete(file); }
     }
 
+    /// <summary>A message with an HTML body (PM Tools meeting report). Same rule as Open: displayed, never sent.
+    /// The pwsh route goes FIRST here: on KOR-1001 the in-process attach waits ~30 s before it fails with
+    /// 0x80080005 (measured 26 Nov: 32.5 s to open the report; the pwsh route alone took 1.8 s). The in-process
+    /// route is kept for a PC without pwsh.</summary>
+    public static void OpenHtml(string to, string subject, string htmlBody)
+    {
+        try
+        {
+            OpenHtmlThroughPwsh(to, subject, htmlBody);
+            return;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // pwsh is not installed on this PC: fall through to the in-process route.
+        }
+
+        dynamic outlook = Outlook();
+        dynamic item = outlook.CreateItem(0);      // olMailItem
+        item.To = string.Join(";", Recipients(to));
+        item.Subject = subject;
+        item.HTMLBody = htmlBody;
+        item.Display(false);
+        // Display alone left the draft behind the app (Ian, 26 Nov 17:2x: "Nothing gets
+        // produced in Outlook" while the draft sat open behind it). Bring its window forward.
+        try { item.GetInspector.Activate(); } catch (COMException) { /* still displayed; only the focus failed */ }
+    }
+
+    private static void OpenHtmlThroughPwsh(string to, string subject, string htmlBody)
+    {
+        var file = Path.Combine(Path.GetTempPath(), $"kor-draft-{Guid.NewGuid():N}.json");
+        File.WriteAllText(file, JsonSerializer.Serialize(new { to = Recipients(to), subject, html = htmlBody }));
+        try
+        {
+            const string script = "$d = Get-Content -Raw -Path $env:KOR_DRAFT | ConvertFrom-Json; $ol = New-Object -ComObject Outlook.Application; "
+                + "$i = $ol.CreateItem(0); $i.To = ($d.to -join ';'); $i.Subject = $d.subject; $i.HTMLBody = $d.html; $i.Display($false); "
+                + "try { $i.GetInspector.Activate() } catch { }";
+            var psi = new ProcessStartInfo("pwsh") { UseShellExecute = false, RedirectStandardError = true, CreateNoWindow = true };
+            psi.ArgumentList.Add("-NoProfile");
+            psi.ArgumentList.Add("-Command");
+            psi.ArgumentList.Add(script);
+            psi.Environment["KOR_DRAFT"] = file;
+            using var p = Process.Start(psi) ?? throw new InvalidOperationException("pwsh did not start.");
+            var err = p.StandardError.ReadToEnd();
+            p.WaitForExit();
+            if (p.ExitCode != 0) throw new InvalidOperationException("Outlook could not open the draft: " + err.Trim());
+        }
+        finally { File.Delete(file); }
+    }
+
     private static object Outlook()
     {
         if (CLSIDFromProgID("Outlook.Application", out var clsid) != 0) throw new InvalidOperationException("Outlook is not installed on this PC.");

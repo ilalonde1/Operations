@@ -119,6 +119,9 @@ namespace Kor.Operations.PMTools
 
             await _meetingPanel.LoadAsync();
             SyncMeetingPrioritiesToRows();
+            // Spec R17: start the Deltek email read now so "Email the report" does not wait on it.
+            _ = EmployeeEmails().ContinueWith(t => Serilog.Log.Warning(t.Exception, "Workload Meeting: background email read failed."),
+                                              TaskContinuationOptions.OnlyOnFaulted);
             // Spec R10: the groups were built before the meeting's priorities reached the rows;
             // sort them again now that "prioritised unbilled" can be read.
             _vm.RebuildPmGroups();
@@ -302,6 +305,79 @@ namespace Kor.Operations.PMTools
             finally
             {
                 _vm.SetExporting(false);
+            }
+        }
+
+        // Spec R17: the end-of-meeting report as an UNSENT Outlook draft to the PMs and drafting
+        // managers of the prioritised jobs. Built from the meeting's prioritised rows (the top
+        // list's source), so the grid filters do not change it. Jim reviews and presses Send.
+        // Emails are read from Deltek once, in the background, when the window opens (R17: the
+        // click took 20-30 s with nothing on screen, Ian 26 Nov 17:2x). The click awaits it only
+        // if it has not finished yet.
+        private Task<System.Collections.Generic.IReadOnlyDictionary<string, string>>? _employeeEmailsTask;
+
+        private Task<System.Collections.Generic.IReadOnlyDictionary<string, string>> EmployeeEmails()
+            => _employeeEmailsTask ??= Kor.Operations.Services.AppServices.Get<FinancialsService>()
+                   .GetEmployeeEmailsByNameAsync(CancellationToken.None);
+
+        private async void EmailReportBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var meeting = _meetingPanel.SelectedMeeting;
+            if (meeting == null || sender is not Button button) return;
+
+            var originalContent = button.Content;
+            button.IsEnabled = false;
+            button.Content = "Preparing the email...";
+            Mouse.OverrideCursor = Cursors.Wait;
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                var projects = new System.Collections.Generic.Dictionary<string, PmProjectRow>(StringComparer.OrdinalIgnoreCase);
+                foreach (var r in _vm.ProjectRows) projects.TryAdd(r.Wbs1, r);
+
+                var jobs = _meetingPanel.PriorityProjects.ToList().Select(p =>
+                {
+                    projects.TryGetValue(p.Wbs1, out var proj);
+                    return new WorkloadMeetingReport.Job(
+                        p.Wbs1, proj?.Name ?? p.ProjectName, p.Priority,
+                        proj?.Pm ?? p.PmName, proj?.DraftingManager ?? "",
+                        p.NextDeadline?.Date, p.NextDeadlineWhat, p.Notes);
+                }).ToList();
+
+                var emailsByName = (System.Collections.Generic.IReadOnlyDictionary<string, string>)
+                    new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                try
+                {
+                    emailsByName = await EmployeeEmails();
+                }
+                catch (Exception ex)
+                {
+                    _employeeEmailsTask = null;   // try again next click
+                    Serilog.Log.Warning(ex, "Workload Meeting: employee email read failed; report opens with no recipients.");
+                }
+                var emailMs = clock.ElapsedMilliseconds;
+
+                var (emails, unmatched) = WorkloadMeetingReport.Recipients(jobs, emailsByName);
+                var html = WorkloadMeetingReport.Html(meeting.MeetingDate, DateTime.Today, _meetingPanel.LookAheadWeeks,
+                                                      jobs, _meetingPanel.MeetingNotes, unmatched);
+                var to = string.Join("; ", emails);
+                var subject = WorkloadMeetingReport.Subject(meeting.MeetingDate);
+                button.Content = "Opening Outlook...";
+                await Task.Run(() => Kor.Operations.App.BusinessDevelopment.Director.OutlookDraft.OpenHtml(to, subject, html)).ConfigureAwait(true);
+                Serilog.Log.Information("Workload Meeting: report draft opened; emails ready at {EmailMs} ms, Outlook open at {TotalMs} ms, {To} recipients.",
+                    emailMs, clock.ElapsedMilliseconds, emails.Count);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Workload Meeting: could not open the report in Outlook after {Ms} ms.", clock.ElapsedMilliseconds);
+                MessageBox.Show(this, "Could not open the report in Outlook: " + ex.Message, "Email the report",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+                button.Content = originalContent;
+                button.IsEnabled = true;
             }
         }
 

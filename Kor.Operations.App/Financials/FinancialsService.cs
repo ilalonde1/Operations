@@ -162,6 +162,43 @@ WHERE d.CustDateExpected >= ?
             return PickNextDeadlines(rows);
         }
 
+        /// <summary>
+        /// PM Tools spec R17: email addresses for the end-of-meeting report, keyed on the display
+        /// name the app shows for PMs and drafting managers ("First Last", BuildPmDisplay).
+        /// Only employees with an email in Deltek EMMain; first one wins on a duplicate name.
+        /// </summary>
+        public async Task<IReadOnlyDictionary<string, string>> GetEmployeeEmailsByNameAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
+            var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
+                              () => new Dictionary<string, string>());
+
+            return await Task.Run<IReadOnlyDictionary<string, string>>(() =>
+            {
+                var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                using var cn = factory.Create();
+                try { cn.Open(); }
+                catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (employee emails).", ex); }
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                cmd.CommandText = $@"
+SELECT em.Employee, em.FirstName, em.LastName, em.EMail
+FROM [{catalog}].dbo.EMMain em
+WHERE em.EMail IS NOT NULL AND LTRIM(RTRIM(em.EMail)) <> ''";
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var name = BuildPmDisplay(GetTrimmed(r, 0), GetTrimmed(r, 1), GetTrimmed(r, 2));
+                    var email = GetTrimmed(r, 3);
+                    if (name.Length > 0 && email.Length > 0) map.TryAdd(name, email);
+                }
+                return map;
+            }, ct).ConfigureAwait(false);
+        }
+
         /// <summary>Earliest deadline per WBS1 (ties: first by issue name, so the pick is stable).</summary>
         internal static IReadOnlyDictionary<string, ProjectDeadline> PickNextDeadlines(IEnumerable<ProjectDeadline> rows)
             => rows

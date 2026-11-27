@@ -300,13 +300,21 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <Button Grid.Column="4"
-                                Content="Export to Excel"
-                                Height="32" Margin="0,0,8,0"
-                                Style="{StaticResource Button.Secondary}"
-                                Click="ExportMeetingBtn_Click"
-                                IsEnabled="{Binding HasPriorityProjects}"
-                                ToolTip="Export this meeting to a formatted Excel workbook"/>
+                        <StackPanel Grid.Column="4" Orientation="Horizontal">
+                            <!-- Spec R17 (Jim 13 Mar 1:04:10): one button at the end of the meeting -->
+                            <Button Content="Email the report"
+                                    Height="32" Margin="0,0,8,0"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Click="EmailReportBtn_Click"
+                                    IsEnabled="{Binding HasPriorityProjects}"
+                                    ToolTip="Opens the meeting report in Outlook, addressed to the PMs and drafting managers of the prioritised jobs. Nothing is sent until you press Send."/>
+                            <Button Content="Export to Excel"
+                                    Height="32" Margin="0,0,8,0"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Click="ExportMeetingBtn_Click"
+                                    IsEnabled="{Binding HasPriorityProjects}"
+                                    ToolTip="Export this meeting to a formatted Excel workbook"/>
+                        </StackPanel>
                         <!-- Round 52h: toggle between the simple meeting view and full
                              financial detail. Highlighted while in $-detail to cue
                              the user back to the simple view. -->
