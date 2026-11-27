@@ -64,8 +64,12 @@ namespace Kor.Operations.PMTools
         /// <summary>R25: billed / cost. Below 1, "you're just working for free" (Jim 57:04).</summary>
         public double BilledToCost => LaborCost > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / LaborCost : 0;
 
-        /// <summary>R30: underwater = the cost of the hours is above what has been billed.</summary>
-        public bool IsUnderwater => LaborCost > AnalyticsThresholds.RoundingDollarFloor && FeeBilledWithUnposted < LaborCost;
+        /// <summary>R30: underwater = the cost of the hours is above what has been billed. A job that
+        /// has not billed yet counts only once its cost passes 10% of its fee: every new job has cost
+        /// before its first invoice, and flagging all of them was noise (Ian 26 Nov, 31247-01 at SD).</summary>
+        public bool IsUnderwater => LaborCost > AnalyticsThresholds.RoundingDollarFloor
+            && FeeBilledWithUnposted < LaborCost
+            && (FeeBilledWithUnposted > AnalyticsThresholds.RoundingDollarFloor || LaborCost > 0.10 * Fee);
 
         public string BilledToEarnedText => BilledToEarned > 0 ? BilledToEarned.ToString("0.00") : "-";
         public string BilledToCostText => BilledToCost > 0 ? BilledToCost.ToString("0.00") : "-";

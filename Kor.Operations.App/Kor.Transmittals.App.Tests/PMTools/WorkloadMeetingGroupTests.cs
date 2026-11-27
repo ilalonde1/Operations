@@ -102,6 +102,18 @@ public sealed class WorkloadMeetingGroupTests
     }
 
     [Fact]
+    public void NotUnderwater_WhenNothingBilledYetAndCostIsSmall()
+    {
+        // 31247-01 on 26 Nov: SD, $390k fee, $0 billed, $530 cost - not a warning.
+        var early = PmProjectRow.FromProject(new FinancialsProjectRow { Wbs1 = "31247-01", Fee = 390_000, EngLaborCost = 530 }, 1.36);
+        Assert.False(early.IsUnderwater);
+
+        // Same job, nothing billed but cost past 10% of fee - now it is.
+        var late = PmProjectRow.FromProject(new FinancialsProjectRow { Wbs1 = "31247-01", Fee = 390_000, EngLaborCost = 40_000 }, 1.36);
+        Assert.True(late.IsUnderwater);
+    }
+
+    [Fact]
     public void UsaProject_MoneyIsConvertedLikeFee()
     {
         var r = PmProjectRow.FromProject(new FinancialsProjectRow

@@ -816,7 +816,7 @@
                                                       CanUserSortColumns="True"
                                                       HeadersVisibility="Column"
                                                       EnableRowVirtualization="True"
-                                                      EnableColumnVirtualization="True"
+                                                      EnableColumnVirtualization="False"
                                                       VirtualizingPanel.IsVirtualizing="True"
                                                       VirtualizingPanel.VirtualizationMode="Recycling"
                                                       MinRowHeight="28"
