@@ -2,8 +2,10 @@
 
 **2026-11-26. Board row 2415.** Written by the Operations lead from Jim DesRoches's two calls with Ian. It was checked
 against the code at Operations `404f8d1a`. Built since, 26 Nov: section 6 items 1 and 2 (R1-R5, R7, R8) in `f9b8ba49` and
-`2974e27e`, plus the item 6 warning; items 3 and 4 (R9, R10, R14) in the commit after `479f482b`. Each was looked at on
-Ian's screen. Item 5 (demos) is not built. Where the two calls disagree, **the 9 Nov call wins**
+`2974e27e`, plus the item 6 warning; items 3 and 4 (R9, R10, R14) in `2a3fd872`; R17 (Email the report) in `fda3ff79`;
+R15, R21, R22, R25, R29, R30 (Ian chose 26 Nov to build the March money asks) in `0ad18755`..`bc991e52`; R20 Demos card as
+a side item in `485921c6`. Each was looked at on Ian's screen except the last two small fixes in `bc991e52`. **R18 (Monday
+sheet to each PM) is on hold until Jim confirms he still wants it** (Ian, 27 Nov). Where the two calls disagree, **the 9 Nov call wins**
 because it is Jim's later word. Every such case is listed in section 7.
 
 ## 1. Sources

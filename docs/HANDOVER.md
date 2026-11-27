@@ -1,6 +1,25 @@
 # Operations - HANDOVER
 
-## STATE NOW - the BD block below is from 4 Nov 12:15, Operations lead; the review findings of 5 Nov 13:22 are in their own section below this one. Read first.
+## STATE NOW - PM Tools / Workload Meeting, 27 Nov 09:52 (session a4053fa7). Read first; the BD block below is older.
+
+**Pushed (origin/develop `bc991e52`, every commit reviewed APPROVE):** Jim's workload-meeting redesign, spec
+`docs/KOR-PMTools-Redesign-Spec-2026-11-26.md` (sources and the Deltek fee findings in its `-sources/` folder). Built and
+seen on Ian's screen: due-by-Deltek-deadline top list, CAD/Revit + Drafting Mgr in Meeting Mode, prioritised totals and
+order, Drafting Mgrs grouping (drafters' pass), "Email the report" (HTML Outlook draft, pwsh first), original/extra fee,
+earned vs cost, "under" marker, row-height fix. Demos card = side item (Ian). Not seen on screen: `bc991e52` (header
+"Underwater", no-fee jobs wait for an invoice).
+**Ian's own install only:** `C:\KOR-Operations` on KOR-1001 carries the 18:58 26 Nov build (one commit behind develop).
+Rollback `_Publish\_Ops\App\rollback_20261126_182723`. NEVER run `tools/release-kor-ops-app-local.ps1` as-is: its /MIR
+excludes only `cli`, so it deletes `kor\` and `push-exceptions.txt`; copy without purge and keep `Kor.Operations.App.dll.config`.
+Nobody else has any of this: a team release is Ian's call (recommended next, so Jim tries it at a workload meeting).
+**On hold:** R18 Monday sheet to each PM, until Jim confirms (Ian, 27 Nov). **Not done by decision:** R11 JM pin (9 Nov
+order wins), R24 fee-only budget formula (Jim gave no rate).
+**Data gaps for the PMs (not code):** 48 of 63 prioritised jobs have no future deadline in Deltek; 21 watchlist jobs have no
+drafting manager; newest workload meeting in the app is 19 Oct (press New Meeting first).
+**Open:** board rows 2415, 2416 still open - `kor whole` W3 refused the close over an unrelated memory line (report to the
+Framework lead). BD Director / pursuit-review drafts (`OutlookDraft.Open`) still try in-process first: ~30 s on KOR-1001.
+
+## STATE NOW (older) - the BD block below is from 4 Nov 12:15, Operations lead; the review findings of 5 Nov 13:22 are in their own section below this one.
 
 **The BD block, 4 Nov:** Evidence was read between 09:24 and 09:43 on 4 Nov, read-only. Nothing was built or deployed.
 
