@@ -1,23 +1,50 @@
 # Operations - HANDOVER
 
-## STATE NOW - PM Tools / Workload Meeting, 27 Nov 09:52 (session a4053fa7). Read first; the BD block below is older.
+## STATE NOW - PM Tools / Workload Meeting, 27 Nov 19:08 (session a4053fa7, ended here). Read first; the BD block below is older.
 
-**Pushed (origin/develop `bc991e52`, every commit reviewed APPROVE):** Jim's workload-meeting redesign, spec
-`docs/KOR-PMTools-Redesign-Spec-2026-11-26.md` (sources and the Deltek fee findings in its `-sources/` folder). Built and
-seen on Ian's screen: due-by-Deltek-deadline top list, CAD/Revit + Drafting Mgr in Meeting Mode, prioritised totals and
-order, Drafting Mgrs grouping (drafters' pass), "Email the report" (HTML Outlook draft, pwsh first), original/extra fee,
-earned vs cost, "under" marker, row-height fix. Demos card = side item (Ian). Not seen on screen: `bc991e52` (header
-"Underwater", no-fee jobs wait for an invoice).
-**Ian's own install only:** `C:\KOR-Operations` on KOR-1001 carries the 18:58 26 Nov build (one commit behind develop).
-Rollback `_Publish\_Ops\App\rollback_20261126_182723`. NEVER run `tools/release-kor-ops-app-local.ps1` as-is: its /MIR
-excludes only `cli`, so it deletes `kor\` and `push-exceptions.txt`; copy without purge and keep `Kor.Operations.App.dll.config`.
-Nobody else has any of this: a team release is Ian's call (recommended next, so Jim tries it at a workload meeting).
-**On hold:** R18 Monday sheet to each PM, until Jim confirms (Ian, 27 Nov). **Not done by decision:** R11 JM pin (9 Nov
-order wins), R24 fee-only budget formula (Jim gave no rate).
-**Data gaps for the PMs (not code):** 48 of 63 prioritised jobs have no future deadline in Deltek; 21 watchlist jobs have no
-drafting manager; newest workload meeting in the app is 19 Oct (press New Meeting first).
-**Open:** board rows 2415, 2416 still open - `kor whole` W3 refused the close over an unrelated memory line (report to the
-Framework lead). BD Director / pursuit-review drafts (`OutlookDraft.Open`) still try in-process first: ~30 s on KOR-1001.
+**Read before working:** brain record #140394 (Framework's whole read of this session: the `kor whole` W3 refusal of
+closing rows 2415/2416 was RIGHT, and this session then made a false claim about it - read the full record, not the
+summary) and #140389 (lesson: a Deltek column was named without reading the table; the report went out with 0 recipients).
+
+**Shipped (origin/develop `26fd271f`, every commit reviewed APPROVE):** Jim's workload-meeting redesign. Spec
+`docs/KOR-PMTools-Redesign-Spec-2026-11-26.md`, sources and Deltek fee findings in its `-sources/` folder, Jim's one-page
+guide `docs/KOR-Workload-Meeting-Guide-2026-11-27-web.pdf` (copy in Ian's Desktop\PM Tools). What it does: top list of
+prioritised jobs due in 2/3/4/6 weeks from Deltek Projects_Deadlines; CAD/Revit + Drafting Mgr in Meeting Mode; PM order
+and totals over prioritised jobs; Group PMs | Drafting Mgrs | Drafters (drafters = drafting hours, labour 20, last 28
+days); "Email the report" (HTML Outlook draft, pwsh first, recipients from opportunities.BdStaff); Show $ Detail money
+columns (original/extra fee via WBS2 "X" phases, earned = tkDetail.BillExt, cost, ratios) and the "Underwater" marker;
+Demos card (side item, \\KOR-FS01\Library\11 IT\KOR Operations Demos). Ian saw every piece on his screen EXCEPT: the
+Drafters grouping and the BdStaff email recipients (installed on his PC 27 Nov 10:39, his screenshot not received).
+
+**Release:** V33 = app 2026.11.27.1, version commit `26fd271f` on `3a82b658`, package
+`\\KOR-FS01\Library\11 IT\_Applications\Newerforma\New\V33.zip` (SHA256 E5D82056BDAEEA309DC2F5E2CB202CFB9BB13B8234F4CF580A2E55D261C72124,
+provenance beside it). Installed on KOR-204 (Jim) by netops 12334 (11:19), read back 12335: version, dll hash, new code
+all match. Ian's KOR-1001 install = a local publish of 3a82b658 (same code, no version stamp). Everyone else: V28-V31.
+**Ian 27 Nov 19:0x: "will deploy via NetOps".** The fleet route is Command Center > Deploy, op "Migrate / update to KOR
+Operations", run by the NetworkOps service on APP01, which still points at V31.zip (per the 29 Oct deploy and V32's
+provenance; live service not re-read). So FIRST the NetworkOps lead redeploys the service from `26fd271f` (V33 path;
+~90 s APP01 restart, tell peer sessions), THEN the Deploy op. Do not run it before that - it would downgrade PCs to V31.
+There was NO V32 fleet rollout (V32 = KOR-204 only).
+
+**Never:** run `tools/release-kor-ops-app-local.ps1` as-is - its /MIR excludes only `cli`, so it deletes `kor\` and
+`push-exceptions.txt` on KOR-1001; copy without purge, keep `Kor.Operations.App.dll.config` (rollback
+`_Publish\_Ops\App\rollback_20261126_182723`). Do not commit raw call transcripts (profanity, named colleagues): they
+live in Ian's Desktop\PM Tools\Transcripts. The 9 Nov call with Jim IS the whole call (Teams: 15m 16s); "Workload
+Meeting" in Teams is the real fortnightly meeting, not a call with Jim.
+
+**Waiting on Jim:** R18 Monday sheet to each PM (on hold until he confirms); R24 budget hours from fee (no rate given);
+R11 JM pin (replaced by his 9 Nov order unless he wants both); whether "drafters' priorities" means drafting managers
+or individual drafters (both views are built).
+**Data gaps (PMs, not code):** 48 of 63 prioritised jobs have no future Deltek deadline; 21 watchlist jobs no drafting
+manager; newest workload meeting in the app 19 Oct (press + New Meeting first).
+**Open, owed by this lane:** board rows 2415 and 2416 are still open, and steps 2-4, the money columns, Drafters and V33
+have NO rows - open them with evidence and close them properly (read #140394 first). BD Director / pursuit-review drafts
+(`OutlookDraft.Open`) still try in-process Outlook first: ~30 s on KOR-1001 (the report's `OpenHtml` goes pwsh first).
+Ian asked whether more checks help when they are skipped; the answer given was that only refusing gates hold (commit
+needs a board row; done/seen claims need cited evidence; a Deltek-column test; shorter sessions). Ian has NOT said yes
+to raising them. Ian has revisions to the PM Tools work for the next session.
+**Parallel work:** board row 2417 (doing, Operations, 27 Nov) - another session is building an Inspections page and a
+PM Tools card for it; read that row before touching PmToolsChooserWindow.
 
 ## STATE NOW (older) - the BD block below is from 4 Nov 12:15, Operations lead; the review findings of 5 Nov 13:22 are in their own section below this one.
 
