@@ -43,6 +43,15 @@ have NO rows - open them with evidence and close them properly (read #140394 fir
 Ian asked whether more checks help when they are skipped; the answer given was that only refusing gates hold (commit
 needs a board row; done/seen claims need cited evidence; a Deltek-column test; shorter sessions). Ian has NOT said yes
 to raising them. Ian has revisions to the PM Tools work for the next session.
+**Ian's PM Tools folder** `C:\Users\ilalonde\Desktop\PM Tools`: Teams transcript of the 9 Nov call (`Call with Jim
+DesRoches (1).docx`, speaker-labelled), a fresh cold read of it (`Jim-2026-11-09-Teams-transcript-67-points.md`: 67 points,
+all workload items matched to the build; items 33-55 are the detail catalogue / virtual drafter, not PM Tools), both
+instruction extracts, the spec, Jim's guide PDF, and `Transcripts\` (all 8 Jim calls + 13 Mar, not in git).
+`tools/transcribe_recordings.py` transcribes Teams .mp4s (faster-whisper; OneDrive must be running to copy them local).
+**Review notes NOT fixed (minor, rows 3800-3808):** report's due window counts from today, not the meeting date;
+`LoadFeeSplitSync` overwrites per WBS1 (safe today, fragile); OriginalFee keeps any non-X hourly billing; column
+virtualization off (unmeasured on long lists); Demos card creates the share folder if missing; DeployCatalog's
+description text still says V31.
 **Parallel work:** board row 2417 (doing, Operations, 27 Nov) - another session is building an Inspections page and a
 PM Tools card for it; read that row before touching PmToolsChooserWindow.
 
